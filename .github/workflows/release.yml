@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+# Prevent multiple concurrent release workflows
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write # create releases/tags + commit version bumps
+  pull-requests: write # create the "Version Packages" PR
+  id-token: write # OIDC token — the sole auth mechanism for npm publish
+  # Prereq: configure GitHub Actions as a Trusted Publisher on each npm
+  # package ( npmjs.com → Package → Settings → Publishing access ). Once
+  # configured, `npm publish` uses the OIDC token automatically — no
+  # NPM_TOKEN secret needed.
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          # Full history required for changesets to determine version bumps
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      # Upgrade npm for trusted publishing (OIDC provenance requires npm 11+).
+      # Node.js 22's bundled npm has a missing promise-retry module that breaks
+      # `npm install -g`, so we install it first as a workaround.
+      - name: Upgrade npm for provenance publishing
+        run: |
+          npm install -g promise-retry 2>/dev/null || true
+          npm install -g npm@latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.4.9
+        with:
+          version: bun run version
+          publish: bun run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Print changeset outputs
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          echo "Published: ${{ steps.changesets.outputs.published }}"
+          echo "Published packages: ${{ steps.changesets.outputs.publishedPackages }}"

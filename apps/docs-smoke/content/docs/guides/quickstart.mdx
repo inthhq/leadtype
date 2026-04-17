@@ -1,0 +1,23 @@
+---
+title: "Quickstart"
+description: "Install and run your first command."
+---
+
+# Quickstart
+
+<Steps>
+  <Step title="Install">Install the package.</Step>
+  <Step title="Import">Import `convertAllMdx` from `@inth/docs/convert`.</Step>
+  <Step title="Build">Run `bun run build`.</Step>
+</Steps>
+
+<PackageCommandTabs command="{pm} install @inth/docs" />
+
+<Tabs items={["Overview", "Advanced"]}>
+  <Tab value="Overview">
+    Basic usage is one call to `convertAllMdx({ srcDir, outDir, remarkPlugins })`.
+  </Tab>
+  <Tab value="Advanced">
+    Pass custom remark plugins alongside `defaultRemarkPlugins` for extensions.
+  </Tab>
+</Tabs>
