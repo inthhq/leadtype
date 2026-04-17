@@ -226,32 +226,32 @@ async function readMarkdownDocs(
   }
 
   const files = await collectFiles(docsDir, [".md"]);
-  const docs: MarkdownDoc[] = [];
+  const docs = await Promise.all(
+    files.map(async (filePath) => {
+      const relativePath = path
+        .relative(docsDir, filePath)
+        .replace(WINDOWS_PATH_PATTERN, "/");
+      const raw = await readFile(filePath, "utf-8");
+      const parsed = matter(raw);
+      const title =
+        String(parsed.data.title ?? "").trim() ||
+        titleize(path.basename(relativePath, ".md")) ||
+        "Untitled";
+      const description = normalizeDescription(
+        String(parsed.data.description ?? "")
+      );
+      const urlPath = toUrlPath(relativePath);
 
-  for (const filePath of files) {
-    const relativePath = path
-      .relative(docsDir, filePath)
-      .replace(WINDOWS_PATH_PATTERN, "/");
-    const raw = await readFile(filePath, "utf-8");
-    const parsed = matter(raw);
-    const title =
-      String(parsed.data.title ?? "").trim() ||
-      titleize(path.basename(relativePath, ".md")) ||
-      "Untitled";
-    const description = normalizeDescription(
-      String(parsed.data.description ?? "")
-    );
-    const urlPath = toUrlPath(relativePath);
-
-    docs.push({
-      title,
-      description,
-      urlPath,
-      absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-      relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
-      content: parsed.content.trim(),
-    });
-  }
+      return {
+        title,
+        description,
+        urlPath,
+        absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
+        relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
+        content: parsed.content.trim(),
+      };
+    })
+  );
 
   return docs.sort((left, right) => left.urlPath.localeCompare(right.urlPath));
 }

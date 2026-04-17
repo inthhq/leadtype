@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import fg from "fast-glob";
@@ -12,6 +13,39 @@ import type { Pluggable, PluggableList } from "unified";
 import { log } from "../internal/logger";
 
 const execFileAsync = promisify(execFile);
+
+const DEFAULT_CONCURRENCY = Math.max(2, Math.min(cpus().length, 16));
+
+/**
+ * Run `fn` on every item in `items` with at most `limit` in-flight concurrent
+ * calls. Uses a shared cursor so fast workers pull from the queue — keeps
+ * throughput high when file conversion times vary (some hit git, some don't).
+ */
+async function mapLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) {
+        return;
+      }
+      const item = items[index];
+      if (item === undefined) {
+        return;
+      }
+      results[index] = await fn(item, index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 const FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
 const HEADING_REGEX = /^#\s+(.+)$/m;
@@ -199,8 +233,15 @@ export type MdxToMarkdownConfig = {
    * If true, inject `lastModified` (ISO-8601) and `lastAuthor` into the
    * output frontmatter by running `git log -1` against each source file.
    * Silently skipped for files that are untracked or when git is unavailable.
+   * Requires `fetch-depth: 0` when run in `actions/checkout` — shallow clones
+   * return empty git log for files not touched in the single fetched commit.
    */
   enrichFrontmatterFromGit?: boolean;
+  /**
+   * Max number of files to convert in parallel. Defaults to
+   * `min(cpuCount, 16)` with a floor of 2.
+   */
+  concurrency?: number;
 };
 
 type GitEnrichment = {
@@ -341,12 +382,6 @@ async function processMdxFile(
   writeToStdout = false
 ): Promise<boolean> {
   const resolvedPath = resolve(mdxFilePath);
-  try {
-    await access(resolvedPath);
-  } catch {
-    log.error(`File not found: ${resolvedPath}`);
-    return false;
-  }
 
   if (!resolvedPath.endsWith(".mdx")) {
     log.error(`Not an MDX file: ${resolvedPath}`);
@@ -433,9 +468,19 @@ export async function convertAllMdx(
 
   const remarkPlugins = config.remarkPlugins ?? [];
   const enrichFromGitFlag = config.enrichFrontmatterFromGit ?? false;
-  let converted = 0;
+  const concurrency = config.concurrency ?? DEFAULT_CONCURRENCY;
 
+  // Pre-create every output directory in parallel so the per-file workers
+  // don't repeatedly mkdir the same parent.
+  const outputDirs = new Set<string>();
   for (const mdxFilePath of mdxFiles) {
+    outputDirs.add(dirname(deriveOutputPath(mdxFilePath, srcDir, outDir)));
+  }
+  await Promise.all(
+    Array.from(outputDirs, (dir) => mkdir(dir, { recursive: true }))
+  );
+
+  const results = await mapLimit(mdxFiles, concurrency, async (mdxFilePath) => {
     try {
       const { markdown } = await convertMdxFile(
         mdxFilePath,
@@ -443,13 +488,14 @@ export async function convertAllMdx(
         enrichFromGitFlag
       );
       const outputPath = deriveOutputPath(mdxFilePath, srcDir, outDir);
-      await mkdir(dirname(outputPath), { recursive: true });
       await writeFile(outputPath, markdown);
-      converted += 1;
+      return true;
     } catch (fileError) {
       log.error(`Failed to process ${mdxFilePath}: ${String(fileError)}`);
+      return false;
     }
-  }
+  });
 
+  const converted = results.filter(Boolean).length;
   log.verbose(`Converted ${converted} MDX files`);
 }
