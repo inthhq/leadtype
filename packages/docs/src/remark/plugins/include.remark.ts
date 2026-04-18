@@ -362,6 +362,11 @@ async function processIncludeNode(
   const specifier = flattenNode(node).trim() || (params.src ?? "").trim();
 
   if (!specifier) {
+    // Misconfigured <include> / <import> — surface instead of silently
+    // dropping so authors can find the offending tag in build logs.
+    process.stderr.write(
+      `[inth-docs] <include> missing specifier (no text content and no src= attribute); attributes: ${JSON.stringify(params)}\n`
+    );
     return;
   }
 
@@ -457,68 +462,70 @@ export function remarkInclude(
     const MAX_PASSES = 10;
 
     for (let pass = 0; pass < MAX_PASSES; pass += 1) {
-      let foundInclude = false;
-      const tasks: Promise<void>[] = [];
+      // Collect candidate includes first (don't kick off work inside the
+      // visitor). We then process them sequentially so replaceTarget
+      // mutations don't race on a shared grandparent — an earlier sibling's
+      // splice would otherwise invalidate a later sibling's findContainer
+      // lookup.
+      type Candidate = {
+        node: Record<string, unknown>;
+        parent: Record<string, unknown> | null;
+      };
+      const candidates: Candidate[] = [];
 
       visit(tree, (node, _idx, parent) => {
         const nodeRecord = node as unknown as Record<string, unknown>;
         const isMatch = TagNames.some((t) => isIncludeNode(nodeRecord, t));
-
         if (!isMatch) {
           return;
         }
-
-        foundInclude = true;
-
-        tasks.push(
-          processIncludeNode(
-            nodeRecord,
-            workingDir,
-            basePaths,
-            (file as unknown as { data?: unknown })?.data
-          ).then(() => {
-            const after = nodeRecord as unknown as {
-              type?: string;
-              children?: unknown[];
-            };
-
-            if (after.type === "root" && Array.isArray(after.children)) {
-              replaceTarget(
-                tree,
-                nodeRecord,
-                (parent as unknown as Record<string, unknown>) ?? null,
-                { type: "root", children: after.children }
-              );
-            } else if (
-              after.type === "paragraph" &&
-              Array.isArray(after.children)
-            ) {
-              const parentRecord =
-                (parent as unknown as Record<string, unknown>) ?? null;
-
-              if (parentRecord && isParagraph(parentRecord)) {
-                // Avoid nested <p><p>...</p></p> structures by promoting
-                // the included paragraph's children to the parent level.
-                replaceTarget(tree, nodeRecord, parentRecord, {
-                  type: "root",
-                  children: after.children,
-                });
-              }
-            }
-          })
-        );
-
+        candidates.push({
+          node: nodeRecord,
+          parent: (parent as unknown as Record<string, unknown>) ?? null,
+        });
         // Skip traversing into this node's children; they'll be visited
         // on the next pass if they still contain includes.
         return "skip";
       });
 
-      if (!foundInclude) {
-        // No more includes to process
+      if (candidates.length === 0) {
         break;
       }
 
-      await Promise.all(tasks);
+      for (const { node: nodeRecord, parent: parentRecord } of candidates) {
+        // IO-bound processIncludeNode can still run without blocking other
+        // work at the caller level; we only serialize the mutation path.
+        await processIncludeNode(
+          nodeRecord,
+          workingDir,
+          basePaths,
+          (file as unknown as { data?: unknown })?.data
+        );
+
+        const after = nodeRecord as unknown as {
+          type?: string;
+          children?: unknown[];
+        };
+
+        if (after.type === "root" && Array.isArray(after.children)) {
+          replaceTarget(tree, nodeRecord, parentRecord, {
+            type: "root",
+            children: after.children,
+          });
+        } else if (
+          after.type === "paragraph" &&
+          Array.isArray(after.children) &&
+          parentRecord &&
+          isParagraph(parentRecord)
+        ) {
+          // Avoid nested <p><p>...</p></p> by promoting the included
+          // paragraph's children to the parent level.
+          replaceTarget(tree, nodeRecord, parentRecord, {
+            type: "root",
+            children: after.children,
+          });
+        }
+      }
     }
   };
 }

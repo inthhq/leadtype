@@ -10,6 +10,46 @@ export type TypeTableProperty = {
   deprecated?: boolean;
 };
 
+const SAFE_URL_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+/**
+ * Only return the URL if it parses and uses a known-safe scheme. Guards
+ * against `javascript:` / `data:` being injected via frontmatter that winds
+ * up in `typeDescriptionLink`.
+ */
+function safeUrl(raw: string): string | null {
+  // Allow root-relative and explicit path-relative URLs unconditionally.
+  if (raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../")) {
+    return raw;
+  }
+  try {
+    const url = new URL(raw);
+    return SAFE_URL_SCHEMES.has(url.protocol) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderTypeWithLink(property: TypeTableProperty): ReactNode {
+  if (!property.typeDescriptionLink) {
+    return <code>{property.type}</code>;
+  }
+  const href = safeUrl(property.typeDescriptionLink);
+  if (!href) {
+    return <code>{property.type}</code>;
+  }
+  const isExternal = href.startsWith("http://") || href.startsWith("https://");
+  return (
+    <a
+      href={href}
+      rel={isExternal ? "noopener noreferrer" : undefined}
+      target={isExternal ? "_blank" : undefined}
+    >
+      <code>{property.type}</code>
+    </a>
+  );
+}
+
 export type TypeTableProps = {
   type?: Record<string, TypeTableProperty>;
 };
@@ -23,10 +63,10 @@ export function TypeTable({ type }: TypeTableProps) {
     <table data-inth-type-table="">
       <thead>
         <tr>
-          <th>Prop</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
+          <th scope="col">Prop</th>
+          <th scope="col">Type</th>
+          <th scope="col">Default</th>
+          <th scope="col">Description</th>
         </tr>
       </thead>
       <tbody>
@@ -45,13 +85,7 @@ export function TypeTable({ type }: TypeTableProps) {
               ) : null}
             </td>
             <td>
-              {property.typeDescriptionLink ? (
-                <a href={property.typeDescriptionLink}>
-                  <code>{property.type}</code>
-                </a>
-              ) : (
-                <code>{property.type}</code>
-              )}
+              {renderTypeWithLink(property)}
               {property.typeDescription ? (
                 <div data-inth-type-description="">
                   {property.typeDescription}

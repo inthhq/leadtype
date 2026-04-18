@@ -1,5 +1,5 @@
 /** @biome-ignore lint/complexity/noExcessiveCognitiveComplexity:  this is okay */
-import type { Blockquote, Node, Paragraph, Table } from "mdast";
+import type { Blockquote, Node, Paragraph, Table, Text } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
 import { u } from "unist-builder";
 import { is } from "unist-util-is";
@@ -73,8 +73,7 @@ export function processContentNode(
     ) as Node;
   }
   if (node.type === "text") {
-    // Skip whitespace-only text nodes
-    const textNode = node as unknown as { value: string };
+    const textNode = node as Text;
     if (textNode.value.trim()) {
       const normalizedText = normalizeWhitespace(textNode.value, true);
       return {

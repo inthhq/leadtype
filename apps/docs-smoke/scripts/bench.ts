@@ -46,6 +46,11 @@ interface Stats {
 }
 
 function median(values: number[]): number {
+  // Empty input → 0. Documented so callers don't rely on the nullish
+  // coalescing below as implicit fallback handling.
+  if (values.length === 0) {
+    return 0;
+  }
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 0) {

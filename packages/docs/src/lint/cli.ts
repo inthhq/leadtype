@@ -126,13 +126,12 @@ async function main(): Promise<void> {
   });
 
   const output = renderReport(args.format, result);
-  if (args.format === "github") {
-    process.stdout.write(output);
-  } else if (args.format === "json") {
+  // Machine-readable formats go to stdout so they can be piped; the pretty
+  // format goes to stderr so stdout stays clean when scripts mix formats.
+  const STDOUT_FORMATS = new Set(["github", "json"]);
+  if (STDOUT_FORMATS.has(args.format)) {
     process.stdout.write(output);
   } else {
-    // Pretty goes to stderr so JSON piping via stdout stays clean when scripts
-    // mix and match.
     process.stderr.write(output);
   }
 

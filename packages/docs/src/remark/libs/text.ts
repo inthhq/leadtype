@@ -12,7 +12,6 @@ import type { MdxNode } from "./types";
 
 // Common regex patterns
 const MULTI_WHITESPACE = /\s+/g;
-const TRIM_WHITESPACE = /^\s+|\s+$/g;
 const HORIZONTAL_WHITESPACE = /[ \t]+/g;
 const BOLD_HEADER = /^\s*\*\*(.+?)\*\*\s*$/s;
 const BLOCKQUOTE_LINE = /^>\s?/;
@@ -26,12 +25,9 @@ export function normalizeWhitespace(
   preserveNewlines = false
 ): string {
   const pattern = preserveNewlines ? HORIZONTAL_WHITESPACE : MULTI_WHITESPACE;
-
-  const normalized = text.replace(pattern, " ");
-
-  return preserveNewlines
-    ? normalized.replace(TRIM_WHITESPACE, "").trim()
-    : normalized.trim();
+  // String.prototype.trim handles both leading/trailing whitespace and
+  // newlines; TRIM_WHITESPACE was redundant.
+  return text.replace(pattern, " ").trim();
 }
 
 /**
@@ -88,11 +84,24 @@ export function extractTableContent(node: Table): string[] {
  * Extract markdown content from a blockquote node
  */
 export function extractBlockquoteContent(node: Blockquote): string[] {
-  const blockquoteText = extractNodeText(node.children || []);
-  if (!blockquoteText.trim()) {
-    return [];
+  // Preserve paragraph boundaries: iterate children and emit one "> ..."
+  // fragment per non-empty paragraph-like child so downstream code can
+  // reconstruct multi-paragraph blockquotes.
+  const children = node.children ?? [];
+  const fragments: string[] = [];
+  for (const child of children) {
+    const text = extractNodeText(
+      (child as { children?: unknown[] }).children as never
+    ).trim();
+    if (text) {
+      fragments.push(`> ${text}`);
+    }
   }
-  return [`> ${blockquoteText.trim()}`];
+  if (fragments.length === 0) {
+    const fallback = extractNodeText(children as never).trim();
+    return fallback ? [`> ${fallback}`] : [];
+  }
+  return fragments;
 }
 
 /**

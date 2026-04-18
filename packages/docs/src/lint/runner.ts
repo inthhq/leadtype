@@ -246,12 +246,19 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     );
   }
 
+  let errorCount = 0;
+  let warningCount = 0;
+  for (const violation of violations) {
+    if (violation.severity === "error") {
+      errorCount += 1;
+    } else {
+      warningCount += 1;
+    }
+  }
   const summary: LintSummary = {
     filesScanned,
-    errors: violations.filter((violation) => violation.severity === "error")
-      .length,
-    warnings: violations.filter((violation) => violation.severity === "warn")
-      .length,
+    errors: errorCount,
+    warnings: warningCount,
   };
 
   return { violations, summary };

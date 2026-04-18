@@ -362,9 +362,14 @@ function deriveOutputPath(
   const normalizedSrcDir = resolve(srcDir) + sep;
   const normalizedInput = resolve(inputFilePath);
 
-  if (
-    normalizedInput.toLowerCase().startsWith(normalizedSrcDir.toLowerCase())
-  ) {
+  // Windows filesystems are case-insensitive; POSIX is case-sensitive, so
+  // only lowercase on win32 to avoid matching paths that differ only in case.
+  const isWindows = process.platform === "win32";
+  const isUnder = isWindows
+    ? normalizedInput.toLowerCase().startsWith(normalizedSrcDir.toLowerCase())
+    : normalizedInput.startsWith(normalizedSrcDir);
+
+  if (isUnder) {
     const relativePath = relative(srcDir, normalizedInput);
     return join(outDir, relativePath.replace(MDX_EXTENSION_REGEX, ".md"));
   }
