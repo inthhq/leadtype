@@ -48,7 +48,7 @@ jobs:
       - name: Upgrade npm for provenance publishing
         run: |
           npm install -g promise-retry 2>/dev/null || true
-          npm install -g npm@latest
+          npm install -g npm@11.12.1
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

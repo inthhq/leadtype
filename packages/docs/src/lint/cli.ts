@@ -113,9 +113,14 @@ async function main(): Promise<void> {
     return;
   }
 
+  const resolvedSrcDir = resolve(args.srcDir);
   const result = await lintDocs({
-    srcDir: resolve(args.srcDir),
-    changelogDir: args.changelogDir ? resolve(args.changelogDir) : undefined,
+    srcDir: resolvedSrcDir,
+    // Resolve changelog against the source root so `--changelog changelog`
+    // points inside the src tree, not inside the process cwd.
+    changelogDir: args.changelogDir
+      ? resolve(resolvedSrcDir, args.changelogDir)
+      : undefined,
     ignore: args.ignore,
     unknownFieldSeverity: args.unknownFieldSeverity,
   });

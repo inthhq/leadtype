@@ -159,16 +159,62 @@ function replaceWithRootChildren(
 function isParagraph(node: Record<string, unknown>): boolean {
   return node.type === "paragraph";
 }
+
+/** Walk the tree to find the parent array + index of a given node. */
+function findContainer(
+  tree: Root,
+  target: Record<string, unknown>
+): { container: Record<string, unknown>[]; index: number } | null {
+  const root = tree as unknown as Record<string, unknown>;
+  const stack: Record<string, unknown>[] = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) {
+      continue;
+    }
+    const children = current.children as Record<string, unknown>[] | undefined;
+    if (!children) {
+      continue;
+    }
+    for (let i = 0; i < children.length; i++) {
+      if (children[i] === target) {
+        return { container: children, index: i };
+      }
+      const child = children[i];
+      if (child) {
+        stack.push(child);
+      }
+    }
+  }
+  return null;
+}
+
 function replaceTarget(
+  tree: Root,
   node: Record<string, unknown>,
   parent: Record<string, unknown> | null,
   replacement:
     | { type: "root"; children: unknown[] }
     | { type: "paragraph"; children: unknown[] }
 ) {
-  const useParent =
-    parent && isParagraph(parent) && replacement.type === "root";
-  Object.assign(useParent ? parent : node, replacement);
+  // If the include lives inside a paragraph but the replacement is a root
+  // (multiple top-level nodes), splice the replacement children into the
+  // grandparent's children in place of the whole paragraph. Previously we
+  // mutated the paragraph into `{ type: "root" }`, producing invalid mdast.
+  if (parent && isParagraph(parent) && replacement.type === "root") {
+    const found = findContainer(tree, parent);
+    if (found) {
+      found.container.splice(
+        found.index,
+        1,
+        ...(replacement.children as Record<string, unknown>[])
+      );
+      return;
+    }
+    // Couldn't locate grandparent — fall through to the in-place mutation
+    // below rather than dropping the included content entirely.
+  }
+  Object.assign(node, replacement);
 }
 
 type ParserLike = { parse: (v: string) => unknown };
@@ -438,6 +484,7 @@ export function remarkInclude(
 
             if (after.type === "root" && Array.isArray(after.children)) {
               replaceTarget(
+                tree,
                 nodeRecord,
                 (parent as unknown as Record<string, unknown>) ?? null,
                 { type: "root", children: after.children }
@@ -452,7 +499,7 @@ export function remarkInclude(
               if (parentRecord && isParagraph(parentRecord)) {
                 // Avoid nested <p><p>...</p></p> structures by promoting
                 // the included paragraph's children to the parent level.
-                replaceTarget(nodeRecord, parentRecord, {
+                replaceTarget(tree, nodeRecord, parentRecord, {
                   type: "root",
                   children: after.children,
                 });

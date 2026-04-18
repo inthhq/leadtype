@@ -179,7 +179,16 @@ export function createTableFromContent(contentText: string): Table | null {
     return null;
   }
 
-  const rows = lines.map((line) => line.split("|").map((cell) => cell.trim()));
+  // Strip leading/trailing pipe (and optional surrounding whitespace) so a
+  // line like `| a | b |` doesn't produce empty boundary cells.
+  const rows = lines.map((line) =>
+    line
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((cell) => cell.trim())
+  );
 
   return {
     type: "table",

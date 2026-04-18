@@ -8,7 +8,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { appendFile, rm } from "node:fs/promises";
+import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "@inth/docs/convert";
 import { generateLLMFullFiles, generateLLMSummaries } from "@inth/docs/llm";
@@ -161,9 +161,31 @@ function renderTable(stats: Stats[]): string {
   return lines.join("\n");
 }
 
+async function countMdxFiles(dir: string): Promise<number> {
+  let count = 0;
+  const stack = [dir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) {
+      continue;
+    }
+    const entries = await readdir(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.name.endsWith(".mdx")) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
 const stats = await bench();
 const table = renderTable(stats);
-const header = `### @inth/docs benchmark\n\nFixture: c15t docs (${200} .mdx files), git enrichment on, ${RUNS} runs each.\n\n`;
+const mdxCount = await countMdxFiles(SRC_DIR);
+const header = `### @inth/docs benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), git enrichment on, ${RUNS} runs each.\n\n`;
 const report = header + table;
 
 process.stdout.write(`\n${report}\n`);

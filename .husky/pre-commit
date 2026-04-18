@@ -1,29 +1,28 @@
 #!/bin/sh
-# Note: we handle errors explicitly so FORMAT_EXIT_CODE is reachable.
-
-bun test --pass-with-no-tests || exit $?
+# Note: errors handled explicitly so FORMAT_EXIT_CODE is reachable.
 
 # Check if there are any staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
-if [ -z "$STAGED_FILES" ]; then
-  echo "No staged files to format"
-  exit 0
-fi
 
-# Run formatter (don't abort on non-zero so we can report unfixable issues)
-bun x ultracite fix
-FORMAT_EXIT_CODE=$?
+# Run formatter first so tests run against the post-fix, restaged tree.
+if [ -n "$STAGED_FILES" ]; then
+  bun x ultracite fix
+  FORMAT_EXIT_CODE=$?
 
-# Re-stage files that were already staged
-echo "$STAGED_FILES" | while IFS= read -r file; do
-  if [ -f "$file" ]; then
-    git add "$file"
+  # Re-stage files that were already staged
+  echo "$STAGED_FILES" | while IFS= read -r file; do
+    if [ -f "$file" ]; then
+      git add "$file"
+    fi
+  done
+
+  if [ $FORMAT_EXIT_CODE -ne 0 ]; then
+    echo "Ultracite found issues that could not be auto-fixed."
+    exit $FORMAT_EXIT_CODE
   fi
-done
 
-if [ $FORMAT_EXIT_CODE -ne 0 ]; then
-  echo "Ultracite found issues that could not be auto-fixed."
-  exit $FORMAT_EXIT_CODE
+  echo "✨ Files formatted by Ultracite"
 fi
 
-echo "✨ Files formatted by Ultracite"
+# Run tests against the final tree that will be committed.
+bun test --pass-with-no-tests || exit $?

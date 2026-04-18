@@ -2,7 +2,9 @@
 
 import { type ReactNode, useState } from "react";
 
-export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
+// Single source of truth — derive the union type from the tuple.
+const MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
+export type PackageManager = (typeof MANAGERS)[number];
 
 export type PackageCommandTabsProps = {
   /** Command template — `{pm}` is replaced with the active package manager. E.g. "{pm} install @inth/docs" */
@@ -13,15 +15,14 @@ export type PackageCommandTabsProps = {
   children?: ReactNode;
 };
 
-const MANAGERS: PackageManager[] = ["npm", "pnpm", "yarn", "bun"];
-
 function resolveCommand(
   manager: PackageManager,
   command: string | undefined,
   commands: Partial<Record<PackageManager, string>> | undefined
 ): string {
+  // Presence check so an explicit "" override wins over the template fallback.
   const explicit = commands?.[manager];
-  if (explicit) {
+  if (explicit !== undefined) {
     return explicit;
   }
   if (command) {
@@ -44,7 +45,10 @@ export function PackageCommandTabs({
       {/* Plain button group — intentionally not using role="tablist" /
           role="tab" since we don't implement the full tabs keyboard pattern
           (roving tabindex, ArrowLeft/Right, associated tabpanel). */}
-      <div data-inth-package-command-tabs-list="">
+      <fieldset data-inth-package-command-tabs-list="">
+        <legend data-inth-package-command-tabs-legend="">
+          Package manager
+        </legend>
         {MANAGERS.map((manager) => (
           <button
             aria-pressed={manager === active}
@@ -57,7 +61,7 @@ export function PackageCommandTabs({
             {manager}
           </button>
         ))}
-      </div>
+      </fieldset>
       {resolved ? (
         <pre data-inth-package-command-tabs-output="" data-manager={active}>
           <code>{resolved}</code>

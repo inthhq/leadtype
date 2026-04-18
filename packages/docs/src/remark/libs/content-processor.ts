@@ -44,20 +44,23 @@ export function processContentNode(
     if (content.length === 0) {
       return null;
     }
-    // Preserve blockquote wrapper (previous implementation flattened to
-    // whatever processContentText returned, losing quote structure).
-    const text = normalizeWhitespace(content.join(" "), true);
-    if (!text) {
+    // Preserve each fragment as its own paragraph so multi-paragraph
+    // blockquotes survive the round-trip.
+    const paragraphs = content
+      .map((fragment) =>
+        normalizeWhitespace(fragment, true).replace(/^>\s?/, "")
+      )
+      .filter((fragment) => fragment.length > 0)
+      .map((fragment) => ({
+        type: "paragraph" as const,
+        children: [{ type: "text" as const, value: fragment }],
+      }));
+    if (paragraphs.length === 0) {
       return null;
     }
     return {
       type: "blockquote",
-      children: [
-        {
-          type: "paragraph",
-          children: [{ type: "text", value: text.replace(/^>\s?/, "") }],
-        },
-      ],
+      children: paragraphs,
     } as Blockquote;
   }
   if (node.type === "code") {

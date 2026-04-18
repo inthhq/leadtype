@@ -82,13 +82,26 @@ export type AutoTypeTableProps = {
 };
 
 export function AutoTypeTable({ path, name, type }: AutoTypeTableProps) {
+  const captionParts: string[] = [];
+  if (name) {
+    captionParts.push(name);
+  }
+  if (path) {
+    captionParts.push(path);
+  }
+  const hasCaption = captionParts.length > 0;
+  const hasRows = type !== undefined && Object.keys(type).length > 0;
+
+  // Don't render an empty <figure> — nothing to show means nothing to mount.
+  if (!(hasCaption || hasRows)) {
+    return null;
+  }
+
   return (
     <figure data-inth-auto-type-table="">
-      {path && name ? (
+      {hasCaption ? (
         <figcaption>
-          <code>
-            {name} from {path}
-          </code>
+          <code>{captionParts.join(" from ")}</code>
         </figcaption>
       ) : null}
       <TypeTable type={type} />

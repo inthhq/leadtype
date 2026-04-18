@@ -472,6 +472,15 @@ export async function generateLLMFullFiles(
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
 
+  // Fail fast if there's nothing to index — usually means convertAllMdx
+  // didn't run (or wrote to a different outDir) and we'd otherwise ship
+  // hollow router/topic files.
+  if (markdownDocs.length === 0) {
+    throw new Error(
+      `generateLLMFullFiles found no markdown under "${path.join(outDir, DOCS_DIRNAME)}". Run convertAllMdx first, or check that config.outDir matches.`
+    );
+  }
+
   // Validate slugs up front — they're interpolated into both URLs and file
   // paths, so values with `/`, `..`, whitespace, etc. are a security footgun.
   const topics = config.topics.map((topic) => ({

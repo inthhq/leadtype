@@ -185,6 +185,13 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
   const filesScanned = mdxFiles.length + metaFiles.length;
 
   for (const file of mdxFiles) {
+    // Classify up front so the parse-error path uses the correct kind.
+    const isChangelog = isUnderDir(file, resolvedChangelogDir);
+    const schemaToUse = isChangelog ? changelogSchema : frontmatterSchema;
+    const kind: LintViolation["kind"] = isChangelog
+      ? "changelog"
+      : "frontmatter";
+
     let data: Record<string, unknown>;
     try {
       const raw = await readFile(file, "utf-8");
@@ -193,19 +200,13 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     } catch (error) {
       violations.push({
         file: toRelative(srcDir, file),
-        kind: "frontmatter",
+        kind,
         severity: "error",
         rule: "parse-error",
         message: `failed to parse frontmatter: ${String(error)}`,
       });
       continue;
     }
-
-    const isChangelog = isUnderDir(file, resolvedChangelogDir);
-    const schemaToUse = isChangelog ? changelogSchema : frontmatterSchema;
-    const kind: LintViolation["kind"] = isChangelog
-      ? "changelog"
-      : "frontmatter";
 
     violations.push(
       ...validate(
