@@ -60,14 +60,10 @@ function collectLinksFromParagraph(paragraph: {
   }
 
   for (const child of paragraph.children) {
-    // Check for Card component with variant="compact"
     if (hasName(child, "Card")) {
-      const variant = getAttributeValue(child, "variant");
-      if (variant === "compact") {
-        const linkItem = createLinkItem(child);
-        if (linkItem) {
-          results.push(linkItem);
-        }
+      const linkItem = createLinkItem(child);
+      if (linkItem) {
+        results.push(linkItem);
       }
     }
   }
@@ -86,13 +82,9 @@ function collectLinksFromContainer(container: MdxNode): LinkItem[] {
     if (child.type === "paragraph") {
       results.push(...collectLinksFromParagraph(child));
     } else if (hasName(child, "Card")) {
-      // Check for Card component with variant="compact"
-      const variant = getAttributeValue(child, "variant");
-      if (variant === "compact") {
-        const linkItem = createLinkItem(child);
-        if (linkItem) {
-          results.push(linkItem);
-        }
+      const linkItem = createLinkItem(child);
+      if (linkItem) {
+        results.push(linkItem);
       }
     }
   }

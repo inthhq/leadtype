@@ -22,6 +22,7 @@ const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
+const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
 
 export type SourceDoc = {
   title: string;
@@ -93,6 +94,54 @@ function titleize(input: string): string {
 
 function normalizeDescription(input: string): string {
   return input.replace(WHITESPACE_PATTERN, " ").trim();
+}
+
+function titleFromUrlPath(urlPath: string): string {
+  const segments = urlPath.split("/").filter(Boolean);
+  const lastSegment = segments.at(-1);
+  if (!lastSegment || lastSegment === "docs") {
+    return "Documentation";
+  }
+  return titleize(lastSegment);
+}
+
+function titleFromRelativePath(
+  relativePath: string,
+  extension: ".md" | ".mdx"
+): string {
+  const fileName = path.basename(relativePath, extension);
+  const segment = GENERIC_DOC_TITLES.has(fileName.toLowerCase())
+    ? path.basename(path.dirname(relativePath))
+    : fileName;
+  return titleize(segment);
+}
+
+function resolveLinkTitle(link: CuratedLink, sourceDoc?: SourceDoc): string {
+  if (link.title) {
+    return link.title;
+  }
+
+  const sourceTitle = sourceDoc?.title?.trim();
+  if (sourceTitle && !GENERIC_DOC_TITLES.has(sourceTitle.toLowerCase())) {
+    return sourceTitle;
+  }
+
+  return titleFromUrlPath(sourceDoc?.urlPath ?? link.urlPath);
+}
+
+function resolveLinkDescription(
+  link: CuratedLink,
+  title: string,
+  sourceDoc?: SourceDoc
+): string {
+  const sourceDescription = normalizeDescription(sourceDoc?.description ?? "");
+  if (link.description) {
+    return link.description;
+  }
+  if (sourceDescription) {
+    return sourceDescription;
+  }
+  return `Entry point for ${title} documentation.`;
 }
 
 function normalizeBaseUrl(baseUrl?: string): string {
@@ -200,7 +249,10 @@ async function readSourceDocs(
       const parsed = matter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
-        titleize(path.basename(relativePath, path.extname(relativePath))) ||
+        titleFromRelativePath(
+          relativePath,
+          path.extname(relativePath) as ".md" | ".mdx"
+        ) ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
@@ -251,7 +303,7 @@ async function readMarkdownDocs(
       const parsed = matter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
-        titleize(path.basename(relativePath, ".md")) ||
+        titleFromRelativePath(relativePath, ".md") ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
@@ -278,15 +330,10 @@ function resolveCuratedLink(
   baseUrl: string
 ): RenderedLink {
   const sourceDoc = sourceDocs.get(link.urlPath);
+  const title = resolveLinkTitle(link, sourceDoc);
   return {
-    title:
-      link.title ??
-      sourceDoc?.title ??
-      titleize(
-        link.urlPath.split("/").filter(Boolean).at(-1) ?? "documentation"
-      ),
-    description:
-      link.description ?? sourceDoc?.description ?? "No description provided.",
+    title,
+    description: resolveLinkDescription(link, title, sourceDoc),
     absoluteUrl: toAbsoluteUrl(sourceDoc?.urlPath ?? link.urlPath, baseUrl),
   };
 }
@@ -405,7 +452,8 @@ function renderTopicDocument(
   const links = topicDocs.map((doc) => ({
     title: doc.title,
     absoluteUrl: doc.absoluteUrl,
-    description: doc.description || "No description provided.",
+    description:
+      doc.description || `Entry point for ${doc.title} documentation.`,
   }));
   const contentBlocks = topicDocs.map((doc) => {
     const description = doc.description ? `${doc.description}\n` : "";

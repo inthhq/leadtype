@@ -1,5 +1,5 @@
 /** @biome-ignore lint/complexity/noExcessiveCognitiveComplexity:  this is okay */
-import type { Blockquote, Node, Paragraph, Table, Text } from "mdast";
+import type { Blockquote, List, Node, Paragraph, Table, Text } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
 import { u } from "unist-builder";
 import { is } from "unist-util-is";
@@ -17,7 +17,7 @@ import {
  */
 export function processContentNode(
   node: Node
-): Paragraph | Table | Blockquote | Node | null {
+): Paragraph | Table | Blockquote | List | Node | null {
   if (is(node, "paragraph")) {
     const content = extractParagraphContent(node as Paragraph);
     if (content.length === 0) {
@@ -38,6 +38,11 @@ export function processContentNode(
     // Return the table node as-is instead of extracting text content
     // This preserves the full table structure including all rows
     return node as Table;
+  }
+  if (is(node, "list")) {
+    // Preserve nested list structure so step/checklist content survives
+    // markdown round-tripping instead of collapsing into plain text.
+    return node as List;
   }
   if (is(node, "blockquote")) {
     const content = extractBlockquoteContent(node as Blockquote);

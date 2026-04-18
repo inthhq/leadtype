@@ -3,7 +3,18 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import { visit } from "unist-util-visit";
 import * as v from "valibot";
+import { convertMdxFile } from "../convert";
+import {
+  deriveDocContext,
+  hasDocPlaceholder,
+  normalizeDocsUrl,
+  routeFromFilePath,
+} from "../internal/docs-context";
+import { defaultRemarkPlugins, remarkInclude } from "../remark";
 import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
@@ -17,11 +28,14 @@ export type LintRule =
   | "schema"
   | "unknown-field"
   | "missing-field"
-  | "parse-error";
+  | "parse-error"
+  | "invalid-link"
+  | "unresolved-placeholder"
+  | "cross-framework-link";
 
 export type LintViolation = {
   file: string;
-  kind: "frontmatter" | "changelog" | "meta";
+  kind: "frontmatter" | "changelog" | "meta" | "content";
   severity: LintSeverity;
   rule: LintRule;
   field?: string;
@@ -158,6 +172,116 @@ export const DEFAULT_IGNORE_GLOBS = [
   "**/node_modules/**",
 ];
 
+const ROUTE_INDEX_IGNORE_GLOBS = ["**/_partials/**", "**/node_modules/**"];
+
+type UrlCandidate = {
+  field?: string;
+  url: string;
+};
+
+function frameworkFromDocsUrl(url: string): string | null {
+  const match = url.match(/^\/docs\/frameworks\/([^/]+)(?:\/|$)/);
+  return match?.[1] ?? null;
+}
+
+function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
+  if (typeof value === "string") {
+    if (value.startsWith("/docs/") || hasDocPlaceholder(value)) {
+      return [{ field: path || undefined, url: value }];
+    }
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) =>
+      collectFrontmatterUrls(entry, `${path}[${index}]`)
+    );
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).flatMap(([key, entryValue]) => {
+      const nextPath = path ? `${path}.${key}` : key;
+      return collectFrontmatterUrls(entryValue, nextPath);
+    });
+  }
+
+  return [];
+}
+
+function collectMarkdownUrls(markdown: string): UrlCandidate[] {
+  const urls: UrlCandidate[] = [];
+  const tree = remark().use(remarkGfm).parse(markdown);
+
+  visit(tree, "link", (node: { url?: string }) => {
+    const url = node.url ?? "";
+    if (url.startsWith("/docs/") || hasDocPlaceholder(url)) {
+      urls.push({ url });
+    }
+  });
+
+  return urls;
+}
+
+function validateDocUrls(
+  candidates: UrlCandidate[],
+  file: string,
+  kind: LintViolation["kind"],
+  routeSet: Set<string>,
+  currentFramework: string | null
+): LintViolation[] {
+  const violations: LintViolation[] = [];
+
+  for (const candidate of candidates) {
+    if (hasDocPlaceholder(candidate.url)) {
+      violations.push({
+        file,
+        kind,
+        severity: "error",
+        rule: "unresolved-placeholder",
+        field: candidate.field,
+        message: `unresolved placeholder in docs URL \`${candidate.url}\``,
+      });
+      continue;
+    }
+
+    if (!candidate.url.startsWith("/docs/")) {
+      continue;
+    }
+
+    const normalizedUrl = normalizeDocsUrl(candidate.url);
+    const targetFramework = frameworkFromDocsUrl(normalizedUrl);
+
+    if (
+      currentFramework &&
+      targetFramework &&
+      currentFramework !== targetFramework
+    ) {
+      violations.push({
+        file,
+        kind,
+        severity: "error",
+        rule: "cross-framework-link",
+        field: candidate.field,
+        message: `links to \`${normalizedUrl}\`, which targets framework \`${targetFramework}\` instead of \`${currentFramework}\``,
+      });
+      continue;
+    }
+
+    if (!routeSet.has(normalizedUrl)) {
+      violations.push({
+        file,
+        kind,
+        severity: "error",
+        rule: "invalid-link",
+        field: candidate.field,
+        message: `links to missing docs route \`${normalizedUrl}\``,
+      });
+    }
+  }
+
+  return violations;
+}
+
 export async function lintDocs(options: LintOptions): Promise<LintResult> {
   const {
     srcDir,
@@ -182,6 +306,14 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
 
   const mdxFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], ignore);
   const metaFiles = await glob(srcDir, ["**/meta.json"], ignore);
+  const routeFiles = await glob(
+    srcDir,
+    ["**/*.mdx", "**/*.md"],
+    ROUTE_INDEX_IGNORE_GLOBS
+  );
+  const routeSet = new Set(
+    routeFiles.map((filePath) => routeFromFilePath(srcDir, filePath))
+  );
   const filesScanned = mdxFiles.length + metaFiles.length;
 
   for (const file of mdxFiles) {
@@ -193,13 +325,14 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       : "frontmatter";
 
     let data: Record<string, unknown>;
+    const relativeFile = toRelative(srcDir, file);
     try {
       const raw = await readFile(file, "utf-8");
       const parsed = matter(raw);
       data = parsed.data as Record<string, unknown>;
     } catch (error) {
       violations.push({
-        file: toRelative(srcDir, file),
+        file: relativeFile,
         kind,
         severity: "error",
         rule: "parse-error",
@@ -209,14 +342,44 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     }
 
     violations.push(
-      ...validate(
-        schemaToUse,
-        data,
-        toRelative(srcDir, file),
-        kind,
-        unknownFieldSeverity
-      )
+      ...validate(schemaToUse, data, relativeFile, kind, unknownFieldSeverity)
     );
+
+    try {
+      const converted = await convertMdxFile(file, [
+        remarkInclude,
+        ...defaultRemarkPlugins,
+      ]);
+      const rendered = matter(converted.markdown);
+      const currentFramework = deriveDocContext(file).framework;
+
+      violations.push(
+        ...validateDocUrls(
+          collectFrontmatterUrls(rendered.data),
+          relativeFile,
+          kind,
+          routeSet,
+          currentFramework
+        )
+      );
+      violations.push(
+        ...validateDocUrls(
+          collectMarkdownUrls(rendered.content),
+          relativeFile,
+          "content",
+          routeSet,
+          currentFramework
+        )
+      );
+    } catch (error) {
+      violations.push({
+        file: relativeFile,
+        kind: "content",
+        severity: "error",
+        rule: "parse-error",
+        message: `failed to render markdown for link checks: ${String(error)}`,
+      });
+    }
   }
 
   for (const file of metaFiles) {
