@@ -18,6 +18,7 @@ jobs:
   bench:
     name: Convert + LLM pipeline
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Non-blocking — numbers go to the job summary; no threshold gating
     # because shared runners are too noisy for reliable regression detection.
     continue-on-error: true

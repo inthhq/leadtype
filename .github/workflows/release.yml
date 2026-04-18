@@ -41,8 +41,10 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       # Upgrade npm for trusted publishing (OIDC provenance requires npm 11+).
-      # Node.js 22's bundled npm has a missing promise-retry module that breaks
-      # `npm install -g`, so we install it first as a workaround.
+      # Workaround: Node.js 22's bundled npm is missing the `promise-retry`
+      # module which breaks `npm install -g`. We install it first then upgrade
+      # npm itself. Revisit once Node.js 22 ships a fixed npm.
+      # Ref: https://github.com/npm/cli/issues/7657
       - name: Upgrade npm for provenance publishing
         run: |
           npm install -g promise-retry 2>/dev/null || true

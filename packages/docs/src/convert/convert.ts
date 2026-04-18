@@ -47,7 +47,7 @@ async function mapLimit<T, R>(
   return results;
 }
 
-const FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 const HEADING_REGEX = /^#\s+(.+)$/m;
 const YAML_QUOTE_REGEX = /["\\]/g;
 const TABLE_DIVIDER_REGEX = /^:?-{2,}:?$/;
@@ -256,16 +256,18 @@ type GitEnrichment = {
  */
 async function enrichFromGit(filePath: string): Promise<GitEnrichment> {
   try {
+    // Use NUL as separator so author names containing '|' (e.g. "Jane | Co")
+    // round-trip correctly.
     const { stdout } = await execFileAsync(
       "git",
-      ["log", "-1", "--format=%aI|%an", "--", filePath],
+      ["log", "-1", "--format=%aI%x00%an", "--", filePath],
       { cwd: dirname(filePath) }
     );
-    const line = stdout.trim();
+    const line = stdout.replace(/\r?\n$/, "");
     if (!line) {
       return {};
     }
-    const [iso, author] = line.split("|");
+    const [iso, author] = line.split("\0");
     const enrichment: GitEnrichment = {};
     if (iso) {
       enrichment.lastModified = iso;
@@ -453,6 +455,7 @@ export async function convertAllMdx(
     : resolve(process.cwd(), "public");
 
   if (!existsSync(srcDir)) {
+    log.verbose(`Source directory does not exist: ${srcDir}`);
     return;
   }
 
@@ -497,5 +500,8 @@ export async function convertAllMdx(
   });
 
   const converted = results.filter(Boolean).length;
-  log.verbose(`Converted ${converted} MDX files`);
+  const failed = results.length - converted;
+  log.verbose(
+    `Converted ${converted} MDX files${failed > 0 ? `, ${failed} failed` : ""}`
+  );
 }

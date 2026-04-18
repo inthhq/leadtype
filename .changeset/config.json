@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@latest/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@2.30.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "access": "public",

@@ -75,31 +75,13 @@ export function extractTableContent(node: Table): string[] {
     return [];
   }
 
-  // Get first row (header) and convert to markdown
-  const headerRow = tableRows[0] as TableRow;
-  const headerCells = headerRow.children || [];
-  const headerText = headerCells
-    .map((cell: TableCell) => {
-      const cellText = extractNodeText(cell.children || []);
-      return cellText.trim();
-    })
-    .join("|");
+  const renderRow = (row: TableRow): string =>
+    (row.children || [])
+      .map((cell: TableCell) => extractNodeText(cell.children || []).trim())
+      .join("|");
 
-  // Get second row (first data row) and convert to markdown
-  const dataRow = tableRows[1] as TableRow;
-  if (!dataRow) {
-    return [];
-  }
-
-  const dataCells = dataRow.children || [];
-  const dataText = dataCells
-    .map((cell: TableCell) => {
-      const cellText = extractNodeText(cell.children || []);
-      return cellText.trim();
-    })
-    .join("|");
-
-  return [`${headerText}\n${dataText}`];
+  const rendered = tableRows.map((row) => renderRow(row as TableRow));
+  return [rendered.join("\n")];
 }
 
 /**
@@ -190,33 +172,23 @@ export function createTableFromContent(contentText: string): Table | null {
     return null;
   }
 
-  const lines = contentText.split("\n");
-  const firstLine = lines[0];
-  const secondLine = lines[1];
-  if (lines.length < 2 || !firstLine || !secondLine) {
+  const lines = contentText
+    .split("\n")
+    .filter((line) => line.trim().length > 0);
+  if (lines.length < 2) {
     return null;
   }
 
-  const headers = firstLine.split("|").map((h) => h.trim());
-  const data = secondLine.split("|").map((d) => d.trim());
+  const rows = lines.map((line) => line.split("|").map((cell) => cell.trim()));
 
   return {
     type: "table",
-    children: [
-      {
-        type: "tableRow",
-        children: headers.map((header) => ({
-          type: "tableCell",
-          children: [{ type: "text", value: header }],
-        })),
-      },
-      {
-        type: "tableRow",
-        children: data.map((cell) => ({
-          type: "tableCell",
-          children: [{ type: "text", value: cell }],
-        })),
-      },
-    ],
+    children: rows.map((row) => ({
+      type: "tableRow",
+      children: row.map((cell) => ({
+        type: "tableCell",
+        children: [{ type: "text", value: cell }],
+      })),
+    })),
   } as Table;
 }

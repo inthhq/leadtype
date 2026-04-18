@@ -1,10 +1,7 @@
 #!/bin/sh
-# Exit on any error
-set -e
+# Note: we handle errors explicitly so FORMAT_EXIT_CODE is reachable.
 
-bun test --pass-with-no-tests
-
-# ultracite
+bun test --pass-with-no-tests || exit $?
 
 # Check if there are any staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
@@ -13,7 +10,7 @@ if [ -z "$STAGED_FILES" ]; then
   exit 0
 fi
 
-# Run formatter
+# Run formatter (don't abort on non-zero so we can report unfixable issues)
 bun x ultracite fix
 FORMAT_EXIT_CODE=$?
 

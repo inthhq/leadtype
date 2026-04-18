@@ -49,6 +49,28 @@ export function jsonReporter(result: LintResult): string {
 }
 
 /**
+ * Escape a value used in a GitHub Actions `::...::` command property
+ * (e.g. `file=<here>`). Runner parser requires %/CR/LF/`:`/`,` escaped.
+ * Ref: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions
+ */
+function escapeGithubProperty(value: string): string {
+  return value
+    .replace(/%/g, "%25")
+    .replace(/\r/g, "%0D")
+    .replace(/\n/g, "%0A")
+    .replace(/:/g, "%3A")
+    .replace(/,/g, "%2C");
+}
+
+/**
+ * Escape the message body of a GitHub Actions command. Only %/CR/LF matter
+ * here — commas and colons are allowed inside the message.
+ */
+function escapeGithubMessage(value: string): string {
+  return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+
+/**
  * GitHub Actions workflow-command reporter. Each violation becomes a
  * `::error::` or `::warning::` annotation that attaches to the file in the PR
  * review UI.
@@ -60,7 +82,9 @@ export function githubReporter(result: LintResult): string {
     const message = violation.field
       ? `[${violation.rule}] ${violation.message}`
       : violation.message;
-    lines.push(`::${command} file=${violation.file}::${message}`);
+    lines.push(
+      `::${command} file=${escapeGithubProperty(violation.file)}::${escapeGithubMessage(message)}`
+    );
   }
   lines.push(
     `::notice::docs lint: ${result.summary.filesScanned} files scanned, ${result.summary.errors} error(s), ${result.summary.warnings} warning(s)`

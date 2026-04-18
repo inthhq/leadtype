@@ -7,7 +7,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "@inth/docs/convert";
 import { lintDocs } from "@inth/docs/lint";
@@ -49,6 +49,9 @@ async function countFiles(dir: string, ext: string): Promise<number> {
 }
 
 process.stdout.write(`Converting real c15t docs from ${SRC_DIR}\n`);
+// Start from a clean output directory so a prior run can't mask dropped pages.
+await rm(OUT_DIR, { recursive: true, force: true });
+
 const start = Date.now();
 await convertAllMdx({
   srcDir: SRC_DIR,
@@ -62,9 +65,9 @@ const mdxCount = await countFiles(SRC_DIR, ".mdx");
 const mdCount = await countFiles(OUT_DIR, ".md");
 process.stdout.write(`  ${mdxCount} .mdx → ${mdCount} .md in ${elapsed}ms\n`);
 
-if (mdCount < mdxCount * 0.9) {
+if (mdCount !== mdxCount) {
   process.stderr.write(
-    `FAIL: expected at least ${Math.floor(mdxCount * 0.9)} markdown files, got ${mdCount}\n`
+    `FAIL: expected ${mdxCount} markdown files, got ${mdCount}\n`
   );
   process.exit(1);
 }
@@ -74,5 +77,14 @@ const result = await lintDocs({ srcDir: SRC_DIR });
 process.stdout.write(
   `  ${result.summary.filesScanned} files scanned — ${result.summary.errors} error(s), ${result.summary.warnings} warning(s)\n`
 );
+
+// Lint findings reflect the fixture repo's content, not our pipeline — so
+// they're informational. The hard pass/fail signal above (mdCount === mdxCount)
+// is what gates CI.
+if (result.summary.errors > 0) {
+  process.stdout.write(
+    "  (lint errors above are issues in c15t's content, not @inth/docs)\n"
+  );
+}
 
 process.stdout.write("\nReal-content test passed.\n");

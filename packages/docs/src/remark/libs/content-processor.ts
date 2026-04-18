@@ -20,14 +20,19 @@ export function processContentNode(
 ): Paragraph | Table | Blockquote | Node | null {
   if (is(node, "paragraph")) {
     const content = extractParagraphContent(node as Paragraph);
-    const first = content[0];
-    if (content.length > 0 && first) {
-      return {
-        type: "paragraph",
-        children: [{ type: "text", value: first }],
-      } as Paragraph;
+    if (content.length === 0) {
+      return null;
     }
-    return null;
+    // Join multi-fragment paragraphs so we don't drop content past the first
+    // extracted piece; preserve newlines via normalizeWhitespace.
+    const text = normalizeWhitespace(content.join(" "), true);
+    if (!text) {
+      return null;
+    }
+    return {
+      type: "paragraph",
+      children: [{ type: "text", value: text }],
+    } as Paragraph;
   }
   if (is(node, "table")) {
     // Return the table node as-is instead of extracting text content
@@ -36,11 +41,24 @@ export function processContentNode(
   }
   if (is(node, "blockquote")) {
     const content = extractBlockquoteContent(node as Blockquote);
-    const first = content[0];
-    if (content.length > 0 && first) {
-      return processContentText(first);
+    if (content.length === 0) {
+      return null;
     }
-    return null;
+    // Preserve blockquote wrapper (previous implementation flattened to
+    // whatever processContentText returned, losing quote structure).
+    const text = normalizeWhitespace(content.join(" "), true);
+    if (!text) {
+      return null;
+    }
+    return {
+      type: "blockquote",
+      children: [
+        {
+          type: "paragraph",
+          children: [{ type: "text", value: text.replace(/^>\s?/, "") }],
+        },
+      ],
+    } as Blockquote;
   }
   if (node.type === "code") {
     // Handle code blocks directly as AST nodes

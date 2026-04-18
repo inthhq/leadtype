@@ -58,7 +58,13 @@ export function TypeTable({ type }: TypeTableProps) {
                 </div>
               ) : null}
             </td>
-            <td>{property.default ? <code>{property.default}</code> : "—"}</td>
+            <td>
+              {property.default === undefined ? (
+                "—"
+              ) : (
+                <code>{property.default}</code>
+              )}
+            </td>
             <td>{property.description}</td>
           </tr>
         ))}

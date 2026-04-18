@@ -44,43 +44,38 @@ function parseArgs(argv: string[]): CliArgs {
     help: false,
   };
   let positional = 0;
+  const readValue = (argv_: string[], index: number, flag: string): string => {
+    const value = argv_[index];
+    // Guard against flag-like tokens so `--src --format json` surfaces as a
+    // usage error instead of silently consuming `--format` as the src dir.
+    if (!value || value.startsWith("-")) {
+      throw new Error(`${flag} requires a value`);
+    }
+    return value;
+  };
+
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "-h" || arg === "--help") {
       args.help = true;
     } else if (arg === "--src") {
-      const value = argv[++i];
-      if (!value) {
-        throw new Error("--src requires a value");
-      }
-      args.srcDir = value;
+      args.srcDir = readValue(argv, ++i, "--src");
     } else if (arg === "--changelog") {
-      const value = argv[++i];
-      if (!value) {
-        throw new Error("--changelog requires a value");
-      }
-      args.changelogDir = value;
+      args.changelogDir = readValue(argv, ++i, "--changelog");
     } else if (arg === "--format") {
-      const value = argv[++i];
+      const value = readValue(argv, ++i, "--format");
       if (value !== "pretty" && value !== "json" && value !== "github") {
         throw new Error(`--format must be pretty|json|github, got ${value}`);
       }
       args.format = value;
     } else if (arg === "--ignore") {
-      const value = argv[++i];
-      if (!value) {
-        throw new Error("--ignore requires a value");
-      }
-      args.ignore.push(value);
+      args.ignore.push(readValue(argv, ++i, "--ignore"));
     } else if (arg === "--warn-unknown") {
       args.unknownFieldSeverity = "warn";
     } else if (arg === "--error-unknown") {
       args.unknownFieldSeverity = "error";
     } else if (arg === "--max-warnings") {
-      const value = argv[++i];
-      if (!value) {
-        throw new Error("--max-warnings requires a value");
-      }
+      const value = readValue(argv, ++i, "--max-warnings");
       const parsed = Number.parseInt(value, 10);
       if (Number.isNaN(parsed) || parsed < 0) {
         throw new Error("--max-warnings must be a non-negative integer");

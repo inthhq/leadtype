@@ -13,6 +13,7 @@ type TabsContextValue = {
   items: string[];
   activeValue: string;
   setActiveValue: (value: string) => void;
+  groupId: string;
 };
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -41,8 +42,8 @@ export function Tabs({ items = [], defaultIndex = 0, children }: TabsProps) {
   const groupId = useId();
 
   const value = useMemo<TabsContextValue>(
-    () => ({ items, activeValue, setActiveValue }),
-    [items, activeValue]
+    () => ({ items, activeValue, setActiveValue, groupId }),
+    [items, activeValue, groupId]
   );
 
   return (
@@ -81,13 +82,19 @@ export type TabProps = {
 };
 
 export function Tab({ value, children }: TabProps) {
-  const { activeValue } = useTabsContext();
+  const { activeValue, groupId } = useTabsContext();
   const normalized = normalize(value);
   if (normalized !== activeValue) {
     return null;
   }
   return (
-    <div data-inth-tab-panel="" data-value={normalized} role="tabpanel">
+    <div
+      aria-labelledby={`${groupId}-trigger-${normalized}`}
+      data-inth-tab-panel=""
+      data-value={normalized}
+      id={`${groupId}-${normalized}`}
+      role="tabpanel"
+    >
       {children}
     </div>
   );

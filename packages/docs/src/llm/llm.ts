@@ -4,6 +4,16 @@ import path from "node:path";
 import matter from "gray-matter";
 
 const DOCS_DIRNAME = "docs";
+const TOPIC_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
+
+function assertValidTopicSlug(slug: string): string {
+  if (!TOPIC_SLUG_PATTERN.test(slug)) {
+    throw new Error(
+      `Invalid topic slug "${slug}". Slugs must be a single URL-safe path segment (alphanumerics and dashes).`
+    );
+  }
+  return slug;
+}
 const TRAILING_SLASHES_PATTERN = /\/+$/;
 const WINDOWS_PATH_PATTERN = /\\/g;
 const INDEX_SEGMENT_PATTERN = /\/index$/;
@@ -210,6 +220,12 @@ async function readSourceDocs(
   );
 
   for (const { urlPath, doc } of entries) {
+    const existing = docs.get(urlPath);
+    if (existing) {
+      throw new Error(
+        `Duplicate documentation route "${urlPath}" — both "${existing.relativePath}" and "${doc.relativePath}" normalize to the same path.`
+      );
+    }
     docs.set(urlPath, doc);
   }
 
@@ -355,9 +371,10 @@ function renderDocsFullRouter(
 
 function renderRootFullRouter(
   product: Pick<ProductInfo, "name">,
-  baseUrl: string
+  baseUrl: string,
+  hasDocsSummary: boolean
 ): string {
-  return [
+  const lines = [
     `# ${product.name} Full Context Router`,
     "",
     "> Start with the product summary, then the curated docs summary, then one topic-specific full-context file if needed.",
@@ -365,9 +382,16 @@ function renderRootFullRouter(
     "## Recommended Flow",
     "",
     `- [Product Summary](${toAbsoluteUrl("/llms.txt", baseUrl)}): Short product-oriented overview of ${product.name}.`,
-    `- [Documentation Summary](${toAbsoluteUrl("/docs/llms.txt", baseUrl)}): Curated docs map for implementation work.`,
-    `- [Documentation Full Router](${toAbsoluteUrl("/docs/llms-full.txt", baseUrl)}): Topic-specific deep-context files.`,
-  ].join("\n");
+  ];
+  if (hasDocsSummary) {
+    lines.push(
+      `- [Documentation Summary](${toAbsoluteUrl("/docs/llms.txt", baseUrl)}): Curated docs map for implementation work.`
+    );
+  }
+  lines.push(
+    `- [Documentation Full Router](${toAbsoluteUrl("/docs/llms-full.txt", baseUrl)}): Topic-specific deep-context files.`
+  );
+  return lines.join("\n");
 }
 
 function renderTopicDocument(
@@ -448,19 +472,31 @@ export async function generateLLMFullFiles(
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
 
+  // Validate slugs up front — they're interpolated into both URLs and file
+  // paths, so values with `/`, `..`, whitespace, etc. are a security footgun.
+  const topics = config.topics.map((topic) => ({
+    ...topic,
+    slug: assertValidTopicSlug(topic.slug),
+  }));
+
+  // Only advertise the docs summary link if that file is guaranteed to exist.
+  const hasDocsSummary = existsSync(
+    path.join(outDir, DOCS_DIRNAME, "llms.txt")
+  );
+
   await mkdir(path.join(outDir, DOCS_DIRNAME, "llms-full"), {
     recursive: true,
   });
   await writeFile(
     path.join(outDir, "llms-full.txt"),
-    renderRootFullRouter(config.product, baseUrl)
+    renderRootFullRouter(config.product, baseUrl, hasDocsSummary)
   );
   await writeFile(
     path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
-    renderDocsFullRouter(config.product, baseUrl, config.topics)
+    renderDocsFullRouter(config.product, baseUrl, topics)
   );
 
-  for (const topic of config.topics) {
+  for (const topic of topics) {
     await writeFile(
       path.join(outDir, DOCS_DIRNAME, "llms-full", `${topic.slug}.txt`),
       renderTopicDocument(config.product, topic, markdownDocs)

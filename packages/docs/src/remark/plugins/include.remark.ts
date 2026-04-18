@@ -14,7 +14,7 @@ import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
 
 // Regex patterns defined at top level for performance
-const FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 
 // Shared processor for parsing included content
 const sharedProcessor = remark().use(remarkMdx).use(remarkGfm);

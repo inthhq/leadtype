@@ -1,9 +1,15 @@
 import * as v from "valibot";
 
-const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
+// Full SemVer 2.0.0 — accepts prerelease (-canary.1) and build metadata
+// (+build.5) identifiers. See https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
+const SEMVER_PATTERN =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 const semver = v.pipe(
   v.string(),
-  v.regex(SEMVER_PATTERN, "Must be a valid semantic version (e.g. 1.2.3)")
+  v.regex(
+    SEMVER_PATTERN,
+    "Must be a valid semantic version (e.g. 1.2.3, 1.2.3-canary.1, 1.2.3+build.5)"
+  )
 );
 
 const isoDate = v.pipe(

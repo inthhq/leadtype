@@ -14,7 +14,18 @@ import { convertAllMdx } from "@inth/docs/convert";
 import { generateLLMFullFiles, generateLLMSummaries } from "@inth/docs/llm";
 import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
 
-const RUNS = Number(process.env.BENCH_RUNS ?? 3);
+const DEFAULT_RUNS = 3;
+const parsedRuns = Number.parseInt(
+  process.env.BENCH_RUNS ?? String(DEFAULT_RUNS),
+  10
+);
+if (!Number.isInteger(parsedRuns) || parsedRuns < 1) {
+  process.stderr.write(
+    `BENCH_RUNS must be a positive integer, got ${JSON.stringify(process.env.BENCH_RUNS)}\n`
+  );
+  process.exit(2);
+}
+const RUNS = parsedRuns;
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
 const OUT_DIR = join(process.cwd(), "public-bench");

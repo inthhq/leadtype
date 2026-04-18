@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { relative, sep } from "node:path";
+import { relative, resolve, sep } from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import * as v from "valibot";
@@ -172,6 +172,12 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     schemas.changelogFrontmatter ?? defaultChangelogFrontmatterSchema;
   const metaSchema = schemas.meta ?? defaultMetaSchema;
 
+  // `changelogDir` is documented as a subdirectory of srcDir, so resolve it
+  // upfront. Absolute paths pass through resolve unchanged.
+  const resolvedChangelogDir = changelogDir
+    ? resolve(srcDir, changelogDir)
+    : undefined;
+
   const violations: LintViolation[] = [];
 
   const mdxFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], ignore);
@@ -195,7 +201,7 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       continue;
     }
 
-    const isChangelog = isUnderDir(file, changelogDir);
+    const isChangelog = isUnderDir(file, resolvedChangelogDir);
     const schemaToUse = isChangelog ? changelogSchema : frontmatterSchema;
     const kind: LintViolation["kind"] = isChangelog
       ? "changelog"

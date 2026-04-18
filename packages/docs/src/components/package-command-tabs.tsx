@@ -41,15 +41,17 @@ export function PackageCommandTabs({
 
   return (
     <div data-inth-package-command-tabs="">
-      <div data-inth-package-command-tabs-list="" role="tablist">
+      {/* Plain button group — intentionally not using role="tablist" /
+          role="tab" since we don't implement the full tabs keyboard pattern
+          (roving tabindex, ArrowLeft/Right, associated tabpanel). */}
+      <div data-inth-package-command-tabs-list="">
         {MANAGERS.map((manager) => (
           <button
-            aria-selected={manager === active}
+            aria-pressed={manager === active}
             data-active={manager === active || undefined}
             data-inth-package-command-tab=""
             key={manager}
             onClick={() => setActive(manager)}
-            role="tab"
             type="button"
           >
             {manager}

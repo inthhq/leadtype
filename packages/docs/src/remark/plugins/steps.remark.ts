@@ -128,17 +128,16 @@ function processContentNodesForListItem(
     // For tables, keep them as separate elements (don't inline with title)
     listItemChildren.push(firstContentNode);
   } else if (firstContentNode && firstContentNode.type === "paragraph") {
-    // For paragraphs, inline the text content into the title
-    const firstContentText = mdastToString(firstContentNode);
-    if (firstContentText.trim()) {
-      const normalizedContent = normalizeWhitespace(firstContentText.trim());
-      const contentTextNode = {
-        type: "text",
-        value: ` ${normalizedContent}`,
-      } as const;
-      titleParagraph.children.push(contentTextNode);
+    // Preserve inline formatting (code, links, strong) when folding the
+    // leading paragraph into the step title — using mdastToString flattens
+    // everything to plain text.
+    const inlineChildren = (firstContentNode as Paragraph).children ?? [];
+    if (inlineChildren.length > 0) {
+      titleParagraph.children.push(
+        { type: "text", value: " " },
+        ...inlineChildren
+      );
     }
-    // Start processing remaining nodes from index 1
     startIndex = 1;
   } else if (firstContentNode) {
     // For other block-level content (blockquote, code, list, etc.),
