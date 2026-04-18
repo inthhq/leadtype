@@ -1,0 +1,46 @@
+name: Benchmark
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "packages/docs/**"
+      - "apps/docs-smoke/**"
+      - ".github/workflows/bench.yml"
+
+# Don't stack benchmarks on rapid pushes — last one wins.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: Convert + LLM pipeline
+    runs-on: ubuntu-latest
+    # Non-blocking — numbers go to the job summary; no threshold gating
+    # because shared runners are too noisy for reliable regression detection.
+    continue-on-error: true
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          # git enrichment needs full history
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build @inth/docs
+        run: cd packages/docs && bun run build
+
+      - name: Run benchmark
+        env:
+          BENCH_RUNS: "3"
+        run: cd apps/docs-smoke && bun run bench

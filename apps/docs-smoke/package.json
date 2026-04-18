@@ -8,7 +8,8 @@
     "llm": "bun run scripts/llm-generate.ts",
     "build": "bun run convert && bun run llm",
     "setup:real": "bun run scripts/setup-real-content.ts",
-    "test:real": "bun run setup:real && bun run scripts/test-real.ts"
+    "test:real": "bun run setup:real && bun run scripts/test-real.ts",
+    "bench": "bun run setup:real && bun run scripts/bench.ts"
   },
   "dependencies": {
     "@inth/docs": "workspace:*"
