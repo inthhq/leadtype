@@ -1,0 +1,21 @@
+{
+  "name": "docs-smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convert": "bun run scripts/mdx-convert.ts",
+    "llm": "bun run scripts/llm-generate.ts",
+    "build": "bun run convert && bun run llm",
+    "setup:real": "bun run scripts/setup-real-content.ts",
+    "test:real": "bun run setup:real && bun run scripts/test-real.ts",
+    "bench": "bun run setup:real && bun run scripts/bench.ts"
+  },
+  "dependencies": {
+    "@inth/docs": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "5.9.2"
+  }
+}

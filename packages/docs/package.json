@@ -1,0 +1,91 @@
+{
+  "name": "@inth/docs",
+  "version": "0.0.0",
+  "description": "Shared MDX→MD pipeline and React component adapters for Inth public docs",
+  "type": "module",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "main": "./dist/components/index.js",
+  "types": "./dist/components/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
+    },
+    "./remark": {
+      "types": "./dist/remark/index.d.ts",
+      "import": "./dist/remark/index.js"
+    },
+    "./convert": {
+      "types": "./dist/convert/index.d.ts",
+      "import": "./dist/convert/index.js"
+    },
+    "./llm": {
+      "types": "./dist/llm/index.d.ts",
+      "import": "./dist/llm/index.js"
+    },
+    "./lint": {
+      "types": "./dist/lint/index.d.ts",
+      "import": "./dist/lint/index.js"
+    }
+  },
+  "bin": {
+    "inth-docs-lint": "./dist/lint/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "check-types": "tsc --noEmit",
+    "lint": "ultracite check src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "decode-named-character-reference": "1.3.0",
+    "fast-glob": "3.3.3",
+    "github-slugger": "2.0.0",
+    "gray-matter": "4.0.3",
+    "json5": "2.2.3",
+    "mdast-util-compact": "5.0.0",
+    "mdast-util-mdx": "3.0.0",
+    "mdast-util-mdx-jsx": "3.2.0",
+    "mdast-util-mdxjs-esm": "2.0.1",
+    "mdast-util-to-markdown": "2.1.2",
+    "mdast-util-to-string": "4.0.0",
+    "remark": "15.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-mdx": "3.1.1",
+    "unified": "11.0.5",
+    "unist-builder": "4.0.0",
+    "unist-util-is": "6.0.1",
+    "unist-util-visit": "5.1.0",
+    "valibot": "1.0.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "*",
+    "@types/mdast": "4.0.4",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "5.9.2",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": "//",
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off",
+        "useTopLevelRegex": "off"
+      },
+      "style": {
+        "noSubstr": "off",
+        "useConsistentTypeDefinitions": "off",
+        "useForOf": "off"
+      },
+      "suspicious": {
+        "useAwait": "off"
+      }
+    }
+  }
+}
