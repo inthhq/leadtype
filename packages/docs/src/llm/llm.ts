@@ -52,8 +52,38 @@ export type FullTopic = {
   slug: string;
   title: string;
   description: string;
+  /**
+   * Leaf topic: page prefixes (relative to `{outDir}/docs/`) whose markdown
+   * should be inlined into this topic's `.txt`. Mutually exclusive with
+   * `topics` — a topic is either a leaf (content) or a parent (router).
+   */
+  includePrefixes?: string[];
+  /**
+   * Parent topic: nested sub-topics. Generates a router `.txt` linking to
+   * each child, and each child's file lives under `{slug}/{childSlug}.txt`.
+   */
+  topics?: FullTopic[];
+};
+
+type ResolvedLeafTopic = {
+  kind: "leaf";
+  slug: string;
+  title: string;
+  description: string;
+  segmentPath: string[];
   includePrefixes: string[];
 };
+
+type ResolvedParentTopic = {
+  kind: "parent";
+  slug: string;
+  title: string;
+  description: string;
+  segmentPath: string[];
+  children: ResolvedTopic[];
+};
+
+type ResolvedTopic = ResolvedLeafTopic | ResolvedParentTopic;
 
 export type ProductInfo = {
   /** Product display name, e.g. "DSAR SDK" */
@@ -394,17 +424,85 @@ Read the summary links first. If the summary is not enough, choose the smallest 
 ${sections.join("\n\n")}`;
 }
 
+function resolveTopics(
+  topics: FullTopic[],
+  parentPath: string[] = []
+): ResolvedTopic[] {
+  return topics.map((topic) => {
+    const slug = assertValidTopicSlug(topic.slug);
+    const segmentPath = [...parentPath, slug];
+
+    const hasChildren = topic.topics && topic.topics.length > 0;
+    const hasLeafPrefixes =
+      topic.includePrefixes && topic.includePrefixes.length > 0;
+
+    if (hasChildren && hasLeafPrefixes) {
+      throw new Error(
+        `Topic "${segmentPath.join("/")}" has both \`topics\` and \`includePrefixes\`. A topic must be either a parent (router) or a leaf (content), not both.`
+      );
+    }
+    if (!(hasChildren || hasLeafPrefixes)) {
+      throw new Error(
+        `Topic "${segmentPath.join("/")}" has neither \`topics\` nor \`includePrefixes\`. A topic must declare content (\`includePrefixes\`) or sub-topics (\`topics\`).`
+      );
+    }
+
+    if (hasChildren) {
+      return {
+        kind: "parent",
+        slug,
+        title: topic.title,
+        description: topic.description,
+        segmentPath,
+        // biome-ignore lint/style/noNonNullAssertion: checked above via hasChildren
+        children: resolveTopics(topic.topics!, segmentPath),
+      };
+    }
+    return {
+      kind: "leaf",
+      slug,
+      title: topic.title,
+      description: topic.description,
+      segmentPath,
+      // biome-ignore lint/style/noNonNullAssertion: checked above via hasLeafPrefixes
+      includePrefixes: topic.includePrefixes!,
+    };
+  });
+}
+
+function topicFilePath(segmentPath: string[]): string {
+  return `/docs/llms-full/${segmentPath.join("/")}.txt`;
+}
+
+function renderTopicRouterLinks(
+  topics: ResolvedTopic[],
+  baseUrl: string,
+  indentLevel = 0
+): string[] {
+  const indent = "  ".repeat(indentLevel);
+  const lines: string[] = [];
+  for (const topic of topics) {
+    const absoluteUrl = toAbsoluteUrl(
+      topicFilePath(topic.segmentPath),
+      baseUrl
+    );
+    lines.push(
+      `${indent}- [${topic.title}](${absoluteUrl}): ${topic.description}`
+    );
+    if (topic.kind === "parent") {
+      lines.push(
+        ...renderTopicRouterLinks(topic.children, baseUrl, indentLevel + 1)
+      );
+    }
+  }
+  return lines;
+}
+
 function renderDocsFullRouter(
   product: Pick<ProductInfo, "name">,
   baseUrl: string,
-  topics: FullTopic[]
+  topics: ResolvedTopic[]
 ): string {
-  const links = topics.map((topic) => ({
-    title: `${topic.title} Full Context`,
-    description: topic.description,
-    absoluteUrl: toAbsoluteUrl(`/docs/llms-full/${topic.slug}.txt`, baseUrl),
-  }));
-
   return [
     `# ${product.name} Documentation Full Context`,
     "",
@@ -412,7 +510,23 @@ function renderDocsFullRouter(
     "",
     "## Topics",
     "",
-    ...links.map(renderLink),
+    ...renderTopicRouterLinks(topics, baseUrl),
+  ].join("\n");
+}
+
+function renderTopicSubRouter(
+  product: Pick<ProductInfo, "name">,
+  baseUrl: string,
+  parent: ResolvedParentTopic
+): string {
+  return [
+    `# ${product.name} ${parent.title} Full Context`,
+    "",
+    `> ${parent.description}`,
+    "",
+    "## Topics",
+    "",
+    ...renderTopicRouterLinks(parent.children, baseUrl),
   ].join("\n");
 }
 
@@ -443,7 +557,7 @@ function renderRootFullRouter(
 
 function renderTopicDocument(
   product: Pick<ProductInfo, "name">,
-  topic: FullTopic,
+  topic: ResolvedLeafTopic,
   docs: MarkdownDoc[]
 ): string {
   const topicDocs = docs.filter((doc) =>
@@ -476,6 +590,40 @@ ${doc.content}`.trim();
     "",
     contentBlocks.join("\n\n"),
   ].join("\n");
+}
+
+async function writeTopicTree(
+  topics: ResolvedTopic[],
+  product: Pick<ProductInfo, "name">,
+  baseUrl: string,
+  markdownDocs: MarkdownDoc[],
+  llmsFullDir: string
+): Promise<void> {
+  for (const topic of topics) {
+    const filePath = path.join(
+      llmsFullDir,
+      ...topic.segmentPath.slice(0, -1),
+      `${topic.slug}.txt`
+    );
+    await mkdir(path.dirname(filePath), { recursive: true });
+
+    if (topic.kind === "parent") {
+      await writeFile(filePath, renderTopicSubRouter(product, baseUrl, topic));
+      await writeTopicTree(
+        topic.children,
+        product,
+        baseUrl,
+        markdownDocs,
+        llmsFullDir
+      );
+      continue;
+    }
+
+    await writeFile(
+      filePath,
+      renderTopicDocument(product, topic, markdownDocs)
+    );
+  }
 }
 
 /**
@@ -529,34 +677,32 @@ export async function generateLLMFullFiles(
     );
   }
 
-  // Validate slugs up front — they're interpolated into both URLs and file
-  // paths, so values with `/`, `..`, whitespace, etc. are a security footgun.
-  const topics = config.topics.map((topic) => ({
-    ...topic,
-    slug: assertValidTopicSlug(topic.slug),
-  }));
+  // Resolve the (possibly nested) topic tree. Slugs are validated here —
+  // they're interpolated into both URLs and file paths, so values with `/`,
+  // `..`, whitespace, etc. are a security footgun.
+  const resolvedTopics = resolveTopics(config.topics);
 
   // Only advertise the docs summary link if that file is guaranteed to exist.
   const hasDocsSummary = existsSync(
     path.join(outDir, DOCS_DIRNAME, "llms.txt")
   );
 
-  await mkdir(path.join(outDir, DOCS_DIRNAME, "llms-full"), {
-    recursive: true,
-  });
+  const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
+  await mkdir(llmsFullDir, { recursive: true });
   await writeFile(
     path.join(outDir, "llms-full.txt"),
     renderRootFullRouter(config.product, baseUrl, hasDocsSummary)
   );
   await writeFile(
     path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
-    renderDocsFullRouter(config.product, baseUrl, topics)
+    renderDocsFullRouter(config.product, baseUrl, resolvedTopics)
   );
 
-  for (const topic of topics) {
-    await writeFile(
-      path.join(outDir, DOCS_DIRNAME, "llms-full", `${topic.slug}.txt`),
-      renderTopicDocument(config.product, topic, markdownDocs)
-    );
-  }
+  await writeTopicTree(
+    resolvedTopics,
+    config.product,
+    baseUrl,
+    markdownDocs,
+    llmsFullDir
+  );
 }
