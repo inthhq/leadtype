@@ -437,14 +437,15 @@ function resolveTopics(
 
   return topics.map((topic) => {
     const slug = assertValidTopicSlug(topic.slug);
+    const slugKey = slug.toLowerCase();
 
-    if (seenSlugs.has(slug)) {
+    if (seenSlugs.has(slugKey)) {
       const scope = parentPath.join("/") || "root";
       throw new Error(
         `Duplicate topic slug "${slug}" under "${scope}". Topic slugs must be unique among siblings.`
       );
     }
-    seenSlugs.add(slug);
+    seenSlugs.add(slugKey);
 
     const segmentPath = [...parentPath, slug];
 

@@ -393,4 +393,38 @@ describe("generateLLMFullFiles — nested topics", () => {
       })
     ).rejects.toThrow(/Duplicate topic slug "react" under "frameworks"/);
   });
+
+  it("rejects duplicate sibling topic slugs case-insensitively", async () => {
+    const projectDir = await createTempProject();
+    await seedOutDir(projectDir);
+
+    await expect(
+      generateLLMFullFiles({
+        outDir: projectDir,
+        baseUrl: "https://c15t.com",
+        product: { name: "c15t" },
+        topics: [
+          {
+            slug: "frameworks",
+            title: "Frameworks",
+            description: "Framework integrations.",
+            topics: [
+              {
+                slug: "React",
+                title: "React",
+                description: "React integration.",
+                includePrefixes: ["frameworks/react/"],
+              },
+              {
+                slug: "react",
+                title: "React duplicate",
+                description: "Duplicate React integration.",
+                includePrefixes: ["frameworks/next/"],
+              },
+            ],
+          },
+        ],
+      })
+    ).rejects.toThrow(/Duplicate topic slug "react" under "frameworks"/i);
+  });
 });

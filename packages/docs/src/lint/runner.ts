@@ -185,6 +185,7 @@ type UrlCandidate = {
 };
 
 const URL_LIKE_FIELD_NAMES = new Set([
+  "canonicalUrl",
   "href",
   "link",
   "path",
@@ -249,14 +250,14 @@ function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
 }
 
 function collectMarkdownUrls(markdown: string): UrlCandidate[] {
-  const urls: UrlCandidate[] = [];
+  const urls = new Set<string>();
   const tree = remark().use(remarkGfm).parse(markdown);
   const definitions = new Map<string, string>();
 
   visit(tree, "definition", (node: { identifier?: string; url?: string }) => {
     const url = node.url ?? "";
     if (looksLikeMarkdownUrlCandidate(url)) {
-      urls.push({ url });
+      urls.add(url);
     }
 
     const identifier = node.identifier?.toLowerCase();
@@ -268,7 +269,7 @@ function collectMarkdownUrls(markdown: string): UrlCandidate[] {
   visit(tree, "link", (node: { url?: string }) => {
     const url = node.url ?? "";
     if (looksLikeMarkdownUrlCandidate(url)) {
-      urls.push({ url });
+      urls.add(url);
     }
   });
 
@@ -277,11 +278,11 @@ function collectMarkdownUrls(markdown: string): UrlCandidate[] {
     const url = identifier ? (definitions.get(identifier) ?? "") : "";
 
     if (looksLikeMarkdownUrlCandidate(url)) {
-      urls.push({ url });
+      urls.add(url);
     }
   });
 
-  return urls;
+  return Array.from(urls, (url) => ({ url }));
 }
 
 function validateDocUrls(

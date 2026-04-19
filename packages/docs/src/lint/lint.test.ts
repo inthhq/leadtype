@@ -256,6 +256,36 @@ Body
     );
   });
 
+  it("validates placeholders in canonicalUrl frontmatter fields", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+canonicalUrl: "/docs/frameworks/{framework}/overview"
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "guides/overview.mdx",
+          kind: "frontmatter",
+          rule: "unresolved-placeholder",
+          field: "canonicalUrl",
+        }),
+      ])
+    );
+  });
+
   it("validates reference-style markdown links", async () => {
     const projectDir = await createTempProject();
 
@@ -284,5 +314,13 @@ title: Overview
         }),
       ])
     );
+    expect(
+      result.violations.filter(
+        (violation) =>
+          violation.file === "guides/overview.mdx" &&
+          violation.kind === "content" &&
+          violation.rule === "invalid-link"
+      )
+    ).toHaveLength(1);
   });
 });
