@@ -60,8 +60,8 @@ export type LintOptions = {
   changelogDir?: string;
   /**
    * Glob patterns (relative to srcDir) to skip — use for include-only partials
-   * like `shared/**` or orphan drafts. Matched against POSIX-style relative
-   * paths. Default: ["**\/shared/**"]
+   * like `shared/**`, `_shared/**`, `_partials/**`, or orphan drafts. Matched
+   * against POSIX-style relative paths. Default: ["**\/shared/**", ...]
    */
   ignore?: string[];
   /** Treat unknown frontmatter fields as warnings (default) or errors */
@@ -168,11 +168,16 @@ function validate<T extends Record<string, unknown>>(
  */
 export const DEFAULT_IGNORE_GLOBS = [
   "**/shared/**",
+  "**/_shared/**",
   "**/_partials/**",
   "**/node_modules/**",
 ];
 
-const ROUTE_INDEX_IGNORE_GLOBS = ["**/_partials/**", "**/node_modules/**"];
+const ROUTE_INDEX_IGNORE_GLOBS = [
+  "**/_shared/**",
+  "**/_partials/**",
+  "**/node_modules/**",
+];
 
 type UrlCandidate = {
   field?: string;

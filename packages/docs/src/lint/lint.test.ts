@@ -156,4 +156,37 @@ availableIn:
       ])
     );
   });
+
+  it("ignores _shared fragments by default", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "_shared", "fragments", "common.mdx"),
+      `No frontmatter here on purpose.
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+
+    expect(result.summary.errors).toBe(0);
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "_shared/fragments/common.mdx",
+        }),
+      ])
+    );
+  });
 });

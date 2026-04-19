@@ -22,7 +22,7 @@ Options:
   --src <dir>              Source directory (default: ./content)
   --changelog <dir>        Subdirectory that uses the changelog schema
   --format <fmt>           pretty | json | github (default: pretty)
-  --ignore <glob>          Glob to skip (repeatable). Default: shared/**, _partials/**
+  --ignore <glob>          Glob to skip (repeatable). Default: shared/**, _shared/**, _partials/**
   --warn-unknown           Unknown fields warn (default)
   --error-unknown          Unknown fields error
   --max-warnings <n>       Exit non-zero if warnings exceed n (default: Infinity)
