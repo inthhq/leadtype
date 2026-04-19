@@ -226,4 +226,63 @@ Body
       ])
     );
   });
+
+  it("ignores placeholders in non-URL frontmatter fields", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: "Welcome to {framework}"
+description: "Use {framework} to get started."
+canonicalUrl: "/docs/guides/overview"
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "guides/overview.mdx",
+          rule: "unresolved-placeholder",
+        }),
+      ])
+    );
+  });
+
+  it("validates reference-style markdown links", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+---
+[Quickstart][quickstart]
+
+[quickstart]: /docs/guides/quickstart
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "guides/overview.mdx",
+          kind: "content",
+          rule: "invalid-link",
+        }),
+      ])
+    );
+  });
 });

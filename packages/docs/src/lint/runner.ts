@@ -184,14 +184,49 @@ type UrlCandidate = {
   url: string;
 };
 
+const URL_LIKE_FIELD_NAMES = new Set([
+  "href",
+  "link",
+  "path",
+  "permalink",
+  "to",
+  "url",
+]);
+
 function frameworkFromDocsUrl(url: string): string | null {
   const match = url.match(/^\/docs\/frameworks\/([^/]+)(?:\/|$)/);
   return match?.[1] ?? null;
 }
 
+function lastFieldSegment(path: string): string | null {
+  if (!path) {
+    return null;
+  }
+
+  const segment = path.split(".").at(-1) ?? "";
+  return segment.replace(/\[\d+\]$/u, "") || null;
+}
+
+function looksLikeDocsUrlCandidate(value: string, field?: string): boolean {
+  if (value.startsWith("/docs/")) {
+    return true;
+  }
+
+  if (!hasDocPlaceholder(value)) {
+    return false;
+  }
+
+  return field ? URL_LIKE_FIELD_NAMES.has(field) : false;
+}
+
+function looksLikeMarkdownUrlCandidate(value: string): boolean {
+  return value.startsWith("/docs/") || hasDocPlaceholder(value);
+}
+
 function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
   if (typeof value === "string") {
-    if (value.startsWith("/docs/") || hasDocPlaceholder(value)) {
+    const field = lastFieldSegment(path) ?? undefined;
+    if (looksLikeDocsUrlCandidate(value, field)) {
       return [{ field: path || undefined, url: value }];
     }
     return [];
@@ -216,10 +251,32 @@ function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
 function collectMarkdownUrls(markdown: string): UrlCandidate[] {
   const urls: UrlCandidate[] = [];
   const tree = remark().use(remarkGfm).parse(markdown);
+  const definitions = new Map<string, string>();
+
+  visit(tree, "definition", (node: { identifier?: string; url?: string }) => {
+    const url = node.url ?? "";
+    if (looksLikeMarkdownUrlCandidate(url)) {
+      urls.push({ url });
+    }
+
+    const identifier = node.identifier?.toLowerCase();
+    if (identifier) {
+      definitions.set(identifier, url);
+    }
+  });
 
   visit(tree, "link", (node: { url?: string }) => {
     const url = node.url ?? "";
-    if (url.startsWith("/docs/") || hasDocPlaceholder(url)) {
+    if (looksLikeMarkdownUrlCandidate(url)) {
+      urls.push({ url });
+    }
+  });
+
+  visit(tree, "linkReference", (node: { identifier?: string }) => {
+    const identifier = node.identifier?.toLowerCase();
+    const url = identifier ? (definitions.get(identifier) ?? "") : "";
+
+    if (looksLikeMarkdownUrlCandidate(url)) {
       urls.push({ url });
     }
   });

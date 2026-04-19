@@ -433,8 +433,19 @@ function resolveTopics(
   topics: FullTopic[],
   parentPath: string[] = []
 ): ResolvedTopic[] {
+  const seenSlugs = new Set<string>();
+
   return topics.map((topic) => {
     const slug = assertValidTopicSlug(topic.slug);
+
+    if (seenSlugs.has(slug)) {
+      const scope = parentPath.join("/") || "root";
+      throw new Error(
+        `Duplicate topic slug "${slug}" under "${scope}". Topic slugs must be unique among siblings.`
+      );
+    }
+    seenSlugs.add(slug);
+
     const segmentPath = [...parentPath, slug];
 
     const hasChildren = topic.topics && topic.topics.length > 0;

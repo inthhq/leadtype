@@ -11,9 +11,27 @@ describe("deriveDocContext", () => {
     });
   });
 
+  it("derives arbitrary framework slugs from Windows framework routes", () => {
+    expect(
+      deriveDocContext("\\tmp\\docs\\frameworks\\vue\\quickstart.mdx")
+    ).toMatchObject({
+      framework: "vue",
+      frameworkDocsBase: "/docs/frameworks/vue",
+    });
+  });
+
   it("does not infer a framework from shared content paths", () => {
     expect(
       deriveDocContext("/tmp/docs/shared/concepts/common.mdx")
+    ).toMatchObject({
+      framework: null,
+      frameworkDocsBase: null,
+    });
+  });
+
+  it("does not infer a framework from Windows shared content paths", () => {
+    expect(
+      deriveDocContext("\\tmp\\docs\\shared\\concepts\\common.mdx")
     ).toMatchObject({
       framework: null,
       frameworkDocsBase: null,
