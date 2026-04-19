@@ -1,0 +1,8 @@
+# @inth/docs Authoring Full Context
+
+> MDX rendering components and remark pipeline details.
+
+## Topics
+
+- [Components](https://example.invalid/@inth/docs/docs/llms-full/authoring/components.txt): React MDX component adapters.
+- [Remark](https://example.invalid/@inth/docs/docs/llms-full/authoring/remark.txt): Default plugins and conversion helpers.

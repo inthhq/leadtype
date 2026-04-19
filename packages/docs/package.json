@@ -36,12 +36,15 @@
     "inth-docs-lint": "./dist/lint/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "agent-docs",
+    "README.md"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "bun run ./scripts/generate-agent-docs.ts && tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
+    "docs:agent": "bun run ./scripts/generate-agent-docs.ts",
     "lint": "ultracite check src",
     "test": "vitest run"
   },
