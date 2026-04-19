@@ -4,13 +4,13 @@
 
 ## Included Pages
 
-- [Convert](https://example.invalid/@inth/docs/docs/convert): How to convert MDX docs into markdown with @inth/docs/convert.
+- [Convert](https://example.invalid/@inth/docs/docs/convert): How to convert MDX docs into Markdown with @inth/docs/convert.
 
 ## Content
 
 # Convert
 URL: https://example.invalid/@inth/docs/docs/convert
-How to convert MDX docs into markdown with @inth/docs/convert.
+How to convert MDX docs into Markdown with @inth/docs/convert.
 
 # Convert
 
@@ -33,10 +33,11 @@ import { convertAllMdx, convertMdxFile } from "@inth/docs/convert";
 Use `convertMdxFile` when you need the rendered markdown string plus the resolved frontmatter.
 
 ```ts
-const result = await convertMdxFile("docs/guides/quickstart.mdx", {
-  srcDir: "content",
-  remarkPlugins: defaultRemarkPlugins,
-});
+const result = await convertMdxFile(
+  "docs/guides/quickstart.mdx",
+  defaultRemarkPlugins,
+  false
+);
 ```
 
 ### Convert a single file to disk

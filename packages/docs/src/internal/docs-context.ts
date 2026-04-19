@@ -9,9 +9,7 @@ const PLACEHOLDER_PATTERN = /\{([a-zA-Z][a-zA-Z0-9]*)(?::([^}]+))?\}/g;
 
 const FRAMEWORK_PATH_PATTERNS = [
   /\/docs\/frameworks\/([^/]+)(?:\/|$)/,
-  /\/docs\/shared\/([^/]+)(?:\/|$)/,
 ] as const;
-const KNOWN_FRAMEWORKS = new Set(["javascript", "next", "react"]);
 
 export type DocContext = {
   framework: string | null;
@@ -23,13 +21,19 @@ function normalizePath(input: string): string {
   return input.replace(WINDOWS_PATH_PATTERN, "/");
 }
 
+/**
+ * Build placeholder context from a docs source path.
+ *
+ * Framework routes are derived from the path itself so callers do not need to
+ * maintain a fixed allowlist of framework slugs.
+ */
 export function deriveDocContext(sourcePath: string): DocContext {
   const normalizedPath = normalizePath(sourcePath);
 
   for (const pattern of FRAMEWORK_PATH_PATTERNS) {
     const match = normalizedPath.match(pattern);
     const framework = match?.[1] ?? null;
-    if (framework && KNOWN_FRAMEWORKS.has(framework)) {
+    if (framework) {
       return {
         framework,
         frameworkDocsBase: `/docs/frameworks/${framework}`,
@@ -43,6 +47,15 @@ export function deriveDocContext(sourcePath: string): DocContext {
     frameworkDocsBase: null,
     sourcePath,
   };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function resolvePlaceholderValue(
@@ -97,7 +110,7 @@ export function resolvePlaceholderStrings<T>(value: T, context: DocContext): T {
   if (Array.isArray(value)) {
     return value.map((item) => resolvePlaceholderStrings(item, context)) as T;
   }
-  if (typeof value === "object" && value !== null) {
+  if (isPlainObject(value)) {
     const entries = Object.entries(value).map(([key, entryValue]) => [
       key,
       resolvePlaceholderStrings(entryValue, context),

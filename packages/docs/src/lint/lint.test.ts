@@ -189,4 +189,41 @@ Body
       ])
     );
   });
+
+  it("does not accept routes from ignored files", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+---
+[Shared doc](/docs/shared/internal-only)
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "shared", "internal-only.mdx"),
+      `---
+title: Internal only
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "guides/overview.mdx",
+          kind: "content",
+          rule: "invalid-link",
+        }),
+      ])
+    );
+  });
 });

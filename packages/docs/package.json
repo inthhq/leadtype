@@ -41,10 +41,12 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun run ./scripts/generate-agent-docs.ts && tsup",
+    "build": "bun run docs:agent && tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
-    "docs:agent": "bun run ./scripts/generate-agent-docs.ts",
+    "docs:agent": "bun run docs:agent:check-env && bun run docs:agent:generate",
+    "docs:agent:check-env": "bun -e \"if (!process.env.INTH_DOCS_AGENT_BASE_URL) throw new Error('INTH_DOCS_AGENT_BASE_URL must be set')\"",
+    "docs:agent:generate": "bun run ./scripts/generate-agent-docs.ts",
     "lint": "ultracite check src",
     "test": "vitest run"
   },

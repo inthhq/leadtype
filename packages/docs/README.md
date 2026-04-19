@@ -34,7 +34,7 @@ await convertAllMdx({
 Run:
 
 ```bash
-bun run docs:agent
+INTH_DOCS_AGENT_BASE_URL=https://docs.example.com/@inth/docs bun run docs:agent
 ```
 
 This writes a packaged reference bundle into `agent-docs/`.
@@ -51,3 +51,5 @@ The published package includes:
 - `agent-docs/docs/lint.md`
 
 These files are intended for coding agents and other tooling that need small, topic-scoped references instead of a full docs site.
+
+Set `INTH_DOCS_AGENT_BASE_URL` before generating publishable agent docs so the bundled routers point at the hosted docs base.

@@ -311,11 +311,8 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
 
   const mdxFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], ignore);
   const metaFiles = await glob(srcDir, ["**/meta.json"], ignore);
-  const routeFiles = await glob(
-    srcDir,
-    ["**/*.mdx", "**/*.md"],
-    ROUTE_INDEX_IGNORE_GLOBS
-  );
+  const routeIgnore = [...new Set([...ignore, ...ROUTE_INDEX_IGNORE_GLOBS])];
+  const routeFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], routeIgnore);
   const routeSet = new Set(
     routeFiles.map((filePath) => routeFromFilePath(srcDir, filePath))
   );

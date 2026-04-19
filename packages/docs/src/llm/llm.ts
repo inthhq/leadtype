@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 
@@ -140,9 +140,14 @@ function titleFromRelativePath(
   extension: ".md" | ".mdx"
 ): string {
   const fileName = path.basename(relativePath, extension);
-  const segment = GENERIC_DOC_TITLES.has(fileName.toLowerCase())
-    ? path.basename(path.dirname(relativePath))
-    : fileName;
+  const parentSegment = path.basename(path.dirname(relativePath));
+  let segment = fileName;
+
+  if (GENERIC_DOC_TITLES.has(fileName.toLowerCase())) {
+    segment =
+      parentSegment && parentSegment !== "." ? parentSegment : "documentation";
+  }
+
   return titleize(segment);
 }
 
@@ -688,6 +693,7 @@ export async function generateLLMFullFiles(
   );
 
   const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
+  await rm(llmsFullDir, { recursive: true, force: true });
   await mkdir(llmsFullDir, { recursive: true });
   await writeFile(
     path.join(outDir, "llms-full.txt"),

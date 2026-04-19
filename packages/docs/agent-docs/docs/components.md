@@ -46,14 +46,20 @@ Override individual entries rather than replacing the full map unless you want t
 
 ### `PackageCommandTabs`
 
-Use for package-manager specific install or run commands.
+Use for package-manager-specific install or run commands.
 
 ```tsx
 <PackageCommandTabs command="@inth/docs" />
-<PackageCommandTabs command="@inth/docs" mode="install" />
+<PackageCommandTabs
+  commands={{
+    npm: "npm install @inth/docs",
+    pnpm: "pnpm add @inth/docs",
+  }}
+  defaultManager="pnpm"
+/>
 ```
 
-`command` accepts a package or CLI string. `mode` is `"run"` or `"install"`.
+`command` accepts a package or CLI string and can include a `{pm}` placeholder. Use `commands` for per-manager overrides and `defaultManager` to choose the initial tab.
 
 ### `TypeTable` and `AutoTypeTable`
 

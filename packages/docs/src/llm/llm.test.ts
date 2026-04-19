@@ -66,6 +66,40 @@ describe("generateLLMSummaries", () => {
     expect(rootSummary).not.toContain("[Index]");
     expect(docsSummary).not.toContain("No description provided.");
   });
+
+  it("uses Documentation for root index files without explicit titles", async () => {
+    const projectDir = await createTempProject();
+    const docsDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "out");
+
+    await mkdir(docsDir, { recursive: true });
+    await writeFile(path.join(docsDir, "index.mdx"), "# Welcome\n");
+
+    await generateLLMSummaries({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://c15t.com",
+      product: {
+        name: "c15t",
+        summary: "Consent platform.",
+        bestStartingPoints: [{ urlPath: "/docs" }],
+      },
+      docsSections: [
+        {
+          title: "Overview",
+          links: [{ urlPath: "/docs" }],
+        },
+      ],
+    });
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+
+    expect(docsSummary).toContain("[Documentation](https://c15t.com/docs)");
+    expect(docsSummary).not.toContain("[.](https://c15t.com/docs)");
+  });
 });
 
 async function seedOutDir(outDir: string): Promise<void> {
@@ -218,6 +252,58 @@ describe("generateLLMFullFiles — nested topics", () => {
     );
     expect(flatLeaf).toContain("React Quickstart");
     expect(flatLeaf).toContain("Next.js Quickstart");
+    expect(
+      existsSync(
+        path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt")
+      )
+    ).toBe(false);
+  });
+
+  it("clears stale nested topic files before rewriting the topic tree", async () => {
+    const projectDir = await createTempProject();
+    await seedOutDir(projectDir);
+
+    await generateLLMFullFiles({
+      outDir: projectDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t" },
+      topics: [
+        {
+          slug: "frameworks",
+          title: "Frameworks",
+          description: "Framework integrations.",
+          topics: [
+            {
+              slug: "react",
+              title: "React",
+              description: "React integration.",
+              includePrefixes: ["frameworks/react/"],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(
+      existsSync(
+        path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt")
+      )
+    ).toBe(true);
+
+    await generateLLMFullFiles({
+      outDir: projectDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t" },
+      topics: [
+        {
+          slug: "frameworks",
+          title: "Frameworks",
+          description: "All framework docs.",
+          includePrefixes: ["frameworks/"],
+        },
+      ],
+    });
+
     expect(
       existsSync(
         path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt")
