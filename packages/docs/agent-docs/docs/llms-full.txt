@@ -4,11 +4,11 @@
 
 ## Topics
 
-- [Overview](https://example.invalid/@inth/docs/docs/llms-full/overview.txt): Package scope and route-selection guidance.
-- [Authoring](https://example.invalid/@inth/docs/docs/llms-full/authoring.txt): MDX rendering components and remark pipeline details.
-  - [Components](https://example.invalid/@inth/docs/docs/llms-full/authoring/components.txt): React MDX component adapters.
-  - [Remark](https://example.invalid/@inth/docs/docs/llms-full/authoring/remark.txt): Default plugins and conversion helpers.
-- [Generation](https://example.invalid/@inth/docs/docs/llms-full/generation.txt): MDX conversion and llms.txt generation.
-  - [Convert](https://example.invalid/@inth/docs/docs/llms-full/generation/convert.txt): MDX-to-markdown conversion APIs.
-  - [LLM](https://example.invalid/@inth/docs/docs/llms-full/generation/llm.txt): Summary and full-context file generation.
-- [Validation](https://example.invalid/@inth/docs/docs/llms-full/validation.txt): Docs linting and CLI usage.
+- [Overview](./llms-full/overview.txt): Package scope and route-selection guidance.
+- [Authoring](./llms-full/authoring.txt): MDX rendering components and remark pipeline details.
+  - [Components](./llms-full/authoring/components.txt): React MDX component adapters.
+  - [Remark](./llms-full/authoring/remark.txt): Default plugins and conversion helpers.
+- [Generation](./llms-full/generation.txt): MDX conversion and llms.txt generation.
+  - [Convert](./llms-full/generation/convert.txt): MDX-to-markdown conversion APIs.
+  - [LLM](./llms-full/generation/llm.txt): Summary and full-context file generation.
+- [Validation](./llms-full/validation.txt): Docs linting and CLI usage.

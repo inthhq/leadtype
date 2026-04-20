@@ -4,5 +4,5 @@
 
 ## Topics
 
-- [Convert](https://example.invalid/@inth/docs/docs/llms-full/generation/convert.txt): MDX-to-markdown conversion APIs.
-- [LLM](https://example.invalid/@inth/docs/docs/llms-full/generation/llm.txt): Summary and full-context file generation.
+- [Convert](./generation/convert.txt): MDX-to-markdown conversion APIs.
+- [LLM](./generation/llm.txt): Summary and full-context file generation.

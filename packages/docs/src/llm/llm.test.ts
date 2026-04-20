@@ -194,13 +194,13 @@ describe("generateLLMFullFiles — nested topics", () => {
     );
 
     expect(rootRouter).toContain(
-      "[Frameworks](https://c15t.com/docs/llms-full/frameworks.txt): Framework integrations."
+      "[Frameworks](./llms-full/frameworks.txt): Framework integrations."
     );
     expect(rootRouter).toContain(
-      "  - [React](https://c15t.com/docs/llms-full/frameworks/react.txt): React integration."
+      "  - [React](./llms-full/frameworks/react.txt): React integration."
     );
     expect(rootRouter).toContain(
-      "  - [Next.js](https://c15t.com/docs/llms-full/frameworks/next.txt): Next.js integration."
+      "  - [Next.js](./llms-full/frameworks/next.txt): Next.js integration."
     );
 
     const frameworksRouter = await readFile(
@@ -208,9 +208,7 @@ describe("generateLLMFullFiles — nested topics", () => {
       "utf8"
     );
     expect(frameworksRouter).toContain("# c15t Frameworks Full Context");
-    expect(frameworksRouter).toContain(
-      "[React](https://c15t.com/docs/llms-full/frameworks/react.txt)"
-    );
+    expect(frameworksRouter).toContain("[React](./frameworks/react.txt)");
 
     const reactLeaf = await readFile(
       path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt"),

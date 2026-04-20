@@ -491,24 +491,48 @@ function topicFilePath(segmentPath: string[]): string {
   return `/docs/llms-full/${segmentPath.join("/")}.txt`;
 }
 
+function routerFilePath(segmentPath: string[]): string {
+  return segmentPath.length > 0
+    ? `/docs/llms-full/${segmentPath.join("/")}.txt`
+    : "/docs/llms-full.txt";
+}
+
+function toRelativeRouterLink(
+  fromSegmentPath: string[],
+  toSegmentPath: string[]
+): string {
+  const fromFilePath = routerFilePath(fromSegmentPath);
+  const targetFilePath = topicFilePath(toSegmentPath);
+  const relativePath = path.posix.relative(
+    path.posix.dirname(fromFilePath),
+    targetFilePath
+  );
+
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+}
+
 function renderTopicRouterLinks(
   topics: ResolvedTopic[],
-  baseUrl: string,
+  currentSegmentPath: string[],
   indentLevel = 0
 ): string[] {
   const indent = "  ".repeat(indentLevel);
   const lines: string[] = [];
   for (const topic of topics) {
-    const absoluteUrl = toAbsoluteUrl(
-      topicFilePath(topic.segmentPath),
-      baseUrl
+    const relativeUrl = toRelativeRouterLink(
+      currentSegmentPath,
+      topic.segmentPath
     );
     lines.push(
-      `${indent}- [${topic.title}](${absoluteUrl}): ${topic.description}`
+      `${indent}- [${topic.title}](${relativeUrl}): ${topic.description}`
     );
     if (topic.kind === "parent") {
       lines.push(
-        ...renderTopicRouterLinks(topic.children, baseUrl, indentLevel + 1)
+        ...renderTopicRouterLinks(
+          topic.children,
+          currentSegmentPath,
+          indentLevel + 1
+        )
       );
     }
   }
@@ -517,7 +541,6 @@ function renderTopicRouterLinks(
 
 function renderDocsFullRouter(
   product: Pick<ProductInfo, "name">,
-  baseUrl: string,
   topics: ResolvedTopic[]
 ): string {
   return [
@@ -527,13 +550,12 @@ function renderDocsFullRouter(
     "",
     "## Topics",
     "",
-    ...renderTopicRouterLinks(topics, baseUrl),
+    ...renderTopicRouterLinks(topics, []),
   ].join("\n");
 }
 
 function renderTopicSubRouter(
   product: Pick<ProductInfo, "name">,
-  baseUrl: string,
   parent: ResolvedParentTopic
 ): string {
   return [
@@ -543,7 +565,7 @@ function renderTopicSubRouter(
     "",
     "## Topics",
     "",
-    ...renderTopicRouterLinks(parent.children, baseUrl),
+    ...renderTopicRouterLinks(parent.children, parent.segmentPath),
   ].join("\n");
 }
 
@@ -625,7 +647,7 @@ async function writeTopicTree(
     await mkdir(path.dirname(filePath), { recursive: true });
 
     if (topic.kind === "parent") {
-      await writeFile(filePath, renderTopicSubRouter(product, baseUrl, topic));
+      await writeFile(filePath, renderTopicSubRouter(product, topic));
       await writeTopicTree(
         topic.children,
         product,
@@ -713,7 +735,7 @@ export async function generateLLMFullFiles(
   );
   await writeFile(
     path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
-    renderDocsFullRouter(config.product, baseUrl, resolvedTopics)
+    renderDocsFullRouter(config.product, resolvedTopics)
   );
 
   await writeTopicTree(

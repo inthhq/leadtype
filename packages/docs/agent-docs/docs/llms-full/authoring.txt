@@ -4,5 +4,5 @@
 
 ## Topics
 
-- [Components](https://example.invalid/@inth/docs/docs/llms-full/authoring/components.txt): React MDX component adapters.
-- [Remark](https://example.invalid/@inth/docs/docs/llms-full/authoring/remark.txt): Default plugins and conversion helpers.
+- [Components](./authoring/components.txt): React MDX component adapters.
+- [Remark](./authoring/remark.txt): Default plugins and conversion helpers.
