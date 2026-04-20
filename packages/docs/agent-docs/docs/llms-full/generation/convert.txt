@@ -1,0 +1,88 @@
+# @inth/docs Convert Full Context
+
+> MDX-to-markdown conversion APIs.
+
+## Included Pages
+
+- [Convert](https://example.invalid/@inth/docs/docs/convert): How to convert MDX docs into Markdown with @inth/docs/convert.
+
+## Content
+
+# Convert
+URL: https://example.invalid/@inth/docs/docs/convert
+How to convert MDX docs into Markdown with @inth/docs/convert.
+
+# Convert
+
+The `@inth/docs/convert` entrypoint provides three main APIs:
+
+* `convertMdxFile`
+* `convertSingleMdxFile`
+* `convertAllMdx`
+
+Import them from:
+
+```ts
+import { convertAllMdx, convertMdxFile } from "@inth/docs/convert";
+```
+
+## Main Use Cases
+
+### Convert one file in memory
+
+Use `convertMdxFile` when you need the rendered markdown string plus the resolved frontmatter.
+
+```ts
+const result = await convertMdxFile(
+  "docs/guides/quickstart.mdx",
+  defaultRemarkPlugins,
+  false
+);
+```
+
+### Convert a single file to disk
+
+Use `convertSingleMdxFile` when you already know the source path and output path.
+
+### Convert an entire docs tree
+
+Use `convertAllMdx` for batch conversion:
+
+```ts
+await convertAllMdx({
+  srcDir: "content",
+  outDir: "public",
+  remarkPlugins: defaultRemarkPlugins,
+  enrichFrontmatterFromGit: true,
+});
+```
+
+## Important Config
+
+* `srcDir`: root directory containing `.mdx` files.
+* `outDir`: destination for generated `.md` files.
+* `remarkPlugins`: additional unified plugins, usually `defaultRemarkPlugins` from `@inth/docs/remark`.
+* `enrichFrontmatterFromGit`: adds git-derived metadata when available.
+
+## Behavior Notes
+
+* Frontmatter is preserved when present.
+* If a file has no frontmatter, the converter synthesizes `title` and sometimes `description` from the rendered markdown.
+* Markdown tables and Mermaid blocks are compacted after rendering for cleaner agent consumption.
+* Conversion is concurrent and optimized for large doc trees.
+
+## Recommended Pairing
+
+In most apps, pair conversion with:
+
+```ts
+import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+```
+
+Then pass:
+
+```ts
+remarkPlugins: [remarkInclude, ...defaultRemarkPlugins]
+```
+
+Use `remarkInclude` only when the source docs actually rely on include tags or partial expansion.

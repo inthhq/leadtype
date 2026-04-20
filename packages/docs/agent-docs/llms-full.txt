@@ -1,0 +1,9 @@
+# @inth/docs Full Context Router
+
+> Start with the product summary, then the curated docs summary, then one topic-specific full-context file if needed.
+
+## Recommended Flow
+
+- [Product Summary](https://example.invalid/@inth/docs/llms.txt): Short product-oriented overview of @inth/docs.
+- [Documentation Summary](https://example.invalid/@inth/docs/docs/llms.txt): Curated docs map for implementation work.
+- [Documentation Full Router](https://example.invalid/@inth/docs/docs/llms-full.txt): Topic-specific deep-context files.

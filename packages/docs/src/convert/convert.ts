@@ -10,6 +10,10 @@ import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
 import type { Pluggable, PluggableList } from "unified";
+import {
+  deriveDocContext,
+  resolvePlaceholderStrings,
+} from "../internal/docs-context";
 import { log } from "../internal/logger";
 
 const execFileAsync = promisify(execFile);
@@ -57,6 +61,7 @@ const MDX_EXTENSION_REGEX = /\.mdx$/;
 const TITLE_CASE_REGEX = /\b\w/g;
 const NAME_SEPARATOR_REGEX = /[-_]+/g;
 const LIST_PREFIX_REGEX = /^\d+\.\s/;
+const GENERIC_DOC_NAMES = new Set(["home", "index", "readme"]);
 
 type RemarkProcessor = ReturnType<typeof remark>;
 
@@ -109,10 +114,14 @@ function toYamlScalar(value: string): string {
 }
 
 function titleFromFileName(sourcePath: string): string {
-  const fileName = basename(sourcePath, ".mdx")
-    .replace(NAME_SEPARATOR_REGEX, " ")
-    .trim();
-  return fileName.replace(TITLE_CASE_REGEX, (match) => match.toUpperCase());
+  const fileName = basename(sourcePath, ".mdx");
+  const segment = GENERIC_DOC_NAMES.has(fileName.toLowerCase())
+    ? basename(dirname(sourcePath))
+    : fileName;
+  const normalizedName = segment.replace(NAME_SEPARATOR_REGEX, " ").trim();
+  return normalizedName.replace(TITLE_CASE_REGEX, (match) =>
+    match.toUpperCase()
+  );
 }
 
 /**
@@ -301,6 +310,27 @@ function applyEnrichment(
     .trim();
 }
 
+function resolveFrontmatterPlaceholders(
+  frontmatterBlock: string,
+  sourcePath: string
+): string {
+  if (frontmatterBlock.trim().length === 0) {
+    return frontmatterBlock;
+  }
+
+  const parsed = matter(`---\n${frontmatterBlock}\n---\n`);
+  const resolvedData = resolvePlaceholderStrings(
+    parsed.data,
+    deriveDocContext(sourcePath)
+  );
+  const restringified = matter.stringify("", resolvedData).trim();
+
+  return restringified
+    .replace(/^---\s*\n/, "")
+    .replace(/\n---\s*$/, "")
+    .trim();
+}
+
 export type ConvertResult = {
   markdown: string;
   frontmatter: string;
@@ -343,6 +373,11 @@ export async function convertMdxFile(
     const enrichment = await enrichFromGit(sourcePath);
     resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
   }
+
+  resolvedFrontmatter = resolveFrontmatterPlaceholders(
+    resolvedFrontmatter,
+    sourcePath
+  );
 
   const withFrontmatter = resolvedFrontmatter
     ? `---\n${resolvedFrontmatter}\n---\n${markdown}`

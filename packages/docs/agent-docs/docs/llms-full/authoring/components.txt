@@ -1,0 +1,88 @@
+# @inth/docs Components Full Context
+
+> React MDX component adapters.
+
+## Included Pages
+
+- [Components](https://example.invalid/@inth/docs/docs/components): How to use the React MDX component adapters exported by @inth/docs.
+
+## Content
+
+# Components
+URL: https://example.invalid/@inth/docs/docs/components
+How to use the React MDX component adapters exported by @inth/docs.
+
+# Components
+
+Import the default adapter map from the package root:
+
+```tsx
+import { mdxComponents } from "@inth/docs";
+```
+
+The root export is intentionally small. It gives consumers a ready-to-spread MDX component map and the individual component implementations used by that map.
+
+## Default Adapter Map
+
+`mdxComponents` includes:
+
+* `AutoTypeTable`
+* `Callout`
+* `Card`
+* `Cards`
+* `Mermaid`
+* `PackageCommandTabs`
+* `Selector`
+* `Step`
+* `Steps`
+* `Tab`
+* `Tabs`
+* `TypeTable`
+
+Use it like this:
+
+```tsx
+import { mdxComponents } from "@inth/docs";
+
+const components = {
+  ...mdxComponents,
+  Callout: MyCallout,
+};
+```
+
+Override individual entries rather than replacing the full map unless you want to own all component bindings.
+
+## Important Components
+
+### `PackageCommandTabs`
+
+Use for package-manager-specific install or run commands.
+
+```tsx
+<PackageCommandTabs command="@inth/docs" />
+<PackageCommandTabs
+  commands={{
+    npm: "npm install @inth/docs",
+    pnpm: "pnpm add @inth/docs",
+  }}
+  defaultManager="pnpm"
+/>
+```
+
+`command` accepts a package or CLI string and can include a `{pm}` placeholder. Use `commands` for per-manager overrides and `defaultManager` to choose the initial tab.
+
+### `TypeTable` and `AutoTypeTable`
+
+Use `TypeTable` for explicit prop or type rows you already know. Use `AutoTypeTable` when the docs should extract types from source files.
+
+`AutoTypeTable` is the most path-sensitive component in the set. If it needs to resolve project files, pair it with the matching remark plugin configuration and set a stable base path.
+
+### `Tabs`, `Tab`, `Steps`, `Step`
+
+These components are primarily authoring affordances in MDX. When the markdown conversion pipeline runs, their content is flattened into standard markdown so agents do not need JSX-aware renderers.
+
+## Guidance
+
+* Prefer the package root export for React doc-site rendering.
+* Override styling in the host app rather than forking the semantics.
+* If the goal is agent-readable markdown, read [Remark](/docs/remark) instead of reimplementing the JSX flattening rules.

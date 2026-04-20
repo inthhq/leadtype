@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 
@@ -22,6 +22,7 @@ const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
+const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
 
 export type SourceDoc = {
   title: string;
@@ -51,8 +52,38 @@ export type FullTopic = {
   slug: string;
   title: string;
   description: string;
+  /**
+   * Leaf topic: page prefixes (relative to `{outDir}/docs/`) whose markdown
+   * should be inlined into this topic's `.txt`. Mutually exclusive with
+   * `topics` — a topic is either a leaf (content) or a parent (router).
+   */
+  includePrefixes?: string[];
+  /**
+   * Parent topic: nested sub-topics. Generates a router `.txt` linking to
+   * each child, and each child's file lives under `{slug}/{childSlug}.txt`.
+   */
+  topics?: FullTopic[];
+};
+
+type ResolvedLeafTopic = {
+  kind: "leaf";
+  slug: string;
+  title: string;
+  description: string;
+  segmentPath: string[];
   includePrefixes: string[];
 };
+
+type ResolvedParentTopic = {
+  kind: "parent";
+  slug: string;
+  title: string;
+  description: string;
+  segmentPath: string[];
+  children: ResolvedTopic[];
+};
+
+type ResolvedTopic = ResolvedLeafTopic | ResolvedParentTopic;
 
 export type ProductInfo = {
   /** Product display name, e.g. "DSAR SDK" */
@@ -93,6 +124,59 @@ function titleize(input: string): string {
 
 function normalizeDescription(input: string): string {
   return input.replace(WHITESPACE_PATTERN, " ").trim();
+}
+
+function titleFromUrlPath(urlPath: string): string {
+  const segments = urlPath.split("/").filter(Boolean);
+  const lastSegment = segments.at(-1);
+  if (!lastSegment || lastSegment === "docs") {
+    return "Documentation";
+  }
+  return titleize(lastSegment);
+}
+
+function titleFromRelativePath(
+  relativePath: string,
+  extension: ".md" | ".mdx"
+): string {
+  const fileName = path.basename(relativePath, extension);
+  const parentSegment = path.basename(path.dirname(relativePath));
+  let segment = fileName;
+
+  if (GENERIC_DOC_TITLES.has(fileName.toLowerCase())) {
+    segment =
+      parentSegment && parentSegment !== "." ? parentSegment : "documentation";
+  }
+
+  return titleize(segment);
+}
+
+function resolveLinkTitle(link: CuratedLink, sourceDoc?: SourceDoc): string {
+  if (link.title) {
+    return link.title;
+  }
+
+  const sourceTitle = sourceDoc?.title?.trim();
+  if (sourceTitle && !GENERIC_DOC_TITLES.has(sourceTitle.toLowerCase())) {
+    return sourceTitle;
+  }
+
+  return titleFromUrlPath(sourceDoc?.urlPath ?? link.urlPath);
+}
+
+function resolveLinkDescription(
+  link: CuratedLink,
+  title: string,
+  sourceDoc?: SourceDoc
+): string {
+  const sourceDescription = normalizeDescription(sourceDoc?.description ?? "");
+  if (link.description) {
+    return link.description;
+  }
+  if (sourceDescription) {
+    return sourceDescription;
+  }
+  return `Entry point for ${title} documentation.`;
 }
 
 function normalizeBaseUrl(baseUrl?: string): string {
@@ -200,7 +284,10 @@ async function readSourceDocs(
       const parsed = matter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
-        titleize(path.basename(relativePath, path.extname(relativePath))) ||
+        titleFromRelativePath(
+          relativePath,
+          path.extname(relativePath) as ".md" | ".mdx"
+        ) ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
@@ -251,7 +338,7 @@ async function readMarkdownDocs(
       const parsed = matter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
-        titleize(path.basename(relativePath, ".md")) ||
+        titleFromRelativePath(relativePath, ".md") ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
@@ -278,15 +365,10 @@ function resolveCuratedLink(
   baseUrl: string
 ): RenderedLink {
   const sourceDoc = sourceDocs.get(link.urlPath);
+  const title = resolveLinkTitle(link, sourceDoc);
   return {
-    title:
-      link.title ??
-      sourceDoc?.title ??
-      titleize(
-        link.urlPath.split("/").filter(Boolean).at(-1) ?? "documentation"
-      ),
-    description:
-      link.description ?? sourceDoc?.description ?? "No description provided.",
+    title,
+    description: resolveLinkDescription(link, title, sourceDoc),
     absoluteUrl: toAbsoluteUrl(sourceDoc?.urlPath ?? link.urlPath, baseUrl),
   };
 }
@@ -347,17 +429,120 @@ Read the summary links first. If the summary is not enough, choose the smallest 
 ${sections.join("\n\n")}`;
 }
 
+function resolveTopics(
+  topics: FullTopic[],
+  parentPath: string[] = []
+): ResolvedTopic[] {
+  const seenSlugs = new Set<string>();
+
+  return topics.map((topic) => {
+    const slug = assertValidTopicSlug(topic.slug);
+    const slugKey = slug.toLowerCase();
+
+    if (seenSlugs.has(slugKey)) {
+      const scope = parentPath.join("/") || "root";
+      throw new Error(
+        `Duplicate topic slug "${slug}" under "${scope}". Topic slugs must be unique among siblings.`
+      );
+    }
+    seenSlugs.add(slugKey);
+
+    const segmentPath = [...parentPath, slug];
+
+    const hasChildren = topic.topics && topic.topics.length > 0;
+    const hasLeafPrefixes =
+      topic.includePrefixes && topic.includePrefixes.length > 0;
+
+    if (hasChildren && hasLeafPrefixes) {
+      throw new Error(
+        `Topic "${segmentPath.join("/")}" has both \`topics\` and \`includePrefixes\`. A topic must be either a parent (router) or a leaf (content), not both.`
+      );
+    }
+    if (!(hasChildren || hasLeafPrefixes)) {
+      throw new Error(
+        `Topic "${segmentPath.join("/")}" has neither \`topics\` nor \`includePrefixes\`. A topic must declare content (\`includePrefixes\`) or sub-topics (\`topics\`).`
+      );
+    }
+
+    if (hasChildren) {
+      return {
+        kind: "parent",
+        slug,
+        title: topic.title,
+        description: topic.description,
+        segmentPath,
+        // biome-ignore lint/style/noNonNullAssertion: checked above via hasChildren
+        children: resolveTopics(topic.topics!, segmentPath),
+      };
+    }
+    return {
+      kind: "leaf",
+      slug,
+      title: topic.title,
+      description: topic.description,
+      segmentPath,
+      // biome-ignore lint/style/noNonNullAssertion: checked above via hasLeafPrefixes
+      includePrefixes: topic.includePrefixes!,
+    };
+  });
+}
+
+function topicFilePath(segmentPath: string[]): string {
+  return `/docs/llms-full/${segmentPath.join("/")}.txt`;
+}
+
+function routerFilePath(segmentPath: string[]): string {
+  return segmentPath.length > 0
+    ? `/docs/llms-full/${segmentPath.join("/")}.txt`
+    : "/docs/llms-full.txt";
+}
+
+function toRelativeRouterLink(
+  fromSegmentPath: string[],
+  toSegmentPath: string[]
+): string {
+  const fromFilePath = routerFilePath(fromSegmentPath);
+  const targetFilePath = topicFilePath(toSegmentPath);
+  const relativePath = path.posix.relative(
+    path.posix.dirname(fromFilePath),
+    targetFilePath
+  );
+
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+}
+
+function renderTopicRouterLinks(
+  topics: ResolvedTopic[],
+  currentSegmentPath: string[],
+  indentLevel = 0
+): string[] {
+  const indent = "  ".repeat(indentLevel);
+  const lines: string[] = [];
+  for (const topic of topics) {
+    const relativeUrl = toRelativeRouterLink(
+      currentSegmentPath,
+      topic.segmentPath
+    );
+    lines.push(
+      `${indent}- [${topic.title}](${relativeUrl}): ${topic.description}`
+    );
+    if (topic.kind === "parent") {
+      lines.push(
+        ...renderTopicRouterLinks(
+          topic.children,
+          currentSegmentPath,
+          indentLevel + 1
+        )
+      );
+    }
+  }
+  return lines;
+}
+
 function renderDocsFullRouter(
   product: Pick<ProductInfo, "name">,
-  baseUrl: string,
-  topics: FullTopic[]
+  topics: ResolvedTopic[]
 ): string {
-  const links = topics.map((topic) => ({
-    title: `${topic.title} Full Context`,
-    description: topic.description,
-    absoluteUrl: toAbsoluteUrl(`/docs/llms-full/${topic.slug}.txt`, baseUrl),
-  }));
-
   return [
     `# ${product.name} Documentation Full Context`,
     "",
@@ -365,7 +550,22 @@ function renderDocsFullRouter(
     "",
     "## Topics",
     "",
-    ...links.map(renderLink),
+    ...renderTopicRouterLinks(topics, []),
+  ].join("\n");
+}
+
+function renderTopicSubRouter(
+  product: Pick<ProductInfo, "name">,
+  parent: ResolvedParentTopic
+): string {
+  return [
+    `# ${product.name} ${parent.title} Full Context`,
+    "",
+    `> ${parent.description}`,
+    "",
+    "## Topics",
+    "",
+    ...renderTopicRouterLinks(parent.children, parent.segmentPath),
   ].join("\n");
 }
 
@@ -396,7 +596,7 @@ function renderRootFullRouter(
 
 function renderTopicDocument(
   product: Pick<ProductInfo, "name">,
-  topic: FullTopic,
+  topic: ResolvedLeafTopic,
   docs: MarkdownDoc[]
 ): string {
   const topicDocs = docs.filter((doc) =>
@@ -405,7 +605,8 @@ function renderTopicDocument(
   const links = topicDocs.map((doc) => ({
     title: doc.title,
     absoluteUrl: doc.absoluteUrl,
-    description: doc.description || "No description provided.",
+    description:
+      doc.description || `Entry point for ${doc.title} documentation.`,
   }));
   const contentBlocks = topicDocs.map((doc) => {
     const description = doc.description ? `${doc.description}\n` : "";
@@ -428,6 +629,40 @@ ${doc.content}`.trim();
     "",
     contentBlocks.join("\n\n"),
   ].join("\n");
+}
+
+async function writeTopicTree(
+  topics: ResolvedTopic[],
+  product: Pick<ProductInfo, "name">,
+  baseUrl: string,
+  markdownDocs: MarkdownDoc[],
+  llmsFullDir: string
+): Promise<void> {
+  for (const topic of topics) {
+    const filePath = path.join(
+      llmsFullDir,
+      ...topic.segmentPath.slice(0, -1),
+      `${topic.slug}.txt`
+    );
+    await mkdir(path.dirname(filePath), { recursive: true });
+
+    if (topic.kind === "parent") {
+      await writeFile(filePath, renderTopicSubRouter(product, topic));
+      await writeTopicTree(
+        topic.children,
+        product,
+        baseUrl,
+        markdownDocs,
+        llmsFullDir
+      );
+      continue;
+    }
+
+    await writeFile(
+      filePath,
+      renderTopicDocument(product, topic, markdownDocs)
+    );
+  }
 }
 
 /**
@@ -481,34 +716,33 @@ export async function generateLLMFullFiles(
     );
   }
 
-  // Validate slugs up front — they're interpolated into both URLs and file
-  // paths, so values with `/`, `..`, whitespace, etc. are a security footgun.
-  const topics = config.topics.map((topic) => ({
-    ...topic,
-    slug: assertValidTopicSlug(topic.slug),
-  }));
+  // Resolve the (possibly nested) topic tree. Slugs are validated here —
+  // they're interpolated into both URLs and file paths, so values with `/`,
+  // `..`, whitespace, etc. are a security footgun.
+  const resolvedTopics = resolveTopics(config.topics);
 
   // Only advertise the docs summary link if that file is guaranteed to exist.
   const hasDocsSummary = existsSync(
     path.join(outDir, DOCS_DIRNAME, "llms.txt")
   );
 
-  await mkdir(path.join(outDir, DOCS_DIRNAME, "llms-full"), {
-    recursive: true,
-  });
+  const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
+  await rm(llmsFullDir, { recursive: true, force: true });
+  await mkdir(llmsFullDir, { recursive: true });
   await writeFile(
     path.join(outDir, "llms-full.txt"),
     renderRootFullRouter(config.product, baseUrl, hasDocsSummary)
   );
   await writeFile(
     path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
-    renderDocsFullRouter(config.product, baseUrl, topics)
+    renderDocsFullRouter(config.product, resolvedTopics)
   );
 
-  for (const topic of topics) {
-    await writeFile(
-      path.join(outDir, DOCS_DIRNAME, "llms-full", `${topic.slug}.txt`),
-      renderTopicDocument(config.product, topic, markdownDocs)
-    );
-  }
+  await writeTopicTree(
+    resolvedTopics,
+    config.product,
+    baseUrl,
+    markdownDocs,
+    llmsFullDir
+  );
 }
