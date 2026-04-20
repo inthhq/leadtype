@@ -8,7 +8,7 @@ description: "Install and run your first command."
 <Steps>
   <Step title="Install">Install the package.</Step>
   <Step title="Import">Import `convertAllMdx` from `@inth/docs/convert`.</Step>
-  <Step title="Build">Run `bun run build`.</Step>
+  <Step title="Build">Run `bun run pipeline:build`.</Step>
 </Steps>
 
 <PackageCommandTabs command="{pm} install @inth/docs" />
@@ -18,6 +18,6 @@ description: "Install and run your first command."
     Basic usage is one call to `convertAllMdx({ srcDir, outDir, remarkPlugins })`.
   </Tab>
   <Tab value="Advanced">
-    Pass custom remark plugins alongside `defaultRemarkPlugins` for extensions.
+    Pass custom remark plugins alongside `defaultRemarkPlugins` for extensions and set a stable `basePath` when `AutoTypeTable` needs to resolve project files.
   </Tab>
 </Tabs>

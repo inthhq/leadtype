@@ -1,0 +1,70 @@
+---
+title: "Components Fixture"
+description: "Render the runtime-facing adapters from @inth/docs in one browser route."
+---
+
+# Components Fixture
+
+<Callout variant="success" title="Runtime fixture">
+  This page intentionally exercises the browser-facing adapters without replacing them with shadcn variants.
+</Callout>
+
+<Cards>
+  <Card title="Quickstart route" description="Internal docs route rendered by the package card component." href="/docs/guides/quickstart" />
+  <Card title="External reference" description="External links should preserve safe target and rel attributes." href="https://example.com/docs" />
+</Cards>
+
+<Steps>
+  <Step title="Author MDX">
+    Start with semantic components such as `Callout`, `Tabs`, `Cards`, and `TypeTable`.
+  </Step>
+  <Step title="Render in TanStack Start">
+    Import the `.mdx` file directly and provide `mdxComponents` through the shared runtime map.
+  </Step>
+  <Step title="Validate separately">
+    Keep `AutoTypeTable` in pipeline coverage where source extraction actually happens.
+  </Step>
+</Steps>
+
+<PackageCommandTabs command="{pm} add @inth/docs" />
+
+<Tabs items={["Overview", "Tables", "Pipeline note"]}>
+  <Tab value="Overview">
+    This tabset proves the package adapters hydrate correctly inside the demo app.
+  </Tab>
+  <Tab value="Tables">
+    `TypeTable` is safe to render live because all of its data is already present in the MDX payload.
+  </Tab>
+  <Tab value="Pipeline note">
+    `AutoTypeTable` is not shown live here because extraction depends on a stable build-time file system base path.
+  </Tab>
+</Tabs>
+
+<Mermaid chart={`flowchart LR
+  A[MDX fixture] --> B[mdxComponents]
+  B --> C[TanStack Start route]
+  C --> D[Playwright coverage]
+`} />
+
+<TypeTable
+  type={{
+    command: {
+      type: "string",
+      description: "Command template with a {pm} placeholder.",
+      required: true,
+    },
+    commands: {
+      type: "Record<PackageManager, string>",
+      description: "Explicit per-manager overrides when templates are not enough.",
+    },
+    defaultManager: {
+      type: "\"npm\" | \"pnpm\" | \"yarn\" | \"bun\"",
+      description: "The tab that should be active on first render.",
+      default: "npm",
+    },
+  }}
+/>
+
+<Callout variant="canary" title="Pipeline-only coverage">
+  `AutoTypeTable` is verified by the markdown conversion fixture at `content/docs/guides/auto-type-table-fixture.mdx` and by the dedicated pipeline test script.
+</Callout>

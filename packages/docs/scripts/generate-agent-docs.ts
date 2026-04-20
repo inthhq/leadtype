@@ -8,11 +8,12 @@ import { defaultRemarkPlugins } from "../src/remark/index";
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC_DIR = join(PACKAGE_ROOT, "agent-docs-src");
 const OUT_DIR = join(PACKAGE_ROOT, "agent-docs");
-const baseUrl = process.env.INTH_DOCS_AGENT_BASE_URL;
+const baseUrl =
+  process.env.INTH_DOCS_AGENT_BASE_URL ?? "https://example.invalid/@inth/docs";
 
-if (!baseUrl) {
-  throw new Error(
-    "INTH_DOCS_AGENT_BASE_URL must be set before generating packaged agent docs."
+if (!process.env.INTH_DOCS_AGENT_BASE_URL) {
+  process.stdout.write(
+    "INTH_DOCS_AGENT_BASE_URL not set; using https://example.invalid/@inth/docs for local package builds.\n"
   );
 }
 

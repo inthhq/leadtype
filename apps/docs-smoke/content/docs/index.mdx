@@ -1,16 +1,98 @@
 ---
-title: "Smoke SDK"
-description: "Welcome to the Smoke SDK docs. Exercise @inth/docs end-to-end."
+title: "@inth/docs"
+description: "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting."
 ---
 
-# Smoke SDK
+# @inth/docs
 
-<Callout variant="info" title="Welcome">
-  This is a fixture page that mirrors how consumer apps integrate with `@inth/docs`.
-</Callout>
+`@inth/docs` has five package surfaces:
 
-Pick your path below.
+<TypeTable
+  type={{
+    "@inth/docs": {
+      type: "runtime",
+      description: "React adapters and `mdxComponents` for browser-rendered MDX.",
+      required: true,
+    },
+    "@inth/docs/remark": {
+      type: "pipeline",
+      description: "remark plugins and `defaultRemarkPlugins` for MDX processing.",
+      required: true,
+    },
+    "@inth/docs/convert": {
+      type: "pipeline",
+      description: "`convertMdxFile`, `convertSingleMdxFile`, and `convertAllMdx`.",
+      required: true,
+    },
+    "@inth/docs/llm": {
+      type: "pipeline",
+      description: "Generate `llms.txt` and topic-scoped agent context files.",
+    },
+    "@inth/docs/lint": {
+      type: "pipeline",
+      description: "Validation APIs and the `inth-docs-lint` CLI.",
+    },
+  }}
+/>
+
+## Install
+
+<PackageCommandTabs command="{pm} install @inth/docs" />
+
+## Runtime integration
+
+Use the root package when you want to render authored MDX in a React app.
+
+```tsx
+import { mdxComponents } from "@inth/docs";
+
+const components = {
+  ...mdxComponents,
+};
+```
+
+The root export is the runtime contract. It is not tied to shadcn, TanStack Start, or any specific docs shell.
+
+## Convert MDX
+
+Use the conversion and remark packages when you want markdown output instead of browser rendering.
+
+```ts
+import { convertAllMdx } from "@inth/docs/convert";
+import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+
+await convertAllMdx({
+  srcDir: "content",
+  outDir: "public",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+});
+```
+
+## What to open in this app
 
 <Cards>
-  <Card title="Quickstart" description="Install and send your first request." href="/docs/guides/quickstart" />
+  <Card
+    title="Quickstart"
+    description="Shows the basic conversion flow plus hydrated `Tabs` and `PackageCommandTabs`."
+    href="/docs/guides/quickstart"
+  />
+  <Card
+    title="Components Fixture"
+    description="Shows the runtime adapters rendered together through `mdxComponents`."
+    href="/docs/guides/components-fixture"
+  />
 </Cards>
+
+## Validation layers
+
+<Steps>
+  <Step title="Package tests">
+    Cover semantic HTML and safe runtime behavior in `packages/docs/src/**/*.test.ts*`.
+  </Step>
+  <Step title="Pipeline fixtures">
+    Cover conversion, extraction, and LLM output in `apps/docs-smoke/scripts` and `apps/docs-smoke/content`.
+  </Step>
+  <Step title="Browser coverage">
+    Cover hydration and interactive adapters in the Playwright suite for this app.
+  </Step>
+</Steps>
