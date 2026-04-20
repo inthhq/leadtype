@@ -221,7 +221,11 @@ function looksLikeDocsUrlCandidate(value: string, field?: string): boolean {
 }
 
 function looksLikeMarkdownUrlCandidate(value: string): boolean {
-  return value.startsWith("/docs/") || hasDocPlaceholder(value);
+  if (value.startsWith("/docs/")) {
+    return true;
+  }
+
+  return hasDocPlaceholder(value) && value.includes("/docs/");
 }
 
 function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {

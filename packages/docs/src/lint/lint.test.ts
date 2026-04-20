@@ -323,4 +323,33 @@ title: Overview
       )
     ).toHaveLength(1);
   });
+
+  it("ignores placeholder-based external markdown links", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+---
+[Spec]({baseUrl}/openapi.json)
+[API](https://example/{version})
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "guides/overview.mdx",
+          kind: "content",
+          rule: "unresolved-placeholder",
+        }),
+      ])
+    );
+  });
 });
