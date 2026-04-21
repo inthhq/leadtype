@@ -19,9 +19,17 @@ export default defineConfig({
   onSuccess: async () => {
     const { chmod, readFile, writeFile } = await import("node:fs/promises");
     const cli = "dist/lint/cli.js";
+    const components = "dist/components/index.js";
     const contents = await readFile(cli, "utf8");
     if (!contents.startsWith("#!")) {
       await writeFile(cli, `#!/usr/bin/env node\n${contents}`);
+    }
+    const componentContents = await readFile(components, "utf8");
+    // Consumers import the bundled root entry in RSC-aware apps, so the built
+    // barrel needs a client boundary even though only some source files use
+    // hooks directly.
+    if (!componentContents.startsWith('"use client";')) {
+      await writeFile(components, `"use client";\n${componentContents}`);
     }
     await chmod(cli, 0o755);
   },

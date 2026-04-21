@@ -1,4 +1,9 @@
 {
   "title": "Docs",
-  "pages": ["index", "guides/quickstart"]
+  "pages": [
+    "index",
+    "guides/quickstart",
+    "guides/components-fixture",
+    "guides/auto-type-table-fixture"
+  ]
 }

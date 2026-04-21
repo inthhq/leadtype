@@ -4,7 +4,10 @@
  */
 
 import { join } from "node:path";
-import { generateLLMFullFiles, generateLLMSummaries } from "@inth/docs/llm";
+import {
+  generateLLMFullFiles,
+  generateLLMSummaries,
+} from "../../../packages/docs/src/llm/index.ts";
 
 const scriptsRoot = process.cwd();
 const srcDir = join(scriptsRoot, "content");
@@ -29,7 +32,10 @@ await generateLLMSummaries({
     {
       title: "Guides",
       description: "Step-by-step walkthroughs.",
-      links: [{ urlPath: "/docs/guides/quickstart" }],
+      links: [
+        { urlPath: "/docs/guides/quickstart" },
+        { urlPath: "/docs/guides/components-fixture" },
+      ],
     },
   ],
 });

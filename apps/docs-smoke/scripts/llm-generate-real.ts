@@ -9,7 +9,10 @@
  */
 
 import { join } from "node:path";
-import { generateLLMFullFiles, generateLLMSummaries } from "@inth/docs/llm";
+import {
+  generateLLMFullFiles,
+  generateLLMSummaries,
+} from "../../../packages/docs/src/llm/index.ts";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = FIXTURE_DIR;

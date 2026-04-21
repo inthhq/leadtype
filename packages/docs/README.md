@@ -29,6 +29,16 @@ await convertAllMdx({
 });
 ```
 
+## Validation Layers
+
+This package is verified in three distinct layers:
+
+- Package unit tests in `packages/docs/src/**/*.test.ts*` cover pure library behavior such as semantic markup and safe-link handling.
+- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` exercise MDX conversion, LLM generation, and `AutoTypeTable`.
+- The live consumer demo in `apps/docs-smoke` renders the exported `mdxComponents` inside a TanStack Start app and provides Playwright browser coverage.
+
+Use the demo app as the reference integration when you need to see how a consumer should host and style the package in practice.
+
 ## Generate Agent Docs
 
 Run:
@@ -53,3 +63,4 @@ The published package includes:
 These files are intended for coding agents and other tooling that need small, topic-scoped references instead of a full docs site.
 
 Set `INTH_DOCS_AGENT_BASE_URL` before generating publishable agent docs so the bundled routers point at the hosted docs base.
+When the variable is absent, local builds fall back to `https://example.invalid/@inth/docs` so `bun run build` still succeeds in a clean workspace.

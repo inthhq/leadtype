@@ -16,7 +16,8 @@
       "!**/content-fixtures",
       "!**/dist",
       "!**/public",
-      "!**/public-real"
+      "!**/public-real",
+      "!**/routeTree.gen.ts"
     ]
   },
   "overrides": [

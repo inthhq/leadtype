@@ -5,13 +5,32 @@
  */
 
 import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { convertAllMdx } from "@inth/docs/convert";
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  convertAllMdx,
+  type MdxToMarkdownConfig,
+} from "../../../packages/docs/src/convert/index.ts";
+import {
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
+} from "../../../packages/docs/src/remark/index.ts";
 
-const scriptsRoot = process.cwd();
+const scriptsRoot = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(scriptsRoot, "..", "..");
 const srcDir = join(scriptsRoot, "content");
 const outDir = join(scriptsRoot, "public");
+const typeTableRemarkPlugin: NonNullable<
+  MdxToMarkdownConfig["remarkPlugins"]
+>[number] = [remarkTypeTableToMarkdown, { basePath: repoRoot }];
+const remarkPlugins: NonNullable<MdxToMarkdownConfig["remarkPlugins"]> = [
+  remarkInclude,
+  ...defaultRemarkPlugins.filter(
+    (plugin) => plugin !== remarkTypeTableToMarkdown
+  ),
+  typeTableRemarkPlugin,
+];
 
 if (!existsSync(srcDir)) {
   process.stderr.write(`Source directory not found: ${srcDir}\n`);
@@ -22,7 +41,7 @@ process.stdout.write(`Converting MDX from ${srcDir} → ${outDir}\n`);
 await convertAllMdx({
   srcDir,
   outDir,
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  remarkPlugins,
   enrichFrontmatterFromGit: true,
 });
 process.stdout.write("MDX conversion complete\n");

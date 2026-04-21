@@ -705,17 +705,14 @@ function processAutoTypeTableNode(
     }
   } else {
     // Fallback to simple info table if extraction failed
-    const infoTable: Table = u(
-      "table",
-      {
-        align: ["left", "left"],
-      },
+    const infoTable = createTable(
+      ["Property", "Value"],
       [
-        createTableRow(["Property", "Value"]),
-        createTableRow(["Type Name", `\`${autoTypeName}\``]),
-        createTableRow(["Source Path", `\`${autoTypePath}\``]),
-      ]
-    ) as Table;
+        ["Type Name", `\`${autoTypeName}\``],
+        ["Source Path", `\`${autoTypePath}\``],
+      ],
+      ["left", "left"]
+    );
 
     content.push(infoTable);
 

@@ -28,6 +28,35 @@ const components = {
 };
 ```
 
+## Live Example App
+
+The repo includes a canonical consumer demo at `apps/docs-smoke`.
+
+- Renders real `.mdx` fixture files through the package's exported `mdxComponents`.
+- Uses TanStack Start for SSR and hydration coverage.
+- Shows extracted `AutoTypeTable` output while keeping pipeline fixtures in the validation path.
+
+Local workflow:
+
+```bash
+bun install
+bun run demo:dev
+```
+
+Pipeline and browser checks:
+
+```bash
+bun run --filter docs-smoke pipeline:build
+bun run --filter docs-smoke pipeline:test
+bun run --filter docs-smoke test:e2e
+```
+
+Validation layers:
+
+- Package unit tests in `packages/docs/src/**/*.test.ts*` cover component semantics and pure library behavior.
+- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` cover MDX conversion, LLM generation, and `AutoTypeTable`.
+- The TanStack Start demo app in `apps/docs-smoke/src` covers real browser rendering and hydration.
+
 ### Convert MDX to markdown
 
 ```ts
