@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const isCI = Boolean(process.env.CI);
+
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /.*\.e2e\.ts/,
@@ -11,7 +13,7 @@ export default defineConfig({
   webServer: {
     command: "bun run dev",
     port: 3000,
-    reuseExistingServer: process.env.CI !== "true",
+    reuseExistingServer: !isCI,
   },
   projects: [
     {

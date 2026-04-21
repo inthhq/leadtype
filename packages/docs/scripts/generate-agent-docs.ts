@@ -10,9 +10,17 @@ const SRC_DIR = join(PACKAGE_ROOT, "agent-docs-src");
 const OUT_DIR = join(PACKAGE_ROOT, "agent-docs");
 const baseUrl =
   process.env.INTH_DOCS_AGENT_BASE_URL ?? "https://example.invalid/@inth/docs";
+const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
 
 if (!process.env.INTH_DOCS_AGENT_BASE_URL) {
-  process.stdout.write(
+  if (isCI) {
+    process.stderr.write(
+      "INTH_DOCS_AGENT_BASE_URL must be set in CI environments.\n"
+    );
+    process.exit(1);
+  }
+
+  process.stderr.write(
     "INTH_DOCS_AGENT_BASE_URL not set; using https://example.invalid/@inth/docs for local package builds.\n"
   );
 }

@@ -12,6 +12,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const scenarioContent = {
+  consumer: {
+    description:
+      "Use `mdxComponents` as your starting map and style around the exported semantics rather than replacing everything.",
+    title: "Consumer app",
+  },
+  pipeline: {
+    description:
+      "`AutoTypeTable` is validated during markdown conversion with a stable `basePath`, not in the live browser renderer.",
+    title: "Pipeline test",
+  },
+  router: {
+    description:
+      "The app shell uses TanStack Start routes and shadcn-style cards, while the docs body renders the package adapters directly.",
+    title: "Router shell",
+  },
+} as const;
+
 export const Route = createFileRoute("/playground")({
   component: PlaygroundRoute,
 });
@@ -40,44 +58,33 @@ function PlaygroundRoute() {
                 { label: "Router shell", value: "router" },
               ]}
             >
-              {(activeValue) => (
-                <div className="rounded-[1.25rem] border border-border/70 bg-background/70 p-5">
-                  {activeValue === "consumer" ? (
-                    <div className="space-y-2">
-                      <h2 className="font-semibold text-lg">Consumer app</h2>
-                      <p className="text-muted-foreground text-sm leading-7">
-                        Use `mdxComponents` as your starting map and style
-                        around the exported semantics rather than replacing
-                        everything.
-                      </p>
-                    </div>
-                  ) : null}
-                  {activeValue === "pipeline" ? (
-                    <div className="space-y-2">
-                      <h2 className="font-semibold text-lg">Pipeline test</h2>
-                      <p className="text-muted-foreground text-sm leading-7">
-                        `AutoTypeTable` is validated during markdown conversion
-                        with a stable `basePath`, not in the live browser
-                        renderer.
-                      </p>
-                    </div>
-                  ) : null}
-                  {activeValue === "router" ? (
-                    <div className="space-y-2">
-                      <h2 className="font-semibold text-lg">Router shell</h2>
-                      <p className="text-muted-foreground text-sm leading-7">
-                        The app shell uses TanStack Start routes and
-                        shadcn-style cards, while the docs body renders the
-                        package adapters directly.
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              )}
+              {(activeValue) => <ScenarioPanel activeValue={activeValue} />}
             </Selector>
           </CardContent>
         </Card>
       </main>
+    </div>
+  );
+}
+
+function ScenarioPanel({ activeValue }: { activeValue: string }) {
+  const content =
+    activeValue in scenarioContent
+      ? scenarioContent[activeValue as keyof typeof scenarioContent]
+      : null;
+
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-[1.25rem] border border-border/70 bg-background/70 p-5">
+      <div className="space-y-2">
+        <h2 className="font-semibold text-lg">{content.title}</h2>
+        <p className="text-muted-foreground text-sm leading-7">
+          {content.description}
+        </p>
+      </div>
     </div>
   );
 }

@@ -2,13 +2,14 @@ import mdx from "@mdx-js/rollup";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
+import type { Root } from "mdast";
 import { nitro } from "nitro/vite";
 import remarkFrontmatter from "remark-frontmatter";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
 function stripYamlFrontmatter() {
-  return (tree: { children?: Array<{ type?: string }> }) => {
+  return (tree: Root) => {
     if (!tree.children) {
       return tree;
     }

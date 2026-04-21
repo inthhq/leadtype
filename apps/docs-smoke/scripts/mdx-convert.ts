@@ -5,7 +5,8 @@
  */
 
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   convertAllMdx,
   type MdxToMarkdownConfig,
@@ -16,7 +17,7 @@ import {
   remarkTypeTableToMarkdown,
 } from "../../../packages/docs/src/remark/index.ts";
 
-const scriptsRoot = process.cwd();
+const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(scriptsRoot, "..", "..");
 const srcDir = join(scriptsRoot, "content");
 const outDir = join(scriptsRoot, "public");

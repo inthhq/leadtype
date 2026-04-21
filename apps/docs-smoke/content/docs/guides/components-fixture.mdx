@@ -9,6 +9,44 @@ description: "Render the runtime-facing adapters from @inth/docs in one browser 
   This page intentionally exercises the browser-facing adapters without replacing them with shadcn variants.
 </Callout>
 
+## Authoring Example
+
+```mdx
+<Callout variant="success" title="Runtime fixture">
+  Render the exported adapters through your shared `mdxComponents` map.
+</Callout>
+
+<PackageCommandTabs command="{pm} add @inth/docs" />
+
+<Tabs items={["Overview", "Types"]}>
+  <Tab value="Overview">Tabs hydrate in the browser.</Tab>
+  <Tab value="Types">Use `TypeTable` when the type data already exists in MDX.</Tab>
+</Tabs>
+
+<Mermaid chart={`flowchart LR
+  A[MDX] --> B[mdxComponents]
+  B --> C[Rendered route]
+`} />
+
+<TypeTable
+  type={{
+    command: {
+      type: "string",
+      description: "Command template with a {pm} placeholder.",
+      required: true,
+    },
+  }}
+/>
+
+<AutoTypeTable
+  name="PipelineExampleOptions"
+  path="./apps/docs-smoke/type-fixtures/pipeline-example.ts"
+  type={pipelineExampleType}
+/>
+```
+
+`AutoTypeTable` still needs extracted `type` data from the route or conversion pipeline. This demo renders that extracted output on `/docs`.
+
 <Cards>
   <Card title="Quickstart route" description="Internal docs route rendered by the package card component." href="/docs/guides/quickstart" />
   <Card title="External reference" description="External links should preserve safe target and rel attributes." href="https://example.com/docs" />

@@ -21,6 +21,7 @@ export function SiteHeader() {
         <nav className="flex flex-wrap gap-1 text-sm">
           {demoRoutes.map((route) => (
             <Link
+              aria-current={pathname === route.to ? "page" : undefined}
               className={cn(
                 "rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
                 pathname === route.to && "bg-secondary text-foreground"

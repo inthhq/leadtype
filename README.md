@@ -32,9 +32,9 @@ const components = {
 
 The repo includes a canonical consumer demo at `apps/docs-smoke`.
 
-- It renders real `.mdx` fixture files through the package’s exported `mdxComponents`.
-- It uses TanStack Start for SSR and hydration coverage.
-- It keeps `AutoTypeTable` in pipeline validation instead of pretending it is a live-runtime feature.
+- Renders real `.mdx` fixture files through the package's exported `mdxComponents`.
+- Uses TanStack Start for SSR and hydration coverage.
+- Shows extracted `AutoTypeTable` output while keeping pipeline fixtures in the validation path.
 
 Local workflow:
 

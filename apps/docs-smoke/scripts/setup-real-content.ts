@@ -20,7 +20,17 @@ const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const execFileAsync = promisify(execFile);
 
 async function runGit(args: string[]): Promise<void> {
-  await execFileAsync("git", args);
+  try {
+    await execFileAsync("git", args);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : `Unknown error: ${String(error)}`;
+    throw new Error(`git ${args.join(" ")} failed: ${message}`, {
+      cause: error,
+    });
+  }
 }
 
 await mkdir(join(process.cwd(), "content-fixtures"), { recursive: true });

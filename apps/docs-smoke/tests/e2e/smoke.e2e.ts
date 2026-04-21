@@ -39,18 +39,11 @@ test("docs route renders package docs and extracted AutoTypeTable output", async
   await expect(
     page.getByRole("heading", { name: "AutoTypeTable", exact: true })
   ).toBeVisible();
-  await expect(page.locator("[data-inth-auto-type-table]")).toContainText(
-    "PipelineExampleOptions"
-  );
-  await expect(page.locator("[data-inth-auto-type-table]")).toContainText(
-    "value"
-  );
-  await expect(page.locator("[data-inth-auto-type-table]")).toContainText(
-    "label"
-  );
-  await expect(page.locator("[data-inth-auto-type-table]")).toContainText(
-    "featured"
-  );
+  const autoTypeTable = page.locator("[data-inth-auto-type-table]");
+  await expect(autoTypeTable).toContainText("PipelineExampleOptions");
+  await expect(autoTypeTable).toContainText("value");
+  await expect(autoTypeTable).toContainText("label");
+  await expect(autoTypeTable).toContainText("featured");
 });
 
 test("quickstart route renders MDX content on the server and hydrates interactive adapters", async ({
