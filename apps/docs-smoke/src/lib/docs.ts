@@ -6,7 +6,8 @@ export interface DemoRoute {
     | "/docs"
     | "/docs/guides/quickstart"
     | "/docs/guides/components-fixture"
-    | "/playground";
+    | "/playground"
+    | "/search";
 }
 
 export const demoRoutes: DemoRoute[] = [
@@ -34,6 +35,11 @@ export const demoRoutes: DemoRoute[] = [
     label: "Playground",
     to: "/playground",
     description: "Direct `Selector` usage.",
+  },
+  {
+    label: "Search",
+    to: "/search",
+    description: "Headless local search plus AI-grounded answers.",
   },
 ];
 

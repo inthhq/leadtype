@@ -8,6 +8,9 @@ Shared MDX-to-markdown tooling for Inth docs properties.
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
+- `@inth/docs/search`: headless static docs search, answer prompts, and request guards
+- `@inth/docs/search/node`: Node-only search index generation
+- `@inth/docs/search/ai`: Vercel AI SDK answer streaming helper
 - `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
 
 ## Install
@@ -64,3 +67,51 @@ These files are intended for coding agents and other tooling that need small, to
 
 Set `INTH_DOCS_AGENT_BASE_URL` before generating publishable agent docs so the bundled routers point at the hosted docs base.
 When the variable is absent, local builds fall back to `https://example.invalid/@inth/docs` so `bun run build` still succeeds in a clean workspace.
+
+## Generate A Search Index
+
+Run the MDX conversion first, then generate a static search index from the
+converted markdown:
+
+```ts
+import { generateSearchIndex } from "@inth/docs/search/node";
+
+await generateSearchIndex({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+});
+```
+
+At runtime, import the generated JSON and query it without Node APIs:
+
+```ts
+import { searchDocs, type DocsSearchIndex } from "@inth/docs/search";
+import indexJson from "./public/docs/search-index.json";
+
+const results = searchDocs(indexJson as DocsSearchIndex, "package tabs");
+```
+
+For question answering, use the AI helper with the Vercel AI SDK:
+
+```ts
+import { streamDocsAnswer } from "@inth/docs/search/ai";
+
+const { response, sources } = streamDocsAnswer({
+  index: indexJson as DocsSearchIndex,
+  query: "How do I switch package managers?",
+  model: process.env.DOCS_SEARCH_MODEL ?? "openai/gpt-5.4-mini",
+  productName: "My Docs",
+});
+```
+
+The search runtime includes reusable guards for payload size, query length,
+control characters, client identification, and in-memory rate limiting. The
+in-memory limiter is suitable for local demos; production apps should pass the
+same `RateLimiter` interface through Redis, Vercel KV, Cloudflare KV, Durable
+Objects, or another shared store.
+
+The local index is the intended default for docs sites. It is static, cheap to
+serve on Vercel and Cloudflare, and has no request-time database dependency.
+Move to embeddings or hosted search when the index becomes large enough to hurt
+cold starts, when docs exceed tens of thousands of chunks, or when semantic
+recall matters more than exact docs terminology.

@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 const REFERENCE_APP_HEADING = /Reference app for/i;
+const QUICKSTART_LINK = /Quickstart/i;
+const AI_DISABLED_MESSAGE = /AI answers are disabled/i;
+const QUICKSTART_HEADING_HREF = /\/docs\/guides\/quickstart#quickstart$/;
 
 test("home route renders the consumer QA overview and route links", async ({
   page,
@@ -110,4 +113,45 @@ test("playground route updates selector content", async ({ page }) => {
   await expect(selectorContent).toHaveAttribute("data-value", "pipeline");
   await expect(selectorContent).toContainText("Pipeline test");
   await expect(selectorContent).toContainText("stable `basePath`");
+});
+
+test("search route returns local docs results and answer configuration state", async ({
+  page,
+  request,
+}) => {
+  const answerConfigResponse = await request.get("/api/docs/ask");
+  const answerConfig = (await answerConfigResponse.json()) as {
+    enabled: boolean;
+  };
+
+  await page.goto("/search", { waitUntil: "networkidle" });
+  await expect(
+    page.getByRole("heading", { name: "Search the docs", exact: true })
+  ).toBeVisible();
+
+  await page.getByLabel("Search query").fill("install");
+  await expect(page.getByRole("heading", { name: "Results" })).toBeVisible();
+  const quickstartLink = page
+    .locator('section[aria-live="polite"]')
+    .getByRole("link", { name: QUICKSTART_LINK })
+    .first();
+  await expect(quickstartLink).toBeVisible();
+  await expect(quickstartLink).toHaveAttribute("href", QUICKSTART_HEADING_HREF);
+
+  if (!answerConfig.enabled) {
+    await expect(page.getByText(AI_DISABLED_MESSAGE)).toBeVisible();
+  }
+});
+
+test("search api returns JSON results", async ({ request }) => {
+  const response = await request.get("/api/docs/search?q=install");
+
+  expect(response.ok()).toBe(true);
+  const data = (await response.json()) as {
+    results: Array<{ title: string; urlPath: string }>;
+  };
+  expect(data.results.length).toBeGreaterThan(0);
+  expect(data.results.some((result) => result.title === "Quickstart")).toBe(
+    true
+  );
 });

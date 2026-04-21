@@ -6,6 +6,9 @@ export default defineConfig({
     "remark/index": "src/remark/index.ts",
     "convert/index": "src/convert/index.ts",
     "llm/index": "src/llm/index.ts",
+    "search/index": "src/search/index.ts",
+    "search/node-index": "src/search/node-index.ts",
+    "search/ai-index": "src/search/ai-index.ts",
     "lint/index": "src/lint/index.ts",
     "lint/cli": "src/lint/cli.ts",
   },
@@ -43,5 +46,6 @@ export default defineConfig({
     "node:fs",
     "node:path",
     "node:fs/promises",
+    "ai",
   ],
 });

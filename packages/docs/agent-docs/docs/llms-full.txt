@@ -11,4 +11,5 @@
 - [Generation](./llms-full/generation.txt): MDX conversion and llms.txt generation.
   - [Convert](./llms-full/generation/convert.txt): MDX-to-markdown conversion APIs.
   - [LLM](./llms-full/generation/llm.txt): Summary and full-context file generation.
+  - [Search](./llms-full/generation/search.txt): Static search indexes and AI answer helpers.
 - [Validation](./llms-full/validation.txt): Docs linting and CLI usage.

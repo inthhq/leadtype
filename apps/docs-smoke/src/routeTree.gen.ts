@@ -9,13 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as PlaygroundRouteImport } from './routes/playground'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsGuidesQuickstartRouteImport } from './routes/docs/guides/quickstart'
 import { Route as DocsGuidesComponentsFixtureRouteImport } from './routes/docs/guides/components-fixture'
+import { Route as ApiDocsSearchRouteImport } from './routes/api/docs/search'
+import { Route as ApiDocsAskRouteImport } from './routes/api/docs/ask'
 
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlaygroundRoute = PlaygroundRouteImport.update({
   id: '/playground',
   path: '/playground',
@@ -47,19 +55,35 @@ const DocsGuidesComponentsFixtureRoute =
     path: '/guides/components-fixture',
     getParentRoute: () => DocsRouteRoute,
   } as any)
+const ApiDocsSearchRoute = ApiDocsSearchRouteImport.update({
+  id: '/api/docs/search',
+  path: '/api/docs/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsAskRoute = ApiDocsAskRouteImport.update({
+  id: '/api/docs/ask',
+  path: '/api/docs/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
+  '/search': typeof SearchRoute
   '/docs/': typeof DocsIndexRoute
+  '/api/docs/ask': typeof ApiDocsAskRoute
+  '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/guides/components-fixture': typeof DocsGuidesComponentsFixtureRoute
   '/docs/guides/quickstart': typeof DocsGuidesQuickstartRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/playground': typeof PlaygroundRoute
+  '/search': typeof SearchRoute
   '/docs': typeof DocsIndexRoute
+  '/api/docs/ask': typeof ApiDocsAskRoute
+  '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/guides/components-fixture': typeof DocsGuidesComponentsFixtureRoute
   '/docs/guides/quickstart': typeof DocsGuidesQuickstartRoute
 }
@@ -68,7 +92,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
+  '/search': typeof SearchRoute
   '/docs/': typeof DocsIndexRoute
+  '/api/docs/ask': typeof ApiDocsAskRoute
+  '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/guides/components-fixture': typeof DocsGuidesComponentsFixtureRoute
   '/docs/guides/quickstart': typeof DocsGuidesQuickstartRoute
 }
@@ -78,14 +105,20 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/playground'
+    | '/search'
     | '/docs/'
+    | '/api/docs/ask'
+    | '/api/docs/search'
     | '/docs/guides/components-fixture'
     | '/docs/guides/quickstart'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/playground'
+    | '/search'
     | '/docs'
+    | '/api/docs/ask'
+    | '/api/docs/search'
     | '/docs/guides/components-fixture'
     | '/docs/guides/quickstart'
   id:
@@ -93,7 +126,10 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/playground'
+    | '/search'
     | '/docs/'
+    | '/api/docs/ask'
+    | '/api/docs/search'
     | '/docs/guides/components-fixture'
     | '/docs/guides/quickstart'
   fileRoutesById: FileRoutesById
@@ -102,10 +138,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   PlaygroundRoute: typeof PlaygroundRoute
+  SearchRoute: typeof SearchRoute
+  ApiDocsAskRoute: typeof ApiDocsAskRoute
+  ApiDocsSearchRoute: typeof ApiDocsSearchRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/playground': {
       id: '/playground'
       path: '/playground'
@@ -148,6 +194,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGuidesComponentsFixtureRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/api/docs/search': {
+      id: '/api/docs/search'
+      path: '/api/docs/search'
+      fullPath: '/api/docs/search'
+      preLoaderRoute: typeof ApiDocsSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/docs/ask': {
+      id: '/api/docs/ask'
+      path: '/api/docs/ask'
+      fullPath: '/api/docs/ask'
+      preLoaderRoute: typeof ApiDocsAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -171,6 +231,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRouteRoute: DocsRouteRouteWithChildren,
   PlaygroundRoute: PlaygroundRoute,
+  SearchRoute: SearchRoute,
+  ApiDocsAskRoute: ApiDocsAskRoute,
+  ApiDocsSearchRoute: ApiDocsSearchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

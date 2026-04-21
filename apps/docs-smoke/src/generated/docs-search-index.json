@@ -1,0 +1,4018 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-21T15:21:23.952Z",
+  "documents": [
+    {
+      "id": "guides/auto-type-table-fixture",
+      "title": "AutoTypeTable Fixture",
+      "description": "Pipeline-only fixture for type extraction coverage.",
+      "urlPath": "/docs/guides/auto-type-table-fixture",
+      "absoluteUrl": "https://docs.example.com/docs/guides/auto-type-table-fixture",
+      "relativePath": "guides/auto-type-table-fixture"
+    },
+    {
+      "id": "guides/components-fixture",
+      "title": "Components Fixture",
+      "description": "Render the runtime-facing adapters from @inth/docs in one browser route.",
+      "urlPath": "/docs/guides/components-fixture",
+      "absoluteUrl": "https://docs.example.com/docs/guides/components-fixture",
+      "relativePath": "guides/components-fixture"
+    },
+    {
+      "id": "guides/quickstart",
+      "title": "Quickstart",
+      "description": "Install and run your first command.",
+      "urlPath": "/docs/guides/quickstart",
+      "absoluteUrl": "https://docs.example.com/docs/guides/quickstart",
+      "relativePath": "guides/quickstart"
+    },
+    {
+      "id": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "relativePath": "index"
+    }
+  ],
+  "chunks": [
+    {
+      "id": "chunk-0",
+      "documentId": "guides/auto-type-table-fixture",
+      "title": "AutoTypeTable Fixture",
+      "description": "Pipeline-only fixture for type extraction coverage.",
+      "urlPath": "/docs/guides/auto-type-table-fixture",
+      "urlWithHash": "/docs/guides/auto-type-table-fixture#autotypetable-fixture",
+      "absoluteUrl": "https://docs.example.com/docs/guides/auto-type-table-fixture",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/guides/auto-type-table-fixture#autotypetable-fixture",
+      "relativePath": "guides/auto-type-table-fixture",
+      "anchor": "autotypetable-fixture",
+      "headingPath": ["AutoTypeTable Fixture"],
+      "text": "AutoTypeTable Fixture\n\nPipeline-only fixture for type extraction coverage.\n\nAutoTypeTable Fixture\n\nProperty Value -- -- Type Name \\ PipelineExampleOptions\\ Source Path \\ ./apps/docs-smoke/type-fixtures/pipeline-example.ts\\ \\ AutoTypeTable Could not extract \\ PipelineExampleOptions\\ from \\ ./apps/docs-smoke/type-fixtures/pipeline-example.ts\\ . Verify the path/name and that the file is included by your tsconfig.\\",
+      "codeText": "",
+      "length": 46
+    },
+    {
+      "id": "chunk-1",
+      "documentId": "guides/components-fixture",
+      "title": "Components Fixture",
+      "description": "Render the runtime-facing adapters from @inth/docs in one browser route.",
+      "urlPath": "/docs/guides/components-fixture",
+      "urlWithHash": "/docs/guides/components-fixture#components-fixture",
+      "absoluteUrl": "https://docs.example.com/docs/guides/components-fixture",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/guides/components-fixture#components-fixture",
+      "relativePath": "guides/components-fixture",
+      "anchor": "components-fixture",
+      "headingPath": ["Components Fixture"],
+      "text": "Components Fixture\n\nRender the runtime-facing adapters from @inth/docs in one browser route.\n\nComponents Fixture\n\n✅ Success Runtime fixture This page intentionally exercises the browser-facing adapters without replacing them with shadcn variants.",
+      "codeText": "",
+      "length": 28
+    },
+    {
+      "id": "chunk-2",
+      "documentId": "guides/components-fixture",
+      "title": "Components Fixture",
+      "description": "Render the runtime-facing adapters from @inth/docs in one browser route.",
+      "urlPath": "/docs/guides/components-fixture",
+      "urlWithHash": "/docs/guides/components-fixture#authoring-example",
+      "absoluteUrl": "https://docs.example.com/docs/guides/components-fixture",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/guides/components-fixture#authoring-example",
+      "relativePath": "guides/components-fixture",
+      "anchor": "authoring-example",
+      "headingPath": ["Components Fixture", "Authoring Example"],
+      "text": "Components Fixture\n\nRender the runtime-facing adapters from @inth/docs in one browser route.\n\nComponents Fixture\n\nAuthoring Example\n\nAutoTypeTable still needs extracted type data from the route or conversion pipeline. This demo renders that extracted output on /docs . Quickstart route External reference 1. Author MDX Start with semantic components such as Callout , Tabs , Cards , and TypeTable . 2. Render in TanStack Start Import the .mdx file directly and provide mdxComponents through the shared runtime map. 3. Validate separately Keep AutoTypeTable in pipeline coverage where source extraction actually happens. Package manager Command -- -- npm npx pm add @inth/docs pnpm pnpm dlx pm add @inth/docs yarn yarn dlx pm add @inth/docs bun bunx pm add @inth/docs Overview This tabset proves the package adapters hydrate correctly inside the demo app. Tables TypeTable is safe to render live because all of its data is already present in the MDX payload. Pipeline note AutoTypeTable is not shown live here because extraction depends on a stable build-time file system base path. Property Type Description Default Required -- -- -- -- -- command string Command template with a \\ pm placeholder. - ✅ Required commands Record\\<PackageManager, string Explicit per-manager overrides when templates are not enough.\n\n```mdx <Callout variant=\"success\" title=\"Runtime fixture\"> Render the exported adapters through your shared `mdxComponents` map. </Callout> <PackageCommandTabs command=\"{pm} add @inth/docs\" /> <Tabs items={[\"Overview\", \"Types\"]}> <Tab value=\"Overview\">Tabs hydrate in the browser.</Tab> <Tab value=\"Types\">Use `TypeTable` when the type data already exists in MDX.</Tab> </Tabs> <Mermaid chart={`flowchart LR A[MDX] --> B[mdxComponents] B --> C[Rendered route] `} /> <TypeTable type={{ command: { type: \"string\", description: \"Command template with a {pm} placeholder.\", required: true, }, }} /> <AutoTypeTable name=\"PipelineExampleOptions\" path=\"./apps/docs-smoke/type-fixtures/pipeline-example.ts\" type={pipelineExampleType} /> ``` ```mermaid `flowchart LR A[MDX fixture] --> B[mdxComponents] B --> C[TanStack Start route] C --> D[Playwright coverage] ```",
+      "codeText": "```mdx <Callout variant=\"success\" title=\"Runtime fixture\"> Render the exported adapters through your shared `mdxComponents` map. </Callout> <PackageCommandTabs command=\"{pm} add @inth/docs\" /> <Tabs items={[\"Overview\", \"Types\"]}> <Tab value=\"Overview\">Tabs hydrate in the browser.</Tab> <Tab value=\"Types\">Use `TypeTable` when the type data already exists in MDX.</Tab> </Tabs> <Mermaid chart={`flowchart LR A[MDX] --> B[mdxComponents] B --> C[Rendered route] `} /> <TypeTable type={{ command: { type: \"string\", description: \"Command template with a {pm} placeholder.\", required: true, }, }} /> <AutoTypeTable name=\"PipelineExampleOptions\" path=\"./apps/docs-smoke/type-fixtures/pipeline-example.ts\" type={pipelineExampleType} /> ``` ```mermaid `flowchart LR A[MDX fixture] --> B[mdxComponents] B --> C[TanStack Start route] C --> D[Playwright coverage] ```",
+      "length": 250
+    },
+    {
+      "id": "chunk-3",
+      "documentId": "guides/components-fixture",
+      "title": "Components Fixture",
+      "description": "Render the runtime-facing adapters from @inth/docs in one browser route.",
+      "urlPath": "/docs/guides/components-fixture",
+      "urlWithHash": "/docs/guides/components-fixture#authoring-example",
+      "absoluteUrl": "https://docs.example.com/docs/guides/components-fixture",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/guides/components-fixture#authoring-example",
+      "relativePath": "guides/components-fixture",
+      "anchor": "authoring-example",
+      "headingPath": ["Components Fixture", "Authoring Example"],
+      "text": "Components Fixture\n\nRender the runtime-facing adapters from @inth/docs in one browser route.\n\nComponents Fixture\n\nAuthoring Example\n\ning Command template with a \\ pm placeholder. - ✅ Required commands Record\\<PackageManager, string Explicit per-manager overrides when templates are not enough. - Optional defaultManager \"npm\" \\ \"pnpm\" \\ \"yarn\" \\ \"bun\" The tab that should be active on first render. npm Optional 🐤 Canary Pipeline-only coverage AutoTypeTable is verified by the markdown conversion fixture at content/docs/guides/auto-type-table-fixture.mdx and by the dedicated pipeline test script.",
+      "codeText": "",
+      "length": 67
+    },
+    {
+      "id": "chunk-4",
+      "documentId": "guides/quickstart",
+      "title": "Quickstart",
+      "description": "Install and run your first command.",
+      "urlPath": "/docs/guides/quickstart",
+      "urlWithHash": "/docs/guides/quickstart#quickstart",
+      "absoluteUrl": "https://docs.example.com/docs/guides/quickstart",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/guides/quickstart#quickstart",
+      "relativePath": "guides/quickstart",
+      "anchor": "quickstart",
+      "headingPath": ["Quickstart"],
+      "text": "Quickstart\n\nInstall and run your first command.\n\nQuickstart\n\n1. Install Install the package. 2. Import Import convertAllMdx from @inth/docs/convert . 3. Build Run bun run pipeline build . Package manager Command -- -- npm npx pm install @inth/docs pnpm pnpm dlx pm install @inth/docs yarn yarn dlx pm install @inth/docs bun bunx pm install @inth/docs Overview Basic usage is one call to convertAllMdx srcDir, outDir, remarkPlugins . Advanced Pass custom remark plugins alongside defaultRemarkPlugins for extensions and set a stable basePath when AutoTypeTable needs to resolve project files.",
+      "codeText": "",
+      "length": 76
+    },
+    {
+      "id": "chunk-5",
+      "documentId": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "urlWithHash": "/docs#inth-docs",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "absoluteUrlWithHash": "https://docs.example.com/docs#inth-docs",
+      "relativePath": "index",
+      "anchor": "inth-docs",
+      "headingPath": ["@inth/docs"],
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\n@inth/docs has five package surfaces Property Type Description Default Required -- -- -- -- -- @inth/docs runtime React adapters and \\ mdxComponents\\ for browser-rendered MDX. - ✅ Required @inth/docs/remark pipeline remark plugins and \\ defaultRemarkPlugins\\ for MDX processing. - ✅ Required @inth/docs/convert pipeline \\ convertMdxFile\\ , \\ convertSingleMdxFile\\ , and \\ convertAllMdx\\ . - ✅ Required @inth/docs/llm pipeline Generate \\ llms.txt\\ and topic-scoped agent context files. - Optional @inth/docs/lint pipeline Validation APIs and the \\ inth-docs-lint\\ CLI. - Optional",
+      "codeText": "",
+      "length": 77
+    },
+    {
+      "id": "chunk-6",
+      "documentId": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "urlWithHash": "/docs#install",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "absoluteUrlWithHash": "https://docs.example.com/docs#install",
+      "relativePath": "index",
+      "anchor": "install",
+      "headingPath": ["@inth/docs", "Install"],
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nInstall\n\nPackage manager Command -- -- npm npx pm install @inth/docs pnpm pnpm dlx pm install @inth/docs yarn yarn dlx pm install @inth/docs bun bunx pm install @inth/docs",
+      "codeText": "",
+      "length": 44
+    },
+    {
+      "id": "chunk-7",
+      "documentId": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "urlWithHash": "/docs#runtime-integration",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "absoluteUrlWithHash": "https://docs.example.com/docs#runtime-integration",
+      "relativePath": "index",
+      "anchor": "runtime-integration",
+      "headingPath": ["@inth/docs", "Runtime integration"],
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nRuntime integration\n\nUse the root package when you want to render authored MDX in a React app. The root export is the runtime contract. It is not tied to shadcn, TanStack Start, or any specific docs shell.\n\n```tsx import { mdxComponents } from \"@inth/docs\"; const components = { ...mdxComponents, }; ```",
+      "codeText": "```tsx import { mdxComponents } from \"@inth/docs\"; const components = { ...mdxComponents, }; ```",
+      "length": 46
+    },
+    {
+      "id": "chunk-8",
+      "documentId": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "urlWithHash": "/docs#convert-mdx",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "absoluteUrlWithHash": "https://docs.example.com/docs#convert-mdx",
+      "relativePath": "index",
+      "anchor": "convert-mdx",
+      "headingPath": ["@inth/docs", "Convert MDX"],
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nConvert MDX\n\nUse the conversion and remark packages when you want markdown output instead of browser rendering.\n\n```ts import { convertAllMdx } from \"@inth/docs/convert\"; import { defaultRemarkPlugins, remarkInclude } from \"@inth/docs/remark\"; await convertAllMdx({ srcDir: \"content\", outDir: \"public\", remarkPlugins: [remarkInclude, ...defaultRemarkPlugins], }); ```",
+      "codeText": "```ts import { convertAllMdx } from \"@inth/docs/convert\"; import { defaultRemarkPlugins, remarkInclude } from \"@inth/docs/remark\"; await convertAllMdx({ srcDir: \"content\", outDir: \"public\", remarkPlugins: [remarkInclude, ...defaultRemarkPlugins], }); ```",
+      "length": 47
+    },
+    {
+      "id": "chunk-9",
+      "documentId": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "urlWithHash": "/docs#what-to-open-in-this-app",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "absoluteUrlWithHash": "https://docs.example.com/docs#what-to-open-in-this-app",
+      "relativePath": "index",
+      "anchor": "what-to-open-in-this-app",
+      "headingPath": ["@inth/docs", "What to open in this app"],
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nWhat to open in this app\n\nQuickstart Components Fixture",
+      "codeText": "",
+      "length": 20
+    },
+    {
+      "id": "chunk-10",
+      "documentId": "index",
+      "title": "@inth/docs",
+      "description": "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting.",
+      "urlPath": "/docs",
+      "urlWithHash": "/docs#validation-layers",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "absoluteUrlWithHash": "https://docs.example.com/docs#validation-layers",
+      "relativePath": "index",
+      "anchor": "validation-layers",
+      "headingPath": ["@inth/docs", "Validation layers"],
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nValidation layers\n\n1. Package tests Cover semantic HTML and safe runtime behavior in packages/docs/src/ / .test.ts . 2. Pipeline fixtures Cover conversion, extraction, and LLM output in apps/docs-smoke/scripts and apps/docs-smoke/content . 3. Browser coverage Cover hydration and interactive adapters in the Playwright suite for this app.",
+      "codeText": "",
+      "length": 54
+    }
+  ],
+  "terms": {
+    "autotypetable": [
+      {
+        "chunkId": "chunk-0",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "fixture": [
+      {
+        "chunkId": "chunk-0",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-1",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 1,
+        "heading": 1,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "pipeline": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 4,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "only": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "type": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 4,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 5
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "extraction": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "coverage": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "property": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "value": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "name": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "pipelineexampleoptions": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "source": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "path": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "apps": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "docs": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 6,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 5,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 1,
+        "heading": 1,
+        "body": 8,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 1,
+        "heading": 1,
+        "body": 5,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 1,
+        "heading": 1,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 1,
+        "heading": 1,
+        "body": 4,
+        "code": 0
+      }
+    ],
+    "smoke": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "fixtures": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "example": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "ts": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "could": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "not": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "extract": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "verify": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "that": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "file": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "included": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "your": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "tsconfig": [
+      {
+        "chunkId": "chunk-0",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "components": [
+      {
+        "chunkId": "chunk-1",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "render": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "runtime": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 1,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "facing": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "adapters": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "inth": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 5,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 5,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 1,
+        "heading": 1,
+        "body": 7,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 1,
+        "heading": 1,
+        "body": 4,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "one": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "browser": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "route": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "success": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "this": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "page": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "intentionally": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "exercises": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "without": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "replacing": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "them": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "shadcn": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "variants": [
+      {
+        "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "authoring": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "still": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "needs": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "extracted": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "data": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      }
+    ],
+    "conversion": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "demo": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "renders": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "output": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "quickstart": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 1,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "external": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "reference": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "author": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "mdx": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 4
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "start": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "semantic": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "such": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "callout": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 2
+      }
+    ],
+    "tabs": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 3
+      }
+    ],
+    "cards": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "typetable": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 2
+      }
+    ],
+    "tanstack": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "import": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "directly": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "provide": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "mdxcomponents": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 3
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "through": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "shared": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "map": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "validate": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "separately": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "keep": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "actually": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "happens": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "package": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "manager": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "command": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 3
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "npm": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "npx": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "pm": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 5,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 4,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 4,
+        "code": 0
+      }
+    ],
+    "add": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 4,
+        "code": 1
+      }
+    ],
+    "pnpm": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "dlx": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "yarn": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "bun": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "bunx": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "overview": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "tabset": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "proves": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "hydrate": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "correctly": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "inside": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "app": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "tables": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "safe": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "live": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "because": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "all": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "its": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "already": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "present": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "payload": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "note": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "shown": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "here": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "depends": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "stable": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "build": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "time": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "system": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "base": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "description": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "default": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "required": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 4,
+        "code": 0
+      }
+    ],
+    "string": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "template": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "placeholder": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "commands": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "record": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "packagemanager": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "explicit": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "per": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "overrides": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "templates": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "enough": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "variant": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "title": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "exported": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "packagecommandtabs": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "items": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "types": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "tab": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 4
+      },
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "exists": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "mermaid": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "chart": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "flowchart": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "lr": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "rendered": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "true": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "pipelineexampletype": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "playwright": [
+      {
+        "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "ing": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "optional": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "defaultmanager": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "should": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "active": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "first": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "canary": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "verified": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "markdown": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "content": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "guides": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "auto": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "table": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "dedicated": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "test": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "script": [
+      {
+        "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "install": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 7,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 1,
+        "body": 4,
+        "code": 0
+      }
+    ],
+    "run": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      }
+    ],
+    "convertallmdx": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "convert": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "basic": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "usage": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "call": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "srcdir": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "outdir": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "remarkplugins": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "advanced": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "pass": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "custom": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "remark": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "plugins": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "alongside": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "defaultremarkplugins": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "extensions": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "set": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "basepath": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "resolve": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "project": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "files": [
+      {
+        "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "llm": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "linting": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-6",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "has": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "five": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "surfaces": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "react": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "processing": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "convertmdxfile": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "convertsinglemdxfile": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "generate": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "llms": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "txt": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "topic": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "scoped": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "agent": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "context": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "lint": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "validation": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "apis": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "cli": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "integration": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "root": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "you": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "want": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "authored": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "export": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "contract": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "tied": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "any": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "specific": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "shell": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "tsx": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "const": [
+      {
+        "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "packages": [
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "instead": [
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "rendering": [
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "remarkinclude": [
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "await": [
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "public": [
+      {
+        "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "open": [
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "layers": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "tests": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "cover": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      }
+    ],
+    "html": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "behavior": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "src": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "scripts": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "hydration": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "interactive": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "suite": [
+      {
+        "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ]
+  },
+  "averageChunkLength": 68.63636363636364
+}

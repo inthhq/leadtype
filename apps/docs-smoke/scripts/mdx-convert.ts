@@ -19,8 +19,9 @@ import {
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(scriptsRoot, "..", "..");
-const srcDir = join(scriptsRoot, "content");
-const outDir = join(scriptsRoot, "public");
+const appRoot = join(scriptsRoot, "..");
+const srcDir = join(appRoot, "content");
+const outDir = join(appRoot, "public");
 const typeTableRemarkPlugin: NonNullable<
   MdxToMarkdownConfig["remarkPlugins"]
 >[number] = [remarkTypeTableToMarkdown, { basePath: repoRoot }];

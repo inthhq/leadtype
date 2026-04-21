@@ -13,6 +13,7 @@
 - [@inth/docs](https://example.invalid/@inth/docs/docs): Reference map for the shared MDX conversion, linting, and LLM doc-generation package.
 - [Convert](https://example.invalid/@inth/docs/docs/convert): How to convert MDX docs into Markdown with @inth/docs/convert.
 - [LLM](https://example.invalid/@inth/docs/docs/llm): How to generate llms.txt and topic-scoped full-context files from @inth/docs.
+- [Search](https://example.invalid/@inth/docs/docs/search): Generate and query a static docs search index, then stream source-grounded AI answers.
 
 ## Agent Guidance
 

@@ -27,6 +27,18 @@
       "types": "./dist/llm/index.d.ts",
       "import": "./dist/llm/index.js"
     },
+    "./search": {
+      "types": "./dist/search/index.d.ts",
+      "import": "./dist/search/index.js"
+    },
+    "./search/node": {
+      "types": "./dist/search/node-index.d.ts",
+      "import": "./dist/search/node-index.js"
+    },
+    "./search/ai": {
+      "types": "./dist/search/ai-index.d.ts",
+      "import": "./dist/search/ai-index.js"
+    },
     "./lint": {
       "types": "./dist/lint/index.d.ts",
       "import": "./dist/lint/index.js"
@@ -76,6 +88,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "ai": "^6.0.168",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsup": "^8.3.5",
@@ -83,10 +96,14 @@
     "vitest": "^2.1.8"
   },
   "peerDependencies": {
+    "ai": ">=6.0.0",
     "react": ">=19.0.0",
     "typescript": ">=5.0.0"
   },
   "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },

@@ -50,6 +50,7 @@ await generateLLMSummaries({
       { urlPath: "/docs" },
       { urlPath: "/docs/convert" },
       { urlPath: "/docs/llm" },
+      { urlPath: "/docs/search" },
     ],
     agentGuidance:
       "Start with /docs/llms.txt to route the task, then open the smallest matching topic page.",
@@ -67,8 +68,12 @@ await generateLLMSummaries({
     },
     {
       title: "Generation",
-      description: "MDX conversion and LLM output generation.",
-      links: [{ urlPath: "/docs/convert" }, { urlPath: "/docs/llm" }],
+      description: "MDX conversion, LLM output generation, and search.",
+      links: [
+        { urlPath: "/docs/convert" },
+        { urlPath: "/docs/llm" },
+        { urlPath: "/docs/search" },
+      ],
     },
     {
       title: "Validation",
@@ -124,6 +129,12 @@ await generateLLMFullFiles({
           title: "LLM",
           description: "Summary and full-context file generation.",
           includePrefixes: ["llm"],
+        },
+        {
+          slug: "search",
+          title: "Search",
+          description: "Static search indexes and AI answer helpers.",
+          includePrefixes: ["search"],
         },
       ],
     },
