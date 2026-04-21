@@ -106,14 +106,8 @@ test("playground route updates selector content", async ({ page }) => {
   await expect(page.getByText("Selector playground")).toBeVisible();
 
   await page.selectOption("[data-inth-selector-control]", "pipeline");
-  await expect(page.locator("[data-inth-selector-content]")).toHaveAttribute(
-    "data-value",
-    "pipeline"
-  );
-  await expect(page.locator("[data-inth-selector-content]")).toContainText(
-    "Pipeline test"
-  );
-  await expect(page.locator("[data-inth-selector-content]")).toContainText(
-    "stable `basePath`"
-  );
+  const selectorContent = page.locator("[data-inth-selector-content]");
+  await expect(selectorContent).toHaveAttribute("data-value", "pipeline");
+  await expect(selectorContent).toContainText("Pipeline test");
+  await expect(selectorContent).toContainText("stable `basePath`");
 });

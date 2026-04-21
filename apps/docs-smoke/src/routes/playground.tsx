@@ -30,6 +30,12 @@ const scenarioContent = {
   },
 } as const;
 
+type ScenarioKey = keyof typeof scenarioContent;
+
+function isScenarioKey(value: string): value is ScenarioKey {
+  return value in scenarioContent;
+}
+
 export const Route = createFileRoute("/playground")({
   component: PlaygroundRoute,
 });
@@ -68,10 +74,9 @@ function PlaygroundRoute() {
 }
 
 function ScenarioPanel({ activeValue }: { activeValue: string }) {
-  const content =
-    activeValue in scenarioContent
-      ? scenarioContent[activeValue as keyof typeof scenarioContent]
-      : null;
+  const content = isScenarioKey(activeValue)
+    ? scenarioContent[activeValue]
+    : null;
 
   if (!content) {
     return null;

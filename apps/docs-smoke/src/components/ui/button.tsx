@@ -43,12 +43,21 @@ export function Button({
   ...props
 }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
+  const typeProps: { type?: ButtonProps["type"] } = {};
+
+  if (asChild) {
+    if (type !== undefined) {
+      typeProps.type = type;
+    }
+  } else {
+    typeProps.type = type ?? "button";
+  }
 
   return (
     <Comp
       className={cn(buttonVariants({ size, variant }), className)}
       ref={ref}
-      {...(asChild ? {} : { type: type ?? "button" })}
+      {...typeProps}
       {...props}
     />
   );
