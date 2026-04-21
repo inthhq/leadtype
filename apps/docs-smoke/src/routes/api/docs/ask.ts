@@ -8,6 +8,7 @@ import {
 import { streamDocsAnswer } from "@inth/docs/search/ai";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  docsSearchContent,
   docsSearchIndex,
   docsSearchLimiters,
   isAiAnswerEnabled,
@@ -64,6 +65,7 @@ export const Route = createFileRoute("/api/docs/ask")({
 
           return streamDocsAnswer({
             index: docsSearchIndex,
+            content: docsSearchContent,
             query,
             model: process.env.DOCS_SEARCH_MODEL ?? DEFAULT_MODEL,
             productName: "@inth/docs",

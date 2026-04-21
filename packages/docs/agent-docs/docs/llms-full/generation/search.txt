@@ -20,6 +20,9 @@ Import runtime helpers from:
 import {
   createAnswerContext,
   createMemoryRateLimiter,
+  listDocsContentFiles,
+  readDocsContentChunk,
+  readDocsContentFile,
   readJsonWithLimit,
   searchDocs,
   validateDocsQuery,
@@ -38,6 +41,12 @@ Import the AI SDK helper from:
 import { streamDocsAnswer } from "@inth/docs/search/ai";
 ```
 
+Import the optional bash-tool integration from:
+
+```ts
+import { createDocsBashTool } from "@inth/docs/search/bash";
+```
+
 ## Build-Time Indexing
 
 Generate the index after converting MDX to markdown:
@@ -49,20 +58,56 @@ await generateSearchIndex({
 });
 ```
 
-The generator reads markdown under `{outDir}/docs` and writes
-`{outDir}/docs/search-index.json`.
+The generator reads markdown under `{outDir}/docs` and writes split files by
+default:
+
+```txt
+{outDir}/docs/search-index.json
+{outDir}/docs/search-content.json
+```
+
+`search-index.json` uses a compact v2 tuple format for documents, chunks, and
+term postings. `search-content.json` stores answer-source text separately. This
+keeps search metadata smaller and gives the AI path a precise way to read only
+the page or heading chunks it needs.
 
 ## Runtime Search
 
-The core runtime is edge-safe. Import the generated JSON and query it directly:
+The core runtime is edge-safe. Import both generated JSON files and pass content
+when you want excerpts:
 
 ```ts
-const results = searchDocs(indexJson as DocsSearchIndex, "tabs install");
+const results = searchDocs(indexJson as DocsSearchIndex, "tabs install", {
+  content: contentJson as DocsSearchContentStore,
+});
 ```
 
 Search uses normalized tokens, a small stopword list, heading-aware chunks, and
 BM25-style ranking. Titles and headings are weighted above body text; code is
 searchable with a lower weight.
+
+## Docs Content Files
+
+The same generated index also acts as a small virtual docs filesystem:
+
+```ts
+const files = listDocsContentFiles(indexJson as DocsSearchIndex);
+const quickstart = readDocsContentFile(
+  indexJson as DocsSearchIndex,
+  "guides/quickstart",
+  contentJson as DocsSearchContentStore
+);
+const sourceChunk = readDocsContentChunk(
+  indexJson as DocsSearchIndex,
+  "chunk-0",
+  contentJson as DocsSearchContentStore
+);
+```
+
+Use `readDocsContentFile` when a UI or agent wants a whole normalized page. Use
+`readDocsContentChunk` when the search result already identifies the relevant
+heading chunk. Returned chunks include heading paths, hash URLs, source text, and
+metadata needed for citations.
 
 ## Answer Context
 
@@ -70,6 +115,7 @@ Use `createAnswerContext` when wiring a custom model call:
 
 ```ts
 const context = createAnswerContext(indexJson as DocsSearchIndex, query, {
+  content: contentJson as DocsSearchContentStore,
   productName: "My Docs",
 });
 ```
@@ -85,6 +131,7 @@ Use `streamDocsAnswer` for a minimal Vercel AI SDK integration:
 ```ts
 const { response, sources } = streamDocsAnswer({
   index: indexJson as DocsSearchIndex,
+  content: contentJson as DocsSearchContentStore,
   query,
   model: process.env.DOCS_SEARCH_MODEL ?? "openai/gpt-5.4-mini",
   productName: "My Docs",
@@ -93,6 +140,23 @@ const { response, sources } = streamDocsAnswer({
 
 The response is a plain text stream from `toTextStreamResponse()`. Display
 `sources` separately in your own UI.
+
+## Bash Tool Adapter
+
+Use `@inth/docs/search/bash` when an agent should inspect docs through shell
+commands instead of receiving only preselected chunks:
+
+```ts
+const { tools, instructions } = await createDocsBashTool(
+  indexJson as DocsSearchIndex,
+  contentJson as DocsSearchContentStore
+);
+```
+
+The adapter builds a read-only `/docs` filesystem for `just-bash` and wraps it
+with `bash-tool` for AI SDK tool usage. Agents can use commands such as `ls`,
+`cat`, `find`, `grep`, and `rg`. Network commands, Python, JavaScript execution,
+and filesystem writes are disabled by default.
 
 ## Abuse Guards
 
@@ -110,7 +174,8 @@ Redis, Vercel KV, Cloudflare KV, or Durable Objects.
 ## When To Use Embeddings
 
 Start with the local index for most docs sites. It is static, cheap, portable to
-Vercel and Cloudflare, and has no request-time database dependency. Add
-embeddings or hosted search when your docs reach very large chunk counts, when
-cold-start memory becomes a problem, or when users need semantic matches that do
-not share vocabulary with the docs.
+Vercel and Cloudflare, and has no request-time database dependency. As docs grow,
+keep lexical search for exact APIs, config keys, paths, and errors; add a
+virtual content layer for precise page reads; then add embeddings or hosted
+search when users need semantic matches that do not share vocabulary with the
+docs, or when chunk counts become large enough to hurt cold-start memory.

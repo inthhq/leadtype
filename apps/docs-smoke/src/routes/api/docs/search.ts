@@ -7,6 +7,7 @@ import {
 } from "@inth/docs/search";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  docsSearchContent,
   docsSearchIndex,
   docsSearchLimiters,
   jsonResponse,
@@ -40,7 +41,9 @@ export const Route = createFileRoute("/api/docs/search")({
           }
 
           return jsonResponse({
-            results: searchDocs(docsSearchIndex, query),
+            results: searchDocs(docsSearchIndex, query, {
+              content: docsSearchContent,
+            }),
           });
         } catch (error) {
           if (error instanceof DocsSearchRequestError) {

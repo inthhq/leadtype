@@ -44,6 +44,7 @@ await generateLLMSummaries({
     bullets: [
       "Flattens MDX-heavy docs into clean markdown for agents.",
       "Generates llms.txt plus topic-scoped full-context bundles.",
+      "Builds compact static search indexes and source-grounded answer prompts.",
       "Validates frontmatter, docs metadata, and internal docs links.",
     ],
     bestStartingPoints: [

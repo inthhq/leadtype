@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  attachDocsSearchContent,
   createAnswerContext,
   createMemoryRateLimiter,
   createSearchIndex,
   type DocsSearchDocument,
   DocsSearchRequestError,
   getClientIdentifier,
+  listDocsContentFiles,
+  readDocsContentChunk,
+  readDocsContentFile,
   readJsonWithLimit,
   searchDocs,
   slugifyDocsHeading,
@@ -76,6 +80,26 @@ const cafe = "café";
 ];
 
 describe("createSearchIndex and searchDocs", () => {
+  it("stores compact metadata separately from answer content", () => {
+    const index = createSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(index.version).toBe(2);
+    expect(index.documents[0]).toEqual([
+      "quickstart",
+      "Quickstart",
+      "Install and configure the package.",
+      "/docs/guides/quickstart",
+      "https://docs.example.com/docs/guides/quickstart",
+      "guides/quickstart",
+    ]);
+    expect(index.chunks[0]).toHaveLength(6);
+    expect(index.chunks[0]).not.toHaveProperty("text");
+    expect(index.content?.version).toBe(2);
+    expect(index.content?.chunks[0]).toContain("Install the package");
+  });
+
   it("normalizes case, punctuation, and diacritics", () => {
     const index = createSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
@@ -179,6 +203,46 @@ describe("createSearchIndex and searchDocs", () => {
     const result = searchDocs(index, "pnpm")[0];
 
     expect(result?.excerpt).toContain("pnpm");
+  });
+
+  it("searches metadata-only indexes and uses split content for excerpts", () => {
+    const index = createSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const { content, ...metadataOnlyIndex } = index;
+    if (!content) {
+      throw new Error("Expected createSearchIndex to embed content.");
+    }
+
+    expect(searchDocs(metadataOnlyIndex, "pnpm")[0]?.title).toBe("Quickstart");
+    expect(searchDocs(metadataOnlyIndex, "pnpm")[0]?.excerpt).toContain(
+      "PackageCommandTabs"
+    );
+    expect(
+      searchDocs(metadataOnlyIndex, "pnpm", { content })[0]?.excerpt
+    ).toContain("pnpm");
+    expect(attachDocsSearchContent(metadataOnlyIndex, content).content).toBe(
+      content
+    );
+  });
+
+  it("reads docs content as files and precise chunks", () => {
+    const index = createSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const result = searchDocs(index, "pnpm")[0];
+    const file = readDocsContentFile(index, "guides/quickstart");
+    const fileByUrl = readDocsContentFile(index, "/docs/guides/quickstart");
+    const chunk = result ? readDocsContentChunk(index, result.id) : undefined;
+
+    expect(listDocsContentFiles(index)).toHaveLength(docs.length);
+    expect(file?.title).toBe("Quickstart");
+    expect(fileByUrl?.title).toBe("Quickstart");
+    expect(file?.chunks[0]?.anchor).toBe("quickstart");
+    expect(chunk?.absoluteUrlWithHash).toBe(
+      "https://docs.example.com/docs/guides/quickstart#packagecommandtabs"
+    );
+    expect(chunk?.text).toContain("bun install commands");
   });
 });
 

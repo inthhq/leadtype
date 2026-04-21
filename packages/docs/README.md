@@ -85,11 +85,29 @@ await generateSearchIndex({
 At runtime, import the generated JSON and query it without Node APIs:
 
 ```ts
-import { searchDocs, type DocsSearchIndex } from "@inth/docs/search";
+import {
+  readDocsContentFile,
+  searchDocs,
+  type DocsSearchContentStore,
+  type DocsSearchIndex,
+} from "@inth/docs/search";
+import contentJson from "./public/docs/search-content.json";
 import indexJson from "./public/docs/search-index.json";
 
-const results = searchDocs(indexJson as DocsSearchIndex, "package tabs");
+const index = indexJson as DocsSearchIndex;
+const content = contentJson as DocsSearchContentStore;
+
+const results = searchDocs(index, "package tabs", { content });
+const quickstart = readDocsContentFile(
+  index,
+  "guides/quickstart",
+  content
+);
 ```
+
+The generator writes a compact `search-index.json` plus a separate
+`search-content.json`. Search scores against numeric chunk records, while answer
+flows read precise docs pages or heading chunks from the content store.
 
 For question answering, use the AI helper with the Vercel AI SDK:
 
@@ -97,12 +115,25 @@ For question answering, use the AI helper with the Vercel AI SDK:
 import { streamDocsAnswer } from "@inth/docs/search/ai";
 
 const { response, sources } = streamDocsAnswer({
-  index: indexJson as DocsSearchIndex,
+  index,
+  content,
   query: "How do I switch package managers?",
   model: process.env.DOCS_SEARCH_MODEL ?? "openai/gpt-5.4-mini",
   productName: "My Docs",
 });
 ```
+
+For agent-style docs inspection, use the optional bash adapter:
+
+```ts
+import { createDocsBashTool } from "@inth/docs/search/bash";
+
+const { tools, instructions } = await createDocsBashTool(index, content);
+```
+
+The bash adapter builds a read-only `/docs` filesystem for `just-bash` and wraps
+it with `bash-tool` so AI SDK agents can inspect docs with commands like `ls`,
+`cat`, `find`, `grep`, and `rg`.
 
 The search runtime includes reusable guards for payload size, query length,
 control characters, client identification, and in-memory rate limiting. The
@@ -112,6 +143,8 @@ Objects, or another shared store.
 
 The local index is the intended default for docs sites. It is static, cheap to
 serve on Vercel and Cloudflare, and has no request-time database dependency.
-Move to embeddings or hosted search when the index becomes large enough to hurt
-cold starts, when docs exceed tens of thousands of chunks, or when semantic
-recall matters more than exact docs terminology.
+For larger docs, keep this lexical index for exact API/config/error searches and
+add a virtual content layer plus optional embeddings for fuzzy semantic recall.
+Move to hosted search or a vector store when the compact index becomes large
+enough to hurt cold starts, docs exceed tens of thousands of chunks, or users ask
+questions that do not share vocabulary with the docs.

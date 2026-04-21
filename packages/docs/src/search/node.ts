@@ -10,7 +10,9 @@ import {
 
 const DOCS_DIRNAME = "docs";
 const DEFAULT_OUTPUT_FILE = "search-index.json";
+const DEFAULT_CONTENT_OUTPUT_FILE = "search-content.json";
 const WARN_INDEX_BYTES = 5 * 1024 * 1024;
+const WARN_TOTAL_BYTES = 10 * 1024 * 1024;
 const WARN_CHUNK_COUNT = 10_000;
 const WINDOWS_PATH_PATTERN = /\\/g;
 const MD_EXTENSION_PATTERN = /\.md$/;
@@ -25,14 +27,19 @@ export type GenerateSearchIndexConfig = {
   outDir: string;
   baseUrl?: string;
   outputFile?: string;
+  contentOutputFile?: string;
+  embedContent?: boolean;
   indexOptions?: CreateSearchIndexOptions;
 };
 
 export type GenerateSearchIndexResult = {
   outputPath: string;
+  contentOutputPath?: string;
   docs: number;
   chunks: number;
   terms: number;
+  indexBytes: number;
+  contentBytes: number;
   bytes: number;
 };
 
@@ -145,9 +152,14 @@ async function readMarkdownDocs(
 }
 
 function warnIfLarge(result: GenerateSearchIndexResult): void {
-  if (result.bytes > WARN_INDEX_BYTES) {
+  if (result.indexBytes > WARN_INDEX_BYTES) {
     process.stderr.write(
-      `Search index is ${result.bytes} bytes, which is above the ${WARN_INDEX_BYTES} byte guidance threshold.\n`
+      `Search index is ${result.indexBytes} bytes, which is above the ${WARN_INDEX_BYTES} byte guidance threshold.\n`
+    );
+  }
+  if (result.bytes > WARN_TOTAL_BYTES) {
+    process.stderr.write(
+      `Search index and content are ${result.bytes} bytes, which is above the ${WARN_TOTAL_BYTES} byte guidance threshold.\n`
     );
   }
   if (result.chunks > WARN_CHUNK_COUNT) {
@@ -170,22 +182,45 @@ export async function generateSearchIndex(
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const docs = await readMarkdownDocs(docsDir, baseUrl);
-  const index = createSearchIndex(docs, config.indexOptions);
+  const indexWithContent = createSearchIndex(docs, config.indexOptions);
+  const { content, ...indexWithoutContent } = indexWithContent;
+  if (!content) {
+    throw new Error("createSearchIndex did not return a content store.");
+  }
+  const index = config.embedContent ? indexWithContent : indexWithoutContent;
   const outputPath = path.join(
     docsDir,
     config.outputFile ?? DEFAULT_OUTPUT_FILE
   );
-  const serialized = `${JSON.stringify(index, null, 2)}\n`;
+  const contentOutputPath = config.embedContent
+    ? undefined
+    : path.join(
+        docsDir,
+        config.contentOutputFile ?? DEFAULT_CONTENT_OUTPUT_FILE
+      );
+  const serialized = `${JSON.stringify(index)}\n`;
+  const serializedContent = `${JSON.stringify(content)}\n`;
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, serialized);
+  if (contentOutputPath) {
+    await mkdir(path.dirname(contentOutputPath), { recursive: true });
+    await writeFile(contentOutputPath, serializedContent);
+  }
 
+  const indexBytes = Buffer.byteLength(serialized, "utf-8");
+  const contentBytes = contentOutputPath
+    ? Buffer.byteLength(serializedContent, "utf-8")
+    : 0;
   const result = {
     outputPath,
+    contentOutputPath,
     docs: docs.length,
     chunks: index.chunks.length,
     terms: Object.keys(index.terms).length,
-    bytes: Buffer.byteLength(serialized, "utf-8"),
+    indexBytes,
+    contentBytes,
+    bytes: indexBytes + contentBytes,
   };
   warnIfLarge(result);
   return result;

@@ -6,7 +6,7 @@ const DEFAULT_ASK_MAX_QUERY_CHARS = 600;
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_MAX_SOURCES = 6;
 const DEFAULT_MAX_CONTEXT_CHARS = 12_000;
-const SEARCH_INDEX_VERSION = 1;
+const SEARCH_INDEX_VERSION = 2;
 const TITLE_WEIGHT = 4;
 const HEADING_WEIGHT = 2;
 const BODY_WEIGHT = 1;
@@ -21,6 +21,23 @@ const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
 const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
+const DOCUMENT_ID = 0;
+const DOCUMENT_TITLE = 1;
+const DOCUMENT_DESCRIPTION = 2;
+const DOCUMENT_URL_PATH = 3;
+const DOCUMENT_ABSOLUTE_URL = 4;
+const DOCUMENT_RELATIVE_PATH = 5;
+const CHUNK_ID = 0;
+const CHUNK_DOCUMENT_INDEX = 1;
+const CHUNK_ANCHOR = 2;
+const CHUNK_HEADING_PATH = 3;
+const CHUNK_LENGTH = 4;
+const CHUNK_CONTENT_INDEX = 5;
+const POSTING_CHUNK_INDEX = 0;
+const POSTING_TITLE = 1;
+const POSTING_HEADING = 2;
+const POSTING_BODY = 3;
+const POSTING_CODE = 4;
 
 const STOPWORDS = new Set([
   "a",
@@ -60,6 +77,15 @@ export type DocsSearchDocument = {
   content: string;
 };
 
+export type DocsSearchDocumentRecord = {
+  id: string;
+  title: string;
+  description: string;
+  urlPath: string;
+  absoluteUrl: string;
+  relativePath: string;
+};
+
 export type DocsSearchChunk = {
   id: string;
   documentId: string;
@@ -77,21 +103,56 @@ export type DocsSearchChunk = {
   length: number;
 };
 
-export type DocsSearchPosting = {
-  chunkId: string;
-  title: number;
-  heading: number;
-  body: number;
-  code: number;
+export type DocsSearchDocumentEntry = [
+  id: string,
+  title: string,
+  description: string,
+  urlPath: string,
+  absoluteUrl: string,
+  relativePath: string,
+];
+
+export type DocsSearchChunkEntry = [
+  id: string,
+  documentIndex: number,
+  anchor: string,
+  headingPath: string[],
+  length: number,
+  contentIndex: number,
+];
+
+export type DocsSearchPosting = [
+  chunkIndex: number,
+  title: number,
+  heading: number,
+  body: number,
+  code: number,
+];
+
+export type DocsSearchContentStore = {
+  version: typeof SEARCH_INDEX_VERSION;
+  generatedAt: string;
+  chunks: string[];
+};
+
+export type DocsContentFile = DocsSearchDocumentRecord & {
+  chunks: DocsSearchChunk[];
+  text: string;
 };
 
 export type DocsSearchIndex = {
   version: typeof SEARCH_INDEX_VERSION;
   generatedAt: string;
-  documents: Array<Omit<DocsSearchDocument, "content"> & { id: string }>;
-  chunks: DocsSearchChunk[];
+  documents: DocsSearchDocumentEntry[];
+  chunks: DocsSearchChunkEntry[];
   terms: Record<string, DocsSearchPosting[]>;
+  content?: DocsSearchContentStore;
   averageChunkLength: number;
+};
+
+export type DocsSearchBundle = {
+  index: DocsSearchIndex;
+  content: DocsSearchContentStore;
 };
 
 export type CreateSearchIndexOptions = {
@@ -100,7 +161,7 @@ export type CreateSearchIndexOptions = {
   overlapChars?: number;
 };
 
-export type SearchDocsOptions = {
+export type SearchDocsOptions = ContentStoreOptions & {
   limit?: number;
 };
 
@@ -184,10 +245,23 @@ type MutableTermCounts = {
   code: Map<string, number>;
 };
 
+type MutableChunk = {
+  id: string;
+  documentIndex: number;
+  anchor: string;
+  headingPath: string[];
+  text: string;
+  length: number;
+};
+
 type SectionBlock = {
   headingPath: string[];
   text: string;
   codeText: string;
+};
+
+type ContentStoreOptions = {
+  content?: DocsSearchContentStore;
 };
 
 function normalizeText(input: string): string {
@@ -419,6 +493,77 @@ function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
 }
 
+function resolveContentStore(
+  index: DocsSearchIndex,
+  content?: DocsSearchContentStore
+): DocsSearchContentStore | undefined {
+  return content ?? index.content;
+}
+
+function documentRecordFromEntry(
+  entry: DocsSearchDocumentEntry
+): DocsSearchDocumentRecord {
+  return {
+    id: entry[DOCUMENT_ID],
+    title: entry[DOCUMENT_TITLE],
+    description: entry[DOCUMENT_DESCRIPTION],
+    urlPath: entry[DOCUMENT_URL_PATH],
+    absoluteUrl: entry[DOCUMENT_ABSOLUTE_URL],
+    relativePath: entry[DOCUMENT_RELATIVE_PATH],
+  };
+}
+
+function chunkFromEntry(
+  index: DocsSearchIndex,
+  chunkIndex: number,
+  content?: DocsSearchContentStore
+): DocsSearchChunk | undefined {
+  const entry = index.chunks[chunkIndex];
+  if (!entry) {
+    return;
+  }
+
+  const documentEntry = index.documents[entry[CHUNK_DOCUMENT_INDEX]];
+  if (!documentEntry) {
+    return;
+  }
+
+  const documentRecord = documentRecordFromEntry(documentEntry);
+  const anchor = entry[CHUNK_ANCHOR];
+  const contentStore = resolveContentStore(index, content);
+  const text = contentStore?.chunks[entry[CHUNK_CONTENT_INDEX]] ?? "";
+
+  return {
+    id: entry[CHUNK_ID],
+    documentId: documentRecord.id,
+    title: documentRecord.title,
+    description: documentRecord.description,
+    urlPath: documentRecord.urlPath,
+    urlWithHash: withHash(documentRecord.urlPath, anchor),
+    absoluteUrl: documentRecord.absoluteUrl,
+    absoluteUrlWithHash: withHash(documentRecord.absoluteUrl, anchor),
+    relativePath: documentRecord.relativePath,
+    anchor,
+    headingPath: entry[CHUNK_HEADING_PATH],
+    text,
+    codeText: "",
+    length: entry[CHUNK_LENGTH],
+  };
+}
+
+function findChunkIndex(index: DocsSearchIndex, chunkId: string): number {
+  return index.chunks.findIndex((entry) => entry[CHUNK_ID] === chunkId);
+}
+
+function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
+  return index.documents.findIndex(
+    (entry) =>
+      entry[DOCUMENT_ID] === pathOrId ||
+      entry[DOCUMENT_RELATIVE_PATH] === pathOrId ||
+      entry[DOCUMENT_URL_PATH] === pathOrId
+  );
+}
+
 export function createSearchIndex(
   markdownDocs: DocsSearchDocument[],
   options: CreateSearchIndexOptions = {}
@@ -429,20 +574,20 @@ export function createSearchIndex(
     Math.max(0, maxChunkChars - 1)
   );
   const documents: DocsSearchIndex["documents"] = [];
-  const chunks: DocsSearchChunk[] = [];
-  const chunkTermCounts = new Map<string, MutableTermCounts>();
+  const mutableChunks: MutableChunk[] = [];
+  const chunkTermCounts = new Map<number, MutableTermCounts>();
 
   for (const [documentIndex, doc] of markdownDocs.entries()) {
     const documentId = doc.id ?? `doc-${documentIndex}`;
     const description = doc.description ?? "";
-    documents.push({
-      id: documentId,
-      title: doc.title,
+    documents.push([
+      documentId,
+      doc.title,
       description,
-      urlPath: doc.urlPath,
-      absoluteUrl: doc.absoluteUrl,
-      relativePath: doc.relativePath,
-    });
+      doc.urlPath,
+      doc.absoluteUrl,
+      doc.relativePath,
+    ]);
 
     for (const block of collectSectionBlocks(doc.content)) {
       const bodyParts = splitWithOverlap(
@@ -469,26 +614,19 @@ export function createSearchIndex(
           continue;
         }
 
-        const chunkId = `chunk-${chunks.length}`;
+        const chunkIndex = mutableChunks.length;
+        const chunkId = `chunk-${chunkIndex}`;
         const length = tokenize(chunkText).length;
         const anchor = slugifyDocsHeading(block.headingPath.at(-1) ?? "");
-        chunks.push({
+        mutableChunks.push({
           id: chunkId,
-          documentId,
-          title: doc.title,
-          description,
-          urlPath: doc.urlPath,
-          urlWithHash: withHash(doc.urlPath, anchor),
-          absoluteUrl: doc.absoluteUrl,
-          absoluteUrlWithHash: withHash(doc.absoluteUrl, anchor),
-          relativePath: doc.relativePath,
+          documentIndex,
           anchor,
           headingPath: block.headingPath,
           text: chunkText,
-          codeText,
           length,
         });
-        chunkTermCounts.set(chunkId, {
+        chunkTermCounts.set(chunkIndex, {
           title: countTerms(doc.title),
           heading: countTerms(block.headingPath.join(" ")),
           body: countTerms([description, text].join(" ")),
@@ -499,31 +637,49 @@ export function createSearchIndex(
   }
 
   const terms: Record<string, DocsSearchPosting[]> = {};
-  for (const [chunkId, counts] of chunkTermCounts) {
+  for (const [chunkIndex, counts] of chunkTermCounts) {
     const uniqueTerms = new Set<string>();
     addCountEntries(uniqueTerms, counts.title);
     addCountEntries(uniqueTerms, counts.heading);
     addCountEntries(uniqueTerms, counts.body);
     addCountEntries(uniqueTerms, counts.code);
     for (const term of uniqueTerms) {
-      addPosting(terms, term, {
-        chunkId,
-        title: getCount(counts.title, term),
-        heading: getCount(counts.heading, term),
-        body: getCount(counts.body, term),
-        code: getCount(counts.code, term),
-      });
+      addPosting(terms, term, [
+        chunkIndex,
+        getCount(counts.title, term),
+        getCount(counts.heading, term),
+        getCount(counts.body, term),
+        getCount(counts.code, term),
+      ]);
     }
   }
 
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const chunks: DocsSearchChunkEntry[] = mutableChunks.map((chunk, index) => [
+    chunk.id,
+    chunk.documentIndex,
+    chunk.anchor,
+    chunk.headingPath,
+    chunk.length,
+    index,
+  ]);
+  const totalLength = mutableChunks.reduce(
+    (sum, chunk) => sum + chunk.length,
+    0
+  );
+  const generatedAt = options.generatedAt ?? new Date().toISOString();
   return {
     version: SEARCH_INDEX_VERSION,
-    generatedAt: options.generatedAt ?? new Date().toISOString(),
+    generatedAt,
     documents,
     chunks,
     terms,
-    averageChunkLength: chunks.length > 0 ? totalLength / chunks.length : 0,
+    content: {
+      version: SEARCH_INDEX_VERSION,
+      generatedAt,
+      chunks: mutableChunks.map((chunk) => chunk.text),
+    },
+    averageChunkLength:
+      mutableChunks.length > 0 ? totalLength / mutableChunks.length : 0,
   };
 }
 
@@ -552,24 +708,24 @@ export function searchDocs(
     );
 
     for (const posting of postings) {
-      const chunk = index.chunks.find(
-        (candidate) => candidate.id === posting.chunkId
-      );
-      if (!chunk) {
+      const chunkEntry = index.chunks[posting[POSTING_CHUNK_INDEX]];
+      if (!chunkEntry) {
         continue;
       }
       const weightedFrequency =
-        posting.title * TITLE_WEIGHT +
-        posting.heading * HEADING_WEIGHT +
-        posting.body * BODY_WEIGHT +
-        posting.code * CODE_WEIGHT;
+        posting[POSTING_TITLE] * TITLE_WEIGHT +
+        posting[POSTING_HEADING] * HEADING_WEIGHT +
+        posting[POSTING_BODY] * BODY_WEIGHT +
+        posting[POSTING_CODE] * CODE_WEIGHT;
       const normalizedFrequency =
         (weightedFrequency * (BM25_K1 + 1)) /
         (weightedFrequency +
-          BM25_K1 * (1 - BM25_B + BM25_B * (chunk.length / averageLength)));
+          BM25_K1 *
+            (1 - BM25_B + BM25_B * (chunkEntry[CHUNK_LENGTH] / averageLength)));
+      const chunkId = chunkEntry[CHUNK_ID];
       scores.set(
-        posting.chunkId,
-        (scores.get(posting.chunkId) ?? 0) +
+        chunkId,
+        (scores.get(chunkId) ?? 0) +
           inverseDocumentFrequency * normalizedFrequency
       );
     }
@@ -578,10 +734,13 @@ export function searchDocs(
   const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
   const results: DocsSearchResult[] = [];
   for (const [chunkId, score] of scores) {
-    const chunk = index.chunks.find((candidate) => candidate.id === chunkId);
+    const chunk = readDocsContentChunk(index, chunkId, options.content);
     if (!chunk) {
       continue;
     }
+    const excerptText =
+      chunk.text ||
+      [chunk.title, chunk.description, ...chunk.headingPath].join(" ");
     results.push({
       id: chunk.id,
       documentId: chunk.documentId,
@@ -594,12 +753,78 @@ export function searchDocs(
       relativePath: chunk.relativePath,
       anchor: chunk.anchor,
       headingPath: chunk.headingPath,
-      excerpt: buildExcerpt(chunk.text, queryTokens),
+      excerpt: buildExcerpt(excerptText, queryTokens),
       score,
     });
   }
 
   return results.sort(compareResults).slice(0, limit);
+}
+
+export function readDocsContentChunk(
+  index: DocsSearchIndex,
+  chunkId: string,
+  content?: DocsSearchContentStore
+): DocsSearchChunk | undefined {
+  const chunkIndex = findChunkIndex(index, chunkId);
+  if (chunkIndex < 0) {
+    return;
+  }
+  return chunkFromEntry(index, chunkIndex, content);
+}
+
+export function readDocsContentFile(
+  index: DocsSearchIndex,
+  pathOrId: string,
+  content?: DocsSearchContentStore
+): DocsContentFile | undefined {
+  const documentIndex = findDocumentIndex(index, pathOrId);
+  if (documentIndex < 0) {
+    return;
+  }
+
+  const documentEntry = index.documents[documentIndex];
+  if (!documentEntry) {
+    return;
+  }
+
+  const chunks = index.chunks
+    .map((entry, chunkIndex) =>
+      entry[CHUNK_DOCUMENT_INDEX] === documentIndex
+        ? chunkFromEntry(index, chunkIndex, content)
+        : undefined
+    )
+    .filter((chunk): chunk is DocsSearchChunk => Boolean(chunk));
+
+  return {
+    ...documentRecordFromEntry(documentEntry),
+    chunks,
+    text: chunks.map((chunk) => chunk.text).join("\n\n"),
+  };
+}
+
+export function listDocsContentFiles(
+  index: DocsSearchIndex,
+  content?: DocsSearchContentStore
+): DocsContentFile[] {
+  const files: DocsContentFile[] = [];
+  for (const entry of index.documents) {
+    const file = readDocsContentFile(index, entry[DOCUMENT_ID], content);
+    if (file) {
+      files.push(file);
+    }
+  }
+  return files;
+}
+
+export function attachDocsSearchContent(
+  index: DocsSearchIndex,
+  content: DocsSearchContentStore
+): DocsSearchIndex {
+  return {
+    ...index,
+    content,
+  };
 }
 
 export function createAnswerContext(
@@ -611,6 +836,7 @@ export function createAnswerContext(
   const maxSources = options.maxSources ?? DEFAULT_MAX_SOURCES;
   const maxContextChars = options.maxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS;
   const results = searchDocs(index, query, {
+    content: options.content,
     limit: Math.max(maxSources, options.limit ?? maxSources),
   }).slice(0, maxSources);
   const sources: DocsAnswerSource[] = [];
@@ -620,7 +846,7 @@ export function createAnswerContext(
     if (remainingChars <= 0) {
       break;
     }
-    const chunk = index.chunks.find((candidate) => candidate.id === result.id);
+    const chunk = readDocsContentChunk(index, result.id, options.content);
     if (!chunk) {
       continue;
     }

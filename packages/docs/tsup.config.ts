@@ -9,6 +9,7 @@ export default defineConfig({
     "search/index": "src/search/index.ts",
     "search/node-index": "src/search/node-index.ts",
     "search/ai-index": "src/search/ai-index.ts",
+    "search/bash-index": "src/search/bash-index.ts",
     "lint/index": "src/lint/index.ts",
     "lint/cli": "src/lint/cli.ts",
   },
@@ -47,5 +48,7 @@ export default defineConfig({
     "node:path",
     "node:fs/promises",
     "ai",
+    "bash-tool",
+    "just-bash",
   ],
 });

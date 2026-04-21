@@ -20,10 +20,15 @@ describe("streamDocsAnswer", () => {
     const index = createSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
+    const { content, ...metadataOnlyIndex } = index;
+    if (!content) {
+      throw new Error("Expected createSearchIndex to embed content.");
+    }
     const calls: unknown[] = [];
 
     const result = streamDocsAnswer({
-      index,
+      index: metadataOnlyIndex,
+      content,
       query: "How do tabs work?",
       model: "openai/gpt-5.4-mini",
       productName: "@inth/docs",

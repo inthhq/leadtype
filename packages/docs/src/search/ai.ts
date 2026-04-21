@@ -3,6 +3,7 @@ import {
   type AnswerContextOptions,
   createAnswerContext,
   type DocsAnswerSource,
+  type DocsSearchContentStore,
   type DocsSearchIndex,
   docsSearchDefaults,
 } from "./search";
@@ -33,6 +34,7 @@ type StreamTextLike = (options: {
 
 export type StreamDocsAnswerOptions = {
   index: DocsSearchIndex;
+  content?: DocsSearchContentStore;
   query: string;
   model?: LanguageModel | string;
   productName?: string;
@@ -52,6 +54,7 @@ export function streamDocsAnswer(
   options: StreamDocsAnswerOptions
 ): StreamDocsAnswerResult {
   const context = createAnswerContext(options.index, options.query, {
+    content: options.content,
     maxContextChars: docsSearchDefaults.maxContextChars,
     maxSources: docsSearchDefaults.maxSources,
     productName: options.productName,

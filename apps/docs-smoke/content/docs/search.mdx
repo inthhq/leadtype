@@ -29,6 +29,10 @@ description: "Generate a local docs search index and stream source-grounded AI a
       type: "runtime",
       description: "Vercel AI SDK `streamText` wrapper for source-grounded plain text answer streams.",
     },
+    "@inth/docs/search/bash": {
+      type: "runtime",
+      description: "Optional `just-bash` and `bash-tool` adapter for agent-style docs inspection.",
+    },
   }}
 />
 
@@ -45,20 +49,36 @@ await generateSearchIndex({
 });
 ```
 
-The generated index is static JSON. In the demo app, `scripts/search-generate.ts` copies it into `src/generated/docs-search-index.json` so routes can import it without reading from the file system at request time.
+The generated files are static JSON. In the demo app, `scripts/search-generate.ts` copies `docs-search-index.json` and `docs-search-content.json` into `src/generated` so routes can import them without reading from the file system at request time.
 
 ## Runtime Search
 
 Import the generated JSON and query it from your own route handler:
 
 ```ts
-import { searchDocs, type DocsSearchIndex } from "@inth/docs/search";
+import {
+  readDocsContentFile,
+  searchDocs,
+  type DocsSearchContentStore,
+  type DocsSearchIndex,
+} from "@inth/docs/search";
+import contentJson from "./generated/docs-search-content.json";
 import indexJson from "./generated/docs-search-index.json";
 
-const results = searchDocs(indexJson as DocsSearchIndex, "package tabs");
+const index = indexJson as DocsSearchIndex;
+const content = contentJson as DocsSearchContentStore;
+
+const results = searchDocs(index, "package tabs", { content });
+const file = readDocsContentFile(
+  index,
+  "guides/quickstart",
+  content
+);
 ```
 
 Search results include `urlWithHash` and `absoluteUrlWithHash` so the UI can link directly to the matched heading. The demo renders matching heading `id`s with `slugifyDocsHeading`.
+
+The generated index separates compact search metadata from source content. Search uses tuple records and numeric chunk postings, while answer generation reads the relevant heading chunks from the content store. `listDocsContentFiles`, `readDocsContentFile`, and `readDocsContentChunk` expose that store as a lightweight virtual docs filesystem for closed-source UIs or custom agents.
 
 ## AI Answers
 
@@ -69,6 +89,7 @@ import { streamDocsAnswer } from "@inth/docs/search/ai";
 
 const { response } = streamDocsAnswer({
   index,
+  content,
   query,
   model: process.env.DOCS_SEARCH_MODEL ?? "moonshotai/kimi-k2.6",
   productName: "@inth/docs",
@@ -76,6 +97,18 @@ const { response } = streamDocsAnswer({
 ```
 
 The answer prompt only includes retrieved docs context, tells the model to cite sources, and asks it to say when the docs do not contain enough context.
+
+## Agent Inspection
+
+Use the optional bash adapter when an AI SDK agent should inspect the docs through shell commands:
+
+```ts
+import { createDocsBashTool } from "@inth/docs/search/bash";
+
+const { tools, instructions } = await createDocsBashTool(index, content);
+```
+
+The adapter creates a read-only `/docs` filesystem for `just-bash` and wraps it with `bash-tool`. Agents can use `ls`, `cat`, `find`, `grep`, and `rg`; network commands, Python, JavaScript execution, and filesystem writes are disabled by default.
 
 ## Abuse Protection
 
@@ -92,3 +125,7 @@ The answer prompt only includes retrieved docs context, tells the model to cite 
 </Steps>
 
 The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the same `RateLimiter` interface to a shared store such as Redis, Vercel KV, Cloudflare KV, or Durable Objects.
+
+## Long-Term Scale
+
+Keep this lexical index for exact API names, configuration keys, paths, and errors. As docs grow, use the content-file helpers as the durable page/chunk access layer, then add embeddings or hosted search only when users need fuzzy semantic recall that does not share vocabulary with the docs.
