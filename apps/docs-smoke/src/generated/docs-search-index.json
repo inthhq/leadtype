@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-21T15:21:23.952Z",
+  "generatedAt": "2026-04-21T15:46:48.212Z",
   "documents": [
     {
       "id": "guides/auto-type-table-fixture",
@@ -33,6 +33,14 @@
       "urlPath": "/docs",
       "absoluteUrl": "https://docs.example.com/docs",
       "relativePath": "index"
+    },
+    {
+      "id": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "relativePath": "search"
     }
   ],
   "chunks": [
@@ -128,9 +136,9 @@
       "relativePath": "index",
       "anchor": "inth-docs",
       "headingPath": ["@inth/docs"],
-      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\n@inth/docs has five package surfaces Property Type Description Default Required -- -- -- -- -- @inth/docs runtime React adapters and \\ mdxComponents\\ for browser-rendered MDX. - ✅ Required @inth/docs/remark pipeline remark plugins and \\ defaultRemarkPlugins\\ for MDX processing. - ✅ Required @inth/docs/convert pipeline \\ convertMdxFile\\ , \\ convertSingleMdxFile\\ , and \\ convertAllMdx\\ . - ✅ Required @inth/docs/llm pipeline Generate \\ llms.txt\\ and topic-scoped agent context files. - Optional @inth/docs/lint pipeline Validation APIs and the \\ inth-docs-lint\\ CLI. - Optional",
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\n@inth/docs has five package surfaces Property Type Description Default Required -- -- -- -- -- @inth/docs runtime React adapters and \\ mdxComponents\\ for browser-rendered MDX. - ✅ Required @inth/docs/remark pipeline remark plugins and \\ defaultRemarkPlugins\\ for MDX processing. - ✅ Required @inth/docs/convert pipeline \\ convertMdxFile\\ , \\ convertSingleMdxFile\\ , and \\ convertAllMdx\\ . - ✅ Required @inth/docs/llm pipeline Generate \\ llms.txt\\ and topic-scoped agent context files. - Optional @inth/docs/search runtime Static local search, source-grounded answer context, request guards, and AI SDK streaming helpers. - Optional @inth/docs/lint pipeline Validation APIs and the \\ inth-docs-lint\\ CLI. - Optional",
       "codeText": "",
-      "length": 77
+      "length": 95
     },
     {
       "id": "chunk-6",
@@ -192,9 +200,9 @@
       "relativePath": "index",
       "anchor": "what-to-open-in-this-app",
       "headingPath": ["@inth/docs", "What to open in this app"],
-      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nWhat to open in this app\n\nQuickstart Components Fixture",
+      "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nWhat to open in this app\n\nSearch and AI Answers Quickstart Components Fixture",
       "codeText": "",
-      "length": 20
+      "length": 23
     },
     {
       "id": "chunk-10",
@@ -211,6 +219,102 @@
       "text": "@inth/docs\n\nPackage docs for runtime adapters, remark plugins, conversion, LLM output, and linting.\n\n@inth/docs\n\nValidation layers\n\n1. Package tests Cover semantic HTML and safe runtime behavior in packages/docs/src/ / .test.ts . 2. Pipeline fixtures Cover conversion, extraction, and LLM output in apps/docs-smoke/scripts and apps/docs-smoke/content . 3. Browser coverage Cover hydration and interactive adapters in the Playwright suite for this app.",
       "codeText": "",
       "length": 54
+    },
+    {
+      "id": "chunk-11",
+      "documentId": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "urlWithHash": "/docs/search#search-and-ai-answers",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/search#search-and-ai-answers",
+      "relativePath": "search",
+      "anchor": "search-and-ai-answers",
+      "headingPath": ["Search and AI Answers"],
+      "text": "Search and AI Answers\n\nGenerate a local docs search index and stream source-grounded AI answers.\n\nSearch and AI Answers\n\n@inth/docs includes headless search logic for docs sites that want to bring their own UI. ℹ️ Info Demo route Open the live search example at /search. Typing runs local search only; the Ask button is the only action that can call the model.",
+      "codeText": "",
+      "length": 50
+    },
+    {
+      "id": "chunk-12",
+      "documentId": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "urlWithHash": "/docs/search#package-surfaces",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/search#package-surfaces",
+      "relativePath": "search",
+      "anchor": "package-surfaces",
+      "headingPath": ["Search and AI Answers", "Package Surfaces"],
+      "text": "Search and AI Answers\n\nGenerate a local docs search index and stream source-grounded AI answers.\n\nSearch and AI Answers\n\nPackage Surfaces\n\nProperty Type Description Default Required -- -- -- -- -- @inth/docs/search runtime Edge-safe search, answer context, query validation, JSON body limits, and rate limiter helpers. - ✅ Required @inth/docs/search/node build time Node-only \\ generateSearchIndex\\ helper that reads converted markdown and writes \\ docs/search-index.json\\ . - ✅ Required @inth/docs/search/ai runtime Vercel AI SDK \\ streamText\\ wrapper for source-grounded plain text answer streams. - Optional",
+      "codeText": "",
+      "length": 78
+    },
+    {
+      "id": "chunk-13",
+      "documentId": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "urlWithHash": "/docs/search#build-the-index",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/search#build-the-index",
+      "relativePath": "search",
+      "anchor": "build-the-index",
+      "headingPath": ["Search and AI Answers", "Build the Index"],
+      "text": "Search and AI Answers\n\nGenerate a local docs search index and stream source-grounded AI answers.\n\nSearch and AI Answers\n\nBuild the Index\n\nRun conversion first, then generate the search index from markdown The generated index is static JSON. In the demo app, scripts/search-generate.ts copies it into src/generated/docs-search-index.json so routes can import it without reading from the file system at request time.\n\n```ts import { generateSearchIndex } from \"@inth/docs/search/node\"; await generateSearchIndex({ outDir: \"public\", baseUrl: \"https://docs.example.com\", }); ```",
+      "codeText": "```ts import { generateSearchIndex } from \"@inth/docs/search/node\"; await generateSearchIndex({ outDir: \"public\", baseUrl: \"https://docs.example.com\", }); ```",
+      "length": 69
+    },
+    {
+      "id": "chunk-14",
+      "documentId": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "urlWithHash": "/docs/search#runtime-search",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/search#runtime-search",
+      "relativePath": "search",
+      "anchor": "runtime-search",
+      "headingPath": ["Search and AI Answers", "Runtime Search"],
+      "text": "Search and AI Answers\n\nGenerate a local docs search index and stream source-grounded AI answers.\n\nSearch and AI Answers\n\nRuntime Search\n\nImport the generated JSON and query it from your own route handler Search results include urlWithHash and absoluteUrlWithHash so the UI can link directly to the matched heading. The demo renders matching heading id s with slugifyDocsHeading .\n\n```ts import { searchDocs, type DocsSearchIndex } from \"@inth/docs/search\"; import indexJson from \"./generated/docs-search-index.json\"; const results = searchDocs(indexJson as DocsSearchIndex, \"package tabs\"); ```",
+      "codeText": "```ts import { searchDocs, type DocsSearchIndex } from \"@inth/docs/search\"; import indexJson from \"./generated/docs-search-index.json\"; const results = searchDocs(indexJson as DocsSearchIndex, \"package tabs\"); ```",
+      "length": 65
+    },
+    {
+      "id": "chunk-15",
+      "documentId": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "urlWithHash": "/docs/search#ai-answers",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/search#ai-answers",
+      "relativePath": "search",
+      "anchor": "ai-answers",
+      "headingPath": ["Search and AI Answers", "AI Answers"],
+      "text": "Search and AI Answers\n\nGenerate a local docs search index and stream source-grounded AI answers.\n\nSearch and AI Answers\n\nAI Answers\n\nUse streamDocsAnswer when you want a simple Vercel AI SDK integration The answer prompt only includes retrieved docs context, tells the model to cite sources, and asks it to say when the docs do not contain enough context.\n\n```ts import { streamDocsAnswer } from \"@inth/docs/search/ai\"; const { response } = streamDocsAnswer({ index, query, model: process.env.DOCS_SEARCH_MODEL ?? \"moonshotai/kimi-k2.6\", productName: \"@inth/docs\", }); ```",
+      "codeText": "```ts import { streamDocsAnswer } from \"@inth/docs/search/ai\"; const { response } = streamDocsAnswer({ index, query, model: process.env.DOCS_SEARCH_MODEL ?? \"moonshotai/kimi-k2.6\", productName: \"@inth/docs\", }); ```",
+      "length": 69
+    },
+    {
+      "id": "chunk-16",
+      "documentId": "search",
+      "title": "Search and AI Answers",
+      "description": "Generate a local docs search index and stream source-grounded AI answers.",
+      "urlPath": "/docs/search",
+      "urlWithHash": "/docs/search#abuse-protection",
+      "absoluteUrl": "https://docs.example.com/docs/search",
+      "absoluteUrlWithHash": "https://docs.example.com/docs/search#abuse-protection",
+      "relativePath": "search",
+      "anchor": "abuse-protection",
+      "headingPath": ["Search and AI Answers", "Abuse Protection"],
+      "text": "Search and AI Answers\n\nGenerate a local docs search index and stream source-grounded AI answers.\n\nSearch and AI Answers\n\nAbuse Protection\n\n1. Search is cheap Debounced typing should call only the local /api/docs/search route. It does not call the model. 2. Answers are explicit Keep model calls behind a button such as Ask , Enter to ask , or Cmd+Enter . 3. Limit request paths Use validateDocsQuery , readJsonWithLimit , getClientIdentifier , and a RateLimiter implementation around public routes. The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the same RateLimiter interface to a shared store such as Redis, Vercel KV, Cloudflare KV, or Durable Objects.",
+      "codeText": "",
+      "length": 82
     }
   ],
   "terms": {
@@ -339,6 +443,34 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "type": [
@@ -369,6 +501,20 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "extraction": [
@@ -422,6 +568,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "property": [
@@ -441,6 +594,13 @@
       },
       {
         "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -509,6 +669,55 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "path": [
@@ -547,6 +756,13 @@
         "title": 0,
         "heading": 0,
         "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
         "code": 0
       }
     ],
@@ -590,7 +806,7 @@
         "chunkId": "chunk-5",
         "title": 1,
         "heading": 1,
-        "body": 8,
+        "body": 9,
         "code": 0
       },
       {
@@ -627,6 +843,48 @@
         "heading": 1,
         "body": 4,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 5,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 3
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
       }
     ],
     "smoke": [
@@ -649,6 +907,13 @@
         "title": 0,
         "heading": 0,
         "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
         "code": 0
       }
     ],
@@ -696,6 +961,20 @@
         "heading": 1,
         "body": 0,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "ts": [
@@ -726,6 +1005,27 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "could": [
@@ -761,6 +1061,20 @@
       },
       {
         "chunkId": "chunk-7",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -806,6 +1120,20 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "file": [
@@ -821,6 +1149,13 @@
         "title": 0,
         "heading": 0,
         "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
         "code": 0
       }
     ],
@@ -850,6 +1185,13 @@
       },
       {
         "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -958,7 +1300,7 @@
         "chunkId": "chunk-5",
         "title": 0,
         "heading": 0,
-        "body": 2,
+        "body": 3,
         "code": 0
       },
       {
@@ -994,6 +1336,20 @@
         "title": 0,
         "heading": 0,
         "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
         "code": 0
       }
     ],
@@ -1118,7 +1474,7 @@
         "chunkId": "chunk-5",
         "title": 1,
         "heading": 1,
-        "body": 7,
+        "body": 8,
         "code": 0
       },
       {
@@ -1155,6 +1511,41 @@
         "heading": 1,
         "body": 0,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
       }
     ],
     "one": [
@@ -1252,6 +1643,27 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "success": [
@@ -1330,6 +1742,13 @@
     "without": [
       {
         "chunkId": "chunk-1",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -1494,6 +1913,13 @@
         "heading": 0,
         "body": 2,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "demo": [
@@ -1503,11 +1929,46 @@
         "heading": 0,
         "body": 2,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "renders": [
       {
         "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -1691,6 +2152,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
       }
     ],
     "callout": [
@@ -1709,6 +2177,13 @@
         "heading": 0,
         "body": 1,
         "code": 3
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "cards": [
@@ -1773,11 +2248,39 @@
         "heading": 0,
         "body": 0,
         "code": 2
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "directly": [
       {
         "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -1832,6 +2335,13 @@
         "heading": 0,
         "body": 1,
         "code": 1
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "map": [
@@ -1864,6 +2374,13 @@
     "keep": [
       {
         "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -1944,6 +2461,20 @@
         "heading": 0,
         "body": 2,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "manager": [
@@ -2323,6 +2854,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "tables": [
@@ -2348,6 +2886,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "live": [
@@ -2356,6 +2901,13 @@
         "title": 0,
         "heading": 0,
         "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
         "code": 0
       }
     ],
@@ -2479,6 +3031,20 @@
         "heading": 0,
         "body": 2,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
       }
     ],
     "time": [
@@ -2488,11 +3054,32 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "system": [
       {
         "chunkId": "chunk-2",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -2522,6 +3109,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "default": [
@@ -2534,6 +3128,13 @@
       },
       {
         "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -2560,6 +3161,13 @@
         "title": 0,
         "heading": 0,
         "body": 4,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
         "code": 0
       }
     ],
@@ -2673,6 +3281,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "per": [
@@ -2733,6 +3348,13 @@
       },
       {
         "chunkId": "chunk-3",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -2925,7 +3547,14 @@
         "chunkId": "chunk-5",
         "title": 0,
         "heading": 0,
-        "body": 2,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
         "code": 0
       }
     ],
@@ -2944,6 +3573,13 @@
         "title": 0,
         "heading": 0,
         "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
         "code": 0
       }
     ],
@@ -2966,6 +3602,13 @@
       },
       {
         "chunkId": "chunk-4",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -3000,6 +3643,20 @@
       },
       {
         "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -3113,6 +3770,13 @@
         "heading": 0,
         "body": 3,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "convertallmdx": [
@@ -3186,6 +3850,20 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
       }
     ],
     "srcdir": [
@@ -3214,6 +3892,13 @@
       },
       {
         "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-13",
         "title": 0,
         "heading": 0,
         "body": 0,
@@ -3571,6 +4256,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
       }
     ],
     "react": [
@@ -3619,6 +4311,48 @@
     "generate": [
       {
         "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -3675,6 +4409,357 @@
         "chunkId": "chunk-5",
         "title": 0,
         "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "search": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 1,
+        "heading": 1,
+        "body": 5,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 1,
+        "heading": 1,
+        "body": 6,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 1,
+        "heading": 1,
+        "body": 4,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 1,
+        "heading": 2,
+        "body": 2,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 1,
+        "heading": 1,
+        "body": 3,
+        "code": 0
+      }
+    ],
+    "static": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "local": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 3,
+        "code": 0
+      }
+    ],
+    "grounded": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "answer": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "request": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "guards": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "ai": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 1,
+        "heading": 1,
+        "body": 3,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 1,
+        "heading": 2,
+        "body": 2,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "sdk": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "streaming": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "helpers": [
+      {
+        "chunkId": "chunk-5",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
         "body": 1,
         "code": 0
       }
@@ -3701,6 +4786,13 @@
         "title": 0,
         "heading": 1,
         "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
         "code": 0
       }
     ],
@@ -3729,6 +4821,13 @@
         "heading": 1,
         "body": 0,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "root": [
@@ -3754,6 +4853,13 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "want": [
@@ -3766,6 +4872,20 @@
       },
       {
         "chunkId": "chunk-8",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -3851,6 +4971,20 @@
         "heading": 0,
         "body": 0,
         "code": 1
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "packages": [
@@ -3903,6 +5037,13 @@
         "heading": 0,
         "body": 0,
         "code": 1
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
       }
     ],
     "public": [
@@ -3912,6 +5053,20 @@
         "heading": 0,
         "body": 0,
         "code": 1
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "open": [
@@ -3920,6 +5075,64 @@
         "title": 0,
         "heading": 1,
         "body": 0,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "answers": [
+      {
+        "chunkId": "chunk-9",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-11",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 1,
+        "heading": 1,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 1,
+        "heading": 2,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 1,
+        "heading": 1,
+        "body": 2,
         "code": 0
       }
     ],
@@ -3975,11 +5188,25 @@
         "heading": 0,
         "body": 1,
         "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
       }
     ],
     "scripts": [
       {
         "chunkId": "chunk-10",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
         "title": 0,
         "heading": 0,
         "body": 1,
@@ -4012,7 +5239,1189 @@
         "body": 1,
         "code": 0
       }
+    ],
+    "index": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 1,
+        "body": 4,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "stream": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "includes": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "headless": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "logic": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "sites": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "bring": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "their": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "own": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "ui": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "info": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "typing": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "runs": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "ask": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "button": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "action": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "model": [
+      {
+        "chunkId": "chunk-11",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 2
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "edge": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "query": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "json": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "body": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "limits": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "rate": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "limiter": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "node": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "generatesearchindex": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "helper": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "reads": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "converted": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "writes": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "vercel": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "streamtext": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "wrapper": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "plain": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "text": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "streams": [
+      {
+        "chunkId": "chunk-12",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "then": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "generated": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "copies": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "into": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "so": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "routes": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      },
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "reading": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "baseurl": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "https": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "com": [
+      {
+        "chunkId": "chunk-13",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "handler": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "results": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 1
+      }
+    ],
+    "include": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "urlwithhash": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "absoluteurlwithhash": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "link": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "matched": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "heading": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "matching": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "id": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "slugifydocsheading": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "searchdocs": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "docssearchindex": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "indexjson": [
+      {
+        "chunkId": "chunk-14",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 2
+      }
+    ],
+    "streamdocsanswer": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 2
+      }
+    ],
+    "simple": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "prompt": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "retrieved": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "tells": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "cite": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "sources": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "asks": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "say": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "do": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "contain": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "response": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "process": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "env": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "moonshotai": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "kimi": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "k2": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "productname": [
+      {
+        "chunkId": "chunk-15",
+        "title": 0,
+        "heading": 0,
+        "body": 0,
+        "code": 1
+      }
+    ],
+    "abuse": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "protection": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 1,
+        "body": 0,
+        "code": 0
+      }
+    ],
+    "cheap": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "debounced": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "api": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "does": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "calls": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "behind": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "enter": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "cmd": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "limit": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "paths": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "validatedocsquery": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "readjsonwithlimit": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "getclientidentifier": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "ratelimiter": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "implementation": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "around": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "uses": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "memory": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "production": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "adapt": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "same": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "interface": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "store": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "redis": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "kv": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 2,
+        "code": 0
+      }
+    ],
+    "cloudflare": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "durable": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
+    ],
+    "objects": [
+      {
+        "chunkId": "chunk-16",
+        "title": 0,
+        "heading": 0,
+        "body": 1,
+        "code": 0
+      }
     ]
   },
-  "averageChunkLength": 68.63636363636364
+  "averageChunkLength": 69.94117647058823
 }

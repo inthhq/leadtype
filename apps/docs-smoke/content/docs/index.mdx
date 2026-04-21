@@ -28,6 +28,10 @@ description: "Package docs for runtime adapters, remark plugins, conversion, LLM
       type: "pipeline",
       description: "Generate `llms.txt` and topic-scoped agent context files.",
     },
+    "@inth/docs/search": {
+      type: "runtime",
+      description: "Static local search, source-grounded answer context, request guards, and AI SDK streaming helpers.",
+    },
     "@inth/docs/lint": {
       type: "pipeline",
       description: "Validation APIs and the `inth-docs-lint` CLI.",
@@ -71,6 +75,11 @@ await convertAllMdx({
 ## What to open in this app
 
 <Cards>
+  <Card
+    title="Search and AI Answers"
+    description="Explains the headless search surfaces, generated index, AI answer route, abuse guards, and demo."
+    href="/docs/search"
+  />
   <Card
     title="Quickstart"
     description="Shows the basic conversion flow plus hydrated `Tabs` and `PackageCommandTabs`."

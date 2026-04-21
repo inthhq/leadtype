@@ -49,6 +49,25 @@ test("docs route renders package docs and extracted AutoTypeTable output", async
   await expect(autoTypeTable).toContainText("featured");
 });
 
+test("search docs route explains the headless search APIs", async ({
+  page,
+  request,
+}) => {
+  const response = await request.get("/docs/search");
+  const html = await response.text();
+
+  expect(html).toContain("Search and AI Answers");
+  expect(html).toContain("@inth/docs/search");
+
+  await page.goto("/docs/search", { waitUntil: "networkidle" });
+  await expect(
+    page.getByRole("heading", { name: "Search and AI Answers", exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "/search", exact: true })
+  ).toBeVisible();
+});
+
 test("quickstart route renders MDX content on the server and hydrates interactive adapters", async ({
   page,
   request,

@@ -14,6 +14,7 @@ import { Route as PlaygroundRouteImport } from './routes/playground'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DocsSearchRouteImport } from './routes/docs/search'
 import { Route as DocsGuidesQuickstartRouteImport } from './routes/docs/guides/quickstart'
 import { Route as DocsGuidesComponentsFixtureRouteImport } from './routes/docs/guides/components-fixture'
 import { Route as ApiDocsSearchRouteImport } from './routes/api/docs/search'
@@ -44,6 +45,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const DocsSearchRoute = DocsSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
 const DocsGuidesQuickstartRoute = DocsGuidesQuickstartRouteImport.update({
   id: '/guides/quickstart',
   path: '/guides/quickstart',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRoute
+  '/docs/search': typeof DocsSearchRoute
   '/docs/': typeof DocsIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRoute
   '/api/docs/search': typeof ApiDocsSearchRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRoute
+  '/docs/search': typeof DocsSearchRoute
   '/docs': typeof DocsIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRoute
   '/api/docs/search': typeof ApiDocsSearchRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRoute
+  '/docs/search': typeof DocsSearchRoute
   '/docs/': typeof DocsIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRoute
   '/api/docs/search': typeof ApiDocsSearchRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/playground'
     | '/search'
+    | '/docs/search'
     | '/docs/'
     | '/api/docs/ask'
     | '/api/docs/search'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/playground'
     | '/search'
+    | '/docs/search'
     | '/docs'
     | '/api/docs/ask'
     | '/api/docs/search'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/playground'
     | '/search'
+    | '/docs/search'
     | '/docs/'
     | '/api/docs/ask'
     | '/api/docs/search'
@@ -180,6 +192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/docs/search': {
+      id: '/docs/search'
+      path: '/search'
+      fullPath: '/docs/search'
+      preLoaderRoute: typeof DocsSearchRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/docs/guides/quickstart': {
       id: '/docs/guides/quickstart'
       path: '/guides/quickstart'
@@ -212,12 +231,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface DocsRouteRouteChildren {
+  DocsSearchRoute: typeof DocsSearchRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DocsGuidesComponentsFixtureRoute: typeof DocsGuidesComponentsFixtureRoute
   DocsGuidesQuickstartRoute: typeof DocsGuidesQuickstartRoute
 }
 
 const DocsRouteRouteChildren: DocsRouteRouteChildren = {
+  DocsSearchRoute: DocsSearchRoute,
   DocsIndexRoute: DocsIndexRoute,
   DocsGuidesComponentsFixtureRoute: DocsGuidesComponentsFixtureRoute,
   DocsGuidesQuickstartRoute: DocsGuidesQuickstartRoute,

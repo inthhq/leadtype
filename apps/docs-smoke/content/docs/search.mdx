@@ -1,0 +1,94 @@
+---
+title: "Search and AI Answers"
+description: "Generate a local docs search index and stream source-grounded AI answers."
+---
+
+# Search and AI Answers
+
+`@inth/docs` includes headless search logic for docs sites that want to bring their own UI.
+
+<Callout title="Demo route">
+  Open the live search example at [/search](/search). Typing runs local search only; the `Ask` button is the only action that can call the model.
+</Callout>
+
+## Package Surfaces
+
+<TypeTable
+  type={{
+    "@inth/docs/search": {
+      type: "runtime",
+      description: "Edge-safe search, answer context, query validation, JSON body limits, and rate limiter helpers.",
+      required: true,
+    },
+    "@inth/docs/search/node": {
+      type: "build time",
+      description: "Node-only `generateSearchIndex` helper that reads converted markdown and writes `docs/search-index.json`.",
+      required: true,
+    },
+    "@inth/docs/search/ai": {
+      type: "runtime",
+      description: "Vercel AI SDK `streamText` wrapper for source-grounded plain text answer streams.",
+    },
+  }}
+/>
+
+## Build the Index
+
+Run conversion first, then generate the search index from markdown:
+
+```ts
+import { generateSearchIndex } from "@inth/docs/search/node";
+
+await generateSearchIndex({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+});
+```
+
+The generated index is static JSON. In the demo app, `scripts/search-generate.ts` copies it into `src/generated/docs-search-index.json` so routes can import it without reading from the file system at request time.
+
+## Runtime Search
+
+Import the generated JSON and query it from your own route handler:
+
+```ts
+import { searchDocs, type DocsSearchIndex } from "@inth/docs/search";
+import indexJson from "./generated/docs-search-index.json";
+
+const results = searchDocs(indexJson as DocsSearchIndex, "package tabs");
+```
+
+Search results include `urlWithHash` and `absoluteUrlWithHash` so the UI can link directly to the matched heading. The demo renders matching heading `id`s with `slugifyDocsHeading`.
+
+## AI Answers
+
+Use `streamDocsAnswer` when you want a simple Vercel AI SDK integration:
+
+```ts
+import { streamDocsAnswer } from "@inth/docs/search/ai";
+
+const { response } = streamDocsAnswer({
+  index,
+  query,
+  model: process.env.DOCS_SEARCH_MODEL ?? "moonshotai/kimi-k2.6",
+  productName: "@inth/docs",
+});
+```
+
+The answer prompt only includes retrieved docs context, tells the model to cite sources, and asks it to say when the docs do not contain enough context.
+
+## Abuse Protection
+
+<Steps>
+  <Step title="Search is cheap">
+    Debounced typing should call only the local `/api/docs/search` route. It does not call the model.
+  </Step>
+  <Step title="Answers are explicit">
+    Keep model calls behind a button such as `Ask`, `Enter to ask`, or `Cmd+Enter`.
+  </Step>
+  <Step title="Limit request paths">
+    Use `validateDocsQuery`, `readJsonWithLimit`, `getClientIdentifier`, and a `RateLimiter` implementation around public routes.
+  </Step>
+</Steps>
+
+The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the same `RateLimiter` interface to a shared store such as Redis, Vercel KV, Cloudflare KV, or Durable Objects.

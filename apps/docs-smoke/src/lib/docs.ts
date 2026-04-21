@@ -4,6 +4,7 @@ export interface DemoRoute {
   to:
     | "/"
     | "/docs"
+    | "/docs/search"
     | "/docs/guides/quickstart"
     | "/docs/guides/components-fixture"
     | "/playground"
@@ -20,6 +21,11 @@ export const demoRoutes: DemoRoute[] = [
     label: "Overview",
     to: "/docs",
     description: "Package docs plus extracted AutoTypeTable output.",
+  },
+  {
+    label: "Search Docs",
+    to: "/docs/search",
+    description: "Headless search APIs, generated index, and AI answers.",
   },
   {
     label: "Quickstart",
