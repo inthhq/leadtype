@@ -3,6 +3,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useId, useState } from "react";
+import { Streamdown } from "streamdown";
 import { SiteHeader } from "@/components/site-header";
 import type { DemoSearchApiResult } from "@/lib/search";
 
@@ -300,10 +301,15 @@ function SearchRoute() {
                 Vercel AI Gateway in deployment.
               </p>
             ) : (
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-7">
+              <Streamdown
+                caret="block"
+                className="docs-answer mt-4"
+                controls={false}
+                isAnimating={answerStatus === "streaming"}
+              >
                 {answer ||
                   "Ask a question to stream an answer grounded in the matching docs."}
-              </p>
+              </Streamdown>
             )}
           </section>
 

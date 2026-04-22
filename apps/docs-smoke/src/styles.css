@@ -3,6 +3,8 @@
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
 
+@source "../node_modules/streamdown/dist/*.js";
+
 @theme inline {
   --font-heading: "Geist Variable", sans-serif;
   --font-sans: "Geist Variable", sans-serif;
@@ -126,6 +128,52 @@
 
 .docs-prose th {
   @apply bg-secondary/70 font-semibold text-foreground;
+}
+
+.docs-answer {
+  @apply text-sm leading-7 text-muted-foreground;
+}
+
+.docs-answer > :first-child {
+  @apply mt-0;
+}
+
+.docs-answer p,
+.docs-answer ul,
+.docs-answer ol,
+.docs-answer pre {
+  @apply my-3;
+}
+
+.docs-answer ul,
+.docs-answer ol {
+  @apply pl-5;
+}
+
+.docs-answer li {
+  @apply my-1;
+}
+
+.docs-answer strong {
+  @apply font-semibold text-foreground;
+}
+
+.docs-answer a {
+  @apply underline underline-offset-4;
+}
+
+.docs-answer code {
+  font-family: var(--font-mono);
+  @apply rounded-md bg-secondary px-1.5 py-0.5 text-[0.9em] text-foreground;
+}
+
+.docs-answer pre {
+  font-family: var(--font-mono);
+  @apply overflow-x-auto rounded-lg border border-border bg-secondary px-3 py-3 text-xs text-foreground;
+}
+
+.docs-answer pre code {
+  @apply bg-transparent p-0 text-inherit;
 }
 
 [data-inth-callout] {
