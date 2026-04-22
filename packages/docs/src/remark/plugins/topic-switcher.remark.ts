@@ -34,11 +34,16 @@ function isTopicItem(value: unknown): value is TopicItem {
     return false;
   }
 
-  const item = value as Record<string, unknown>;
+  const hasRequiredKeys =
+    "value" in value && "label" in value && "href" in value;
+  if (!hasRequiredKeys) {
+    return false;
+  }
+
   return (
-    typeof item.value === "string" &&
-    typeof item.label === "string" &&
-    typeof item.href === "string"
+    typeof value.value === "string" &&
+    typeof value.label === "string" &&
+    typeof value.href === "string"
   );
 }
 
@@ -111,7 +116,7 @@ export function remarkTopicSwitcherToMarkdown(): Transformer<Root, Root> {
 
         if (items.length === 0) {
           parent.children.splice(index, 1);
-          return SKIP;
+          return [SKIP, index];
         }
 
         const label = normalizeWhitespace(

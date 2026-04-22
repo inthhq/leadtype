@@ -27,17 +27,19 @@ export function TopicSwitcher({
         {items.map(
           ({ value, label: itemLabel, description, current, ...item }) => {
             const isActive = current || value === activeValue;
+            const href = item.href ?? "";
             const isExternal =
-              item.href.startsWith("http://") ||
-              item.href.startsWith("https://");
+              href.startsWith("http://") || href.startsWith("https://");
 
             return (
               <li data-inth-topic-switcher-item="" key={value}>
                 <a
                   aria-current={isActive ? "page" : undefined}
+                  aria-disabled={href ? undefined : true}
                   data-active={isActive || undefined}
                   data-inth-topic-switcher-link=""
                   {...item}
+                  href={href || undefined}
                   rel={isExternal ? "noopener" : item.rel}
                   target={isExternal ? "_blank" : item.target}
                 >

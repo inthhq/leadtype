@@ -4,6 +4,7 @@ const DASHBOARD_HEADING = /Build docs with @inth\/docs/i;
 const QUICKSTART_ROUTE_LINK = /Quickstart/;
 const AI_DISABLED_MESSAGE = /AI answers are disabled/i;
 const QUICKSTART_INSTALL_HEADING_HREF = "/docs/guides/quickstart#1-install";
+const COMPONENT_FIXTURE_CALLOUT_COUNT = 3;
 
 async function waitForClientHydration(page: Page): Promise<void> {
   await page.waitForFunction(
@@ -130,7 +131,9 @@ test("components fixture renders package adapters and preserves external link sa
   await expect(
     page.getByRole("heading", { name: "Runtime Components", exact: true })
   ).toBeVisible();
-  await expect(page.locator("[data-inth-callout]")).toHaveCount(3);
+  await expect(page.locator("[data-inth-callout]")).toHaveCount(
+    COMPONENT_FIXTURE_CALLOUT_COUNT
+  );
   await expect(page.locator("[data-inth-accordion]")).toBeVisible();
   await expect(page.locator("[data-inth-cards]")).toBeVisible();
   await expect(page.locator("[data-inth-example]")).toBeVisible();

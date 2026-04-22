@@ -208,6 +208,37 @@ export const components = {
     );
   });
 
+  it("keeps example source files authored with template literals", async () => {
+    const sourcePath = await createTempMdxFile(
+      "example-source-files.mdx",
+      `<Example
+  title="With source files"
+  filename="main.tsx"
+  language="tsx"
+  code={\`export const main = true;\`}
+  sourceFiles={[
+    {
+      filename: "support.ts",
+      language: "ts",
+      code: \`export const message = "support";
+
+export const enabled = true;\`,
+    },
+  ]}
+>
+  Preview.
+</Example>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("**support.ts**");
+    expect(result.markdown).toContain("```ts");
+    expect(result.markdown).toContain('export const message = "support";');
+    expect(result.markdown).toContain("export const enabled = true;");
+  });
+
   it("converts topic switchers to markdown links", async () => {
     const sourcePath = await createTempMdxFile(
       "topics.mdx",
@@ -265,6 +296,31 @@ export const components = {
 
     expect(result.markdown).toContain(
       "[Current framework](/docs/frameworks/next/quickstart)"
+    );
+  });
+
+  it("continues visiting siblings after removing an empty topic switcher", async () => {
+    const sourcePath = await createTempMdxFile(
+      "empty-topic-switcher.mdx",
+      `<TopicSwitcher items={[]} />
+
+<TopicSwitcher
+  label="Framework"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+    },
+  ]}
+/>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain(
+      "[React](/docs/frameworks/react/quickstart)"
     );
   });
 

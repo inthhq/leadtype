@@ -1,6 +1,9 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
+const SOURCE_FILE_KEY_HASH_MODULUS = 2_147_483_647;
+
 export type ExampleSourceFile = {
+  id?: string;
   filename: string;
   language?: string;
   code: string;
@@ -15,6 +18,24 @@ export type ExampleProps = HTMLAttributes<HTMLDivElement> & {
   sourceFiles?: ExampleSourceFile[];
   children?: ReactNode;
 };
+
+function hashString(input: string): string {
+  let hash = 0;
+
+  for (const character of input) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    hash = (hash * 31 + codePoint) % SOURCE_FILE_KEY_HASH_MODULUS;
+  }
+
+  return hash.toString(36);
+}
+
+function sourceFileKey(sourceFile: ExampleSourceFile): string {
+  return (
+    sourceFile.id ??
+    `${sourceFile.filename}:${sourceFile.language ?? "tsx"}:${hashString(sourceFile.code)}`
+  );
+}
 
 export function Example({
   title,
@@ -48,7 +69,7 @@ export function Example({
           {sourceFiles.map((sourceFile) => (
             <div
               data-inth-example-source-file=""
-              key={`${sourceFile.filename}:${sourceFile.language ?? "tsx"}`}
+              key={sourceFileKey(sourceFile)}
             >
               <p data-inth-example-filename="">{sourceFile.filename}</p>
               <pre

@@ -6,7 +6,7 @@ import { Card } from "./card";
 import { CommandTabs } from "./command-tabs";
 import { Example } from "./example";
 import { Mermaid } from "./mermaid";
-import { TopicSwitcher } from "./topic-switcher";
+import { TopicSwitcher, type TopicSwitcherItem } from "./topic-switcher";
 import { TypeTable } from "./type-table";
 
 describe("component semantics", () => {
@@ -137,5 +137,18 @@ describe("component semantics", () => {
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain("/docs/frameworks/react/quickstart");
     expect(markup).toContain("/docs/frameworks/vue/quickstart");
+  });
+
+  it("does not throw when topic switcher content omits an href at runtime", () => {
+    const malformedItems = [
+      { value: "broken", label: "Broken" },
+    ] as unknown as TopicSwitcherItem[];
+
+    const markup = renderToStaticMarkup(
+      <TopicSwitcher activeValue="broken" items={malformedItems} />
+    );
+
+    expect(markup).toContain("Broken");
+    expect(markup).toContain('aria-disabled="true"');
   });
 });
