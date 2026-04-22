@@ -116,4 +116,37 @@ describe("streamDocsAnswer", () => {
       "AI answer failed: The AI provider returned an empty answer."
     );
   });
+
+  it("explains when reasoning consumes the output budget", async () => {
+    const index = createSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const { content, ...metadataOnlyIndex } = index;
+    if (!content) {
+      throw new Error("Expected createSearchIndex to embed content.");
+    }
+
+    const result = streamDocsAnswer({
+      index: metadataOnlyIndex,
+      content,
+      query: "How do tabs work?",
+      streamTextImpl: () => ({
+        fullStream: (async function* () {
+          yield {
+            text: "thinking",
+            type: "reasoning-delta",
+          };
+          yield {
+            finishReason: "length",
+            type: "finish",
+          };
+        })(),
+        toTextStreamResponse: () => new Response(""),
+      }),
+    });
+
+    await expect(result.response.text()).resolves.toContain(
+      "used the output budget for reasoning"
+    );
+  });
 });

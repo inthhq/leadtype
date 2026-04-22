@@ -61,6 +61,10 @@ type DocsTextStreamPart =
       error: unknown;
     }
   | {
+      type: "finish";
+      finishReason?: string;
+    }
+  | {
       type: string;
       [key: string]: unknown;
     };
@@ -85,11 +89,17 @@ function createDocsTextStreamResponse(
       async start(controller) {
         let streamedText = false;
         let streamedFailure = false;
+        let streamedReasoning = false;
+        let finishReason = "";
         try {
           for await (const part of stream) {
             if (part.type === "text-delta" && typeof part.text === "string") {
               streamedText = true;
               controller.enqueue(encoder.encode(part.text));
+              continue;
+            }
+            if (part.type === "reasoning-delta") {
+              streamedReasoning = true;
               continue;
             }
             if (part.type === "error") {
@@ -101,13 +111,19 @@ function createDocsTextStreamResponse(
               );
               break;
             }
+            if (
+              part.type === "finish" &&
+              typeof part.finishReason === "string"
+            ) {
+              finishReason = part.finishReason;
+            }
           }
           if (!(streamedText || streamedFailure)) {
-            controller.enqueue(
-              encoder.encode(
-                "AI answer failed: The AI provider returned an empty answer. Check AI Gateway auth and model access."
-              )
-            );
+            const message =
+              streamedReasoning && finishReason === "length"
+                ? "AI answer failed: The model used the output budget for reasoning before producing an answer. Increase maxOutputTokens or use a non-reasoning model."
+                : "AI answer failed: The AI provider returned an empty answer. Check AI Gateway auth and model access.";
+            controller.enqueue(encoder.encode(message));
           }
         } catch (error) {
           controller.enqueue(

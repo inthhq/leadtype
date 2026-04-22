@@ -16,6 +16,11 @@ import {
 } from "@/lib/search";
 
 const DEFAULT_MODEL = "moonshotai/kimi-k2.6";
+const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
+const DEFAULT_TIMEOUT = {
+  chunkMs: 15_000,
+  totalMs: 45_000,
+} as const;
 
 export const Route = createFileRoute("/api/docs/ask")({
   server: {
@@ -68,7 +73,9 @@ export const Route = createFileRoute("/api/docs/ask")({
             content: docsSearchContent,
             query,
             model: process.env.DOCS_SEARCH_MODEL ?? DEFAULT_MODEL,
+            maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
             productName: "@inth/docs",
+            timeout: DEFAULT_TIMEOUT,
           }).response;
         } catch (error) {
           if (error instanceof DocsSearchRequestError) {
