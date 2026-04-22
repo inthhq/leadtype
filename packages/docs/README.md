@@ -8,7 +8,7 @@ Shared MDX-to-markdown tooling for Inth docs projects.
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
-- `@inth/docs/search`: headless static docs search, answer prompts, request guards, and read-only docs filesystem primitives
+- `@inth/docs/search`: headless static docs search, answer prompts, request guards, and rate limiter helpers
 - `@inth/docs/search/node`: Node-only search index generation
 - `@inth/docs/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
 - `@inth/docs/search/tanstack`: TanStack AI answer streaming and bash tools

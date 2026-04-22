@@ -47,6 +47,24 @@ describe("TanStack docs bash tools", () => {
     });
   });
 
+  it("marks missing docs files", async () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const result = createDocsBashTools(index);
+    const readFileTool = result.tools.find(
+      (tool) => tool.name === "docs_read_file"
+    );
+
+    expect(
+      readFileTool?.execute?.({ path: "/docs/components/missing.md" })
+    ).toMatchObject({
+      content: "",
+      notFound: true,
+      path: "/docs/components/missing.md",
+    });
+  });
+
   it("blocks unsafe write commands", async () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

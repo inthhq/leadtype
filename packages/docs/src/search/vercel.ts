@@ -4,9 +4,12 @@ import {
   type TimeoutConfiguration,
   type ToolSet,
 } from "ai";
+import { log } from "../internal/logger";
 import {
+  appendToolInstructions,
   createDocsTextStreamResponse,
   getPlainTextResponseInit,
+  getStreamErrorMessage,
 } from "./answer-stream";
 import {
   type AnswerContextOptions,
@@ -84,13 +87,6 @@ export type StreamDocsAnswerResult = {
   sources: DocsAnswerSource[];
 };
 
-function appendToolInstructions(
-  system: string,
-  toolInstructions?: string
-): string {
-  return toolInstructions ? `${system} ${toolInstructions}` : system;
-}
-
 export function streamDocsAnswer(
   options: StreamDocsAnswerOptions
 ): StreamDocsAnswerResult {
@@ -110,7 +106,11 @@ export function streamDocsAnswer(
     timeout: options.timeout ?? DEFAULT_TIMEOUT,
     providerOptions: options.providerOptions,
     tools: options.tools,
-    onError: () => undefined,
+    onError: ({ error }) => {
+      log.error(
+        `streamDocsAnswer provider error: ${getStreamErrorMessage(error)}`
+      );
+    },
   });
   const responseInit = getPlainTextResponseInit();
 

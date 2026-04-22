@@ -1,3 +1,8 @@
+/**
+ * Cloudflare AI Gateway / Workers AI adapter helpers and docs bash tools.
+ *
+ * @packageDocumentation
+ */
 export {
   type CloudflareDocsProvider,
   type CreateCloudflareDocsAdapterOptions,

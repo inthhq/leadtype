@@ -31,9 +31,17 @@ export async function createDocsBashTool(
   content?: DocsSearchContentStore,
   options: CreateDocsBashToolOptions = {}
 ): Promise<DocsBashToolResult> {
-  const { createBashTool } = (await import(
-    /* @vite-ignore */ BASH_TOOL_PACKAGE
-  )) as typeof import("bash-tool");
+  let createBashTool: typeof import("bash-tool")["createBashTool"];
+  try {
+    const bashToolModule = (await import(
+      /* @vite-ignore */ BASH_TOOL_PACKAGE
+    )) as typeof import("bash-tool");
+    createBashTool = bashToolModule.createBashTool;
+  } catch {
+    throw new Error(
+      'createDocsBashTool requires "bash-tool" as an optional peer dependency. Install it with: bun add bash-tool'
+    );
+  }
   const root = normalizeDocsBashRoot(options.root);
   const docsBash = createDocsBash(index, content, {
     ...options,
@@ -47,7 +55,9 @@ export async function createDocsBashTool(
       options.maxOutputLength ?? DEFAULT_DOCS_BASH_MAX_OUTPUT_LENGTH,
     onBeforeBashCall: ({ command }) => {
       const blockedCommand = blockUnsafeDocsBashCommand(command);
-      return blockedCommand ? { command: blockedCommand } : undefined;
+      return blockedCommand === undefined
+        ? undefined
+        : { command: blockedCommand };
     },
     sandbox: docsBash,
   });

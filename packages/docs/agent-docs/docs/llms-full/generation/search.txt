@@ -19,8 +19,6 @@ Import runtime helpers from:
 ```ts
 import {
   createAnswerContext,
-  createDocsBash,
-  createDocsBashFileMap,
   createMemoryRateLimiter,
   type DocsSearchContentStore,
   type DocsSearchIndex,
@@ -50,7 +48,7 @@ import { streamDocsAnswer as streamCloudflareDocsAnswer } from "@inth/docs/searc
 
 |Use case|Import|
 |--|--|
-|Search, content reads, request guards, read-only docs filesystem|`@inth/docs/search`|
+|Search, content reads, request guards, and rate limiting|`@inth/docs/search`|
 |Vercel AI Gateway / AI SDK answer + bash tools|`@inth/docs/search/vercel`|
 |TanStack AI answer + bash tools|`@inth/docs/search/tanstack`|
 |Cloudflare AI Gateway / Workers AI answer + bash tools|`@inth/docs/search/cloudflare`|

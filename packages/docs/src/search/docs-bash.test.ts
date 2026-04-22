@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  blockUnsafeDocsBashCommand,
   createDocsBash,
   createDocsBashFileMap,
-  createDocsSearchIndex,
-  type DocsSearchDocument,
-} from "./index";
+} from "./docs-bash";
+import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
 
 const docs: DocsSearchDocument[] = [
   {
@@ -69,6 +69,12 @@ describe("docs bash adapter", () => {
       expect.objectContaining({
         stdout: expect.stringContaining("CommandTabs"),
       })
+    );
+  });
+
+  it("blocks unsafe commands before custom command execution", () => {
+    expect(blockUnsafeDocsBashCommand("tee /docs/components/tabs.md")).toBe(
+      "printf 'Blocked unsafe docs bash command.\\n' && false"
     );
   });
 });

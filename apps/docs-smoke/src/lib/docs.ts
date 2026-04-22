@@ -80,7 +80,7 @@ export const packageSurfaces: PackageSurface[] = [
     importPath: "@inth/docs/search",
     lifecycle: "runtime",
     description:
-      "Search runtime, content readers, guards, and read-only docs filesystem primitives.",
+      "Search runtime, content readers, guards, and rate limiter helpers.",
   },
   {
     importPath: "@inth/docs/search/node",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createDocsBashTool as createLegacyDocsBashTool } from "./bash-index";
 import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
 import { createDocsBashTool } from "./vercel-index";
 
@@ -15,6 +16,10 @@ const docs: DocsSearchDocument[] = [
 ];
 
 describe("Vercel docs bash tool", () => {
+  it("keeps the legacy bash alias compatible", () => {
+    expect(createLegacyDocsBashTool).toBe(createDocsBashTool);
+  });
+
   it("creates a bash-tool wrapper without writeFile by default", async () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

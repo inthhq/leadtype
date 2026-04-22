@@ -25,7 +25,7 @@ export function getStreamErrorMessage(error: unknown): string {
 export function createDocsTextStreamResponse<TPart>(
   stream: AsyncIterable<TPart>,
   handlers: PlainTextStreamHandlers<TPart>,
-  init: ResponseInit = RESPONSE_INIT
+  init: ResponseInit = getPlainTextResponseInit()
 ): Response {
   const encoder = new TextEncoder();
   return new Response(
@@ -84,5 +84,15 @@ export function createDocsTextStreamResponse<TPart>(
 }
 
 export function getPlainTextResponseInit(): ResponseInit {
-  return RESPONSE_INIT;
+  return {
+    ...RESPONSE_INIT,
+    headers: new Headers(RESPONSE_INIT.headers),
+  };
+}
+
+export function appendToolInstructions(
+  system: string,
+  toolInstructions?: string
+): string {
+  return toolInstructions ? `${system} ${toolInstructions}` : system;
 }

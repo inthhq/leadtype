@@ -4,7 +4,10 @@ import {
   type StreamChunk,
   type Tool,
 } from "@tanstack/ai";
-import { createDocsTextStreamResponse } from "./answer-stream";
+import {
+  appendToolInstructions,
+  createDocsTextStreamResponse,
+} from "./answer-stream";
 import {
   type AnswerContextOptions,
   createAnswerContext,
@@ -40,13 +43,6 @@ export type StreamDocsAnswerResult = {
   response: Response;
   sources: DocsAnswerSource[];
 };
-
-function appendToolInstructions(
-  system: string,
-  toolInstructions?: string
-): string {
-  return toolInstructions ? `${system} ${toolInstructions}` : system;
-}
 
 function getChunkText(part: StreamChunk): string | undefined {
   if (part.type === "TEXT_MESSAGE_CONTENT" && "delta" in part) {

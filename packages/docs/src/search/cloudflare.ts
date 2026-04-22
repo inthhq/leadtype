@@ -65,6 +65,11 @@ export type StreamDocsAnswerOptions =
 export type StreamDocsAnswerResult =
   import("./tanstack").StreamDocsAnswerResult;
 
+function unsupportedCloudflareProvider(options: never): never {
+  const provider = (options as { provider?: unknown }).provider;
+  throw new Error(`Unsupported Cloudflare docs provider: ${String(provider)}`);
+}
+
 export function createCloudflareDocsAdapter(
   options: CreateCloudflareDocsAdapterOptions
 ): AnyTextAdapter {
@@ -82,7 +87,7 @@ export function createCloudflareDocsAdapter(
     case "workers-ai":
       return createWorkersAiChat(options.model, options.options);
     default:
-      throw new Error("Unsupported Cloudflare docs provider.");
+      return unsupportedCloudflareProvider(options);
   }
 }
 

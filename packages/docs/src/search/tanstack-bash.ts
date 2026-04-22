@@ -50,6 +50,7 @@ const READ_FILE_OUTPUT_SCHEMA = {
   properties: {
     path: { type: "string" },
     content: { type: "string" },
+    notFound: { type: "boolean" },
   },
   required: ["path", "content"],
   additionalProperties: false,
@@ -77,22 +78,22 @@ function blockedCommandResult() {
   };
 }
 
-function readCommandInput(args: unknown): string {
+function readCommandInput(args: unknown): string | undefined {
   return args &&
     typeof args === "object" &&
     "command" in args &&
     typeof args.command === "string"
     ? args.command
-    : "";
+    : undefined;
 }
 
-function readPathInput(args: unknown): string {
+function readPathInput(args: unknown): string | undefined {
   return args &&
     typeof args === "object" &&
     "path" in args &&
     typeof args.path === "string"
     ? args.path
-    : "";
+    : undefined;
 }
 
 export function createDocsBashTools(
@@ -122,7 +123,8 @@ export function createDocsBashTools(
         stdout: "",
       };
     }
-    if (blockUnsafeDocsBashCommand(command)) {
+    const blockedCommand = blockUnsafeDocsBashCommand(command);
+    if (blockedCommand !== undefined) {
       return blockedCommandResult();
     }
     return docsBash.exec(command);
@@ -135,9 +137,18 @@ export function createDocsBashTools(
     outputSchema: READ_FILE_OUTPUT_SCHEMA,
   }).server((args) => {
     const requestedPath = readPathInput(args);
+    if (!requestedPath) {
+      return {
+        content: "",
+        notFound: true,
+        path: "",
+      };
+    }
     const path = normalizeDocsFilePath(root, requestedPath);
+    const content = fileMap[path];
     return {
-      content: fileMap[path] ?? "",
+      content: content ?? "",
+      ...(content === undefined ? { notFound: true } : {}),
       path,
     };
   });

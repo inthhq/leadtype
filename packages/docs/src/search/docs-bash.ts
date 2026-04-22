@@ -87,7 +87,7 @@ const READ_ONLY_COMMANDS = [
 ] as const satisfies CommandName[];
 
 const UNSAFE_COMMAND_PATTERN =
-  /(^|[\s;&|()])(rm|mv|cp|touch|mkdir|chmod|curl|wget|python|python3|node|js-exec)\b/;
+  /(^|[\s;&|()])(rm|mv|cp|touch|mkdir|chmod|curl|wget|python|python3|node|js-exec|tee)\b/;
 const SED_IN_PLACE_PATTERN =
   /\bsed\b(?=[\s\S]*(^|[\s;&|])(-[A-Za-z]*i[A-Za-z]*|--in-place)(=|\s|$))/;
 const WRITE_REDIRECT_PATTERN = /(^|[^<])(?:>>?|>\||>&|>>&)/;
