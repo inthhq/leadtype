@@ -10,6 +10,9 @@ export default defineConfig({
     "search/node-index": "src/search/node-index.ts",
     "search/ai-index": "src/search/ai-index.ts",
     "search/bash-index": "src/search/bash-index.ts",
+    "search/vercel-index": "src/search/vercel-index.ts",
+    "search/tanstack-index": "src/search/tanstack-index.ts",
+    "search/cloudflare-index": "src/search/cloudflare-index.ts",
     "lint/index": "src/lint/index.ts",
     "lint/cli": "src/lint/cli.ts",
   },
@@ -50,5 +53,7 @@ export default defineConfig({
     "ai",
     "bash-tool",
     "just-bash",
+    "@tanstack/ai",
+    "@cloudflare/tanstack-ai",
   ],
 });

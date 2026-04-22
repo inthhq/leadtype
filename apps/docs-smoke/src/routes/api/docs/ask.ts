@@ -5,7 +5,7 @@ import {
   readJsonWithLimit,
   validateDocsQuery,
 } from "@inth/docs/search";
-import { streamDocsAnswer } from "@inth/docs/search/ai";
+import { streamDocsAnswer } from "@inth/docs/search/vercel";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   docsSearchContent,
@@ -15,7 +15,7 @@ import {
   jsonResponse,
 } from "@/lib/search";
 
-const DEFAULT_MODEL = "moonshotai/kimi-k2.6";
+const DEFAULT_MODEL = "openai/gpt-5.4-mini";
 const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
 const DEFAULT_TIMEOUT = {
   chunkMs: 15_000,

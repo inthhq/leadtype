@@ -8,10 +8,11 @@ Shared MDX-to-markdown tooling for Inth docs projects.
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
-- `@inth/docs/search`: headless static docs search, answer prompts, and request guards
+- `@inth/docs/search`: headless static docs search, answer prompts, request guards, and rate limiter helpers
 - `@inth/docs/search/node`: Node-only search index generation
-- `@inth/docs/search/ai`: Vercel AI SDK answer streaming helper
-- `@inth/docs/search/bash`: optional bash-tool docs inspection adapter
+- `@inth/docs/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
+- `@inth/docs/search/tanstack`: TanStack AI answer streaming and bash tools
+- `@inth/docs/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
 - `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
 
 ## Install
@@ -128,10 +129,10 @@ The generator writes a compact `search-index.json` plus a separate
 `search-content.json`. Search scores against numeric chunk records, while answer
 flows read precise docs pages or heading chunks from the content store.
 
-For question answering, use the AI helper with the Vercel AI SDK:
+For question answering, use a provider entrypoint. The example app uses the Vercel AI Gateway / AI SDK helper:
 
 ```ts
-import { streamDocsAnswer } from "@inth/docs/search/ai";
+import { streamDocsAnswer } from "@inth/docs/search/vercel";
 
 const { response, sources } = streamDocsAnswer({
   index,
@@ -142,10 +143,10 @@ const { response, sources } = streamDocsAnswer({
 });
 ```
 
-For agent-style docs inspection, use the optional bash adapter:
+For agent-style docs inspection, use the provider-compatible bash tool adapter:
 
 ```ts
-import { createDocsBashTool } from "@inth/docs/search/bash";
+import { createDocsBashTool } from "@inth/docs/search/vercel";
 
 const { tools, instructions } = await createDocsBashTool(index, content);
 ```
@@ -153,6 +154,11 @@ const { tools, instructions } = await createDocsBashTool(index, content);
 The bash adapter builds a read-only `/docs` filesystem for `just-bash` and wraps
 it with `bash-tool` so AI SDK agents can inspect docs with commands like `ls`,
 `cat`, `find`, `grep`, and `rg`.
+
+Use `@inth/docs/search/tanstack` with a TanStack `adapter`, or
+`@inth/docs/search/cloudflare` with `createCloudflareDocsAdapter`, when those
+gateways own answer generation. Tools and tool instructions are explicit inputs
+to `streamDocsAnswer`; no provider entrypoint creates tools internally.
 
 The search runtime includes reusable guards for payload size, query length,
 control characters, client identification, and in-memory rate limiting. The

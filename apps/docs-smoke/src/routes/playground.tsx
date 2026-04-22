@@ -40,7 +40,7 @@ import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";`,
     summary:
       "Use the generated index for local search, then stream answers only when a user asks.",
     imports: `import { searchDocs } from "@inth/docs/search";
-import { streamDocsAnswer } from "@inth/docs/search/ai";`,
+import { streamDocsAnswer } from "@inth/docs/search/vercel";`,
     code: `const results = searchDocs(index, query, { content });
 
 const { response } = streamDocsAnswer({
