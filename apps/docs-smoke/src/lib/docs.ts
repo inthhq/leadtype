@@ -148,6 +148,21 @@ export const componentMatrix: Array<{
     note: "Switches install, run, or create commands in-browser.",
   },
   {
+    name: "Accordion / AccordionItem",
+    coverage: ["runtime render", "pipeline conversion", "agent docs"],
+    note: "Collapsible details that still flatten into generated markdown.",
+  },
+  {
+    name: "Example",
+    coverage: ["runtime render", "pipeline conversion", "agent docs"],
+    note: "Data-driven preview and source examples for authored MDX.",
+  },
+  {
+    name: "TopicSwitcher",
+    coverage: ["runtime render", "pipeline conversion", "agent docs"],
+    note: "Reader-facing navigation across equivalent docs topics.",
+  },
+  {
     name: "Selector",
     coverage: ["runtime render", "browser hydration"],
     note: "Render-prop selector drives the guided recipe playground.",

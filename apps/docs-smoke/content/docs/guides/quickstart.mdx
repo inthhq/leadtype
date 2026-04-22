@@ -68,11 +68,13 @@ import { mdxComponents } from "@inth/docs";
 export const components = {
   ...mdxComponents,
   // Add or override project-specific MDX components here.
-  // Example: Icon, APIExample, FrameworkTabs, or branded Callout.
+  // Example: Icon, APIExample, TopicSwitcher, or branded Callout.
 };
 ```
 
 `@inth/docs` does not own your routing, sidebar, layout, hosting, or framework. A Next.js, TanStack Start, Vite, Fumadocs, or Astro-backed docs app can still own those pieces.
+
+Framework docs can be exposed through `TopicSwitcher` while the conversion pipeline still resolves `{framework}` placeholders from `/docs/frameworks/:framework` routes.
 
 ## 3. Convert Authored MDX To Markdown
 

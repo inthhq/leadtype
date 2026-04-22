@@ -1,6 +1,12 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
 export {
+  Accordion,
+  AccordionItem,
+  type AccordionItemProps,
+  type AccordionProps,
+} from "./accordion";
+export {
   Callout,
   type CalloutProps,
   type CalloutVariant,
@@ -12,6 +18,7 @@ export {
   type CommandTabsProps,
   type PackageManager,
 } from "./command-tabs";
+export { Example, type ExampleProps, type ExampleSourceFile } from "./example";
 export {
   type MdxComponents,
   mdxComponents,
@@ -24,6 +31,11 @@ export {
 } from "./selector";
 export { Step, type StepProps, Steps, type StepsProps } from "./steps";
 export { Tab, type TabProps, Tabs, type TabsProps } from "./tabs";
+export {
+  TopicSwitcher,
+  type TopicSwitcherItem,
+  type TopicSwitcherProps,
+} from "./topic-switcher";
 export {
   ExtractedTypeTable,
   type ExtractedTypeTableProps,

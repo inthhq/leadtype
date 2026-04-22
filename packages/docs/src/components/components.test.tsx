@@ -1,9 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { Accordion, AccordionItem } from "./accordion";
 import { Callout } from "./callout";
 import { Card } from "./card";
 import { CommandTabs } from "./command-tabs";
+import { Example } from "./example";
 import { Mermaid } from "./mermaid";
+import { TopicSwitcher, type TopicSwitcherItem } from "./topic-switcher";
 import { TypeTable } from "./type-table";
 
 describe("component semantics", () => {
@@ -79,5 +82,73 @@ describe("component semantics", () => {
     expect(markup).not.toContain("javascript:alert");
     expect(markup).not.toContain("<a");
     expect(markup).toContain("<code>string</code>");
+  });
+
+  it("renders accordion items as native details and summary elements", () => {
+    const markup = renderToStaticMarkup(
+      <Accordion>
+        <AccordionItem title="Details">Hidden content.</AccordionItem>
+      </Accordion>
+    );
+
+    expect(markup).toContain("<details");
+    expect(markup).toContain("<summary");
+    expect(markup).toContain("Details");
+    expect(markup).toContain("Hidden content.");
+  });
+
+  it("renders examples with preview content, code, language, and filename", () => {
+    const markup = renderToStaticMarkup(
+      <Example
+        code="export const value = true;"
+        filename="example.ts"
+        language="ts"
+        title="Example"
+      >
+        Preview content.
+      </Example>
+    );
+
+    expect(markup).toContain("Preview content.");
+    expect(markup).toContain("export const value = true;");
+    expect(markup).toContain('data-language="ts"');
+    expect(markup).toContain("example.ts");
+  });
+
+  it("marks the active topic switcher item as the current page", () => {
+    const markup = renderToStaticMarkup(
+      <TopicSwitcher
+        activeValue="react"
+        items={[
+          {
+            value: "react",
+            label: "React",
+            href: "/docs/frameworks/react/quickstart",
+          },
+          {
+            value: "vue",
+            label: "Vue",
+            href: "/docs/frameworks/vue/quickstart",
+          },
+        ]}
+      />
+    );
+
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("/docs/frameworks/react/quickstart");
+    expect(markup).toContain("/docs/frameworks/vue/quickstart");
+  });
+
+  it("does not throw when topic switcher content omits an href at runtime", () => {
+    const malformedItems = [
+      { value: "broken", label: "Broken" },
+    ] as unknown as TopicSwitcherItem[];
+
+    const markup = renderToStaticMarkup(
+      <TopicSwitcher activeValue="broken" items={malformedItems} />
+    );
+
+    expect(markup).toContain("Broken");
+    expect(markup).toContain('aria-disabled="true"');
   });
 });
