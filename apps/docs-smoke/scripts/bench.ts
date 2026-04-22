@@ -12,8 +12,8 @@ import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "../../../packages/docs/src/convert/index.ts";
 import {
-  generateLLMFullFiles,
-  generateLLMSummaries,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
 } from "../../../packages/docs/src/llm/index.ts";
 import {
   defaultRemarkPlugins,
@@ -88,7 +88,7 @@ async function bench(): Promise<Stats[]> {
     );
 
     const llmMs = await timed(async () => {
-      await generateLLMSummaries({
+      await generateLlmsTxt({
         srcDir: SRC_DIR,
         outDir: OUT_DIR,
         baseUrl: "https://docs.example.com",
@@ -108,7 +108,7 @@ async function bench(): Promise<Stats[]> {
           },
         ],
       });
-      await generateLLMFullFiles({
+      await generateLLMFullContextFiles({
         outDir: OUT_DIR,
         baseUrl: "https://docs.example.com",
         product: { name: "Bench SDK" },

@@ -24,7 +24,7 @@ import {
 Import the Node-only generator from:
 
 ```ts
-import { generateSearchIndex } from "@inth/docs/search/node";
+import { generateDocsSearchFiles } from "@inth/docs/search/node";
 ```
 
 Import the AI SDK helper from:
@@ -44,7 +44,7 @@ import { createDocsBashTool } from "@inth/docs/search/bash";
 Generate the index after converting MDX to markdown:
 
 ```ts
-await generateSearchIndex({
+await generateDocsSearchFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
 });

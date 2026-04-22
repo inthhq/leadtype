@@ -6,24 +6,24 @@ description: How to convert MDX docs into Markdown with @inth/docs/convert.
 
 The `@inth/docs/convert` entrypoint provides three main APIs:
 
-* `convertMdxFile`
-* `convertSingleMdxFile`
+* `convertMdxToMarkdown`
+* `writeMdxFileAsMarkdown`
 * `convertAllMdx`
 
 Import them from:
 
 ```ts
-import { convertAllMdx, convertMdxFile } from "@inth/docs/convert";
+import { convertAllMdx, convertMdxToMarkdown } from "@inth/docs/convert";
 ```
 
 ## Main Use Cases
 
 ### Convert one file in memory
 
-Use `convertMdxFile` when you need the rendered markdown string plus the resolved frontmatter.
+Use `convertMdxToMarkdown` when you need the rendered markdown string plus the resolved frontmatter.
 
 ```ts
-const result = await convertMdxFile(
+const result = await convertMdxToMarkdown(
   "docs/guides/quickstart.mdx",
   defaultRemarkPlugins,
   false
@@ -32,7 +32,7 @@ const result = await convertMdxFile(
 
 ### Convert a single file to disk
 
-Use `convertSingleMdxFile` when you already know the source path and output path.
+Use `writeMdxFileAsMarkdown` when you already know the source path and output path.
 
 ### Convert an entire docs tree
 

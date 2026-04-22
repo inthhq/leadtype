@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { convertMdxFile } from "../convert";
+import { convertMdxToMarkdown } from "../convert";
 import { defaultRemarkPlugins, remarkInclude } from "./index";
 
 const tempDirs: string[] = [];
@@ -61,7 +61,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "1. **Verify it works** Start your development server and confirm:"
@@ -92,7 +92,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "[React](/docs/frameworks/react/quickstart)"
@@ -111,7 +111,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("title: Frameworks");
   });
@@ -131,7 +131,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, [
+    const result = await convertMdxToMarkdown(sourcePath, [
       remarkInclude,
       ...defaultRemarkPlugins,
     ]);
@@ -154,7 +154,7 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");
   });
@@ -171,7 +171,7 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("publishedAt: 2026-04-19T00:00:00.000Z");
     expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");

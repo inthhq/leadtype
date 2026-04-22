@@ -3,8 +3,8 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import {
-  type CreateSearchIndexOptions,
-  createSearchIndex,
+  type CreateDocsSearchIndexOptions,
+  createDocsSearchIndex,
   type DocsSearchDocument,
 } from "./search";
 
@@ -23,16 +23,16 @@ const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
 const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
 
-export type GenerateSearchIndexConfig = {
+export type GenerateDocsSearchFilesConfig = {
   outDir: string;
   baseUrl?: string;
   outputFile?: string;
   contentOutputFile?: string;
   embedContent?: boolean;
-  indexOptions?: CreateSearchIndexOptions;
+  indexOptions?: CreateDocsSearchIndexOptions;
 };
 
-export type GenerateSearchIndexResult = {
+export type GenerateDocsSearchFilesResult = {
   outputPath: string;
   contentOutputPath?: string;
   docs: number;
@@ -56,7 +56,8 @@ function normalizeBaseUrl(baseUrl?: string): string {
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : undefined) ||
-    "http://localhost:3000";
+    process.env.PORTLESS_URL ||
+    "http://localhost";
 
   return resolved.replace(TRAILING_SLASHES_PATTERN, "");
 }
@@ -151,7 +152,7 @@ async function readMarkdownDocs(
   return docs;
 }
 
-function warnIfLarge(result: GenerateSearchIndexResult): void {
+function warnIfLarge(result: GenerateDocsSearchFilesResult): void {
   if (result.indexBytes > WARN_INDEX_BYTES) {
     process.stderr.write(
       `Search index is ${result.indexBytes} bytes, which is above the ${WARN_INDEX_BYTES} byte guidance threshold.\n`
@@ -169,23 +170,23 @@ function warnIfLarge(result: GenerateSearchIndexResult): void {
   }
 }
 
-export async function generateSearchIndex(
-  config: GenerateSearchIndexConfig
-): Promise<GenerateSearchIndexResult> {
+export async function generateDocsSearchFiles(
+  config: GenerateDocsSearchFilesConfig
+): Promise<GenerateDocsSearchFilesResult> {
   const outDir = path.resolve(config.outDir);
   const docsDir = path.join(outDir, DOCS_DIRNAME);
   if (!existsSync(docsDir)) {
     throw new Error(
-      `generateSearchIndex found no docs directory at "${docsDir}". Run convertAllMdx first, or check config.outDir.`
+      `generateDocsSearchFiles found no docs directory at "${docsDir}". Run convertAllMdx first, or check config.outDir.`
     );
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const docs = await readMarkdownDocs(docsDir, baseUrl);
-  const indexWithContent = createSearchIndex(docs, config.indexOptions);
+  const indexWithContent = createDocsSearchIndex(docs, config.indexOptions);
   const { content, ...indexWithoutContent } = indexWithContent;
   if (!content) {
-    throw new Error("createSearchIndex did not return a content store.");
+    throw new Error("createDocsSearchIndex did not return a content store.");
   }
   const index = config.embedContent ? indexWithContent : indexWithoutContent;
   const outputPath = path.join(

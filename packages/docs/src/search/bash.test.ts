@@ -4,7 +4,7 @@ import {
   createDocsBashFileMap,
   createDocsBashTool,
 } from "./bash-index";
-import { createSearchIndex, type DocsSearchDocument } from "./index";
+import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
 
 const docs: DocsSearchDocument[] = [
   {
@@ -14,26 +14,25 @@ const docs: DocsSearchDocument[] = [
     urlPath: "/docs/components/tabs",
     absoluteUrl: "https://docs.example.com/docs/components/tabs",
     relativePath: "components/tabs",
-    content:
-      "# Tabs\n\n## PackageCommandTabs\n\nUse tabs to switch package managers.",
+    content: "# Tabs\n\n## CommandTabs\n\nUse tabs to switch package managers.",
   },
 ];
 
 describe("docs bash adapter", () => {
   it("creates a docs filesystem map", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const files = createDocsBashFileMap(index);
 
     expect(files["/docs/README.md"]).toContain("grep -ri");
     expect(files["/docs/llms.txt"]).toContain("Tabs");
-    expect(files["/docs/components/tabs.md"]).toContain("PackageCommandTabs");
+    expect(files["/docs/components/tabs.md"]).toContain("CommandTabs");
     expect(files["/docs/.index/documents.json"]).toContain("components/tabs");
   });
 
   it("runs read-only docs commands", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const bash = createDocsBash(index);
@@ -43,7 +42,7 @@ describe("docs bash adapter", () => {
       exitCode: 0,
     });
     await expect(
-      bash.exec("grep -ri PackageCommandTabs /docs")
+      bash.exec("grep -ri CommandTabs /docs")
     ).resolves.toMatchObject({
       exitCode: 0,
     });
@@ -58,7 +57,7 @@ describe("docs bash adapter", () => {
   });
 
   it("keeps the filesystem read-only", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const bash = createDocsBash(index);
@@ -68,13 +67,13 @@ describe("docs bash adapter", () => {
     ).rejects.toThrow("read-only");
     await expect(bash.exec("cat /docs/components/tabs.md")).resolves.toEqual(
       expect.objectContaining({
-        stdout: expect.stringContaining("PackageCommandTabs"),
+        stdout: expect.stringContaining("CommandTabs"),
       })
     );
   });
 
   it("creates a bash-tool wrapper without writeFile by default", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const result = await createDocsBashTool(index);

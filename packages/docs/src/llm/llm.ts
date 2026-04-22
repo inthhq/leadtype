@@ -98,7 +98,7 @@ export type ProductInfo = {
   agentGuidance?: string;
 };
 
-export type LLMSummariesConfig = {
+export type LlmsTxtConfig = {
   srcDir: string;
   outDir: string;
   baseUrl?: string;
@@ -107,7 +107,7 @@ export type LLMSummariesConfig = {
   docsSections?: CuratedSection[];
 };
 
-export type LLMFullConfig = {
+export type LLMFullContextConfig = {
   outDir: string;
   baseUrl?: string;
   product: Pick<ProductInfo, "name">;
@@ -192,7 +192,8 @@ function normalizeBaseUrl(baseUrl?: string): string {
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : undefined) ||
-    "http://localhost:3000";
+    process.env.PORTLESS_URL ||
+    "http://localhost";
 
   return resolved.replace(TRAILING_SLASHES_PATTERN, "");
 }
@@ -669,9 +670,7 @@ async function writeTopicTree(
  * Generate `/llms.txt` (product summary) and `/docs/llms.txt` (curated docs
  * map) by reading frontmatter from .md/.mdx files under `{srcDir}/docs/`.
  */
-export async function generateLLMSummaries(
-  config: LLMSummariesConfig
-): Promise<void> {
+export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   const srcDir = path.resolve(config.srcDir);
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
@@ -700,8 +699,8 @@ export async function generateLLMSummaries(
  * Generate the full-context routers and one topic-specific .txt per topic
  * under `/docs/llms-full/`. Reads generated .md files from `{outDir}/docs/`.
  */
-export async function generateLLMFullFiles(
-  config: LLMFullConfig
+export async function generateLLMFullContextFiles(
+  config: LLMFullContextConfig
 ): Promise<void> {
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
@@ -712,7 +711,7 @@ export async function generateLLMFullFiles(
   // hollow router/topic files.
   if (markdownDocs.length === 0) {
     throw new Error(
-      `generateLLMFullFiles found no markdown under "${path.join(outDir, DOCS_DIRNAME)}". Run convertAllMdx first, or check that config.outDir matches.`
+      `generateLLMFullContextFiles found no markdown under "${path.join(outDir, DOCS_DIRNAME)}". Run convertAllMdx first, or check that config.outDir matches.`
     );
   }
 

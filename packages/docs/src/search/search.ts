@@ -155,7 +155,7 @@ export type DocsSearchBundle = {
   content: DocsSearchContentStore;
 };
 
-export type CreateSearchIndexOptions = {
+export type CreateDocsSearchIndexOptions = {
   generatedAt?: string;
   maxChunkChars?: number;
   overlapChars?: number;
@@ -564,9 +564,9 @@ function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
   );
 }
 
-export function createSearchIndex(
+export function createDocsSearchIndex(
   markdownDocs: DocsSearchDocument[],
-  options: CreateSearchIndexOptions = {}
+  options: CreateDocsSearchIndexOptions = {}
 ): DocsSearchIndex {
   const maxChunkChars = options.maxChunkChars ?? DEFAULT_MAX_CHUNK_CHARS;
   const overlapChars = Math.min(

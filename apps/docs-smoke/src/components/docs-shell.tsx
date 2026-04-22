@@ -2,7 +2,7 @@
 
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { demoRoutes } from "@/lib/docs";
+import { navigationRoutes } from "@/lib/docs";
 import { cn } from "@/lib/utils";
 import { SiteHeader } from "./site-header";
 
@@ -14,11 +14,11 @@ export function DocsShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-svh">
       <SiteHeader />
-      <div className="mx-auto grid max-w-5xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="space-y-4">
-          <h2 className="font-medium text-foreground text-sm">Routes</h2>
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[168px_minmax(0,1fr)]">
+        <aside className="space-y-3">
+          <h2 className="font-medium text-foreground text-xs">Docs routes</h2>
           <nav className="space-y-1">
-            {demoRoutes
+            {navigationRoutes
               .filter((route) => route.to !== "/")
               .map((route) => (
                 <Link
@@ -29,13 +29,16 @@ export function DocsShell({ children }: { children: ReactNode }) {
                   key={route.to}
                   to={route.to}
                 >
-                  {route.label}
+                  <span className="block font-medium">{route.label}</span>
+                  <span className="sr-only">{route.description}</span>
                 </Link>
               ))}
           </nav>
         </aside>
-        <main className="min-w-0 rounded-2xl border border-border bg-card">
-          <section className="docs-prose px-6 py-8 sm:px-8">{children}</section>
+        <main className="min-w-0 rounded-lg border border-border bg-card">
+          <section className="docs-prose px-5 py-6 sm:px-7 sm:py-7">
+            {children}
+          </section>
         </main>
       </div>
     </div>

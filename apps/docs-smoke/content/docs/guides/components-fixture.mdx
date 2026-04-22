@@ -1,70 +1,58 @@
 ---
-title: "Components Fixture"
-description: "Render the runtime-facing adapters from @inth/docs in one browser route."
+title: "Runtime Components"
+description: "Render the browser-facing @inth/docs adapters through authored MDX."
 ---
 
-# Components Fixture
+# Runtime Components
 
 <Callout variant="success" title="Runtime fixture">
-  This page intentionally exercises the browser-facing adapters without replacing them with shadcn variants.
+  This page exercises the exported MDX adapters without replacing them with app-local variants.
 </Callout>
 
-## Authoring Example
+## Authoring Contract
 
 ```mdx
 <Callout variant="success" title="Runtime fixture">
-  Render the exported adapters through your shared `mdxComponents` map.
+  Render exported adapters through your shared `mdxComponents` map.
 </Callout>
 
-<PackageCommandTabs command="{pm} add @inth/docs" />
+<CommandTabs command="@inth/docs" mode="install" />
+
+<CommandTabs command="next-app" mode="create" />
 
 <Tabs items={["Overview", "Types"]}>
   <Tab value="Overview">Tabs hydrate in the browser.</Tab>
-  <Tab value="Types">Use `TypeTable` when the type data already exists in MDX.</Tab>
+  <Tab value="Types">Use `TypeTable` when type data already exists in MDX.</Tab>
 </Tabs>
 
 <Mermaid chart={`flowchart LR
   A[MDX] --> B[mdxComponents]
   B --> C[Rendered route]
 `} />
-
-<TypeTable
-  type={{
-    command: {
-      type: "string",
-      description: "Command template with a {pm} placeholder.",
-      required: true,
-    },
-  }}
-/>
-
-<AutoTypeTable
-  name="PipelineExampleOptions"
-  path="./apps/docs-smoke/type-fixtures/pipeline-example.ts"
-  type={pipelineExampleType}
-/>
 ```
 
-`AutoTypeTable` still needs extracted `type` data from the route or conversion pipeline. This demo renders that extracted output on `/docs`.
+## Navigation Cards
 
 <Cards>
-  <Card title="Quickstart route" description="Internal docs route rendered by the package card component." href="/docs/guides/quickstart" />
-  <Card title="External reference" description="External links should preserve safe target and rel attributes." href="https://example.com/docs" />
+  <Card title="Quickstart route" description="Implementation steps for installing, rendering, converting, and validating." href="/docs/guides/quickstart" />
+  <Card title="External reference" description="External links preserve safe target and rel attributes." href="https://example.com/docs" />
 </Cards>
+
+## Browser Flow
 
 <Steps>
   <Step title="Author MDX">
-    Start with semantic components such as `Callout`, `Tabs`, `Cards`, and `TypeTable`.
+    Use semantic components such as `Callout`, `Tabs`, `Cards`, `Steps`, `CommandTabs`, and `TypeTable`.
   </Step>
-  <Step title="Render in TanStack Start">
+  <Step title="Render in the app">
     Import the `.mdx` file directly and provide `mdxComponents` through the shared runtime map.
   </Step>
-  <Step title="Validate separately">
-    Keep `AutoTypeTable` in pipeline coverage where source extraction actually happens.
+  <Step title="Validate the pipeline separately">
+    Keep `ExtractedTypeTable` coverage in the conversion pipeline where source extraction has a stable file-system base path.
   </Step>
 </Steps>
 
-<PackageCommandTabs command="{pm} add @inth/docs" />
+<CommandTabs command="@inth/docs" mode="install" />
 
 <Tabs items={["Overview", "Tables", "Pipeline note"]}>
   <Tab value="Overview">
@@ -74,25 +62,29 @@ description: "Render the runtime-facing adapters from @inth/docs in one browser 
     `TypeTable` is safe to render live because all of its data is already present in the MDX payload.
   </Tab>
   <Tab value="Pipeline note">
-    `AutoTypeTable` is not shown live here because extraction depends on a stable build-time file system base path.
+    `ExtractedTypeTable` is rendered on `/docs` with extracted type data and verified in `content/docs/guides/extracted-type-table-fixture.mdx`.
   </Tab>
 </Tabs>
 
 <Mermaid chart={`flowchart LR
-  A[MDX fixture] --> B[mdxComponents]
+  A[Authored MDX] --> B[mdxComponents]
   B --> C[TanStack Start route]
   C --> D[Playwright coverage]
 `} />
 
 <TypeTable
-  type={{
+  properties={{
     command: {
       type: "string",
-      description: "Command template with a {pm} placeholder.",
+      description: "Package name, CLI name, or custom command template with a {pm} placeholder.",
       required: true,
     },
+    mode: {
+      type: "\"install\" | \"run\" | \"create\"",
+      description: "Optional expansion mode for package names, CLI names, or project starters such as `pnpm create next-app`.",
+    },
     commands: {
-      type: "Record<PackageManager, string>",
+      type: "Partial<Record<PackageManager, string>>",
       description: "Explicit per-manager overrides when templates are not enough.",
     },
     defaultManager: {
@@ -103,6 +95,6 @@ description: "Render the runtime-facing adapters from @inth/docs in one browser 
   }}
 />
 
-<Callout variant="canary" title="Pipeline-only coverage">
-  `AutoTypeTable` is verified by the markdown conversion fixture at `content/docs/guides/auto-type-table-fixture.mdx` and by the dedicated pipeline test script.
+<Callout variant="canary" title="Pipeline-only extraction">
+  `ExtractedTypeTable` needs extracted type data. The live extracted output appears on `/docs`, and the pipeline fixture verifies markdown output from `PipelineExampleOptions`.
 </Callout>

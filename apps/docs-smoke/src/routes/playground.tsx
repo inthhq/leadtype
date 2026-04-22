@@ -1,39 +1,63 @@
 "use client";
 
-import { Selector } from "@inth/docs";
-import { createFileRoute } from "@tanstack/react-router";
-import { SiteHeader } from "@/components/site-header";
-import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Callout,
+  CommandTabs,
+  Selector,
+  Tab,
+  Tabs,
+  TypeTable,
+} from "@inth/docs";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { SiteHeader } from "@/components/site-header";
 
-const scenarioContent = {
-  consumer: {
-    description:
-      "Use `mdxComponents` as your starting map and style around the exported semantics rather than replacing everything.",
-    title: "Consumer app",
+const recipes = {
+  render: {
+    title: "Render MDX",
+    summary:
+      "Use the root export when your docs site renders authored MDX in React.",
+    imports: `import { mdxComponents } from "@inth/docs";`,
+    code: `export const components = {
+  ...mdxComponents,
+};`,
+    validation: "bun run --filter docs-smoke test:e2e",
   },
-  pipeline: {
-    description:
-      "`AutoTypeTable` is validated during markdown conversion with a stable `basePath`, not in the live browser renderer.",
-    title: "Pipeline test",
+  convert: {
+    title: "Convert For Agents",
+    summary:
+      "Use the conversion and remark entry points when agents need plain markdown.",
+    imports: `import { convertAllMdx } from "@inth/docs/convert";
+import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";`,
+    code: `await convertAllMdx({
+  srcDir: "content",
+  outDir: "public",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+});`,
+    validation: "bun run --filter docs-smoke pipeline:build",
   },
-  router: {
-    description:
-      "The app shell uses TanStack Start routes and shadcn-style cards, while the docs body renders the package adapters directly.",
-    title: "Router shell",
+  search: {
+    title: "Search And Answer",
+    summary:
+      "Use the generated index for local search, then stream answers only when a user asks.",
+    imports: `import { searchDocs } from "@inth/docs/search";
+import { streamDocsAnswer } from "@inth/docs/search/ai";`,
+    code: `const results = searchDocs(index, query, { content });
+
+const { response } = streamDocsAnswer({
+  index,
+  content,
+  query,
+  model,
+  productName: "@inth/docs",
+});`,
+    validation: "bun run --filter docs-smoke pipeline:search",
   },
 } as const;
 
-type ScenarioKey = keyof typeof scenarioContent;
+type RecipeKey = keyof typeof recipes;
 
-function isScenarioKey(value: string): value is ScenarioKey {
-  return value in scenarioContent;
+function isRecipeKey(value: string): value is RecipeKey {
+  return value in recipes;
 }
 
 export const Route = createFileRoute("/playground")({
@@ -44,52 +68,149 @@ function PlaygroundRoute() {
   return (
     <div className="min-h-svh">
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <Card>
-          <CardHeader>
-            <Badge>Direct component usage</Badge>
-            <CardTitle>Selector playground</CardTitle>
-            <CardDescription>
-              `Selector` is easier to understand outside MDX because it relies
-              on a render prop.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Selector
-              defaultValue="consumer"
-              label="Scenario"
-              options={[
-                { label: "Consumer app", value: "consumer" },
-                { label: "Pipeline test", value: "pipeline" },
-                { label: "Router shell", value: "router" },
-              ]}
-            >
-              {(activeValue) => <ScenarioPanel activeValue={activeValue} />}
-            </Selector>
-          </CardContent>
-        </Card>
+      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-7 sm:px-6">
+        <section className="grid gap-4 border-border border-b pb-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-end">
+          <div className="space-y-1.5">
+            <p className="font-medium text-accent-strong text-sm">
+              Guided recipes
+            </p>
+            <h1 className="font-heading font-medium text-2xl tracking-tight">
+              Recipes playground
+            </h1>
+          </div>
+          <p className="max-w-3xl text-muted-foreground text-sm leading-6">
+            Switch between implementation paths and inspect exact imports,
+            minimal code, live behavior, and the validation command without
+            losing the working area to explanatory chrome.
+          </p>
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+          <Selector
+            defaultValue="render"
+            label="Recipe"
+            options={[
+              { label: "Render MDX", value: "render" },
+              { label: "Convert For Agents", value: "convert" },
+              { label: "Search And Answer", value: "search" },
+            ]}
+          >
+            {(activeValue) => <RecipePanel activeValue={activeValue} />}
+          </Selector>
+        </section>
       </main>
     </div>
   );
 }
 
-function ScenarioPanel({ activeValue }: { activeValue: string }) {
-  const content = isScenarioKey(activeValue)
-    ? scenarioContent[activeValue]
-    : null;
+function RecipePanel({ activeValue }: { activeValue: string }) {
+  const recipe = isRecipeKey(activeValue) ? recipes[activeValue] : null;
 
-  if (!content) {
+  if (!recipe) {
     return null;
   }
 
   return (
-    <div className="rounded-[1.25rem] border border-border/70 bg-background/70 p-5">
-      <div className="space-y-2">
-        <h2 className="font-semibold text-lg">{content.title}</h2>
-        <p className="text-muted-foreground text-sm leading-7">
-          {content.description}
+    <div className="grid gap-5 pt-2">
+      <div className="space-y-1.5">
+        <h2 className="font-heading font-medium text-xl tracking-tight">
+          {recipe.title}
+        </h2>
+        <p className="max-w-2xl text-muted-foreground text-sm leading-6">
+          {recipe.summary}
         </p>
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="space-y-3">
+          <h3 className="font-medium text-sm">Exact imports</h3>
+          <pre className="overflow-x-auto rounded-lg border border-border bg-secondary p-4 text-sm">
+            <code>{recipe.imports}</code>
+          </pre>
+        </section>
+        <section className="space-y-3">
+          <h3 className="font-medium text-sm">Minimal code</h3>
+          <pre className="overflow-x-auto rounded-lg border border-border bg-secondary p-4 text-sm">
+            <code>{recipe.code}</code>
+          </pre>
+        </section>
+      </div>
+
+      <section className="border-border border-t pt-5">
+        <h3 className="font-medium text-sm">Live package behavior</h3>
+        <div className="mt-4">
+          <RecipePreview activeValue={activeValue} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="font-medium text-sm">Validation command</h3>
+        <pre className="overflow-x-auto rounded-lg border border-border bg-secondary p-4 text-sm">
+          <code>{recipe.validation}</code>
+        </pre>
+      </section>
+    </div>
+  );
+}
+
+function RecipePreview({ activeValue }: { activeValue: string }) {
+  if (activeValue === "convert") {
+    return (
+      <CommandTabs
+        command="bun run --filter docs-smoke pipeline:{pm}"
+        commands={{
+          bun: "bun run --filter docs-smoke pipeline:build",
+          npm: "npm run --filter docs-smoke pipeline:build",
+          pnpm: "pnpm --filter docs-smoke pipeline:build",
+          yarn: "yarn workspace docs-smoke pipeline:build",
+        }}
+        defaultManager="bun"
+      />
+    );
+  }
+
+  if (activeValue === "search") {
+    return (
+      <div className="space-y-4">
+        <TypeTable
+          properties={{
+            searchDocs: {
+              type: "(index, query, options) => DocsSearchResult[]",
+              description: "Returns local ranked results from static JSON.",
+              required: true,
+            },
+            streamDocsAnswer: {
+              type: "(options) => { response, sources }",
+              description: "Streams source-grounded text through the AI SDK.",
+            },
+          }}
+        />
+        <Link
+          className="inline-flex rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
+          to="/search"
+        >
+          Open live search
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Callout title="Runtime adapter" variant="success">
+        The default `mdxComponents` map keeps authored MDX semantic while the
+        host app owns the surrounding shell and styling.
+      </Callout>
+      <Tabs items={["Author", "Render"]}>
+        <Tab value="Author">
+          Write MDX with package components such as `Callout`, `Tabs`, `Cards`,
+          and `TypeTable`.
+        </Tab>
+        <Tab value="Render">
+          Spread `mdxComponents` into your MDX provider and override individual
+          entries only when the product needs custom styling.
+        </Tab>
+      </Tabs>
     </div>
   );
 }

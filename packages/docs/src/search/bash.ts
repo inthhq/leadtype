@@ -239,7 +239,7 @@ function createReadme(root: string, files: DocsContentFile[]): string {
     `ls ${root}`,
     `find ${root} -name "*.md"`,
     `grep -ri "tabs" ${root}`,
-    `rg "PackageCommandTabs" ${root}`,
+    `rg "CommandTabs" ${root}`,
     `cat ${root}/components/tabs.md`,
     "```",
     "",

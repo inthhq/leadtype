@@ -1,5 +1,5 @@
 export {
-  type GenerateSearchIndexConfig,
-  type GenerateSearchIndexResult,
-  generateSearchIndex,
+  type GenerateDocsSearchFilesConfig,
+  type GenerateDocsSearchFilesResult,
+  generateDocsSearchFiles,
 } from "./node";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { streamDocsAnswer } from "./ai-index";
-import { createSearchIndex, type DocsSearchDocument } from "./index";
+import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
 
 const docs: DocsSearchDocument[] = [
   {
@@ -17,12 +17,12 @@ const docs: DocsSearchDocument[] = [
 
 describe("streamDocsAnswer", () => {
   it("passes grounded prompt settings into streamText", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const { content, ...metadataOnlyIndex } = index;
     if (!content) {
-      throw new Error("Expected createSearchIndex to embed content.");
+      throw new Error("Expected createDocsSearchIndex to embed content.");
     }
     const calls: unknown[] = [];
 
@@ -63,12 +63,12 @@ describe("streamDocsAnswer", () => {
   });
 
   it("streams provider errors as visible text", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const { content, ...metadataOnlyIndex } = index;
     if (!content) {
-      throw new Error("Expected createSearchIndex to embed content.");
+      throw new Error("Expected createDocsSearchIndex to embed content.");
     }
 
     const result = streamDocsAnswer({
@@ -92,12 +92,12 @@ describe("streamDocsAnswer", () => {
   });
 
   it("streams empty provider responses as visible text", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const { content, ...metadataOnlyIndex } = index;
     if (!content) {
-      throw new Error("Expected createSearchIndex to embed content.");
+      throw new Error("Expected createDocsSearchIndex to embed content.");
     }
 
     const result = streamDocsAnswer({
@@ -118,12 +118,12 @@ describe("streamDocsAnswer", () => {
   });
 
   it("explains when reasoning consumes the output budget", async () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const { content, ...metadataOnlyIndex } = index;
     if (!content) {
-      throw new Error("Expected createSearchIndex to embed content.");
+      throw new Error("Expected createDocsSearchIndex to embed content.");
     }
 
     const result = streamDocsAnswer({

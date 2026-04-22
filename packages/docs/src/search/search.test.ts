@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   attachDocsSearchContent,
   createAnswerContext,
+  createDocsSearchIndex,
   createMemoryRateLimiter,
-  createSearchIndex,
   type DocsSearchDocument,
   DocsSearchRequestError,
   getClientIdentifier,
@@ -32,7 +32,7 @@ title: Quickstart
 
 Install the package.
 
-## PackageCommandTabs
+## CommandTabs
 
 Use tabs to switch between npm, pnpm, and bun install commands.
 `,
@@ -79,9 +79,9 @@ const cafe = "café";
   },
 ];
 
-describe("createSearchIndex and searchDocs", () => {
+describe("createDocsSearchIndex and searchDocs", () => {
   it("stores compact metadata separately from answer content", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -101,7 +101,7 @@ describe("createSearchIndex and searchDocs", () => {
   });
 
   it("normalizes case, punctuation, and diacritics", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -111,28 +111,26 @@ describe("createSearchIndex and searchDocs", () => {
   });
 
   it("preserves heading paths in chunks and results", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
     const result = searchDocs(index, "pnpm")[0];
 
-    expect(result?.headingPath).toEqual(["Quickstart", "PackageCommandTabs"]);
+    expect(result?.headingPath).toEqual(["Quickstart", "CommandTabs"]);
   });
 
   it("adds hash URLs for the matched heading", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
     const result = searchDocs(index, "pnpm")[0];
 
-    expect(result?.anchor).toBe("packagecommandtabs");
-    expect(result?.urlWithHash).toBe(
-      "/docs/guides/quickstart#packagecommandtabs"
-    );
+    expect(result?.anchor).toBe("commandtabs");
+    expect(result?.urlWithHash).toBe("/docs/guides/quickstart#commandtabs");
     expect(result?.absoluteUrlWithHash).toBe(
-      "https://docs.example.com/docs/guides/quickstart#packagecommandtabs"
+      "https://docs.example.com/docs/guides/quickstart#commandtabs"
     );
   });
 
@@ -169,7 +167,7 @@ describe("createSearchIndex and searchDocs", () => {
         content: "# Guide\n\nThis page mentions tabs in body copy only.",
       },
     ];
-    const index = createSearchIndex(rankingDocs, {
+    const index = createDocsSearchIndex(rankingDocs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -187,7 +185,7 @@ describe("createSearchIndex and searchDocs", () => {
   });
 
   it("returns no results for empty or stopword-only queries", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -196,7 +194,7 @@ describe("createSearchIndex and searchDocs", () => {
   });
 
   it("builds excerpts around matching text", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -206,17 +204,17 @@ describe("createSearchIndex and searchDocs", () => {
   });
 
   it("searches metadata-only indexes and uses split content for excerpts", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const { content, ...metadataOnlyIndex } = index;
     if (!content) {
-      throw new Error("Expected createSearchIndex to embed content.");
+      throw new Error("Expected createDocsSearchIndex to embed content.");
     }
 
     expect(searchDocs(metadataOnlyIndex, "pnpm")[0]?.title).toBe("Quickstart");
     expect(searchDocs(metadataOnlyIndex, "pnpm")[0]?.excerpt).toContain(
-      "PackageCommandTabs"
+      "CommandTabs"
     );
     expect(
       searchDocs(metadataOnlyIndex, "pnpm", { content })[0]?.excerpt
@@ -227,7 +225,7 @@ describe("createSearchIndex and searchDocs", () => {
   });
 
   it("reads docs content as files and precise chunks", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
     const result = searchDocs(index, "pnpm")[0];
@@ -240,7 +238,7 @@ describe("createSearchIndex and searchDocs", () => {
     expect(fileByUrl?.title).toBe("Quickstart");
     expect(file?.chunks[0]?.anchor).toBe("quickstart");
     expect(chunk?.absoluteUrlWithHash).toBe(
-      "https://docs.example.com/docs/guides/quickstart#packagecommandtabs"
+      "https://docs.example.com/docs/guides/quickstart#commandtabs"
     );
     expect(chunk?.text).toContain("bun install commands");
   });
@@ -248,7 +246,7 @@ describe("createSearchIndex and searchDocs", () => {
 
 describe("createAnswerContext", () => {
   it("caps source count and total context characters", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -263,7 +261,7 @@ describe("createAnswerContext", () => {
   });
 
   it("includes citation and prompt-injection guardrails", () => {
-    const index = createSearchIndex(docs, {
+    const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 

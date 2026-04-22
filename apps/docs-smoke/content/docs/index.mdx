@@ -1,65 +1,100 @@
 ---
 title: "@inth/docs"
-description: "Package docs for runtime adapters, remark plugins, conversion, LLM output, and linting."
+description: "Developer reference for rendering MDX, converting docs, generating LLM bundles, linting content, and serving search."
 ---
 
 # @inth/docs
 
-`@inth/docs` has five package surfaces:
+`@inth/docs` is the shared package for docs rendering, docs pipelines, LLM-friendly output, validation, and local search. Use the smallest entry point that matches where your code runs.
+
+## Package Surfaces
 
 <TypeTable
-  type={{
+  properties={{
     "@inth/docs": {
       type: "runtime",
-      description: "React adapters and `mdxComponents` for browser-rendered MDX.",
+      description: "React MDX adapters and individual components.",
       required: true,
     },
     "@inth/docs/remark": {
-      type: "pipeline",
-      description: "remark plugins and `defaultRemarkPlugins` for MDX processing.",
+      type: "build time",
+      description: "remark plugins and `defaultRemarkPlugins`.",
       required: true,
     },
     "@inth/docs/convert": {
-      type: "pipeline",
-      description: "`convertMdxFile`, `convertSingleMdxFile`, and `convertAllMdx`.",
+      type: "build time",
+      description: "MDX-to-markdown conversion APIs.",
       required: true,
     },
     "@inth/docs/llm": {
-      type: "pipeline",
-      description: "Generate `llms.txt` and topic-scoped agent context files.",
+      type: "build time",
+      description: "`llms.txt` and full-context generation.",
     },
     "@inth/docs/search": {
       type: "runtime",
-      description: "Static local search, source-grounded answer context, request guards, and AI SDK streaming helpers.",
+      description: "Edge-safe search runtime, content readers, guards, and rate limiter helpers.",
+    },
+    "@inth/docs/search/node": {
+      type: "build time",
+      description: "Node-only `generateDocsSearchFiles`.",
+    },
+    "@inth/docs/search/ai": {
+      type: "optional runtime",
+      description: "AI SDK answer streaming helper.",
+    },
+    "@inth/docs/search/bash": {
+      type: "optional runtime",
+      description: "bash-tool docs inspection adapter.",
     },
     "@inth/docs/lint": {
-      type: "pipeline",
-      description: "Validation APIs and the `inth-docs-lint` CLI.",
+      type: "build time",
+      description: "Lint APIs and the `inth-docs-lint` CLI.",
     },
   }}
 />
 
-## Install
+## Common Implementation Paths
 
-<PackageCommandTabs command="{pm} install @inth/docs" />
+<Steps>
+  <Step title="Render MDX in React">
+    Import `mdxComponents` from `@inth/docs`, spread it into your MDX provider, and override individual entries only when your app needs custom styling.
+  </Step>
+  <Step title="Convert MDX for agents">
+    Use `@inth/docs/convert` with `@inth/docs/remark` to flatten authored MDX into markdown that works in LLM bundles and search indexes.
+  </Step>
+  <Step title="Generate and query search">
+    Generate static search JSON with `@inth/docs/search/node`, query it with `@inth/docs/search`, and add `@inth/docs/search/ai` only for explicit answer requests.
+  </Step>
+</Steps>
 
-## Runtime integration
+## Methodology
 
-Use the root package when you want to render authored MDX in a React app.
+`@inth/docs` is not trying to replace hosted docs platforms or full docs-site frameworks. It is a portable toolkit for the docs pipeline around your site.
+
+Use Mintlify, Fumadocs, or Starlight when the primary job is to ship a complete docs website quickly. Use `@inth/docs` when the primary job is to keep docs content useful across the website, CI, generated markdown, local search, AI answer routes, and coding-agent workflows.
+
+| Tool | Primary job | Best fit |
+| --- | --- | --- |
+| [Mintlify](https://mintlify.com/) | Managed developer documentation platform with hosted docs, API docs, and AI-oriented product features. | Teams that want a polished docs product without owning the whole site pipeline. |
+| [Fumadocs](https://fumadocs.dev/) | Documentation framework and toolchain for React docs sites, especially Next.js. | Teams that want framework-level routing, navigation, UI, content adapters, search, and OpenAPI support. |
+| [Starlight](https://starlight.astro.build/) | Full-featured documentation framework built on Astro. | Teams already using Astro or wanting an Astro-native docs site. |
+| `@inth/docs` | Shared docs infrastructure package: React MDX adapters, MDX-to-markdown conversion, LLM bundles, linting, static search, and answer helpers. | Teams that want to own the app shell while reusing one docs pipeline across sites, agents, search APIs, and internal tools. |
+
+These tools are not mutually exclusive. A site framework can own the public docs experience while `@inth/docs` owns conversion, validation, search artifacts, and agent-facing bundles.
+
+## Render MDX
 
 ```tsx
 import { mdxComponents } from "@inth/docs";
 
-const components = {
+export const components = {
   ...mdxComponents,
 };
 ```
 
-The root export is the runtime contract. It is not tied to shadcn, TanStack Start, or any specific docs shell.
+The root export is a runtime contract. It is not tied to TanStack Start, shadcn, or this demo shell.
 
-## Convert MDX
-
-Use the conversion and remark packages when you want markdown output instead of browser rendering.
+## Convert And Generate
 
 ```ts
 import { convertAllMdx } from "@inth/docs/convert";
@@ -72,36 +107,43 @@ await convertAllMdx({
 });
 ```
 
-## What to open in this app
+After conversion, use `@inth/docs/llm` to write `llms.txt` and topic-scoped full-context files, or `@inth/docs/search/node` to generate a compact search index.
+
+## What To Open In This App
 
 <Cards>
   <Card
-    title="Search and AI Answers"
-    description="Explains the headless search surfaces, generated index, AI answer route, abuse guards, and demo."
-    href="/docs/search"
-  />
-  <Card
     title="Quickstart"
-    description="Shows the basic conversion flow plus hydrated `Tabs` and `PackageCommandTabs`."
+    description="Install the package, wire runtime MDX components, run conversion, and validate the pipeline."
     href="/docs/guides/quickstart"
   />
   <Card
-    title="Components Fixture"
-    description="Shows the runtime adapters rendered together through `mdxComponents`."
+    title="Runtime Components"
+    description="Exercise the browser-facing adapters through authored MDX."
     href="/docs/guides/components-fixture"
+  />
+  <Card
+    title="Search APIs"
+    description="Build the static search index, query it at runtime, and stream grounded answers."
+    href="/docs/search"
+  />
+  <Card
+    title="Recipes Playground"
+    description="Switch between guided implementation recipes with live package components."
+    href="/playground"
   />
 </Cards>
 
-## Validation layers
+## Validation Layers
 
 <Steps>
   <Step title="Package tests">
     Cover semantic HTML and safe runtime behavior in `packages/docs/src/**/*.test.ts*`.
   </Step>
   <Step title="Pipeline fixtures">
-    Cover conversion, extraction, and LLM output in `apps/docs-smoke/scripts` and `apps/docs-smoke/content`.
+    Cover conversion, type extraction, LLM output, and search generation in `apps/docs-smoke/scripts` and `apps/docs-smoke/content`.
   </Step>
   <Step title="Browser coverage">
-    Cover hydration and interactive adapters in the Playwright suite for this app.
+    Cover SSR, hydration, keyboard behavior, link safety, search APIs, and recipe interactions in Playwright.
   </Step>
 </Steps>

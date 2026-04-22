@@ -6,7 +6,7 @@
 import { copyFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateSearchIndex } from "../../../packages/docs/src/search/node-index.ts";
+import { generateDocsSearchFiles } from "../../../packages/docs/src/search/node-index.ts";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
@@ -15,7 +15,7 @@ const generatedDir = join(appRoot, "src", "generated");
 const generatedIndexPath = join(generatedDir, "docs-search-index.json");
 const generatedContentPath = join(generatedDir, "docs-search-content.json");
 
-const result = await generateSearchIndex({
+const result = await generateDocsSearchFiles({
   outDir,
   baseUrl: "https://docs.example.com",
 });

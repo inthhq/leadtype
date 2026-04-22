@@ -2,9 +2,9 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { generateSearchIndex } from "./node-index";
+import { generateDocsSearchFiles } from "./node-index";
 
-describe("generateSearchIndex", () => {
+describe("generateDocsSearchFiles", () => {
   it("writes minified split search index and content files", async () => {
     const root = await mkdtemp(join(tmpdir(), "inth-docs-search-"));
     try {
@@ -19,11 +19,11 @@ describe("generateSearchIndex", () => {
           "",
           "# Quickstart",
           "",
-          "Use PackageCommandTabs to install with pnpm.",
+          "Use CommandTabs to install with pnpm.",
         ].join("\n")
       );
 
-      const result = await generateSearchIndex({
+      const result = await generateDocsSearchFiles({
         baseUrl: "https://docs.example.com",
         outDir: root,
       });
@@ -40,7 +40,7 @@ describe("generateSearchIndex", () => {
       expect(indexJson).not.toContain("\n  ");
       expect(contentJson).not.toContain("\n  ");
       expect(JSON.parse(indexJson).content).toBeUndefined();
-      expect(JSON.parse(contentJson).chunks[0]).toContain("PackageCommandTabs");
+      expect(JSON.parse(contentJson).chunks[0]).toContain("CommandTabs");
     } finally {
       await rm(root, { force: true, recursive: true });
     }

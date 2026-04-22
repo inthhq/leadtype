@@ -10,15 +10,15 @@
 
 import { join } from "node:path";
 import {
-  generateLLMFullFiles,
-  generateLLMSummaries,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
 } from "../../../packages/docs/src/llm/index.ts";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = FIXTURE_DIR;
 const OUT_DIR = join(process.cwd(), "public-real2");
 
-await generateLLMSummaries({
+await generateLlmsTxt({
   srcDir: SRC_DIR,
   outDir: OUT_DIR,
   baseUrl: "https://c15t.com",
@@ -52,7 +52,7 @@ await generateLLMSummaries({
   ],
 });
 
-await generateLLMFullFiles({
+await generateLLMFullContextFiles({
   outDir: OUT_DIR,
   baseUrl: "https://c15t.com",
   product: { name: "c15t" },

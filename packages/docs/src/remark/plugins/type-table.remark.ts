@@ -111,7 +111,7 @@ type TypeTableOptions = {
   includeDefaults?: boolean;
   /** When true, include the required status column in the output table. */
   includeRequired?: boolean;
-  /** Base path to resolve relative file paths for AutoTypeTable components. */
+  /** Base path to resolve relative file paths for ExtractedTypeTable components. */
   basePath?: string;
 };
 
@@ -132,7 +132,7 @@ type ParsedProperty = {
 
 /**
  * Parse a JavaScript object literal from an MDX attribute value expression.
- * This handles the type object that gets passed to the TypeTable component.
+ * This handles the properties object that gets passed to the TypeTable component.
  */
 function parseTypeObject(
   raw: string | null
@@ -550,7 +550,7 @@ export function extractTypeFromFile(
   basePath?: string
 ): Record<string, ObjectType> | null {
   try {
-    const normalizeAutoTypeTablePath = (
+    const normalizeExtractedTypeTablePath = (
       rawPath: string,
       rawBasePath?: string
     ): string => {
@@ -581,7 +581,7 @@ export function extractTypeFromFile(
 
     // Resolve the file path using basePath if provided
     const normalizedPath = basePath
-      ? normalizeAutoTypeTablePath(filePath, basePath)
+      ? normalizeExtractedTypeTablePath(filePath, basePath)
       : filePath;
     const resolvedPath = basePath
       ? resolve(basePath, normalizedPath)
@@ -607,7 +607,7 @@ export function extractTypeFromFile(
   }
 }
 
-function createAutoTypeTable(
+function createExtractedTypeTable(
   properties: ParsedProperty[],
   options: TypeTableOptions
 ): Table {
@@ -667,7 +667,7 @@ function addOptionalContent(
   }
 }
 
-function processAutoTypeTableNode(
+function processExtractedTypeTableNode(
   node: MdxNode,
   options: TypeTableOptions
 ): RootContent[] {
@@ -675,8 +675,8 @@ function processAutoTypeTableNode(
     normalizeWhitespace(getAttributeValue(node, "title") ?? "") || null;
   const description =
     normalizeWhitespace(getAttributeValue(node, "description") ?? "") || null;
-  const autoTypeName = getAttributeValue(node, "name") || "UnknownType";
-  const autoTypePath = getAttributeValue(node, "path") || "UnknownPath";
+  const extractedTypeName = getAttributeValue(node, "name") || "UnknownType";
+  const extractedTypePath = getAttributeValue(node, "path") || "UnknownPath";
 
   const content: RootContent[] = [];
   addOptionalContent(content, title, description);
@@ -685,8 +685,8 @@ function processAutoTypeTableNode(
   const overrideBasePath =
     getAttributeValue(node, "basePath") || options.basePath;
   const extractedType = extractTypeFromFile(
-    autoTypePath,
-    autoTypeName,
+    extractedTypePath,
+    extractedTypeName,
     overrideBasePath || options.basePath
   );
 
@@ -700,7 +700,7 @@ function processAutoTypeTableNode(
     );
 
     if (properties.length > 0) {
-      const table = createAutoTypeTable(properties, options);
+      const table = createExtractedTypeTable(properties, options);
       content.push(table);
     }
   } else {
@@ -708,18 +708,18 @@ function processAutoTypeTableNode(
     const infoTable = createTable(
       ["Property", "Value"],
       [
-        ["Type Name", `\`${autoTypeName}\``],
-        ["Source Path", `\`${autoTypePath}\``],
+        ["Type Name", `\`${extractedTypeName}\``],
+        ["Source Path", `\`${extractedTypePath}\``],
       ],
       ["left", "left"]
     );
 
     content.push(infoTable);
 
-    // Add a note about this being an AutoTypeTable
+    // Add a note about this being an ExtractedTypeTable
     content.push(
       createParagraph(
-        `*AutoTypeTable: Could not extract \`${autoTypeName}\` from \`${autoTypePath}\`. Verify the path/name and that the file is included by your tsconfig.*`
+        `*ExtractedTypeTable: Could not extract \`${extractedTypeName}\` from \`${extractedTypePath}\`. Verify the path/name and that the file is included by your tsconfig.*`
       )
     );
   }
@@ -730,7 +730,7 @@ function processAutoTypeTableNode(
 function isValidTableNode(
   node: MdxJsxFlowElement | MdxJsxTextElement
 ): boolean {
-  return hasName(node, "TypeTable") || hasName(node, "AutoTypeTable");
+  return hasName(node, "TypeTable") || hasName(node, "ExtractedTypeTable");
 }
 
 function processTypeTableNode(
@@ -748,9 +748,9 @@ function processTypeTableNode(
     return [];
   }
 
-  // Handle AutoTypeTable components separately
-  if (hasName(node, "AutoTypeTable")) {
-    return processAutoTypeTableNode(node, options);
+  // Handle ExtractedTypeTable components separately
+  if (hasName(node, "ExtractedTypeTable")) {
+    return processExtractedTypeTableNode(node, options);
   }
 
   // Handle regular TypeTable components
@@ -758,9 +758,9 @@ function processTypeTableNode(
     normalizeWhitespace(getAttributeValue(node, "title") ?? "") || null;
   const description =
     normalizeWhitespace(getAttributeValue(node, "description") ?? "") || null;
-  const typeRaw = getAttributeValue(node, "type");
+  const propertiesRaw = getAttributeValue(node, "properties");
 
-  const typeObject = parseTypeObject(typeRaw);
+  const typeObject = parseTypeObject(propertiesRaw);
 
   if (!typeObject) {
     return [];
@@ -847,10 +847,13 @@ export const remarkTypeTableToMarkdown = (
   };
   const resolved = { ...defaults, ...opts };
 
-  return createJsxComponentProcessor(["TypeTable", "AutoTypeTable"], (node) => {
-    if (hasName(node, "AutoTypeTable")) {
-      return processAutoTypeTableNode(node, resolved);
+  return createJsxComponentProcessor(
+    ["TypeTable", "ExtractedTypeTable"],
+    (node) => {
+      if (hasName(node, "ExtractedTypeTable")) {
+        return processExtractedTypeTableNode(node, resolved);
+      }
+      return processTypeTableNode(node, resolved);
     }
-    return processTypeTableNode(node, resolved);
-  });
+  );
 };

@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   convertAllMdx,
-  type MdxToMarkdownConfig,
+  type MdxToMarkdownOptions,
 } from "../../../packages/docs/src/convert/index.ts";
 import {
   defaultRemarkPlugins,
@@ -23,9 +23,9 @@ const appRoot = join(scriptsRoot, "..");
 const srcDir = join(appRoot, "content");
 const outDir = join(appRoot, "public");
 const typeTableRemarkPlugin: NonNullable<
-  MdxToMarkdownConfig["remarkPlugins"]
+  MdxToMarkdownOptions["remarkPlugins"]
 >[number] = [remarkTypeTableToMarkdown, { basePath: repoRoot }];
-const remarkPlugins: NonNullable<MdxToMarkdownConfig["remarkPlugins"]> = [
+const remarkPlugins: NonNullable<MdxToMarkdownOptions["remarkPlugins"]> = [
   remarkInclude,
   ...defaultRemarkPlugins.filter(
     (plugin) => plugin !== remarkTypeTableToMarkdown

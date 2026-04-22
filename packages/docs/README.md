@@ -1,6 +1,6 @@
 # @inth/docs
 
-Shared MDX-to-markdown tooling for Inth docs properties.
+Shared MDX-to-markdown tooling for Inth docs projects.
 
 ## Package Surfaces
 
@@ -11,6 +11,7 @@ Shared MDX-to-markdown tooling for Inth docs properties.
 - `@inth/docs/search`: headless static docs search, answer prompts, and request guards
 - `@inth/docs/search/node`: Node-only search index generation
 - `@inth/docs/search/ai`: Vercel AI SDK answer streaming helper
+- `@inth/docs/search/bash`: optional bash-tool docs inspection adapter
 - `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
 
 ## Install
@@ -37,10 +38,27 @@ await convertAllMdx({
 This package is verified in three distinct layers:
 
 - Package unit tests in `packages/docs/src/**/*.test.ts*` cover pure library behavior such as semantic markup and safe-link handling.
-- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` exercise MDX conversion, LLM generation, and `AutoTypeTable`.
+- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` exercise MDX conversion, LLM generation, and `ExtractedTypeTable`.
 - The live consumer demo in `apps/docs-smoke` renders the exported `mdxComponents` inside a TanStack Start app and provides Playwright browser coverage.
 
 Use the demo app as the reference integration when you need to see how a consumer should host and style the package in practice.
+
+## Where This Fits
+
+`@inth/docs` is portable docs infrastructure, not a hosted docs platform or complete docs-site framework. Mintlify, Fumadocs, and Starlight are good fits when the primary job is shipping the public docs website.
+
+Use `@inth/docs` when the docs pipeline also needs to feed converted markdown, agent bundles, lint checks, static search data, source-grounded answer routes, and internal tooling while the consuming app keeps control of routing, layout, hosting, and framework choices.
+
+## App Wiring Model
+
+In a consuming repo, wire this package into the docs surface:
+
+- Runtime docs app: spread `mdxComponents` into the MDX provider when the app renders MDX directly.
+- Docs pipeline: run `convertAllMdx` against the docs source tree.
+- Agent output: run `generateLlmsTxt` and `generateLLMFullContextFiles` against the converted markdown.
+- Search output: run `generateDocsSearchFiles`, then import the generated JSON in your docs search route.
+
+Do not add `@inth/docs` to product runtime code unless that runtime also renders or serves documentation.
 
 ## Generate Agent Docs
 
@@ -61,6 +79,7 @@ The published package includes:
 - `agent-docs/docs/convert.md`
 - `agent-docs/docs/remark.md`
 - `agent-docs/docs/llm.md`
+- `agent-docs/docs/search.md`
 - `agent-docs/docs/lint.md`
 
 These files are intended for coding agents and other tooling that need small, topic-scoped references instead of a full docs site.
@@ -74,9 +93,9 @@ Run the MDX conversion first, then generate a static search index from the
 converted markdown:
 
 ```ts
-import { generateSearchIndex } from "@inth/docs/search/node";
+import { generateDocsSearchFiles } from "@inth/docs/search/node";
 
-await generateSearchIndex({
+await generateDocsSearchFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
 });

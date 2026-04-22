@@ -2,7 +2,7 @@ import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { convertAllMdx } from "../src/convert/index";
-import { generateLLMFullFiles, generateLLMSummaries } from "../src/llm/index";
+import { generateLLMFullContextFiles, generateLlmsTxt } from "../src/llm/index";
 import { defaultRemarkPlugins } from "../src/remark/index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -34,7 +34,7 @@ await convertAllMdx({
   remarkPlugins: defaultRemarkPlugins,
 });
 
-await generateLLMSummaries({
+await generateLlmsTxt({
   srcDir: SRC_DIR,
   outDir: OUT_DIR,
   baseUrl,
@@ -84,7 +84,7 @@ await generateLLMSummaries({
   ],
 });
 
-await generateLLMFullFiles({
+await generateLLMFullContextFiles({
   outDir: OUT_DIR,
   baseUrl,
   product: { name: "@inth/docs" },

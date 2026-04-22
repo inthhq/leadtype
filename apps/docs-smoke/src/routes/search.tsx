@@ -196,11 +196,16 @@ function SearchRoute() {
         <section className="space-y-6">
           <div className="space-y-3 border-border border-b pb-6">
             <p className="font-medium text-muted-foreground text-sm">
-              @inth/docs search
+              Local index plus optional AI answer
             </p>
             <h1 className="font-heading font-medium text-4xl text-foreground tracking-tight">
               Search the docs
             </h1>
+            <p className="max-w-2xl text-muted-foreground text-sm leading-6">
+              Typing queries the generated static index through
+              `/api/docs/search`. The model is called only when the Ask button
+              is enabled and pressed.
+            </p>
           </div>
 
           <form
@@ -279,7 +284,7 @@ function SearchRoute() {
               </div>
             ) : (
               <p className="rounded-lg border border-border border-dashed px-4 py-8 text-muted-foreground text-sm">
-                No results yet.
+                Type a docs term such as install, tabs, or search.
               </p>
             )}
           </section>

@@ -5,15 +5,15 @@
 
 import { join } from "node:path";
 import {
-  generateLLMFullFiles,
-  generateLLMSummaries,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
 } from "../../../packages/docs/src/llm/index.ts";
 
 const scriptsRoot = process.cwd();
 const srcDir = join(scriptsRoot, "content");
 const outDir = join(scriptsRoot, "public");
 
-await generateLLMSummaries({
+await generateLlmsTxt({
   srcDir,
   outDir,
   baseUrl: "https://docs.example.com",
@@ -40,7 +40,7 @@ await generateLLMSummaries({
   ],
 });
 
-await generateLLMFullFiles({
+await generateLLMFullContextFiles({
   outDir,
   baseUrl: "https://docs.example.com",
   product: { name: "Smoke SDK" },

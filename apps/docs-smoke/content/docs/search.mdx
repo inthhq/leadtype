@@ -1,63 +1,37 @@
 ---
-title: "Search and AI Answers"
-description: "Generate a local docs search index and stream source-grounded AI answers."
+title: "Search APIs"
+description: "Generate static docs search data, query it at runtime, and stream source-grounded answers."
 ---
 
-# Search and AI Answers
+# Search APIs
 
-`@inth/docs` includes headless search logic for docs sites that want to bring their own UI.
+`@inth/docs` ships headless search primitives. Your app owns the UI; the package owns index generation, local ranking, source reads, answer context, and request guards.
 
-<Callout title="Demo route">
-  Open the live search example at [/search](/search). Typing runs local search only; the `Ask` button is the only action that can call the model.
+<Callout title="Live demo">
+  Open [/search](/search) to test the generated index. Typing calls local search only. The `Ask` button is the only action that can call the model.
 </Callout>
 
-## Package Surfaces
+## Build The Index
 
-<TypeTable
-  type={{
-    "@inth/docs/search": {
-      type: "runtime",
-      description: "Edge-safe search, answer context, query validation, JSON body limits, and rate limiter helpers.",
-      required: true,
-    },
-    "@inth/docs/search/node": {
-      type: "build time",
-      description: "Node-only `generateSearchIndex` helper that reads converted markdown and writes `docs/search-index.json`.",
-      required: true,
-    },
-    "@inth/docs/search/ai": {
-      type: "runtime",
-      description: "Vercel AI SDK `streamText` wrapper for source-grounded plain text answer streams.",
-    },
-    "@inth/docs/search/bash": {
-      type: "runtime",
-      description: "Optional `just-bash` and `bash-tool` adapter for agent-style docs inspection.",
-    },
-  }}
-/>
-
-## Build the Index
-
-Run conversion first, then generate the search index from markdown:
+Use the Node-only entry point after MDX has been converted to markdown.
 
 ```ts
-import { generateSearchIndex } from "@inth/docs/search/node";
+import { generateDocsSearchFiles } from "@inth/docs/search/node";
 
-await generateSearchIndex({
+await generateDocsSearchFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
 });
 ```
 
-The generated files are static JSON. In the demo app, `scripts/search-generate.ts` copies `docs-search-index.json` and `docs-search-content.json` into `src/generated` so routes can import them without reading from the file system at request time.
+The generator writes `docs/search-index.json` for compact metadata and `docs/search-content.json` for answer-source text.
 
 ## Runtime Search
 
-Import the generated JSON and query it from your own route handler:
+Use the edge-safe runtime with generated JSON.
 
 ```ts
 import {
-  readDocsContentFile,
   searchDocs,
   type DocsSearchContentStore,
   type DocsSearchIndex,
@@ -69,25 +43,18 @@ const index = indexJson as DocsSearchIndex;
 const content = contentJson as DocsSearchContentStore;
 
 const results = searchDocs(index, "package tabs", { content });
-const file = readDocsContentFile(
-  index,
-  "guides/quickstart",
-  content
-);
 ```
 
-Search results include `urlWithHash` and `absoluteUrlWithHash` so the UI can link directly to the matched heading. The demo renders matching heading `id`s with `slugifyDocsHeading`.
+Results include heading paths, excerpts, `urlWithHash`, and `absoluteUrlWithHash` so a docs UI can link directly to the matched section.
 
-The generated index separates compact search metadata from source content. Search uses tuple records and numeric chunk postings, while answer generation reads the relevant heading chunks from the content store. `listDocsContentFiles`, `readDocsContentFile`, and `readDocsContentChunk` expose that store as a lightweight virtual docs filesystem for closed-source UIs or custom agents.
+## Source-Grounded Answers
 
-## AI Answers
-
-Use `streamDocsAnswer` when you want a simple Vercel AI SDK integration:
+Use `@inth/docs/search/ai` only when the user explicitly asks for an answer.
 
 ```ts
 import { streamDocsAnswer } from "@inth/docs/search/ai";
 
-const { response } = streamDocsAnswer({
+const { response, sources } = streamDocsAnswer({
   index,
   content,
   query,
@@ -96,11 +63,27 @@ const { response } = streamDocsAnswer({
 });
 ```
 
-The answer prompt only includes retrieved docs context, tells the model to cite sources, and asks it to say when the docs do not contain enough context.
+The prompt includes retrieved docs context, asks for citations, treats docs text as untrusted reference content, and tells the model to say when the retrieved context is not enough.
 
-## Agent Inspection
+## Abuse Protection
 
-Use the optional bash adapter when an AI SDK agent should inspect the docs through shell commands:
+<Steps>
+  <Step title="Keep search cheap">
+    Debounced typing should call only a local search route such as `/api/docs/search`.
+  </Step>
+  <Step title="Make answers explicit">
+    Keep model calls behind a clear button such as `Ask`.
+  </Step>
+  <Step title="Guard request paths">
+    Use `validateDocsQuery`, `readJsonWithLimit`, `getClientIdentifier`, and a `RateLimiter` implementation around public routes.
+  </Step>
+</Steps>
+
+The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the `RateLimiter` interface to a shared store.
+
+## Bash Adapter
+
+Use `@inth/docs/search/bash` when an AI SDK agent should inspect docs with safe shell commands.
 
 ```ts
 import { createDocsBashTool } from "@inth/docs/search/bash";
@@ -108,24 +91,4 @@ import { createDocsBashTool } from "@inth/docs/search/bash";
 const { tools, instructions } = await createDocsBashTool(index, content);
 ```
 
-The adapter creates a read-only `/docs` filesystem for `just-bash` and wraps it with `bash-tool`. Agents can use `ls`, `cat`, `find`, `grep`, and `rg`; network commands, Python, JavaScript execution, and filesystem writes are disabled by default.
-
-## Abuse Protection
-
-<Steps>
-  <Step title="Search is cheap">
-    Debounced typing should call only the local `/api/docs/search` route. It does not call the model.
-  </Step>
-  <Step title="Answers are explicit">
-    Keep model calls behind a button such as `Ask`, `Enter to ask`, or `Cmd+Enter`.
-  </Step>
-  <Step title="Limit request paths">
-    Use `validateDocsQuery`, `readJsonWithLimit`, `getClientIdentifier`, and a `RateLimiter` implementation around public routes.
-  </Step>
-</Steps>
-
-The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the same `RateLimiter` interface to a shared store such as Redis, Vercel KV, Cloudflare KV, or Durable Objects.
-
-## Long-Term Scale
-
-Keep this lexical index for exact API names, configuration keys, paths, and errors. As docs grow, use the content-file helpers as the durable page/chunk access layer, then add embeddings or hosted search only when users need fuzzy semantic recall that does not share vocabulary with the docs.
+The adapter creates a read-only `/docs` filesystem for `just-bash` and wraps it with `bash-tool`. Agents can use commands such as `ls`, `cat`, `find`, `grep`, and `rg`; network commands and writes are disabled by default.

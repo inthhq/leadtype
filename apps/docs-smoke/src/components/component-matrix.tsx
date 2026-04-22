@@ -1,17 +1,21 @@
-import { type ComponentCoverage, componentMatrix } from "@/lib/docs";
+import { componentMatrix, type SmokeCoverage } from "@/lib/docs";
 
 function assertNever(value: never): never {
   throw new Error(`Unhandled coverage variant: ${value}`);
 }
 
-function coverageClassName(coverage: ComponentCoverage): string {
+function coverageClassName(coverage: SmokeCoverage): string {
   switch (coverage) {
-    case "interactive":
+    case "agent docs":
+      return "bg-accent-soft text-accent-strong";
+    case "browser hydration":
       return "bg-foreground text-background";
-    case "pipeline-only":
-      return "border border-border bg-background text-muted-foreground";
-    case "runtime":
+    case "pipeline conversion":
+      return "bg-warning-soft text-warning-strong";
+    case "runtime render":
       return "bg-secondary text-foreground";
+    case "search/API":
+      return "bg-success-soft text-success-strong";
     default:
       return assertNever(coverage);
   }
@@ -19,13 +23,13 @@ function coverageClassName(coverage: ComponentCoverage): string {
 
 export function ComponentMatrix() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full border-collapse text-left text-sm">
         <thead className="bg-secondary">
           <tr>
-            <th className="px-4 py-3 font-medium">Component</th>
+            <th className="min-w-40 px-4 py-3 font-medium">Surface</th>
             <th className="px-4 py-3 font-medium">Coverage</th>
-            <th className="px-4 py-3 font-medium">Notes</th>
+            <th className="min-w-72 px-4 py-3 font-medium">What it proves</th>
           </tr>
         </thead>
         <tbody>
