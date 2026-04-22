@@ -39,9 +39,7 @@ export interface DemoSearchApiResult {
 
 export function isAiAnswerEnabled(): boolean {
   return Boolean(
-    process.env.AI_GATEWAY_API_KEY ||
-      process.env.VERCEL ||
-      process.env.VERCEL_OIDC_TOKEN
+    process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN
   );
 }
 

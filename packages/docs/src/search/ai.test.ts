@@ -90,4 +90,30 @@ describe("streamDocsAnswer", () => {
       "AI answer failed: model is unavailable"
     );
   });
+
+  it("streams empty provider responses as visible text", async () => {
+    const index = createSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const { content, ...metadataOnlyIndex } = index;
+    if (!content) {
+      throw new Error("Expected createSearchIndex to embed content.");
+    }
+
+    const result = streamDocsAnswer({
+      index: metadataOnlyIndex,
+      content,
+      query: "How do tabs work?",
+      streamTextImpl: () => ({
+        fullStream: (async function* () {
+          yield* [];
+        })(),
+        toTextStreamResponse: () => new Response(""),
+      }),
+    });
+
+    await expect(result.response.text()).resolves.toContain(
+      "AI answer failed: The AI provider returned an empty answer."
+    );
+  });
 });

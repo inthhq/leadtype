@@ -83,13 +83,17 @@ function createDocsTextStreamResponse(
   return new Response(
     new ReadableStream<Uint8Array>({
       async start(controller) {
+        let streamedText = false;
+        let streamedFailure = false;
         try {
           for await (const part of stream) {
             if (part.type === "text-delta" && typeof part.text === "string") {
+              streamedText = true;
               controller.enqueue(encoder.encode(part.text));
               continue;
             }
             if (part.type === "error") {
+              streamedFailure = true;
               controller.enqueue(
                 encoder.encode(
                   `AI answer failed: ${getStreamErrorMessage(part.error)}`
@@ -97,6 +101,13 @@ function createDocsTextStreamResponse(
               );
               break;
             }
+          }
+          if (!(streamedText || streamedFailure)) {
+            controller.enqueue(
+              encoder.encode(
+                "AI answer failed: The AI provider returned an empty answer. Check AI Gateway auth and model access."
+              )
+            );
           }
         } catch (error) {
           controller.enqueue(
