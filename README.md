@@ -8,10 +8,11 @@ Shared docs tooling for Inth docs projects: React MDX rendering, MDX-to-markdown
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
-- `@inth/docs/search`: edge-safe search runtime, content readers, guards, and rate limiter helpers
+- `@inth/docs/search`: search runtime, content readers, guards, rate limiter helpers, and read-only docs filesystem primitives
 - `@inth/docs/search/node`: Node-only search index generation
-- `@inth/docs/search/ai`: AI SDK answer streaming helper
-- `@inth/docs/search/bash`: optional bash-tool docs inspection adapter
+- `@inth/docs/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
+- `@inth/docs/search/tanstack`: TanStack AI answer streaming and bash tools
+- `@inth/docs/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
 - `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
 
 ## Install
@@ -114,7 +115,7 @@ await generateDocsSearchFiles({
 });
 ```
 
-At runtime, query the generated JSON with `@inth/docs/search`. Add `@inth/docs/search/ai` only when a user explicitly asks for a source-grounded answer.
+At runtime, query the generated JSON with `@inth/docs/search`. Add a provider entrypoint such as `@inth/docs/search/vercel` only when a user explicitly asks for a source-grounded answer.
 
 ## Agent Docs
 

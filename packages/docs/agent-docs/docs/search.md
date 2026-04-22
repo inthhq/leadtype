@@ -11,6 +11,8 @@ Import runtime helpers from:
 ```ts
 import {
   createAnswerContext,
+  createDocsBash,
+  createDocsBashFileMap,
   createMemoryRateLimiter,
   type DocsSearchContentStore,
   type DocsSearchIndex,
@@ -29,17 +31,21 @@ Import the Node-only generator from:
 import { generateDocsSearchFiles } from "@inth/docs/search/node";
 ```
 
-Import the AI SDK helper from:
+Use the provider entrypoints for answer streaming and provider-compatible bash
+tools:
 
 ```ts
-import { streamDocsAnswer } from "@inth/docs/search/ai";
+import { streamDocsAnswer as streamVercelDocsAnswer } from "@inth/docs/search/vercel";
+import { streamDocsAnswer as streamTanStackDocsAnswer } from "@inth/docs/search/tanstack";
+import { streamDocsAnswer as streamCloudflareDocsAnswer } from "@inth/docs/search/cloudflare";
 ```
 
-Import the optional bash-tool integration from:
-
-```ts
-import { createDocsBashTool } from "@inth/docs/search/bash";
-```
+|Use case|Import|
+|--|--|
+|Search, content reads, request guards, read-only docs filesystem|`@inth/docs/search`|
+|Vercel AI Gateway / AI SDK answer + bash tools|`@inth/docs/search/vercel`|
+|TanStack AI answer + bash tools|`@inth/docs/search/tanstack`|
+|Cloudflare AI Gateway / Workers AI answer + bash tools|`@inth/docs/search/cloudflare`|
 
 ## Build-Time Indexing
 
@@ -118,11 +124,13 @@ The returned `system` and `prompt` instruct the model to answer only from
 retrieved docs context, cite sources with `[1]` style citations, treat docs text
 as untrusted reference content, and say when context is insufficient.
 
-## AI SDK Streaming
+## Vercel AI Gateway / AI SDK Streaming
 
 Use `streamDocsAnswer` for a minimal Vercel AI SDK integration:
 
 ```ts
+import { streamDocsAnswer } from "@inth/docs/search/vercel";
+
 const { response, sources } = streamDocsAnswer({
   index: indexJson as DocsSearchIndex,
   content: contentJson as DocsSearchContentStore,
@@ -136,22 +144,63 @@ const { response, sources } = streamDocsAnswer({
 separately in your own UI; they are metadata for source links, not embedded in
 the streamed answer.
 
-## Bash Tool Adapter
+## BYO Gateway Streaming
 
-Use `@inth/docs/search/bash` when an agent should inspect docs through shell
-commands instead of receiving only preselected chunks:
+TanStack callers pass the adapter explicitly:
 
 ```ts
+import { streamDocsAnswer } from "@inth/docs/search/tanstack";
+
+const { response, sources } = streamDocsAnswer({
+  index: indexJson as DocsSearchIndex,
+  content: contentJson as DocsSearchContentStore,
+  query,
+  adapter,
+});
+```
+
+Cloudflare callers use explicit provider mapping:
+
+```ts
+import {
+  createCloudflareDocsAdapter,
+  streamDocsAnswer,
+} from "@inth/docs/search/cloudflare";
+
+const adapter = createCloudflareDocsAdapter({
+  provider: "openai",
+  model: "gpt-4o",
+  options: {
+    binding: env.AI.gateway("docs-gateway"),
+  },
+});
+
+const { response, sources } = streamDocsAnswer({
+  index: indexJson as DocsSearchIndex,
+  content: contentJson as DocsSearchContentStore,
+  query,
+  adapter,
+});
+```
+
+## Bash Tool Adapters
+
+Use the matching provider entrypoint when an agent should inspect docs through
+shell commands instead of receiving only preselected chunks:
+
+```ts
+import { createDocsBashTool } from "@inth/docs/search/vercel";
+
 const { tools, instructions } = await createDocsBashTool(
   indexJson as DocsSearchIndex,
   contentJson as DocsSearchContentStore
 );
 ```
 
-The adapter builds a read-only `/docs` filesystem for `just-bash` and wraps it
-with `bash-tool` for AI SDK tool usage. Agents can use commands such as `ls`,
-`cat`, `find`, `grep`, and `rg`. Network commands, Python, JavaScript execution,
-and filesystem writes are disabled by default.
+Vercel wraps the read-only `/docs` filesystem with `bash-tool`. TanStack and
+Cloudflare export `createDocsBashTools`, which exposes native TanStack tools over
+the same filesystem. Network commands, Python, JavaScript execution, and
+filesystem writes are disabled by default.
 
 ## Abuse Guards
 

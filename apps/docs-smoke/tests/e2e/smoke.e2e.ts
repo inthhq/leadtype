@@ -20,7 +20,7 @@ test("home route renders the developer dashboard and package surfaces", async ({
 
   expect(html).toContain("Build docs with");
   expect(html).toContain("Implementation contract");
-  expect(html).toContain("@inth/docs/search/bash");
+  expect(html).toContain("@inth/docs/search/vercel");
 
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByText(DASHBOARD_HEADING)).toBeVisible();
@@ -43,7 +43,7 @@ test("docs route renders package docs and extracted ExtractedTypeTable output", 
   const html = await response.text();
 
   expect(html).toContain("@inth/docs");
-  expect(html).toContain("@inth/docs/search/bash");
+  expect(html).toContain("@inth/docs/search/cloudflare");
   expect(html).toContain("PipelineExampleOptions");
 
   await page.goto("/docs", { waitUntil: "networkidle" });

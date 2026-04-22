@@ -32,19 +32,23 @@ description: "Developer reference for rendering MDX, converting docs, generating
     },
     "@inth/docs/search": {
       type: "runtime",
-      description: "Edge-safe search runtime, content readers, guards, and rate limiter helpers.",
+      description: "Search runtime, content readers, guards, rate limiter helpers, and read-only docs filesystem primitives.",
     },
     "@inth/docs/search/node": {
       type: "build time",
       description: "Node-only `generateDocsSearchFiles`.",
     },
-    "@inth/docs/search/ai": {
+    "@inth/docs/search/vercel": {
       type: "optional runtime",
-      description: "AI SDK answer streaming helper.",
+      description: "Vercel AI Gateway / AI SDK answer streaming and bash tools.",
     },
-    "@inth/docs/search/bash": {
+    "@inth/docs/search/tanstack": {
       type: "optional runtime",
-      description: "bash-tool docs inspection adapter.",
+      description: "TanStack AI answer streaming and native docs bash tools.",
+    },
+    "@inth/docs/search/cloudflare": {
+      type: "optional runtime",
+      description: "Cloudflare AI Gateway / Workers AI adapters and docs bash tools.",
     },
     "@inth/docs/lint": {
       type: "build time",
@@ -63,7 +67,7 @@ description: "Developer reference for rendering MDX, converting docs, generating
     Use `@inth/docs/convert` with `@inth/docs/remark` to flatten authored MDX into markdown that works in LLM bundles and search indexes.
   </Step>
   <Step title="Generate and query search">
-    Generate static search JSON with `@inth/docs/search/node`, query it with `@inth/docs/search`, and add `@inth/docs/search/ai` only for explicit answer requests.
+    Generate static search JSON with `@inth/docs/search/node`, query it with `@inth/docs/search`, and add a provider entrypoint such as `@inth/docs/search/vercel` only for explicit answer requests.
   </Step>
 </Steps>
 
