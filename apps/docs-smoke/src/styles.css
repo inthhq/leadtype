@@ -305,6 +305,93 @@
   @apply mt-4 overflow-x-auto rounded-lg border border-border bg-secondary px-4 py-3 text-sm text-foreground;
 }
 
+[data-inth-accordion] {
+  @apply my-6 space-y-3;
+}
+
+[data-inth-accordion-item] {
+  @apply rounded-lg border border-border bg-card px-4 py-3;
+}
+
+[data-inth-accordion-summary] {
+  @apply cursor-pointer select-none text-sm font-medium text-foreground;
+}
+
+[data-inth-accordion-content] {
+  @apply mt-3 text-sm leading-7 text-muted-foreground;
+}
+
+[data-inth-example] {
+  @apply my-6 overflow-hidden rounded-lg border border-border bg-card;
+}
+
+[data-inth-example-header] {
+  @apply border-border border-b px-4 py-4;
+}
+
+[data-inth-example-title] {
+  @apply m-0 text-base font-semibold tracking-tight text-foreground;
+}
+
+[data-inth-example-description] {
+  @apply mt-1 text-sm leading-6 text-muted-foreground;
+}
+
+[data-inth-example-preview] {
+  @apply border-border border-b px-4 py-4;
+}
+
+[data-inth-example-code],
+[data-inth-example-source-files] {
+  @apply bg-secondary/70 px-4 py-4;
+}
+
+[data-inth-example-source-files] {
+  @apply space-y-4 border-border border-t;
+}
+
+[data-inth-example-filename] {
+  font-family: var(--font-mono);
+  @apply mb-2 text-xs text-muted-foreground;
+}
+
+[data-inth-example-code-block] {
+  font-family: var(--font-mono);
+  @apply overflow-x-auto rounded-lg border border-border bg-background px-4 py-3 text-[13px] leading-6 text-foreground;
+}
+
+[data-inth-topic-switcher] {
+  @apply my-6 rounded-lg border border-border bg-card p-4;
+}
+
+[data-inth-topic-switcher-label] {
+  @apply m-0 text-xs font-medium text-muted-foreground;
+}
+
+[data-inth-topic-switcher-list] {
+  @apply mt-3 grid list-none gap-2 p-0 sm:grid-cols-2;
+}
+
+[data-inth-topic-switcher-item] {
+  @apply m-0;
+}
+
+[data-inth-topic-switcher-link] {
+  @apply block rounded-lg border border-border bg-background px-3 py-3 no-underline transition-colors hover:bg-secondary;
+}
+
+[data-inth-topic-switcher-link][data-active] {
+  @apply bg-secondary text-foreground;
+}
+
+[data-inth-topic-switcher-item-label] {
+  @apply block text-sm font-medium text-foreground;
+}
+
+[data-inth-topic-switcher-item-description] {
+  @apply mt-1 block text-xs leading-5 text-muted-foreground;
+}
+
 [data-inth-mermaid] {
   font-family: var(--font-mono);
   @apply my-6 overflow-x-auto rounded-lg border border-border bg-secondary px-4 py-4 text-sm;

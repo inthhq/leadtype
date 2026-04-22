@@ -130,9 +130,12 @@ test("components fixture renders package adapters and preserves external link sa
   await expect(
     page.getByRole("heading", { name: "Runtime Components", exact: true })
   ).toBeVisible();
-  await expect(page.locator("[data-inth-callout]")).toHaveCount(2);
+  await expect(page.locator("[data-inth-callout]")).toHaveCount(3);
+  await expect(page.locator("[data-inth-accordion]")).toBeVisible();
   await expect(page.locator("[data-inth-cards]")).toBeVisible();
+  await expect(page.locator("[data-inth-example]")).toBeVisible();
   await expect(page.locator("[data-inth-steps]")).toBeVisible();
+  await expect(page.locator("[data-inth-topic-switcher]")).toBeVisible();
 
   const overview = page.getByRole("tab", { name: "Overview" });
   const tables = page.getByRole("tab", { name: "Tables" });

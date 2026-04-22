@@ -16,10 +16,13 @@ The root export is intentionally small. It gives consumers a ready-to-spread MDX
 
 `mdxComponents` includes:
 
+* `Accordion`
+* `AccordionItem`
 * `ExtractedTypeTable`
 * `Callout`
 * `Card`
 * `Cards`
+* `Example`
 * `Mermaid`
 * `CommandTabs`
 * `Selector`
@@ -27,6 +30,7 @@ The root export is intentionally small. It gives consumers a ready-to-spread MDX
 * `Steps`
 * `Tab`
 * `Tabs`
+* `TopicSwitcher`
 * `TypeTable`
 
 Use it like this:
@@ -43,6 +47,20 @@ const components = {
 Override individual entries rather than replacing the full map unless you want to own all component bindings.
 
 ## Important Components
+
+### `Accordion` and `AccordionItem`
+
+Use for secondary details that should be collapsible in the browser but still available to markdown conversion, search, and LLM bundles.
+
+```tsx
+<Accordion>
+  <AccordionItem title="When should I use this?">
+    Use accordions for supporting details, troubleshooting notes, and optional reference material.
+  </AccordionItem>
+</Accordion>
+```
+
+Closed content is still flattened by the remark pipeline, so do not use accordions to hide content from generated outputs.
 
 ### `CommandTabs`
 
@@ -63,6 +81,30 @@ Use for package-manager-specific install or run commands.
 
 Use `mode="install"` when `command` is a package name, `mode="run"` when `command` is a CLI name, and `mode="create"` for starter commands such as `pnpm create next-app`. `command` can also include a `{pm}` placeholder for custom templates. Use `commands` for exact per-manager overrides and `defaultManager` to choose the initial tab.
 
+### `Example`
+
+Use for data-driven preview and source examples. The package component receives code as data; host apps can add filesystem loaders or dynamic imports outside `@inth/docs` when they need app-specific behavior.
+
+```tsx
+<Example
+  title="Render MDX"
+  description="Preview the output and inspect the source."
+  filename="mdx-components.tsx"
+  language="tsx"
+  code={`import { mdxComponents } from "@inth/docs";
+
+export const components = {
+  ...mdxComponents,
+};`}
+>
+  <Callout title="Runtime adapter" variant="success">
+    The host app owns styling while `@inth/docs` owns the MDX component contract.
+  </Callout>
+</Example>
+```
+
+Use `sourceFiles` when an example needs to show supporting files in addition to the primary snippet.
+
 ### `TypeTable` and `ExtractedTypeTable`
 
 Use `TypeTable` for explicit prop or type rows you already know. Use `ExtractedTypeTable` when the docs should extract types from source files.
@@ -72,6 +114,33 @@ Use `TypeTable` for explicit prop or type rows you already know. Use `ExtractedT
 ### `Tabs`, `Tab`, `Steps`, `Step`
 
 These components are primarily authoring affordances in MDX. When the markdown conversion pipeline runs, their content is flattened into standard markdown so agents do not need JSX-aware renderers.
+
+### `TopicSwitcher`
+
+Use for reader-facing navigation across equivalent documentation topics.
+
+```tsx
+<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+      description: "React integration",
+    },
+    {
+      value: "vue",
+      label: "Vue",
+      href: "/docs/frameworks/vue/quickstart",
+      description: "Vue integration",
+    },
+  ]}
+/>
+```
+
+`TopicSwitcher` is intentionally generic. Frameworks are one topic category, but the same component can represent SDKs, runtimes, deployment targets, product areas, or other equivalent slices of docs. It does not automatically read LLM topic config.
 
 ## Guidance
 
