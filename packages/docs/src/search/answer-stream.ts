@@ -37,15 +37,17 @@ export function createDocsTextStreamResponse<TPart>(
         let finishReason = "";
         try {
           for await (const part of stream) {
+            finishReason = handlers.getFinishReason?.(part) ?? finishReason;
+
+            if (handlers.isReasoning?.(part)) {
+              streamedReasoning = true;
+              continue;
+            }
+
             const text = handlers.getText(part);
             if (typeof text === "string" && text.length > 0) {
               streamedText = true;
               controller.enqueue(encoder.encode(text));
-              continue;
-            }
-
-            if (handlers.isReasoning?.(part)) {
-              streamedReasoning = true;
               continue;
             }
 
@@ -59,8 +61,6 @@ export function createDocsTextStreamResponse<TPart>(
               );
               break;
             }
-
-            finishReason = handlers.getFinishReason?.(part) ?? finishReason;
           }
 
           if (!(streamedText || streamedFailure)) {

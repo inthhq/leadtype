@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getPlainTextResponseInit } from "./answer-stream";
+import {
+  createDocsTextStreamResponse,
+  getPlainTextResponseInit,
+} from "./answer-stream";
+
+async function readResponseText(response: Response): Promise<string> {
+  return response.text();
+}
 
 describe("answer stream helpers", () => {
   it("returns fresh plain-text response init objects", () => {
@@ -16,5 +23,26 @@ describe("answer stream helpers", () => {
     }
 
     expect(new Headers(second.headers).get("Cache-Control")).toBe("no-store");
+  });
+
+  it("records finish metadata on reasoning chunks before skipping text", async () => {
+    const response = createDocsTextStreamResponse(
+      [
+        {
+          finishReason: "length",
+          text: "hidden reasoning",
+          type: "reasoning",
+        },
+      ],
+      {
+        getFinishReason: (part) => part.finishReason,
+        getText: (part) => part.text,
+        isReasoning: (part) => part.type === "reasoning",
+      }
+    );
+
+    await expect(readResponseText(response)).resolves.toBe(
+      "AI answer failed: The model used the output budget for reasoning before producing an answer. Increase maxOutputTokens or use a non-reasoning model."
+    );
   });
 });

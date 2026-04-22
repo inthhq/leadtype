@@ -85,6 +85,7 @@ const READ_ONLY_COMMANDS = [
   "time",
   "whoami",
 ] as const satisfies CommandName[];
+const READ_ONLY_COMMAND_SET = new Set<CommandName>(READ_ONLY_COMMANDS);
 
 const UNSAFE_COMMAND_PATTERN =
   /(^|[\s;&|()])(rm|mv|cp|touch|mkdir|chmod|curl|wget|python|python3|node|js-exec|tee)\b/;
@@ -291,6 +292,21 @@ function createSearchResultSchema(): string {
   });
 }
 
+function getDocsBashCommands(commands?: CommandName[]): CommandName[] {
+  if (commands === undefined) {
+    return [...READ_ONLY_COMMANDS];
+  }
+
+  const disallowed = commands.filter(
+    (command) => !READ_ONLY_COMMAND_SET.has(command)
+  );
+  if (disallowed.length > 0) {
+    throw new Error(`Unsupported docs bash commands: ${disallowed.join(", ")}`);
+  }
+
+  return [...commands];
+}
+
 export function createDocsBashInstructions(root = DEFAULT_ROOT): string {
   const normalizedRoot = normalizeDocsBashRoot(root);
   return [
@@ -345,7 +361,7 @@ export function createDocsBash(
 ): Bash {
   const root = normalizeDocsBashRoot(options.root);
   return new Bash({
-    commands: options.commands ?? [...READ_ONLY_COMMANDS],
+    commands: getDocsBashCommands(options.commands),
     cwd: options.cwd ?? root,
     env: options.env,
     executionLimits: {

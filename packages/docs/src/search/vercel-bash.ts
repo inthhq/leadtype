@@ -11,6 +11,8 @@ import {
 import type { DocsSearchContentStore, DocsSearchIndex } from "./search";
 
 const BASH_TOOL_PACKAGE = "bash-tool";
+const MISSING_MODULE_PATTERN =
+  /Cannot find module|ERR_MODULE_NOT_FOUND|Failed to resolve module specifier/u;
 
 export type CreateDocsBashToolOptions = CreateDocsBashOptions & {
   includeWriteFile?: boolean;
@@ -26,6 +28,18 @@ export type DocsBashToolResult = Omit<BashToolkit, "tools"> & {
   tools: DocsBashTools;
 };
 
+function isMissingModuleError(error: unknown): error is Error {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const code = (error as { code?: unknown }).code;
+  return (
+    code === "MODULE_NOT_FOUND" ||
+    code === "ERR_MODULE_NOT_FOUND" ||
+    MISSING_MODULE_PATTERN.test(error.message)
+  );
+}
+
 export async function createDocsBashTool(
   index: DocsSearchIndex,
   content?: DocsSearchContentStore,
@@ -37,10 +51,14 @@ export async function createDocsBashTool(
       /* @vite-ignore */ BASH_TOOL_PACKAGE
     )) as typeof import("bash-tool");
     createBashTool = bashToolModule.createBashTool;
-  } catch {
-    throw new Error(
-      'createDocsBashTool requires "bash-tool" as an optional peer dependency. Install it with: bun add bash-tool'
-    );
+  } catch (error) {
+    if (isMissingModuleError(error)) {
+      throw new Error(
+        'createDocsBashTool requires "bash-tool" as an optional peer dependency. Install it with: bun add bash-tool',
+        { cause: error }
+      );
+    }
+    throw error;
   }
   const root = normalizeDocsBashRoot(options.root);
   const docsBash = createDocsBash(index, content, {

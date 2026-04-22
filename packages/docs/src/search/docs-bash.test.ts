@@ -1,3 +1,4 @@
+import type { CommandName } from "just-bash";
 import { describe, expect, it } from "vitest";
 import {
   blockUnsafeDocsBashCommand,
@@ -76,5 +77,17 @@ describe("docs bash adapter", () => {
     expect(blockUnsafeDocsBashCommand("tee /docs/components/tabs.md")).toBe(
       "printf 'Blocked unsafe docs bash command.\\n' && false"
     );
+  });
+
+  it("rejects custom commands outside the read-only allowlist", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(() =>
+      createDocsBash(index, undefined, {
+        commands: ["cat", "node" as CommandName],
+      })
+    ).toThrow("Unsupported docs bash commands: node");
   });
 });

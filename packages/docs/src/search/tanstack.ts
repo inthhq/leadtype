@@ -85,6 +85,8 @@ export function streamDocsAnswer(
     ...options.searchOptions,
   });
   const runChat = options.chatImpl ?? chat;
+  // runChat comes from options.chatImpl ?? chat, so the union needs explicit
+  // ChatOptions and AsyncIterable<StreamChunk> casts for streaming calls.
   const stream = runChat({
     adapter: options.adapter,
     abortController: options.abortController,
