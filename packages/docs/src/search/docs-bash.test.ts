@@ -1,9 +1,10 @@
+import type { CommandName } from "just-bash";
 import { describe, expect, it } from "vitest";
 import {
+  blockUnsafeDocsBashCommand,
   createDocsBash,
   createDocsBashFileMap,
-  createDocsBashTool,
-} from "./bash-index";
+} from "./docs-bash";
 import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
 
 const docs: DocsSearchDocument[] = [
@@ -72,41 +73,21 @@ describe("docs bash adapter", () => {
     );
   });
 
-  it("creates a bash-tool wrapper without writeFile by default", async () => {
-    const index = createDocsSearchIndex(docs, {
-      generatedAt: "2026-01-01T00:00:00.000Z",
-    });
-    const result = await createDocsBashTool(index);
-
-    expect(result.instructions).toContain("Use bash only to inspect");
-    expect(result.tools.bash).toBeDefined();
-    expect(result.tools.readFile).toBeDefined();
-    expect(result.tools.writeFile).toBeUndefined();
+  it("blocks unsafe commands before custom command execution", () => {
+    expect(blockUnsafeDocsBashCommand("tee /docs/components/tabs.md")).toBe(
+      "printf 'Blocked unsafe docs bash command.\\n' && false"
+    );
   });
 
-  it("blocks unsafe commands before bash-tool execution", async () => {
+  it("rejects custom commands outside the read-only allowlist", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
-    const result = await createDocsBashTool(index);
 
-    await expect(
-      result.tools.bash.execute(
-        { command: "echo changed > /docs/components/tabs.md" },
-        { toolCallId: "write-redirect", messages: [] }
-      )
-    ).resolves.toMatchObject({
-      stdout: "Blocked unsafe docs bash command.\n",
-      exitCode: 1,
-    });
-    await expect(
-      result.tools.bash.execute(
-        { command: "sed -i 's/Tabs/Changed/' /docs/components/tabs.md" },
-        { toolCallId: "sed-in-place", messages: [] }
-      )
-    ).resolves.toMatchObject({
-      stdout: "Blocked unsafe docs bash command.\n",
-      exitCode: 1,
-    });
+    expect(() =>
+      createDocsBash(index, undefined, {
+        commands: ["cat", "node" as CommandName],
+      })
+    ).toThrow("Unsupported docs bash commands: node");
   });
 });

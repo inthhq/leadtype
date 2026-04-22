@@ -79,7 +79,8 @@ export const packageSurfaces: PackageSurface[] = [
   {
     importPath: "@inth/docs/search",
     lifecycle: "runtime",
-    description: "Edge-safe search runtime, content readers, and guards.",
+    description:
+      "Search runtime, content readers, guards, and rate limiter helpers.",
   },
   {
     importPath: "@inth/docs/search/node",
@@ -87,14 +88,20 @@ export const packageSurfaces: PackageSurface[] = [
     description: "Node-only `generateDocsSearchFiles`.",
   },
   {
-    importPath: "@inth/docs/search/ai",
+    importPath: "@inth/docs/search/vercel",
     lifecycle: "optional runtime",
-    description: "AI SDK answer streaming helper.",
+    description: "Vercel AI Gateway / AI SDK answer streaming and bash tools.",
   },
   {
-    importPath: "@inth/docs/search/bash",
+    importPath: "@inth/docs/search/tanstack",
     lifecycle: "optional runtime",
-    description: "bash-tool docs inspection adapter.",
+    description: "TanStack AI answer streaming and native docs bash tools.",
+  },
+  {
+    importPath: "@inth/docs/search/cloudflare",
+    lifecycle: "optional runtime",
+    description:
+      "Cloudflare AI Gateway / Workers AI adapter helpers and docs bash tools.",
   },
   {
     importPath: "@inth/docs/lint",

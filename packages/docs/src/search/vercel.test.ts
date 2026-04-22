@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { streamDocsAnswer } from "./ai-index";
 import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
+import { streamDocsAnswer } from "./vercel-index";
 
 const docs: DocsSearchDocument[] = [
   {

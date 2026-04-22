@@ -1,11 +1,13 @@
 export {
   type CreateDocsBashFileMapOptions,
   type CreateDocsBashOptions,
-  type CreateDocsBashToolOptions,
   createDocsBash,
   createDocsBashFileMap,
-  createDocsBashTool,
   type DocsBashFileMap,
+} from "./docs-bash";
+export {
+  type CreateDocsBashToolOptions,
+  createDocsBashTool,
   type DocsBashToolResult,
   type DocsBashTools,
-} from "./bash";
+} from "./vercel-bash";

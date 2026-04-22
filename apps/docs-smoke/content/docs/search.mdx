@@ -11,6 +11,15 @@ description: "Generate static docs search data, query it at runtime, and stream 
   Open [/search](/search) to test the generated index. Typing calls local search only. The `Ask` button is the only action that can call the model.
 </Callout>
 
+## Entrypoints
+
+| Use case | Import |
+| --- | --- |
+| Search, content reads, request guards, and rate limiting | `@inth/docs/search` |
+| Vercel AI Gateway / AI SDK answer + bash tools | `@inth/docs/search/vercel` |
+| TanStack AI answer + bash tools | `@inth/docs/search/tanstack` |
+| Cloudflare AI Gateway / Workers AI answer + bash tools | `@inth/docs/search/cloudflare` |
+
 ## Build The Index
 
 Use the Node-only entry point after MDX has been converted to markdown.
@@ -28,7 +37,7 @@ The generator writes `docs/search-index.json` for compact metadata and `docs/sea
 
 ## Runtime Search
 
-Use the edge-safe runtime with generated JSON.
+Use the provider-neutral runtime with generated JSON.
 
 ```ts
 import {
@@ -49,21 +58,58 @@ Results include heading paths, excerpts, `urlWithHash`, and `absoluteUrlWithHash
 
 ## Source-Grounded Answers
 
-Use `@inth/docs/search/ai` only when the user explicitly asks for an answer.
+Use a provider entrypoint only when the user explicitly asks for an answer. The demo app uses Vercel AI Gateway / AI SDK.
 
 ```ts
-import { streamDocsAnswer } from "@inth/docs/search/ai";
+import { streamDocsAnswer } from "@inth/docs/search/vercel";
 
 const { response, sources } = streamDocsAnswer({
   index,
   content,
   query,
-  model: process.env.DOCS_SEARCH_MODEL ?? "moonshotai/kimi-k2.6",
+  model: process.env.DOCS_SEARCH_MODEL ?? "openai/gpt-5.4-mini",
   productName: "@inth/docs",
 });
 ```
 
 The prompt includes retrieved docs context, asks for citations, treats docs text as untrusted reference content, and tells the model to say when the retrieved context is not enough.
+
+TanStack AI callers pass their adapter explicitly:
+
+```ts
+import { streamDocsAnswer } from "@inth/docs/search/tanstack";
+
+const { response, sources } = streamDocsAnswer({
+  index,
+  content,
+  query,
+  adapter,
+});
+```
+
+Cloudflare callers create an explicit TanStack-compatible adapter:
+
+```ts
+import {
+  createCloudflareDocsAdapter,
+  streamDocsAnswer,
+} from "@inth/docs/search/cloudflare";
+
+const adapter = createCloudflareDocsAdapter({
+  provider: "openai",
+  model: "gpt-4o",
+  options: {
+    binding: env.AI.gateway("docs-gateway"),
+  },
+});
+
+const { response, sources } = streamDocsAnswer({
+  index,
+  content,
+  query,
+  adapter,
+});
+```
 
 ## Abuse Protection
 
@@ -81,14 +127,26 @@ The prompt includes retrieved docs context, asks for citations, treats docs text
 
 The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the `RateLimiter` interface to a shared store.
 
-## Bash Adapter
+## Bash Tools
 
-Use `@inth/docs/search/bash` when an AI SDK agent should inspect docs with safe shell commands.
+Use each provider entrypoint when an agent should inspect docs with safe shell commands. Tools are never created inside `streamDocsAnswer`; pass both tools and tool instructions explicitly.
 
 ```ts
-import { createDocsBashTool } from "@inth/docs/search/bash";
+import {
+  createDocsBashTool,
+  streamDocsAnswer,
+} from "@inth/docs/search/vercel";
 
 const { tools, instructions } = await createDocsBashTool(index, content);
+
+const { response } = streamDocsAnswer({
+  index,
+  content,
+  query,
+  model,
+  tools,
+  toolInstructions: instructions,
+});
 ```
 
 The adapter creates a read-only `/docs` filesystem for `just-bash` and wraps it with `bash-tool`. Agents can use commands such as `ls`, `cat`, `find`, `grep`, and `rg`; network commands and writes are disabled by default.
