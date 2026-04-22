@@ -29,6 +29,7 @@ type StreamTextLike = (options: {
   providerOptions?: DocsProviderOptions;
   onError: (event: { error: unknown }) => void;
 }) => {
+  fullStream?: AsyncIterable<DocsTextStreamPart>;
   toTextStreamResponse: (init?: ResponseInit) => Response;
 };
 
@@ -50,6 +51,66 @@ export type StreamDocsAnswerResult = {
   sources: DocsAnswerSource[];
 };
 
+type DocsTextStreamPart =
+  | {
+      type: "text-delta";
+      text: string;
+    }
+  | {
+      type: "error";
+      error: unknown;
+    }
+  | {
+      type: string;
+      [key: string]: unknown;
+    };
+
+function getStreamErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error) {
+    return error;
+  }
+  return "The AI provider returned an error while streaming.";
+}
+
+function createDocsTextStreamResponse(
+  stream: AsyncIterable<DocsTextStreamPart>,
+  init: ResponseInit
+): Response {
+  const encoder = new TextEncoder();
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const part of stream) {
+            if (part.type === "text-delta" && typeof part.text === "string") {
+              controller.enqueue(encoder.encode(part.text));
+              continue;
+            }
+            if (part.type === "error") {
+              controller.enqueue(
+                encoder.encode(
+                  `AI answer failed: ${getStreamErrorMessage(part.error)}`
+                )
+              );
+              break;
+            }
+          }
+        } catch (error) {
+          controller.enqueue(
+            encoder.encode(`AI answer failed: ${getStreamErrorMessage(error)}`)
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    }),
+    init
+  );
+}
+
 export function streamDocsAnswer(
   options: StreamDocsAnswerOptions
 ): StreamDocsAnswerResult {
@@ -70,14 +131,17 @@ export function streamDocsAnswer(
     providerOptions: options.providerOptions,
     onError: () => undefined,
   });
+  const responseInit = {
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  } as const satisfies ResponseInit;
 
   return {
-    response: result.toTextStreamResponse({
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/plain; charset=utf-8",
-      },
-    }),
+    response: result.fullStream
+      ? createDocsTextStreamResponse(result.fullStream, responseInit)
+      : result.toTextStreamResponse(responseInit),
     sources: context.sources,
   };
 }

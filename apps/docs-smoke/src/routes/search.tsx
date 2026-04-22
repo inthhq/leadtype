@@ -126,45 +126,64 @@ function SearchRoute() {
       return;
     }
 
-    setAnswer("");
-    setError("");
-    setAnswerStatus("loading");
-    const nextResults = await runSearch(trimmedQuery);
-    if (nextResults.length === 0) {
-      setAnswerStatus("error");
-      setError("No matching docs were found for that question.");
-      return;
-    }
-
-    const response = await fetch("/api/docs/ask", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query: trimmedQuery }),
-    });
-
-    if (!(response.ok && response.body)) {
-      const data = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      setAnswerStatus("error");
-      setError(data?.error ?? "Answer generation failed.");
-      return;
-    }
-
-    setAnswerStatus("streaming");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) {
-        break;
+    try {
+      setAnswer("");
+      setError("");
+      setAnswerStatus("loading");
+      const nextResults = await runSearch(trimmedQuery);
+      if (nextResults.length === 0) {
+        setAnswerStatus("error");
+        setError("No matching docs were found for that question.");
+        return;
       }
-      setAnswer((current) => current + decoder.decode(chunk.value));
+
+      const response = await fetch("/api/docs/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: trimmedQuery }),
+      });
+
+      if (!(response.ok && response.body)) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setAnswerStatus("error");
+        setError(data?.error ?? "Answer generation failed.");
+        return;
+      }
+
+      setAnswerStatus("streaming");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedAnswer = "";
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) {
+          break;
+        }
+        const text = decoder.decode(chunk.value, { stream: true });
+        streamedAnswer += text;
+        setAnswer((current) => current + text);
+      }
+      const remainingText = decoder.decode();
+      if (remainingText) {
+        streamedAnswer += remainingText;
+        setAnswer((current) => current + remainingText);
+      }
+      if (!streamedAnswer.trim()) {
+        setAnswerStatus("error");
+        setError(
+          "The AI provider returned an empty answer. Check AI Gateway auth and model access."
+        );
+        return;
+      }
+      setAnswerStatus("idle");
+    } catch {
+      setAnswerStatus("error");
+      setError("Answer generation failed.");
     }
-    setAnswer((current) => current + decoder.decode());
-    setAnswerStatus("idle");
   }
 
   const canAsk = query.trim().length > 0 && answerConfig.enabled;
