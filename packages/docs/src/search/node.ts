@@ -23,6 +23,11 @@ const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
 const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
 
+type BrowserGlobal = typeof globalThis & {
+  location?: { origin?: string };
+  window?: { location?: { origin?: string } };
+};
+
 export type GenerateDocsSearchFilesConfig = {
   outDir: string;
   baseUrl?: string;
@@ -57,9 +62,21 @@ function normalizeBaseUrl(baseUrl?: string): string {
       ? `https://${process.env.VERCEL_URL}`
       : undefined) ||
     process.env.PORTLESS_URL ||
-    "http://localhost";
+    getLocalBaseUrl();
 
   return resolved.replace(TRAILING_SLASHES_PATTERN, "");
+}
+
+function getLocalBaseUrl(): string {
+  const browserGlobal = globalThis as BrowserGlobal;
+  const browserOrigin =
+    browserGlobal.window?.location?.origin ?? browserGlobal.location?.origin;
+  if (browserOrigin?.trim()) {
+    return browserOrigin.trim();
+  }
+
+  const port = process.env.PORT?.trim() || "3000";
+  return `http://localhost:${port}`;
 }
 
 function titleize(input: string): string {
@@ -170,6 +187,21 @@ function warnIfLarge(result: GenerateDocsSearchFilesResult): void {
   }
 }
 
+function resolveDocsOutputPath(
+  docsDir: string,
+  configuredPath: string | undefined,
+  defaultPath: string
+): string {
+  const outputPath = path.resolve(docsDir, configuredPath ?? defaultPath);
+  const relativePath = path.relative(docsDir, outputPath);
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(
+      `Search output file "${configuredPath ?? defaultPath}" must stay inside "${docsDir}".`
+    );
+  }
+  return outputPath;
+}
+
 export async function generateDocsSearchFiles(
   config: GenerateDocsSearchFilesConfig
 ): Promise<GenerateDocsSearchFilesResult> {
@@ -183,21 +215,29 @@ export async function generateDocsSearchFiles(
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const docs = await readMarkdownDocs(docsDir, baseUrl);
+  if (docs.length === 0) {
+    throw new Error(
+      `generateDocsSearchFiles found no markdown files under "${docsDir}". Run convertAllMdx first, or check config.outDir.`
+    );
+  }
+
   const indexWithContent = createDocsSearchIndex(docs, config.indexOptions);
   const { content, ...indexWithoutContent } = indexWithContent;
   if (!content) {
     throw new Error("createDocsSearchIndex did not return a content store.");
   }
   const index = config.embedContent ? indexWithContent : indexWithoutContent;
-  const outputPath = path.join(
+  const outputPath = resolveDocsOutputPath(
     docsDir,
-    config.outputFile ?? DEFAULT_OUTPUT_FILE
+    config.outputFile,
+    DEFAULT_OUTPUT_FILE
   );
   const contentOutputPath = config.embedContent
     ? undefined
-    : path.join(
+    : resolveDocsOutputPath(
         docsDir,
-        config.contentOutputFile ?? DEFAULT_CONTENT_OUTPUT_FILE
+        config.contentOutputFile,
+        DEFAULT_CONTENT_OUTPUT_FILE
       );
   const serialized = `${JSON.stringify(index)}\n`;
   const serializedContent = `${JSON.stringify(content)}\n`;

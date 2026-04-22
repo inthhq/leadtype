@@ -45,4 +45,48 @@ describe("generateDocsSearchFiles", () => {
       await rm(root, { force: true, recursive: true });
     }
   });
+
+  it("rejects empty docs directories", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inth-docs-search-empty-"));
+    try {
+      await mkdir(join(root, "docs"), { recursive: true });
+
+      await expect(
+        generateDocsSearchFiles({
+          baseUrl: "https://docs.example.com",
+          outDir: root,
+        })
+      ).rejects.toThrow("found no markdown files");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects output files outside the generated docs directory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inth-docs-search-path-"));
+    try {
+      await mkdir(join(root, "docs"), { recursive: true });
+      await writeFile(
+        join(root, "docs", "index.md"),
+        "# Docs\n\nGenerated docs content."
+      );
+
+      await expect(
+        generateDocsSearchFiles({
+          baseUrl: "https://docs.example.com",
+          outDir: root,
+          outputFile: "../search-index.json",
+        })
+      ).rejects.toThrow("must stay inside");
+      await expect(
+        generateDocsSearchFiles({
+          baseUrl: "https://docs.example.com",
+          contentOutputFile: "../search-content.json",
+          outDir: root,
+        })
+      ).rejects.toThrow("must stay inside");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
 });

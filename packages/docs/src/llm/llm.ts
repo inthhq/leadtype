@@ -24,6 +24,11 @@ const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
 const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
 
+type BrowserGlobal = typeof globalThis & {
+  location?: { origin?: string };
+  window?: { location?: { origin?: string } };
+};
+
 export type SourceDoc = {
   title: string;
   description: string;
@@ -193,9 +198,21 @@ function normalizeBaseUrl(baseUrl?: string): string {
       ? `https://${process.env.VERCEL_URL}`
       : undefined) ||
     process.env.PORTLESS_URL ||
-    "http://localhost";
+    getLocalBaseUrl();
 
   return resolved.replace(TRAILING_SLASHES_PATTERN, "");
+}
+
+function getLocalBaseUrl(): string {
+  const browserGlobal = globalThis as BrowserGlobal;
+  const browserOrigin =
+    browserGlobal.window?.location?.origin ?? browserGlobal.location?.origin;
+  if (browserOrigin?.trim()) {
+    return browserOrigin.trim();
+  }
+
+  const port = process.env.PORT?.trim() || "3000";
+  return `http://localhost:${port}`;
 }
 
 function toUrlPath(relativePath: string): string {

@@ -7,16 +7,27 @@ const MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
 export type PackageManager = (typeof MANAGERS)[number];
 export type CommandMode = "run" | "install" | "create";
 
-export type CommandTabsProps = {
-  /** Command template. `{pm}` is replaced with the active package manager. */
-  command?: string;
-  /** When set, treat `command` as a package or CLI name and render package-manager-specific commands. */
-  mode?: CommandMode;
+type BaseCommandTabsProps = {
   /** Or pass pre-rendered commands per manager */
   commands?: Partial<Record<PackageManager, string>>;
   defaultManager?: PackageManager;
   children?: ReactNode;
 };
+
+type ModeCommandTabsProps = BaseCommandTabsProps & {
+  /** Command template. `{pm}` is replaced with the active package manager. */
+  command: string;
+  /** When set, treat `command` as a package or CLI name and render package-manager-specific commands. */
+  mode: CommandMode;
+};
+
+type TemplateCommandTabsProps = BaseCommandTabsProps & {
+  /** Command template. `{pm}` is replaced with the active package manager. */
+  command?: string;
+  mode?: never;
+};
+
+export type CommandTabsProps = ModeCommandTabsProps | TemplateCommandTabsProps;
 
 const MODE_COMMANDS: Record<CommandMode, Record<PackageManager, string>> = {
   install: {

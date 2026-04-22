@@ -3,13 +3,19 @@ import { ComponentMatrix } from "@/components/component-matrix";
 import { SiteHeader } from "@/components/site-header";
 import { navigationRoutes, packageSurfaces } from "@/lib/docs";
 
+const START_ROUTE_PATHS = new Set([
+  "/docs/guides/quickstart",
+  "/playground",
+  "/search",
+]);
+
 export const Route = createFileRoute("/")({
   component: HomeRoute,
 });
 
 function HomeRoute() {
   const startRoutes = navigationRoutes.filter((route) =>
-    ["/docs/guides/quickstart", "/playground", "/search"].includes(route.to)
+    START_ROUTE_PATHS.has(route.to)
   );
 
   return (

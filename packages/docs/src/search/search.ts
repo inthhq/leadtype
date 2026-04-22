@@ -944,6 +944,7 @@ export async function readJsonWithLimit<T = unknown>(
     }
     bytesRead += result.value.byteLength;
     if (bytesRead > maxBytes) {
+      await reader.cancel();
       requestError(`Request body must be ${maxBytes} bytes or fewer.`, 413);
     }
     body += decoder.decode(result.value, { stream: true });

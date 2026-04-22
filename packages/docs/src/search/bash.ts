@@ -89,7 +89,9 @@ const READ_ONLY_COMMANDS = [
 
 const UNSAFE_COMMAND_PATTERN =
   /(^|[\s;&|()])(rm|mv|cp|touch|mkdir|chmod|curl|wget|python|python3|node|js-exec)\b/;
-const WRITE_REDIRECT_PATTERN = /(^|[^<])>{1,2}/;
+const SED_IN_PLACE_PATTERN =
+  /\bsed\b(?=[\s\S]*(^|[\s;&|])(-[A-Za-z]*i[A-Za-z]*|--in-place)(=|\s|$))/;
+const WRITE_REDIRECT_PATTERN = /(^|[^<])(?:>>?|>\||>&|>>&)/;
 const LEADING_SLASH_PATTERN = /^\/+/;
 const TRAILING_SLASH_PATTERN = /\/+$/;
 
@@ -316,8 +318,11 @@ function createDocsBashInstructions(root: string): string {
 }
 
 function blockUnsafeCommand(command: string): string | undefined {
+  // Best-effort shell prefilter. The read-only filesystem is the enforcement
+  // layer; this catches common write/network forms before bash-tool executes.
   if (
     UNSAFE_COMMAND_PATTERN.test(command) ||
+    SED_IN_PLACE_PATTERN.test(command) ||
     WRITE_REDIRECT_PATTERN.test(command)
   ) {
     return "printf 'Blocked unsafe docs bash command.\\n' && false";

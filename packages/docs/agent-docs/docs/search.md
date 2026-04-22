@@ -12,6 +12,8 @@ Import runtime helpers from:
 import {
   createAnswerContext,
   createMemoryRateLimiter,
+  type DocsSearchContentStore,
+  type DocsSearchIndex,
   listDocsContentFiles,
   readDocsContentChunk,
   readDocsContentFile,
@@ -130,8 +132,9 @@ const { response, sources } = streamDocsAnswer({
 });
 ```
 
-The response is a plain text stream from `toTextStreamResponse()`. Display
-`sources` separately in your own UI.
+`streamDocsAnswer` returns a plain text `Response`. Display `sources`
+separately in your own UI; they are metadata for source links, not embedded in
+the streamed answer.
 
 ## Bash Tool Adapter
 

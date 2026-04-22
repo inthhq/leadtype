@@ -2,7 +2,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { SiteHeader } from "@/components/site-header";
 import type { DemoSearchApiResult } from "@/lib/search";
@@ -16,13 +16,66 @@ type SearchStatus = "idle" | "loading" | "error";
 type AnswerStatus = "idle" | "loading" | "streaming" | "error" | "disabled";
 
 const SEARCH_DEBOUNCE_MS = 250;
+const SEARCH_MAX_QUERY_LENGTH = 400;
 
 export const Route = createFileRoute("/search")({
   component: SearchRoute,
 });
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+async function readAnswerStream(
+  response: Response,
+  options: {
+    isCurrent: () => boolean;
+    onText: (text: string) => void;
+    signal: AbortSignal;
+  }
+): Promise<string | undefined> {
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let streamedAnswer = "";
+  while (true) {
+    const chunk = await reader.read();
+    if (options.signal.aborted || !options.isCurrent()) {
+      await reader.cancel();
+      return;
+    }
+    if (chunk.done) {
+      break;
+    }
+    const text = decoder.decode(chunk.value, { stream: true });
+    streamedAnswer += text;
+    options.onText(text);
+  }
+
+  const remainingText = decoder.decode();
+  if (remainingText) {
+    streamedAnswer += remainingText;
+    options.onText(remainingText);
+  }
+  return streamedAnswer;
+}
+
+async function readAnswerErrorMessage(response: Response): Promise<string> {
+  const data = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+  return data?.error ?? "Answer generation failed.";
+}
+
 function SearchRoute() {
   const inputId = useId();
+  const searchTimeoutRef = useRef<number | undefined>(undefined);
+  const searchControllerRef = useRef<AbortController | null>(null);
+  const askControllerRef = useRef<AbortController | null>(null);
+  const askRequestIdRef = useRef(0);
   const [query, setQuery] = useState("tabs");
   const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
   const [answerStatus, setAnswerStatus] = useState<AnswerStatus>("idle");
@@ -61,64 +114,178 @@ function SearchRoute() {
         return [];
       }
 
-      setSearchStatus("loading");
-      setError("");
-      const response = await fetch(
-        `/api/docs/search?q=${encodeURIComponent(trimmedQuery)}`,
-        { signal }
-      );
-      const data = (await response.json()) as
-        | DemoSearchApiResult
-        | { error: string };
+      try {
+        setSearchStatus("loading");
+        setError("");
+        const response = await fetch(
+          `/api/docs/search?q=${encodeURIComponent(trimmedQuery)}`,
+          { signal }
+        );
+        const data = (await response.json()) as
+          | DemoSearchApiResult
+          | { error: string };
 
-      if (!response.ok || "error" in data) {
+        if (!response.ok || "error" in data) {
+          setSearchStatus("error");
+          const message = "error" in data ? data.error : "Search failed.";
+          setError(message);
+          return [];
+        }
+
+        setResults(data.results);
+        setSearchStatus("idle");
+        return data.results;
+      } catch (caughtError) {
+        if (isAbortError(caughtError)) {
+          return [];
+        }
         setSearchStatus("error");
-        const message = "error" in data ? data.error : "Search failed.";
-        setError(message);
+        setError("Search failed.");
         return [];
       }
-
-      setResults(data.results);
-      setSearchStatus("idle");
-      return data.results;
     },
     []
   );
 
+  const cancelPendingSearch = useCallback(() => {
+    if (searchTimeoutRef.current !== undefined) {
+      window.clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = undefined;
+    }
+    searchControllerRef.current?.abort();
+    searchControllerRef.current = null;
+  }, []);
+
+  const cancelPendingAnswer = useCallback(() => {
+    askRequestIdRef.current += 1;
+    askControllerRef.current?.abort();
+    askControllerRef.current = null;
+  }, []);
+
   useEffect(() => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
+      cancelPendingSearch();
       setResults([]);
       setSearchStatus("idle");
       setError("");
       return;
     }
 
+    cancelPendingSearch();
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
+    searchControllerRef.current = controller;
+    searchTimeoutRef.current = window.setTimeout(() => {
+      searchTimeoutRef.current = undefined;
       const searchPromise = runSearch(trimmedQuery, controller.signal);
-      searchPromise.catch((caughtError: unknown) => {
-        if (
-          caughtError instanceof DOMException &&
-          caughtError.name === "AbortError"
-        ) {
-          return;
+      searchPromise.finally(() => {
+        if (searchControllerRef.current === controller) {
+          searchControllerRef.current = null;
         }
-        setSearchStatus("error");
-        setError("Search failed.");
       });
     }, SEARCH_DEBOUNCE_MS);
 
     return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
+      if (searchTimeoutRef.current !== undefined) {
+        window.clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = undefined;
+      }
+      if (searchControllerRef.current === controller) {
+        controller.abort();
+        searchControllerRef.current = null;
+      }
     };
-  }, [query, runSearch]);
+  }, [cancelPendingSearch, query, runSearch]);
+
+  useEffect(
+    () => () => {
+      cancelPendingAnswer();
+    },
+    [cancelPendingAnswer]
+  );
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    cancelPendingSearch();
+    cancelPendingAnswer();
     setAnswer("");
-    await runSearch(query);
+    const controller = new AbortController();
+    searchControllerRef.current = controller;
+    try {
+      await runSearch(query, controller.signal);
+    } finally {
+      if (searchControllerRef.current === controller) {
+        searchControllerRef.current = null;
+      }
+    }
+  }
+
+  function isCurrentAnswer(
+    controller: AbortController,
+    requestId: number
+  ): boolean {
+    return !controller.signal.aborted && askRequestIdRef.current === requestId;
+  }
+
+  function setAnswerError(message: string) {
+    setAnswerStatus("error");
+    setError(message);
+  }
+
+  async function searchAnswerSources(
+    trimmedQuery: string,
+    controller: AbortController,
+    requestId: number
+  ): Promise<boolean> {
+    const nextResults = await runSearch(trimmedQuery, controller.signal);
+    if (!isCurrentAnswer(controller, requestId)) {
+      return false;
+    }
+    if (nextResults.length === 0) {
+      setAnswerError("No matching docs were found for that question.");
+      return false;
+    }
+    return true;
+  }
+
+  async function streamAnswer(
+    trimmedQuery: string,
+    controller: AbortController,
+    requestId: number
+  ): Promise<void> {
+    const response = await fetch("/api/docs/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: trimmedQuery }),
+      signal: controller.signal,
+    });
+
+    if (!isCurrentAnswer(controller, requestId)) {
+      return;
+    }
+    if (!(response.ok && response.body)) {
+      setAnswerError(await readAnswerErrorMessage(response));
+      return;
+    }
+
+    setAnswerStatus("streaming");
+    const streamedAnswer = await readAnswerStream(response, {
+      isCurrent: () => askRequestIdRef.current === requestId,
+      onText: (text) => setAnswer((current) => current + text),
+      signal: controller.signal,
+    });
+    if (!isCurrentAnswer(controller, requestId)) {
+      return;
+    }
+    if (!streamedAnswer?.trim()) {
+      setAnswerError(
+        "The AI provider returned an empty answer. Check AI Gateway auth and model access."
+      );
+      return;
+    }
+    setAnswerStatus("idle");
   }
 
   async function handleAsk() {
@@ -127,63 +294,35 @@ function SearchRoute() {
       return;
     }
 
+    cancelPendingSearch();
+    cancelPendingAnswer();
+    const requestId = askRequestIdRef.current + 1;
+    askRequestIdRef.current = requestId;
+    const controller = new AbortController();
+    askControllerRef.current = controller;
+
     try {
       setAnswer("");
       setError("");
       setAnswerStatus("loading");
-      const nextResults = await runSearch(trimmedQuery);
-      if (nextResults.length === 0) {
-        setAnswerStatus("error");
-        setError("No matching docs were found for that question.");
+      const hasSources = await searchAnswerSources(
+        trimmedQuery,
+        controller,
+        requestId
+      );
+      if (!hasSources) {
         return;
       }
-
-      const response = await fetch("/api/docs/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query: trimmedQuery }),
-      });
-
-      if (!(response.ok && response.body)) {
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        setAnswerStatus("error");
-        setError(data?.error ?? "Answer generation failed.");
+      await streamAnswer(trimmedQuery, controller, requestId);
+    } catch (caughtError) {
+      if (isAbortError(caughtError)) {
         return;
       }
-
-      setAnswerStatus("streaming");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let streamedAnswer = "";
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) {
-          break;
-        }
-        const text = decoder.decode(chunk.value, { stream: true });
-        streamedAnswer += text;
-        setAnswer((current) => current + text);
+      setAnswerError("Answer generation failed.");
+    } finally {
+      if (askControllerRef.current === controller) {
+        askControllerRef.current = null;
       }
-      const remainingText = decoder.decode();
-      if (remainingText) {
-        streamedAnswer += remainingText;
-        setAnswer((current) => current + remainingText);
-      }
-      if (!streamedAnswer.trim()) {
-        setAnswerStatus("error");
-        setError(
-          "The AI provider returned an empty answer. Check AI Gateway auth and model access."
-        );
-        return;
-      }
-      setAnswerStatus("idle");
-    } catch {
-      setAnswerStatus("error");
-      setError("Answer generation failed.");
     }
   }
 
@@ -218,8 +357,11 @@ function SearchRoute() {
             <input
               className="min-h-11 flex-1 rounded-lg border border-border bg-card px-4 text-base text-foreground outline-none transition-shadow placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               id={inputId}
-              maxLength={600}
-              onChange={(event) => setQuery(event.target.value)}
+              maxLength={SEARCH_MAX_QUERY_LENGTH}
+              onChange={(event) => {
+                cancelPendingAnswer();
+                setQuery(event.target.value);
+              }}
               placeholder="Search docs or ask a question"
               value={query}
             />

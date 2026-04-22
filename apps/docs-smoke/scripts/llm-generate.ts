@@ -12,11 +12,16 @@ import {
 const scriptsRoot = process.cwd();
 const srcDir = join(scriptsRoot, "content");
 const outDir = join(scriptsRoot, "public");
+const baseUrl =
+  process.env.DOCS_SMOKE_BASE_URL?.trim() ||
+  process.env.BASE_URL?.trim() ||
+  process.env.PORTLESS_URL?.trim() ||
+  "https://docs.example.com";
 
 await generateLlmsTxt({
   srcDir,
   outDir,
-  baseUrl: "https://docs.example.com",
+  baseUrl,
   product: {
     name: "Smoke SDK",
     summary: "Exercise the @inth/docs pipeline end-to-end.",
@@ -42,7 +47,7 @@ await generateLlmsTxt({
 
 await generateLLMFullContextFiles({
   outDir,
-  baseUrl: "https://docs.example.com",
+  baseUrl,
   product: { name: "Smoke SDK" },
   topics: [
     {

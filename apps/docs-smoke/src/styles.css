@@ -9,6 +9,8 @@
   --font-heading: "Geist Variable", sans-serif;
   --font-sans: "Geist Variable", sans-serif;
   --font-mono: "Geist Mono Variable", monospace;
+  --text-title-h1: 1.875rem;
+  --text-title-h1--line-height: 1.2;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -85,7 +87,7 @@
 }
 
 .docs-prose h1 {
-  @apply mt-0 text-3xl leading-tight;
+  @apply mt-0 text-title-h1;
 }
 
 .docs-prose h2 {
