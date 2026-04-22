@@ -3,11 +3,11 @@
 export * from "./libs";
 export { remarkCalloutToMarkdown } from "./plugins/callout.remark";
 export { remarkCardsToMarkdown } from "./plugins/cards.remark";
+export { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
 export { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
 export { remarkInclude } from "./plugins/include.remark";
 export { remarkLinkIcon } from "./plugins/link-icon.remark";
 export { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
-export { remarkPackageCommandTabsToMarkdown } from "./plugins/package-command-tabs.remark";
 export { remarkRemoveImports } from "./plugins/remove-imports.remark";
 export { remarkStepsToMarkdown } from "./plugins/steps.remark";
 export { remarkTabsToMarkdown } from "./plugins/tabs.remark";
@@ -23,9 +23,9 @@ export {
 
 import { remarkCalloutToMarkdown } from "./plugins/callout.remark";
 import { remarkCardsToMarkdown } from "./plugins/cards.remark";
+import { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
 import { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
 import { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
-import { remarkPackageCommandTabsToMarkdown } from "./plugins/package-command-tabs.remark";
 import { remarkRemoveImports } from "./plugins/remove-imports.remark";
 import { remarkStepsToMarkdown } from "./plugins/steps.remark";
 import { remarkTabsToMarkdown } from "./plugins/tabs.remark";
@@ -42,7 +42,7 @@ export const defaultRemarkPlugins = [
   remarkCalloutToMarkdown,
   remarkCardsToMarkdown,
   remarkMermaidToMarkdown,
-  remarkPackageCommandTabsToMarkdown,
+  remarkCommandTabsToMarkdown,
   remarkStepsToMarkdown,
   remarkTabsToMarkdown,
   remarkTypeTableToMarkdown,

@@ -2,8 +2,9 @@
   "title": "Docs",
   "pages": [
     "index",
+    "search",
     "guides/quickstart",
     "guides/components-fixture",
-    "guides/auto-type-table-fixture"
+    "guides/extracted-type-table-fixture"
   ]
 }

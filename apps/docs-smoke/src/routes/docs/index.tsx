@@ -1,6 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AutoTypeTable, Callout } from "@inth/docs";
+import { Callout, ExtractedTypeTable } from "@inth/docs";
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import DocsIndex from "../../../content/docs/index.mdx";
@@ -8,11 +8,11 @@ import DocsIndex from "../../../content/docs/index.mdx";
 const routeDirectory = dirname(fileURLToPath(import.meta.url));
 const docsSmokeRoot = resolve(routeDirectory, "..", "..", "..");
 const repoRoot = resolve(docsSmokeRoot, "..", "..");
-const autoTypeTableExamplePromise = (async () => {
+const extractedTypeTableExamplePromise = (async () => {
   const { extractTypeFromFile } = await import("@inth/docs/remark");
 
   return {
-    type:
+    properties:
       extractTypeFromFile(
         "./apps/docs-smoke/type-fixtures/pipeline-example.ts",
         "PipelineExampleOptions",
@@ -21,30 +21,30 @@ const autoTypeTableExamplePromise = (async () => {
   };
 })();
 
-const getAutoTypeTableExample = createServerFn({ method: "GET" }).handler(
-  async () => autoTypeTableExamplePromise
+const getExtractedTypeTableExample = createServerFn({ method: "GET" }).handler(
+  async () => extractedTypeTableExamplePromise
 );
 
 export const Route = createFileRoute("/docs/")({
-  loader: async () => getAutoTypeTableExample(),
+  loader: async () => getExtractedTypeTableExample(),
   component: DocsIndexRoute,
 });
 
 function DocsIndexRoute() {
-  const { type } = Route.useLoaderData();
+  const { properties } = Route.useLoaderData();
 
   return (
     <>
       <DocsIndex />
-      <h2>AutoTypeTable</h2>
-      {type ? (
-        <AutoTypeTable
+      <h2>ExtractedTypeTable</h2>
+      {properties ? (
+        <ExtractedTypeTable
           name="PipelineExampleOptions"
           path="./apps/docs-smoke/type-fixtures/pipeline-example.ts"
-          type={type}
+          properties={properties}
         />
       ) : (
-        <Callout title="AutoTypeTable" variant="canary">
+        <Callout title="ExtractedTypeTable" variant="canary">
           Could not extract `PipelineExampleOptions` from the fixture file.
         </Callout>
       )}

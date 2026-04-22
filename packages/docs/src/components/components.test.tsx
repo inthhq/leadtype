@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Callout } from "./callout";
 import { Card } from "./card";
+import { CommandTabs } from "./command-tabs";
 import { Mermaid } from "./mermaid";
 import { TypeTable } from "./type-table";
 
@@ -38,10 +39,34 @@ describe("component semantics", () => {
     expect(markup).toContain("flowchart TD");
   });
 
+  it("renders install commands from package names", () => {
+    const markup = renderToStaticMarkup(
+      <CommandTabs command="@inth/docs" mode="install" />
+    );
+
+    expect(markup).toContain("npm install @inth/docs");
+  });
+
+  it("keeps custom package manager command templates", () => {
+    const markup = renderToStaticMarkup(
+      <CommandTabs command="{pm} exec inth-docs-lint" />
+    );
+
+    expect(markup).toContain("npm exec inth-docs-lint");
+  });
+
+  it("renders create commands from starter names", () => {
+    const markup = renderToStaticMarkup(
+      <CommandTabs command="next-app" mode="create" />
+    );
+
+    expect(markup).toContain("npm create next-app");
+  });
+
   it("drops unsafe type description links", () => {
     const markup = renderToStaticMarkup(
       <TypeTable
-        type={{
+        properties={{
           command: {
             description: "Command template",
             type: "string",

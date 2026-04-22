@@ -7,15 +7,16 @@ export {
 } from "./callout";
 export { Card, type CardProps, Cards, type CardsProps } from "./card";
 export {
+  type CommandMode,
+  CommandTabs,
+  type CommandTabsProps,
+  type PackageManager,
+} from "./command-tabs";
+export {
   type MdxComponents,
   mdxComponents,
 } from "./mdx-components";
 export { Mermaid, type MermaidProps } from "./mermaid";
-export {
-  PackageCommandTabs,
-  type PackageCommandTabsProps,
-  type PackageManager,
-} from "./package-command-tabs";
 export {
   Selector,
   type SelectorOption,
@@ -24,8 +25,8 @@ export {
 export { Step, type StepProps, Steps, type StepsProps } from "./steps";
 export { Tab, type TabProps, Tabs, type TabsProps } from "./tabs";
 export {
-  AutoTypeTable,
-  type AutoTypeTableProps,
+  ExtractedTypeTable,
+  type ExtractedTypeTableProps,
   TypeTable,
   type TypeTableProperty,
   type TypeTableProps,

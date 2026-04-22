@@ -1,66 +1,141 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ComponentMatrix } from "@/components/component-matrix";
 import { SiteHeader } from "@/components/site-header";
-import { demoRoutes } from "@/lib/docs";
+import { navigationRoutes, packageSurfaces } from "@/lib/docs";
+
+const START_ROUTE_PATHS = new Set([
+  "/docs/guides/quickstart",
+  "/playground",
+  "/search",
+]);
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
 });
 
 function HomeRoute() {
+  const startRoutes = navigationRoutes.filter((route) =>
+    START_ROUTE_PATHS.has(route.to)
+  );
+
   return (
     <div className="min-h-svh">
       <SiteHeader />
-      <main className="mx-auto flex max-w-5xl flex-col gap-12 px-4 py-10 sm:px-6">
-        <section className="space-y-5 border-border border-b pb-10">
-          <div className="space-y-2">
-            <h1 className="font-heading font-medium text-4xl text-foreground tracking-tight">
-              Reference app for `@inth/docs`
-            </h1>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="font-medium text-foreground text-sm">
-              Consumer contract
+      <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-7 sm:px-6">
+        <section className="grid gap-6 border-border border-b pb-8 lg:grid-cols-[minmax(280px,0.8fr)_minmax(460px,1.1fr)]">
+          <div className="max-w-2xl space-y-4">
+            <p className="font-medium text-accent-strong text-sm">
+              Runtime docs, pipeline fixtures, and search demos
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-secondary p-4 text-foreground text-sm">
+            <h1 className="font-heading font-medium text-3xl text-foreground tracking-tight sm:text-4xl">
+              Build docs with @inth/docs
+            </h1>
+            <p className="max-w-xl text-muted-foreground text-sm leading-7">
+              Shared React MDX components, MDX conversion, LLM bundles, docs
+              linting, and static search in one package. This app renders the
+              package docs and keeps the integration paths easy to test.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              {startRoutes.map((route) => (
+                <Link
+                  className="rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:bg-secondary"
+                  key={route.to}
+                  to={route.to}
+                >
+                  <span className="block font-medium text-sm">
+                    {route.label}
+                  </span>
+                  <span className="mt-1 block text-muted-foreground text-xs leading-5">
+                    {route.description}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="self-start rounded-lg border border-border bg-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="font-medium text-base text-foreground">
+                  Implementation contract
+                </p>
+                <p className="max-w-xl text-muted-foreground text-sm leading-6">
+                  Spread the package map into your MDX provider. Override
+                  individual entries only when the app needs local styling.
+                </p>
+              </div>
+              <Link
+                className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
+                to="/docs/guides/quickstart"
+              >
+                Quickstart
+              </Link>
+            </div>
+            <pre className="mt-4 overflow-x-auto rounded-lg border border-border bg-secondary p-4 text-foreground text-sm">
               <code>{`import { mdxComponents } from "@inth/docs";
 
-const components = {
+export const components = {
   ...mdxComponents,
 };`}</code>
             </pre>
           </div>
         </section>
-        <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-4">
+
+        <section className="space-y-4">
+          <div className="max-w-2xl space-y-2">
             <h2 className="font-heading font-medium text-2xl text-foreground tracking-tight">
-              Coverage
+              Package surfaces
             </h2>
-            <ComponentMatrix />
+            <p className="text-muted-foreground text-sm leading-6">
+              The demo documents every public entry point so consumers can pick
+              the smallest import path for their implementation.
+            </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="font-heading font-medium text-foreground text-lg tracking-tight">
-              Routes
-            </h2>
-            <div className="mt-4 space-y-1">
-              {demoRoutes
-                .filter((route) => route.to !== "/")
-                .map((route) => (
-                  <Link
-                    className="block rounded-md px-3 py-2 text-muted-foreground text-sm transition-colors hover:bg-secondary hover:text-foreground"
-                    key={route.to}
-                    to={route.to}
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-secondary">
+                <tr>
+                  <th className="min-w-56 px-4 py-3 font-medium">Import</th>
+                  <th className="min-w-32 px-4 py-3 font-medium">Use</th>
+                  <th className="min-w-96 px-4 py-3 font-medium">
+                    Description
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {packageSurfaces.map((surface) => (
+                  <tr
+                    className="border-border border-t align-top"
+                    key={surface.importPath}
                   >
-                    <div className="font-medium text-foreground">
-                      {route.label}
-                    </div>
-                    <p className="mt-1 text-muted-foreground text-sm leading-6">
-                      {route.description}
-                    </p>
-                  </Link>
+                    <td className="px-4 py-3 font-mono text-foreground text-sm">
+                      {surface.importPath}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-md bg-secondary px-2 py-1 font-medium text-xs">
+                        {surface.lifecycle}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {surface.description}
+                    </td>
+                  </tr>
                 ))}
-            </div>
+              </tbody>
+            </table>
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="max-w-2xl space-y-2">
+            <h2 className="font-heading font-medium text-2xl text-foreground tracking-tight">
+              Smoke coverage
+            </h2>
+            <p className="text-muted-foreground text-sm leading-6">
+              The app is also a regression harness for server rendering,
+              hydration, conversion, generated search data, and agent docs.
+            </p>
+          </div>
+          <ComponentMatrix />
         </section>
       </main>
     </div>

@@ -51,11 +51,11 @@ function renderTypeWithLink(property: TypeTableProperty): ReactNode {
 }
 
 export type TypeTableProps = {
-  type?: Record<string, TypeTableProperty>;
+  properties?: Record<string, TypeTableProperty>;
 };
 
-export function TypeTable({ type }: TypeTableProps) {
-  const rows = Object.entries(type ?? {});
+export function TypeTable({ properties }: TypeTableProps) {
+  const rows = Object.entries(properties ?? {});
   if (rows.length === 0) {
     return null;
   }
@@ -107,15 +107,19 @@ export function TypeTable({ type }: TypeTableProps) {
   );
 }
 
-export type AutoTypeTableProps = {
+export type ExtractedTypeTableProps = {
   /** Path to the source file — rendered as a caption; actual type extraction happens at build time via the remark plugin */
   path?: string;
   /** The exported type name in the source file */
   name?: string;
-  type?: Record<string, TypeTableProperty>;
+  properties?: Record<string, TypeTableProperty>;
 };
 
-export function AutoTypeTable({ path, name, type }: AutoTypeTableProps) {
+export function ExtractedTypeTable({
+  path,
+  name,
+  properties,
+}: ExtractedTypeTableProps) {
   const captionParts: string[] = [];
   if (name) {
     captionParts.push(name);
@@ -124,7 +128,8 @@ export function AutoTypeTable({ path, name, type }: AutoTypeTableProps) {
     captionParts.push(path);
   }
   const hasCaption = captionParts.length > 0;
-  const hasRows = type !== undefined && Object.keys(type).length > 0;
+  const hasRows =
+    properties !== undefined && Object.keys(properties).length > 0;
 
   // Don't render an empty <figure> — nothing to show means nothing to mount.
   if (!(hasCaption || hasRows)) {
@@ -132,13 +137,13 @@ export function AutoTypeTable({ path, name, type }: AutoTypeTableProps) {
   }
 
   return (
-    <figure data-inth-auto-type-table="">
+    <figure data-inth-extracted-type-table="">
       {hasCaption ? (
         <figcaption>
           <code>{captionParts.join(" from ")}</code>
         </figcaption>
       ) : null}
-      <TypeTable type={type} />
+      <TypeTable properties={properties} />
     </figure>
   );
 }

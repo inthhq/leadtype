@@ -20,14 +20,16 @@ Reference map for the shared MDX conversion, linting, and LLM doc-generation pac
 * A remark pipeline that flattens MDX components into LLM-friendly markdown.
 * MDX to markdown conversion utilities.
 * `llms.txt` and topic-scoped `llms-full/*.txt` generators.
+* Static docs search, content readers, source-grounded answer helpers, and optional bash-tool integration.
 * MDX linting utilities for frontmatter, `meta.json`, and docs links.
 
 ## Package Surfaces
 
 * [Components](/docs/components): React components and the `mdxComponents` adapter map.
-* [Convert](/docs/convert): `convertMdxFile`, `convertSingleMdxFile`, and `convertAllMdx`.
+* [Convert](/docs/convert): `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`, and `convertAllMdx`.
 * [Remark](/docs/remark): individual remark plugins plus `defaultRemarkPlugins`.
-* [LLM](/docs/llm): `generateLLMSummaries` and `generateLLMFullFiles`.
+* [LLM](/docs/llm): `generateLlmsTxt` and `generateLLMFullContextFiles`.
+* [Search](/docs/search): `generateDocsSearchFiles`, `searchDocs`, source-grounded answer helpers, and the optional bash adapter.
 * [Lint](/docs/lint): `lintDocs` and the `inth-docs-lint` CLI.
 
 ## When To Read Which Page
@@ -36,4 +38,5 @@ Reference map for the shared MDX conversion, linting, and LLM doc-generation pac
 * Read [Convert](/docs/convert) when you need markdown output from `.mdx` files.
 * Read [Remark](/docs/remark) when you need custom plugin order or component flattening behavior.
 * Read [LLM](/docs/llm) when generating `llms.txt` or topic-scoped full-context bundles.
+* Read [Search](/docs/search) when generating a static index, querying docs at runtime, or streaming grounded answers.
 * Read [Lint](/docs/lint) when validating frontmatter, docs URLs, or sidebar metadata.

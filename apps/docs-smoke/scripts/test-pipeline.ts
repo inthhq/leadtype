@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { join } from "node:path";
-import { convertMdxFile } from "../../../packages/docs/src/convert/index.ts";
+import { convertMdxToMarkdown } from "../../../packages/docs/src/convert/index.ts";
 import {
   defaultRemarkPlugins,
   remarkTypeTableToMarkdown,
@@ -14,9 +14,9 @@ const fixturePath = join(
   "content",
   "docs",
   "guides",
-  "auto-type-table-fixture.mdx"
+  "extracted-type-table-fixture.mdx"
 );
-type RemarkPlugins = NonNullable<Parameters<typeof convertMdxFile>[1]>;
+type RemarkPlugins = NonNullable<Parameters<typeof convertMdxToMarkdown>[1]>;
 
 const typeTableRemarkPlugin: RemarkPlugins[number] = [
   remarkTypeTableToMarkdown,
@@ -29,7 +29,7 @@ const remarkPlugins: RemarkPlugins = [
   typeTableRemarkPlugin,
 ];
 
-const result = await convertMdxFile(fixturePath, remarkPlugins);
+const result = await convertMdxToMarkdown(fixturePath, remarkPlugins);
 
 if (
   !(
@@ -40,7 +40,7 @@ if (
 ) {
   process.stderr.write(result.markdown);
   process.stderr.write(
-    "\nFAIL: expected AutoTypeTable fixture to resolve PipelineExampleOptions into markdown rows.\n"
+    "\nFAIL: expected ExtractedTypeTable fixture to resolve PipelineExampleOptions into markdown rows.\n"
   );
   process.exit(1);
 }

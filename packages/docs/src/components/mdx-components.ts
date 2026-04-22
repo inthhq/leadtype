@@ -1,11 +1,11 @@
 import { Callout } from "./callout";
 import { Card, Cards } from "./card";
+import { CommandTabs } from "./command-tabs";
 import { Mermaid } from "./mermaid";
-import { PackageCommandTabs } from "./package-command-tabs";
 import { Selector } from "./selector";
 import { Step, Steps } from "./steps";
 import { Tab, Tabs } from "./tabs";
-import { AutoTypeTable, TypeTable } from "./type-table";
+import { ExtractedTypeTable, TypeTable } from "./type-table";
 
 /**
  * Default MDX component adapter map. Spread this into your MDXProvider (or
@@ -18,12 +18,12 @@ import { AutoTypeTable, TypeTable } from "./type-table";
  *     const components = { ...mdxComponents, Callout: MyCallout };
  */
 export const mdxComponents = {
-  AutoTypeTable,
+  ExtractedTypeTable,
   Callout,
   Card,
   Cards,
   Mermaid,
-  PackageCommandTabs,
+  CommandTabs,
   Selector,
   Step,
   Steps,

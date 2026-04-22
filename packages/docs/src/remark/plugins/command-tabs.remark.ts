@@ -9,7 +9,7 @@ import {
   getAttributeValue,
 } from "../libs";
 
-type Mode = "run" | "install";
+type Mode = "run" | "install" | "create";
 
 type Options = {
   /** Column labels. */
@@ -28,6 +28,12 @@ const COMMANDS = {
     yarn: "yarn add {pkg}",
     bun: "bun add {pkg}",
   },
+  create: {
+    npm: "npm create {pkg}",
+    pnpm: "pnpm create {pkg}",
+    yarn: "yarn create {pkg}",
+    bun: "bun create {pkg}",
+  },
   run: {
     npm: "npx {pkg}",
     pnpm: "pnpm dlx {pkg}",
@@ -43,16 +49,17 @@ function cmdsFor(pm: Pm, pkgCmd: string, mode: Mode): string {
   return template.replace("{pkg}", pkgCmd);
 }
 
-export function remarkPackageCommandTabsToMarkdown(
+export function remarkCommandTabsToMarkdown(
   opts: Options = {}
 ): Transformer<Root, Root> {
   const labels = { ...DEFAULT_LABELS, ...(opts.labels ?? {}) };
   const managers = [...(opts.managers ?? DEFAULT_MANAGERS)];
 
-  return createJsxComponentProcessor("PackageCommandTabs", (node) => {
+  return createJsxComponentProcessor("CommandTabs", (node) => {
     const rawCommand = (getAttributeValue(node, "command") ?? "").trim();
     const rawMode = (getAttributeValue(node, "mode") ?? "run").trim();
-    const mode: Mode = rawMode === "install" ? "install" : "run";
+    const mode: Mode =
+      rawMode === "install" || rawMode === "create" ? rawMode : "run";
 
     if (!rawCommand) {
       return [];

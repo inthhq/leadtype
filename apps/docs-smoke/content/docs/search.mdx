@@ -1,0 +1,94 @@
+---
+title: "Search APIs"
+description: "Generate static docs search data, query it at runtime, and stream source-grounded answers."
+---
+
+# Search APIs
+
+`@inth/docs` ships headless search primitives. Your app owns the UI; the package owns index generation, local ranking, source reads, answer context, and request guards.
+
+<Callout title="Live demo">
+  Open [/search](/search) to test the generated index. Typing calls local search only. The `Ask` button is the only action that can call the model.
+</Callout>
+
+## Build The Index
+
+Use the Node-only entry point after MDX has been converted to markdown.
+
+```ts
+import { generateDocsSearchFiles } from "@inth/docs/search/node";
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+});
+```
+
+The generator writes `docs/search-index.json` for compact metadata and `docs/search-content.json` for answer-source text.
+
+## Runtime Search
+
+Use the edge-safe runtime with generated JSON.
+
+```ts
+import {
+  searchDocs,
+  type DocsSearchContentStore,
+  type DocsSearchIndex,
+} from "@inth/docs/search";
+import contentJson from "./generated/docs-search-content.json";
+import indexJson from "./generated/docs-search-index.json";
+
+const index = indexJson as DocsSearchIndex;
+const content = contentJson as DocsSearchContentStore;
+
+const results = searchDocs(index, "package tabs", { content });
+```
+
+Results include heading paths, excerpts, `urlWithHash`, and `absoluteUrlWithHash` so a docs UI can link directly to the matched section.
+
+## Source-Grounded Answers
+
+Use `@inth/docs/search/ai` only when the user explicitly asks for an answer.
+
+```ts
+import { streamDocsAnswer } from "@inth/docs/search/ai";
+
+const { response, sources } = streamDocsAnswer({
+  index,
+  content,
+  query,
+  model: process.env.DOCS_SEARCH_MODEL ?? "moonshotai/kimi-k2.6",
+  productName: "@inth/docs",
+});
+```
+
+The prompt includes retrieved docs context, asks for citations, treats docs text as untrusted reference content, and tells the model to say when the retrieved context is not enough.
+
+## Abuse Protection
+
+<Steps>
+  <Step title="Keep search cheap">
+    Debounced typing should call only a local search route such as `/api/docs/search`.
+  </Step>
+  <Step title="Make answers explicit">
+    Keep model calls behind a clear button such as `Ask`.
+  </Step>
+  <Step title="Guard request paths">
+    Use `validateDocsQuery`, `readJsonWithLimit`, `getClientIdentifier`, and a `RateLimiter` implementation around public routes.
+  </Step>
+</Steps>
+
+The demo uses an in-memory limiter for local smoke coverage. Production apps should adapt the `RateLimiter` interface to a shared store.
+
+## Bash Adapter
+
+Use `@inth/docs/search/bash` when an AI SDK agent should inspect docs with safe shell commands.
+
+```ts
+import { createDocsBashTool } from "@inth/docs/search/bash";
+
+const { tools, instructions } = await createDocsBashTool(index, content);
+```
+
+The adapter creates a read-only `/docs` filesystem for `just-bash` and wraps it with `bash-tool`. Agents can use commands such as `ls`, `cat`, `find`, `grep`, and `rg`; network commands and writes are disabled by default.

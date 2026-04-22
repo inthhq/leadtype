@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { generateLLMFullFiles, generateLLMSummaries } from "./llm";
+import { generateLLMFullContextFiles, generateLlmsTxt } from "./llm";
 
 const tempDirs: string[] = [];
 
@@ -21,7 +21,7 @@ afterEach(async () => {
   );
 });
 
-describe("generateLLMSummaries", () => {
+describe("generateLlmsTxt", () => {
   it("falls back to section-friendly titles and descriptions for index routes", async () => {
     const projectDir = await createTempProject();
     const docsDir = path.join(projectDir, "docs", "frameworks");
@@ -36,7 +36,7 @@ describe("generateLLMSummaries", () => {
 `
     );
 
-    await generateLLMSummaries({
+    await generateLlmsTxt({
       srcDir: projectDir,
       outDir,
       baseUrl: "https://c15t.com",
@@ -75,7 +75,7 @@ describe("generateLLMSummaries", () => {
     await mkdir(docsDir, { recursive: true });
     await writeFile(path.join(docsDir, "index.mdx"), "# Welcome\n");
 
-    await generateLLMSummaries({
+    await generateLlmsTxt({
       srcDir: projectDir,
       outDir,
       baseUrl: "https://c15t.com",
@@ -137,12 +137,12 @@ async function seedOutDir(outDir: string): Promise<void> {
   );
 }
 
-describe("generateLLMFullFiles — nested topics", () => {
+describe("generateLLMFullContextFiles — nested topics", () => {
   it("emits sub-routers and leaves at nested paths", async () => {
     const projectDir = await createTempProject();
     await seedOutDir(projectDir);
 
-    await generateLLMFullFiles({
+    await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
@@ -230,7 +230,7 @@ describe("generateLLMFullFiles — nested topics", () => {
     const projectDir = await createTempProject();
     await seedOutDir(projectDir);
 
-    await generateLLMFullFiles({
+    await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
@@ -261,7 +261,7 @@ describe("generateLLMFullFiles — nested topics", () => {
     const projectDir = await createTempProject();
     await seedOutDir(projectDir);
 
-    await generateLLMFullFiles({
+    await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
@@ -288,7 +288,7 @@ describe("generateLLMFullFiles — nested topics", () => {
       )
     ).toBe(true);
 
-    await generateLLMFullFiles({
+    await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
@@ -314,7 +314,7 @@ describe("generateLLMFullFiles — nested topics", () => {
     await seedOutDir(projectDir);
 
     await expect(
-      generateLLMFullFiles({
+      generateLLMFullContextFiles({
         outDir: projectDir,
         baseUrl: "https://c15t.com",
         product: { name: "c15t" },
@@ -343,7 +343,7 @@ describe("generateLLMFullFiles — nested topics", () => {
     await seedOutDir(projectDir);
 
     await expect(
-      generateLLMFullFiles({
+      generateLLMFullContextFiles({
         outDir: projectDir,
         baseUrl: "https://c15t.com",
         product: { name: "c15t" },
@@ -363,7 +363,7 @@ describe("generateLLMFullFiles — nested topics", () => {
     await seedOutDir(projectDir);
 
     await expect(
-      generateLLMFullFiles({
+      generateLLMFullContextFiles({
         outDir: projectDir,
         baseUrl: "https://c15t.com",
         product: { name: "c15t" },
@@ -397,7 +397,7 @@ describe("generateLLMFullFiles — nested topics", () => {
     await seedOutDir(projectDir);
 
     await expect(
-      generateLLMFullFiles({
+      generateLLMFullContextFiles({
         outDir: projectDir,
         baseUrl: "https://c15t.com",
         product: { name: "c15t" },

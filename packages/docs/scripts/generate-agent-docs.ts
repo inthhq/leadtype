@@ -2,7 +2,7 @@ import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { convertAllMdx } from "../src/convert/index";
-import { generateLLMFullFiles, generateLLMSummaries } from "../src/llm/index";
+import { generateLLMFullContextFiles, generateLlmsTxt } from "../src/llm/index";
 import { defaultRemarkPlugins } from "../src/remark/index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -11,18 +11,10 @@ const OUT_DIR = join(PACKAGE_ROOT, "agent-docs");
 const fallbackBaseUrl = "https://example.invalid/@inth/docs";
 const configuredBaseUrl = process.env.INTH_DOCS_AGENT_BASE_URL?.trim();
 const baseUrl = configuredBaseUrl || fallbackBaseUrl;
-const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
 
 if (!configuredBaseUrl) {
-  if (isCI) {
-    process.stderr.write(
-      "INTH_DOCS_AGENT_BASE_URL must be set in CI environments.\n"
-    );
-    process.exit(1);
-  }
-
   process.stderr.write(
-    `INTH_DOCS_AGENT_BASE_URL not set; using ${fallbackBaseUrl} for local package builds.\n`
+    `INTH_DOCS_AGENT_BASE_URL not set; using ${fallbackBaseUrl} for generated package docs.\n`
   );
 }
 
@@ -34,7 +26,7 @@ await convertAllMdx({
   remarkPlugins: defaultRemarkPlugins,
 });
 
-await generateLLMSummaries({
+await generateLlmsTxt({
   srcDir: SRC_DIR,
   outDir: OUT_DIR,
   baseUrl,
@@ -44,12 +36,14 @@ await generateLLMSummaries({
     bullets: [
       "Flattens MDX-heavy docs into clean markdown for agents.",
       "Generates llms.txt plus topic-scoped full-context bundles.",
+      "Builds compact static search indexes and source-grounded answer prompts.",
       "Validates frontmatter, docs metadata, and internal docs links.",
     ],
     bestStartingPoints: [
       { urlPath: "/docs" },
       { urlPath: "/docs/convert" },
       { urlPath: "/docs/llm" },
+      { urlPath: "/docs/search" },
     ],
     agentGuidance:
       "Start with /docs/llms.txt to route the task, then open the smallest matching topic page.",
@@ -67,8 +61,12 @@ await generateLLMSummaries({
     },
     {
       title: "Generation",
-      description: "MDX conversion and LLM output generation.",
-      links: [{ urlPath: "/docs/convert" }, { urlPath: "/docs/llm" }],
+      description: "MDX conversion, LLM output generation, and search.",
+      links: [
+        { urlPath: "/docs/convert" },
+        { urlPath: "/docs/llm" },
+        { urlPath: "/docs/search" },
+      ],
     },
     {
       title: "Validation",
@@ -78,7 +76,7 @@ await generateLLMSummaries({
   ],
 });
 
-await generateLLMFullFiles({
+await generateLLMFullContextFiles({
   outDir: OUT_DIR,
   baseUrl,
   product: { name: "@inth/docs" },
@@ -124,6 +122,12 @@ await generateLLMFullFiles({
           title: "LLM",
           description: "Summary and full-context file generation.",
           includePrefixes: ["llm"],
+        },
+        {
+          slug: "search",
+          title: "Search",
+          description: "Static search indexes and AI answer helpers.",
+          includePrefixes: ["search"],
         },
       ],
     },

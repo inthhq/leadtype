@@ -231,7 +231,7 @@ function compactMermaidBlocks(markdown: string): string {
   });
 }
 
-export type MdxToMarkdownConfig = {
+export type MdxToMarkdownOptions = {
   /** Source directory containing .mdx files */
   srcDir?: string;
   /** Output directory for .md files */
@@ -340,7 +340,7 @@ export type ConvertResult = {
  * Convert a single MDX file to markdown in memory. Returns the rendered
  * markdown plus the (possibly synthesized) frontmatter block.
  */
-export async function convertMdxFile(
+export async function convertMdxToMarkdown(
   sourcePath: string,
   remarkPlugins: PluggableList = [],
   enrichFromGitFlag = false
@@ -431,7 +431,7 @@ async function processMdxFile(
   }
 
   try {
-    const { markdown } = await convertMdxFile(
+    const { markdown } = await convertMdxToMarkdown(
       resolvedPath,
       remarkPlugins,
       enrichFromGitFlag
@@ -459,9 +459,9 @@ async function processMdxFile(
  * Convert a single MDX file and write the output. Also writes to stdout so
  * build scripts can pipe/stream output when invoked on one file at a time.
  */
-export async function convertSingleMdxFile(
+export async function writeMdxFileAsMarkdown(
   mdxFilePath: string,
-  config: MdxToMarkdownConfig = {}
+  config: MdxToMarkdownOptions = {}
 ): Promise<boolean> {
   const srcDir = config.srcDir
     ? resolve(config.srcDir)
@@ -485,7 +485,7 @@ export async function convertSingleMdxFile(
  * relative directory structure).
  */
 export async function convertAllMdx(
-  config: MdxToMarkdownConfig = {}
+  config: MdxToMarkdownOptions = {}
 ): Promise<void> {
   const srcDir = config.srcDir
     ? resolve(config.srcDir)
@@ -525,7 +525,7 @@ export async function convertAllMdx(
 
   const results = await mapLimit(mdxFiles, concurrency, async (mdxFilePath) => {
     try {
-      const { markdown } = await convertMdxFile(
+      const { markdown } = await convertMdxToMarkdown(
         mdxFilePath,
         remarkPlugins,
         enrichFromGitFlag

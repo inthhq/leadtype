@@ -16,12 +16,12 @@ The root export is intentionally small. It gives consumers a ready-to-spread MDX
 
 `mdxComponents` includes:
 
-* `AutoTypeTable`
+* `ExtractedTypeTable`
 * `Callout`
 * `Card`
 * `Cards`
 * `Mermaid`
-* `PackageCommandTabs`
+* `CommandTabs`
 * `Selector`
 * `Step`
 * `Steps`
@@ -44,13 +44,15 @@ Override individual entries rather than replacing the full map unless you want t
 
 ## Important Components
 
-### `PackageCommandTabs`
+### `CommandTabs`
 
 Use for package-manager-specific install or run commands.
 
 ```tsx
-<PackageCommandTabs command="@inth/docs" />
-<PackageCommandTabs
+<CommandTabs command="@inth/docs" mode="install" />
+<CommandTabs command="inth-docs-lint" mode="run" />
+<CommandTabs command="next-app" mode="create" />
+<CommandTabs
   commands={{
     npm: "npm install @inth/docs",
     pnpm: "pnpm add @inth/docs",
@@ -59,13 +61,13 @@ Use for package-manager-specific install or run commands.
 />
 ```
 
-`command` accepts a package or CLI string and can include a `{pm}` placeholder. Use `commands` for per-manager overrides and `defaultManager` to choose the initial tab.
+Use `mode="install"` when `command` is a package name, `mode="run"` when `command` is a CLI name, and `mode="create"` for starter commands such as `pnpm create next-app`. `command` can also include a `{pm}` placeholder for custom templates. Use `commands` for exact per-manager overrides and `defaultManager` to choose the initial tab.
 
-### `TypeTable` and `AutoTypeTable`
+### `TypeTable` and `ExtractedTypeTable`
 
-Use `TypeTable` for explicit prop or type rows you already know. Use `AutoTypeTable` when the docs should extract types from source files.
+Use `TypeTable` for explicit prop or type rows you already know. Use `ExtractedTypeTable` when the docs should extract types from source files.
 
-`AutoTypeTable` is the most path-sensitive component in the set. If it needs to resolve project files, pair it with the matching remark plugin configuration and set a stable base path.
+`ExtractedTypeTable` is the most path-sensitive component in the set. If it needs to resolve project files, pair it with the matching remark plugin configuration and set a stable base path.
 
 ### `Tabs`, `Tab`, `Steps`, `Step`
 
