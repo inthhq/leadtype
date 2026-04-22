@@ -7,12 +7,12 @@ const MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
 export type PackageManager = (typeof MANAGERS)[number];
 export type CommandMode = "run" | "install" | "create";
 
-type BaseCommandTabsProps = {
+interface BaseCommandTabsProps {
+  children?: ReactNode;
   /** Or pass pre-rendered commands per manager */
   commands?: Partial<Record<PackageManager, string>>;
   defaultManager?: PackageManager;
-  children?: ReactNode;
-};
+}
 
 type ModeCommandTabsProps = BaseCommandTabsProps & {
   /** Command template. `{pm}` is replaced with the active package manager. */

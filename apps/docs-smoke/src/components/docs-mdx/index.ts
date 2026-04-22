@@ -1,5 +1,4 @@
-/** @biome-ignore lint/performance/noBarrelFile: package entry point */
-
+// biome-ignore lint/performance/noBarrelFile: app-local MDX component entry point
 export {
   Accordion,
   AccordionItem,

@@ -1,8 +1,8 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Callout, ExtractedTypeTable } from "@inth/docs";
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { Callout, ExtractedTypeTable } from "@/components/docs-mdx";
 import DocsIndex from "../../../content/docs/index.mdx";
 
 const routeDirectory = dirname(fileURLToPath(import.meta.url));

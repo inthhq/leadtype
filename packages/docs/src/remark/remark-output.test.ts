@@ -186,7 +186,7 @@ Body
   description="Preview the output and inspect the source."
   filename="mdx-components.tsx"
   language="tsx"
-  code={\`import { mdxComponents } from "@inth/docs";
+  code={\`import { mdxComponents } from "@/components/docs-mdx";
 
 export const components = {
   ...mdxComponents,
@@ -204,7 +204,7 @@ export const components = {
     expect(result.markdown).toContain("**mdx-components.tsx**");
     expect(result.markdown).toContain("```tsx");
     expect(result.markdown).toContain(
-      'import { mdxComponents } from "@inth/docs";'
+      'import { mdxComponents } from "@/components/docs-mdx";'
     );
   });
 

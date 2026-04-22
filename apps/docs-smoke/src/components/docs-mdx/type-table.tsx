@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 
-export type TypeTableProperty = {
+export interface TypeTableProperty {
+  default?: string;
+  deprecated?: boolean;
   description?: ReactNode;
+  required?: boolean;
   type: string;
   typeDescription?: ReactNode;
   typeDescriptionLink?: string;
-  default?: string;
-  required?: boolean;
-  deprecated?: boolean;
-};
+}
 
 const SAFE_URL_SCHEMES = new Set(["http:", "https:", "mailto:"]);
 
@@ -50,9 +50,9 @@ function renderTypeWithLink(property: TypeTableProperty): ReactNode {
   );
 }
 
-export type TypeTableProps = {
+export interface TypeTableProps {
   properties?: Record<string, TypeTableProperty>;
-};
+}
 
 export function TypeTable({ properties }: TypeTableProps) {
   const rows = Object.entries(properties ?? {});
@@ -107,13 +107,13 @@ export function TypeTable({ properties }: TypeTableProps) {
   );
 }
 
-export type ExtractedTypeTableProps = {
-  /** Path to the source file — rendered as a caption; actual type extraction happens at build time via the remark plugin */
-  path?: string;
+export interface ExtractedTypeTableProps {
   /** The exported type name in the source file */
   name?: string;
+  /** Path to the source file — rendered as a caption; actual type extraction happens at build time via the remark plugin */
+  path?: string;
   properties?: Record<string, TypeTableProperty>;
-};
+}
 
 export function ExtractedTypeTable({
   path,

@@ -5,17 +5,12 @@ description: "Developer reference for rendering MDX, converting docs, generating
 
 # @inth/docs
 
-`@inth/docs` is the shared package for docs rendering, docs pipelines, LLM-friendly output, validation, and local search. Use the smallest entry point that matches where your code runs.
+`@inth/docs` is the shared package for framework-neutral docs pipelines, LLM-friendly output, validation, and local search. Use the smallest entry point that matches where your code runs.
 
 ## Package Surfaces
 
 <TypeTable
   properties={{
-    "@inth/docs": {
-      type: "runtime",
-      description: "React MDX adapters and individual components.",
-      required: true,
-    },
     "@inth/docs/remark": {
       type: "build time",
       description: "remark plugins and `defaultRemarkPlugins`.",
@@ -60,8 +55,8 @@ description: "Developer reference for rendering MDX, converting docs, generating
 ## Common Implementation Paths
 
 <Steps>
-  <Step title="Render MDX in React">
-    Import `mdxComponents` from `@inth/docs`, spread it into your MDX provider, and override individual entries only when your app needs custom styling.
+  <Step title="Own runtime MDX components">
+    Define `mdxComponents` in the docs app that renders your pages. `@inth/docs` intentionally does not export prebuilt UI components.
   </Step>
   <Step title="Convert MDX for agents">
     Use `@inth/docs/convert` with `@inth/docs/remark` to flatten authored MDX into markdown that works in LLM bundles and search indexes.
@@ -82,21 +77,25 @@ Use Mintlify, Fumadocs, or Starlight when the primary job is to ship a complete 
 | [Mintlify](https://mintlify.com/) | Managed developer documentation platform with hosted docs, API docs, and AI-oriented product features. | Teams that want a polished docs product without owning the whole site pipeline. |
 | [Fumadocs](https://fumadocs.dev/) | Documentation framework and toolchain for React docs sites, especially Next.js. | Teams that want framework-level routing, navigation, UI, content adapters, search, and OpenAPI support. |
 | [Starlight](https://starlight.astro.build/) | Full-featured documentation framework built on Astro. | Teams already using Astro or wanting an Astro-native docs site. |
-| `@inth/docs` | Shared docs infrastructure package: React MDX adapters, MDX-to-markdown conversion, LLM bundles, linting, static search, and answer helpers. | Teams that want to own the app shell while reusing one docs pipeline across sites, agents, search APIs, and internal tools. |
+| `@inth/docs` | Shared docs infrastructure package: framework-neutral MDX-to-markdown conversion, LLM bundles, linting, static search, and answer helpers. | Teams that want to own the app shell and runtime components while reusing one docs pipeline across sites, agents, search APIs, and internal tools. |
 
 These tools are not mutually exclusive. A site framework can own the public docs experience while `@inth/docs` owns conversion, validation, search artifacts, and agent-facing bundles.
+
+## Other Frameworks
+
+React, Vue, Nuxt, Svelte, Astro, and other stacks can use `@inth/docs/convert`, `@inth/docs/remark`, `@inth/docs/llm`, `@inth/docs/search`, and `@inth/docs/lint` today. Runtime MDX components belong in the consuming docs app, not this package.
 
 ## Render MDX
 
 ```tsx
-import { mdxComponents } from "@inth/docs";
+import { mdxComponents } from "@/components/docs-mdx";
 
 export const components = {
   ...mdxComponents,
 };
 ```
 
-The root export is a runtime contract. It is not tied to TanStack Start, shadcn, or this demo shell.
+This smoke app keeps its React MDX components under `src/components/docs-mdx`. Consumers should create their own components that match their framework, design system, and accessibility requirements.
 
 ## Convert And Generate
 
@@ -123,7 +122,7 @@ After conversion, use `@inth/docs/llm` to write `llms.txt` and topic-scoped full
   />
   <Card
     title="Runtime Components"
-    description="Exercise browser-facing adapters including Accordion, Example, and TopicSwitcher through authored MDX."
+    description="Exercise app-owned MDX components, including Accordion, Example, and TopicSwitcher, through authored docs content."
     href="/docs/guides/components-fixture"
   />
   <Card
@@ -133,7 +132,7 @@ After conversion, use `@inth/docs/llm` to write `llms.txt` and topic-scoped full
   />
   <Card
     title="Recipes Playground"
-    description="Switch between guided implementation recipes with live package components."
+    description="Switch between guided implementation recipes with live app components."
     href="/playground"
   />
 </Cards>
@@ -142,7 +141,7 @@ After conversion, use `@inth/docs/llm` to write `llms.txt` and topic-scoped full
 
 <Steps>
   <Step title="Package tests">
-    Cover semantic HTML and safe runtime behavior in `packages/docs/src/**/*.test.ts*`.
+    Cover framework-neutral conversion, search, linting, and generated docs behavior in `packages/docs/src/**/*.test.ts*`.
   </Step>
   <Step title="Pipeline fixtures">
     Cover conversion, type extraction, LLM output, and search generation in `apps/docs-smoke/scripts` and `apps/docs-smoke/content`.

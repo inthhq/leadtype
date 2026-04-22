@@ -10,12 +10,12 @@ import {
   useState,
 } from "react";
 
-type TabsContextValue = {
-  items: string[];
+interface TabsContextValue {
   activeValue: string;
-  setActiveValue: (value: string) => void;
   groupId: string;
-};
+  items: string[];
+  setActiveValue: (value: string) => void;
+}
 
 const TabsContext = createContext<TabsContextValue | null>(null);
 
@@ -44,11 +44,11 @@ function panelId(groupId: string, normalized: string, index: number): string {
   return `${groupId}-panel-${normalized}-${index}`;
 }
 
-export type TabsProps = {
-  items?: string[];
-  defaultIndex?: number;
+export interface TabsProps {
   children?: ReactNode;
-};
+  defaultIndex?: number;
+  items?: string[];
+}
 
 export function Tabs({ items = [], defaultIndex = 0, children }: TabsProps) {
   const initial = items[defaultIndex] ?? items[0] ?? "";
@@ -126,10 +126,10 @@ export function Tabs({ items = [], defaultIndex = 0, children }: TabsProps) {
   );
 }
 
-export type TabProps = {
-  value: string;
+export interface TabProps {
   children?: ReactNode;
-};
+  value: string;
+}
 
 export function Tab({ value, children }: TabProps) {
   const { items, activeValue, groupId } = useTabsContext();

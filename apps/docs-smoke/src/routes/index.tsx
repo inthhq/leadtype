@@ -31,9 +31,9 @@ function HomeRoute() {
               Build docs with @inth/docs
             </h1>
             <p className="max-w-xl text-muted-foreground text-sm leading-7">
-              Shared React MDX components, MDX conversion, LLM bundles, docs
-              linting, and static search in one package. This app renders the
-              package docs and keeps the integration paths easy to test.
+              Framework-neutral MDX conversion, LLM bundles, docs linting, and
+              static search. This app owns its MDX components while rendering
+              the package docs and keeping integration paths easy to test.
             </p>
             <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               {startRoutes.map((route) => (
@@ -59,8 +59,9 @@ function HomeRoute() {
                   Implementation contract
                 </p>
                 <p className="max-w-xl text-muted-foreground text-sm leading-6">
-                  Spread the package map into your MDX provider. Override
-                  individual entries only when the app needs local styling.
+                  Define the MDX component map in the docs app and spread it
+                  into your MDX provider. The package owns conversion and
+                  generation, not prebuilt UI.
                 </p>
               </div>
               <Link
@@ -71,7 +72,7 @@ function HomeRoute() {
               </Link>
             </div>
             <pre className="mt-4 overflow-x-auto rounded-lg border border-border bg-secondary p-4 text-foreground text-sm">
-              <code>{`import { mdxComponents } from "@inth/docs";
+              <code>{`import { mdxComponents } from "@/components/docs-mdx";
 
 export const components = {
   ...mdxComponents,
