@@ -5,7 +5,7 @@ const exportedPaths = Object.keys(packageJson.exports);
 
 describe("package surface", () => {
   it("does not expose runtime component entry points", () => {
-    expect(exportedPaths).toEqual([
+    const expectedExportedPaths = [
       "./remark",
       "./convert",
       "./llm",
@@ -17,7 +17,10 @@ describe("package surface", () => {
       "./search/tanstack",
       "./search/cloudflare",
       "./lint",
-    ]);
+    ] as const;
+
+    expect(exportedPaths).toHaveLength(expectedExportedPaths.length);
+    expect(new Set(exportedPaths)).toEqual(new Set(expectedExportedPaths));
   });
 
   it("does not expose root or runtime component adapters", () => {

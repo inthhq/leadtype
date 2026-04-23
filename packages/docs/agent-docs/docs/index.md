@@ -26,11 +26,11 @@ description: >-
 ## When To Read Which Page
 
 * Reach for [Components](/docs/components) when defining app-owned MDX components for authored docs.
-* Read [Convert](/docs/convert) when you need markdown output from `.mdx` files.
-* Read [Remark](/docs/remark) when you need custom plugin order or component flattening behavior.
-* Read [LLM](/docs/llm) when generating `llms.txt` or topic-scoped full-context bundles.
-* Read [Search](/docs/search) when generating a static index, querying docs at runtime, or streaming grounded answers.
-* Read [Lint](/docs/lint) when validating frontmatter, docs URLs, or sidebar metadata.
+* Use [Convert](/docs/convert) when you need markdown output from `.mdx` files.
+* Check [Remark](/docs/remark) for custom plugin order or component flattening behavior.
+* Open [LLM](/docs/llm) when generating `llms.txt` or topic-scoped full-context bundles.
+* See [Search](/docs/search) for static indexing, runtime querying, or grounded answer streaming.
+* Use [Lint](/docs/lint) to validate frontmatter, docs URLs, or sidebar metadata.
 
 ## Other Frameworks
 
