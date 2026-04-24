@@ -1,10 +1,9 @@
 # @inth/docs
 
-Shared docs tooling for Inth docs projects: React MDX rendering, MDX-to-markdown conversion, LLM bundles, validation, and static search.
+Shared docs tooling for Inth docs projects: framework-neutral MDX-to-markdown conversion, LLM bundles, validation, and static search.
 
 `@inth/docs` is split into focused public entry points:
 
-- `@inth/docs`: React MDX component adapters via `mdxComponents`
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
@@ -23,21 +22,15 @@ pnpm add @inth/docs
 
 ## Basic Usage
 
-### Render MDX components
+### Own MDX components in your app
 
-```tsx
-import { mdxComponents } from "@inth/docs";
-
-const components = {
-  ...mdxComponents,
-};
-```
+`@inth/docs` does not export prebuilt React, Vue, Nuxt, Svelte, or Astro components. Define the MDX component map in the docs app that renders your pages.
 
 ## Live Example App
 
 The repo includes a canonical consumer demo at `apps/docs-smoke`.
 
-- Renders real `.mdx` fixture files through the package's exported `mdxComponents`.
+- Renders real `.mdx` fixture files through app-owned `mdxComponents`.
 - Uses TanStack Start for SSR and hydration coverage.
 - Shows extracted `ExtractedTypeTable` output while keeping pipeline fixtures in the validation path.
 
@@ -58,7 +51,7 @@ bun run --filter docs-smoke test:e2e
 
 Validation layers:
 
-- Package unit tests in `packages/docs/src/**/*.test.ts*` cover component semantics and pure library behavior.
+- Package unit tests in `packages/docs/src/**/*.test.ts*` cover framework-neutral conversion, search, linting, and generated docs behavior.
 - Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` cover MDX conversion, LLM generation, and `ExtractedTypeTable`.
 - The TanStack Start demo app in `apps/docs-smoke/src` covers real browser rendering and hydration.
 
@@ -66,13 +59,15 @@ Validation layers:
 
 `@inth/docs` is not a hosted docs platform or a complete docs-site framework. Use tools such as Mintlify, Fumadocs, or Starlight when the primary job is shipping a polished docs website quickly.
 
-Use this package when the primary job is shared docs infrastructure: MDX rendering adapters, MDX-to-markdown conversion, LLM bundles, linting, static search artifacts, answer helpers, and agent-facing docs output that can feed multiple apps and tools.
+Use this package when the primary job is shared docs infrastructure: MDX-to-markdown conversion, LLM bundles, linting, static search artifacts, answer helpers, and agent-facing docs output that can feed multiple apps and tools.
+
+The pipeline entry points are framework-neutral. React, Vue, Nuxt, Svelte, Astro, and other stacks can use conversion, LLM, lint, and search APIs while owning their own runtime component rendering.
 
 ## Wiring It Into An App
 
 In a c15t-style repo with a top-level `docs/` directory, wire `@inth/docs` into the docs app and docs scripts:
 
-- The docs app imports `mdxComponents` only if it renders MDX directly.
+- The docs app owns `mdxComponents` if it renders MDX directly.
 - A conversion script runs `convertAllMdx({ srcDir: process.cwd(), outDir: "public" })`.
 - LLM and search scripts read the converted markdown under `public/docs/`.
 - Product code does not import `@inth/docs` unless it also renders docs pages.

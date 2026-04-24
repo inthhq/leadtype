@@ -2,12 +2,12 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 const SOURCE_FILE_KEY_HASH_MODULUS = 2_147_483_647;
 
-export type ExampleSourceFile = {
-  id?: string;
-  filename: string;
-  language?: string;
+export interface ExampleSourceFile {
   code: string;
-};
+  filename: string;
+  id?: string;
+  language?: string;
+}
 
 export type ExampleProps = HTMLAttributes<HTMLDivElement> & {
   title?: string;

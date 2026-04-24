@@ -8,7 +8,6 @@ description: >-
 
 `@inth/docs` is the shared docs package for Inth properties. It provides:
 
-* React MDX component adapters for doc sites.
 * A remark pipeline that flattens MDX components into LLM-friendly markdown.
 * MDX to markdown conversion utilities.
 * `llms.txt` and topic-scoped `llms-full/*.txt` generators.
@@ -17,7 +16,7 @@ description: >-
 
 ## Package Surfaces
 
-* [Components](/docs/components): React components and the `mdxComponents` adapter map.
+* [Components](/docs/components): The app-owned MDX component contract used by the remark pipeline.
 * [Convert](/docs/convert): `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`, and `convertAllMdx`.
 * [Remark](/docs/remark): individual remark plugins plus `defaultRemarkPlugins`.
 * [LLM](/docs/llm): `generateLlmsTxt` and `generateLLMFullContextFiles`.
@@ -26,9 +25,13 @@ description: >-
 
 ## When To Read Which Page
 
-* Reach for [Components](/docs/components) when wiring MDX rendering into an app.
-* Read [Convert](/docs/convert) when you need markdown output from `.mdx` files.
-* Read [Remark](/docs/remark) when you need custom plugin order or component flattening behavior.
-* Read [LLM](/docs/llm) when generating `llms.txt` or topic-scoped full-context bundles.
-* Read [Search](/docs/search) when generating a static index, querying docs at runtime, or streaming grounded answers.
-* Read [Lint](/docs/lint) when validating frontmatter, docs URLs, or sidebar metadata.
+* Reach for [Components](/docs/components) when defining app-owned MDX components for authored docs.
+* Use [Convert](/docs/convert) when you need markdown output from `.mdx` files.
+* Check [Remark](/docs/remark) for custom plugin order or component flattening behavior.
+* Open [LLM](/docs/llm) when generating `llms.txt` or topic-scoped full-context bundles.
+* See [Search](/docs/search) for static indexing, runtime querying, or grounded answer streaming.
+* Use [Lint](/docs/lint) to validate frontmatter, docs URLs, or sidebar metadata.
+
+## Other Frameworks
+
+React, Vue, Nuxt, Svelte, Astro, and other stacks can use the conversion, LLM, lint, and search entry points today. Runtime MDX components belong in the consuming docs app, not this package.

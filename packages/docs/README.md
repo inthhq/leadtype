@@ -1,10 +1,9 @@
 # @inth/docs
 
-Shared MDX-to-markdown tooling for Inth docs projects.
+Framework-neutral docs pipeline tooling for Inth docs projects.
 
 ## Package Surfaces
 
-- `@inth/docs`: React MDX component adapters via `mdxComponents`
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
@@ -23,6 +22,8 @@ pnpm add @inth/docs
 
 ## Convert Docs
 
+`@inth/docs` does not export prebuilt UI components. The docs app owns its MDX component map and styling; this package owns the framework-neutral conversion, LLM, lint, and search pipeline:
+
 ```ts
 import { convertAllMdx } from "@inth/docs/convert";
 import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
@@ -38,9 +39,9 @@ await convertAllMdx({
 
 This package is verified in three distinct layers:
 
-- Package unit tests in `packages/docs/src/**/*.test.ts*` cover pure library behavior such as semantic markup and safe-link handling.
+- Package unit tests in `packages/docs/src/**/*.test.ts*` cover pure library behavior such as conversion, search, linting, and generated docs output.
 - Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` exercise MDX conversion, LLM generation, and `ExtractedTypeTable`.
-- The live consumer demo in `apps/docs-smoke` renders the exported `mdxComponents` inside a TanStack Start app and provides Playwright browser coverage.
+- The live consumer demo in `apps/docs-smoke` owns and renders its MDX components inside a TanStack Start app and provides Playwright browser coverage.
 
 Use the demo app as the reference integration when you need to see how a consumer should host and style the package in practice.
 
@@ -50,11 +51,13 @@ Use the demo app as the reference integration when you need to see how a consume
 
 Use `@inth/docs` when the docs pipeline also needs to feed converted markdown, agent bundles, lint checks, static search data, source-grounded answer routes, and internal tooling while the consuming app keeps control of routing, layout, hosting, and framework choices.
 
+React, Vue, Nuxt, Svelte, Astro, and other stacks can use the framework-neutral pipeline APIs today while owning their own runtime component rendering.
+
 ## App Wiring Model
 
 In a consuming repo, wire this package into the docs surface:
 
-- Runtime docs app: spread `mdxComponents` into the MDX provider when the app renders MDX directly.
+- Runtime docs app: define `mdxComponents` in the app when it renders MDX directly.
 - Docs pipeline: run `convertAllMdx` against the docs source tree.
 - Agent output: run `generateLlmsTxt` and `generateLLMFullContextFiles` against the converted markdown.
 - Search output: run `generateDocsSearchFiles`, then import the generated JSON in your docs search route.

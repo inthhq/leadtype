@@ -12,7 +12,7 @@ async function waitForClientHydration(page: Page): Promise<void> {
   );
 }
 
-test("home route renders the developer dashboard and package surfaces", async ({
+test("home route renders the developer dashboard and pipeline package surfaces", async ({
   page,
   request,
 }) => {
@@ -36,7 +36,7 @@ test("home route renders the developer dashboard and package surfaces", async ({
   ).toBeVisible();
 });
 
-test("docs route renders package docs and extracted ExtractedTypeTable output", async ({
+test("docs route renders docs pipeline reference and extracted ExtractedTypeTable output", async ({
   page,
   request,
 }) => {
@@ -80,7 +80,7 @@ test("search docs route explains the headless search APIs", async ({
   ).toBeVisible();
 });
 
-test("quickstart route renders MDX content on the server and hydrates interactive adapters", async ({
+test("quickstart route renders MDX content on the server and hydrates app-owned components", async ({
   page,
   request,
 }) => {
@@ -114,7 +114,7 @@ test("quickstart route renders MDX content on the server and hydrates interactiv
   ).toBeVisible();
 });
 
-test("components fixture renders package adapters and preserves external link safety", async ({
+test("components fixture renders app-owned MDX components and preserves external link safety", async ({
   page,
   request,
 }) => {

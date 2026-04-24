@@ -2,17 +2,17 @@
 
 import { type ReactNode, useId, useState } from "react";
 
-export type SelectorOption = {
-  value: string;
+export interface SelectorOption {
   label: string;
-};
+  value: string;
+}
 
-export type SelectorProps = {
+export interface SelectorProps {
+  children?: (activeValue: string) => ReactNode;
+  defaultValue?: string;
   label?: string;
   options: SelectorOption[];
-  defaultValue?: string;
-  children?: (activeValue: string) => ReactNode;
-};
+}
 
 /**
  * Minimal dropdown-style selector. Consumers typically replace this with

@@ -1,19 +1,19 @@
 ---
 title: "Runtime Components"
-description: "Render the browser-facing @inth/docs adapters through authored MDX."
+description: "Render app-owned MDX components through authored docs content."
 ---
 
 # Runtime Components
 
 <Callout variant="success" title="Runtime fixture">
-  This page exercises the exported MDX adapters without replacing them with app-local variants.
+  This page exercises the smoke app's MDX components without relying on package-owned runtime UI.
 </Callout>
 
 ## Authoring Contract
 
 ```mdx
 <Callout variant="success" title="Runtime fixture">
-  Render exported adapters through your shared `mdxComponents` map.
+  Render app-owned components through your shared `mdxComponents` map.
 </Callout>
 
 <CommandTabs command="@inth/docs" mode="install" />
@@ -70,7 +70,7 @@ description: "Render the browser-facing @inth/docs adapters through authored MDX
     Use semantic components such as `Callout`, `Tabs`, `Cards`, `Steps`, `CommandTabs`, `Accordion`, `Example`, `TopicSwitcher`, and `TypeTable`.
   </Step>
   <Step title="Render in the app">
-    Import the `.mdx` file directly and provide `mdxComponents` through the shared runtime map.
+    Import the `.mdx` file directly and provide the app's `mdxComponents` through the shared runtime map.
   </Step>
   <Step title="Validate the pipeline separately">
     Keep `ExtractedTypeTable` coverage in the conversion pipeline where source extraction has a stable file-system base path.
@@ -90,7 +90,7 @@ description: "Render the browser-facing @inth/docs adapters through authored MDX
 
 <Tabs items={["Overview", "Tables", "Pipeline note"]}>
   <Tab value="Overview">
-    This tabset proves the package adapters hydrate correctly inside the demo app.
+    This tabset proves the app-owned components hydrate correctly inside the demo app.
   </Tab>
   <Tab value="Tables">
     `TypeTable` is safe to render live because all of its data is already present in the MDX payload.
@@ -130,14 +130,14 @@ description: "Render the browser-facing @inth/docs adapters through authored MDX
   description="Preview the output and inspect the source."
   filename="mdx-components.tsx"
   language="tsx"
-  code={`import { mdxComponents } from "@inth/docs";
+  code={`import { mdxComponents } from "@/components/docs-mdx";
 
 export const components = {
   ...mdxComponents,
 };`}
 >
-  <Callout title="Runtime adapter" variant="success">
-    The host app owns styling while `@inth/docs` owns the MDX component contract.
+  <Callout title="Runtime components" variant="success">
+    The host app owns styling and runtime components while `@inth/docs` owns conversion.
   </Callout>
 </Example>
 

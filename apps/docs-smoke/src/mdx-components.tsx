@@ -1,7 +1,7 @@
-import { mdxComponents } from "@inth/docs";
 import { slugifyDocsHeading } from "@inth/docs/search";
 import type { MDXComponents } from "mdx/types";
 import type { ComponentPropsWithoutRef } from "react";
+import { mdxComponents } from "@/components/docs-mdx";
 
 type HeadingProps = ComponentPropsWithoutRef<"h1">;
 

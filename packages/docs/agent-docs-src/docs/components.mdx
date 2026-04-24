@@ -1,21 +1,19 @@
 ---
 title: "Components"
-description: "How to use the React MDX component adapters exported by @inth/docs."
+description: "How to define app-owned MDX components that the @inth/docs pipeline can flatten."
 ---
 
 # Components
 
-Import the default adapter map from the package root:
+`@inth/docs` does not export prebuilt UI components or a `mdxComponents` map. The consuming docs app owns runtime rendering, styling, accessibility, and framework-specific integration.
 
-```tsx
-import { mdxComponents } from "@inth/docs";
-```
+The package only assumes a small authoring contract for MDX component names so the remark pipeline can flatten those components into Markdown for agents, LLM bundles, search indexes, and validation.
 
-The root export is intentionally small. It gives consumers a ready-to-spread MDX component map and the individual component implementations used by that map.
+## App-Owned Adapter Map
 
-## Default Adapter Map
+Define your own `mdxComponents` map in the docs app. The smoke app keeps its example implementation under `apps/docs-smoke/src/components/docs-mdx`.
 
-`mdxComponents` includes:
+Common component names handled by the default remark pipeline include:
 
 - `Accordion`
 - `AccordionItem`
@@ -37,15 +35,14 @@ The root export is intentionally small. It gives consumers a ready-to-spread MDX
 Use it like this:
 
 ```tsx
-import { mdxComponents } from "@inth/docs";
+import { mdxComponents } from "@/components/docs-mdx";
 
 const components = {
   ...mdxComponents,
-  Callout: MyCallout,
 };
 ```
 
-Override individual entries rather than replacing the full map unless you want to own all component bindings.
+If your app uses different names, add custom remark plugins or adapter components that map authored MDX back to the names handled by the pipeline.
 
 ## Important Components
 
@@ -84,7 +81,7 @@ Use `mode="install"` when `command` is a package name, `mode="run"` when `comman
 
 ### `Example`
 
-Use for data-driven preview and source examples. The package component receives code as data; host apps can add filesystem loaders or dynamic imports outside `@inth/docs` when they need app-specific behavior.
+Use for data-driven preview and source examples. The app-owned component receives code as data; host apps can add filesystem loaders or dynamic imports outside `@inth/docs` when they need app-specific behavior.
 
 ```tsx
 <Example
@@ -92,14 +89,14 @@ Use for data-driven preview and source examples. The package component receives 
   description="Preview the output and inspect the source."
   filename="mdx-components.tsx"
   language="tsx"
-  code={`import { mdxComponents } from "@inth/docs";
+  code={`import { mdxComponents } from "@/components/docs-mdx";
 
 export const components = {
   ...mdxComponents,
 };`}
 >
-  <Callout title="Runtime adapter" variant="success">
-    The host app owns styling while `@inth/docs` owns the MDX component contract.
+  <Callout title="Runtime components" variant="success">
+    The host app owns styling and runtime components while `@inth/docs` owns conversion.
   </Callout>
 </Example>
 ```
@@ -114,7 +111,7 @@ Use `TypeTable` for explicit prop or type rows you already know. Use `ExtractedT
 
 ### `Tabs`, `Tab`, `Steps`, `Step`
 
-These components are primarily authoring affordances in MDX. When the markdown conversion pipeline runs, their content is flattened into standard markdown so agents do not need JSX-aware renderers.
+These component names are primarily authoring affordances in MDX. When the markdown conversion pipeline runs, their content is flattened into standard markdown so agents do not need JSX-aware renderers.
 
 ### `TopicSwitcher`
 
@@ -145,6 +142,6 @@ Use for reader-facing navigation across equivalent documentation topics.
 
 ## Guidance
 
-- Prefer the package root export for React doc-site rendering.
-- Override styling in the host app rather than forking the semantics.
+- Keep runtime components in the docs app.
+- Keep component names stable when the conversion pipeline depends on them.
 - If the goal is agent-readable markdown, read [Remark](/docs/remark) instead of reimplementing the JSX flattening rules.

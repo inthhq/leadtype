@@ -1,5 +1,6 @@
 "use client";
 
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Callout,
   CommandTabs,
@@ -7,16 +8,15 @@ import {
   Tab,
   Tabs,
   TypeTable,
-} from "@inth/docs";
-import { createFileRoute, Link } from "@tanstack/react-router";
+} from "@/components/docs-mdx";
 import { SiteHeader } from "@/components/site-header";
 
 const recipes = {
   render: {
     title: "Render MDX",
     summary:
-      "Use the root export when your docs site renders authored MDX in React.",
-    imports: `import { mdxComponents } from "@inth/docs";`,
+      "Define the MDX component map in your docs app when it renders authored MDX in React.",
+    imports: `import { mdxComponents } from "@/components/docs-mdx";`,
     code: `export const components = {
   ...mdxComponents,
 };`,
@@ -137,7 +137,7 @@ function RecipePanel({ activeValue }: { activeValue: string }) {
       </div>
 
       <section className="border-border border-t pt-5">
-        <h3 className="font-medium text-sm">Live package behavior</h3>
+        <h3 className="font-medium text-sm">Live app behavior</h3>
         <div className="mt-4">
           <RecipePreview activeValue={activeValue} />
         </div>
@@ -197,14 +197,14 @@ function RecipePreview({ activeValue }: { activeValue: string }) {
 
   return (
     <div className="space-y-4">
-      <Callout title="Runtime adapter" variant="success">
+      <Callout title="Runtime components" variant="success">
         The default `mdxComponents` map keeps authored MDX semantic while the
         host app owns the surrounding shell and styling.
       </Callout>
       <Tabs items={["Author", "Render"]}>
         <Tab value="Author">
-          Write MDX with package components such as `Callout`, `Tabs`, `Cards`,
-          and `TypeTable`.
+          Write MDX with app-owned components such as `Callout`, `Tabs`,
+          `Cards`, and `TypeTable`.
         </Tab>
         <Tab value="Render">
           Spread `mdxComponents` into your MDX provider and override individual

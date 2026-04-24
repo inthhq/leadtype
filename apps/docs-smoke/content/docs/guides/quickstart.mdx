@@ -5,7 +5,7 @@ description: "Wire @inth/docs into a docs app and docs pipeline."
 
 # Quickstart
 
-`@inth/docs` is docs infrastructure. In a product repo such as c15t, you wire it into the docs app and docs scripts, not into the product runtime unless that runtime renders docs pages.
+`@inth/docs` is docs infrastructure. In a product repo such as c15t, you wire it into the docs app and docs scripts, not into the product runtime unless that runtime renders or serves docs pages.
 
 ## What You Are Wiring
 
@@ -13,7 +13,7 @@ description: "Wire @inth/docs into a docs app and docs pipeline."
   properties={{
     "Docs app": {
       type: "runtime",
-      description: "Use `mdxComponents` when your React docs app imports and renders MDX files.",
+      description: "Define `mdxComponents` in your docs app when it imports and renders MDX files.",
       required: true,
     },
     "Markdown export": {
@@ -63,7 +63,7 @@ If your docs live under `content/docs/` instead, set `srcDir: "content"` and the
 Use this only in the app that renders documentation pages.
 
 ```tsx
-import { mdxComponents } from "@inth/docs";
+import { mdxComponents } from "@/components/docs-mdx";
 
 export const components = {
   ...mdxComponents,
@@ -72,7 +72,9 @@ export const components = {
 };
 ```
 
-`@inth/docs` does not own your routing, sidebar, layout, hosting, or framework. A Next.js, TanStack Start, Vite, Fumadocs, or Astro-backed docs app can still own those pieces.
+`@inth/docs` does not own your routing, sidebar, layout, hosting, framework, or runtime UI components. A React, Next.js, TanStack Start, Vite, Fumadocs, or Astro-backed docs app can still own those pieces.
+
+React, Vue, Nuxt, Svelte, Astro, and other stacks can use the conversion, LLM, lint, and search entry points. Runtime MDX components should live in the consuming docs app.
 
 Framework docs can be exposed through `TopicSwitcher` while the conversion pipeline still resolves `{framework}` placeholders from `/docs/frameworks/:framework` routes.
 

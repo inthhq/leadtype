@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-export type MermaidProps = {
+export interface MermaidProps {
   chart?: string;
   children?: ReactNode;
-};
+}
 
 /**
  * Placeholder Mermaid renderer. Emits a `<pre data-mermaid>` block so
