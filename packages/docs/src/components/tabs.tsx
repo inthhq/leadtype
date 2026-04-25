@@ -47,13 +47,26 @@ function panelId(groupId: string, normalized: string, index: number): string {
 export type TabsProps = {
   items?: string[];
   defaultIndex?: number;
+  /**
+   * Stable id used to derive trigger/panel DOM ids. Useful for SSR-stable
+   * markup. Must be unique per page — duplicate `groupId`s will produce
+   * duplicate `aria-controls`/`id` attributes. This does NOT sync state
+   * across multiple `<Tabs>` instances.
+   */
+  groupId?: string;
   children?: ReactNode;
 };
 
-export function Tabs({ items = [], defaultIndex = 0, children }: TabsProps) {
+export function Tabs({
+  items = [],
+  defaultIndex = 0,
+  groupId: providedGroupId,
+  children,
+}: TabsProps) {
   const initial = items[defaultIndex] ?? items[0] ?? "";
   const [activeValue, setActiveValue] = useState(normalize(initial));
-  const groupId = useId();
+  const generatedGroupId = useId();
+  const groupId = providedGroupId ?? generatedGroupId;
 
   const value = useMemo<TabsContextValue>(
     () => ({ items, activeValue, setActiveValue, groupId }),

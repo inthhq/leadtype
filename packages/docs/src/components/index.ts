@@ -3,15 +3,23 @@
 export {
   Callout,
   type CalloutProps,
+  type CalloutTypeAlias,
   type CalloutVariant,
 } from "./callout";
-export { Card, type CardProps, Cards, type CardsProps } from "./card";
+export {
+  Card,
+  type CardProps,
+  Cards,
+  type CardsProps,
+  type CardVariant,
+} from "./card";
 export {
   type MdxComponents,
   mdxComponents,
 } from "./mdx-components";
 export { Mermaid, type MermaidProps } from "./mermaid";
 export {
+  type PackageCommandMode,
   PackageCommandTabs,
   type PackageCommandTabsProps,
   type PackageManager,

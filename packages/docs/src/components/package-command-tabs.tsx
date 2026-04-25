@@ -1,10 +1,17 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
+import {
+  MANAGERS,
+  type PackageCommandMode,
+  type PackageManager,
+  resolvePackageCommand,
+} from "../internal/package-managers";
 
-// Single source of truth — derive the union type from the tuple.
-const MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
-export type PackageManager = (typeof MANAGERS)[number];
+export type {
+  PackageCommandMode,
+  PackageManager,
+} from "../internal/package-managers";
 
 export type PackageCommandTabsProps = {
   /** Command template — `{pm}` is replaced with the active package manager. E.g. "{pm} install @inth/docs" */
@@ -12,33 +19,19 @@ export type PackageCommandTabsProps = {
   /** Or pass pre-rendered commands per manager */
   commands?: Partial<Record<PackageManager, string>>;
   defaultManager?: PackageManager;
+  mode?: PackageCommandMode;
   children?: ReactNode;
 };
-
-function resolveCommand(
-  manager: PackageManager,
-  command: string | undefined,
-  commands: Partial<Record<PackageManager, string>> | undefined
-): string {
-  // Presence check so an explicit "" override wins over the template fallback.
-  const explicit = commands?.[manager];
-  if (explicit !== undefined) {
-    return explicit;
-  }
-  if (command) {
-    return command.replaceAll("{pm}", manager);
-  }
-  return "";
-}
 
 export function PackageCommandTabs({
   command,
   commands,
   defaultManager = "npm",
+  mode = "run",
   children,
 }: PackageCommandTabsProps) {
   const [active, setActive] = useState<PackageManager>(defaultManager);
-  const resolved = resolveCommand(active, command, commands);
+  const resolved = resolvePackageCommand(active, command, commands, mode);
 
   return (
     <div data-inth-package-command-tabs="">

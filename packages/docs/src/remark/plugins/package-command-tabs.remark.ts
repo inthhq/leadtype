@@ -3,40 +3,26 @@
 import type { Root } from "mdast";
 import type { Transformer } from "unified";
 import {
+  COMMANDS,
+  MANAGERS as DEFAULT_MANAGERS,
+  type PackageCommandMode as Mode,
+  type PackageManager as Pm,
+} from "../../internal/package-managers";
+import {
   createInlineCode,
   createJsxComponentProcessor,
   createTable,
   getAttributeValue,
 } from "../libs";
 
-type Mode = "run" | "install";
-
 type Options = {
   /** Column labels. */
   labels?: { pm?: string; command?: string };
   /** Which package managers to include and in what order. */
-  managers?: Array<"npm" | "pnpm" | "yarn" | "bun">;
+  managers?: Pm[];
 };
 
 const DEFAULT_LABELS = { pm: "Package manager", command: "Command" } as const;
-const DEFAULT_MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
-
-const COMMANDS = {
-  install: {
-    npm: "npm install {pkg}",
-    pnpm: "pnpm add {pkg}",
-    yarn: "yarn add {pkg}",
-    bun: "bun add {pkg}",
-  },
-  run: {
-    npm: "npx {pkg}",
-    pnpm: "pnpm dlx {pkg}",
-    yarn: "yarn dlx {pkg}",
-    bun: "bunx {pkg}",
-  },
-} as const;
-
-type Pm = keyof (typeof COMMANDS)["run"];
 
 function cmdsFor(pm: Pm, pkgCmd: string, mode: Mode): string {
   const template = COMMANDS[mode][pm];
