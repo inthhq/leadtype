@@ -16,7 +16,9 @@
       "!**/content-fixtures",
       "!**/dist",
       "!**/public",
-      "!**/public-real"
+      "!**/public-real",
+      "!**/routeTree.gen.ts",
+      "!apps/docs-smoke/src/generated/docs-search-*.json"
     ]
   },
   "overrides": [

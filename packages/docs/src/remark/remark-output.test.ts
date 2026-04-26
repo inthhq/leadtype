@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { convertMdxFile } from "../convert";
+import { convertMdxToMarkdown } from "../convert";
 import { defaultRemarkPlugins, remarkInclude } from "./index";
 
 const tempDirs: string[] = [];
@@ -61,7 +61,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "1. **Verify it works** Start your development server and confirm:"
@@ -92,7 +92,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "[React](/docs/frameworks/react/quickstart)"
@@ -111,7 +111,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("> ⚠️ **Warning:**");
     expect(result.markdown).toContain("> 📝 **Note:**");
@@ -128,7 +128,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("title: Frameworks");
   });
@@ -148,7 +148,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxFile(sourcePath, [
+    const result = await convertMdxToMarkdown(sourcePath, [
       remarkInclude,
       ...defaultRemarkPlugins,
     ]);
@@ -171,9 +171,182 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");
+  });
+
+  it("keeps accordion content in markdown output", async () => {
+    const sourcePath = await createTempMdxFile(
+      "faq.mdx",
+      `<Accordion>
+  <AccordionItem title="Can agents read this?">
+    Yes. Closed content is still converted.
+  </AccordionItem>
+</Accordion>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("**Can agents read this?**");
+    expect(result.markdown).toContain(
+      "Yes. Closed content is still converted."
+    );
+  });
+
+  it("converts examples with preview content and fenced code", async () => {
+    const sourcePath = await createTempMdxFile(
+      "example.mdx",
+      `<Example
+  title="Render MDX"
+  description="Preview the output and inspect the source."
+  filename="mdx-components.tsx"
+  language="tsx"
+  code={\`import { mdxComponents } from "@/components/docs-mdx";
+
+export const components = {
+  ...mdxComponents,
+};\`}
+>
+  Preview content survives conversion.
+</Example>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("**Render MDX**");
+    expect(result.markdown).toContain("Preview content survives conversion.");
+    expect(result.markdown).toContain("**mdx-components.tsx**");
+    expect(result.markdown).toContain("```tsx");
+    expect(result.markdown).toContain(
+      'import { mdxComponents } from "@/components/docs-mdx";'
+    );
+  });
+
+  it("keeps example source files authored with template literals", async () => {
+    const sourcePath = await createTempMdxFile(
+      "example-source-files.mdx",
+      `<Example
+  title="With source files"
+  filename="main.tsx"
+  language="tsx"
+  code={\`export const main = true;\`}
+  sourceFiles={[
+    {
+      filename: "support.ts",
+      language: "ts",
+      code: \`export const message = "support";
+
+export const enabled = true;\`,
+    },
+  ]}
+>
+  Preview.
+</Example>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("**support.ts**");
+    expect(result.markdown).toContain("```ts");
+    expect(result.markdown).toContain('export const message = "support";');
+    expect(result.markdown).toContain("export const enabled = true;");
+  });
+
+  it("converts topic switchers to markdown links", async () => {
+    const sourcePath = await createTempMdxFile(
+      "topics.mdx",
+      `<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+      description: "React integration",
+    },
+    {
+      value: "vue",
+      label: "Vue",
+      href: "/docs/frameworks/vue/quickstart",
+      description: "Vue integration",
+    },
+  ]}
+/>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("Framework");
+    expect(result.markdown).toContain(
+      "[React](/docs/frameworks/react/quickstart) — React integration"
+    );
+    expect(result.markdown).toContain(
+      "[Vue](/docs/frameworks/vue/quickstart) — Vue integration"
+    );
+  });
+
+  it("resolves framework placeholders inside topic switcher item hrefs", async () => {
+    const sourcePath = await createTempMdxFile(
+      path.join("docs", "frameworks", "next", "quickstart.mdx"),
+      `<TopicSwitcher
+  label="Framework"
+  activeValue="next"
+  items={[
+    {
+      value: "current",
+      label: "Current framework",
+      href: "/docs/frameworks/{framework}/quickstart",
+      description: "The current route context",
+    },
+  ]}
+/>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain(
+      "[Current framework](/docs/frameworks/next/quickstart)"
+    );
+  });
+
+  it("continues visiting siblings after removing an empty topic switcher", async () => {
+    const sourcePath = await createTempMdxFile(
+      "empty-topic-switcher.mdx",
+      `<TopicSwitcher items={[]} />
+
+<TopicSwitcher
+  label="Framework"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+    },
+  ]}
+/>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain(
+      "[React](/docs/frameworks/react/quickstart)"
+    );
+  });
+
+  it("includes new component plugins in the default remark pipeline", () => {
+    const pluginNames = defaultRemarkPlugins.map((plugin) => plugin.name);
+
+    expect(pluginNames).toContain("remarkAccordionToMarkdown");
+    expect(pluginNames).toContain("remarkExampleToMarkdown");
+    expect(pluginNames).toContain("remarkTopicSwitcherToMarkdown");
   });
 
   it("preserves non-plain frontmatter values while resolving placeholders", async () => {
@@ -188,7 +361,7 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("publishedAt: 2026-04-19T00:00:00.000Z");
     expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");
@@ -211,7 +384,7 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("description: Intro copy.");
     expect(result.markdown).toContain("Intro copy.");
@@ -232,7 +405,7 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("### Details");
     expect(result.markdown).toContain("Body without a summary.");
@@ -252,7 +425,7 @@ Body
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("### Wrapped Summary");
     expect(result.markdown).toContain("Body text.");
@@ -269,7 +442,7 @@ Body copy.
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).not.toContain("first");
     expect(result.markdown).not.toContain("second");
@@ -291,7 +464,7 @@ Body copy.
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("Outer copy.");
     expect(result.markdown).toContain("Inner copy.");
@@ -307,7 +480,7 @@ Body copy.
 `
     );
 
-    const result = await convertMdxFile(sourcePath, defaultRemarkPlugins);
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("Anchor body.");
     expect(result.markdown).not.toContain('id="types"');

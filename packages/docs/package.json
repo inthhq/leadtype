@@ -1,20 +1,14 @@
 {
   "name": "@inth/docs",
   "version": "0.0.0",
-  "description": "Shared MDX→MD pipeline and React component adapters for Inth public docs",
+  "description": "Framework-neutral docs pipeline tooling for Inth public docs",
   "type": "module",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
   "sideEffects": false,
-  "main": "./dist/components/index.js",
-  "types": "./dist/components/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/components/index.d.ts",
-      "import": "./dist/components/index.js"
-    },
     "./remark": {
       "types": "./dist/remark/index.d.ts",
       "import": "./dist/remark/index.js"
@@ -26,6 +20,34 @@
     "./llm": {
       "types": "./dist/llm/index.d.ts",
       "import": "./dist/llm/index.js"
+    },
+    "./search": {
+      "types": "./dist/search/index.d.ts",
+      "import": "./dist/search/index.js"
+    },
+    "./search/node": {
+      "types": "./dist/search/node-index.d.ts",
+      "import": "./dist/search/node-index.js"
+    },
+    "./search/ai": {
+      "types": "./dist/search/ai-index.d.ts",
+      "import": "./dist/search/ai-index.js"
+    },
+    "./search/bash": {
+      "types": "./dist/search/bash-index.d.ts",
+      "import": "./dist/search/bash-index.js"
+    },
+    "./search/vercel": {
+      "types": "./dist/search/vercel-index.d.ts",
+      "import": "./dist/search/vercel-index.js"
+    },
+    "./search/tanstack": {
+      "types": "./dist/search/tanstack-index.d.ts",
+      "import": "./dist/search/tanstack-index.js"
+    },
+    "./search/cloudflare": {
+      "types": "./dist/search/cloudflare-index.d.ts",
+      "import": "./dist/search/cloudflare-index.js"
     },
     "./lint": {
       "types": "./dist/lint/index.d.ts",
@@ -44,8 +66,7 @@
     "build": "bun run docs:agent && tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
-    "docs:agent": "bun run docs:agent:check-env && bun run docs:agent:generate",
-    "docs:agent:check-env": "bun -e \"if (!process.env.INTH_DOCS_AGENT_BASE_URL) throw new Error('INTH_DOCS_AGENT_BASE_URL must be set')\"",
+    "docs:agent": "bun run docs:agent:generate",
     "docs:agent:generate": "bun run ./scripts/generate-agent-docs.ts",
     "lint": "ultracite check src",
     "test": "vitest run"
@@ -72,21 +93,40 @@
     "valibot": "1.0.0"
   },
   "devDependencies": {
+    "@cloudflare/tanstack-ai": "^0.1.7",
     "@repo/typescript-config": "*",
+    "@tanstack/ai": "^0.13.0",
     "@types/mdast": "4.0.4",
     "@types/node": "^22.10.0",
-    "@types/react": "^19.0.0",
-    "react": "^19.0.0",
+    "ai": "^6.0.168",
+    "bash-tool": "1.3.16",
+    "just-bash": "2.14.2",
     "tsup": "^8.3.5",
     "typescript": "5.9.2",
     "vitest": "^2.1.8"
   },
   "peerDependencies": {
-    "react": ">=19.0.0",
+    "@cloudflare/tanstack-ai": ">=0.1.7",
+    "@tanstack/ai": ">=0.13.0",
+    "ai": ">=6.0.0",
+    "bash-tool": ">=1.3.16",
+    "just-bash": ">=2.14.2",
     "typescript": ">=5.0.0"
   },
   "peerDependenciesMeta": {
-    "react": {
+    "@cloudflare/tanstack-ai": {
+      "optional": true
+    },
+    "@tanstack/ai": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "bash-tool": {
+      "optional": true
+    },
+    "just-bash": {
       "optional": true
     },
     "typescript": {

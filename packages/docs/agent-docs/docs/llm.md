@@ -8,8 +8,8 @@ Import from:
 
 ```ts
 import {
-  generateLLMFullFiles,
-  generateLLMSummaries,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
 } from "@inth/docs/llm";
 ```
 
@@ -17,7 +17,7 @@ This surface reads source docs and generated markdown to produce agent-friendly 
 
 ## Output Model
 
-### `generateLLMSummaries`
+### `generateLlmsTxt`
 
 Creates:
 
@@ -26,7 +26,7 @@ Creates:
 
 Use it to publish a short product summary plus a curated docs map.
 
-### `generateLLMFullFiles`
+### `generateLLMFullContextFiles`
 
 Creates:
 
@@ -40,7 +40,7 @@ Use it after markdown conversion. It reads `.md` files under `{outDir}/docs/`.
 
 * Source docs for summaries live under `{srcDir}/docs/`.
 * Converted markdown for full files lives under `{outDir}/docs/`.
-* Run `convertAllMdx` before `generateLLMFullFiles`.
+* Run `convertAllMdx` before `generateLLMFullContextFiles`.
 
 ## Typical Sequence
 
@@ -51,7 +51,7 @@ await convertAllMdx({
   remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
 });
 
-await generateLLMSummaries({
+await generateLlmsTxt({
   srcDir,
   outDir,
   baseUrl,
@@ -67,7 +67,7 @@ await generateLLMSummaries({
   ],
 });
 
-await generateLLMFullFiles({
+await generateLLMFullContextFiles({
   outDir,
   baseUrl,
   product: { name: "My Docs" },

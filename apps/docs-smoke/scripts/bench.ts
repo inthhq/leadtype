@@ -10,9 +10,15 @@
 import { existsSync } from "node:fs";
 import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { convertAllMdx } from "@inth/docs/convert";
-import { generateLLMFullFiles, generateLLMSummaries } from "@inth/docs/llm";
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+import { convertAllMdx } from "../../../packages/docs/src/convert/index.ts";
+import {
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+} from "../../../packages/docs/src/llm/index.ts";
+import {
+  defaultRemarkPlugins,
+  remarkInclude,
+} from "../../../packages/docs/src/remark/index.ts";
 
 const DEFAULT_RUNS = 3;
 const parsedRuns = Number.parseInt(
@@ -82,7 +88,7 @@ async function bench(): Promise<Stats[]> {
     );
 
     const llmMs = await timed(async () => {
-      await generateLLMSummaries({
+      await generateLlmsTxt({
         srcDir: SRC_DIR,
         outDir: OUT_DIR,
         baseUrl: "https://docs.example.com",
@@ -102,7 +108,7 @@ async function bench(): Promise<Stats[]> {
           },
         ],
       });
-      await generateLLMFullFiles({
+      await generateLLMFullContextFiles({
         outDir: OUT_DIR,
         baseUrl: "https://docs.example.com",
         product: { name: "Bench SDK" },

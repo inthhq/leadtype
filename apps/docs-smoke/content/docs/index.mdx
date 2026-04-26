@@ -1,16 +1,152 @@
 ---
-title: "Smoke SDK"
-description: "Welcome to the Smoke SDK docs. Exercise @inth/docs end-to-end."
+title: "@inth/docs"
+description: "Developer reference for rendering MDX, converting docs, generating LLM bundles, linting content, and serving search."
 ---
 
-# Smoke SDK
+# @inth/docs
 
-<Callout variant="info" title="Welcome">
-  This is a fixture page that mirrors how consumer apps integrate with `@inth/docs`.
-</Callout>
+`@inth/docs` is the shared package for framework-neutral docs pipelines, LLM-friendly output, validation, and local search. Use the smallest entry point that matches where your code runs.
 
-Pick your path below.
+## Package Surfaces
+
+<TypeTable
+  properties={{
+    "@inth/docs/remark": {
+      type: "build time",
+      description: "remark plugins and `defaultRemarkPlugins`.",
+      required: true,
+    },
+    "@inth/docs/convert": {
+      type: "build time",
+      description: "MDX-to-markdown conversion APIs.",
+      required: true,
+    },
+    "@inth/docs/llm": {
+      type: "build time",
+      description: "`llms.txt` and full-context generation.",
+    },
+    "@inth/docs/search": {
+      type: "runtime",
+      description: "Search runtime, content readers, guards, and rate limiter helpers.",
+    },
+    "@inth/docs/search/node": {
+      type: "build time",
+      description: "Node-only `generateDocsSearchFiles`.",
+    },
+    "@inth/docs/search/vercel": {
+      type: "optional runtime",
+      description: "Vercel AI Gateway / AI SDK answer streaming and bash tools.",
+    },
+    "@inth/docs/search/tanstack": {
+      type: "optional runtime",
+      description: "TanStack AI answer streaming and native docs bash tools.",
+    },
+    "@inth/docs/search/cloudflare": {
+      type: "optional runtime",
+      description: "Cloudflare AI Gateway / Workers AI adapters and docs bash tools.",
+    },
+    "@inth/docs/lint": {
+      type: "build time",
+      description: "Lint APIs and the `inth-docs-lint` CLI.",
+    },
+  }}
+/>
+
+## Common Implementation Paths
+
+<Steps>
+  <Step title="Own runtime MDX components">
+    Define `mdxComponents` in the docs app that renders your pages. `@inth/docs` intentionally does not export prebuilt UI components.
+  </Step>
+  <Step title="Convert MDX for agents">
+    Use `@inth/docs/convert` with `@inth/docs/remark` to flatten authored MDX into markdown that works in LLM bundles and search indexes.
+  </Step>
+  <Step title="Generate and query search">
+    Generate static search JSON with `@inth/docs/search/node`, query it with `@inth/docs/search`, and add a provider entrypoint such as `@inth/docs/search/vercel` only for explicit answer requests.
+  </Step>
+</Steps>
+
+## Methodology
+
+`@inth/docs` is not trying to replace hosted docs platforms or full docs-site frameworks. It is a portable toolkit for the docs pipeline around your site.
+
+Use Mintlify, Fumadocs, or Starlight when the primary job is to ship a complete docs website quickly. Use `@inth/docs` when the primary job is to keep docs content useful across the website, CI, generated markdown, local search, AI answer routes, and coding-agent workflows.
+
+| Tool | Primary job | Best fit |
+| --- | --- | --- |
+| [Mintlify](https://mintlify.com/) | Managed developer documentation platform with hosted docs, API docs, and AI-oriented product features. | Teams that want a polished docs product without owning the whole site pipeline. |
+| [Fumadocs](https://fumadocs.dev/) | Documentation framework and toolchain for React docs sites, especially Next.js. | Teams that want framework-level routing, navigation, UI, content adapters, search, and OpenAPI support. |
+| [Starlight](https://starlight.astro.build/) | Full-featured documentation framework built on Astro. | Teams already using Astro or wanting an Astro-native docs site. |
+| `@inth/docs` | Shared docs infrastructure package: framework-neutral MDX-to-markdown conversion, LLM bundles, linting, static search, and answer helpers. | Teams that want to own the app shell and runtime components while reusing one docs pipeline across sites, agents, search APIs, and internal tools. |
+
+These tools are not mutually exclusive. A site framework can own the public docs experience while `@inth/docs` owns conversion, validation, search artifacts, and agent-facing bundles.
+
+## Other Frameworks
+
+React, Vue, Nuxt, Svelte, Astro, and other stacks can use `@inth/docs/convert`, `@inth/docs/remark`, `@inth/docs/llm`, `@inth/docs/search`, and `@inth/docs/lint` today. Runtime MDX components belong in the consuming docs app, not this package.
+
+## Render MDX
+
+```tsx
+import { mdxComponents } from "@/components/docs-mdx";
+
+export const components = {
+  ...mdxComponents,
+};
+```
+
+This smoke app keeps its React MDX components under `src/components/docs-mdx`. Consumers should create their own components that match their framework, design system, and accessibility requirements.
+
+## Convert And Generate
+
+```ts
+import { convertAllMdx } from "@inth/docs/convert";
+import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+
+await convertAllMdx({
+  srcDir: "content",
+  outDir: "public",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+});
+```
+
+After conversion, use `@inth/docs/llm` to write `llms.txt` and topic-scoped full-context files, or `@inth/docs/search/node` to generate a compact search index.
+
+## What To Open In This App
 
 <Cards>
-  <Card title="Quickstart" description="Install and send your first request." href="/docs/guides/quickstart" />
+  <Card
+    title="Quickstart"
+    description="Install the package, wire runtime MDX components, run conversion, and validate the pipeline."
+    href="/docs/guides/quickstart"
+  />
+  <Card
+    title="Runtime Components"
+    description="Exercise app-owned MDX components, including Accordion, Example, and TopicSwitcher, through authored docs content."
+    href="/docs/guides/components-fixture"
+  />
+  <Card
+    title="Search APIs"
+    description="Build the static search index, query it at runtime, and stream grounded answers."
+    href="/docs/search"
+  />
+  <Card
+    title="Recipes Playground"
+    description="Switch between guided implementation recipes with live app components."
+    href="/playground"
+  />
 </Cards>
+
+## Validation Layers
+
+<Steps>
+  <Step title="Package tests">
+    Cover framework-neutral conversion, search, linting, and generated docs behavior in `packages/docs/src/**/*.test.ts*`.
+  </Step>
+  <Step title="Pipeline fixtures">
+    Cover conversion, type extraction, LLM output, and search generation in `apps/docs-smoke/scripts` and `apps/docs-smoke/content`.
+  </Step>
+  <Step title="Browser coverage">
+    Cover SSR, hydration, keyboard behavior, link safety, search APIs, and recipe interactions in Playwright.
+  </Step>
+</Steps>

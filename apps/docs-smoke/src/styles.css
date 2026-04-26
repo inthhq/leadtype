@@ -1,0 +1,427 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@source "../node_modules/streamdown/dist/*.js";
+
+@theme inline {
+  --font-heading: "Geist Variable", sans-serif;
+  --font-sans: "Geist Variable", sans-serif;
+  --font-mono: "Geist Mono Variable", monospace;
+  --text-title-h1: 1.875rem;
+  --text-title-h1--line-height: 1.2;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-strong: var(--warning-strong);
+}
+
+:root {
+  --background: oklch(0.992 0.004 245);
+  --foreground: oklch(0.205 0.014 245);
+  --card: oklch(0.998 0.002 245);
+  --card-foreground: oklch(0.205 0.014 245);
+  --primary: oklch(0.205 0.014 245);
+  --primary-foreground: oklch(0.985 0.004 245);
+  --secondary: oklch(0.969 0.006 245);
+  --secondary-foreground: oklch(0.3 0.014 245);
+  --muted: oklch(0.963 0.006 245);
+  --muted-foreground: oklch(0.49 0.018 245);
+  --border: oklch(0.91 0.008 245);
+  --ring: oklch(0.68 0.045 210);
+  --accent-soft: oklch(0.94 0.04 220);
+  --accent-strong: oklch(0.38 0.09 225);
+  --success-soft: oklch(0.94 0.045 155);
+  --success-strong: oklch(0.35 0.08 155);
+  --warning-soft: oklch(0.94 0.055 82);
+  --warning-strong: oklch(0.42 0.08 72);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
+    @apply bg-background text-foreground antialiased;
+  }
+
+  a {
+    @apply text-foreground;
+  }
+}
+
+.docs-prose {
+  @apply max-w-none text-[15px] leading-7 text-foreground;
+}
+
+.docs-prose > :first-child {
+  @apply mt-0;
+}
+
+.docs-prose h1,
+.docs-prose h2,
+.docs-prose h3,
+.docs-prose h4 {
+  @apply font-heading font-medium tracking-tight text-foreground;
+}
+
+.docs-prose h1 {
+  @apply mt-0 text-title-h1;
+}
+
+.docs-prose h2 {
+  @apply mt-8 text-xl;
+}
+
+.docs-prose h3 {
+  @apply mt-7 text-lg;
+}
+
+.docs-prose p,
+.docs-prose ul,
+.docs-prose ol {
+  @apply my-4 text-muted-foreground;
+}
+
+.docs-prose a {
+  @apply underline underline-offset-4;
+}
+
+.docs-prose ul,
+.docs-prose ol {
+  @apply pl-6;
+}
+
+.docs-prose li {
+  @apply my-2;
+}
+
+.docs-prose pre {
+  font-family: var(--font-mono);
+  @apply overflow-x-auto rounded-lg border border-border bg-secondary px-4 py-4 text-[13px] text-foreground leading-6;
+}
+
+.docs-prose code {
+  font-family: var(--font-mono);
+  @apply rounded-md bg-secondary px-1.5 py-0.5 text-[0.9em] text-foreground;
+}
+
+.docs-prose pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+
+.docs-prose table {
+  @apply my-6 w-full border-collapse overflow-hidden rounded-lg border border-border;
+}
+
+.docs-prose th,
+.docs-prose td {
+  @apply border-b border-border px-4 py-3 text-left align-top;
+}
+
+.docs-prose th {
+  @apply bg-secondary/70 font-semibold text-foreground;
+}
+
+.docs-answer {
+  @apply text-sm leading-7 text-muted-foreground;
+}
+
+.docs-answer > :first-child {
+  @apply mt-0;
+}
+
+.docs-answer p,
+.docs-answer ul,
+.docs-answer ol,
+.docs-answer pre {
+  @apply my-3;
+}
+
+.docs-answer ul,
+.docs-answer ol {
+  @apply pl-5;
+}
+
+.docs-answer li {
+  @apply my-1;
+}
+
+.docs-answer strong {
+  @apply font-semibold text-foreground;
+}
+
+.docs-answer a {
+  @apply underline underline-offset-4;
+}
+
+.docs-answer code {
+  font-family: var(--font-mono);
+  @apply rounded-md bg-secondary px-1.5 py-0.5 text-[0.9em] text-foreground;
+}
+
+.docs-answer pre {
+  font-family: var(--font-mono);
+  @apply overflow-x-auto rounded-lg border border-border bg-secondary px-3 py-3 text-xs text-foreground;
+}
+
+.docs-answer pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+
+[data-inth-callout] {
+  @apply my-6 rounded-lg border border-border bg-card p-5;
+}
+
+[data-inth-callout][data-variant="info"] {
+  @apply bg-secondary;
+}
+
+[data-inth-callout][data-variant="success"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 92%,
+    oklch(0.72 0.06 160) 8%
+  );
+  border-color: color-mix(
+    in oklab,
+    var(--border) 88%,
+    oklch(0.72 0.06 160) 12%
+  );
+}
+
+[data-inth-callout][data-variant="canary"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 90%,
+    oklch(0.75 0.08 75) 10%
+  );
+  border-color: color-mix(in oklab, var(--border) 88%, oklch(0.75 0.08 75) 12%);
+}
+
+[data-inth-callout-title] {
+  @apply m-0 text-sm font-medium text-foreground;
+}
+
+[data-inth-callout-content] {
+  @apply mt-3 text-sm leading-7 text-muted-foreground;
+}
+
+[data-inth-cards] {
+  @apply my-6 grid gap-4 sm:grid-cols-2;
+}
+
+[data-inth-card] {
+  @apply block rounded-lg border border-border bg-card px-5 py-5 text-inherit no-underline transition-colors hover:bg-secondary;
+}
+
+[data-inth-card-title] {
+  @apply m-0 text-lg font-semibold tracking-tight text-foreground;
+}
+
+[data-inth-card-description] {
+  @apply mt-2 text-sm leading-6 text-muted-foreground;
+}
+
+[data-inth-steps] {
+  @apply my-6 space-y-4 pl-6;
+}
+
+[data-inth-step] {
+  @apply rounded-lg border border-border bg-card p-4;
+}
+
+[data-inth-step-title] {
+  @apply m-0 text-base font-semibold text-foreground;
+}
+
+[data-inth-step-content] {
+  @apply mt-3 text-sm leading-7 text-muted-foreground;
+}
+
+[data-inth-tabs] {
+  @apply my-6 rounded-lg border border-border bg-card;
+}
+
+[data-inth-tabs-list] {
+  @apply flex flex-wrap gap-2 border-b border-border p-3;
+}
+
+[data-inth-tabs-trigger] {
+  @apply rounded-lg border border-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary;
+}
+
+[data-inth-tabs-trigger][data-active] {
+  @apply border-border bg-secondary text-foreground;
+}
+
+[data-inth-tab-panel] {
+  @apply p-4 text-sm leading-7 text-muted-foreground;
+}
+
+[data-inth-command-tabs] {
+  @apply my-6 rounded-lg border border-border bg-card p-4;
+}
+
+[data-inth-command-tabs-list] {
+  @apply flex flex-wrap gap-2 border-0 p-0;
+}
+
+[data-inth-command-tabs-legend] {
+  @apply mb-3 block text-xs font-medium text-muted-foreground;
+}
+
+[data-inth-command-tabs-tab] {
+  @apply rounded-lg border border-border bg-background px-3 py-1.5 text-sm transition-colors hover:bg-secondary;
+}
+
+[data-inth-command-tabs-tab][data-active] {
+  @apply bg-secondary text-foreground;
+}
+
+[data-inth-command-tabs-output] {
+  font-family: var(--font-mono);
+  @apply mt-4 overflow-x-auto rounded-lg border border-border bg-secondary px-4 py-3 text-sm text-foreground;
+}
+
+[data-inth-accordion] {
+  @apply my-6 space-y-3;
+}
+
+[data-inth-accordion-item] {
+  @apply rounded-lg border border-border bg-card px-4 py-3;
+}
+
+[data-inth-accordion-summary] {
+  @apply cursor-pointer select-none text-sm font-medium text-foreground;
+}
+
+[data-inth-accordion-content] {
+  @apply mt-3 text-sm leading-7 text-muted-foreground;
+}
+
+[data-inth-example] {
+  @apply my-6 overflow-hidden rounded-lg border border-border bg-card;
+}
+
+[data-inth-example-header] {
+  @apply border-border border-b px-4 py-4;
+}
+
+[data-inth-example-title] {
+  @apply m-0 text-base font-semibold tracking-tight text-foreground;
+}
+
+[data-inth-example-description] {
+  @apply mt-1 text-sm leading-6 text-muted-foreground;
+}
+
+[data-inth-example-preview] {
+  @apply border-border border-b px-4 py-4;
+}
+
+[data-inth-example-code],
+[data-inth-example-source-files] {
+  @apply bg-secondary/70 px-4 py-4;
+}
+
+[data-inth-example-source-files] {
+  @apply space-y-4 border-border border-t;
+}
+
+[data-inth-example-filename] {
+  font-family: var(--font-mono);
+  @apply mb-2 text-xs text-muted-foreground;
+}
+
+[data-inth-example-code-block] {
+  font-family: var(--font-mono);
+  @apply overflow-x-auto rounded-lg border border-border bg-background px-4 py-3 text-[13px] leading-6 text-foreground;
+}
+
+[data-inth-topic-switcher] {
+  @apply my-6 rounded-lg border border-border bg-card p-4;
+}
+
+[data-inth-topic-switcher-label] {
+  @apply m-0 text-xs font-medium text-muted-foreground;
+}
+
+[data-inth-topic-switcher-list] {
+  @apply mt-3 grid list-none gap-2 p-0 sm:grid-cols-2;
+}
+
+[data-inth-topic-switcher-item] {
+  @apply m-0;
+}
+
+[data-inth-topic-switcher-link] {
+  @apply block rounded-lg border border-border bg-background px-3 py-3 no-underline transition-colors hover:bg-secondary;
+}
+
+[data-inth-topic-switcher-link][data-active] {
+  @apply bg-secondary text-foreground;
+}
+
+[data-inth-topic-switcher-item-label] {
+  @apply block text-sm font-medium text-foreground;
+}
+
+[data-inth-topic-switcher-item-description] {
+  @apply mt-1 block text-xs leading-5 text-muted-foreground;
+}
+
+[data-inth-mermaid] {
+  font-family: var(--font-mono);
+  @apply my-6 overflow-x-auto rounded-lg border border-border bg-secondary px-4 py-4 text-sm;
+}
+
+[data-inth-type-table],
+[data-inth-type-table] table {
+  @apply w-full;
+}
+
+[data-inth-extracted-type-table] {
+  @apply my-6 space-y-4 rounded-lg border border-border bg-card p-4;
+}
+
+[data-inth-required] {
+  @apply ml-1 text-primary;
+}
+
+[data-inth-selector] {
+  @apply grid gap-4;
+}
+
+[data-inth-selector-label] {
+  @apply text-sm font-semibold text-foreground;
+}
+
+[data-inth-selector-control] {
+  @apply w-full rounded-lg border border-border bg-card px-4 py-3 text-sm;
+}
+
+[data-inth-selector-content] {
+  @apply text-sm;
+}

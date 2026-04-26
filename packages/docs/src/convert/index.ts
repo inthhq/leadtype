@@ -1,7 +1,7 @@
 export {
   type ConvertResult,
   convertAllMdx,
-  convertMdxFile,
-  convertSingleMdxFile,
-  type MdxToMarkdownConfig,
+  convertMdxToMarkdown,
+  type MdxToMarkdownOptions,
+  writeMdxFileAsMarkdown,
 } from "./convert";

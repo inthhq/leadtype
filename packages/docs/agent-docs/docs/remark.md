@@ -33,7 +33,7 @@ The default array includes:
 * `remarkCalloutToMarkdown`
 * `remarkCardsToMarkdown`
 * `remarkMermaidToMarkdown`
-* `remarkPackageCommandTabsToMarkdown`
+* `remarkCommandTabsToMarkdown`
 * `remarkStepsToMarkdown`
 * `remarkTabsToMarkdown`
 * `remarkTypeTableToMarkdown`

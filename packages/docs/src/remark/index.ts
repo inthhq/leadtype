@@ -1,14 +1,16 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
 export * from "./libs";
+export { remarkAccordionToMarkdown } from "./plugins/accordion.remark";
 export { remarkCalloutToMarkdown } from "./plugins/callout.remark";
 export { remarkCardsToMarkdown } from "./plugins/cards.remark";
+export { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
 export { remarkDetailsToMarkdown } from "./plugins/details.remark";
 export { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
+export { remarkExampleToMarkdown } from "./plugins/example.remark";
 export { remarkInclude } from "./plugins/include.remark";
 export { remarkLinkIcon } from "./plugins/link-icon.remark";
 export { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
-export { remarkPackageCommandTabsToMarkdown } from "./plugins/package-command-tabs.remark";
 export { remarkRemoveImports } from "./plugins/remove-imports.remark";
 export { remarkRemoveJsxComments } from "./plugins/remove-jsx-comments.remark";
 export { remarkSectionToMarkdown } from "./plugins/section.remark";
@@ -19,22 +21,26 @@ export {
   extractTocFromFile,
   type TOCItem,
 } from "./plugins/toc-extract.remark";
+export { remarkTopicSwitcherToMarkdown } from "./plugins/topic-switcher.remark";
 export {
   extractTypeFromFile,
   remarkTypeTableToMarkdown,
 } from "./plugins/type-table.remark";
 
+import { remarkAccordionToMarkdown } from "./plugins/accordion.remark";
 import { remarkCalloutToMarkdown } from "./plugins/callout.remark";
 import { remarkCardsToMarkdown } from "./plugins/cards.remark";
+import { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
 import { remarkDetailsToMarkdown } from "./plugins/details.remark";
 import { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
+import { remarkExampleToMarkdown } from "./plugins/example.remark";
 import { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
-import { remarkPackageCommandTabsToMarkdown } from "./plugins/package-command-tabs.remark";
 import { remarkRemoveImports } from "./plugins/remove-imports.remark";
 import { remarkRemoveJsxComments } from "./plugins/remove-jsx-comments.remark";
 import { remarkSectionToMarkdown } from "./plugins/section.remark";
 import { remarkStepsToMarkdown } from "./plugins/steps.remark";
 import { remarkTabsToMarkdown } from "./plugins/tabs.remark";
+import { remarkTopicSwitcherToMarkdown } from "./plugins/topic-switcher.remark";
 import { remarkTypeTableToMarkdown } from "./plugins/type-table.remark";
 
 /**
@@ -51,8 +57,11 @@ export const defaultRemarkPlugins = [
   remarkCardsToMarkdown,
   remarkDetailsToMarkdown,
   remarkMermaidToMarkdown,
-  remarkPackageCommandTabsToMarkdown,
+  remarkCommandTabsToMarkdown,
   remarkStepsToMarkdown,
   remarkTabsToMarkdown,
   remarkTypeTableToMarkdown,
+  remarkAccordionToMarkdown,
+  remarkTopicSwitcherToMarkdown,
+  remarkExampleToMarkdown,
 ] as const;

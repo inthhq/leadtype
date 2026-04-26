@@ -1,0 +1,175 @@
+---
+title: "Runtime Components"
+description: "Render app-owned MDX components through authored docs content."
+---
+
+# Runtime Components
+
+<Callout variant="success" title="Runtime fixture">
+  This page exercises the smoke app's MDX components without relying on package-owned runtime UI.
+</Callout>
+
+## Authoring Contract
+
+```mdx
+<Callout variant="success" title="Runtime fixture">
+  Render app-owned components through your shared `mdxComponents` map.
+</Callout>
+
+<CommandTabs command="@inth/docs" mode="install" />
+
+<CommandTabs command="next-app" mode="create" />
+
+<Accordion>
+  <AccordionItem title="Pipeline behavior">
+    Accordion content is collapsible in the browser and still available after MDX-to-markdown conversion.
+  </AccordionItem>
+</Accordion>
+
+<Tabs items={["Overview", "Types"]}>
+  <Tab value="Overview">Tabs hydrate in the browser.</Tab>
+  <Tab value="Types">Use `TypeTable` when type data already exists in MDX.</Tab>
+</Tabs>
+
+<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+      description: "React integration",
+    },
+    {
+      value: "vue",
+      label: "Vue",
+      href: "/docs/frameworks/vue/quickstart",
+      description: "Vue integration",
+    },
+  ]}
+/>
+
+<Mermaid chart={`flowchart LR
+  A[MDX] --> B[mdxComponents]
+  B --> C[Rendered route]
+`} />
+```
+
+## Navigation Cards
+
+<Cards>
+  <Card title="Quickstart route" description="Implementation steps for installing, rendering, converting, and validating." href="/docs/guides/quickstart" />
+  <Card title="External reference" description="External links preserve safe target and rel attributes." href="https://example.com/docs" />
+</Cards>
+
+## Browser Flow
+
+<Steps>
+  <Step title="Author MDX">
+    Use semantic components such as `Callout`, `Tabs`, `Cards`, `Steps`, `CommandTabs`, `Accordion`, `Example`, `TopicSwitcher`, and `TypeTable`.
+  </Step>
+  <Step title="Render in the app">
+    Import the `.mdx` file directly and provide the app's `mdxComponents` through the shared runtime map.
+  </Step>
+  <Step title="Validate the pipeline separately">
+    Keep `ExtractedTypeTable` coverage in the conversion pipeline where source extraction has a stable file-system base path.
+  </Step>
+</Steps>
+
+<CommandTabs command="@inth/docs" mode="install" />
+
+<Accordion>
+  <AccordionItem title="Authoring rule" defaultOpen>
+    Prefer semantic components whose content can flatten cleanly into markdown for agents, search indexes, and LLM bundles.
+  </AccordionItem>
+  <AccordionItem title="Naming rule">
+    Use `TopicSwitcher` for equivalent docs slices. Frameworks are one topic category, not the whole abstraction.
+  </AccordionItem>
+</Accordion>
+
+<Tabs items={["Overview", "Tables", "Pipeline note"]}>
+  <Tab value="Overview">
+    This tabset proves the app-owned components hydrate correctly inside the demo app.
+  </Tab>
+  <Tab value="Tables">
+    `TypeTable` is safe to render live because all of its data is already present in the MDX payload.
+  </Tab>
+  <Tab value="Pipeline note">
+    `ExtractedTypeTable` is rendered on `/docs` with extracted type data and verified in `content/docs/guides/extracted-type-table-fixture.mdx`.
+  </Tab>
+</Tabs>
+
+<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+      description: "React integration",
+    },
+    {
+      value: "next",
+      label: "Next.js",
+      href: "/docs/frameworks/next/quickstart",
+      description: "Next.js integration",
+    },
+    {
+      value: "svelte",
+      label: "Svelte",
+      href: "/docs/frameworks/svelte/quickstart",
+      description: "Svelte integration",
+    },
+  ]}
+/>
+
+<Example
+  title="Render MDX"
+  description="Preview the output and inspect the source."
+  filename="mdx-components.tsx"
+  language="tsx"
+  code={`import { mdxComponents } from "@/components/docs-mdx";
+
+export const components = {
+  ...mdxComponents,
+};`}
+>
+  <Callout title="Runtime components" variant="success">
+    The host app owns styling and runtime components while `@inth/docs` owns conversion.
+  </Callout>
+</Example>
+
+<Mermaid chart={`flowchart LR
+  A[Authored MDX] --> B[mdxComponents]
+  B --> C[TanStack Start route]
+  C --> D[Playwright coverage]
+`} />
+
+<TypeTable
+  properties={{
+    command: {
+      type: "string",
+      description: "Package name, CLI name, or custom command template with a {pm} placeholder.",
+      required: true,
+    },
+    mode: {
+      type: "\"install\" | \"run\" | \"create\"",
+      description: "Optional expansion mode for package names, CLI names, or project starters such as `pnpm create next-app`.",
+    },
+    commands: {
+      type: "Partial<Record<PackageManager, string>>",
+      description: "Explicit per-manager overrides when templates are not enough.",
+    },
+    defaultManager: {
+      type: "\"npm\" | \"pnpm\" | \"yarn\" | \"bun\"",
+      description: "The tab that should be active on first render.",
+      default: "npm",
+    },
+  }}
+/>
+
+<Callout variant="canary" title="Pipeline-only extraction">
+  `ExtractedTypeTable` needs extracted type data. The live extracted output appears on `/docs`, and the pipeline fixture verifies markdown output from `PipelineExampleOptions`.
+</Callout>

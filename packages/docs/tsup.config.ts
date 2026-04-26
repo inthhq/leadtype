@@ -2,10 +2,16 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: {
-    "components/index": "src/components/index.ts",
     "remark/index": "src/remark/index.ts",
     "convert/index": "src/convert/index.ts",
     "llm/index": "src/llm/index.ts",
+    "search/index": "src/search/index.ts",
+    "search/node-index": "src/search/node-index.ts",
+    "search/ai-index": "src/search/ai-index.ts",
+    "search/bash-index": "src/search/bash-index.ts",
+    "search/vercel-index": "src/search/vercel-index.ts",
+    "search/tanstack-index": "src/search/tanstack-index.ts",
+    "search/cloudflare-index": "src/search/cloudflare-index.ts",
     "lint/index": "src/lint/index.ts",
     "lint/cli": "src/lint/cli.ts",
   },
@@ -26,14 +32,16 @@ export default defineConfig({
     await chmod(cli, 0o755);
   },
   external: [
-    "react",
-    "react-dom",
-    "next",
     "typescript",
     "fs",
     "path",
     "node:fs",
     "node:path",
     "node:fs/promises",
+    "ai",
+    "bash-tool",
+    "just-bash",
+    "@tanstack/ai",
+    "@cloudflare/tanstack-ai",
   ],
 });

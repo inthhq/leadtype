@@ -7,7 +7,7 @@ import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import { visit } from "unist-util-visit";
 import * as v from "valibot";
-import { convertMdxFile } from "../convert";
+import { convertMdxToMarkdown } from "../convert";
 import {
   deriveDocContext,
   hasDocPlaceholder,
@@ -410,7 +410,7 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     );
 
     try {
-      const converted = await convertMdxFile(file, [
+      const converted = await convertMdxToMarkdown(file, [
         remarkInclude,
         ...defaultRemarkPlugins,
       ]);

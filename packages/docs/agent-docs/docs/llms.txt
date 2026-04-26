@@ -16,15 +16,16 @@ Start here for package scope and surface selection.
 
 React MDX components and remark pipeline behavior.
 
-- [Components](https://example.invalid/@inth/docs/docs/components): How to use the React MDX component adapters exported by @inth/docs.
+- [Components](https://example.invalid/@inth/docs/docs/components): How to define app-owned MDX components that the @inth/docs pipeline can flatten.
 - [Remark](https://example.invalid/@inth/docs/docs/remark): Reference for the remark plugins and default plugin pipeline exported by @inth/docs.
 
 ## Generation
 
-MDX conversion and LLM output generation.
+MDX conversion, LLM output generation, and search.
 
 - [Convert](https://example.invalid/@inth/docs/docs/convert): How to convert MDX docs into Markdown with @inth/docs/convert.
 - [LLM](https://example.invalid/@inth/docs/docs/llm): How to generate llms.txt and topic-scoped full-context files from @inth/docs.
+- [Search](https://example.invalid/@inth/docs/docs/search): Generate and query a static docs search index, then stream source-grounded AI answers.
 
 ## Validation
 

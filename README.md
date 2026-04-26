@@ -1,13 +1,17 @@
 # @inth/docs
 
-Shared MDX-to-markdown tooling for Inth docs properties.
+Shared docs tooling for Inth docs projects: framework-neutral MDX-to-markdown conversion, LLM bundles, validation, and static search.
 
-`@inth/docs` is split into five main surfaces:
+`@inth/docs` is split into focused public entry points:
 
-- `@inth/docs`: React MDX component adapters via `mdxComponents`
 - `@inth/docs/remark`: remark plugins plus `defaultRemarkPlugins`
 - `@inth/docs/convert`: MDX-to-markdown conversion APIs
 - `@inth/docs/llm`: `llms.txt` and topic-scoped full-context generation
+- `@inth/docs/search`: search runtime, content readers, guards, and rate limiter helpers
+- `@inth/docs/search/node`: Node-only search index generation
+- `@inth/docs/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
+- `@inth/docs/search/tanstack`: TanStack AI answer streaming and bash tools
+- `@inth/docs/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
 - `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
 
 ## Install
@@ -18,15 +22,55 @@ pnpm add @inth/docs
 
 ## Basic Usage
 
-### Render MDX components
+### Own MDX components in your app
 
-```tsx
-import { mdxComponents } from "@inth/docs";
+`@inth/docs` does not export prebuilt React, Vue, Nuxt, Svelte, or Astro components. Define the MDX component map in the docs app that renders your pages.
 
-const components = {
-  ...mdxComponents,
-};
+## Live Example App
+
+The repo includes a canonical consumer demo at `apps/docs-smoke`.
+
+- Renders real `.mdx` fixture files through app-owned `mdxComponents`.
+- Uses TanStack Start for SSR and hydration coverage.
+- Shows extracted `ExtractedTypeTable` output while keeping pipeline fixtures in the validation path.
+
+Local workflow:
+
+```bash
+bun install
+bun run demo:dev
 ```
+
+Pipeline and browser checks:
+
+```bash
+bun run --filter docs-smoke pipeline:build
+bun run --filter docs-smoke pipeline:test
+bun run --filter docs-smoke test:e2e
+```
+
+Validation layers:
+
+- Package unit tests in `packages/docs/src/**/*.test.ts*` cover framework-neutral conversion, search, linting, and generated docs behavior.
+- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` cover MDX conversion, LLM generation, and `ExtractedTypeTable`.
+- The TanStack Start demo app in `apps/docs-smoke/src` covers real browser rendering and hydration.
+
+## Where This Fits
+
+`@inth/docs` is not a hosted docs platform or a complete docs-site framework. Use tools such as Mintlify, Fumadocs, or Starlight when the primary job is shipping a polished docs website quickly.
+
+Use this package when the primary job is shared docs infrastructure: MDX-to-markdown conversion, LLM bundles, linting, static search artifacts, answer helpers, and agent-facing docs output that can feed multiple apps and tools.
+
+The pipeline entry points are framework-neutral. React, Vue, Nuxt, Svelte, Astro, and other stacks can use conversion, LLM, lint, and search APIs while owning their own runtime component rendering.
+
+## Wiring It Into An App
+
+In a c15t-style repo with a top-level `docs/` directory, wire `@inth/docs` into the docs app and docs scripts:
+
+- The docs app owns `mdxComponents` if it renders MDX directly.
+- A conversion script runs `convertAllMdx({ srcDir: process.cwd(), outDir: "public" })`.
+- LLM and search scripts read the converted markdown under `public/docs/`.
+- Product code does not import `@inth/docs` unless it also renders docs pages.
 
 ### Convert MDX to markdown
 
@@ -44,7 +88,7 @@ await convertAllMdx({
 ### Generate agent-facing docs bundles
 
 ```ts
-import { generateLLMFullFiles, generateLLMSummaries } from "@inth/docs/llm";
+import { generateLLMFullContextFiles, generateLlmsTxt } from "@inth/docs/llm";
 ```
 
 Run the packaged agent-doc generator locally with:
@@ -55,6 +99,19 @@ INTH_DOCS_AGENT_BASE_URL=https://docs.example.com/@inth/docs bun run docs:agent
 
 This writes a bundled reference set into `packages/docs/agent-docs/`.
 
+### Generate a static search index
+
+```ts
+import { generateDocsSearchFiles } from "@inth/docs/search/node";
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+});
+```
+
+At runtime, query the generated JSON with `@inth/docs/search`. Add a provider entrypoint such as `@inth/docs/search/vercel` only when a user explicitly asks for a source-grounded answer.
+
 ## Agent Docs
 
 The package now ships a small, topic-scoped agent reference bundle:
@@ -64,6 +121,7 @@ The package now ships a small, topic-scoped agent reference bundle:
 - `agent-docs/docs/convert.md`
 - `agent-docs/docs/remark.md`
 - `agent-docs/docs/llm.md`
+- `agent-docs/docs/search.md`
 - `agent-docs/docs/lint.md`
 
 Set `INTH_DOCS_AGENT_BASE_URL` to the hosted docs base before generating publishable `llms*.txt` files.

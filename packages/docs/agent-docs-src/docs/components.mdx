@@ -1,57 +1,74 @@
 ---
 title: "Components"
-description: "How to use the React MDX component adapters exported by @inth/docs."
+description: "How to define app-owned MDX components that the @inth/docs pipeline can flatten."
 ---
 
 # Components
 
-Import the default adapter map from the package root:
+`@inth/docs` does not export prebuilt UI components or a `mdxComponents` map. The consuming docs app owns runtime rendering, styling, accessibility, and framework-specific integration.
 
-```tsx
-import { mdxComponents } from "@inth/docs";
-```
+The package only assumes a small authoring contract for MDX component names so the remark pipeline can flatten those components into Markdown for agents, LLM bundles, search indexes, and validation.
 
-The root export is intentionally small. It gives consumers a ready-to-spread MDX component map and the individual component implementations used by that map.
+## App-Owned Adapter Map
 
-## Default Adapter Map
+Define your own `mdxComponents` map in the docs app. The smoke app keeps its example implementation under `apps/docs-smoke/src/components/docs-mdx`.
 
-`mdxComponents` includes:
+Common component names handled by the default remark pipeline include:
 
-- `AutoTypeTable`
+- `Accordion`
+- `AccordionItem`
+- `ExtractedTypeTable`
 - `Callout`
 - `Card`
 - `Cards`
+- `Example`
 - `Mermaid`
-- `PackageCommandTabs`
+- `CommandTabs`
 - `Selector`
 - `Step`
 - `Steps`
 - `Tab`
 - `Tabs`
+- `TopicSwitcher`
 - `TypeTable`
 
 Use it like this:
 
 ```tsx
-import { mdxComponents } from "@inth/docs";
+import { mdxComponents } from "@/components/docs-mdx";
 
 const components = {
   ...mdxComponents,
-  Callout: MyCallout,
 };
 ```
 
-Override individual entries rather than replacing the full map unless you want to own all component bindings.
+If your app uses different names, add custom remark plugins or adapter components that map authored MDX back to the names handled by the pipeline.
 
 ## Important Components
 
-### `PackageCommandTabs`
+### `Accordion` and `AccordionItem`
+
+Use for secondary details that should be collapsible in the browser but still available to markdown conversion, search, and LLM bundles.
+
+```tsx
+<Accordion>
+  <AccordionItem title="When should I use this?">
+    Use accordions for supporting details, troubleshooting notes, and optional reference material.
+  </AccordionItem>
+</Accordion>
+```
+
+Closed content is still flattened by the remark pipeline, so do not use accordions to hide content from generated outputs.
+
+### `CommandTabs`
 
 Use for package-manager-specific install or run commands.
 
 ```tsx
-<PackageCommandTabs command="@inth/docs" />
-<PackageCommandTabs
+<CommandTabs command="@inth/docs" mode="install" />
+<CommandTabs command="inth-docs-lint" mode="run" />
+<CommandTabs command="next-app" mode="create" />
+<CommandTabs
   commands={{
     npm: "npm install @inth/docs",
     pnpm: "pnpm add @inth/docs",
@@ -60,20 +77,71 @@ Use for package-manager-specific install or run commands.
 />
 ```
 
-`command` accepts a package or CLI string and can include a `{pm}` placeholder. Use `commands` for per-manager overrides and `defaultManager` to choose the initial tab.
+Use `mode="install"` when `command` is a package name, `mode="run"` when `command` is a CLI name, and `mode="create"` for starter commands such as `pnpm create next-app`. `command` can also include a `{pm}` placeholder for custom templates. Use `commands` for exact per-manager overrides and `defaultManager` to choose the initial tab.
 
-### `TypeTable` and `AutoTypeTable`
+### `Example`
 
-Use `TypeTable` for explicit prop or type rows you already know. Use `AutoTypeTable` when the docs should extract types from source files.
+Use for data-driven preview and source examples. The app-owned component receives code as data; host apps can add filesystem loaders or dynamic imports outside `@inth/docs` when they need app-specific behavior.
 
-`AutoTypeTable` is the most path-sensitive component in the set. If it needs to resolve project files, pair it with the matching remark plugin configuration and set a stable base path.
+```tsx
+<Example
+  title="Render MDX"
+  description="Preview the output and inspect the source."
+  filename="mdx-components.tsx"
+  language="tsx"
+  code={`import { mdxComponents } from "@/components/docs-mdx";
+
+export const components = {
+  ...mdxComponents,
+};`}
+>
+  <Callout title="Runtime components" variant="success">
+    The host app owns styling and runtime components while `@inth/docs` owns conversion.
+  </Callout>
+</Example>
+```
+
+Use `sourceFiles` when an example needs to show supporting files in addition to the primary snippet.
+
+### `TypeTable` and `ExtractedTypeTable`
+
+Use `TypeTable` for explicit prop or type rows you already know. Use `ExtractedTypeTable` when the docs should extract types from source files.
+
+`ExtractedTypeTable` is the most path-sensitive component in the set. If it needs to resolve project files, pair it with the matching remark plugin configuration and set a stable base path.
 
 ### `Tabs`, `Tab`, `Steps`, `Step`
 
-These components are primarily authoring affordances in MDX. When the markdown conversion pipeline runs, their content is flattened into standard markdown so agents do not need JSX-aware renderers.
+These component names are primarily authoring affordances in MDX. When the markdown conversion pipeline runs, their content is flattened into standard markdown so agents do not need JSX-aware renderers.
+
+### `TopicSwitcher`
+
+Use for reader-facing navigation across equivalent documentation topics.
+
+```tsx
+<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    {
+      value: "react",
+      label: "React",
+      href: "/docs/frameworks/react/quickstart",
+      description: "React integration",
+    },
+    {
+      value: "vue",
+      label: "Vue",
+      href: "/docs/frameworks/vue/quickstart",
+      description: "Vue integration",
+    },
+  ]}
+/>
+```
+
+`TopicSwitcher` is intentionally generic. Frameworks are one topic category, but the same component can represent SDKs, runtimes, deployment targets, product areas, or other equivalent slices of docs. It does not automatically read LLM topic config.
 
 ## Guidance
 
-- Prefer the package root export for React doc-site rendering.
-- Override styling in the host app rather than forking the semantics.
+- Keep runtime components in the docs app.
+- Keep component names stable when the conversion pipeline depends on them.
 - If the goal is agent-readable markdown, read [Remark](/docs/remark) instead of reimplementing the JSX flattening rules.

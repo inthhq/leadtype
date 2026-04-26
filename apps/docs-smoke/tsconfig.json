@@ -1,11 +1,29 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@repo/typescript-config/base.json",
+  "extends": "../../packages/typescript-config/base.json",
+  "include": [
+    "playwright.config.ts",
+    "scripts/**/*",
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "vite.config.ts"
+  ],
   "compilerOptions": {
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "allowImportingTsExtensions": true
-  },
-  "include": ["scripts/**/*"]
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
+    "baseUrl": ".",
+    "types": ["vite/client"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
 }

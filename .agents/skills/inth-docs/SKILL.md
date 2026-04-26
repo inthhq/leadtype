@@ -22,10 +22,10 @@ Use the packaged agent docs as reference data. Prefer the installed package copy
 
 Start with `docs/llms.txt`, then open the smallest matching topic page:
 
-- `components.md` for `mdxComponents`, `PackageCommandTabs`, `TypeTable`, and MDX rendering.
-- `convert.md` for `convertMdxFile`, `convertSingleMdxFile`, and `convertAllMdx`.
+- `components.md` for `mdxComponents`, `CommandTabs`, `TypeTable`, `ExtractedTypeTable`, and MDX rendering.
+- `convert.md` for `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`, and `convertAllMdx`.
 - `remark.md` for `defaultRemarkPlugins`, `remarkInclude`, and plugin ordering.
-- `llm.md` for `generateLLMSummaries`, `generateLLMFullFiles`, and topic design.
+- `llm.md` for `generateLlmsTxt`, `generateLLMFullContextFiles`, and topic design.
 - `lint.md` for `lintDocs`, schema overrides, and `inth-docs-lint`.
 
 Open `docs/llms-full.txt` only when the summary page is insufficient.
