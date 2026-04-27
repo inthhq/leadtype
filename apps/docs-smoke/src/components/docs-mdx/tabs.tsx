@@ -18,6 +18,8 @@ interface TabsContextValue {
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
+const ID_TOKEN_UNSAFE_CHARACTER_PATTERN = /[^A-Za-z0-9_-]/g;
+const ID_TOKEN_WHITESPACE_PATTERN = /\s+/g;
 
 function useTabsContext(): TabsContextValue {
   const ctx = useContext(TabsContext);
@@ -29,6 +31,27 @@ function useTabsContext(): TabsContextValue {
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/\s+/g, "-");
+}
+
+function normalizeIdToken(value: string): string {
+  return value
+    .trim()
+    .replace(ID_TOKEN_WHITESPACE_PATTERN, "-")
+    .replace(ID_TOKEN_UNSAFE_CHARACTER_PATTERN, "");
+}
+
+function resolveGroupId(
+  providedGroupId: string | undefined,
+  generatedGroupId: string
+): string {
+  if (providedGroupId !== undefined) {
+    const normalizedProvidedGroupId = normalizeIdToken(providedGroupId);
+    if (normalizedProvidedGroupId) {
+      return normalizedProvidedGroupId;
+    }
+  }
+
+  return normalizeIdToken(generatedGroupId) || "tabs";
 }
 
 /**
@@ -66,7 +89,7 @@ export function Tabs({
   const initial = items[defaultIndex] ?? items[0] ?? "";
   const [activeValue, setActiveValue] = useState(normalize(initial));
   const generatedGroupId = useId();
-  const groupId = providedGroupId ?? generatedGroupId;
+  const groupId = resolveGroupId(providedGroupId, generatedGroupId);
 
   const value = useMemo<TabsContextValue>(
     () => ({ items, activeValue, setActiveValue, groupId }),

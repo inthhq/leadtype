@@ -8,16 +8,9 @@ export {
 export {
   Callout,
   type CalloutProps,
-  type CalloutTypeAlias,
   type CalloutVariant,
 } from "./callout";
-export {
-  Card,
-  type CardProps,
-  Cards,
-  type CardsProps,
-  type CardVariant,
-} from "./card";
+export { Card, type CardProps, Cards, type CardsProps } from "./card";
 export {
   type CommandMode,
   CommandTabs,

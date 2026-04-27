@@ -1,27 +1,6 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
-export * from "./libs";
-export { remarkAccordionToMarkdown } from "./plugins/accordion.remark";
-export { remarkCalloutToMarkdown } from "./plugins/callout.remark";
-export { remarkCardsToMarkdown } from "./plugins/cards.remark";
-export { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
-export { remarkDetailsToMarkdown } from "./plugins/details.remark";
-export { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
-export { remarkExampleToMarkdown } from "./plugins/example.remark";
 export { remarkInclude } from "./plugins/include.remark";
-export { remarkLinkIcon } from "./plugins/link-icon.remark";
-export { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
-export { remarkRemoveImports } from "./plugins/remove-imports.remark";
-export { remarkRemoveJsxComments } from "./plugins/remove-jsx-comments.remark";
-export { remarkSectionToMarkdown } from "./plugins/section.remark";
-export { remarkStepsToMarkdown } from "./plugins/steps.remark";
-export { remarkTabsToMarkdown } from "./plugins/tabs.remark";
-export {
-  extractTocFromContent,
-  extractTocFromFile,
-  type TOCItem,
-} from "./plugins/toc-extract.remark";
-export { remarkTopicSwitcherToMarkdown } from "./plugins/topic-switcher.remark";
 export {
   extractTypeFromFile,
   remarkTypeTableToMarkdown,
