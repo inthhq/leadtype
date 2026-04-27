@@ -7,7 +7,7 @@
     "dev": "bun run --filter @inth/docs build && portless run vite dev",
     "build": "bun run --filter @inth/docs build && vite build",
     "preview": "portless run vite preview",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsgo --noEmit",
     "test:e2e": "bun run --filter @inth/docs build && playwright test",
     "convert": "bun run pipeline:convert",
     "llm": "bun run pipeline:llm",
@@ -49,6 +49,7 @@
     "@mdx-js/rollup": "^3.1.1",
     "@playwright/test": "^1.54.2",
     "@tailwindcss/vite": "^4.2.1",
+    "@typescript/native-preview": "7.0.0-dev.20260427.1",
     "@types/mdast": "^4.0.4",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.10.0",
@@ -56,7 +57,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.2.0",
     "remark-frontmatter": "^5.0.0",
-    "typescript": "5.9.2",
+    "typescript": "6.0.3",
     "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4"
   }

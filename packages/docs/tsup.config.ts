@@ -16,7 +16,11 @@ export default defineConfig({
     "lint/cli": "src/lint/cli.ts",
   },
   format: ["esm"],
-  dts: true,
+  dts: {
+    compilerOptions: {
+      ignoreDeprecations: "6.0",
+    },
+  },
   clean: true,
   sourcemap: true,
   target: "es2022",
