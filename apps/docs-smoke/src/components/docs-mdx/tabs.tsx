@@ -41,10 +41,10 @@ function normalizeIdToken(value: string): string {
 }
 
 function resolveGroupId(
-  providedGroupId: string | undefined,
+  providedGroupId: unknown,
   generatedGroupId: string
 ): string {
-  if (providedGroupId !== undefined) {
+  if (typeof providedGroupId === "string") {
     const normalizedProvidedGroupId = normalizeIdToken(providedGroupId);
     if (normalizedProvidedGroupId) {
       return normalizedProvidedGroupId;
