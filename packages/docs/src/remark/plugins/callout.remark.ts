@@ -35,8 +35,11 @@ function variantLabelAndEmoji(raw: string | null): {
 } {
   const v = (raw ?? "info").toLowerCase();
   switch (v) {
+    case "warn":
     case "warning":
       return { variant: "warning", emoji: "⚠️", label: "Warning:" };
+    case "note":
+      return { variant: "note", emoji: "📝", label: "Note:" };
     case "tip":
       return { variant: "tip", emoji: "💡", label: "Tip:" };
     case "success":

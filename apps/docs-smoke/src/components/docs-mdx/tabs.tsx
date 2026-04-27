@@ -18,6 +18,8 @@ interface TabsContextValue {
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
+const ID_TOKEN_UNSAFE_CHARACTER_PATTERN = /[^A-Za-z0-9_-]/g;
+const ID_TOKEN_WHITESPACE_PATTERN = /\s+/g;
 
 function useTabsContext(): TabsContextValue {
   const ctx = useContext(TabsContext);
@@ -29,6 +31,27 @@ function useTabsContext(): TabsContextValue {
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/\s+/g, "-");
+}
+
+function normalizeIdToken(value: string): string {
+  return value
+    .trim()
+    .replace(ID_TOKEN_WHITESPACE_PATTERN, "-")
+    .replace(ID_TOKEN_UNSAFE_CHARACTER_PATTERN, "");
+}
+
+function resolveGroupId(
+  providedGroupId: unknown,
+  generatedGroupId: string
+): string {
+  if (typeof providedGroupId === "string") {
+    const normalizedProvidedGroupId = normalizeIdToken(providedGroupId);
+    if (normalizedProvidedGroupId) {
+      return normalizedProvidedGroupId;
+    }
+  }
+
+  return normalizeIdToken(generatedGroupId) || "tabs";
 }
 
 /**
@@ -47,13 +70,26 @@ function panelId(groupId: string, normalized: string, index: number): string {
 export interface TabsProps {
   children?: ReactNode;
   defaultIndex?: number;
+  /**
+   * Stable id used to derive trigger/panel DOM ids. Useful for SSR-stable
+   * markup. Must be unique per page — duplicate `groupId`s will produce
+   * duplicate `aria-controls`/`id` attributes. This does NOT sync state
+   * across multiple `<Tabs>` instances.
+   */
+  groupId?: string;
   items?: string[];
 }
 
-export function Tabs({ items = [], defaultIndex = 0, children }: TabsProps) {
+export function Tabs({
+  items = [],
+  defaultIndex = 0,
+  groupId: providedGroupId,
+  children,
+}: TabsProps) {
   const initial = items[defaultIndex] ?? items[0] ?? "";
   const [activeValue, setActiveValue] = useState(normalize(initial));
-  const groupId = useId();
+  const generatedGroupId = useId();
+  const groupId = resolveGroupId(providedGroupId, generatedGroupId);
 
   const value = useMemo<TabsContextValue>(
     () => ({ items, activeValue, setActiveValue, groupId }),
