@@ -9,6 +9,10 @@
   },
   "sideEffects": false,
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./remark": {
       "types": "./dist/remark/index.d.ts",
       "import": "./dist/remark/index.js"
@@ -54,20 +58,17 @@
       "import": "./dist/lint/index.js"
     }
   },
-  "bin": {
-    "inth-docs-lint": "./dist/lint/cli.js"
-  },
+  "bin": "./dist/cli.js",
   "files": [
     "dist",
-    "agent-docs",
+    "docs",
     "README.md"
   ],
   "scripts": {
-    "build": "bun run docs:agent && tsup",
+    "build": "tsup && bun run docs:generate",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
-    "docs:agent": "bun run docs:agent:generate",
-    "docs:agent:generate": "bun run ./scripts/generate-agent-docs.ts",
+    "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
     "test": "vitest run"
   },

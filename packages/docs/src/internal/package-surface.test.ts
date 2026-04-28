@@ -4,8 +4,9 @@ import packageJson from "../../package.json";
 const exportedPaths = Object.keys(packageJson.exports);
 
 describe("package surface", () => {
-  it("does not expose runtime component entry points", () => {
+  it("matches the documented entry-point list", () => {
     const expectedExportedPaths = [
+      ".",
       "./remark",
       "./convert",
       "./llm",
@@ -23,8 +24,9 @@ describe("package surface", () => {
     expect(new Set(exportedPaths)).toEqual(new Set(expectedExportedPaths));
   });
 
-  it("does not expose root or runtime component adapters", () => {
-    expect(exportedPaths).not.toContain(".");
+  it("does not expose framework-specific runtime component adapters", () => {
     expect(exportedPaths).not.toContain("./react");
+    expect(exportedPaths).not.toContain("./vue");
+    expect(exportedPaths).not.toContain("./svelte");
   });
 });

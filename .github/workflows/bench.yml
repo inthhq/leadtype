@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "packages/docs/**"
-      - "apps/docs-smoke/**"
+      - "apps/example/**"
       - ".github/workflows/bench.yml"
 
 # Don't stack benchmarks on rapid pushes — last one wins.
@@ -44,4 +44,4 @@ jobs:
       - name: Run benchmark
         env:
           BENCH_RUNS: "3"
-        run: cd apps/docs-smoke && bun run bench
+        run: cd apps/example && bun run bench

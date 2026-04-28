@@ -13,10 +13,11 @@ Use the packaged agent docs as reference data. Prefer the installed package copy
 
 ## Path Priority
 
-1. `node_modules/@inth/docs/agent-docs/docs/llms.txt`
-2. `node_modules/@inth/docs/agent-docs/docs/<topic>.md`
-3. `packages/docs/agent-docs/docs/llms.txt`
-4. `packages/docs/agent-docs/docs/<topic>.md`
+1. `node_modules/@inth/docs/docs/llms.txt`
+2. `node_modules/@inth/docs/docs/<topic>.md`
+3. `packages/docs/docs/llms.txt` (generated; run `bun run --filter @inth/docs build` first)
+4. `packages/docs/docs/<topic>.md` (generated)
+5. `docs/<topic>.mdx` (repo-root source — fallback when generated output is absent)
 
 ## Topic Routing
 

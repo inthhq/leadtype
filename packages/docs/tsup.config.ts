@@ -2,6 +2,7 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: {
+    index: "src/index.ts",
     "remark/index": "src/remark/index.ts",
     "convert/index": "src/convert/index.ts",
     "llm/index": "src/llm/index.ts",
@@ -13,7 +14,7 @@ export default defineConfig({
     "search/tanstack-index": "src/search/tanstack-index.ts",
     "search/cloudflare-index": "src/search/cloudflare-index.ts",
     "lint/index": "src/lint/index.ts",
-    "lint/cli": "src/lint/cli.ts",
+    cli: "src/cli.ts",
   },
   format: ["esm"],
   dts: true,
@@ -24,7 +25,7 @@ export default defineConfig({
   treeshake: true,
   onSuccess: async () => {
     const { chmod, readFile, writeFile } = await import("node:fs/promises");
-    const cli = "dist/lint/cli.js";
+    const cli = "dist/cli.js";
     const contents = await readFile(cli, "utf8");
     if (!contents.startsWith("#!")) {
       await writeFile(cli, `#!/usr/bin/env node\n${contents}`);

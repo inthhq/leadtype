@@ -53,6 +53,7 @@ export const defaultFrontmatterSchema = v.object({
 
   // Categorization
   tags: v.optional(v.array(v.string())),
+  group: v.optional(v.union([v.string(), v.array(v.string())])),
   availableIn: v.optional(v.array(availableInEntry)),
 
   // Layout

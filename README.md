@@ -12,7 +12,7 @@ Shared docs tooling for Inth docs projects: framework-neutral MDX-to-markdown co
 - `@inth/docs/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
 - `@inth/docs/search/tanstack`: TanStack AI answer streaming and bash tools
 - `@inth/docs/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
-- `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
+- `@inth/docs/lint`: docs validation and the `@inth/docs lint` CLI
 
 ## Install
 
@@ -28,7 +28,7 @@ pnpm add @inth/docs
 
 ## Live Example App
 
-The repo includes a canonical consumer demo at `apps/docs-smoke`.
+The repo includes a canonical consumer demo at `apps/example`.
 
 - Renders real `.mdx` fixture files through app-owned `mdxComponents`.
 - Uses TanStack Start for SSR and hydration coverage.
@@ -44,16 +44,16 @@ bun run demo:dev
 Pipeline and browser checks:
 
 ```bash
-bun run --filter docs-smoke pipeline:build
-bun run --filter docs-smoke pipeline:test
-bun run --filter docs-smoke test:e2e
+bun run --filter example pipeline:build
+bun run --filter example pipeline:test
+bun run --filter example test:e2e
 ```
 
 Validation layers:
 
 - Package unit tests in `packages/docs/src/**/*.test.ts*` cover framework-neutral conversion, search, linting, and generated docs behavior.
-- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` cover MDX conversion, LLM generation, and `ExtractedTypeTable`.
-- The TanStack Start demo app in `apps/docs-smoke/src` covers real browser rendering and hydration.
+- Pipeline fixtures in `apps/example/scripts` and `apps/example/content` cover MDX conversion, LLM generation, and `ExtractedTypeTable`.
+- The TanStack Start demo app in `apps/example/src` covers real browser rendering and hydration.
 
 ## Where This Fits
 
@@ -91,13 +91,13 @@ await convertAllMdx({
 import { generateLLMFullContextFiles, generateLlmsTxt } from "@inth/docs/llm";
 ```
 
-Run the packaged agent-doc generator locally with:
+Source MDX for the package's own docs lives at the repo root in `/docs` (with `meta.json`). Run the docs generator locally with:
 
 ```bash
-INTH_DOCS_AGENT_BASE_URL=https://docs.example.com/@inth/docs bun run docs:agent
+INTH_DOCS_AGENT_BASE_URL=https://docs.example.com/@inth/docs bun run --filter @inth/docs docs:generate
 ```
 
-This writes a bundled reference set into `packages/docs/agent-docs/`.
+This converts `/docs/*.mdx` into `packages/docs/docs/` (markdown, `llms.txt`, `llms-full.txt`, `llms-full/`). The output folder is gitignored and produced fresh at build time; only the converted output ships in the published tarball — the `.mdx` source does not.
 
 ### Generate a static search index
 
@@ -114,18 +114,18 @@ At runtime, query the generated JSON with `@inth/docs/search`. Add a provider en
 
 ## Agent Docs
 
-The package now ships a small, topic-scoped agent reference bundle:
+The package ships a small, topic-scoped agent reference bundle in `docs/`:
 
-- `agent-docs/docs/llms.txt`: routing index
-- `agent-docs/docs/components.md`
-- `agent-docs/docs/convert.md`
-- `agent-docs/docs/remark.md`
-- `agent-docs/docs/llm.md`
-- `agent-docs/docs/search.md`
-- `agent-docs/docs/lint.md`
+- `docs/llms.txt`: routing index
+- `docs/components.md`
+- `docs/convert.md`
+- `docs/remark.md`
+- `docs/llm.md`
+- `docs/search.md`
+- `docs/lint.md`
 
 Set `INTH_DOCS_AGENT_BASE_URL` to the hosted docs base before generating publishable `llms*.txt` files.
 
 ## Repo Skill
 
-This repo also includes a local agent skill at `.agents/skills/inth-docs/SKILL.md`. It routes agents to the packaged `agent-docs` bundle in `node_modules/@inth/docs/agent-docs` and falls back to the local workspace copy when the package is not installed.
+This repo also includes a local agent skill at `.agents/skills/inth-docs/SKILL.md`. It routes agents to the packaged `docs` bundle in `node_modules/@inth/docs/docs` and falls back to the local workspace copy at `packages/docs/docs/` when the package is not installed.
