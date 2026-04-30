@@ -371,7 +371,7 @@ export async function runGenerateCommand(
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
-      remarkPlugins: defaultRemarkPlugins,
+      remarkPlugins: [...defaultRemarkPlugins],
       enrichFrontmatterFromGit: args.enrichGit,
     });
 
