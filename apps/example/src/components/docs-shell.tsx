@@ -28,6 +28,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
               >
                 {section.links.map((link) => (
                   <Link
+                    aria-current={pathname === link.to ? "page" : undefined}
                     className={cn(
                       "block rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-secondary hover:text-foreground",
                       pathname === link.to && "bg-secondary text-foreground"

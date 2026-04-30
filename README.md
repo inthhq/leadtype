@@ -38,7 +38,7 @@ Local workflow:
 
 ```bash
 bun install
-bun run demo:dev
+bun run dev
 ```
 
 Pipeline and browser checks:

@@ -23,6 +23,18 @@ const EXAMPLE_AI_QUESTIONS = [
   "How do I lint and convert my docs?",
 ];
 
+function getSearchShortcutLabel() {
+  if (typeof navigator === "undefined") {
+    return "Ctrl+K";
+  }
+
+  const platform = navigator.platform.toLowerCase();
+  const userAgent = navigator.userAgent.toLowerCase();
+  return platform.includes("mac") || userAgent.includes("mac")
+    ? "⌘K"
+    : "Ctrl+K";
+}
+
 /**
  * Cmd+K (or Ctrl+K) docs search popover. Reuses `useDocsSearch` so the popover
  * and the standalone /search page share one state machine. Shows live results
@@ -39,6 +51,7 @@ export function SearchBar() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [shortcutLabel, setShortcutLabel] = useState("Ctrl+K");
   const search = useDocsSearch();
   const {
     answer,
@@ -57,6 +70,10 @@ export function SearchBar() {
   const open = useCallback(() => {
     setIsOpen(true);
     setActiveIndex(0);
+  }, []);
+
+  useEffect(() => {
+    setShortcutLabel(getSearchShortcutLabel());
   }, []);
 
   const close = useCallback(() => {
@@ -160,15 +177,17 @@ export function SearchBar() {
       <button
         aria-expanded={isOpen}
         aria-haspopup="dialog"
+        aria-keyshortcuts="Meta+K Control+K"
         className="inline-flex min-h-9 items-center gap-3 rounded-md border border-border bg-secondary/40 px-3 text-muted-foreground text-sm transition-colors hover:bg-secondary hover:text-foreground"
         onClick={open}
         ref={triggerRef}
+        title={`Search docs (${shortcutLabel})`}
         type="button"
       >
         <SearchIcon />
         <span className="hidden sm:inline">Search docs</span>
         <kbd className="ml-2 hidden rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline">
-          ⌘K
+          {shortcutLabel}
         </kbd>
       </button>
 
