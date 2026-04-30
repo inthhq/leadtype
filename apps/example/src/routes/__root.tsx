@@ -51,13 +51,18 @@ function ScrollToHash() {
     }
     // Wait two frames so the destination route has rendered before we look up
     // the element by id. Single RAF is sometimes too early on initial mount.
+    let inner: number | null = null;
     const outer = requestAnimationFrame(() => {
-      const inner = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
         document.getElementById(id)?.scrollIntoView({ block: "start" });
       });
-      return inner;
     });
-    return () => cancelAnimationFrame(outer);
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner !== null) {
+        cancelAnimationFrame(inner);
+      }
+    };
   }, [hash]);
   return null;
 }

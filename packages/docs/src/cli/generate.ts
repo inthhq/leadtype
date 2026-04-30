@@ -14,6 +14,7 @@ import { generateDocsSearchFiles } from "../search/node";
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
 const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
+const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
 
@@ -95,6 +96,10 @@ function readValue(argv: string[], index: number, flag: string): string {
   return value;
 }
 
+function isGenerateFormat(value: string): value is GenerateFormat {
+  return FORMAT_VALUES.has(value);
+}
+
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
     docsDir: DEFAULT_DOCS_DIR,
@@ -131,10 +136,10 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.enrichGit = true;
     } else if (arg === "--format") {
       const value = readValue(argv, ++i, "--format");
-      if (!FORMAT_VALUES.has(value)) {
+      if (!isGenerateFormat(value)) {
         throw new Error(`--format must be text|json, got ${value}`);
       }
-      args.format = value as GenerateFormat;
+      args.format = value;
     } else if (arg === "--json") {
       args.format = "json";
     } else if (arg) {
@@ -169,13 +174,26 @@ async function inferGroups(docsDir: string): Promise<DocsGroup[]> {
   });
   const slugs = new Set<string>();
 
-  for (const file of files) {
-    const raw = await readFile(file, "utf8");
-    const parsed = matter(raw);
-    for (const slug of normalizeGroupValues(parsed.data.group)) {
-      const trimmed = slug.trim();
-      if (trimmed.length > 0) {
-        slugs.add(trimmed);
+  for (
+    let index = 0;
+    index < files.length;
+    index += INFER_GROUPS_READ_BATCH_SIZE
+  ) {
+    const batch = files.slice(index, index + INFER_GROUPS_READ_BATCH_SIZE);
+    const groupArrays = await Promise.all(
+      batch.map(async (file) => {
+        const raw = await readFile(file, "utf8");
+        const parsed = matter(raw);
+        return normalizeGroupValues(parsed.data.group);
+      })
+    );
+
+    for (const groups of groupArrays) {
+      for (const slug of groups) {
+        const trimmed = slug.trim();
+        if (trimmed.length > 0) {
+          slugs.add(trimmed);
+        }
       }
     }
   }
@@ -340,34 +358,12 @@ export async function runGenerateCommand(
     return 1;
   }
 
-  const product = await readPackageProduct(srcDir, args);
-  let sourceMirror: SourceMirror;
+  let sourceMirror: SourceMirror | undefined;
   try {
+    const product = await readPackageProduct(srcDir, args);
     sourceMirror = await createSourceMirror(srcDir, docsDir, args);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (args.format === "json") {
-      io.stderr.write(
-        `${JSON.stringify(
-          {
-            error: message,
-            filters: {
-              exclude: args.exclude,
-              include: args.include,
-            },
-          },
-          null,
-          2
-        )}\n`
-      );
-    } else {
-      io.stderr.write(`@inth/docs generate: ${message}\n`);
-    }
-    return 1;
-  }
-  const groups = await inferGroups(sourceMirror.docsDir);
+    const groups = await inferGroups(sourceMirror.docsDir);
 
-  try {
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
@@ -417,8 +413,28 @@ export async function runGenerateCommand(
     } else {
       io.stdout.write(`Generated docs pipeline output in ${outDir}\n`);
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (args.format === "json") {
+      io.stderr.write(
+        `${JSON.stringify(
+          {
+            error: message,
+            filters: {
+              exclude: args.exclude,
+              include: args.include,
+            },
+          },
+          null,
+          2
+        )}\n`
+      );
+    } else {
+      io.stderr.write(`@inth/docs generate: ${message}\n`);
+    }
+    return 1;
   } finally {
-    await sourceMirror.cleanup();
+    await sourceMirror?.cleanup();
   }
   return 0;
 }

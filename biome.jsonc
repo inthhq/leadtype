@@ -18,7 +18,7 @@
       "!**/public",
       "!**/public-real",
       "!**/routeTree.gen.ts",
-      "!apps/example/src/generated/docs-search-*.json"
+      "!apps/example/src/generated/*.json"
     ]
   },
   "overrides": [

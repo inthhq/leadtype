@@ -89,6 +89,7 @@ The published package includes:
 These files are intended for coding agents and other tooling that need small, topic-scoped references instead of a full docs site.
 
 Set `INTH_DOCS_AGENT_BASE_URL` before generating publishable agent docs so the bundled routers point at the hosted docs base.
+For the example app generator, base URL precedence is `INTH_DOCS_AGENT_BASE_URL`, then generic deployment `BASE_URL`, then `PORTLESS_URL`, then the local default.
 When the variable is absent, local builds fall back to `https://example.invalid/@inth/docs` so `bun run build` still succeeds in a clean workspace.
 
 ## Generate A Search Index

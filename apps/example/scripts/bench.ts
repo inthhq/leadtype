@@ -32,6 +32,23 @@ const OUT_DIR = join(process.cwd(), "public-bench");
 // LLM gen expects .md files under `{outDir}/docs/`, so convert writes into
 // `OUT_DIR/docs/` to match the convention.
 const CONVERT_OUT_DIR = join(OUT_DIR, "docs");
+const BENCH_GROUPS = [
+  {
+    slug: "frameworks",
+    title: "Frameworks",
+    description: "Framework-specific guides.",
+  },
+  {
+    slug: "integrations",
+    title: "Integrations",
+    description: "Integration guides.",
+  },
+  {
+    slug: "self-host",
+    title: "Self-host",
+    description: "Self-hosting guides.",
+  },
+];
 
 if (!existsSync(SRC_DIR)) {
   process.stderr.write(
@@ -91,45 +108,13 @@ async function bench(): Promise<Stats[]> {
           summary: "Benchmark fixture.",
           bestStartingPoints: [],
         },
-        groups: [
-          {
-            slug: "frameworks",
-            title: "Frameworks",
-            description: "Framework-specific guides.",
-          },
-          {
-            slug: "integrations",
-            title: "Integrations",
-            description: "Integration guides.",
-          },
-          {
-            slug: "self-host",
-            title: "Self-host",
-            description: "Self-hosting guides.",
-          },
-        ],
+        groups: BENCH_GROUPS,
       });
       await generateLLMFullContextFiles({
         outDir: OUT_DIR,
         baseUrl: "https://docs.example.com",
         product: { name: "Bench SDK" },
-        groups: [
-          {
-            slug: "frameworks",
-            title: "Frameworks",
-            description: "Framework-specific guides.",
-          },
-          {
-            slug: "integrations",
-            title: "Integrations",
-            description: "Integration guides.",
-          },
-          {
-            slug: "self-host",
-            title: "Self-host",
-            description: "Self-hosting guides.",
-          },
-        ],
+        groups: BENCH_GROUPS,
       });
     });
 

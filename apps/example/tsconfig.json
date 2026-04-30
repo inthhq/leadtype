@@ -23,6 +23,7 @@
     "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"],
+      "@docs/*": ["../../docs/*"],
       "@inth/docs/remark": ["../../packages/docs/src/remark/index.ts"],
       "@inth/docs/convert": ["../../packages/docs/src/convert/index.ts"],
       "@inth/docs/llm": ["../../packages/docs/src/llm/index.ts"],

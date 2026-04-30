@@ -125,6 +125,7 @@ The package ships a small, topic-scoped agent reference bundle in `docs/`:
 - `docs/lint.md`
 
 Set `INTH_DOCS_AGENT_BASE_URL` to the hosted docs base before generating publishable `llms*.txt` files.
+For the example app generator, base URL precedence is `INTH_DOCS_AGENT_BASE_URL`, then generic deployment `BASE_URL`, then `PORTLESS_URL`, then the local default.
 
 ## Repo Skill
 

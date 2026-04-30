@@ -35,9 +35,24 @@ test("/docs renders the package overview MDX", async ({ page, request }) => {
 
   await page.goto("/docs", { waitUntil: "networkidle" });
   // Sidebar populated from docs.config.ts sections.
-  await expect(page.getByRole("link", { name: "Overview" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Components" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Convert" })).toBeVisible();
+  const overviewNav = page.getByRole("navigation", {
+    name: "Overview documentation",
+  });
+  await expect(
+    overviewNav.getByRole("link", { name: "@inth/docs" })
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", {
+        name: "Authoring And Rendering documentation",
+      })
+      .getByRole("link", { name: "Components" })
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Generation documentation" })
+      .getByRole("link", { name: "Convert" })
+  ).toBeVisible();
 });
 
 test("/docs/remark renders the remark plugin reference", async ({
@@ -116,12 +131,15 @@ test("/api/docs/search returns JSON results for a known term", async ({
   expect(data.results.length).toBeGreaterThan(0);
 });
 
-test("Cmd+K search popover opens, queries, and navigates", async ({ page }) => {
+test("keyboard shortcut search popover opens, queries, and navigates", async ({
+  page,
+}) => {
   await page.goto("/", { waitUntil: "networkidle" });
   await waitForClientHydration(page);
 
   // Open via keyboard shortcut.
-  await page.keyboard.press("Meta+k");
+  const shortcut = process.platform === "darwin" ? "Meta+k" : "Control+k";
+  await page.keyboard.press(shortcut);
   const popover = page.getByRole("dialog", { name: "Search docs" });
   await expect(popover).toBeVisible();
 

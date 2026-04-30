@@ -195,6 +195,12 @@ export function useDocsSearch(initialQuery = ""): UseDocsSearchResult {
         return data.results;
       } catch (caughtError) {
         if (isAbortError(caughtError)) {
+          if (
+            !(signal && searchControllerRef.current) ||
+            searchControllerRef.current.signal === signal
+          ) {
+            setSearchStatus("idle");
+          }
           return [];
         }
         setSearchStatus("error");
@@ -218,7 +224,8 @@ export function useDocsSearch(initialQuery = ""): UseDocsSearchResult {
     askRequestIdRef.current += 1;
     askControllerRef.current?.abort();
     askControllerRef.current = null;
-  }, []);
+    setAnswerStatus(answerConfig.enabled ? "idle" : "disabled");
+  }, [answerConfig.enabled]);
 
   const cancel = useCallback(() => {
     cancelPendingSearch();

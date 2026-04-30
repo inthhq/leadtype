@@ -1,6 +1,6 @@
 "use client";
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 import { useEffect, useId } from "react";
 import { Streamdown } from "streamdown";
@@ -123,25 +123,7 @@ function SearchRoute() {
             {results.length > 0 ? (
               <div className="divide-y divide-border rounded-lg border border-border bg-card">
                 {results.map((result) => (
-                  <a
-                    className="block space-y-2 px-4 py-4 transition-colors hover:bg-secondary"
-                    href={result.urlWithHash}
-                    key={result.id}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-medium text-foreground">
-                        {result.title}
-                      </h3>
-                      {result.headingPath.length > 0 ? (
-                        <span className="text-muted-foreground text-xs">
-                          {result.headingPath.join(" / ")}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="text-muted-foreground text-sm leading-6">
-                      {result.excerpt}
-                    </p>
-                  </a>
+                  <SearchResultLink key={result.id} result={result} />
                 ))}
               </div>
             ) : (
@@ -210,5 +192,50 @@ function SearchRoute() {
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+function SearchResultContent({ result }: { result: DemoSearchResult }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-medium text-foreground">{result.title}</h3>
+        {result.headingPath.length > 0 ? (
+          <span className="text-muted-foreground text-xs">
+            {result.headingPath.join(" / ")}
+          </span>
+        ) : null}
+      </div>
+      <p className="text-muted-foreground text-sm leading-6">
+        {result.excerpt}
+      </p>
+    </>
+  );
+}
+
+type DemoSearchResult = ReturnType<typeof useDocsSearch>["results"][number];
+
+function SearchResultLink({ result }: { result: DemoSearchResult }) {
+  const className =
+    "block space-y-2 px-4 py-4 transition-colors hover:bg-secondary";
+  const isInternalDocsPath =
+    result.urlPath === "/docs" || result.urlPath.startsWith("/docs/");
+
+  if (isInternalDocsPath) {
+    return (
+      <Link
+        className={className}
+        hash={result.anchor || undefined}
+        to={result.urlPath as never}
+      >
+        <SearchResultContent result={result} />
+      </Link>
+    );
+  }
+
+  return (
+    <a className={className} href={result.urlWithHash}>
+      <SearchResultContent result={result} />
+    </a>
   );
 }

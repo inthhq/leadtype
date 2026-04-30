@@ -15,7 +15,7 @@ Use the packaged agent docs as reference data. Prefer the installed package copy
 
 1. `node_modules/@inth/docs/docs/llms.txt`
 2. `node_modules/@inth/docs/docs/<topic>.md`
-3. `packages/docs/docs/llms.txt` (generated; run `bun run --filter @inth/docs build` first)
+3. `packages/docs/docs/llms.txt` (generated; run `bun run --filter @inth/docs docs:generate` first)
 4. `packages/docs/docs/<topic>.md` (generated)
 5. `docs/<topic>.mdx` (repo-root source — fallback when generated output is absent)
 

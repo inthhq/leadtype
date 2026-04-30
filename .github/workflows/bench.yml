@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "packages/docs/**"
+      - "docs/**"
       - "apps/example/**"
       - ".github/workflows/bench.yml"
 

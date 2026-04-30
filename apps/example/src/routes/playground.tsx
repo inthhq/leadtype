@@ -162,7 +162,7 @@ function RecipePreview({ activeValue }: { activeValue: string }) {
         command="bun run --filter example pipeline:{pm}"
         commands={{
           bun: "bun run --filter example pipeline:build",
-          npm: "npm run --filter example pipeline:build",
+          npm: "npm --workspace example run pipeline:build",
           pnpm: "pnpm --filter example pipeline:build",
           yarn: "yarn workspace example pipeline:build",
         }}

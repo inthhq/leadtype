@@ -107,11 +107,17 @@ export function SearchBar() {
     () => results.slice(0, MAX_RESULTS),
     [results]
   );
+  const visibleResultKey = useMemo(
+    () => visibleResults.map((result) => result.id).join("|"),
+    [visibleResults]
+  );
 
   // Reset selection when results change.
   useEffect(() => {
-    setActiveIndex(0);
-  }, []);
+    if (visibleResultKey || visibleResults.length === 0) {
+      setActiveIndex(0);
+    }
+  }, [visibleResultKey, visibleResults.length]);
 
   function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
@@ -175,12 +181,12 @@ export function SearchBar() {
         >
           <button
             aria-label="Close search"
-            className="absolute inset-0 -z-10 cursor-default"
+            className="absolute inset-0 z-0 cursor-default"
             onClick={close}
             tabIndex={-1}
             type="button"
           />
-          <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+          <div className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
             <div className="flex items-center gap-3 border-border border-b px-4">
               <SearchIcon />
               <label className="sr-only" htmlFor={inputId}>

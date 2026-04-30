@@ -16,6 +16,8 @@ function getExampleBaseUrl(): string {
   try {
     portlessUrl = execFileSync("portless", ["get", "example"], {
       encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 5000,
     }).trim();
   } catch {
     process.stderr.write(

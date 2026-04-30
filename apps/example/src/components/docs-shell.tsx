@@ -22,7 +22,10 @@ export function DocsShell({ children }: { children: ReactNode }) {
               <h2 className="px-3 font-medium text-foreground text-xs uppercase tracking-wider">
                 {section.title}
               </h2>
-              <nav className="space-y-0.5">
+              <nav
+                aria-label={`${section.title} documentation`}
+                className="space-y-0.5"
+              >
                 {section.links.map((link) => (
                   <Link
                     className={cn(

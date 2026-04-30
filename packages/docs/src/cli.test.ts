@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fg from "fast-glob";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "./cli";
 
@@ -259,6 +260,87 @@ describe("@inth/docs CLI", () => {
     };
     expect(error.error).toContain("No MDX files matched");
     expect(error.filters.include).toEqual(["nope/**"]);
+  });
+
+  it("rejects invalid generate formats as usage errors", async () => {
+    const capture = createCapture();
+
+    const code = await runCli(["generate", "--format", "yaml"], capture.io);
+
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("--format must be text|json");
+  });
+
+  it("cleans up mirrored sources when the generate pipeline fails", async () => {
+    const srcDir = await createTempDir();
+    const outParentDir = await createTempDir();
+    const outDir = path.join(outParentDir, "not-a-directory");
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "guides"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "package.json"),
+      JSON.stringify({
+        description: "Fixture docs.",
+        name: "fixture-docs",
+      })
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "guides", "broken.mdx"),
+      `---
+title: "Broken"
+group: guides
+---
+
+# Broken
+
+This page is valid, but the output path is not a directory.
+`
+    );
+    await writeFile(outDir, "not a directory");
+
+    const beforeTempDirs = new Set(
+      await fg("inth-docs-generate-*", {
+        absolute: true,
+        cwd: tmpdir(),
+        onlyDirectories: true,
+      })
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--include",
+        "guides/**",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    const afterTempDirs = new Set(
+      await fg("inth-docs-generate-*", {
+        absolute: true,
+        cwd: tmpdir(),
+        onlyDirectories: true,
+      })
+    );
+    const leakedTempDirs = [...afterTempDirs].filter(
+      (dir) => !beforeTempDirs.has(dir)
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as {
+      error: string;
+      filters: { include: string[] };
+    };
+    expect(error.error).toBeTruthy();
+    expect(error.filters.include).toEqual(["guides/**"]);
+    expect(leakedTempDirs).toEqual([]);
   });
 
   it("fails clearly when the docs source directory is missing", async () => {

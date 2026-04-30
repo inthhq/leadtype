@@ -71,7 +71,11 @@ if (isDirectRun()) {
       process.exit(code);
     })
     .catch((error) => {
-      process.stderr.write(`@inth/docs: ${String(error)}\n`);
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`@inth/docs: ${message}\n`);
+      if (process.env.DEBUG && error instanceof Error && error.stack) {
+        process.stderr.write(`${error.stack}\n`);
+      }
       process.exit(1);
     });
 }

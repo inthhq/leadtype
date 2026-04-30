@@ -25,6 +25,8 @@ const repoRoot = join(appRoot, "..", "..");
 const srcDir = repoRoot;
 const outDir = join(appRoot, "public");
 const generatedDir = join(appRoot, "src", "generated");
+// Base URL precedence: package-specific override, generic deployment URL,
+// portless local URL, then a stable docs example fallback.
 const baseUrl =
   process.env.INTH_DOCS_AGENT_BASE_URL?.trim() ||
   process.env.BASE_URL?.trim() ||
