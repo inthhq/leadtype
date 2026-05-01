@@ -9,6 +9,10 @@
   },
   "sideEffects": false,
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./remark": {
       "types": "./dist/remark/index.d.ts",
       "import": "./dist/remark/index.js"
@@ -54,20 +58,17 @@
       "import": "./dist/lint/index.js"
     }
   },
-  "bin": {
-    "inth-docs-lint": "./dist/lint/cli.js"
-  },
+  "bin": "./dist/cli.js",
   "files": [
     "dist",
-    "agent-docs",
+    "docs",
     "README.md"
   ],
   "scripts": {
-    "build": "bun run docs:agent && tsup",
+    "build": "tsup && bun run docs:generate",
     "dev": "tsup --watch",
     "check-types": "tsgo --noEmit",
-    "docs:agent": "bun run docs:agent:generate",
-    "docs:agent:generate": "bun run ./scripts/generate-agent-docs.ts",
+    "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
     "test": "vitest run"
   },
@@ -95,7 +96,7 @@
   "devDependencies": {
     "@cloudflare/tanstack-ai": "^0.1.7",
     "@repo/typescript-config": "*",
-    "@tanstack/ai": "^0.13.0",
+    "@tanstack/ai": "^0.14.0",
     "@typescript/native-preview": "7.0.0-dev.20260427.1",
     "@types/mdast": "4.0.4",
     "@types/node": "^22.10.0",
@@ -108,7 +109,7 @@
   },
   "peerDependencies": {
     "@cloudflare/tanstack-ai": ">=0.1.7",
-    "@tanstack/ai": ">=0.13.0",
+    "@tanstack/ai": ">=0.14.0",
     "ai": ">=6.0.0",
     "bash-tool": ">=1.3.16",
     "just-bash": ">=2.14.2",

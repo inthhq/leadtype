@@ -1,9 +1,0 @@
-# @inth/docs Generation Full Context
-
-> MDX conversion and llms.txt generation.
-
-## Topics
-
-- [Convert](./generation/convert.txt): MDX-to-markdown conversion APIs.
-- [LLM](./generation/llm.txt): Summary and full-context file generation.
-- [Search](./generation/search.txt): Static search indexes and AI answer helpers.

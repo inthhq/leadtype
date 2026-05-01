@@ -1,0 +1,107 @@
+---
+title: "Connect a docs site"
+description: "How to run the @inth/docs pipeline before building a docs app."
+group: guides
+---
+
+# Connect a docs site
+
+Use this pattern when the docs app lives separately from the package repos it documents.
+
+The docs app owns the UI. Each package repo owns its MDX content. Before the docs app builds, clone the source repos and run the `@inth/docs` pipeline over their `docs/` folders. If the package should also ship docs for agents, see [Bundle docs into a package](/docs/guides/bundle-package-docs).
+
+For a local repo, run the pipeline directly:
+
+```bash
+npx @inth/docs generate \
+  --src . \
+  --out public \
+  --base-url https://docs.example.com/@inth/docs \
+  --name "@inth/docs" \
+  --summary "Shared MDX conversion, linting, and LLM-doc generation package." \
+  --format json
+```
+
+## Config setup
+
+Use `docs.config.ts` when the source repo should own product metadata and the
+docs group tree used by generation and navigation.
+
+```ts
+import { defineDocsConfig } from "@inth/docs";
+
+export default defineDocsConfig({
+  product: {
+    name: "@inth/docs",
+    summary: "Shared MDX conversion, linting, and LLM-doc generation package.",
+    bullets: [
+      "Flattens MDX-heavy docs into clean markdown for agents.",
+      "Generates llms.txt and topic-scoped full-context bundles.",
+    ],
+    bestStartingPoints: [{ urlPath: "/docs" }],
+  },
+  groups: [
+    {
+      slug: "overview",
+      title: "Overview",
+      description: "Start here for package scope and surface selection.",
+    },
+    {
+      slug: "guides",
+      title: "Guides",
+      description: "Practical integration guides.",
+    },
+  ],
+});
+```
+
+The config describes product metadata and the group structure. Individual pages
+join groups from their MDX frontmatter:
+
+```mdx
+---
+title: "Connect a docs site"
+description: "How to run the @inth/docs pipeline before building a docs app."
+group: guides
+---
+```
+
+Do not duplicate per-page membership in `docs.config.ts`. The generator reads
+`group` from source frontmatter and uses the config tree to name and organize
+the generated `llms.txt`, full-context files, and runtime navigation data.
+
+## Build flow
+
+1. Clone the source repo into a temporary build directory.
+2. Run `@inth/docs lint` against the source docs.
+3. Run `@inth/docs generate` against the clone.
+4. Build the docs app from the generated markdown, `llms.txt`, full-context files, and search artifacts.
+
+```bash
+git clone --depth 1 https://github.com/acme/package-a .docs-src/package-a
+npx @inth/docs lint .docs-src/package-a/docs --format json --error-unknown
+npx @inth/docs generate --src .docs-src/package-a --out public/package-a
+npm run build
+```
+
+This is the same shape we expect for repos like `c15t/c15t`: source docs live in a public repo, while the rendered docs UI can be owned by another app or private template.
+
+Use `--format json` in CI or agent workflows. The command prints generated file paths, inferred groups, product metadata, and search index stats as JSON so automation can verify the result without scraping text.
+
+## Generated output
+
+The command writes:
+
+- `public/docs/**/*.md`
+- `public/llms.txt`
+- `public/docs/llms.txt`
+- `public/docs/llms-full.txt`
+- `public/docs/llms-full/*.txt`
+- `public/docs/search-index.json`
+- `public/docs/search-content.json`
+
+## When to use this
+
+Use this when you want one docs UI for many repos, but do not want every package repo to own the same website implementation.
+
+If the docs source already lives inside the docs app repo, skip the clone step and point the pipeline at the local `docs/` directory.

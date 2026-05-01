@@ -12,7 +12,7 @@ Framework-neutral docs pipeline tooling for Inth docs projects.
 - `@inth/docs/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
 - `@inth/docs/search/tanstack`: TanStack AI answer streaming and bash tools
 - `@inth/docs/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
-- `@inth/docs/lint`: docs validation and the `inth-docs-lint` CLI
+- `@inth/docs/lint`: docs validation and the `@inth/docs lint` CLI
 
 ## Install
 
@@ -40,8 +40,8 @@ await convertAllMdx({
 This package is verified in three distinct layers:
 
 - Package unit tests in `packages/docs/src/**/*.test.ts*` cover pure library behavior such as conversion, search, linting, and generated docs output.
-- Pipeline fixtures in `apps/docs-smoke/scripts` and `apps/docs-smoke/content` exercise MDX conversion, LLM generation, and `ExtractedTypeTable`.
-- The live consumer demo in `apps/docs-smoke` owns and renders its MDX components inside a TanStack Start app and provides Playwright browser coverage.
+- Pipeline fixtures in `apps/example/scripts` and `apps/example/content` exercise MDX conversion, LLM generation, and `ExtractedTypeTable`.
+- The live consumer demo in `apps/example` owns and renders its MDX components inside a TanStack Start app and provides Playwright browser coverage.
 
 Use the demo app as the reference integration when you need to see how a consumer should host and style the package in practice.
 
@@ -66,29 +66,30 @@ Do not add `@inth/docs` to product runtime code unless that runtime also renders
 
 ## Generate Agent Docs
 
-Run:
+The MDX source for this package's docs lives at the repo root in `/docs` (with `meta.json`). Run:
 
 ```bash
-INTH_DOCS_AGENT_BASE_URL=https://docs.example.com/@inth/docs bun run docs:agent
+INTH_DOCS_AGENT_BASE_URL=https://docs.example.com/@inth/docs bun run docs:generate
 ```
 
-This writes a packaged reference bundle into `agent-docs/`.
+This reads `/docs/*.mdx` and writes converted markdown plus `llms*.txt` bundles into `packages/docs/docs/`. The output folder is gitignored and produced fresh at build time; only the converted output ships in the published tarball — the `.mdx` source does not.
 
 ## Bundled Agent References
 
 The published package includes:
 
-- `agent-docs/docs/llms.txt`
-- `agent-docs/docs/components.md`
-- `agent-docs/docs/convert.md`
-- `agent-docs/docs/remark.md`
-- `agent-docs/docs/llm.md`
-- `agent-docs/docs/search.md`
-- `agent-docs/docs/lint.md`
+- `docs/llms.txt`
+- `docs/components.md`
+- `docs/convert.md`
+- `docs/remark.md`
+- `docs/llm.md`
+- `docs/search.md`
+- `docs/lint.md`
 
 These files are intended for coding agents and other tooling that need small, topic-scoped references instead of a full docs site.
 
 Set `INTH_DOCS_AGENT_BASE_URL` before generating publishable agent docs so the bundled routers point at the hosted docs base.
+For the example app generator, base URL precedence is `INTH_DOCS_AGENT_BASE_URL`, then generic deployment `BASE_URL`, then `PORTLESS_URL`, then the local default.
 When the variable is absent, local builds fall back to `https://example.invalid/@inth/docs` so `bun run build` still succeeds in a clean workspace.
 
 ## Generate A Search Index

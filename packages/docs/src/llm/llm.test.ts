@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { generateLLMFullContextFiles, generateLlmsTxt } from "./llm";
+import {
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+  resolveDocsNavigation,
+} from "./llm";
 
 const tempDirs: string[] = [];
 
@@ -21,20 +25,44 @@ afterEach(async () => {
   );
 });
 
+type SeedFile = {
+  /** Relative path under `<project>/docs/`, e.g. "frameworks/react/quickstart.md" */
+  relativePath: string;
+  frontmatter: string;
+  body?: string;
+};
+
+async function seedDocs(projectDir: string, files: SeedFile[]): Promise<void> {
+  const docsDir = path.join(projectDir, "docs");
+  await Promise.all(
+    files.map(async (file) => {
+      const fullPath = path.join(docsDir, file.relativePath);
+      await mkdir(path.dirname(fullPath), { recursive: true });
+      await writeFile(
+        fullPath,
+        `---\n${file.frontmatter}\n---\n${file.body ?? ""}`
+      );
+    })
+  );
+}
+
 describe("generateLlmsTxt", () => {
-  it("falls back to section-friendly titles and descriptions for index routes", async () => {
+  it("renders curated docs sections from the group tree and frontmatter", async () => {
     const projectDir = await createTempProject();
-    const docsDir = path.join(projectDir, "docs", "frameworks");
     const outDir = path.join(projectDir, "out");
 
-    await mkdir(docsDir, { recursive: true });
-    await writeFile(
-      path.join(docsDir, "index.mdx"),
-      `<Cards>
-  <Card title="React" href="/docs/frameworks/react/quickstart" />
-</Cards>
-`
-    );
+    await seedDocs(projectDir, [
+      {
+        relativePath: "frameworks/react/quickstart.mdx",
+        frontmatter:
+          "title: React Quickstart\ndescription: Get started with React.\ngroup: react",
+      },
+      {
+        relativePath: "frameworks/next/quickstart.mdx",
+        frontmatter:
+          "title: Next.js Quickstart\ndescription: Get started with Next.js.\ngroup: next",
+      },
+    ]);
 
     await generateLlmsTxt({
       srcDir: projectDir,
@@ -43,37 +71,48 @@ describe("generateLlmsTxt", () => {
       product: {
         name: "c15t",
         summary: "Consent platform.",
-        bestStartingPoints: [{ urlPath: "/docs/frameworks" }],
+        bestStartingPoints: [{ urlPath: "/docs/frameworks/react/quickstart" }],
       },
-      docsSections: [
+      groups: [
         {
+          slug: "frameworks",
           title: "Frameworks",
-          links: [{ urlPath: "/docs/frameworks" }],
+          description: "Framework integrations.",
+          children: [
+            {
+              slug: "react",
+              title: "React",
+              description: "React integration.",
+            },
+            {
+              slug: "next",
+              title: "Next.js",
+              description: "Next.js integration.",
+            },
+          ],
         },
       ],
     });
 
-    const rootSummary = await readFile(path.join(outDir, "llms.txt"), "utf8");
     const docsSummary = await readFile(
       path.join(outDir, "docs", "llms.txt"),
       "utf8"
     );
-
-    expect(rootSummary).toContain(
-      "[Frameworks](https://c15t.com/docs/frameworks)"
-    );
-    expect(rootSummary).toContain("Entry point for Frameworks documentation.");
-    expect(rootSummary).not.toContain("[Index]");
-    expect(docsSummary).not.toContain("No description provided.");
+    expect(docsSummary).toContain("## Frameworks");
+    expect(docsSummary).toContain("React Quickstart");
+    expect(docsSummary).toContain("Next.js Quickstart");
   });
 
-  it("uses Documentation for root index files without explicit titles", async () => {
+  it("renders the product summary even when no groups are declared", async () => {
     const projectDir = await createTempProject();
-    const docsDir = path.join(projectDir, "docs");
     const outDir = path.join(projectDir, "out");
 
-    await mkdir(docsDir, { recursive: true });
-    await writeFile(path.join(docsDir, "index.mdx"), "# Welcome\n");
+    await seedDocs(projectDir, [
+      {
+        relativePath: "index.mdx",
+        frontmatter: "title: Home\ndescription: Welcome.",
+      },
+    ]);
 
     await generateLlmsTxt({
       srcDir: projectDir,
@@ -84,10 +123,42 @@ describe("generateLlmsTxt", () => {
         summary: "Consent platform.",
         bestStartingPoints: [{ urlPath: "/docs" }],
       },
-      docsSections: [
+      groups: [],
+    });
+
+    const rootSummary = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(rootSummary).toContain("# c15t");
+    expect(rootSummary).toContain("> Consent platform.");
+  });
+
+  it("renders shared pages under every group they declare", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "rate-limiting.mdx",
+        frontmatter:
+          "title: Rate Limiting\ndescription: Shared rate-limit reference.\ngroup:\n  - search\n  - self-host",
+      },
+      {
+        relativePath: "search-only.mdx",
+        frontmatter:
+          "title: Search Only\ndescription: Search-only page.\ngroup: search",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t", summary: "Consent platform." },
+      groups: [
+        { slug: "search", title: "Search", description: "Search APIs." },
         {
-          title: "Overview",
-          links: [{ urlPath: "/docs" }],
+          slug: "self-host",
+          title: "Self-host",
+          description: "Self-host docs.",
         },
       ],
     });
@@ -96,92 +167,52 @@ describe("generateLlmsTxt", () => {
       path.join(outDir, "docs", "llms.txt"),
       "utf8"
     );
-
-    expect(docsSummary).toContain("[Documentation](https://c15t.com/docs)");
-    expect(docsSummary).not.toContain("[.](https://c15t.com/docs)");
+    const searchSection = docsSummary.split("## Search")[1] ?? "";
+    const selfHostSection = docsSummary.split("## Self-host")[1] ?? "";
+    expect(searchSection).toContain("Rate Limiting");
+    expect(selfHostSection).toContain("Rate Limiting");
+    expect(searchSection).toContain("Search Only");
+    expect(selfHostSection).not.toContain("Search Only");
   });
 });
 
-async function seedOutDir(outDir: string): Promise<void> {
-  const docsDir = path.join(outDir, "docs");
-  await mkdir(path.join(docsDir, "frameworks", "react"), { recursive: true });
-  await mkdir(path.join(docsDir, "frameworks", "next"), { recursive: true });
-  await mkdir(path.join(docsDir, "self-host", "api"), { recursive: true });
-  await mkdir(path.join(docsDir, "self-host", "guides"), { recursive: true });
-
-  const write = (relative: string, frontmatter: string, body: string) =>
-    writeFile(
-      path.join(docsDir, relative),
-      `---\n${frontmatter}\n---\n${body}`
-    );
-
-  await write(
-    "frameworks/react/quickstart.md",
-    "title: React Quickstart\ndescription: Get started with React.",
-    "# React Quickstart\n\nBody.\n"
-  );
-  await write(
-    "frameworks/next/quickstart.md",
-    "title: Next.js Quickstart\ndescription: Get started with Next.js.",
-    "# Next.js Quickstart\n\nBody.\n"
-  );
-  await write(
-    "self-host/api/configuration.md",
-    "title: Configuration\ndescription: Config reference.",
-    "# Configuration\n\nBody.\n"
-  );
-  await write(
-    "self-host/guides/caching.md",
-    "title: Caching\ndescription: Cache guide.",
-    "# Caching\n\nBody.\n"
-  );
-}
-
-describe("generateLLMFullContextFiles — nested topics", () => {
+describe("generateLLMFullContextFiles", () => {
   it("emits sub-routers and leaves at nested paths", async () => {
     const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    await seedDocs(projectDir, [
+      {
+        relativePath: "frameworks/react/quickstart.md",
+        frontmatter:
+          "title: React Quickstart\ndescription: React.\ngroup: react",
+        body: "# React Quickstart\n\nBody.\n",
+      },
+      {
+        relativePath: "frameworks/next/quickstart.md",
+        frontmatter:
+          "title: Next.js Quickstart\ndescription: Next.js.\ngroup: next",
+        body: "# Next.js Quickstart\n\nBody.\n",
+      },
+    ]);
 
     await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
-      topics: [
+      groups: [
         {
           slug: "frameworks",
           title: "Frameworks",
           description: "Framework integrations.",
-          topics: [
+          children: [
             {
               slug: "react",
               title: "React",
               description: "React integration.",
-              includePrefixes: ["frameworks/react/"],
             },
             {
               slug: "next",
               title: "Next.js",
               description: "Next.js integration.",
-              includePrefixes: ["frameworks/next/"],
-            },
-          ],
-        },
-        {
-          slug: "self-host",
-          title: "Self-host",
-          description: "Self-hosting context.",
-          topics: [
-            {
-              slug: "api",
-              title: "API Reference",
-              description: "Backend API reference.",
-              includePrefixes: ["self-host/api/"],
-            },
-            {
-              slug: "guides",
-              title: "Guides",
-              description: "Self-hosting how-to.",
-              includePrefixes: ["self-host/guides/"],
             },
           ],
         },
@@ -192,23 +223,14 @@ describe("generateLLMFullContextFiles — nested topics", () => {
       path.join(projectDir, "docs", "llms-full.txt"),
       "utf8"
     );
-
-    expect(rootRouter).toContain(
-      "[Frameworks](./llms-full/frameworks.txt): Framework integrations."
-    );
-    expect(rootRouter).toContain(
-      "  - [React](./llms-full/frameworks/react.txt): React integration."
-    );
-    expect(rootRouter).toContain(
-      "  - [Next.js](./llms-full/frameworks/next.txt): Next.js integration."
-    );
+    expect(rootRouter).toContain("Frameworks");
 
     const frameworksRouter = await readFile(
       path.join(projectDir, "docs", "llms-full", "frameworks.txt"),
       "utf8"
     );
     expect(frameworksRouter).toContain("# c15t Frameworks Full Context");
-    expect(frameworksRouter).toContain("[React](./frameworks/react.txt)");
+    expect(frameworksRouter).toContain("React");
 
     const reactLeaf = await readFile(
       path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt"),
@@ -226,58 +248,64 @@ describe("generateLLMFullContextFiles — nested topics", () => {
     expect(nextLeaf).not.toContain("React Quickstart");
   });
 
-  it("still accepts flat topics (backwards compat)", async () => {
+  it("inlines a multi-group page in every named leaf", async () => {
     const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    await seedDocs(projectDir, [
+      {
+        relativePath: "rate-limiting.md",
+        frontmatter:
+          "title: Rate Limiting\ndescription: Shared rate-limit reference.\ngroup:\n  - search\n  - self-host",
+        body: "# Rate Limiting\n\nShared body.\n",
+      },
+    ]);
 
     await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
-      topics: [
+      groups: [
+        { slug: "search", title: "Search", description: "Search APIs." },
         {
-          slug: "frameworks",
-          title: "Frameworks",
-          description: "All framework docs.",
-          includePrefixes: ["frameworks/"],
+          slug: "self-host",
+          title: "Self-host",
+          description: "Self-host docs.",
         },
       ],
     });
 
-    const flatLeaf = await readFile(
-      path.join(projectDir, "docs", "llms-full", "frameworks.txt"),
+    const searchLeaf = await readFile(
+      path.join(projectDir, "docs", "llms-full", "search.txt"),
       "utf8"
     );
-    expect(flatLeaf).toContain("React Quickstart");
-    expect(flatLeaf).toContain("Next.js Quickstart");
-    expect(
-      existsSync(
-        path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt")
-      )
-    ).toBe(false);
+    const selfHostLeaf = await readFile(
+      path.join(projectDir, "docs", "llms-full", "self-host.txt"),
+      "utf8"
+    );
+    expect(searchLeaf).toContain("Rate Limiting");
+    expect(selfHostLeaf).toContain("Rate Limiting");
   });
 
-  it("clears stale nested topic files before rewriting the topic tree", async () => {
+  it("clears stale nested files before rewriting the group tree", async () => {
     const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    await seedDocs(projectDir, [
+      {
+        relativePath: "frameworks/react/quickstart.md",
+        frontmatter:
+          "title: React Quickstart\ndescription: React.\ngroup: react",
+        body: "# React Quickstart\n",
+      },
+    ]);
 
     await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
-      topics: [
+      groups: [
         {
           slug: "frameworks",
           title: "Frameworks",
-          description: "Framework integrations.",
-          topics: [
-            {
-              slug: "react",
-              title: "React",
-              description: "React integration.",
-              includePrefixes: ["frameworks/react/"],
-            },
-          ],
+          description: "Frameworks.",
+          children: [{ slug: "react", title: "React", description: "React." }],
         },
       ],
     });
@@ -288,17 +316,13 @@ describe("generateLLMFullContextFiles — nested topics", () => {
       )
     ).toBe(true);
 
+    // Rerun with a flatter shape; the nested react.txt must be removed.
     await generateLLMFullContextFiles({
       outDir: projectDir,
       baseUrl: "https://c15t.com",
       product: { name: "c15t" },
-      topics: [
-        {
-          slug: "frameworks",
-          title: "Frameworks",
-          description: "All framework docs.",
-          includePrefixes: ["frameworks/"],
-        },
+      groups: [
+        { slug: "frameworks", title: "Frameworks", description: "Flat." },
       ],
     });
 
@@ -309,120 +333,113 @@ describe("generateLLMFullContextFiles — nested topics", () => {
     ).toBe(false);
   });
 
-  it("rejects a topic that declares both includePrefixes and topics", async () => {
+  it("rejects duplicate sibling group slugs (case-insensitive)", async () => {
     const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    await seedDocs(projectDir, [
+      {
+        relativePath: "page.md",
+        frontmatter: "title: Page\ndescription: Page.\ngroup: react",
+        body: "# Page\n",
+      },
+    ]);
 
     await expect(
       generateLLMFullContextFiles({
         outDir: projectDir,
         baseUrl: "https://c15t.com",
         product: { name: "c15t" },
-        topics: [
+        groups: [
           {
             slug: "frameworks",
             title: "Frameworks",
-            description: "Mixed.",
-            includePrefixes: ["frameworks/"],
-            topics: [
-              {
-                slug: "react",
-                title: "React",
-                description: "React.",
-                includePrefixes: ["frameworks/react/"],
-              },
+            description: "Frameworks.",
+            children: [
+              { slug: "React", title: "React", description: "React." },
+              { slug: "react", title: "React duplicate", description: "Dup." },
             ],
           },
         ],
       })
-    ).rejects.toThrow(/parent \(router\) or a leaf \(content\)/);
+    ).rejects.toThrow(/Duplicate group slug "react" under "frameworks"/i);
   });
 
-  it("rejects a topic with neither includePrefixes nor topics", async () => {
+  it("rejects an invalid group slug shape", async () => {
     const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    await seedDocs(projectDir, [
+      {
+        relativePath: "page.md",
+        frontmatter: "title: Page\ndescription: Page.\ngroup: ok",
+        body: "# Page\n",
+      },
+    ]);
 
     await expect(
       generateLLMFullContextFiles({
         outDir: projectDir,
         baseUrl: "https://c15t.com",
         product: { name: "c15t" },
-        topics: [
-          {
-            slug: "empty",
-            title: "Empty",
-            description: "Nothing.",
-          },
-        ],
+        groups: [{ slug: "Bad/Slug", title: "Bad", description: "Bad." }],
       })
-    ).rejects.toThrow(/must declare content/);
+    ).rejects.toThrow(/Invalid group slug/);
   });
+});
 
-  it("rejects duplicate sibling topic slugs", async () => {
+describe("resolveDocsNavigation", () => {
+  it("returns the group tree, attached pages, and unknown-group references", async () => {
     const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    await seedDocs(projectDir, [
+      {
+        relativePath: "frameworks/react.mdx",
+        frontmatter: "title: React\ndescription: React.\ngroup: react",
+      },
+      {
+        relativePath: "frameworks/next.mdx",
+        frontmatter: "title: Next.js\ndescription: Next.\ngroup: next",
+      },
+      {
+        relativePath: "rate-limiting.mdx",
+        frontmatter:
+          "title: Rate Limit\ndescription: Shared.\ngroup:\n  - react\n  - mystery",
+      },
+      {
+        relativePath: "ungrouped.mdx",
+        frontmatter: "title: Ungrouped\ndescription: No group.",
+      },
+    ]);
 
-    await expect(
-      generateLLMFullContextFiles({
-        outDir: projectDir,
-        baseUrl: "https://c15t.com",
-        product: { name: "c15t" },
-        topics: [
-          {
-            slug: "frameworks",
-            title: "Frameworks",
-            description: "Framework integrations.",
-            topics: [
-              {
-                slug: "react",
-                title: "React",
-                description: "React integration.",
-                includePrefixes: ["frameworks/react/"],
-              },
-              {
-                slug: "react",
-                title: "React duplicate",
-                description: "Duplicate React integration.",
-                includePrefixes: ["frameworks/next/"],
-              },
-            ],
-          },
-        ],
-      })
-    ).rejects.toThrow(/Duplicate topic slug "react" under "frameworks"/);
-  });
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      baseUrl: "https://c15t.com",
+      groups: [
+        {
+          slug: "frameworks",
+          title: "Frameworks",
+          description: "Frameworks.",
+          children: [
+            { slug: "react", title: "React", description: "React." },
+            { slug: "next", title: "Next.js", description: "Next.js." },
+          ],
+        },
+      ],
+    });
 
-  it("rejects duplicate sibling topic slugs case-insensitively", async () => {
-    const projectDir = await createTempProject();
-    await seedOutDir(projectDir);
+    expect(nav.groups).toHaveLength(1);
+    expect(nav.groups[0]?.slug).toBe("frameworks");
+    expect(nav.groups[0]?.children.map((c) => c.slug)).toEqual([
+      "react",
+      "next",
+    ]);
 
-    await expect(
-      generateLLMFullContextFiles({
-        outDir: projectDir,
-        baseUrl: "https://c15t.com",
-        product: { name: "c15t" },
-        topics: [
-          {
-            slug: "frameworks",
-            title: "Frameworks",
-            description: "Framework integrations.",
-            topics: [
-              {
-                slug: "React",
-                title: "React",
-                description: "React integration.",
-                includePrefixes: ["frameworks/react/"],
-              },
-              {
-                slug: "react",
-                title: "React duplicate",
-                description: "Duplicate React integration.",
-                includePrefixes: ["frameworks/next/"],
-              },
-            ],
-          },
-        ],
-      })
-    ).rejects.toThrow(/Duplicate topic slug "react" under "frameworks"/i);
+    const reactPages = nav.groups[0]?.children[0]?.pages.map((p) => p.title);
+    expect(reactPages).toContain("React");
+    expect(reactPages).toContain("Rate Limit");
+
+    const ungroupedTitles = nav.ungrouped.map((p) => p.title);
+    expect(ungroupedTitles).toContain("Ungrouped");
+
+    expect(nav.unknown).toContainEqual({
+      urlPath: "/docs/rate-limiting",
+      slug: "mystery",
+    });
   });
 });

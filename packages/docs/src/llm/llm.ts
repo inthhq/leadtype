@@ -4,12 +4,13 @@ import path from "node:path";
 import matter from "gray-matter";
 
 const DOCS_DIRNAME = "docs";
-const TOPIC_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 
-function assertValidTopicSlug(slug: string): string {
-  if (!TOPIC_SLUG_PATTERN.test(slug)) {
+function assertValidGroupSlug(slug: string, parentPath: string[]): string {
+  if (!SLUG_PATTERN.test(slug)) {
+    const scope = parentPath.join("/") || "root";
     throw new Error(
-      `Invalid topic slug "${slug}". Slugs must be a single URL-safe path segment (alphanumerics and dashes).`
+      `Invalid group slug "${slug}" under "${scope}". Slugs must be URL-safe (alphanumerics and dashes).`
     );
   }
   return slug;
@@ -35,6 +36,8 @@ export type SourceDoc = {
   urlPath: string;
   absoluteUrl: string;
   relativePath: string;
+  /** Group slugs declared in frontmatter `group:`. Empty array = ungrouped. */
+  groups: string[];
 };
 
 export type MarkdownDoc = SourceDoc & {
@@ -46,49 +49,6 @@ export type CuratedLink = {
   title?: string;
   description?: string;
 };
-
-export type CuratedSection = {
-  title: string;
-  description?: string;
-  links: CuratedLink[];
-};
-
-export type FullTopic = {
-  slug: string;
-  title: string;
-  description: string;
-  /**
-   * Leaf topic: page prefixes (relative to `{outDir}/docs/`) whose markdown
-   * should be inlined into this topic's `.txt`. Mutually exclusive with
-   * `topics` — a topic is either a leaf (content) or a parent (router).
-   */
-  includePrefixes?: string[];
-  /**
-   * Parent topic: nested sub-topics. Generates a router `.txt` linking to
-   * each child, and each child's file lives under `{slug}/{childSlug}.txt`.
-   */
-  topics?: FullTopic[];
-};
-
-type ResolvedLeafTopic = {
-  kind: "leaf";
-  slug: string;
-  title: string;
-  description: string;
-  segmentPath: string[];
-  includePrefixes: string[];
-};
-
-type ResolvedParentTopic = {
-  kind: "parent";
-  slug: string;
-  title: string;
-  description: string;
-  segmentPath: string[];
-  children: ResolvedTopic[];
-};
-
-type ResolvedTopic = ResolvedLeafTopic | ResolvedParentTopic;
 
 export type ProductInfo = {
   /** Product display name, e.g. "DSAR SDK" */
@@ -103,21 +63,115 @@ export type ProductInfo = {
   agentGuidance?: string;
 };
 
+/**
+ * One entry in a docs navigation group tree. A group with `children` is a
+ * router (parent); a group without `children` is a leaf and can directly
+ * contain pages whose frontmatter `group:` matches its slug.
+ */
+export type DocsGroup = {
+  slug: string;
+  title: string;
+  description?: string;
+  children?: DocsGroup[];
+};
+
+/**
+ * Combined config for the `@inth/docs` docs-generation pipeline. Pass to
+ * `defineDocsConfig` in a `docs.config.ts` file. Pages declare which group
+ * they belong to via MDX frontmatter (`group: <slug>` or `group: [a, b]`),
+ * so this config only describes the structure and metadata of groups, not
+ * per-page membership.
+ */
+export type DocsConfig = {
+  product: ProductInfo;
+  groups: DocsGroup[];
+};
+
+/**
+ * Identity helper that gives the config object full IDE autocomplete and
+ * type-checks the docs structure at edit time.
+ */
+export function defineDocsConfig(config: DocsConfig): DocsConfig {
+  return config;
+}
+
 export type LlmsTxtConfig = {
   srcDir: string;
   outDir: string;
   baseUrl?: string;
   product: ProductInfo;
-  /** Sections rendered in /docs/llms.txt */
-  docsSections?: CuratedSection[];
+  /** Group tree from `docs.config.ts`. Used for `/docs/llms.txt` sections. */
+  groups: DocsGroup[];
 };
 
 export type LLMFullContextConfig = {
   outDir: string;
   baseUrl?: string;
   product: Pick<ProductInfo, "name">;
-  topics: FullTopic[];
+  /** Group tree from `docs.config.ts`. Each leaf group becomes a `.txt`. */
+  groups: DocsGroup[];
 };
+
+type ResolvedGroup = {
+  slug: string;
+  slugKey: string;
+  title: string;
+  description?: string;
+  segmentPath: string[];
+  parent: ResolvedGroup | null;
+  children: ResolvedGroup[];
+};
+
+function resolveGroups(
+  groups: DocsGroup[],
+  parentPath: string[] = [],
+  parent: ResolvedGroup | null = null
+): ResolvedGroup[] {
+  const seen = new Set<string>();
+  return groups.map((group) => {
+    const slug = assertValidGroupSlug(group.slug, parentPath);
+    const slugKey = slug.toLowerCase();
+    if (seen.has(slugKey)) {
+      const scope = parentPath.join("/") || "root";
+      throw new Error(
+        `Duplicate group slug "${slug}" under "${scope}". Group slugs must be unique among siblings.`
+      );
+    }
+    seen.add(slugKey);
+
+    const segmentPath = [...parentPath, slug];
+    const resolved: ResolvedGroup = {
+      slug,
+      slugKey,
+      title: group.title,
+      description: group.description,
+      segmentPath,
+      parent,
+      children: [],
+    };
+    resolved.children = resolveGroups(
+      group.children ?? [],
+      segmentPath,
+      resolved
+    );
+    return resolved;
+  });
+}
+
+function flattenGroups(groups: ResolvedGroup[]): ResolvedGroup[] {
+  const result: ResolvedGroup[] = [];
+  for (const group of groups) {
+    result.push(group);
+    if (group.children.length > 0) {
+      result.push(...flattenGroups(group.children));
+    }
+  }
+  return result;
+}
+
+function isLeafGroup(group: ResolvedGroup): boolean {
+  return group.children.length === 0;
+}
 
 function titleize(input: string): string {
   return input
@@ -129,15 +183,6 @@ function titleize(input: string): string {
 
 function normalizeDescription(input: string): string {
   return input.replace(WHITESPACE_PATTERN, " ").trim();
-}
-
-function titleFromUrlPath(urlPath: string): string {
-  const segments = urlPath.split("/").filter(Boolean);
-  const lastSegment = segments.at(-1);
-  if (!lastSegment || lastSegment === "docs") {
-    return "Documentation";
-  }
-  return titleize(lastSegment);
 }
 
 function titleFromRelativePath(
@@ -154,34 +199,6 @@ function titleFromRelativePath(
   }
 
   return titleize(segment);
-}
-
-function resolveLinkTitle(link: CuratedLink, sourceDoc?: SourceDoc): string {
-  if (link.title) {
-    return link.title;
-  }
-
-  const sourceTitle = sourceDoc?.title?.trim();
-  if (sourceTitle && !GENERIC_DOC_TITLES.has(sourceTitle.toLowerCase())) {
-    return sourceTitle;
-  }
-
-  return titleFromUrlPath(sourceDoc?.urlPath ?? link.urlPath);
-}
-
-function resolveLinkDescription(
-  link: CuratedLink,
-  title: string,
-  sourceDoc?: SourceDoc
-): string {
-  const sourceDescription = normalizeDescription(sourceDoc?.description ?? "");
-  if (link.description) {
-    return link.description;
-  }
-  if (sourceDescription) {
-    return sourceDescription;
-  }
-  return `Entry point for ${title} documentation.`;
 }
 
 function normalizeBaseUrl(baseUrl?: string): string {
@@ -232,11 +249,25 @@ function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
   return `${baseUrl}${urlPath}`;
 }
 
-function isIncluded(relativePath: string, prefixes: string[]): boolean {
-  return prefixes.some((raw) => {
-    const prefix = raw.replace(TRAILING_SLASHES_PATTERN, "");
-    return relativePath === prefix || relativePath.startsWith(`${prefix}/`);
-  });
+function normalizeGroupValue(raw: unknown): string[] {
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  if (Array.isArray(raw)) {
+    const normalized: string[] = [];
+    for (const item of raw) {
+      if (typeof item !== "string") {
+        continue;
+      }
+      const trimmed = item.trim();
+      if (trimmed) {
+        normalized.push(trimmed);
+      }
+    }
+    return normalized;
+  }
+  return [];
 }
 
 type RenderedLink = {
@@ -249,16 +280,43 @@ function renderLink(link: RenderedLink): string {
   return `- [${link.title}](${link.absoluteUrl}): ${link.description}`;
 }
 
-function renderSection(
-  section: CuratedSection,
-  resolvedLinks: RenderedLink[]
-): string {
-  const lines = [`## ${section.title}`];
-  if (section.description) {
-    lines.push("", section.description);
-  }
-  lines.push("", ...resolvedLinks.map(renderLink));
-  return lines.join("\n");
+function pageToRenderedLink(doc: SourceDoc): RenderedLink {
+  const title =
+    doc.title && !GENERIC_DOC_TITLES.has(doc.title.toLowerCase())
+      ? doc.title
+      : titleize(doc.relativePath.split("/").pop() ?? "Documentation");
+  const description =
+    normalizeDescription(doc.description) ||
+    `Reference page for ${title.toLowerCase()}.`;
+  return {
+    title,
+    description,
+    absoluteUrl: doc.absoluteUrl,
+  };
+}
+
+function resolveCuratedLink(
+  link: CuratedLink,
+  sourceDocs: Map<string, SourceDoc>,
+  baseUrl: string
+): RenderedLink {
+  const sourceDoc = sourceDocs.get(link.urlPath);
+  const title =
+    link.title ??
+    (sourceDoc?.title && !GENERIC_DOC_TITLES.has(sourceDoc.title.toLowerCase())
+      ? sourceDoc.title
+      : titleize(
+          link.urlPath.split("/").filter(Boolean).pop() ?? "Documentation"
+        ));
+  const description =
+    link.description ??
+    normalizeDescription(sourceDoc?.description ?? "") ??
+    `Entry point for ${title} documentation.`;
+  return {
+    title,
+    description: description || `Entry point for ${title} documentation.`,
+    absoluteUrl: toAbsoluteUrl(sourceDoc?.urlPath ?? link.urlPath, baseUrl),
+  };
 }
 
 async function collectFiles(
@@ -311,6 +369,7 @@ async function readSourceDocs(
         String(parsed.data.description ?? "")
       );
       const urlPath = toUrlPath(relativePath);
+      const groups = normalizeGroupValue(parsed.data.group);
       return {
         urlPath,
         doc: {
@@ -319,6 +378,7 @@ async function readSourceDocs(
           urlPath,
           absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
           relativePath: relativePath.replace(MD_EXTENSION_PATTERN, ""),
+          groups,
         },
       };
     })
@@ -362,6 +422,7 @@ async function readMarkdownDocs(
         String(parsed.data.description ?? "")
       );
       const urlPath = toUrlPath(relativePath);
+      const groups = normalizeGroupValue(parsed.data.group);
 
       return {
         title,
@@ -369,6 +430,7 @@ async function readMarkdownDocs(
         urlPath,
         absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
         relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
+        groups,
         content: parsed.content.trim(),
       };
     })
@@ -377,18 +439,76 @@ async function readMarkdownDocs(
   return docs.sort((left, right) => left.urlPath.localeCompare(right.urlPath));
 }
 
-function resolveCuratedLink(
-  link: CuratedLink,
-  sourceDocs: Map<string, SourceDoc>,
-  baseUrl: string
-): RenderedLink {
-  const sourceDoc = sourceDocs.get(link.urlPath);
-  const title = resolveLinkTitle(link, sourceDoc);
-  return {
-    title,
-    description: resolveLinkDescription(link, title, sourceDoc),
-    absoluteUrl: toAbsoluteUrl(sourceDoc?.urlPath ?? link.urlPath, baseUrl),
-  };
+type GroupMembership = {
+  /** Map from group slug (lowercased) → pages whose `group:` lists that slug. */
+  byGroupSlug: Map<string, SourceDoc[]>;
+  /** Pages whose frontmatter has no `group:`. */
+  ungrouped: SourceDoc[];
+  /** Pages that named a group slug not present in the config. */
+  unknown: { page: SourceDoc; slug: string }[];
+};
+
+function buildGroupMembership(
+  pages: SourceDoc[],
+  resolved: ResolvedGroup[]
+): GroupMembership {
+  const all = flattenGroups(resolved);
+  const known = new Map(all.map((g) => [g.slugKey, g]));
+  const byGroupSlug = new Map<string, SourceDoc[]>();
+  const ungrouped: SourceDoc[] = [];
+  const unknown: { page: SourceDoc; slug: string }[] = [];
+
+  // Stable page order: by urlPath. Inputs are already iteration-order-stable
+  // when they come from a Map in insertion order, but explicit sort makes
+  // the rendered llms.txt deterministic regardless of source.
+  const ordered = [...pages].sort((left, right) =>
+    left.urlPath.localeCompare(right.urlPath)
+  );
+
+  for (const page of ordered) {
+    if (page.groups.length === 0) {
+      ungrouped.push(page);
+      continue;
+    }
+    let matchedAny = false;
+    for (const slug of page.groups) {
+      const slugKey = slug.toLowerCase();
+      if (!known.has(slugKey)) {
+        unknown.push({ page, slug });
+        continue;
+      }
+      const list = byGroupSlug.get(slugKey) ?? [];
+      list.push(page);
+      byGroupSlug.set(slugKey, list);
+      matchedAny = true;
+    }
+    if (!matchedAny) {
+      ungrouped.push(page);
+    }
+  }
+
+  return { byGroupSlug, ungrouped, unknown };
+}
+
+/** Pages whose `group:` includes the slug of `target` or any descendant. */
+function pagesUnderGroup(
+  target: ResolvedGroup,
+  membership: GroupMembership
+): SourceDoc[] {
+  const seen = new Set<string>();
+  const collected: SourceDoc[] = [];
+  const stack = [target, ...flattenGroups(target.children)];
+  for (const group of stack) {
+    const list = membership.byGroupSlug.get(group.slugKey) ?? [];
+    for (const page of list) {
+      if (seen.has(page.urlPath)) {
+        continue;
+      }
+      seen.add(page.urlPath);
+      collected.push(page);
+    }
+  }
+  return collected;
 }
 
 function renderProductSummary(
@@ -425,16 +545,31 @@ function renderProductSummary(
 
 function renderDocsSummary(
   product: ProductInfo,
-  sourceDocs: Map<string, SourceDoc>,
-  baseUrl: string,
-  docsSections: CuratedSection[]
+  resolved: ResolvedGroup[],
+  membership: GroupMembership
 ): string {
-  const sections = docsSections.map((section) =>
-    renderSection(
-      section,
-      section.links.map((link) => resolveCuratedLink(link, sourceDocs, baseUrl))
-    )
-  );
+  const renderedSections: string[] = [];
+  for (const group of resolved) {
+    const pages = pagesUnderGroup(group, membership);
+    if (pages.length === 0) {
+      continue;
+    }
+    const lines: string[] = [`## ${group.title}`];
+    if (group.description) {
+      lines.push("", group.description);
+    }
+    lines.push("", ...pages.map(pageToRenderedLink).map(renderLink));
+    renderedSections.push(lines.join("\n"));
+  }
+
+  if (membership.ungrouped.length > 0) {
+    const lines = ["## Other"];
+    lines.push(
+      "",
+      ...membership.ungrouped.map(pageToRenderedLink).map(renderLink)
+    );
+    renderedSections.push(lines.join("\n"));
+  }
 
   return `# ${product.name} Documentation
 
@@ -444,65 +579,7 @@ function renderDocsSummary(
 
 Read the summary links first. If the summary is not enough, choose the smallest relevant topic file from \`/docs/llms-full.txt\`.
 
-${sections.join("\n\n")}`;
-}
-
-function resolveTopics(
-  topics: FullTopic[],
-  parentPath: string[] = []
-): ResolvedTopic[] {
-  const seenSlugs = new Set<string>();
-
-  return topics.map((topic) => {
-    const slug = assertValidTopicSlug(topic.slug);
-    const slugKey = slug.toLowerCase();
-
-    if (seenSlugs.has(slugKey)) {
-      const scope = parentPath.join("/") || "root";
-      throw new Error(
-        `Duplicate topic slug "${slug}" under "${scope}". Topic slugs must be unique among siblings.`
-      );
-    }
-    seenSlugs.add(slugKey);
-
-    const segmentPath = [...parentPath, slug];
-
-    const hasChildren = topic.topics && topic.topics.length > 0;
-    const hasLeafPrefixes =
-      topic.includePrefixes && topic.includePrefixes.length > 0;
-
-    if (hasChildren && hasLeafPrefixes) {
-      throw new Error(
-        `Topic "${segmentPath.join("/")}" has both \`topics\` and \`includePrefixes\`. A topic must be either a parent (router) or a leaf (content), not both.`
-      );
-    }
-    if (!(hasChildren || hasLeafPrefixes)) {
-      throw new Error(
-        `Topic "${segmentPath.join("/")}" has neither \`topics\` nor \`includePrefixes\`. A topic must declare content (\`includePrefixes\`) or sub-topics (\`topics\`).`
-      );
-    }
-
-    if (hasChildren) {
-      return {
-        kind: "parent",
-        slug,
-        title: topic.title,
-        description: topic.description,
-        segmentPath,
-        // biome-ignore lint/style/noNonNullAssertion: checked above via hasChildren
-        children: resolveTopics(topic.topics!, segmentPath),
-      };
-    }
-    return {
-      kind: "leaf",
-      slug,
-      title: topic.title,
-      description: topic.description,
-      segmentPath,
-      // biome-ignore lint/style/noNonNullAssertion: checked above via hasLeafPrefixes
-      includePrefixes: topic.includePrefixes!,
-    };
-  });
+${renderedSections.join("\n\n")}`;
 }
 
 function topicFilePath(segmentPath: string[]): string {
@@ -529,25 +606,26 @@ function toRelativeRouterLink(
   return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
-function renderTopicRouterLinks(
-  topics: ResolvedTopic[],
+function renderGroupRouterLinks(
+  groups: ResolvedGroup[],
   currentSegmentPath: string[],
   indentLevel = 0
 ): string[] {
   const indent = "  ".repeat(indentLevel);
   const lines: string[] = [];
-  for (const topic of topics) {
+  for (const group of groups) {
     const relativeUrl = toRelativeRouterLink(
       currentSegmentPath,
-      topic.segmentPath
+      group.segmentPath
     );
+    const description = group.description ?? "";
     lines.push(
-      `${indent}- [${topic.title}](${relativeUrl}): ${topic.description}`
+      `${indent}- [${group.title}](${relativeUrl})${description ? `: ${description}` : ""}`
     );
-    if (topic.kind === "parent") {
+    if (!isLeafGroup(group)) {
       lines.push(
-        ...renderTopicRouterLinks(
-          topic.children,
+        ...renderGroupRouterLinks(
+          group.children,
           currentSegmentPath,
           indentLevel + 1
         )
@@ -559,7 +637,7 @@ function renderTopicRouterLinks(
 
 function renderDocsFullRouter(
   product: Pick<ProductInfo, "name">,
-  topics: ResolvedTopic[]
+  resolved: ResolvedGroup[]
 ): string {
   return [
     `# ${product.name} Documentation Full Context`,
@@ -568,22 +646,22 @@ function renderDocsFullRouter(
     "",
     "## Topics",
     "",
-    ...renderTopicRouterLinks(topics, []),
+    ...renderGroupRouterLinks(resolved, []),
   ].join("\n");
 }
 
-function renderTopicSubRouter(
+function renderGroupSubRouter(
   product: Pick<ProductInfo, "name">,
-  parent: ResolvedParentTopic
+  parent: ResolvedGroup
 ): string {
   return [
     `# ${product.name} ${parent.title} Full Context`,
     "",
-    `> ${parent.description}`,
+    `> ${parent.description ?? ""}`,
     "",
     "## Topics",
     "",
-    ...renderTopicRouterLinks(parent.children, parent.segmentPath),
+    ...renderGroupRouterLinks(parent.children, parent.segmentPath),
   ].join("\n");
 }
 
@@ -612,21 +690,21 @@ function renderRootFullRouter(
   return lines.join("\n");
 }
 
-function renderTopicDocument(
+function renderLeafGroupDocument(
   product: Pick<ProductInfo, "name">,
-  topic: ResolvedLeafTopic,
-  docs: MarkdownDoc[]
+  leaf: ResolvedGroup,
+  pages: MarkdownDoc[]
 ): string {
-  const topicDocs = docs.filter((doc) =>
-    isIncluded(doc.relativePath, topic.includePrefixes)
+  const groupPages = pages.filter((page) =>
+    page.groups.some((slug) => slug.toLowerCase() === leaf.slugKey)
   );
-  const links = topicDocs.map((doc) => ({
+  const links = groupPages.map((doc) => ({
     title: doc.title,
     absoluteUrl: doc.absoluteUrl,
     description:
       doc.description || `Entry point for ${doc.title} documentation.`,
   }));
-  const contentBlocks = topicDocs.map((doc) => {
+  const contentBlocks = groupPages.map((doc) => {
     const description = doc.description ? `${doc.description}\n` : "";
     return `# ${doc.title}
 URL: ${doc.absoluteUrl}
@@ -635,13 +713,15 @@ ${doc.content}`.trim();
   });
 
   return [
-    `# ${product.name} ${topic.title} Full Context`,
+    `# ${product.name} ${leaf.title} Full Context`,
     "",
-    `> ${topic.description}`,
+    `> ${leaf.description ?? ""}`,
     "",
     "## Included Pages",
     "",
-    links.map(renderLink).join("\n"),
+    links.length > 0
+      ? links.map(renderLink).join("\n")
+      : "_No pages declare this group in their frontmatter._",
     "",
     "## Content",
     "",
@@ -649,37 +729,29 @@ ${doc.content}`.trim();
   ].join("\n");
 }
 
-async function writeTopicTree(
-  topics: ResolvedTopic[],
+async function writeGroupTree(
+  groups: ResolvedGroup[],
   product: Pick<ProductInfo, "name">,
-  baseUrl: string,
   markdownDocs: MarkdownDoc[],
   llmsFullDir: string
 ): Promise<void> {
-  for (const topic of topics) {
+  for (const group of groups) {
     const filePath = path.join(
       llmsFullDir,
-      ...topic.segmentPath.slice(0, -1),
-      `${topic.slug}.txt`
+      ...group.segmentPath.slice(0, -1),
+      `${group.slug}.txt`
     );
     await mkdir(path.dirname(filePath), { recursive: true });
 
-    if (topic.kind === "parent") {
-      await writeFile(filePath, renderTopicSubRouter(product, topic));
-      await writeTopicTree(
-        topic.children,
-        product,
-        baseUrl,
-        markdownDocs,
-        llmsFullDir
+    if (isLeafGroup(group)) {
+      await writeFile(
+        filePath,
+        renderLeafGroupDocument(product, group, markdownDocs)
       );
       continue;
     }
-
-    await writeFile(
-      filePath,
-      renderTopicDocument(product, topic, markdownDocs)
-    );
+    await writeFile(filePath, renderGroupSubRouter(product, group));
+    await writeGroupTree(group.children, product, markdownDocs, llmsFullDir);
   }
 }
 
@@ -693,28 +765,27 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const sourceDocs = await readSourceDocs(srcDir, baseUrl);
 
+  const resolved = resolveGroups(config.groups);
+  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
   await writeFile(
     path.join(outDir, "llms.txt"),
     renderProductSummary(config.product, sourceDocs, baseUrl)
   );
 
-  if (config.docsSections && config.docsSections.length > 0) {
+  if (resolved.length > 0) {
     await writeFile(
       path.join(outDir, DOCS_DIRNAME, "llms.txt"),
-      renderDocsSummary(
-        config.product,
-        sourceDocs,
-        baseUrl,
-        config.docsSections
-      )
+      renderDocsSummary(config.product, resolved, membership)
     );
   }
 }
 
 /**
- * Generate the full-context routers and one topic-specific .txt per topic
- * under `/docs/llms-full/`. Reads generated .md files from `{outDir}/docs/`.
+ * Generate the full-context routers and one topic-specific .txt per leaf
+ * group under `/docs/llms-full/`. Reads generated .md files from
+ * `{outDir}/docs/`.
  */
 export async function generateLLMFullContextFiles(
   config: LLMFullContextConfig
@@ -723,21 +794,14 @@ export async function generateLLMFullContextFiles(
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
 
-  // Fail fast if there's nothing to index — usually means convertAllMdx
-  // didn't run (or wrote to a different outDir) and we'd otherwise ship
-  // hollow router/topic files.
   if (markdownDocs.length === 0) {
     throw new Error(
       `generateLLMFullContextFiles found no markdown under "${path.join(outDir, DOCS_DIRNAME)}". Run convertAllMdx first, or check that config.outDir matches.`
     );
   }
 
-  // Resolve the (possibly nested) topic tree. Slugs are validated here —
-  // they're interpolated into both URLs and file paths, so values with `/`,
-  // `..`, whitespace, etc. are a security footgun.
-  const resolvedTopics = resolveTopics(config.topics);
+  const resolved = resolveGroups(config.groups);
 
-  // Only advertise the docs summary link if that file is guaranteed to exist.
   const hasDocsSummary = existsSync(
     path.join(outDir, DOCS_DIRNAME, "llms.txt")
   );
@@ -751,14 +815,91 @@ export async function generateLLMFullContextFiles(
   );
   await writeFile(
     path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
-    renderDocsFullRouter(config.product, resolvedTopics)
+    renderDocsFullRouter(config.product, resolved)
   );
 
-  await writeTopicTree(
-    resolvedTopics,
-    config.product,
-    baseUrl,
-    markdownDocs,
-    llmsFullDir
-  );
+  await writeGroupTree(resolved, config.product, markdownDocs, llmsFullDir);
+}
+
+/* ---------------- Navigation manifest ----------------------------------- */
+
+export type DocsNavigationPage = {
+  urlPath: string;
+  title: string;
+  description: string;
+  /** All group slugs the page declared (normalized). */
+  groups: string[];
+};
+
+export type DocsNavigationGroup = {
+  slug: string;
+  segmentPath: string[];
+  title: string;
+  description?: string;
+  pages: DocsNavigationPage[];
+  children: DocsNavigationGroup[];
+};
+
+export type DocsNavigation = {
+  groups: DocsNavigationGroup[];
+  ungrouped: DocsNavigationPage[];
+  /** Pages that named a group slug not present in the config. */
+  unknown: { urlPath: string; slug: string }[];
+};
+
+export type ResolveDocsNavigationConfig = {
+  srcDir: string;
+  baseUrl?: string;
+  groups: DocsGroup[];
+};
+
+function pageView(doc: SourceDoc): DocsNavigationPage {
+  return {
+    urlPath: doc.urlPath,
+    title: doc.title,
+    description: doc.description,
+    groups: [...doc.groups],
+  };
+}
+
+function buildNavigationGroup(
+  group: ResolvedGroup,
+  membership: GroupMembership
+): DocsNavigationGroup {
+  const directPages = membership.byGroupSlug.get(group.slugKey) ?? [];
+  return {
+    slug: group.slug,
+    segmentPath: group.segmentPath,
+    title: group.title,
+    description: group.description,
+    pages: directPages.map(pageView),
+    children: group.children.map((child) =>
+      buildNavigationGroup(child, membership)
+    ),
+  };
+}
+
+/**
+ * Walk the docs source tree once and return a structured navigation manifest.
+ * Build pipelines write this to disk (e.g. `src/generated/docs-nav.json`)
+ * for the runtime sidebar to import — keeps the docs-config.ts as the single
+ * source of truth without forcing the runtime to scan MDX itself.
+ */
+export async function resolveDocsNavigation(
+  config: ResolveDocsNavigationConfig
+): Promise<DocsNavigation> {
+  const srcDir = path.resolve(config.srcDir);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const resolved = resolveGroups(config.groups);
+  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+
+  return {
+    groups: resolved.map((group) => buildNavigationGroup(group, membership)),
+    ungrouped: membership.ungrouped.map(pageView),
+    unknown: membership.unknown.map(({ page, slug }) => ({
+      urlPath: page.urlPath,
+      slug,
+    })),
+  };
 }

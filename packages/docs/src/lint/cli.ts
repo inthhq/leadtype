@@ -4,6 +4,7 @@ import { type ReporterFormat, renderReport } from "./reporters";
 import { DEFAULT_IGNORE_GLOBS, type LintSeverity, lintDocs } from "./runner";
 
 const DEFAULT_IGNORE_GLOBS_TEXT = DEFAULT_IGNORE_GLOBS.join(", ");
+const STDOUT_FORMATS = new Set<ReporterFormat>(["github", "json"]);
 
 type CliArgs = {
   srcDir: string;
@@ -15,10 +16,15 @@ type CliArgs = {
   help: boolean;
 };
 
-const USAGE = `inth-docs-lint — validate MDX frontmatter and meta.json against a schema
+export type LintCliIo = {
+  stderr: Pick<NodeJS.WriteStream, "write">;
+  stdout: Pick<NodeJS.WriteStream, "write">;
+};
+
+const USAGE = `@inth/docs lint — validate MDX frontmatter and meta.json against a schema
 
 Usage:
-  inth-docs-lint [srcDir] [options]
+  @inth/docs lint [srcDir] [options]
 
 Options:
   --src <dir>              Source directory (default: ./content)
@@ -36,7 +42,11 @@ Exit codes:
   2  CLI usage error
 `;
 
-function parseArgs(argv: string[]): CliArgs {
+export function getLintUsage(): string {
+  return USAGE;
+}
+
+export function parseLintArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     srcDir: "content",
     format: "pretty",
@@ -101,18 +111,21 @@ function parseArgs(argv: string[]): CliArgs {
   return args;
 }
 
-async function main(): Promise<void> {
+export async function runLintCommand(
+  argv: string[],
+  io: LintCliIo = { stderr: process.stderr, stdout: process.stdout }
+): Promise<number> {
   let args: CliArgs;
   try {
-    args = parseArgs(process.argv.slice(2));
+    args = parseLintArgs(argv);
   } catch (error) {
-    process.stderr.write(`${String(error)}\n\n${USAGE}`);
-    process.exit(2);
+    io.stderr.write(`${String(error)}\n\n${USAGE}`);
+    return 2;
   }
 
   if (args.help) {
-    process.stdout.write(USAGE);
-    return;
+    io.stdout.write(USAGE);
+    return 0;
   }
 
   const resolvedSrcDir = resolve(args.srcDir);
@@ -130,18 +143,12 @@ async function main(): Promise<void> {
   const output = renderReport(args.format, result);
   // Machine-readable formats go to stdout so they can be piped; the pretty
   // format goes to stderr so stdout stays clean when scripts mix formats.
-  const STDOUT_FORMATS = new Set(["github", "json"]);
   if (STDOUT_FORMATS.has(args.format)) {
-    process.stdout.write(output);
+    io.stdout.write(output);
   } else {
-    process.stderr.write(output);
+    io.stderr.write(output);
   }
 
   const exceedsWarnings = result.summary.warnings > args.maxWarnings;
-  process.exit(result.summary.errors > 0 || exceedsWarnings ? 1 : 0);
+  return result.summary.errors > 0 || exceedsWarnings ? 1 : 0;
 }
-
-main().catch((error) => {
-  process.stderr.write(`docs-lint: ${String(error)}\n`);
-  process.exit(1);
-});

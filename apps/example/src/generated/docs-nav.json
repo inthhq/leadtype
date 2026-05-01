@@ -1,0 +1,201 @@
+{
+  "groups": [
+    {
+      "slug": "overview",
+      "segmentPath": [
+        "overview"
+      ],
+      "title": "Overview",
+      "description": "Start here for package scope and surface selection.",
+      "pages": [
+        {
+          "urlPath": "/docs",
+          "title": "@inth/docs",
+          "description": "Reference map for the shared MDX conversion, linting, and LLM doc-generation package.",
+          "groups": [
+            "overview"
+          ]
+        },
+        {
+          "urlPath": "/docs/methodology",
+          "title": "Methodology",
+          "description": "How @inth/docs differs from Fumadocs, Mintlify, and Starlight",
+          "groups": [
+            "overview"
+          ]
+        }
+      ],
+      "children": []
+    },
+    {
+      "slug": "guides",
+      "segmentPath": [
+        "guides"
+      ],
+      "title": "Guides",
+      "description": "Practical ways to wire @inth/docs into docs apps.",
+      "pages": [
+        {
+          "urlPath": "/docs/guides/bundle-package-docs",
+          "title": "Bundle docs into a package",
+          "description": "How to ship generated agent docs inside an npm package.",
+          "groups": [
+            "guides"
+          ]
+        },
+        {
+          "urlPath": "/docs/guides/connect-docs-site",
+          "title": "Connect a docs site",
+          "description": "How to run the @inth/docs pipeline before building a docs app.",
+          "groups": [
+            "guides"
+          ]
+        }
+      ],
+      "children": []
+    },
+    {
+      "slug": "authoring",
+      "segmentPath": [
+        "authoring"
+      ],
+      "title": "Authoring And Rendering",
+      "description": "React MDX components and remark pipeline behavior.",
+      "pages": [],
+      "children": [
+        {
+          "slug": "components",
+          "segmentPath": [
+            "authoring",
+            "components"
+          ],
+          "title": "Components",
+          "description": "React MDX component adapters.",
+          "pages": [
+            {
+              "urlPath": "/docs/components",
+              "title": "Components",
+              "description": "How to define app-owned MDX components that the @inth/docs pipeline can flatten.",
+              "groups": [
+                "components"
+              ]
+            }
+          ],
+          "children": []
+        },
+        {
+          "slug": "remark",
+          "segmentPath": [
+            "authoring",
+            "remark"
+          ],
+          "title": "Remark",
+          "description": "Default plugins and conversion helpers.",
+          "pages": [
+            {
+              "urlPath": "/docs/remark",
+              "title": "Remark",
+              "description": "Reference for the remark plugins and default plugin pipeline exported by @inth/docs.",
+              "groups": [
+                "remark"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "slug": "generation",
+      "segmentPath": [
+        "generation"
+      ],
+      "title": "Generation",
+      "description": "MDX conversion, LLM output generation, and search.",
+      "pages": [],
+      "children": [
+        {
+          "slug": "convert",
+          "segmentPath": [
+            "generation",
+            "convert"
+          ],
+          "title": "Convert",
+          "description": "MDX-to-markdown conversion APIs.",
+          "pages": [
+            {
+              "urlPath": "/docs/convert",
+              "title": "Convert",
+              "description": "How to convert MDX docs into Markdown with @inth/docs/convert.",
+              "groups": [
+                "convert"
+              ]
+            }
+          ],
+          "children": []
+        },
+        {
+          "slug": "llm",
+          "segmentPath": [
+            "generation",
+            "llm"
+          ],
+          "title": "LLM",
+          "description": "Summary and full-context file generation.",
+          "pages": [
+            {
+              "urlPath": "/docs/llm",
+              "title": "LLM",
+              "description": "How to generate llms.txt and topic-scoped full-context files from @inth/docs.",
+              "groups": [
+                "llm"
+              ]
+            }
+          ],
+          "children": []
+        },
+        {
+          "slug": "search",
+          "segmentPath": [
+            "generation",
+            "search"
+          ],
+          "title": "Search",
+          "description": "Static search indexes and AI answer helpers.",
+          "pages": [
+            {
+              "urlPath": "/docs/search",
+              "title": "Search",
+              "description": "Generate and query a static docs search index, then stream source-grounded AI answers.",
+              "groups": [
+                "search"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "slug": "validation",
+      "segmentPath": [
+        "validation"
+      ],
+      "title": "Validation",
+      "description": "Content validation and link checks.",
+      "pages": [
+        {
+          "urlPath": "/docs/lint",
+          "title": "Lint",
+          "description": "How to validate docs content with lintDocs and the @inth/docs lint CLI.",
+          "groups": [
+            "validation"
+          ]
+        }
+      ],
+      "children": []
+    }
+  ],
+  "ungrouped": [],
+  "unknown": []
+}

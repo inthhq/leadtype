@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "noEmit": true,
+    "isolatedModules": true,
+    "paths": {
+      "@inth/docs": ["./packages/docs/src/index.ts"],
+      "@inth/docs/*": ["./packages/docs/src/*/index.ts"]
+    }
+  },
+  "include": ["docs/**/*.ts"]
+}
