@@ -1,6 +1,6 @@
 ---
 title: "Connect a docs site"
-description: "How to run the @inth/docs pipeline before building a docs app."
+description: "How to run the leadtype pipeline before building a docs app."
 group: guides
 ---
 
@@ -8,16 +8,16 @@ group: guides
 
 Use this pattern when the docs app lives separately from the package repos it documents.
 
-The docs app owns the UI. Each package repo owns its MDX content. Before the docs app builds, clone the source repos and run the `@inth/docs` pipeline over their `docs/` folders. If the package should also ship docs for agents, see [Bundle docs into a package](/docs/guides/bundle-package-docs).
+The docs app owns the UI. Each package repo owns its MDX content. Before the docs app builds, clone the source repos and run the `leadtype` pipeline over their `docs/` folders. If the package should also ship docs for agents, see [Bundle docs into a package](/docs/guides/bundle-package-docs).
 
 For a local repo, run the pipeline directly:
 
 ```bash
-npx @inth/docs generate \
+npx leadtype generate \
   --src . \
   --out public \
-  --base-url https://docs.example.com/@inth/docs \
-  --name "@inth/docs" \
+  --base-url https://docs.example.com/leadtype \
+  --name "leadtype" \
   --summary "Shared MDX conversion, linting, and LLM-doc generation package." \
   --format json
 ```
@@ -28,11 +28,11 @@ Use `docs.config.ts` when the source repo should own product metadata and the
 docs group tree used by generation and navigation.
 
 ```ts
-import { defineDocsConfig } from "@inth/docs";
+import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
   product: {
-    name: "@inth/docs",
+    name: "leadtype",
     summary: "Shared MDX conversion, linting, and LLM-doc generation package.",
     bullets: [
       "Flattens MDX-heavy docs into clean markdown for agents.",
@@ -61,7 +61,7 @@ join groups from their MDX frontmatter:
 ```mdx
 ---
 title: "Connect a docs site"
-description: "How to run the @inth/docs pipeline before building a docs app."
+description: "How to run the leadtype pipeline before building a docs app."
 group: guides
 ---
 ```
@@ -73,14 +73,14 @@ the generated `llms.txt`, full-context files, and runtime navigation data.
 ## Build flow
 
 1. Clone the source repo into a temporary build directory.
-2. Run `@inth/docs lint` against the source docs.
-3. Run `@inth/docs generate` against the clone.
+2. Run `leadtype lint` against the source docs.
+3. Run `leadtype generate` against the clone.
 4. Build the docs app from the generated markdown, `llms.txt`, full-context files, and search artifacts.
 
 ```bash
 git clone --depth 1 https://github.com/acme/package-a .docs-src/package-a
-npx @inth/docs lint .docs-src/package-a/docs --format json --error-unknown
-npx @inth/docs generate --src .docs-src/package-a --out public/package-a
+npx leadtype lint .docs-src/package-a/docs --format json --error-unknown
+npx leadtype generate --src .docs-src/package-a --out public/package-a
 npm run build
 ```
 

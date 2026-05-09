@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --filter @inth/docs build && portless run vite dev",
-    "build": "bun run --filter @inth/docs build && vite build",
+    "dev": "bun run --filter leadtype build && portless run vite dev",
+    "build": "bun run --filter leadtype build && vite build",
     "preview": "portless run vite preview",
     "check-types": "tsgo --noEmit",
-    "test:e2e": "bun run --filter @inth/docs build && playwright test",
+    "test:e2e": "bun run --filter leadtype build && playwright test",
     "convert": "bun run pipeline:convert",
     "llm": "bun run pipeline:llm",
     "setup:real": "bun run pipeline:setup-real",
@@ -28,7 +28,7 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
-    "@inth/docs": "workspace:*",
+    "leadtype": "workspace:*",
     "@mdx-js/react": "^3.1.1",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",

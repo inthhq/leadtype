@@ -1,12 +1,12 @@
 ---
 title: "Convert"
-description: "How to convert MDX docs into Markdown with @inth/docs/convert."
+description: "How to convert MDX docs into Markdown with leadtype/convert."
 group: convert
 ---
 
 # Convert
 
-The `@inth/docs/convert` entrypoint provides three main APIs:
+The `leadtype/convert` entrypoint provides three main APIs:
 
 - `convertMdxToMarkdown`
 - `writeMdxFileAsMarkdown`
@@ -19,7 +19,7 @@ import {
   convertAllMdx,
   convertMdxToMarkdown,
   writeMdxFileAsMarkdown,
-} from "@inth/docs/convert";
+} from "leadtype/convert";
 ```
 
 ## Main Use Cases
@@ -57,7 +57,7 @@ await convertAllMdx({
 
 - `srcDir`: root directory containing `.mdx` files.
 - `outDir`: destination for generated `.md` files.
-- `remarkPlugins`: additional unified plugins, usually `defaultRemarkPlugins` from `@inth/docs/remark`.
+- `remarkPlugins`: additional unified plugins, usually `defaultRemarkPlugins` from `leadtype/remark`.
 - `enrichFrontmatterFromGit`: adds git-derived metadata when available.
 
 ## Behavior Notes
@@ -72,7 +72,7 @@ await convertAllMdx({
 In most apps, pair conversion with:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 ```
 
 Then pass:

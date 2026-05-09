@@ -81,17 +81,17 @@ export function CommandTabs({
   const resolved = resolveCommand(active, command, mode, commands);
 
   return (
-    <div data-inth-command-tabs="">
+    <div data-leadtype-command-tabs="">
       {/* Plain button group — intentionally not using role="tablist" /
           role="tab" since we don't implement the full tabs keyboard pattern
           (roving tabindex, ArrowLeft/Right, associated tabpanel). */}
-      <fieldset data-inth-command-tabs-list="">
-        <legend data-inth-command-tabs-legend="">Package manager</legend>
+      <fieldset data-leadtype-command-tabs-list="">
+        <legend data-leadtype-command-tabs-legend="">Package manager</legend>
         {MANAGERS.map((manager) => (
           <button
             aria-pressed={manager === active}
             data-active={manager === active || undefined}
-            data-inth-command-tabs-tab=""
+            data-leadtype-command-tabs-tab=""
             key={manager}
             onClick={() => setActive(manager)}
             type="button"
@@ -101,7 +101,7 @@ export function CommandTabs({
         ))}
       </fieldset>
       {resolved ? (
-        <pre data-inth-command-tabs-output="" data-manager={active}>
+        <pre data-leadtype-command-tabs-output="" data-manager={active}>
           <code>{resolved}</code>
         </pre>
       ) : null}

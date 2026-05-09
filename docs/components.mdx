@@ -1,12 +1,12 @@
 ---
 title: "Components"
-description: "How to define app-owned MDX components that the @inth/docs pipeline can flatten."
+description: "How to define app-owned MDX components that the leadtype pipeline can flatten."
 group: components
 ---
 
 # Components
 
-`@inth/docs` does not export prebuilt UI components or a `mdxComponents` map. The consuming docs app owns runtime rendering, styling, accessibility, and framework-specific integration.
+`leadtype` does not export prebuilt UI components or a `mdxComponents` map. The consuming docs app owns runtime rendering, styling, accessibility, and framework-specific integration.
 
 The package only assumes a small authoring contract for MDX component names so the remark pipeline can flatten those components into Markdown for agents, LLM bundles, search indexes, and validation.
 
@@ -66,13 +66,13 @@ Closed content is still flattened by the remark pipeline, so do not use accordio
 Use for package-manager-specific install or run commands.
 
 ```tsx
-<CommandTabs command="@inth/docs" mode="install" />
-<CommandTabs command="@inth/docs lint" mode="run" />
+<CommandTabs command="leadtype" mode="install" />
+<CommandTabs command="leadtype lint" mode="run" />
 <CommandTabs command="next-app" mode="create" />
 <CommandTabs
   commands={{
-    npm: "npm install @inth/docs",
-    pnpm: "pnpm add @inth/docs",
+    npm: "npm install leadtype",
+    pnpm: "pnpm add leadtype",
   }}
   defaultManager="pnpm"
 />
@@ -82,7 +82,7 @@ Use `mode="install"` when `command` is a package name, `mode="run"` when `comman
 
 ### `Example`
 
-Use for data-driven preview and source examples. The app-owned component receives code as data; host apps can add filesystem loaders or dynamic imports outside `@inth/docs` when they need app-specific behavior.
+Use for data-driven preview and source examples. The app-owned component receives code as data; host apps can add filesystem loaders or dynamic imports outside `leadtype` when they need app-specific behavior.
 
 ```tsx
 <Example
@@ -97,7 +97,7 @@ export const components = {
 };`}
 >
   <Callout title="Runtime components" variant="success">
-    The host app owns styling and runtime components while `@inth/docs` owns conversion.
+    The host app owns styling and runtime components while `leadtype` owns conversion.
   </Callout>
 </Example>
 ```

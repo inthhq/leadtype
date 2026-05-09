@@ -8,12 +8,12 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { convertAllMdx, type MdxToMarkdownOptions } from "@inth/docs/convert";
+import { convertAllMdx, type MdxToMarkdownOptions } from "leadtype/convert";
 import {
   defaultRemarkPlugins,
   remarkInclude,
   remarkTypeTableToMarkdown,
-} from "@inth/docs/remark";
+} from "leadtype/remark";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");

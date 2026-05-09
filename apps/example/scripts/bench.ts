@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Benchmark the @inth/docs pipeline against the cloned c15t docs.
+ * Benchmark the leadtype pipeline against the cloned c15t docs.
  * Runs each stage N times, reports median/min/max as a markdown table.
  * Writes to $GITHUB_STEP_SUMMARY when present so CI surfaces the numbers
  * on the PR checks page. No threshold gating — GH Actions shared runners
@@ -10,9 +10,9 @@
 import { existsSync } from "node:fs";
 import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { convertAllMdx } from "@inth/docs/convert";
-import { generateLLMFullContextFiles, generateLlmsTxt } from "@inth/docs/llm";
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+import { convertAllMdx } from "leadtype/convert";
+import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const DEFAULT_RUNS = 3;
 const parsedRuns = Number.parseInt(
@@ -179,7 +179,7 @@ async function countMdxFiles(dir: string): Promise<number> {
 const stats = await bench();
 const table = renderTable(stats);
 const mdxCount = await countMdxFiles(SRC_DIR);
-const header = `### @inth/docs benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), git enrichment on, ${RUNS} runs each.\n\n`;
+const header = `### leadtype benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), git enrichment on, ${RUNS} runs each.\n\n`;
 const report = header + table;
 
 process.stdout.write(`\n${report}\n`);

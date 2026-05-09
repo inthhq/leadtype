@@ -60,7 +60,7 @@ export function TypeTable({ properties }: TypeTableProps) {
     return null;
   }
   return (
-    <table data-inth-type-table="">
+    <table data-leadtype-type-table="">
       <thead>
         <tr>
           <th scope="col">Prop</th>
@@ -79,7 +79,7 @@ export function TypeTable({ properties }: TypeTableProps) {
             <td>
               <code>{name}</code>
               {property.required ? (
-                <span data-inth-required="" title="Required">
+                <span data-leadtype-required="" title="Required">
                   *
                 </span>
               ) : null}
@@ -87,7 +87,7 @@ export function TypeTable({ properties }: TypeTableProps) {
             <td>
               {renderTypeWithLink(property)}
               {property.typeDescription ? (
-                <div data-inth-type-description="">
+                <div data-leadtype-type-description="">
                   {property.typeDescription}
                 </div>
               ) : null}
@@ -137,7 +137,7 @@ export function ExtractedTypeTable({
   }
 
   return (
-    <figure data-inth-extracted-type-table="">
+    <figure data-leadtype-extracted-type-table="">
       {hasCaption ? (
         <figcaption>
           <code>{captionParts.join(" from ")}</code>

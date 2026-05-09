@@ -6,8 +6,8 @@
 
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { convertAllMdx } from "@inth/docs/convert";
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+import { convertAllMdx } from "leadtype/convert";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = FIXTURE_DIR;

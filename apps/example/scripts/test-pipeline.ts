@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
 import { join } from "node:path";
-import { convertMdxToMarkdown } from "@inth/docs/convert";
+import { convertMdxToMarkdown } from "leadtype/convert";
 import {
   defaultRemarkPlugins,
   remarkTypeTableToMarkdown,
-} from "@inth/docs/remark";
+} from "leadtype/remark";
 
 const appRoot = process.cwd();
 const repoRoot = join(appRoot, "..", "..");

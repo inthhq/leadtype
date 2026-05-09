@@ -25,7 +25,7 @@ function HomeRoute() {
               Runtime docs, pipeline fixtures, and search demos
             </p>
             <h1 className="font-heading font-medium text-3xl text-foreground tracking-tight sm:text-4xl">
-              Build docs with @inth/docs
+              Build docs with Leadtype
             </h1>
             <p className="max-w-xl text-muted-foreground text-sm leading-7">
               Framework-neutral MDX conversion, LLM bundles, docs linting, and

@@ -11,8 +11,8 @@
     "noEmit": true,
     "isolatedModules": true,
     "paths": {
-      "@inth/docs": ["./packages/docs/src/index.ts"],
-      "@inth/docs/*": ["./packages/docs/src/*/index.ts"]
+      "leadtype": ["./packages/leadtype/src/index.ts"],
+      "leadtype/*": ["./packages/leadtype/src/*/index.ts"]
     }
   },
   "include": ["docs/**/*.ts"]

@@ -4,7 +4,7 @@ const footerLinks = [
     label: "GitHub",
   },
   {
-    href: "https://www.npmjs.com/package/@inth/docs",
+    href: "https://www.npmjs.com/package/leadtype",
     label: "npm",
   },
   {
@@ -17,7 +17,7 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto border-border border-t">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-muted-foreground text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <p>@inth/docs reference app</p>
+        <p>leadtype reference app</p>
         <nav
           aria-label="Project links"
           className="flex flex-wrap gap-x-4 gap-y-2"

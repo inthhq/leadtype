@@ -1,12 +1,12 @@
+import { createFileRoute } from "@tanstack/react-router";
 import {
   DocsSearchRequestError,
   docsSearchDefaults,
   getClientIdentifier,
   readJsonWithLimit,
   validateDocsQuery,
-} from "@inth/docs/search";
-import { streamDocsAnswer } from "@inth/docs/search/vercel";
-import { createFileRoute } from "@tanstack/react-router";
+} from "leadtype/search";
+import { streamDocsAnswer } from "leadtype/search/vercel";
 import {
   docsSearchContent,
   docsSearchIndex,
@@ -74,7 +74,7 @@ export const Route = createFileRoute("/api/docs/ask")({
             query,
             model: process.env.DOCS_SEARCH_MODEL ?? DEFAULT_MODEL,
             maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
-            productName: "@inth/docs",
+            productName: "leadtype",
             timeout: DEFAULT_TIMEOUT,
           }).response;
         } catch (error) {

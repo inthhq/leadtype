@@ -59,15 +59,15 @@ export function Callout({
 
   return (
     <aside
-      data-inth-callout=""
+      data-leadtype-callout=""
       data-variant={resolvedVariant}
       role="note"
       {...rest}
     >
-      <p data-inth-callout-title="">
+      <p data-leadtype-callout-title="">
         <strong>{title ?? titleCase(resolvedVariant)}</strong>
       </p>
-      <div data-inth-callout-content="">{children}</div>
+      <div data-leadtype-callout-content="">{children}</div>
     </aside>
   );
 }

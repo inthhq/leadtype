@@ -13,7 +13,7 @@ export interface MermaidProps {
 export function Mermaid({ chart, children }: MermaidProps) {
   const source = chart ?? (typeof children === "string" ? children : "");
   return (
-    <pre data-inth-mermaid="">
+    <pre data-leadtype-mermaid="">
       <code>{source}</code>
     </pre>
   );

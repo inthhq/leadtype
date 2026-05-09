@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Runs the full @inth/docs pipeline against the cloned c15t docs and asserts
+ * Runs the full leadtype pipeline against the cloned c15t docs and asserts
  * basic health — no crashes, every .mdx produces a .md, all components
  * rendered down to markdown. Meant to catch real-world regressions that
  * hand-crafted fixtures miss.
@@ -9,9 +9,9 @@
 import { existsSync } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { convertAllMdx } from "@inth/docs/convert";
-import { lintDocs } from "@inth/docs/lint";
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";
+import { convertAllMdx } from "leadtype/convert";
+import { lintDocs } from "leadtype/lint";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
@@ -83,7 +83,7 @@ process.stdout.write(
 // is what gates CI.
 if (result.summary.errors > 0) {
   process.stdout.write(
-    "  (lint errors above are issues in c15t's content, not @inth/docs)\n"
+    "  (lint errors above are issues in c15t's content, not leadtype)\n"
   );
 }
 

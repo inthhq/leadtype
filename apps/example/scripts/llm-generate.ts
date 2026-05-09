@@ -14,7 +14,7 @@ import {
   generateLLMFullContextFiles,
   generateLlmsTxt,
   resolveDocsNavigation,
-} from "@inth/docs/llm";
+} from "leadtype/llm";
 import docsConfig from "../../../docs/docs.config";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
@@ -28,7 +28,7 @@ const generatedDir = join(appRoot, "src", "generated");
 // Base URL precedence: package-specific override, generic deployment URL,
 // portless local URL, then a stable docs example fallback.
 const baseUrl =
-  process.env.INTH_DOCS_AGENT_BASE_URL?.trim() ||
+  process.env.LEADTYPE_AGENT_BASE_URL?.trim() ||
   process.env.BASE_URL?.trim() ||
   process.env.PORTLESS_URL?.trim() ||
   "https://docs.example.com";
