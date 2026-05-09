@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gateway, generateText, stepCountIs } from "ai";
@@ -259,9 +259,8 @@ async function archiveTranscript(opts: {
     mode,
     `${ts}-run${runIndex}`
   );
-  const fs = await import("node:fs/promises");
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(
+  await mkdir(dir, { recursive: true });
+  await writeFile(
     path.join(dir, "transcript.json"),
     `${JSON.stringify(transcript, null, 2)}\n`
   );
@@ -270,10 +269,10 @@ async function archiveTranscript(opts: {
   for (const rel of transcript.filesModified) {
     try {
       const src = path.join(tempDir, rel);
-      const content = await fs.readFile(src, "utf-8");
+      const content = await readFile(src, "utf-8");
       const dest = path.join(dir, "files", rel);
-      await fs.mkdir(path.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, content);
+      await mkdir(path.dirname(dest), { recursive: true });
+      await writeFile(dest, content);
     } catch {
       // Best effort; skip silently if a file vanished.
     }
