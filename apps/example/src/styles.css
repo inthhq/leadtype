@@ -82,7 +82,7 @@
 .docs-prose h1,
 .docs-prose h2,
 .docs-prose h3,
-.docs-prose h4 {
+.docs-prose h4:not([data-leadtype-step-title]) {
   @apply font-heading font-medium tracking-tight text-foreground;
 }
 
@@ -271,11 +271,19 @@
 }
 
 [data-leadtype-step-title] {
-  @apply m-0 text-base font-semibold text-foreground;
+  @apply m-0 font-heading text-[15px] font-semibold leading-8 tracking-tight text-foreground;
 }
 
 [data-leadtype-step-content] {
-  @apply mt-2 text-sm leading-7 text-muted-foreground;
+  @apply mt-1 text-sm leading-7 text-muted-foreground;
+}
+
+[data-leadtype-step-content] > :first-child {
+  @apply mt-0;
+}
+
+[data-leadtype-step-content] > :last-child {
+  @apply mb-0;
 }
 
 [data-leadtype-tabs] {
