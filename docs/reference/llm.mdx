@@ -113,7 +113,19 @@ if (navigation.unknown.length > 0) {
 }
 ```
 
-Write the result to `src/generated/docs-nav.json` and import it from your sidebar component. This is the pattern the example app uses — see [`apps/example/scripts/llm-generate.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/scripts/llm-generate.ts).
+Write the result to `src/generated/docs-nav.json` and import it from your sidebar component:
+
+```ts
+import { mkdir, writeFile } from "node:fs/promises";
+
+await mkdir("src/generated", { recursive: true });
+await writeFile(
+  "src/generated/docs-nav.json",
+  `${JSON.stringify(navigation, null, 2)}\n`
+);
+```
+
+Now your sidebar can import a static manifest with the same group tree the LLM bundles use.
 
 ## Topic design
 
@@ -134,4 +146,4 @@ const baseUrl =
   "https://docs.example.com";
 ```
 
-This is the precedence used by `apps/example/scripts/llm-generate.ts`. The package-specific `LEADTYPE_AGENT_BASE_URL` lets each package override the org-wide default.
+The package-specific `LEADTYPE_AGENT_BASE_URL` lets each package override an org-wide default. `BASE_URL` covers most CI/deployment platforms, and a final hardcoded fallback keeps local builds working without env setup.

@@ -3,32 +3,13 @@ title: "Connect a docs site"
 description: "Wire leadtype into a docs app build so it serves humans, agents, and search from one source."
 group: build
 ---
-
 # Connect a docs site
 
 Use this path when **you run a docs site** (or want to). Leadtype runs before your build to convert MDX, generate the navigation, build the search index, and produce agent-readable bundles. Your site framework — TanStack Start, Next.js, Astro, anything — handles routing and rendering.
 
-The reference implementation lives in `apps/example/` in the leadtype repo. It's also the production docs site you're reading right now.
-
 ## The flow
 
-<Mermaid chart={`flowchart LR
-  src["docs/*.mdx<br/>(your repo)"]
-  cli["leadtype generate"]
-  pub["public/<br/>llms.txt<br/>docs/*.md<br/>docs/llms-full/*.txt<br/>docs/search-index.json<br/>docs/search-content.json"]
-  gen["src/generated/<br/>docs-nav.json<br/>docs-search-*.json"]
-  vite["vite + content negotiation"]
-  human["Humans<br/>(HTML)"]
-  agent["Agents<br/>(text/markdown)"]
-  search["Search UI"]
-  src --> cli
-  cli --> pub
-  cli --> gen
-  pub --> vite
-  gen --> vite
-  vite -- "Accept: text/html" --> human
-  vite -- "Accept: text/markdown" --> agent
-  gen --> search`} />
+&lt;Mermaid chart={`flowchart LR   src["docs/*.mdx<br/>(your repo)"]   cli["leadtype generate"]   pub["public/<br/>llms.txt<br/>docs/*.md<br/>docs/llms-full/*.txt<br/>docs/search-index.json<br/>docs/search-content.json"]   gen["src/generated/<br/>docs-nav.json<br/>docs-search-*.json"]   vite["vite + content negotiation"]   human["Humans<br/>(HTML)"]   agent["Agents<br/>(text/markdown)"]   search["Search UI"]   src --> cli   cli --> pub   cli --> gen   pub --> vite   gen --> vite   vite -- "Accept: text/html" --> human   vite -- "Accept: text/markdown" --> agent   gen --> search`} /&gt;
 
 ## One-off run
 
@@ -43,11 +24,11 @@ npx leadtype generate \
   --summary "Short product summary."
 ```
 
-That single command converts MDX, generates `llms.txt`, builds the search index, and resolves the navigation tree. Generated paths are listed by [`leadtype generate`](/docs/reference/cli) and inspected in detail under [How it works](/docs/how-it-works).
+That single command converts MDX, generates `llms.txt`, builds the search index, and resolves the navigation tree. Generated paths are listed by `[leadtype generate](/docs/reference/cli)` and inspected in detail under [How it works](/docs/how-it-works).
 
 ## Wire it into the build
 
-Add a pipeline step before vite/Next/Astro builds. The example app does this with a `pipeline:build` script that runs each stage individually for incremental dev:
+Add a pipeline step before vite/Next/Astro builds. The simplest setup is one script per stage so you can rerun convert/search independently during dev:
 
 ```json
 {
@@ -61,7 +42,40 @@ Add a pipeline step before vite/Next/Astro builds. The example app does this wit
 }
 ```
 
-Splitting into separate scripts is optional — the CLI does all three in one pass. Use scripts when you want fine control over plugin order, base URL, or filtering. See [`apps/example/scripts/mdx-convert.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/scripts/mdx-convert.ts) for the canonical setup, including how to add `remarkInclude` for partial expansion or `remarkTypeTableToMarkdown` with a `basePath` for `<ExtractedTypeTable>`.
+Splitting into separate scripts is optional — the CLI does all three in one pass. Use scripts when you want fine control over plugin order, base URL, or filtering. A canonical convert script:
+
+```ts
+// scripts/mdx-convert.ts
+import { convertAllMdx, type MdxToMarkdownOptions } from "leadtype/convert";
+import {
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
+} from "leadtype/remark";
+
+const repoRoot = process.cwd();
+const srcDir = `${repoRoot}/docs`;
+const outDir = `${repoRoot}/public/docs`;
+
+// `<ExtractedTypeTable>` reads TypeScript files at conversion time.
+// Pass basePath so the component can resolve relative paths.
+const typeTablePlugin: NonNullable<
+  MdxToMarkdownOptions["remarkPlugins"]
+>[number] = [remarkTypeTableToMarkdown, { basePath: repoRoot }];
+
+await convertAllMdx({
+  srcDir,
+  outDir,
+  remarkPlugins: [
+    remarkInclude,
+    ...defaultRemarkPlugins.filter((p) => p !== remarkTypeTableToMarkdown),
+    typeTablePlugin,
+  ],
+  enrichFrontmatterFromGit: true,
+});
+```
+
+`remarkInclude` enables `{/*include:foo*/}`-style partial expansion. The `basePath` swap on `remarkTypeTableToMarkdown` is only needed if your docs use `<ExtractedTypeTable>`. See [Remark plugins](/docs/reference/remark) for the full plugin order.
 
 ## Configure the product and groups
 
@@ -88,25 +102,73 @@ Pages declare `group:` in frontmatter. The config declares the tree. The two tog
 
 ## Serve markdown to agents
 
-Drop a content-negotiation middleware in front of your static `/docs/*.md` files so agents can fetch markdown from the same URL humans visit. The example app's vite plugin (~30 lines) is in [`apps/example/vite.config.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/vite.config.ts):
+Drop a content-negotiation middleware in front of your static `/docs/*.md` files so agents can fetch markdown from the same URL humans visit. A complete vite plugin in ~50 lines:
 
 ```ts
-function rewriteToMarkdown(url, accept) {
+import type { PluginOption } from "vite";
+
+function rewriteToMarkdown(
+  url: string,
+  accept: string | undefined
+): string | null {
   if (!accept) return null;
-  if (!accept.includes("text/markdown")) return null;
-  if (accept.includes("text/html") && !accept.includes("q=")) return null;
-  // /docs/foo → /docs/foo.md
-  return `${url.replace(/\/$/, "")}.md`;
+  const pathname = url.split("?")[0] ?? url;
+  if (pathname.endsWith(".md")) return null;
+  if (!(pathname === "/docs" || pathname.startsWith("/docs/"))) return null;
+  if (!/text\/(markdown|plain)/i.test(accept)) return null;
+  // Browsers send `text/html,*/*` — never serve markdown to them.
+  if (/text\/html/i.test(accept) && !/text\/(markdown|plain)\s*;?\s*q=/i.test(accept)) {
+    return null;
+  }
+  const target =
+    pathname === "/docs" ? "/docs/index.md" : `${pathname.replace(/\/$/, "")}.md`;
+  return target + (url.length > pathname.length ? url.slice(pathname.length) : "");
+}
+
+function forceUtf8OnTextResponses(res: { setHeader: (n: string, v: string | number | string[]) => unknown }) {
+  const original = res.setHeader.bind(res);
+  res.setHeader = (name, value) => {
+    if (
+      typeof name === "string" &&
+      name.toLowerCase() === "content-type" &&
+      typeof value === "string" &&
+      /^text\/(markdown|plain)/i.test(value) &&
+      !/charset=/i.test(value)
+    ) {
+      return original(name, `${value}; charset=utf-8`);
+    }
+    return original(name, value);
+  };
+}
+
+export function markdownNegotiation(): PluginOption {
+  const middleware = (req: any, res: any, next: () => void) => {
+    if (!req.url) return next();
+    forceUtf8OnTextResponses(res);
+    const accept = Array.isArray(req.headers.accept)
+      ? req.headers.accept.join(",")
+      : req.headers.accept;
+    const rewritten = rewriteToMarkdown(req.url, accept);
+    if (rewritten) req.url = rewritten;
+    next();
+  };
+  return {
+    name: "leadtype:markdown-negotiation",
+    configureServer: (s) => s.middlewares.use(middleware),
+    configurePreviewServer: (s) => s.middlewares.use(middleware),
+  };
 }
 ```
 
 Browsers send `text/html,*/*` and get HTML. Agents send `Accept: text/markdown` and get the converted `.md`. Same URL, two formats.
 
 <Callout title="Set charset=utf-8" variant="warning">
-  Many static handlers serve `.md` files as `Content-Type: text/markdown` with no charset, which makes browsers fall back to Latin-1 and render UTF-8 characters (box-drawing, em dashes, smart quotes) as mojibake. Always send `Content-Type: text/markdown; charset=utf-8`. The example app patches `setHeader` in the same middleware — see [`apps/example/vite.config.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/vite.config.ts) for the exact code.
+
+  Many static handlers serve `.md` files as `Content-Type: text/markdown` with no charset, which makes browsers fall back to Latin-1 and render UTF-8 characters (box-drawing, em dashes, smart quotes) as mojibake. Always send `Content-Type: text/markdown; charset=utf-8` — that's what `forceUtf8OnTextResponses` above does by patching `setHeader`.
+
 </Callout>
 
-For Next.js, wire the same logic in `middleware.ts` and serve `.md` from a route handler. For Cloudflare Pages, use a `_middleware` Worker. In every case, set the charset explicitly.
+For Next.js, wire the same `rewriteToMarkdown` logic in `middleware.ts` and serve `.md` from a route handler that sets `Content-Type: text/markdown; charset=utf-8`. For Cloudflare Pages, use a `_middleware` Worker. In every case, set the charset explicitly.
 
 ## Connect a remote source
 
@@ -137,7 +199,12 @@ Then start the dev server and `curl -I -H "Accept: text/markdown" http://localho
 ## What's next
 
 <Cards>
+
   <Card title="CLI reference" description="Every flag, exit code, and JSON output shape." href="/docs/reference/cli" />
+
   <Card title="Lint in CI" description="Fail PRs on broken links or schema drift." href="/docs/build/validate-in-ci" />
+
   <Card title="Search reference" description="Index shape, BM25 weights, and answer streaming." href="/docs/reference/search" />
+
 </Cards>
+

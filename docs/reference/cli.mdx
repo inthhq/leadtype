@@ -64,7 +64,22 @@ Errors in JSON mode print `{"error": "...", ...}` to stderr.
 
 ### Group inference
 
-When `docs.config.ts` is not loaded explicitly (the CLI runs without an importing script), groups are **inferred from the union of `group:` values across every page**. The inferred groups become the section structure for `llms.txt`. To control the title/order of groups, run the pipeline from a script that imports `docs.config.ts` directly — see [`apps/example/scripts/llm-generate.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/scripts/llm-generate.ts).
+When `docs.config.ts` is not loaded explicitly (the CLI runs without an importing script), groups are **inferred from the union of `group:` values across every page**. The inferred groups become the section structure for `llms.txt`. To control the title/order of groups, run the pipeline from a script that imports `docs.config.ts` directly:
+
+```ts
+import { generateLlmsTxt } from "leadtype/llm";
+import docsConfig from "../docs/docs.config";
+
+await generateLlmsTxt({
+  srcDir: process.cwd(),
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups, // titles + order honored
+});
+```
+
+See [LLM bundles](/docs/reference/llm) for the rest of the script.
 
 ## lint
 

@@ -8,8 +8,6 @@ group: authoring
 
 Leadtype does not ship UI components. **Your docs app owns runtime rendering, styling, and accessibility** — it only has to honor a small naming contract so the remark pipeline can flatten each component into markdown for agents, search, and `llms-full/*.txt` bundles.
 
-The example app keeps its implementation under `apps/example/src/components/docs-mdx/` and is the canonical reference.
-
 ## Why flatten at all?
 
 Interactive MDX components like `<Tabs>` or `<Callout>` render fine in a browser but do nothing for an agent reading raw text. *Flattening* converts each component into a portable markdown equivalent at conversion time:

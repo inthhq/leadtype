@@ -10,8 +10,6 @@ Use this path when **you publish a library on npm** and want agents, IDEs, and C
 
 The website is for humans. The package-bundled docs are for everyone else.
 
-The reference implementation is leadtype itself: see [`packages/leadtype/scripts/generate-docs.ts`](https://github.com/inthio/leadtype/blob/main/packages/leadtype/scripts/generate-docs.ts) and [`packages/leadtype/package.json`](https://github.com/inthio/leadtype/blob/main/packages/leadtype/package.json).
-
 ## The flow
 
 <Mermaid chart={`flowchart LR
@@ -73,7 +71,69 @@ Add `docs` to `files` and run generation as a build or prepack step:
 }
 ```
 
-This is the shape leadtype itself uses — `packages/leadtype/package.json` lists `docs` in `files`, and the package build regenerates the bundle before publish so the output is always current.
+If you need full control over plugin order, base URL fallback, or custom navigation handling, run the library APIs directly from a script:
+
+```ts
+// scripts/generate-docs.ts
+import { rm } from "node:fs/promises";
+import { convertAllMdx } from "leadtype/convert";
+import {
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+  resolveDocsNavigation,
+} from "leadtype/llm";
+import { defaultRemarkPlugins } from "leadtype/remark";
+import docsConfig from "../../../docs/docs.config";
+
+const REPO_ROOT = `${process.cwd()}/../..`;
+const PACKAGE_ROOT = process.cwd();
+
+const baseUrl =
+  process.env.LEADTYPE_AGENT_BASE_URL?.trim() ||
+  "https://example.invalid/your-package";
+
+// Output is generated and gitignored — safe to nuke before each build.
+await rm(`${PACKAGE_ROOT}/docs`, { recursive: true, force: true });
+
+await convertAllMdx({
+  srcDir: `${REPO_ROOT}/docs`,
+  outDir: `${PACKAGE_ROOT}/docs`,
+  remarkPlugins: defaultRemarkPlugins,
+});
+
+// generateLlmsTxt and generateLLMFullContextFiles join `<dir>/docs/`
+// internally, so pass the parents (REPO_ROOT for source, PACKAGE_ROOT
+// for output) — they read MDX from `<repo>/docs/` and write to `<package>/docs/`.
+await generateLlmsTxt({
+  srcDir: REPO_ROOT,
+  outDir: PACKAGE_ROOT,
+  baseUrl,
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+
+await generateLLMFullContextFiles({
+  outDir: PACKAGE_ROOT,
+  baseUrl,
+  product: { name: docsConfig.product.name },
+  groups: docsConfig.groups,
+});
+
+// Fail fast on unknown groups so a bad config can't ship.
+const navigation = await resolveDocsNavigation({
+  srcDir: REPO_ROOT,
+  baseUrl,
+  groups: docsConfig.groups,
+});
+if (navigation.unknown.length > 0) {
+  for (const { urlPath, slug } of navigation.unknown) {
+    process.stderr.write(`error: ${urlPath} declares unknown group "${slug}".\n`);
+  }
+  process.exit(1);
+}
+```
+
+Then point your build script at it: `"build": "tsup && bun run scripts/generate-docs.ts"`.
 
 ## Verify before publishing
 
