@@ -86,7 +86,6 @@ export function CommandTabs({
           role="tab" since we don't implement the full tabs keyboard pattern
           (roving tabindex, ArrowLeft/Right, associated tabpanel). */}
       <fieldset data-leadtype-command-tabs-list="">
-        <legend data-leadtype-command-tabs-legend="">Package manager</legend>
         {MANAGERS.map((manager) => (
           <button
             aria-pressed={manager === active}

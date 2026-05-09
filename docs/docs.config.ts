@@ -3,77 +3,48 @@ import { defineDocsConfig } from "leadtype";
 export default defineDocsConfig({
   product: {
     name: "Leadtype",
-    summary: "Shared MDX conversion, linting, and LLM-doc generation package.",
+    summary:
+      "A docs pipeline that turns one MDX source into a website, agent-readable bundles, and a search index.",
     bullets: [
-      "Flattens MDX-heavy docs into clean markdown for agents.",
-      "Generates llms.txt plus topic-scoped full-context bundles.",
-      "Builds compact static search indexes and source-grounded answer prompts.",
-      "Validates frontmatter, docs metadata, and internal docs links.",
+      "Convert MDX into clean markdown that agents and tools can read.",
+      "Generate llms.txt and topic-scoped full-context bundles.",
+      "Build a static search index plus optional source-grounded answers.",
+      "Validate frontmatter, navigation, and internal links before publish.",
     ],
     bestStartingPoints: [
       { urlPath: "/docs" },
-      { urlPath: "/docs/guides/connect-docs-site" },
-      { urlPath: "/docs/convert" },
-      { urlPath: "/docs/llm" },
-      { urlPath: "/docs/search" },
+      { urlPath: "/docs/quickstart" },
+      { urlPath: "/docs/how-it-works" },
+      { urlPath: "/docs/build/connect-docs-site" },
+      { urlPath: "/docs/build/bundle-package-docs" },
     ],
     agentGuidance:
-      "Start with /docs/llms.txt to route the task, then open the smallest matching topic page.",
+      "Open /docs/llms.txt to route the task, then load the smallest matching topic file from /docs/llms-full/.",
   },
   groups: [
     {
-      slug: "overview",
-      title: "Overview",
-      description: "Start here for package scope and surface selection.",
-    },
-    {
-      slug: "guides",
-      title: "Guides",
-      description: "Practical ways to wire leadtype into docs apps.",
+      slug: "get-started",
+      title: "Get Started",
+      description:
+        "What leadtype is, how it fits together, and the five-minute happy path.",
     },
     {
       slug: "authoring",
-      title: "Authoring And Rendering",
-      description: "React MDX components and remark pipeline behavior.",
-      children: [
-        {
-          slug: "components",
-          title: "Components",
-          description: "React MDX component adapters.",
-        },
-        {
-          slug: "remark",
-          title: "Remark",
-          description: "Default plugins and conversion helpers.",
-        },
-      ],
+      title: "Authoring",
+      description:
+        "The content contract: frontmatter, groups, and the MDX components the pipeline can flatten.",
     },
     {
-      slug: "generation",
-      title: "Generation",
-      description: "MDX conversion, LLM output generation, and search.",
-      children: [
-        {
-          slug: "convert",
-          title: "Convert",
-          description: "MDX-to-markdown conversion APIs.",
-        },
-        {
-          slug: "llm",
-          title: "LLM",
-          description: "Summary and full-context file generation.",
-        },
-        {
-          slug: "search",
-          title: "Search",
-          description: "Static search indexes and AI answer helpers.",
-        },
-      ],
+      slug: "build",
+      title: "Build",
+      description:
+        "Two journeys: ship docs inside an npm package, or wire leadtype into a docs site.",
     },
     {
-      slug: "validation",
-      title: "Validation",
-      description: "Content validation and link checks.",
+      slug: "reference",
+      title: "Reference",
+      description:
+        "CLI flags, conversion APIs, remark plugins, LLM bundles, search, and lint rules.",
     },
   ],
 });

@@ -1,18 +1,13 @@
 # leadtype
 
-Framework-neutral docs pipeline tooling for any docs app.
+A docs pipeline. Write MDX once. Get a website, agent-readable bundles, and a static search index from a single command.
 
-## Package Surfaces
+- Flattens MDX components into clean markdown that agents and tools can read.
+- Generates `llms.txt` plus topic-scoped full-context bundles.
+- Builds a static, edge-safe search index (BM25, optional source-grounded answers).
+- Validates frontmatter, navigation, and internal links.
 
-- `leadtype/remark`: remark plugins plus `defaultRemarkPlugins`
-- `leadtype/convert`: MDX-to-markdown conversion APIs
-- `leadtype/llm`: `llms.txt` and topic-scoped full-context generation
-- `leadtype/search`: headless static docs search, answer prompts, request guards, and rate limiter helpers
-- `leadtype/search/node`: Node-only search index generation
-- `leadtype/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
-- `leadtype/search/tanstack`: TanStack AI answer streaming and bash tools
-- `leadtype/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
-- `leadtype/lint`: docs validation and the `leadtype lint` CLI
+leadtype is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Astro, anything.
 
 ## Install
 
@@ -20,160 +15,69 @@ Framework-neutral docs pipeline tooling for any docs app.
 pnpm add leadtype
 ```
 
-## Convert Docs
+## 30-second example
 
-`leadtype` does not export prebuilt UI components. The docs app owns its MDX component map and styling; this package owns the framework-neutral conversion, LLM, lint, and search pipeline:
-
-```ts
-import { convertAllMdx } from "leadtype/convert";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
-
-await convertAllMdx({
-  srcDir: "content",
-  outDir: "public",
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
-});
-```
-
-## Validation Layers
-
-This package is verified in three distinct layers:
-
-- Package unit tests in `packages/leadtype/src/**/*.test.ts*` cover pure library behavior such as conversion, search, linting, and generated docs output.
-- Pipeline fixtures in `apps/example/scripts` and `apps/example/content` exercise MDX conversion, LLM generation, and `ExtractedTypeTable`.
-- The live consumer demo in `apps/example` owns and renders its MDX components inside a TanStack Start app and provides Playwright browser coverage.
-
-Use the demo app as the reference integration when you need to see how a consumer should host and style the package in practice.
-
-## Where This Fits
-
-`leadtype` is portable docs infrastructure, not a hosted docs platform or complete docs-site framework. Mintlify, Fumadocs, and Starlight are good fits when the primary job is shipping the public docs website.
-
-Use `leadtype` when the docs pipeline also needs to feed converted markdown, agent bundles, lint checks, static search data, source-grounded answer routes, and internal tooling while the consuming app keeps control of routing, layout, hosting, and framework choices.
-
-React, Vue, Nuxt, Svelte, Astro, and other stacks can use the framework-neutral pipeline APIs today while owning their own runtime component rendering.
-
-## App Wiring Model
-
-In a consuming repo, wire this package into the docs surface:
-
-- Runtime docs app: define `mdxComponents` in the app when it renders MDX directly.
-- Docs pipeline: run `convertAllMdx` against the docs source tree.
-- Agent output: run `generateLlmsTxt` and `generateLLMFullContextFiles` against the converted markdown.
-- Search output: run `generateDocsSearchFiles`, then import the generated JSON in your docs search route.
-
-Do not add `leadtype` to product runtime code unless that runtime also renders or serves documentation.
-
-## Generate Agent Docs
-
-The MDX source for this package's docs lives at the repo root in `/docs` (with `meta.json`). Run:
+For a hosted docs site:
 
 ```bash
-LEADTYPE_AGENT_BASE_URL=https://docs.example.com/leadtype bun run docs:generate
+npx leadtype generate --src . --out public --base-url https://docs.example.com
+# → public/llms.txt, public/docs/*.md, public/docs/llms-full/*.txt,
+#   public/docs/search-index.json
 ```
 
-This reads `/docs/*.mdx` and writes converted markdown plus `llms*.txt` bundles into `packages/leadtype/docs/`. The output folder is gitignored and produced fresh at build time; only the converted output ships in the published tarball — the `.mdx` source does not.
+For an npm-bundled doc set:
 
-## Bundled Agent References
-
-The published package includes:
-
-- `docs/llms.txt`
-- `docs/components.md`
-- `docs/convert.md`
-- `docs/remark.md`
-- `docs/llm.md`
-- `docs/search.md`
-- `docs/lint.md`
-
-These files are intended for coding agents and other tooling that need small, topic-scoped references instead of a full docs site.
-
-Set `LEADTYPE_AGENT_BASE_URL` before generating publishable agent docs so the bundled routers point at the hosted docs base.
-For the example app generator, base URL precedence is `LEADTYPE_AGENT_BASE_URL`, then generic deployment `BASE_URL`, then `PORTLESS_URL`, then the local default.
-When the variable is absent, local builds fall back to `https://example.invalid/leadtype` so `bun run build` still succeeds in a clean workspace.
-
-## Generate A Search Index
-
-Run the MDX conversion first, then generate a static search index from the
-converted markdown:
-
-```ts
-import { generateDocsSearchFiles } from "leadtype/search/node";
-
-await generateDocsSearchFiles({
-  outDir: "public",
-  baseUrl: "https://docs.example.com",
-});
+```bash
+npx leadtype generate --bundle --src . --out packages/my-package
+# → packages/my-package/AGENTS.md, packages/my-package/docs/*.md
 ```
 
-At runtime, import the generated JSON and query it without Node APIs:
+The website output is fetched by humans (HTML) and HTTP agents (`Accept: text/markdown` or `/llms.txt`). The bundled output is auto-discovered by [25+ coding agents](https://agents.md) (Claude Code, Codex, Cursor, Copilot, …) when the package is installed at `node_modules/<your-pkg>/AGENTS.md`.
 
-```ts
-import {
-  readDocsContentFile,
-  searchDocs,
-  type DocsSearchContentStore,
-  type DocsSearchIndex,
-} from "leadtype/search";
-import contentJson from "./public/docs/search-content.json";
-import indexJson from "./public/docs/search-index.json";
+## Documentation
 
-const index = indexJson as DocsSearchIndex;
-const content = contentJson as DocsSearchContentStore;
+Full docs at [docs.example.com](https://docs.example.com/docs). Highlights:
 
-const results = searchDocs(index, "package tabs", { content });
-const quickstart = readDocsContentFile(
-  index,
-  "guides/quickstart",
-  content
-);
+- [Quickstart](https://docs.example.com/docs/quickstart) — five-minute happy path.
+- [How it works](https://docs.example.com/docs/how-it-works) — the mental model.
+- [Build a docs site](https://docs.example.com/docs/build/connect-docs-site) — wire into your build.
+- [Bundle docs into a package](https://docs.example.com/docs/build/bundle-package-docs) — ship docs inside an npm tarball.
+- [CLI reference](https://docs.example.com/docs/reference/cli) — every flag.
+
+## Entry points
+
+| Import | Purpose |
+| --- | --- |
+| `leadtype` | `defineDocsConfig` — the config helper. |
+| `leadtype/convert` | MDX-to-markdown conversion. |
+| `leadtype/remark` | `defaultRemarkPlugins` plus individual plugins. |
+| `leadtype/llm` | `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`. |
+| `leadtype/search` | Edge-safe search runtime, content readers, request guards. |
+| `leadtype/search/node` | Build-time `generateDocsSearchFiles`. |
+| `leadtype/search/vercel` | Vercel AI SDK / AI Gateway answer streaming and bash tools. |
+| `leadtype/search/tanstack` | TanStack AI answer streaming and bash tools. |
+| `leadtype/search/cloudflare` | Cloudflare AI Gateway / Workers AI adapter and bash tools. |
+| `leadtype/lint` | `lintDocs` and the `leadtype lint` CLI. |
+
+The `leadtype` binary wraps `generate` and `lint`. Use the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.
+
+## Bundled agent docs
+
+This package ships its own docs inside the published tarball:
+
+- `AGENTS.md` at the package root — auto-discovered by [25+ coding agents](https://agents.md) when leadtype is installed in any project.
+- `docs/*.md` — flattened markdown per page, organized by group.
+
+After `npm install leadtype`, point your project's root `AGENTS.md` at the bundled docs:
+
+```md
+When working with the `leadtype` library, read
+`node_modules/leadtype/AGENTS.md` first — it points at version-matched
+markdown topic files.
 ```
 
-The generator writes a compact `search-index.json` plus a separate
-`search-content.json`. Search scores against numeric chunk records, while answer
-flows read precise docs pages or heading chunks from the content store.
+The website-style outputs (`llms.txt`, `llms-full/*.txt`, `search-index.json`) are emitted only in default `leadtype generate` mode. They're served from a hosted docs site, not from the package tarball.
 
-For question answering, use a provider entrypoint. The example app uses the Vercel AI Gateway / AI SDK helper:
+## License
 
-```ts
-import { streamDocsAnswer } from "leadtype/search/vercel";
-
-const { response, sources } = streamDocsAnswer({
-  index,
-  content,
-  query: "How do I switch package managers?",
-  model: process.env.DOCS_SEARCH_MODEL ?? "openai/gpt-5.4-mini",
-  productName: "My Docs",
-});
-```
-
-For agent-style docs inspection, use the provider-compatible bash tool adapter:
-
-```ts
-import { createDocsBashTool } from "leadtype/search/vercel";
-
-const { tools, instructions } = await createDocsBashTool(index, content);
-```
-
-The bash adapter builds a read-only `/docs` filesystem for `just-bash` and wraps
-it with `bash-tool` so AI SDK agents can inspect docs with commands like `ls`,
-`cat`, `find`, `grep`, and `rg`.
-
-Use `leadtype/search/tanstack` with a TanStack `adapter`, or
-`leadtype/search/cloudflare` with `createCloudflareDocsAdapter`, when those
-gateways own answer generation. Tools and tool instructions are explicit inputs
-to `streamDocsAnswer`; no provider entrypoint creates tools internally.
-
-The search runtime includes reusable guards for payload size, query length,
-control characters, client identification, and in-memory rate limiting. The
-in-memory limiter is suitable for local demos; production apps should pass the
-same `RateLimiter` interface through Redis, Vercel KV, Cloudflare KV, Durable
-Objects, or another shared store.
-
-The local index is the intended default for docs sites. It is static, cheap to
-serve on Vercel and Cloudflare, and has no request-time database dependency.
-For larger docs, keep this lexical index for exact API/config/error searches and
-add a virtual content layer plus optional embeddings for fuzzy semantic recall.
-Move to hosted search or a vector store when the compact index becomes large
-enough to hurt cold starts, docs exceed tens of thousands of chunks, or users ask
-questions that do not share vocabulary with the docs.
+MIT.

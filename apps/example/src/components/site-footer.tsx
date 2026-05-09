@@ -1,6 +1,6 @@
 const footerLinks = [
   {
-    href: "https://github.com/inthhq/docs",
+    href: "https://github.com/inthhq/leadtype",
     label: "GitHub",
   },
   {

@@ -1,0 +1,204 @@
+---
+title: "LLM bundles"
+description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
+group: reference
+---
+
+# LLM bundles
+
+The `leadtype/llm` entry point produces three flavors of agent-facing index, all derived from the same docs source:
+
+- **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with absolute URLs.
+- **`generateLLMFullContextFiles`** — full-content topic bundles. Pairs with `generateLlmsTxt`.
+- **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
+
+```ts
+import {
+  generateAgentsMd,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+  resolveDocsNavigation,
+} from "leadtype/llm";
+```
+
+The CLI's default `leadtype generate` calls the first two; `leadtype generate --bundle` calls the third. Use these APIs directly when you need finer control.
+
+## What gets generated
+
+| File | Purpose |
+| --- | --- |
+| `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, links to deeper bundles. |
+| `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and entry links. |
+| `<out>/docs/llms-full.txt` | All pages flattened into one file. Use for agents with very large context windows. |
+| `<out>/docs/llms-full/<leaf>.txt` | One per leaf group. Topic-scoped full content for narrower context budgets. |
+
+Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf groups appear as headings inside the parent file.
+
+## Example llms.txt
+
+```txt
+# My Library
+
+> A library that does one thing well.
+
+- Helper that handles the boring parts.
+- Type-safe by default.
+- Works in any runtime.
+
+## Best Starting Points
+
+- [Documentation](https://docs.example.com/docs)
+- [Quickstart](https://docs.example.com/docs/quickstart)
+
+## Get Started
+
+Five-minute happy path and the mental model.
+
+- [Quickstart](https://docs.example.com/docs/quickstart): Install and run the pipeline.
+- [How it works](https://docs.example.com/docs/how-it-works): The mental model.
+
+## Reference
+
+CLI flags and conversion APIs.
+
+- [CLI](https://docs.example.com/docs/reference/cli): Every flag.
+```
+
+## Typical sequence
+
+```ts
+import { convertAllMdx } from "leadtype/convert";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import {
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+} from "leadtype/llm";
+
+await convertAllMdx({
+  srcDir: "docs",
+  outDir: "public/docs",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+});
+
+await generateLlmsTxt({
+  srcDir: ".",
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: {
+    name: "My Library",
+    summary: "A library that does one thing well.",
+  },
+  groups: docsConfig.groups,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: { name: "My Library" },
+  groups: docsConfig.groups,
+});
+```
+
+`generateLLMFullContextFiles` reads from `<outDir>/docs/`, so always run conversion first.
+
+## generateAgentsMd
+
+For npm-bundled docs that ship inside `node_modules/<pkg>/` and rely on filesystem auto-discovery (Claude Code, Codex, Cursor, Copilot, etc.):
+
+```ts
+import { generateAgentsMd } from "leadtype/llm";
+
+await generateAgentsMd({
+  srcDir: ".",
+  outDir: "packages/my-package",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+```
+
+Writes `<outDir>/AGENTS.md` (singular, at the root) with the same product summary and group structure as `generateLlmsTxt`, but every link is a **relative** path like `./docs/<segment>/<slug>.md` instead of an absolute URL.
+
+| Option | Description |
+| --- | --- |
+| `srcDir` | Repo root containing the `docs/` source. |
+| `outDir` | Package root. `AGENTS.md` is written at `<outDir>/AGENTS.md`. |
+| `product` | Same `ProductInfo` shape as `generateLlmsTxt`. `agentGuidance` is intentionally ignored — it's written for the website's URL-routing flow and would mislead an offline agent. |
+| `groups` | Group tree from `docs.config.ts`. Same shape as `generateLlmsTxt`. |
+| `docsSubdir` | Subdirectory under `outDir` that holds the `.md` files. Default: `docs`. Used as the relative-path prefix in every link. |
+
+Returns `{ outputPath: string }` pointing at the written `AGENTS.md`.
+
+### Example output
+
+```md
+# My Library
+
+> A library that does one thing well.
+
+These docs ship inside the package so coding agents can read them offline. Open the topic file you need from the list below — paths are relative to this file.
+
+## Get Started
+
+- [Quickstart](./docs/quickstart.md): Install and run the pipeline.
+- [How it works](./docs/how-it-works.md): The mental model.
+
+## Reference
+
+- [CLI](./docs/reference/cli.md): Every flag.
+```
+
+Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [Bundle docs into a package](/docs/build/bundle-package-docs) for the full flow.
+
+## resolveDocsNavigation
+
+Same group-resolution logic the LLM bundles use, but returns the navigation manifest as a plain object — useful for driving a sidebar UI:
+
+```ts
+const navigation = await resolveDocsNavigation({
+  srcDir: ".",
+  baseUrl: "https://docs.example.com",
+  groups: docsConfig.groups,
+});
+
+if (navigation.unknown.length > 0) {
+  for (const { urlPath, slug } of navigation.unknown) {
+    process.stderr.write(`error: ${urlPath} declares unknown group "${slug}".\n`);
+  }
+  process.exit(1);
+}
+```
+
+Write the result to `src/generated/docs-nav.json` and import it from your sidebar component:
+
+```ts
+import { mkdir, writeFile } from "node:fs/promises";
+
+await mkdir("src/generated", { recursive: true });
+await writeFile(
+  "src/generated/docs-nav.json",
+  `${JSON.stringify(navigation, null, 2)}\n`
+);
+```
+
+Now your sidebar can import a static manifest with the same group tree the LLM bundles use.
+
+## Topic design
+
+The `groups` you pass to these APIs come from `docs.config.ts`. Two principles:
+
+- **Prefer narrow leaves over one giant bundle.** A leaf with 5 pages produces a focused `llms-full` file an agent can load quickly. A single catch-all leaf with 50 pages produces something most agents will truncate.
+- **Write group descriptions for routing, not flavor text.** Agents read those descriptions to decide which bundle to load. "How to install and run" beats "Welcome to our guides!"
+
+## Base URL precedence
+
+Pass `baseUrl` explicitly, or use environment variables for layered fallback:
+
+```ts
+const baseUrl =
+  process.env.LEADTYPE_AGENT_BASE_URL ||
+  process.env.BASE_URL ||
+  process.env.PORTLESS_URL ||
+  "https://docs.example.com";
+```
+
+The package-specific `LEADTYPE_AGENT_BASE_URL` lets each package override an org-wide default. `BASE_URL` covers most CI/deployment platforms, and a final hardcoded fallback keeps local builds working without env setup.

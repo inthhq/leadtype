@@ -1,0 +1,142 @@
+---
+title: "CLI"
+description: "leadtype generate and leadtype lint — flags, exit codes, and JSON output."
+group: reference
+---
+
+# CLI
+
+```bash
+leadtype <command> [options]
+```
+
+Two commands: `generate` runs the full pipeline, `lint` validates content. Run `leadtype help <command>` for inline usage.
+
+## generate
+
+Convert MDX, then either produce website artifacts (default) or a package bundle (`--bundle`).
+
+```bash
+leadtype generate [options]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Repo or root directory containing the docs folder. |
+| `--docs-dir <dir>` | `docs` | Docs folder relative to `--src`. |
+| `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
+| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full*`, and the search index. |
+| `--base-url <url>` | — | Base URL for absolute links in `llms.txt`. Site mode only; ignored in `--bundle`. |
+| `--name <name>` | from `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). |
+| `--summary <text>` | from `package.json#description` | Product summary written into the index file. |
+| `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
+| `--exclude <glob>` | none | Docs-root-relative glob to exclude. Applied after `--include`. |
+| `--enrich-git` | off | Add `lastModified` and `lastAuthor` to frontmatter from git history. |
+| `--format <fmt>` | `text` | `text` or `json`. JSON prints a single result object on stdout. |
+| `--json` | — | Alias for `--format json`. |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` success, `1` runtime error (docs dir missing, unknown group, conversion error), `2` CLI usage error.
+
+### Bundle mode
+
+```bash
+leadtype generate --bundle --src . --out packages/my-package
+```
+
+Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `llms-full/*.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/build/bundle-package-docs).
+
+### JSON output shape
+
+`--json` prints a single object describing what was generated. The shape varies by mode:
+
+```json
+{
+  "mode": "site",
+  "srcDir": "/abs/path/to/repo",
+  "docsDir": "/abs/path/to/repo/docs",
+  "outDir": "/abs/path/to/repo/public",
+  "product": { "name": "...", "summary": "..." },
+  "groups": [{ "slug": "get-started", "title": "Get Started" }],
+  "filters": { "include": [], "exclude": [] },
+  "files": {
+    "llmsTxt": "/abs/path/.../public/llms.txt",
+    "docsLlmsTxt": "/abs/path/.../public/docs/llms.txt",
+    "docsLlmsFullTxt": "/abs/path/.../public/docs/llms-full.txt",
+    "searchIndex": "/abs/path/.../public/docs/search-index.json",
+    "searchContent": "/abs/path/.../public/docs/search-content.json"
+  },
+  "search": { /* index stats */ }
+}
+```
+
+In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, etc.) are absent.
+
+Errors in JSON mode print `{"error": "...", ...}` to stderr.
+
+### Group inference
+
+When `docs.config.ts` is not loaded explicitly (the CLI runs without an importing script), groups are **inferred from the union of `group:` values across every page**. The inferred groups become the section structure for `llms.txt`. To control the title/order of groups, run the pipeline from a script that imports `docs.config.ts` directly:
+
+```ts
+import { generateLlmsTxt } from "leadtype/llm";
+import docsConfig from "../docs/docs.config";
+
+await generateLlmsTxt({
+  srcDir: process.cwd(),
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups, // titles + order honored
+});
+```
+
+See [LLM bundles](/docs/reference/llm) for the rest of the script.
+
+## lint
+
+Validate frontmatter, `meta.json`, and internal links before generation runs.
+
+```bash
+leadtype lint [srcDir] [options]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `[srcDir]` | `content` | Source docs root. Equivalent to `--src`. |
+| `--src <dir>` | — | Same as the positional. |
+| `--changelog <dir>` | — | Subdirectory under `srcDir` validated against the changelog schema. |
+| `--format <fmt>` | `pretty` | `pretty`, `json`, or `github` (annotation format). |
+| `--ignore <glob>` | shared & node_modules defaults | Glob to skip. Repeatable; passing any `--ignore` overrides defaults. |
+| `--warn-unknown` | on | Report unknown frontmatter and meta fields as warnings. |
+| `--error-unknown` | off | Report unknown fields as errors. |
+| `--max-warnings <n>` | unlimited | Exit non-zero when warning count exceeds `n`. |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` no errors and warnings within budget, `1` lint errors or budget exceeded, `2` CLI usage error.
+
+Default ignored paths: `**/shared/**`, `**/_shared/**`, `**/_partials/**`, `**/node_modules/**`. Pass `--ignore` to extend (each pass overrides the defaults — re-add what you need).
+
+See [Lint reference](/docs/reference/lint) for the full rule list, schema, and how to plug in custom Valibot schemas via the library API.
+
+## help
+
+Show usage:
+
+```bash
+leadtype help            # main usage
+leadtype help generate
+leadtype help lint
+```
+
+## Library entry points
+
+The CLI is a thin wrapper. Every command is also available as a TypeScript API for custom build scripts:
+
+- [`leadtype/convert`](/docs/reference/convert) — `convertAllMdx`, `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`.
+- [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`.
+- [`leadtype/search/node`](/docs/reference/search) — `generateDocsSearchFiles`.
+- [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.
+- [`leadtype/remark`](/docs/reference/remark) — `defaultRemarkPlugins` and individual plugins.
+
+Use the CLI for the happy path, the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.

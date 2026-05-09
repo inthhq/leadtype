@@ -34,6 +34,24 @@
           }
         }
       }
+    },
+    {
+      // Custom AI SDK eval harness. Fixture files use the EVAL.ts /
+      // PROMPT.md naming convention; eval tests are short, ad-hoc
+      // assertions over a transcript JSON, so useTopLevelRegex /
+      // useConsistentTypeDefinitions don't earn their lint cost here.
+      "includes": ["evals/**"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "useTopLevelRegex": "off"
+          },
+          "style": {
+            "useConsistentTypeDefinitions": "off",
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
     }
   ]
 }

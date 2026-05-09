@@ -1,0 +1,172 @@
+---
+title: "How it works"
+description: "The mental model: one MDX source, a remark pipeline, two output modes, three audiences."
+group: get-started
+---
+
+# How it works
+
+Leadtype takes one input — a folder of MDX — and produces every shape your docs need to take. This page names every piece so the rest of the docs make sense.
+
+## The pipeline
+
+<Mermaid chart={`flowchart TB
+  src["docs/*.mdx<br/>title · description · group · body"]
+  fm["frontmatter parser"]
+  remark["remark plugin stack<br/>(strip imports → flatten components)"]
+  groups["group resolver<br/>(nav tree from frontmatter)"]
+  md["docs/*.md"]
+  site_idx["llms.txt · llms-full/*.txt<br/>(website mode only)"]
+  search["search-index.json · search-content.json<br/>(website mode only)"]
+  agents_md["AGENTS.md<br/>(--bundle mode only)"]
+  nav["navigation manifest<br/>(group → page)"]
+  src --> fm
+  fm --> remark
+  fm --> groups
+  remark --> md
+  md --> site_idx
+  md --> search
+  groups --> site_idx
+  groups --> agents_md
+  groups --> nav`} />
+
+The remark stack is what turns interactive MDX components into agent-readable markdown. JSX gets *flattened* — a `<Callout>` becomes a blockquote, a `<Tabs>` becomes a sequence of bold headings, a `<TypeTable>` becomes a markdown table. The flattened markdown is what every other artifact consumes.
+
+For the exact stack, see [Remark plugins](/docs/reference/remark). For the component contract, see [Components](/docs/authoring/components).
+
+## Two output modes
+
+`leadtype generate` has two modes that read the same source and emit different shapes:
+
+<TypeTable
+  properties={{
+    "Site mode (default)": {
+      type: "leadtype generate --out public",
+      description:
+        "Writes llms.txt, docs/llms-full/*.txt, docs/search-index.json, and docs/*.md to a public/ directory your docs website serves. Links use absolute URLs (set with --base-url). This is what you wire into a vite/Next/Astro build.",
+    },
+    "Bundle mode": {
+      type: "leadtype generate --bundle --out packages/foo",
+      description:
+        "Writes AGENTS.md at the package root and docs/*.md beneath it, both with relative paths. Skips llms.txt, llms-full, and the search index — those are website-only. Designed for npm tarballs that ship docs alongside the published code.",
+    },
+  }}
+/>
+
+## The artifacts
+
+<TypeTable
+  properties={{
+    "Markdown (.md)": {
+      type: "docs/<path>.md",
+      description:
+        "Flattened markdown for each MDX page. Both modes ship these. Served to HTTP agents via content negotiation in site mode; read directly from node_modules in bundle mode.",
+    },
+    "AGENTS.md": {
+      type: "<package-root>/AGENTS.md",
+      description:
+        "Bundle mode only. Offline-readable index that 25+ coding agents auto-discover (Claude Code, Codex, Cursor, Copilot, …). Every link is a relative ./docs/<path>.md path so the file works inside an installed npm package.",
+    },
+    "llms.txt + llms-full": {
+      type: "<out>/llms.txt + <out>/docs/llms-full/<group>.txt",
+      description:
+        "Site mode only. The llms.txt convention is for websites — agents fetch /llms.txt over HTTP and follow absolute URLs to deeper context. Useless inside an npm tarball, so bundle mode skips this.",
+    },
+    "Search index": {
+      type: "<out>/docs/search-index.json + search-content.json",
+      description:
+        "Site mode only. BM25-ranked inverted index over headings, titles, body, and code. Content is stored separately so the index stays small. Bundle mode skips it — agents reading from disk grep the .md files directly.",
+    },
+    "Navigation manifest": {
+      type: "docs-nav.json (build script)",
+      description:
+        "Resolved group tree mapping pages to nav locations. Built by the resolveDocsNavigation() helper so your sidebar component and your llms.txt sections agree on structure.",
+    },
+  }}
+/>
+
+## The three audiences
+
+<Mermaid chart={`flowchart LR
+  site_out["site mode<br/>public/*"]
+  bundle_out["bundle mode<br/>node_modules/&lt;pkg&gt;/*"]
+  human["Humans<br/>(browser)"]
+  http_agent["HTTP agents<br/>(fetch /llms.txt or<br/>Accept: text/markdown)"]
+  search_ui["Search UI<br/>AI answers"]
+  offline_agent["Coding agents<br/>(Claude Code, Codex,<br/>Cursor, Copilot, …)"]
+  site_out -- "HTML render of MDX" --> human
+  site_out -- "absolute URLs" --> http_agent
+  site_out -- "search-index.json" --> search_ui
+  bundle_out -- "AGENTS.md auto-discovery" --> offline_agent`} />
+
+- **Humans** see the HTML your docs site renders from MDX.
+- **HTTP agents** fetch `/llms.txt` over the network or use `Accept: text/markdown` content negotiation to get the converted `.md` from your docs site URL.
+- **Coding agents working in a project that depends on your package** auto-discover `AGENTS.md` at `node_modules/<your-package>/AGENTS.md`. The 25+ tools supporting [agents.md](https://agents.md) read it without being told to. From there they follow relative `./docs/<topic>.md` links.
+
+The two flows complement each other. A package that wants to be agent-friendly publishes both: `--bundle` output inside the tarball *and* a hosted website with `llms.txt`. Different agents use different flows; you don't pick one.
+
+## Vocabulary
+
+A few terms you will see throughout the docs.
+
+<TypeTable
+  properties={{
+    flatten: {
+      type: "verb",
+      description:
+        "Convert an interactive MDX component into a portable markdown equivalent. A <Callout> flattens to a blockquote; a <Tabs> flattens to a stack of bold headings.",
+    },
+    group: {
+      type: "frontmatter field",
+      description:
+        "A slug declaring which group a page belongs to. The same string drives the sidebar position, the llms.txt section, and the llms-full/<slug>.txt file.",
+    },
+    leaf: {
+      type: "noun",
+      description:
+        "A group that has no children. Each leaf gets its own llms-full file; non-leaf groups are summary headings only.",
+    },
+    chunk: {
+      type: "noun",
+      description:
+        "A heading-aware slice of a page that the search index scores independently. Titles weigh 4×, headings 2×, body 1×, code 0.35×.",
+    },
+    "content negotiation": {
+      type: "noun",
+      description:
+        "Middleware that rewrites GET /docs/foo to /docs/foo.md when the request advertises Accept: text/markdown. Same URL, two formats. Implement it wherever your framework intercepts requests — Next.js middleware, an Astro endpoint, a Cloudflare Worker, a Vite plugin.",
+    },
+  }}
+/>
+
+## What runs when
+
+The `leadtype generate` command runs in a fixed order — each stage depends on the previous one's output:
+
+1. **Parse frontmatter** for every `.mdx` under `docs/`.
+2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to the output directory (e.g. `public/docs/` in site mode, `<package>/docs/` with `--bundle`).
+3. **Resolve groups** from frontmatter, validate every page's `group:` matches a known slug.
+4. In **site mode** (default): generate `llms.txt`, the `llms-full/<group>.txt` topic bundles, and the BM25 search index from the converted markdown.
+5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip `llms.txt`, `llms-full*`, and the search index — those are website-only.
+
+If step 3 finds an unknown group, the run fails. That is by design — broken navigation is a content bug, not a render-time problem.
+
+## Where to next
+
+<Cards>
+  <Card
+    title="Quickstart"
+    description="Run the pipeline yourself in five minutes."
+    href="/docs/quickstart"
+  />
+  <Card
+    title="Frontmatter contract"
+    description="The required fields, the group resolution rules, and the lint checks."
+    href="/docs/authoring/frontmatter"
+  />
+  <Card
+    title="CLI reference"
+    description="Every flag for leadtype generate and leadtype lint."
+    href="/docs/reference/cli"
+  />
+</Cards>

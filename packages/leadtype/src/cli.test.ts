@@ -115,7 +115,7 @@ describe("leadtype CLI", () => {
     expect(capture.stdout).toContain("Generated docs pipeline output");
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "guides", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(true);
     expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(true);
@@ -169,7 +169,7 @@ describe("leadtype CLI", () => {
     expect(result.files.searchIndex).toBe(
       path.join(outDir, "docs", "search-index.json")
     );
-    expect(result.groups.map((group) => group.slug)).toContain("guides");
+    expect(result.groups.map((group) => group.slug)).toContain("build");
     expect(result.search.docs).toBeGreaterThan(0);
   });
 
@@ -185,7 +185,7 @@ describe("leadtype CLI", () => {
         "--out",
         outDir,
         "--include",
-        "guides/**",
+        "build/**",
         "--format",
         "json",
       ],
@@ -196,12 +196,12 @@ describe("leadtype CLI", () => {
     const result = JSON.parse(capture.stdout) as {
       filters: { include: string[] };
     };
-    expect(result.filters.include).toEqual(["guides/**"]);
+    expect(result.filters.include).toEqual(["build/**"]);
     expect(
-      existsSync(path.join(outDir, "docs", "guides", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "guides", "bundle-package-docs.md"))
+      existsSync(path.join(outDir, "docs", "build", "bundle-package-docs.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(false);
   });
@@ -218,19 +218,19 @@ describe("leadtype CLI", () => {
         "--out",
         outDir,
         "--include",
-        "guides/**",
+        "build/**",
         "--exclude",
-        "guides/connect-docs-site.mdx",
+        "build/connect-docs-site.mdx",
       ],
       capture.io
     );
 
     expect(code).toBe(0);
     expect(
-      existsSync(path.join(outDir, "docs", "guides", "bundle-package-docs.md"))
+      existsSync(path.join(outDir, "docs", "build", "bundle-package-docs.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "guides", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
     ).toBe(false);
   });
 
@@ -341,6 +341,60 @@ This page is valid, but the output path is not a directory.
     expect(error.error).toBeTruthy();
     expect(error.filters.include).toEqual(["guides/**"]);
     expect(leakedTempDirs).toEqual([]);
+  });
+
+  it("emits AGENTS.md and skips llms.txt in --bundle mode", async () => {
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--name",
+        "leadtype",
+        "--summary",
+        "Bundled docs for leadtype.",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      files: { agentsMd?: string; llmsTxt?: string };
+      mode: string;
+    };
+    expect(result.mode).toBe("bundle");
+    expect(result.files.agentsMd).toBe(path.join(outDir, "AGENTS.md"));
+    expect(result.files.llmsTxt).toBeUndefined();
+
+    // AGENTS.md exists, has the product header, and uses relative links.
+    expect(existsSync(path.join(outDir, "AGENTS.md"))).toBe(true);
+    const agentsMd = await readFile(path.join(outDir, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("# leadtype");
+    expect(agentsMd).toContain("](./docs/");
+    // Bundle mode must NOT emit website artifacts.
+    expect(existsSync(path.join(outDir, "llms.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
+      false
+    );
+    expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
+      false
+    );
+    // .md files should still ship.
+    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
+    ).toBe(true);
   });
 
   it("fails clearly when the docs source directory is missing", async () => {

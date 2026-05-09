@@ -1,0 +1,85 @@
+---
+title: "Validate in CI"
+description: "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish."
+group: build
+---
+
+# Validate in CI
+
+`leadtype lint` reads source MDX, runs the schema and link checks, and exits non-zero on errors. Wire it into CI so docs PRs fail fast on the same rules that would otherwise blow up `leadtype generate` later in the pipeline.
+
+## What it catches
+
+- Missing or wrong-typed frontmatter fields (`schema` rule).
+- Top-level frontmatter fields not in the schema (`unknown-field`).
+- Frontmatter or `meta.json` that doesn't parse (`parse-error`).
+- Internal `/docs/...` links pointing at routes that don't exist (`invalid-link`).
+- Unresolved `{framework}` placeholders left in URLs (`unresolved-placeholder`).
+- Cross-framework links from a framework-scoped page to a different framework's docs (`cross-framework-link`).
+
+See [Lint reference](/docs/reference/lint) for the full rule list and how to extend the schema.
+
+## GitHub Actions
+
+Use `--format github` so violations render as inline annotations on the PR:
+
+```yaml
+name: Lint docs
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "**/*.mdx"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: npx leadtype lint docs --format github --error-unknown --max-warnings 0
+```
+
+`--error-unknown` upgrades unknown-field warnings to errors — strict mode. `--max-warnings 0` makes any remaining warning fail the job.
+
+## Other CI providers
+
+Use `--format json` for any CI that doesn't speak the GitHub annotations format:
+
+```bash
+npx leadtype lint docs --format json --error-unknown > lint-report.json
+```
+
+The JSON output includes per-file violations and summary counts. Pipe it into your provider's reporter, post a PR comment, or upload as an artifact.
+
+## Local pre-push hook
+
+Catch issues before they reach CI by running lint in a husky pre-push hook:
+
+```bash
+#!/usr/bin/env sh
+npx leadtype lint docs --max-warnings 0
+```
+
+Keep it under a second by limiting the scan to changed files when you have many pages. The CLI accepts repeated `--ignore` globs to skip stale or generated paths.
+
+## Run before generate
+
+When `leadtype lint` and `leadtype generate` both run in the same job, lint first:
+
+```bash
+npx leadtype lint docs --error-unknown
+npx leadtype generate --src . --out public --json
+```
+
+Generate fails noisily on unknown groups or broken includes. Lint fails specifically on content schema problems with file/line context — much easier to debug.
+
+## What to fix first
+
+When CI fails on a lot of violations, fix them in this order:
+
+1. `parse-error` — frontmatter is broken; nothing else can validate.
+2. `schema` — missing or wrong-typed required fields.
+3. `unresolved-placeholder` — content bug, not a config bug.
+4. `invalid-link` and `cross-framework-link` — usually a stale link after a docs move.
+5. `unknown-field` — last; either delete the field or extend the schema.

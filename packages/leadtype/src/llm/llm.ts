@@ -821,6 +821,132 @@ export async function generateLLMFullContextFiles(
   await writeGroupTree(resolved, config.product, markdownDocs, llmsFullDir);
 }
 
+/* ---------------- AGENTS.md (offline package bundle) -------------------- */
+
+export type AgentsMdConfig = {
+  /** Repo root containing the `docs/` source. */
+  srcDir: string;
+  /** Output root. AGENTS.md is written at `<outDir>/AGENTS.md`. */
+  outDir: string;
+  product: ProductInfo;
+  /** Group tree from `docs.config.ts`. Drives section structure. */
+  groups: DocsGroup[];
+  /**
+   * Subdirectory under `outDir` that holds the converted `.md` files.
+   * Used for the relative-path prefix in every link. Default: `docs`.
+   */
+  docsSubdir?: string;
+};
+
+export type AgentsMdResult = {
+  outputPath: string;
+};
+
+function relativeDocLink(relativePath: string, docsSubdir: string): string {
+  return `./${docsSubdir}/${relativePath}.md`;
+}
+
+function pageDescription(doc: SourceDoc, fallback?: string): string {
+  return (
+    normalizeDescription(doc.description) ||
+    fallback ||
+    `Reference page for ${doc.title.toLowerCase()}.`
+  );
+}
+
+/**
+ * Generate `AGENTS.md` at the package root for offline-readable docs that
+ * coding agents auto-discover (Claude Code, Codex, Cursor, etc.). Unlike
+ * `generateLlmsTxt`, every link is a **relative** filesystem path
+ * (`./docs/<segment>/<slug>.md`) so the file works inside a published npm
+ * tarball at `node_modules/<pkg>/AGENTS.md`.
+ */
+export async function generateAgentsMd(
+  config: AgentsMdConfig
+): Promise<AgentsMdResult> {
+  const srcDir = path.resolve(config.srcDir);
+  const outDir = path.resolve(config.outDir);
+  const docsSubdir = config.docsSubdir ?? DOCS_DIRNAME;
+  // baseUrl is required by readSourceDocs for the SourceDoc.absoluteUrl
+  // field, but AGENTS.md output never reads that field — relative paths only.
+  // Pass through any configured fallback so SourceDoc objects are well-formed.
+  const baseUrl = normalizeBaseUrl(undefined);
+  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const resolved = resolveGroups(config.groups);
+  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+
+  const lines: string[] = [
+    `# ${config.product.name}`,
+    "",
+    `> ${config.product.summary}`,
+    "",
+    "These docs ship inside the package so coding agents can read them offline. Open the topic file you need from the list below — paths are relative to this file.",
+  ];
+
+  if (config.product.bullets && config.product.bullets.length > 0) {
+    lines.push("", "## Product Summary", "");
+    for (const bullet of config.product.bullets) {
+      lines.push(`- ${bullet}`);
+    }
+  }
+
+  const startingPoints = config.product.bestStartingPoints ?? [];
+  const renderedStarts: string[] = [];
+  for (const link of startingPoints) {
+    const sourceDoc = sourceDocs.get(link.urlPath);
+    if (!sourceDoc) {
+      // bestStartingPoints can reference URLs not present in source (e.g.
+      // /docs root). Skip those rather than emit a broken relative link.
+      continue;
+    }
+    const title = link.title ?? sourceDoc.title;
+    const description = link.description ?? pageDescription(sourceDoc);
+    renderedStarts.push(
+      `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
+    );
+  }
+  if (renderedStarts.length > 0) {
+    lines.push("", "## Best Starting Points", "", ...renderedStarts);
+  }
+
+  for (const group of resolved) {
+    const pages = pagesUnderGroup(group, membership);
+    if (pages.length === 0) {
+      continue;
+    }
+    lines.push("", `## ${group.title}`);
+    if (group.description) {
+      lines.push("", group.description);
+    }
+    lines.push("");
+    for (const page of pages) {
+      lines.push(
+        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+      );
+    }
+  }
+
+  if (membership.ungrouped.length > 0) {
+    lines.push("", "## Other", "");
+    for (const page of membership.ungrouped) {
+      lines.push(
+        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+      );
+    }
+  }
+
+  // Skip product.agentGuidance — it's written for the website's llms.txt
+  // routing flow ("open /docs/llms.txt then…") and would mislead an agent
+  // reading from node_modules. The preamble paragraph already covers offline
+  // navigation in format-agnostic terms.
+
+  const content = `${lines.join("\n")}\n`;
+  await mkdir(outDir, { recursive: true });
+  const outputPath = path.join(outDir, "AGENTS.md");
+  await writeFile(outputPath, content);
+  return { outputPath };
+}
+
 /* ---------------- Navigation manifest ----------------------------------- */
 
 export type DocsNavigationPage = {

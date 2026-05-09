@@ -1,4 +1,6 @@
 export {
+  type AgentsMdConfig,
+  type AgentsMdResult,
   type CuratedLink,
   type DocsConfig,
   type DocsGroup,
@@ -6,6 +8,7 @@ export {
   type DocsNavigationGroup,
   type DocsNavigationPage,
   defineDocsConfig,
+  generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
   type LLMFullContextConfig,

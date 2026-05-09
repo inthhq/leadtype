@@ -1,0 +1,109 @@
+---
+title: "Frontmatter"
+description: "Required fields, group semantics, and how authored MDX becomes a navigation tree."
+group: authoring
+---
+
+# Frontmatter
+
+Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads three things from it: what the page is, where it lives in the nav, and how to lint it.
+
+## Minimum
+
+```mdx
+---
+title: "Connect a docs site"
+description: "Wire leadtype into a docs app build."
+group: build
+---
+```
+
+- `title` — required. Non-empty string. Renders as the page heading and as the entry text in `llms.txt` and the sidebar.
+- `description` — optional but recommended. Becomes the routing hint in `llms.txt`. If omitted, the converter synthesizes one from the body during conversion (see [convert behavior](/docs/reference/convert)).
+- `group` — optional. Slug of a group declared in `docs.config.ts`. Pages without a group are excluded from the nav and from `llms-full/*.txt`.
+
+## How groups become a nav tree
+
+Each page declares a single group slug. Each group is declared once in `docs.config.ts`. The intersection produces the nav tree, the section headings in `llms.txt`, and the per-leaf `llms-full/<slug>.txt` files.
+
+<Mermaid chart={`flowchart LR
+  cfg["docs.config.ts<br/>groups: [authoring, build, reference]"]
+  page1["page A<br/>group: authoring"]
+  page2["page B<br/>group: build"]
+  page3["page C<br/>group: build"]
+  resolver["group resolver"]
+  nav["navigation tree"]
+  llms["llms.txt sections"]
+  full["llms-full/build.txt<br/>llms-full/authoring.txt"]
+  cfg --> resolver
+  page1 --> resolver
+  page2 --> resolver
+  page3 --> resolver
+  resolver --> nav
+  resolver --> llms
+  resolver --> full`} />
+
+If a page declares a group slug that isn't in `docs.config.ts`, the build fails with `unknown group "<slug>"`. Same source of truth, no drift.
+
+### Nested groups
+
+Declare children in the config to build deeper trees:
+
+```ts
+{
+  slug: "build",
+  title: "Build",
+  children: [
+    { slug: "bundle-package-docs", title: "Bundle a package" },
+    { slug: "connect-docs-site", title: "Connect a docs site" },
+  ],
+}
+```
+
+A page sets `group: bundle-package-docs` and lands in that nested slot. Only **leaf** groups (no children) get an `llms-full/<slug>.txt` file — non-leaves are headings only.
+
+## Optional fields
+
+The default lint schema also accepts:
+
+<TypeTable
+  properties={{
+    icon: { type: "string", description: "Icon name resolved by your sidebar component." },
+    deprecated: { type: "boolean", description: "Marks the page as deprecated in nav and search." },
+    deprecatedReason: { type: "string", description: "Short message paired with deprecated." },
+    experimental: { type: "boolean", description: "Marks the page as experimental." },
+    canary: { type: "boolean", description: "Hides from stable channels." },
+    new: { type: "boolean", description: "Highlights the page as recently added." },
+    draft: { type: "boolean", description: "Excludes from generation entirely." },
+    tags: { type: "string[]", description: "Free-form tags for search facets." },
+    availableIn: { type: "Array<{ framework, url?, title? }>", description: "Cross-framework availability map for TopicSwitcher pages." },
+    full: { type: "boolean", description: "Forces the page into the full-context bundle even when normally excluded." },
+  }}
+/>
+
+`lastModified` and `lastAuthor` are filled in automatically when you pass `--enrich-git` to the CLI. Don't author them by hand.
+
+## Lint rules
+
+`leadtype lint` enforces the schema, so violations surface in CI before they reach a build. The relevant rules:
+
+- `schema` — a required field is missing or has the wrong type.
+- `unknown-field` — a top-level field isn't in the schema (warn by default; `--error-unknown` to fail).
+- `parse-error` — frontmatter or `meta.json` doesn't parse.
+- `invalid-link` — a `/docs/...` link points to a route that doesn't exist.
+- `unresolved-placeholder` — a doc URL still contains an unresolved `{framework}` placeholder.
+- `cross-framework-link` — a framework-scoped page links to another framework's docs.
+
+See [Lint rules](/docs/reference/lint) for the full reference and how to extend the schema.
+
+## What this gives you
+
+Once frontmatter is consistent, the rest of the pipeline works without per-page configuration. The same `group:` value drives:
+
+- The sidebar position
+- The `llms.txt` section
+- The `llms-full/<group>.txt` bundle
+- The search filtering UI (if you build one)
+- Cross-framework link checks in lint
+
+One field, one source of truth.
