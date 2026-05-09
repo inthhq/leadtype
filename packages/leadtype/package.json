@@ -69,8 +69,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rollup -c && bun run docs:generate",
-    "dev": "rollup -c -w",
+    "build": "bun rollup -c && bun run docs:generate",
+    "dev": "bun rollup -c -w",
     "check-types": "tsgo --noEmit",
     "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
