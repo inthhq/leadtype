@@ -17,7 +17,7 @@ const entries = {
   "search/cloudflare-index": "src/search/cloudflare-index.ts",
   "lint/index": "src/lint/index.ts",
   cli: "src/cli.ts",
-};
+} as const;
 
 const isExternal = (id: string) =>
   id.startsWith("node:") || !(id.startsWith(".") || id.startsWith("/"));
