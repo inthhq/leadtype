@@ -17,7 +17,7 @@ export function SiteHeader() {
           className="flex flex-col gap-0.5 font-heading font-medium text-base tracking-tight"
           to="/"
         >
-          <span>@inth/docs</span>
+          <span>leadtype</span>
         </Link>
         <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <SearchBar />

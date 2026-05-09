@@ -24,27 +24,27 @@
     "paths": {
       "@/*": ["./src/*"],
       "@docs/*": ["../../docs/*"],
-      "@inth/docs/remark": ["../../packages/docs/src/remark/index.ts"],
-      "@inth/docs/convert": ["../../packages/docs/src/convert/index.ts"],
-      "@inth/docs/llm": ["../../packages/docs/src/llm/index.ts"],
-      "@inth/docs/search": ["../../packages/docs/src/search/index.ts"],
-      "@inth/docs/search/node": [
-        "../../packages/docs/src/search/node-index.ts"
+      "leadtype/remark": ["../../packages/leadtype/src/remark/index.ts"],
+      "leadtype/convert": ["../../packages/leadtype/src/convert/index.ts"],
+      "leadtype/llm": ["../../packages/leadtype/src/llm/index.ts"],
+      "leadtype/search": ["../../packages/leadtype/src/search/index.ts"],
+      "leadtype/search/node": [
+        "../../packages/leadtype/src/search/node-index.ts"
       ],
-      "@inth/docs/search/ai": ["../../packages/docs/src/search/ai-index.ts"],
-      "@inth/docs/search/bash": [
-        "../../packages/docs/src/search/bash-index.ts"
+      "leadtype/search/ai": ["../../packages/leadtype/src/search/ai-index.ts"],
+      "leadtype/search/bash": [
+        "../../packages/leadtype/src/search/bash-index.ts"
       ],
-      "@inth/docs/search/vercel": [
-        "../../packages/docs/src/search/vercel-index.ts"
+      "leadtype/search/vercel": [
+        "../../packages/leadtype/src/search/vercel-index.ts"
       ],
-      "@inth/docs/search/tanstack": [
-        "../../packages/docs/src/search/tanstack-index.ts"
+      "leadtype/search/tanstack": [
+        "../../packages/leadtype/src/search/tanstack-index.ts"
       ],
-      "@inth/docs/search/cloudflare": [
-        "../../packages/docs/src/search/cloudflare-index.ts"
+      "leadtype/search/cloudflare": [
+        "../../packages/leadtype/src/search/cloudflare-index.ts"
       ],
-      "@inth/docs/lint": ["../../packages/docs/src/lint/index.ts"]
+      "leadtype/lint": ["../../packages/leadtype/src/lint/index.ts"]
     }
   }
 }

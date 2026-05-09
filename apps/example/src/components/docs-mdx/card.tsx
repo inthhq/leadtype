@@ -6,7 +6,7 @@ export type CardsProps = HTMLAttributes<HTMLDivElement> & {
 
 export function Cards({ children, ...rest }: CardsProps) {
   return (
-    <div data-inth-cards="" {...rest}>
+    <div data-leadtype-cards="" {...rest}>
       {children}
     </div>
   );
@@ -38,16 +38,18 @@ export function Card({
 
   return (
     <a
-      data-inth-card=""
+      data-leadtype-card=""
       data-variant={variant ?? undefined}
       href={href}
       rel={isExternal ? "noopener" : undefined}
       target={isExternal ? "_blank" : undefined}
       {...rest}
     >
-      {icon ? <span data-inth-card-icon="">{icon}</span> : null}
-      {title ? <h3 data-inth-card-title="">{title}</h3> : null}
-      {description ? <p data-inth-card-description="">{description}</p> : null}
+      {icon ? <span data-leadtype-card-icon="">{icon}</span> : null}
+      {title ? <h3 data-leadtype-card-title="">{title}</h3> : null}
+      {description ? (
+        <p data-leadtype-card-description="">{description}</p>
+      ) : null}
       {children}
     </a>
   );

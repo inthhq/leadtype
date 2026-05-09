@@ -1,6 +1,6 @@
 ---
 title: "Lint"
-description: "How to validate docs content with lintDocs and the @inth/docs lint CLI."
+description: "How to validate docs content with lintDocs and the leadtype lint CLI."
 group: validation
 ---
 
@@ -13,19 +13,19 @@ links.
 Run the CLI with a source docs directory:
 
 ```bash
-npx @inth/docs lint docs
+npx leadtype lint docs
 ```
 
 For agent or CI workflows, use JSON output and fail on unknown fields:
 
 ```bash
-npx @inth/docs lint docs --format json --error-unknown --max-warnings 0
+npx leadtype lint docs --format json --error-unknown --max-warnings 0
 ```
 
 Import the library API from:
 
 ```ts
-import { lintDocs } from "@inth/docs/lint";
+import { lintDocs } from "leadtype/lint";
 ```
 
 ## What It Checks
@@ -45,7 +45,7 @@ markdown.
 ## CLI Reference
 
 ```bash
-npx @inth/docs lint [srcDir] [options]
+npx leadtype lint [srcDir] [options]
 ```
 
 | Option | Description |
@@ -182,7 +182,7 @@ public rule for missing or invalid schema fields.
 
 ## Guidance
 
-- Run lint before `@inth/docs generate` so content errors fail before artifacts
+- Run lint before `leadtype generate` so content errors fail before artifacts
   are written.
 - Use `--format json` for automation and `--format github` for GitHub Actions
   annotations.

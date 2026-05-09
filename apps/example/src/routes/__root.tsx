@@ -20,7 +20,7 @@ export const Route = createRootRoute({
         name: "viewport",
       },
       {
-        title: "@inth/docs reference app",
+        title: "leadtype reference app",
       },
       {
         content:

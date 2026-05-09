@@ -31,14 +31,14 @@ export function Selector({
   const id = useId();
 
   return (
-    <div data-inth-selector="">
+    <div data-leadtype-selector="">
       {label ? (
-        <label data-inth-selector-label="" htmlFor={id}>
+        <label data-leadtype-selector-label="" htmlFor={id}>
           {label}
         </label>
       ) : null}
       <select
-        data-inth-selector-control=""
+        data-leadtype-selector-control=""
         id={id}
         onChange={(event) => setActiveValue(event.target.value)}
         value={activeValue}
@@ -49,7 +49,7 @@ export function Selector({
           </option>
         ))}
       </select>
-      <div data-inth-selector-content="" data-value={activeValue}>
+      <div data-leadtype-selector-content="" data-value={activeValue}>
         {children ? children(activeValue) : null}
       </div>
     </div>

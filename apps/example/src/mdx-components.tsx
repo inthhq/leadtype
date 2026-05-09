@@ -1,4 +1,4 @@
-import { slugifyDocsHeading } from "@inth/docs/search";
+import { slugifyDocsHeading } from "leadtype/search";
 import type { MDXComponents } from "mdx/types";
 import type { ComponentPropsWithoutRef } from "react";
 import { mdxComponents } from "@/components/docs-mdx";

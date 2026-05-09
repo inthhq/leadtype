@@ -21,9 +21,9 @@ export function TopicSwitcher({
   ...rest
 }: TopicSwitcherProps) {
   return (
-    <nav aria-label={label} data-inth-topic-switcher="" {...rest}>
-      <p data-inth-topic-switcher-label="">{label}</p>
-      <ul data-inth-topic-switcher-list="">
+    <nav aria-label={label} data-leadtype-topic-switcher="" {...rest}>
+      <p data-leadtype-topic-switcher-label="">{label}</p>
+      <ul data-leadtype-topic-switcher-list="">
         {items.map(
           ({ value, label: itemLabel, description, current, ...item }) => {
             const isActive = current || value === activeValue;
@@ -32,22 +32,22 @@ export function TopicSwitcher({
               href.startsWith("http://") || href.startsWith("https://");
 
             return (
-              <li data-inth-topic-switcher-item="" key={value}>
+              <li data-leadtype-topic-switcher-item="" key={value}>
                 <a
                   aria-current={isActive ? "page" : undefined}
                   aria-disabled={href ? undefined : true}
                   data-active={isActive || undefined}
-                  data-inth-topic-switcher-link=""
+                  data-leadtype-topic-switcher-link=""
                   {...item}
                   href={href || undefined}
                   rel={isExternal ? "noopener" : item.rel}
                   target={isExternal ? "_blank" : item.target}
                 >
-                  <span data-inth-topic-switcher-item-label="">
+                  <span data-leadtype-topic-switcher-item-label="">
                     {itemLabel}
                   </span>
                   {description ? (
-                    <span data-inth-topic-switcher-item-description="">
+                    <span data-leadtype-topic-switcher-item-description="">
                       {description}
                     </span>
                   ) : null}

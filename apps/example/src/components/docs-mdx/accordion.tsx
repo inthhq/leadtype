@@ -6,7 +6,7 @@ export type AccordionProps = HTMLAttributes<HTMLDivElement> & {
 
 export function Accordion({ children, ...rest }: AccordionProps) {
   return (
-    <div data-inth-accordion="" {...rest}>
+    <div data-leadtype-accordion="" {...rest}>
       {children}
     </div>
   );
@@ -25,9 +25,9 @@ export function AccordionItem({
   ...rest
 }: AccordionItemProps) {
   return (
-    <details data-inth-accordion-item="" open={defaultOpen} {...rest}>
-      <summary data-inth-accordion-summary="">{title}</summary>
-      <div data-inth-accordion-content="">{children}</div>
+    <details data-leadtype-accordion-item="" open={defaultOpen} {...rest}>
+      <summary data-leadtype-accordion-summary="">{title}</summary>
+      <div data-leadtype-accordion-content="">{children}</div>
     </details>
   );
 }

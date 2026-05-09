@@ -1,11 +1,11 @@
+import { createFileRoute } from "@tanstack/react-router";
 import {
   DocsSearchRequestError,
   docsSearchDefaults,
   getClientIdentifier,
   searchDocs,
   validateDocsQuery,
-} from "@inth/docs/search";
-import { createFileRoute } from "@tanstack/react-router";
+} from "leadtype/search";
 import {
   docsSearchContent,
   docsSearchIndex,

@@ -2,7 +2,7 @@ import {
   createMemoryRateLimiter,
   type DocsSearchContentStore,
   type DocsSearchIndex,
-} from "@inth/docs/search";
+} from "leadtype/search";
 import searchContent from "@/generated/docs-search-content.json";
 import searchIndex from "@/generated/docs-search-index.json";
 

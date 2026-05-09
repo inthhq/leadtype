@@ -1,8 +1,8 @@
-import { defineDocsConfig } from "@inth/docs";
+import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
   product: {
-    name: "@inth/docs",
+    name: "Leadtype",
     summary: "Shared MDX conversion, linting, and LLM-doc generation package.",
     bullets: [
       "Flattens MDX-heavy docs into clean markdown for agents.",
@@ -29,7 +29,7 @@ export default defineDocsConfig({
     {
       slug: "guides",
       title: "Guides",
-      description: "Practical ways to wire @inth/docs into docs apps.",
+      description: "Practical ways to wire leadtype into docs apps.",
     },
     {
       slug: "authoring",

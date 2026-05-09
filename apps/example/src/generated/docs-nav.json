@@ -10,7 +10,7 @@
       "pages": [
         {
           "urlPath": "/docs",
-          "title": "@inth/docs",
+          "title": "Leadtype",
           "description": "Reference map for the shared MDX conversion, linting, and LLM doc-generation package.",
           "groups": [
             "overview"
@@ -19,7 +19,7 @@
         {
           "urlPath": "/docs/methodology",
           "title": "Methodology",
-          "description": "How @inth/docs differs from Fumadocs, Mintlify, and Starlight",
+          "description": "How leadtype differs from Fumadocs, Mintlify, and Starlight",
           "groups": [
             "overview"
           ]
@@ -33,7 +33,7 @@
         "guides"
       ],
       "title": "Guides",
-      "description": "Practical ways to wire @inth/docs into docs apps.",
+      "description": "Practical ways to wire leadtype into docs apps.",
       "pages": [
         {
           "urlPath": "/docs/guides/bundle-package-docs",
@@ -46,7 +46,7 @@
         {
           "urlPath": "/docs/guides/connect-docs-site",
           "title": "Connect a docs site",
-          "description": "How to run the @inth/docs pipeline before building a docs app.",
+          "description": "How to run the leadtype pipeline before building a docs app.",
           "groups": [
             "guides"
           ]
@@ -75,7 +75,7 @@
             {
               "urlPath": "/docs/components",
               "title": "Components",
-              "description": "How to define app-owned MDX components that the @inth/docs pipeline can flatten.",
+              "description": "How to define app-owned MDX components that the leadtype pipeline can flatten.",
               "groups": [
                 "components"
               ]
@@ -95,7 +95,7 @@
             {
               "urlPath": "/docs/remark",
               "title": "Remark",
-              "description": "Reference for the remark plugins and default plugin pipeline exported by @inth/docs.",
+              "description": "Reference for the remark plugins and default plugin pipeline exported by leadtype.",
               "groups": [
                 "remark"
               ]
@@ -126,7 +126,7 @@
             {
               "urlPath": "/docs/convert",
               "title": "Convert",
-              "description": "How to convert MDX docs into Markdown with @inth/docs/convert.",
+              "description": "How to convert MDX docs into Markdown with leadtype/convert.",
               "groups": [
                 "convert"
               ]
@@ -146,7 +146,7 @@
             {
               "urlPath": "/docs/llm",
               "title": "LLM",
-              "description": "How to generate llms.txt and topic-scoped full-context files from @inth/docs.",
+              "description": "How to generate llms.txt and topic-scoped full-context files from leadtype.",
               "groups": [
                 "llm"
               ]
@@ -187,7 +187,7 @@
         {
           "urlPath": "/docs/lint",
           "title": "Lint",
-          "description": "How to validate docs content with lintDocs and the @inth/docs lint CLI.",
+          "description": "How to validate docs content with lintDocs and the leadtype lint CLI.",
           "groups": [
             "validation"
           ]

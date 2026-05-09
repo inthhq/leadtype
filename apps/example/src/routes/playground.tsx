@@ -27,8 +27,8 @@ const recipes = {
     title: "Convert For Agents",
     summary:
       "Use the conversion and remark entry points when agents need plain markdown.",
-    imports: `import { convertAllMdx } from "@inth/docs/convert";
-import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";`,
+    imports: `import { convertAllMdx } from "leadtype/convert";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";`,
     code: `await convertAllMdx({
   srcDir: "content",
   outDir: "public",
@@ -40,8 +40,8 @@ import { defaultRemarkPlugins, remarkInclude } from "@inth/docs/remark";`,
     title: "Search And Answer",
     summary:
       "Use the generated index for local search, then stream answers only when a user asks.",
-    imports: `import { searchDocs } from "@inth/docs/search";
-import { streamDocsAnswer } from "@inth/docs/search/vercel";`,
+    imports: `import { searchDocs } from "leadtype/search";
+import { streamDocsAnswer } from "leadtype/search/vercel";`,
     code: `const results = searchDocs(index, query, { content });
 
 const { response } = streamDocsAnswer({
@@ -49,7 +49,7 @@ const { response } = streamDocsAnswer({
   content,
   query,
   model,
-  productName: "@inth/docs",
+  productName: "leadtype",
 });`,
     validation: "bun run --filter example pipeline:search",
   },

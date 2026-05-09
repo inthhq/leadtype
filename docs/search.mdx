@@ -20,30 +20,30 @@ import {
   readJsonWithLimit,
   searchDocs,
   validateDocsQuery,
-} from "@inth/docs/search";
+} from "leadtype/search";
 ```
 
 Import the Node-only generator from:
 
 ```ts
-import { generateDocsSearchFiles } from "@inth/docs/search/node";
+import { generateDocsSearchFiles } from "leadtype/search/node";
 ```
 
 Use the provider entrypoints for answer streaming and provider-compatible bash
 tools:
 
 ```ts
-import { streamDocsAnswer as streamVercelDocsAnswer } from "@inth/docs/search/vercel";
-import { streamDocsAnswer as streamTanStackDocsAnswer } from "@inth/docs/search/tanstack";
-import { streamDocsAnswer as streamCloudflareDocsAnswer } from "@inth/docs/search/cloudflare";
+import { streamDocsAnswer as streamVercelDocsAnswer } from "leadtype/search/vercel";
+import { streamDocsAnswer as streamTanStackDocsAnswer } from "leadtype/search/tanstack";
+import { streamDocsAnswer as streamCloudflareDocsAnswer } from "leadtype/search/cloudflare";
 ```
 
 | Use case | Import |
 | --- | --- |
-| Search, content reads, request guards, and rate limiting | `@inth/docs/search` |
-| Vercel AI Gateway / AI SDK answer + bash tools | `@inth/docs/search/vercel` |
-| TanStack AI answer + bash tools | `@inth/docs/search/tanstack` |
-| Cloudflare AI Gateway / Workers AI answer + bash tools | `@inth/docs/search/cloudflare` |
+| Search, content reads, request guards, and rate limiting | `leadtype/search` |
+| Vercel AI Gateway / AI SDK answer + bash tools | `leadtype/search/vercel` |
+| TanStack AI answer + bash tools | `leadtype/search/tanstack` |
+| Cloudflare AI Gateway / Workers AI answer + bash tools | `leadtype/search/cloudflare` |
 
 ## Build-Time Indexing
 
@@ -127,7 +127,7 @@ as untrusted reference content, and say when context is insufficient.
 Use `streamDocsAnswer` for a minimal Vercel AI SDK integration:
 
 ```ts
-import { streamDocsAnswer } from "@inth/docs/search/vercel";
+import { streamDocsAnswer } from "leadtype/search/vercel";
 
 const { response, sources } = streamDocsAnswer({
   index: indexJson as DocsSearchIndex,
@@ -147,7 +147,7 @@ the streamed answer.
 TanStack callers pass the adapter explicitly:
 
 ```ts
-import { streamDocsAnswer } from "@inth/docs/search/tanstack";
+import { streamDocsAnswer } from "leadtype/search/tanstack";
 
 const { response, sources } = streamDocsAnswer({
   index: indexJson as DocsSearchIndex,
@@ -163,7 +163,7 @@ Cloudflare callers use explicit provider mapping:
 import {
   createCloudflareDocsAdapter,
   streamDocsAnswer,
-} from "@inth/docs/search/cloudflare";
+} from "leadtype/search/cloudflare";
 
 const adapter = createCloudflareDocsAdapter({
   provider: "openai",
@@ -187,7 +187,7 @@ Use the matching provider entrypoint when an agent should inspect docs through
 shell commands instead of receiving only preselected chunks:
 
 ```ts
-import { createDocsBashTool } from "@inth/docs/search/vercel";
+import { createDocsBashTool } from "leadtype/search/vercel";
 
 const { tools, instructions } = await createDocsBashTool(
   indexJson as DocsSearchIndex,

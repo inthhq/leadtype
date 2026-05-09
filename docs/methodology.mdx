@@ -1,29 +1,29 @@
 ---
 title: "Methodology"
-description: "How @inth/docs differs from Fumadocs, Mintlify, and Starlight"
+description: "How leadtype differs from Fumadocs, Mintlify, and Starlight"
 group: overview
 ---
 
 # Methodology
 
-`@inth/docs` is not a docs website framework. It is the shared pipeline behind docs websites.
+`leadtype` is not a docs website framework. It is the shared pipeline behind docs websites.
 
 We built it at Inth because projects like [c15t](https://c15t.com) and [dsar-sdk](https://dsar-sdk.dev) need one consistent docs system across packages, repos, websites, generated markdown, `llms.txt`, search, and package-bundled agent docs.
 
-The browser UI stays owned by your app. `@inth/docs` makes the content portable.
+The browser UI stays owned by your app. `leadtype` makes the content portable.
 
 ## The short version
 
 - Fumadocs helps you build a React docs site.
 - Starlight helps you build an Astro docs site.
 - Mintlify gives you a hosted docs platform.
-- `@inth/docs` helps you reuse the same docs content across sites, packages, search, and agents.
+- `leadtype` helps you reuse the same docs content across sites, packages, search, and agents.
 
-Use the others when the main job is publishing a polished website quickly. Use `@inth/docs` when the main job is standardizing the docs infrastructure behind one or more websites.
+Use the others when the main job is publishing a polished website quickly. Use `leadtype` when the main job is standardizing the docs infrastructure behind one or more websites.
 
 ## What it does
 
-`@inth/docs` gives you framework-neutral tools to:
+`leadtype` gives you framework-neutral tools to:
 
 - Convert MDX-heavy docs into clean markdown.
 - Generate `llms.txt` and full-context topic files.
@@ -37,7 +37,7 @@ It does not provide the visual docs UI, routing, theme, or hosted deployment.
 
 This is useful when an organization has many packages but wants one docs experience.
 
-Each repo can keep its MDX next to the code it documents. A shared or private docs UI can render that content with the organization's design system, while `@inth/docs` handles conversion, linting, search data, and agent-doc generation.
+Each repo can keep its MDX next to the code it documents. A shared or private docs UI can render that content with the organization's design system, while `leadtype` handles conversion, linting, search data, and agent-doc generation.
 
 That gives every repo the same output contract without forcing every repo to own the same website implementation.
 
@@ -46,6 +46,6 @@ That gives every repo the same output contract without forcing every repo to own
 - Use Fumadocs for a composable React docs framework.
 - Use Starlight for an Astro-first docs site with strong defaults.
 - Use Mintlify for hosted docs with deployment, analytics, API docs, and AI features managed for you.
-- Use `@inth/docs` when you own the docs app but need shared infrastructure across repos, packages, generated markdown, search, and agent-facing docs.
+- Use `leadtype` when you own the docs app but need shared infrastructure across repos, packages, generated markdown, search, and agent-facing docs.
 
-These tools can also be used together: use a docs framework or hosted platform for the browser experience, and use `@inth/docs` for portable docs outputs behind it.
+These tools can also be used together: use a docs framework or hosted platform for the browser experience, and use `leadtype` for portable docs outputs behind it.

@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "packages/docs/**"
+      - "packages/leadtype/**"
       - "docs/**"
       - "apps/example/**"
       - ".github/workflows/bench.yml"
@@ -39,8 +39,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build @inth/docs
-        run: cd packages/docs && bun run build
+      - name: Build leadtype
+        run: cd packages/leadtype && bun run build
 
       - name: Run benchmark
         env:

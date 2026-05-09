@@ -6,7 +6,7 @@
 import { copyFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateDocsSearchFiles } from "@inth/docs/search/node";
+import { generateDocsSearchFiles } from "leadtype/search/node";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");

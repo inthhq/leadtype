@@ -130,9 +130,9 @@ export function Tabs({
   };
 
   return (
-    <div data-inth-tabs="">
+    <div data-leadtype-tabs="">
       {items.length > 0 ? (
-        <div data-inth-tabs-list="" role="tablist">
+        <div data-leadtype-tabs-list="" role="tablist">
           {items.map((item, index) => {
             const normalized = normalize(item);
             const isActive = normalized === activeValue;
@@ -141,7 +141,7 @@ export function Tabs({
                 aria-controls={panelId(groupId, normalized, index)}
                 aria-selected={isActive}
                 data-active={isActive || undefined}
-                data-inth-tabs-trigger=""
+                data-leadtype-tabs-trigger=""
                 id={triggerId(groupId, normalized, index)}
                 key={triggerId(groupId, normalized, index)}
                 onClick={() => setActiveValue(normalized)}
@@ -180,7 +180,7 @@ export function Tab({ value, children }: TabProps) {
   return (
     <div
       aria-labelledby={triggerId(groupId, normalized, resolvedIndex)}
-      data-inth-tab-panel=""
+      data-leadtype-tab-panel=""
       data-value={normalized}
       hidden={!isActive}
       id={panelId(groupId, normalized, resolvedIndex)}

@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const DASHBOARD_HEADING = /Build docs with @inth\/docs/i;
+const DASHBOARD_HEADING = /Build docs with Leadtype/i;
 const AI_DISABLED_MESSAGE = /AI answers are disabled/i;
 const REMARK_DOCS_URL = /\/docs\/remark/;
 
@@ -18,7 +18,7 @@ test("home renders the developer dashboard with package surfaces", async ({
   const html = await response.text();
 
   expect(html).toContain("Build docs with");
-  expect(html).toContain("@inth/docs/search/vercel");
+  expect(html).toContain("leadtype/search/vercel");
 
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByText(DASHBOARD_HEADING)).toBeVisible();
@@ -31,7 +31,7 @@ test("/docs renders the package overview MDX", async ({ page, request }) => {
   const response = await request.get("/docs");
   const html = await response.text();
 
-  expect(html).toContain("@inth/docs");
+  expect(html).toContain("leadtype");
 
   await page.goto("/docs", { waitUntil: "networkidle" });
   // Sidebar populated from docs.config.ts sections.
@@ -39,7 +39,7 @@ test("/docs renders the package overview MDX", async ({ page, request }) => {
     name: "Overview documentation",
   });
   await expect(
-    overviewNav.getByRole("link", { name: "@inth/docs" })
+    overviewNav.getByRole("link", { name: "leadtype" })
   ).toBeVisible();
   await expect(
     page
@@ -80,14 +80,14 @@ test("/docs/search renders the search APIs reference", async ({
   const response = await request.get("/docs/search");
   const html = await response.text();
 
-  expect(html).toContain("@inth/docs/search");
+  expect(html).toContain("leadtype/search");
 
   await page.goto("/docs/search", { waitUntil: "networkidle" });
   await expect(
     page.getByRole("link", { name: "Search", exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("table").filter({ hasText: "@inth/docs/search/vercel" })
+    page.getByRole("table").filter({ hasText: "leadtype/search/vercel" })
   ).toBeVisible();
 });
 

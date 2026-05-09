@@ -48,33 +48,33 @@ export function Example({
   ...rest
 }: ExampleProps) {
   return (
-    <div data-inth-example="" {...rest}>
+    <div data-leadtype-example="" {...rest}>
       {title || description ? (
-        <div data-inth-example-header="">
-          {title ? <h3 data-inth-example-title="">{title}</h3> : null}
+        <div data-leadtype-example-header="">
+          {title ? <h3 data-leadtype-example-title="">{title}</h3> : null}
           {description ? (
-            <p data-inth-example-description="">{description}</p>
+            <p data-leadtype-example-description="">{description}</p>
           ) : null}
         </div>
       ) : null}
-      {children ? <div data-inth-example-preview="">{children}</div> : null}
-      <div data-inth-example-code="">
-        {filename ? <p data-inth-example-filename="">{filename}</p> : null}
-        <pre data-inth-example-code-block="" data-language={language}>
+      {children ? <div data-leadtype-example-preview="">{children}</div> : null}
+      <div data-leadtype-example-code="">
+        {filename ? <p data-leadtype-example-filename="">{filename}</p> : null}
+        <pre data-language={language} data-leadtype-example-code-block="">
           <code>{code}</code>
         </pre>
       </div>
       {sourceFiles.length > 0 ? (
-        <div data-inth-example-source-files="">
+        <div data-leadtype-example-source-files="">
           {sourceFiles.map((sourceFile) => (
             <div
-              data-inth-example-source-file=""
+              data-leadtype-example-source-file=""
               key={sourceFileKey(sourceFile)}
             >
-              <p data-inth-example-filename="">{sourceFile.filename}</p>
+              <p data-leadtype-example-filename="">{sourceFile.filename}</p>
               <pre
-                data-inth-example-code-block=""
                 data-language={sourceFile.language ?? "tsx"}
+                data-leadtype-example-code-block=""
               >
                 <code>{sourceFile.code}</code>
               </pre>
