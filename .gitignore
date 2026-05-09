@@ -38,7 +38,8 @@ yarn-error.log*
 *.pem
 .gstack/
 
-# Agent evals (@vercel/agent-eval)
+# Agent evals
 evals/.tarballs/
+evals/results/
 evals/__agent_eval__/
 evals/**/__agent_eval__/

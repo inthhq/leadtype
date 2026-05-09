@@ -2,15 +2,17 @@
   "name": "leadtype-evals",
   "version": "0.0.0",
   "private": true,
-  "description": "Agent discoverability evals for leadtype's bundled docs (AGENTS.md vs no-bundle control).",
+  "description": "Agent discoverability evals for leadtype's bundled docs (AGENTS.md vs no-bundle control). Custom harness on the Vercel AI SDK.",
   "type": "module",
   "scripts": {
-    "evals": "agent-eval",
-    "evals:dry": "agent-eval --dry",
-    "pack-leadtype": "cd ../packages/leadtype && npm pack --pack-destination ../../evals/.tarballs"
+    "evals": "bun run run-eval.ts",
+    "test": "vitest run lib",
+    "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && npm pack --pack-destination ../../evals/.tarballs"
   },
   "devDependencies": {
-    "@vercel/agent-eval": "latest",
-    "vitest": "^2.1.8"
+    "ai": "^6.0.168",
+    "fast-glob": "3.3.3",
+    "vitest": "^2.1.8",
+    "zod": "^3.23.8"
   }
 }
