@@ -102,7 +102,11 @@ function rewriteToMarkdown(url, accept) {
 
 Browsers send `text/html,*/*` and get HTML. Agents send `Accept: text/markdown` and get the converted `.md`. Same URL, two formats.
 
-For Next.js, wire the same logic in `middleware.ts` and serve `.md` from a route handler. For Cloudflare Pages, use a `_middleware` Worker.
+<Callout title="Set charset=utf-8" variant="warning">
+  Many static handlers serve `.md` files as `Content-Type: text/markdown` with no charset, which makes browsers fall back to Latin-1 and render UTF-8 characters (box-drawing, em dashes, smart quotes) as mojibake. Always send `Content-Type: text/markdown; charset=utf-8`. The example app patches `setHeader` in the same middleware — see [`apps/example/vite.config.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/vite.config.ts) for the exact code.
+</Callout>
+
+For Next.js, wire the same logic in `middleware.ts` and serve `.md` from a route handler. For Cloudflare Pages, use a `_middleware` Worker. In every case, set the charset explicitly.
 
 ## Connect a remote source
 
@@ -128,7 +132,7 @@ After a clean build:
 - `public/docs/llms-full/<leaf>.txt` — one per leaf group, full content.
 - `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty.
 
-Then start the dev server and `curl -H "Accept: text/markdown" http://localhost:5173/docs/`. You should get the markdown body of `index.md`. If you get HTML, the negotiation middleware isn't wired.
+Then start the dev server and `curl -I -H "Accept: text/markdown" http://localhost:5173/docs/`. You should see `content-type: text/markdown; charset=utf-8`. If the charset is missing, UTF-8 characters in your docs will render as mojibake in the browser. If you get `text/html` back instead, the negotiation middleware isn't wired.
 
 ## What's next
 
