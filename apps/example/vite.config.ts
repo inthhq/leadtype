@@ -24,6 +24,8 @@ const MARKDOWN_ACCEPT_PATTERN = /text\/(markdown|plain)/i;
 const HTML_ACCEPT_PATTERN = /text\/html/i;
 const MARKDOWN_Q_PATTERN = /text\/(markdown|plain)\s*;?\s*q=/i;
 const TRAILING_SLASH_PATTERN = /\/$/;
+const TEXT_CONTENT_TYPE_PATTERN = /^text\/(markdown|plain)/i;
+const CHARSET_PATTERN = /charset=/i;
 
 function rewriteToMarkdown(
   url: string,
@@ -55,19 +57,41 @@ function rewriteToMarkdown(
   );
 }
 
+type SetHeader = (name: string, value: number | string | string[]) => unknown;
+interface Res {
+  setHeader: SetHeader;
+}
+
+function forceUtf8OnTextResponses(res: Res) {
+  const original = res.setHeader.bind(res);
+  res.setHeader = (name, value) => {
+    if (
+      typeof name === "string" &&
+      name.toLowerCase() === "content-type" &&
+      typeof value === "string" &&
+      TEXT_CONTENT_TYPE_PATTERN.test(value) &&
+      !CHARSET_PATTERN.test(value)
+    ) {
+      return original(name, `${value}; charset=utf-8`);
+    }
+    return original(name, value);
+  };
+}
+
 function markdownNegotiation(): PluginOption {
   const middleware = (
     req: {
       url?: string;
       headers: Record<string, string | string[] | undefined>;
     },
-    _res: unknown,
+    res: Res,
     next: () => void
   ) => {
     if (!req.url) {
       next();
       return;
     }
+    forceUtf8OnTextResponses(res);
     const acceptHeader = req.headers.accept;
     const accept = Array.isArray(acceptHeader)
       ? acceptHeader.join(",")
