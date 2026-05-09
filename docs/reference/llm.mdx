@@ -1,0 +1,137 @@
+---
+title: "LLM bundles"
+description: "Generate llms.txt and topic-scoped full-context files for agents."
+group: reference
+---
+
+# LLM bundles
+
+The `leadtype/llm` entry point produces the agent-facing outputs: `llms.txt` (a routing index) and `llms-full/*.txt` (per-leaf-group full content). Both are derived from the same docs source.
+
+```ts
+import {
+  generateLlmsTxt,
+  generateLLMFullContextFiles,
+  resolveDocsNavigation,
+} from "leadtype/llm";
+```
+
+## What gets generated
+
+| File | Purpose |
+| --- | --- |
+| `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, links to deeper bundles. |
+| `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and entry links. |
+| `<out>/docs/llms-full.txt` | All pages flattened into one file. Use for agents with very large context windows. |
+| `<out>/docs/llms-full/<leaf>.txt` | One per leaf group. Topic-scoped full content for narrower context budgets. |
+
+Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf groups appear as headings inside the parent file.
+
+## Example llms.txt
+
+```txt
+# My Library
+
+> A library that does one thing well.
+
+- Helper that handles the boring parts.
+- Type-safe by default.
+- Works in any runtime.
+
+## Best Starting Points
+
+- [Documentation](https://docs.example.com/docs)
+- [Quickstart](https://docs.example.com/docs/quickstart)
+
+## Get Started
+
+Five-minute happy path and the mental model.
+
+- [Quickstart](https://docs.example.com/docs/quickstart): Install and run the pipeline.
+- [How it works](https://docs.example.com/docs/how-it-works): The mental model.
+
+## Reference
+
+CLI flags and conversion APIs.
+
+- [CLI](https://docs.example.com/docs/reference/cli): Every flag.
+```
+
+## Typical sequence
+
+```ts
+import { convertAllMdx } from "leadtype/convert";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import {
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+} from "leadtype/llm";
+
+await convertAllMdx({
+  srcDir: "docs",
+  outDir: "public/docs",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+});
+
+await generateLlmsTxt({
+  srcDir: ".",
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: {
+    name: "My Library",
+    summary: "A library that does one thing well.",
+  },
+  groups: docsConfig.groups,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: { name: "My Library" },
+  groups: docsConfig.groups,
+});
+```
+
+`generateLLMFullContextFiles` reads from `<outDir>/docs/`, so always run conversion first.
+
+## resolveDocsNavigation
+
+Same group-resolution logic the LLM bundles use, but returns the navigation manifest as a plain object — useful for driving a sidebar UI:
+
+```ts
+const navigation = await resolveDocsNavigation({
+  srcDir: ".",
+  baseUrl: "https://docs.example.com",
+  groups: docsConfig.groups,
+});
+
+if (navigation.unknown.length > 0) {
+  for (const { urlPath, slug } of navigation.unknown) {
+    process.stderr.write(`error: ${urlPath} declares unknown group "${slug}".\n`);
+  }
+  process.exit(1);
+}
+```
+
+Write the result to `src/generated/docs-nav.json` and import it from your sidebar component. This is the pattern the example app uses — see [`apps/example/scripts/llm-generate.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/scripts/llm-generate.ts).
+
+## Topic design
+
+The `groups` you pass to these APIs come from `docs.config.ts`. Two principles:
+
+- **Prefer narrow leaves over one giant bundle.** A leaf with 5 pages produces a focused `llms-full` file an agent can load quickly. A single catch-all leaf with 50 pages produces something most agents will truncate.
+- **Write group descriptions for routing, not flavor text.** Agents read those descriptions to decide which bundle to load. "How to install and run" beats "Welcome to our guides!"
+
+## Base URL precedence
+
+Pass `baseUrl` explicitly, or use environment variables for layered fallback:
+
+```ts
+const baseUrl =
+  process.env.LEADTYPE_AGENT_BASE_URL ||
+  process.env.BASE_URL ||
+  process.env.PORTLESS_URL ||
+  "https://docs.example.com";
+```
+
+This is the precedence used by `apps/example/scripts/llm-generate.ts`. The package-specific `LEADTYPE_AGENT_BASE_URL` lets each package override the org-wide default.

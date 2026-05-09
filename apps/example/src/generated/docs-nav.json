@@ -1,54 +1,43 @@
 {
   "groups": [
     {
-      "slug": "overview",
+      "slug": "get-started",
       "segmentPath": [
-        "overview"
+        "get-started"
       ],
-      "title": "Overview",
-      "description": "Start here for package scope and surface selection.",
+      "title": "Get Started",
+      "description": "What leadtype is, how it fits together, and the five-minute happy path.",
       "pages": [
         {
           "urlPath": "/docs",
           "title": "Leadtype",
-          "description": "Reference map for the shared MDX conversion, linting, and LLM doc-generation package.",
+          "description": "One MDX source. A website for humans, llms.txt for agents, and a search index — all from a single pipeline.",
           "groups": [
-            "overview"
+            "get-started"
+          ]
+        },
+        {
+          "urlPath": "/docs/how-it-works",
+          "title": "How it works",
+          "description": "The mental model: one MDX source, a remark pipeline, four artifacts, three audiences.",
+          "groups": [
+            "get-started"
           ]
         },
         {
           "urlPath": "/docs/methodology",
           "title": "Methodology",
-          "description": "How leadtype differs from Fumadocs, Mintlify, and Starlight",
+          "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
           "groups": [
-            "overview"
-          ]
-        }
-      ],
-      "children": []
-    },
-    {
-      "slug": "guides",
-      "segmentPath": [
-        "guides"
-      ],
-      "title": "Guides",
-      "description": "Practical ways to wire leadtype into docs apps.",
-      "pages": [
-        {
-          "urlPath": "/docs/guides/bundle-package-docs",
-          "title": "Bundle docs into a package",
-          "description": "How to ship generated agent docs inside an npm package.",
-          "groups": [
-            "guides"
+            "get-started"
           ]
         },
         {
-          "urlPath": "/docs/guides/connect-docs-site",
-          "title": "Connect a docs site",
-          "description": "How to run the leadtype pipeline before building a docs app.",
+          "urlPath": "/docs/quickstart",
+          "title": "Quickstart",
+          "description": "Install leadtype, run it against a docs folder, and inspect the four artifacts it produces.",
           "groups": [
-            "guides"
+            "get-started"
           ]
         }
       ],
@@ -59,137 +48,117 @@
       "segmentPath": [
         "authoring"
       ],
-      "title": "Authoring And Rendering",
-      "description": "React MDX components and remark pipeline behavior.",
-      "pages": [],
-      "children": [
-        {
-          "slug": "components",
-          "segmentPath": [
-            "authoring",
-            "components"
-          ],
-          "title": "Components",
-          "description": "React MDX component adapters.",
-          "pages": [
-            {
-              "urlPath": "/docs/components",
-              "title": "Components",
-              "description": "How to define app-owned MDX components that the leadtype pipeline can flatten.",
-              "groups": [
-                "components"
-              ]
-            }
-          ],
-          "children": []
-        },
-        {
-          "slug": "remark",
-          "segmentPath": [
-            "authoring",
-            "remark"
-          ],
-          "title": "Remark",
-          "description": "Default plugins and conversion helpers.",
-          "pages": [
-            {
-              "urlPath": "/docs/remark",
-              "title": "Remark",
-              "description": "Reference for the remark plugins and default plugin pipeline exported by leadtype.",
-              "groups": [
-                "remark"
-              ]
-            }
-          ],
-          "children": []
-        }
-      ]
-    },
-    {
-      "slug": "generation",
-      "segmentPath": [
-        "generation"
-      ],
-      "title": "Generation",
-      "description": "MDX conversion, LLM output generation, and search.",
-      "pages": [],
-      "children": [
-        {
-          "slug": "convert",
-          "segmentPath": [
-            "generation",
-            "convert"
-          ],
-          "title": "Convert",
-          "description": "MDX-to-markdown conversion APIs.",
-          "pages": [
-            {
-              "urlPath": "/docs/convert",
-              "title": "Convert",
-              "description": "How to convert MDX docs into Markdown with leadtype/convert.",
-              "groups": [
-                "convert"
-              ]
-            }
-          ],
-          "children": []
-        },
-        {
-          "slug": "llm",
-          "segmentPath": [
-            "generation",
-            "llm"
-          ],
-          "title": "LLM",
-          "description": "Summary and full-context file generation.",
-          "pages": [
-            {
-              "urlPath": "/docs/llm",
-              "title": "LLM",
-              "description": "How to generate llms.txt and topic-scoped full-context files from leadtype.",
-              "groups": [
-                "llm"
-              ]
-            }
-          ],
-          "children": []
-        },
-        {
-          "slug": "search",
-          "segmentPath": [
-            "generation",
-            "search"
-          ],
-          "title": "Search",
-          "description": "Static search indexes and AI answer helpers.",
-          "pages": [
-            {
-              "urlPath": "/docs/search",
-              "title": "Search",
-              "description": "Generate and query a static docs search index, then stream source-grounded AI answers.",
-              "groups": [
-                "search"
-              ]
-            }
-          ],
-          "children": []
-        }
-      ]
-    },
-    {
-      "slug": "validation",
-      "segmentPath": [
-        "validation"
-      ],
-      "title": "Validation",
-      "description": "Content validation and link checks.",
+      "title": "Authoring",
+      "description": "The content contract: frontmatter, groups, and the MDX components the pipeline can flatten.",
       "pages": [
         {
-          "urlPath": "/docs/lint",
-          "title": "Lint",
-          "description": "How to validate docs content with lintDocs and the leadtype lint CLI.",
+          "urlPath": "/docs/authoring/components",
+          "title": "Components",
+          "description": "MDX components the pipeline knows how to flatten into agent-readable markdown.",
           "groups": [
-            "validation"
+            "authoring"
+          ]
+        },
+        {
+          "urlPath": "/docs/authoring/frontmatter",
+          "title": "Frontmatter",
+          "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
+          "groups": [
+            "authoring"
+          ]
+        }
+      ],
+      "children": []
+    },
+    {
+      "slug": "build",
+      "segmentPath": [
+        "build"
+      ],
+      "title": "Build",
+      "description": "Two journeys: ship docs inside an npm package, or wire leadtype into a docs site.",
+      "pages": [
+        {
+          "urlPath": "/docs/build/bundle-package-docs",
+          "title": "Bundle docs into a package",
+          "description": "Ship agent-readable docs inside an npm tarball so IDEs and coding agents can read them offline.",
+          "groups": [
+            "build"
+          ]
+        },
+        {
+          "urlPath": "/docs/build/connect-docs-site",
+          "title": "Connect a docs site",
+          "description": "Wire leadtype into a docs app build so it serves humans, agents, and search from one source.",
+          "groups": [
+            "build"
+          ]
+        },
+        {
+          "urlPath": "/docs/build/validate-in-ci",
+          "title": "Validate in CI",
+          "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
+          "groups": [
+            "build"
+          ]
+        }
+      ],
+      "children": []
+    },
+    {
+      "slug": "reference",
+      "segmentPath": [
+        "reference"
+      ],
+      "title": "Reference",
+      "description": "CLI flags, conversion APIs, remark plugins, LLM bundles, search, and lint rules.",
+      "pages": [
+        {
+          "urlPath": "/docs/reference/cli",
+          "title": "CLI",
+          "description": "leadtype generate and leadtype lint — flags, exit codes, and JSON output.",
+          "groups": [
+            "reference"
+          ]
+        },
+        {
+          "urlPath": "/docs/reference/convert",
+          "title": "Convert",
+          "description": "MDX-to-markdown conversion APIs from leadtype/convert.",
+          "groups": [
+            "reference"
+          ]
+        },
+        {
+          "urlPath": "/docs/reference/lint",
+          "title": "Lint rules",
+          "description": "Schema, link, and navigation checks. CLI and library API.",
+          "groups": [
+            "reference"
+          ]
+        },
+        {
+          "urlPath": "/docs/reference/llm",
+          "title": "LLM bundles",
+          "description": "Generate llms.txt and topic-scoped full-context files for agents.",
+          "groups": [
+            "reference"
+          ]
+        },
+        {
+          "urlPath": "/docs/reference/remark",
+          "title": "Remark plugins",
+          "description": "The default plugin stack that flattens MDX components into markdown.",
+          "groups": [
+            "reference"
+          ]
+        },
+        {
+          "urlPath": "/docs/reference/search",
+          "title": "Search",
+          "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
+          "groups": [
+            "reference"
           ]
         }
       ],

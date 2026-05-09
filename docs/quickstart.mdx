@@ -1,0 +1,98 @@
+---
+title: "Quickstart"
+description: "Install leadtype, run it against a docs folder, and inspect the four artifacts it produces."
+group: get-started
+---
+
+# Quickstart
+
+Five minutes from a folder of MDX to a complete pipeline output.
+
+## Install
+
+<CommandTabs command="leadtype" mode="install" />
+
+`leadtype` ships an executable plus a set of focused entry points (`leadtype/convert`, `leadtype/llm`, `leadtype/search`, `leadtype/lint`, `leadtype/remark`). The CLI is usually all you need.
+
+## Author one page
+
+Create `docs/index.mdx` in your repo:
+
+```mdx
+---
+title: "My library"
+description: "What it does in one sentence."
+group: get-started
+---
+
+# My library
+
+Welcome.
+```
+
+Every page needs at minimum a `title`. Add a `group:` to place it in the nav tree — see [Frontmatter](/docs/authoring/frontmatter).
+
+## Generate
+
+```bash
+npx leadtype generate \
+  --src . \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+The CLI does four things in one pass:
+
+<Steps>
+  <Step title="Convert MDX to markdown">
+    Walks `docs/`, runs each file through the default remark plugin stack, writes flattened `.md` to `public/docs/`.
+  </Step>
+  <Step title="Generate LLM bundles">
+    Writes `public/llms.txt` (the routing index) plus `public/docs/llms-full/*.txt` (one file per leaf group, with full content).
+  </Step>
+  <Step title="Build a search index">
+    Writes `public/docs/search-index.json` and `public/docs/search-content.json` — a BM25 index and a separate content store for excerpts.
+  </Step>
+  <Step title="Resolve groups">
+    Reads `group:` from every page's frontmatter and reports which groups it found. The same group tree drives both the nav and `llms.txt`.
+  </Step>
+</Steps>
+
+## Inspect the output
+
+```
+public/
+├── llms.txt                  # routing index for agents
+└── docs/
+    ├── index.md              # converted, agent-readable
+    ├── llms.txt              # docs-scoped routing index
+    ├── llms-full.txt         # all pages flattened
+    ├── llms-full/
+    │   └── get-started.txt   # per-leaf-group bundle
+    ├── search-index.json     # BM25 index
+    └── search-content.json   # chunk content store
+```
+
+Open `public/llms.txt` to see what an agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and the agent bundles consume.
+
+## What's next
+
+You now have the four primitives. From here:
+
+<Cards>
+  <Card
+    title="Wire it into a docs site"
+    description="Serve the markdown to humans (HTML) and agents (text/markdown) from one URL. Use the apps/example app as a template."
+    href="/docs/build/connect-docs-site"
+  />
+  <Card
+    title="Bundle docs into your package"
+    description="Add docs/ to your published files and run leadtype generate at prepack time so installers get them in node_modules."
+    href="/docs/build/bundle-package-docs"
+  />
+  <Card
+    title="Understand the pipeline"
+    description="Names, terms, and an annotated diagram of every artifact and who consumes it."
+    href="/docs/how-it-works"
+  />
+</Cards>

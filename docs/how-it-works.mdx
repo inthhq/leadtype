@@ -1,0 +1,143 @@
+---
+title: "How it works"
+description: "The mental model: one MDX source, a remark pipeline, four artifacts, three audiences."
+group: get-started
+---
+
+# How it works
+
+Leadtype takes one input — a folder of MDX — and produces every other shape your docs need to take. This page names every piece so the rest of the docs make sense.
+
+## The pipeline
+
+<Mermaid chart={`flowchart TB
+  src["docs/*.mdx<br/>title · description · group · body"]
+  fm["frontmatter parser"]
+  remark["remark plugin stack<br/>(strip imports → flatten components)"]
+  groups["group resolver<br/>(nav tree from frontmatter)"]
+  md["public/docs/*.md"]
+  llms["public/llms.txt<br/>public/docs/llms-full/*.txt"]
+  idx["public/docs/search-index.json<br/>public/docs/search-content.json"]
+  nav["navigation manifest<br/>(group → page)"]
+  src --> fm
+  fm --> remark
+  fm --> groups
+  remark --> md
+  md --> llms
+  md --> idx
+  groups --> llms
+  groups --> nav`} />
+
+The remark stack is what turns interactive MDX components into agent-readable markdown. JSX gets *flattened* — a `<Callout>` becomes a blockquote, a `<Tabs>` becomes a sequence of bold headings, a `<TypeTable>` becomes a markdown table. The flattened markdown is what the search index ranks and what `llms-full/*.txt` bundles include.
+
+For the exact stack, see [Remark plugins](/docs/reference/remark). For the component contract, see [Components](/docs/authoring/components).
+
+## The four artifacts
+
+Every run of `leadtype generate` produces four kinds of output. They all derive from the same source — there is no manual duplication.
+
+<TypeTable
+  properties={{
+    "Markdown (.md)": {
+      type: "public/docs/<path>.md",
+      description:
+        "Flattened markdown for each MDX page. Served to agents via content negotiation; consumed by every other artifact below.",
+    },
+    "LLM bundles": {
+      type: "llms.txt + llms-full/<group>.txt",
+      description:
+        "Routing index plus topic-scoped full-context files. llms.txt is short and links to deeper bundles; each leaf group gets one llms-full file.",
+    },
+    "Search index": {
+      type: "search-index.json + search-content.json",
+      description:
+        "BM25-ranked inverted index over headings, titles, body, and code. Content is stored separately so the index stays small.",
+    },
+    "Navigation manifest": {
+      type: "docs-nav.json",
+      description:
+        "Resolved group tree mapping pages to nav locations. Drives the sidebar in your docs site and the section structure in llms.txt.",
+    },
+  }}
+/>
+
+## The three audiences
+
+<Mermaid chart={`flowchart LR
+  artifacts["public/* artifacts"]
+  human["Humans<br/>(browser)"]
+  agent["Agents · IDEs · CLIs"]
+  search["Search UI · AI answers"]
+  artifacts -- "HTML render of MDX" --> human
+  artifacts -- "Accept: text/markdown<br/>or node_modules/<pkg>/docs/" --> agent
+  artifacts -- "search-index.json + search-content.json" --> search`} />
+
+- **Humans** see the HTML your docs site renders from MDX (or from the converted markdown — same content).
+- **Agents and tools** read the markdown directly. Either over HTTP via `Accept: text/markdown` content negotiation, or offline by reading `node_modules/<your-package>/docs/` after `npm install`.
+- **Search** uses the index plus the content store. Lexical results are exact; the same data feeds optional source-grounded AI answers.
+
+## Vocabulary
+
+A few terms you will see throughout the docs.
+
+<TypeTable
+  properties={{
+    flatten: {
+      type: "verb",
+      description:
+        "Convert an interactive MDX component into a portable markdown equivalent. A <Callout> flattens to a blockquote; a <Tabs> flattens to a stack of bold headings.",
+    },
+    group: {
+      type: "frontmatter field",
+      description:
+        "A slug declaring which group a page belongs to. The same string drives the sidebar position, the llms.txt section, and the llms-full/<slug>.txt file.",
+    },
+    leaf: {
+      type: "noun",
+      description:
+        "A group that has no children. Each leaf gets its own llms-full file; non-leaf groups are summary headings only.",
+    },
+    chunk: {
+      type: "noun",
+      description:
+        "A heading-aware slice of a page that the search index scores independently. Titles weigh 4×, headings 2×, body 1×, code 0.35×.",
+    },
+    "content negotiation": {
+      type: "noun",
+      description:
+        "Middleware that rewrites GET /docs/foo to /docs/foo.md when the request advertises Accept: text/markdown. Same URL, two formats. Implement it wherever your framework intercepts requests — Next.js middleware, an Astro endpoint, a Cloudflare Worker, a Vite plugin.",
+    },
+  }}
+/>
+
+## What runs when
+
+The `leadtype generate` command runs in a fixed order — each stage depends on the previous one's output:
+
+1. **Parse frontmatter** for every `.mdx` under `docs/`.
+2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to `public/docs/`.
+3. **Resolve groups** from frontmatter, validate every page's `group:` matches a known slug.
+4. **Generate LLM bundles** by reading the converted markdown and grouping by leaf.
+5. **Build the search index** by chunking the converted markdown.
+
+If step 3 finds an unknown group, the run fails. That is by design — broken navigation is a content bug, not a render-time problem.
+
+## Where to next
+
+<Cards>
+  <Card
+    title="Quickstart"
+    description="Run the pipeline yourself in five minutes."
+    href="/docs/quickstart"
+  />
+  <Card
+    title="Frontmatter contract"
+    description="The required fields, the group resolution rules, and the lint checks."
+    href="/docs/authoring/frontmatter"
+  />
+  <Card
+    title="CLI reference"
+    description="Every flag for leadtype generate and leadtype lint."
+    href="/docs/reference/cli"
+  />
+</Cards>

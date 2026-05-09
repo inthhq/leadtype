@@ -1,0 +1,105 @@
+---
+title: "Remark plugins"
+description: "The default plugin stack that flattens MDX components into markdown."
+group: reference
+---
+
+# Remark plugins
+
+The remark stack is what turns interactive MDX into agent-readable markdown. Imports get stripped first, placeholders get resolved, then each named component is flattened into a markdown equivalent. Order matters.
+
+```ts
+import {
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
+} from "leadtype/remark";
+```
+
+## The default stack
+
+<Mermaid chart={`flowchart TB
+  src["MDX (mdast)"]
+  ri["remarkRemoveImports"]
+  rj["remarkRemoveJsxComments"]
+  rd["remarkResolveDocPlaceholders"]
+  rs["remarkSectionToMarkdown"]
+  rc["remarkCalloutToMarkdown"]
+  rcd["remarkCardsToMarkdown"]
+  rdt["remarkDetailsToMarkdown"]
+  rm["remarkMermaidToMarkdown"]
+  rct["remarkCommandTabsToMarkdown"]
+  rst["remarkStepsToMarkdown"]
+  rt["remarkTabsToMarkdown"]
+  rtt["remarkTypeTableToMarkdown"]
+  ra["remarkAccordionToMarkdown"]
+  rts["remarkTopicSwitcherToMarkdown"]
+  re["remarkExampleToMarkdown"]
+  out["clean markdown"]
+  src --> ri --> rj --> rd --> rs --> rc --> rcd --> rdt --> rm --> rct --> rst --> rt --> rtt --> ra --> rts --> re --> out`} />
+
+`defaultRemarkPlugins` runs the stack in this order:
+
+1. `remarkRemoveImports` — strip MDX `import` and `export` statements.
+2. `remarkRemoveJsxComments` — strip `{/* ... */}` JSX comments.
+3. `remarkResolveDocPlaceholders` — replace `{framework}` and similar placeholders in URLs.
+4. `remarkSectionToMarkdown` — flatten `<Section>` containers.
+5. `remarkCalloutToMarkdown` — `<Callout>` → blockquote.
+6. `remarkCardsToMarkdown` — `<Cards>` → bulleted link list.
+7. `remarkDetailsToMarkdown` — flatten `<Details>` blocks.
+8. `remarkMermaidToMarkdown` — `<Mermaid>` → fenced ` ```mermaid ` block.
+9. `remarkCommandTabsToMarkdown` — `<CommandTabs>` → markdown table.
+10. `remarkStepsToMarkdown` — `<Steps>` → ordered list.
+11. `remarkTabsToMarkdown` — `<Tabs>` → bold heading per tab.
+12. `remarkTypeTableToMarkdown` — `<TypeTable>` and `<ExtractedTypeTable>` → markdown table.
+13. `remarkAccordionToMarkdown` — `<Accordion>` → flattened sections (open/closed state ignored).
+14. `remarkTopicSwitcherToMarkdown` — `<TopicSwitcher>` → labeled link list.
+15. `remarkExampleToMarkdown` — `<Example>` → fenced code block plus body.
+
+## Why order matters
+
+Imports must go before placeholder resolution, because some placeholders read from imported modules. Placeholder resolution must go before component flatteners, because flatteners assume URLs are final strings, not template literals. The component flatteners run last so each one sees a clean tree.
+
+Don't reorder casually. If you need a custom plugin to run before a flattener (for example, to transform a custom component into one of the contracted names), insert it after `remarkResolveDocPlaceholders` and before the flattener you want to feed.
+
+## Optional plugins
+
+### remarkInclude
+
+Add this when the source docs use include tags or partial composition:
+
+```ts
+remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+```
+
+Place it before the default stack so included content expands before any flattener sees it.
+
+### remarkTypeTableToMarkdown (with basePath)
+
+`<ExtractedTypeTable>` reads a TypeScript file at conversion time. When the file path is relative, the plugin needs a `basePath` to resolve from. Override the default plugin entry to pass options:
+
+```ts
+import {
+  defaultRemarkPlugins,
+  remarkTypeTableToMarkdown,
+} from "leadtype/remark";
+
+const remarkPlugins = [
+  ...defaultRemarkPlugins.filter((p) => p !== remarkTypeTableToMarkdown),
+  [remarkTypeTableToMarkdown, { basePath: process.cwd() }],
+];
+```
+
+Live example — extracted from `apps/example/type-fixtures/pipeline-example.ts`:
+
+<ExtractedTypeTable
+  name="PipelineExampleOptions"
+  path="./apps/example/type-fixtures/pipeline-example.ts"
+/>
+
+## Plugin selection rules
+
+- Use `defaultRemarkPlugins` for any agent-facing or LLM output.
+- Add `remarkInclude` when docs are composed from shared fragments.
+- Use individual plugins only when you intentionally want to omit a flattener (e.g. you don't use `<TypeTable>` and want to skip its processing cost).
+- If output looks wrong, read the converted `.md` first. The fix is almost never reordering — it's usually a custom plugin between two existing ones.

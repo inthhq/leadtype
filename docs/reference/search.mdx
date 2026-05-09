@@ -1,0 +1,153 @@
+---
+title: "Search"
+description: "Static search index, runtime helpers, and source-grounded answer streaming."
+group: reference
+---
+# Search
+
+Leadtype builds a **static, edge-safe search index** over your docs at build time and exposes a runtime that queries it without touching a database. Source-grounded answer streaming layers on top via provider-specific entry points.
+
+## Vocabulary
+
+- **Chunk** — a heading-aware slice of a page. Each chunk is a separate document in the index, so search results jump to the right section, not just the right page.
+- **BM25** — the ranking function. Titles weigh 4×, headings 2×, body 1×, code 0.35×. Tunable in the index generator.
+- **Index** — `search-index.json`. Compact tuple format with term postings, document refs, and chunk refs.
+- **Content store** — `search-content.json`. The actual chunk text, separated from the index so you can search without loading content, then read content lazily for excerpts and answers.
+
+## Build-time indexing
+
+Generate after MDX conversion:
+
+```ts
+import { generateDocsSearchFiles } from "leadtype/search/node";
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+});
+```
+
+The generator reads markdown under `<outDir>/docs/` and writes:
+
+```
+<outDir>/docs/search-index.json
+<outDir>/docs/search-content.json
+```
+
+Splitting them keeps the index small (load on every search) while content stays cheap (load on result hover or answer generation).
+
+## Runtime search
+
+The runtime is edge-safe — no Node APIs, works on Vercel, Cloudflare, and anywhere else:
+
+```ts
+import {
+  searchDocs,
+  type DocsSearchIndex,
+  type DocsSearchContentStore,
+} from "leadtype/search";
+import indexJson from "../public/docs/search-index.json";
+import contentJson from "../public/docs/search-content.json";
+
+const results = searchDocs(
+  indexJson as DocsSearchIndex,
+  "tabs install",
+  { content: contentJson as DocsSearchContentStore }
+);
+```
+
+Results include heading paths, hash URLs, and snippets ready for a search UI.
+
+## Reading docs at runtime
+
+The same index doubles as a virtual filesystem. Three readers, picked by what you have:
+
+```ts
+import {
+  listDocsContentFiles,
+  readDocsContentFile,
+  readDocsContentChunk,
+} from "leadtype/search";
+
+const allFiles = listDocsContentFiles(index);
+const wholePage = readDocsContentFile(index, "guides/quickstart", content);
+const oneChunk = readDocsContentChunk(index, "chunk-0", content);
+```
+
+Use `readDocsContentFile` when you need the entire page (for context links). Use `readDocsContentChunk` when a search result already named the right heading.
+
+## Source-grounded answers
+
+`createAnswerContext` turns a query plus retrieved chunks into a `system` and `prompt` you pass to any model:
+
+```ts
+import { createAnswerContext } from "leadtype/search";
+
+const context = createAnswerContext(index, "how do I run lint?", {
+  content,
+  productName: "My Library",
+});
+// → { system, prompt, sources }
+```
+
+The system message instructs the model to answer only from the retrieved context, cite sources with `[1]`-style references, and say so when the context is insufficient.
+
+## Streaming via provider entry points
+
+Three thin wrappers around `createAnswerContext` that stream a Response and surface sources separately. Use one matching your runtime:
+
+```ts
+import { streamDocsAnswer } from "leadtype/search/vercel";       // Vercel AI SDK / AI Gateway
+import { streamDocsAnswer } from "leadtype/search/tanstack";     // TanStack AI
+import { streamDocsAnswer } from "leadtype/search/cloudflare";   // Cloudflare AI Gateway / Workers AI
+```
+
+```ts
+const { response, sources } = streamDocsAnswer({
+  index,
+  content,
+  query,
+  model: "openai/gpt-5.5",
+  productName: "My Library",
+});
+```
+
+`response` is a plain text Response. `sources` is metadata for citation links — display it separately, don't embed it in the streamed answer.
+
+For TanStack, pass an explicit `adapter`. For Cloudflare, build one with `createCloudflareDocsAdapter({ provider, model, options: { binding: env.AI.gateway("docs") } })`.
+
+## Bash tool adapters
+
+When you want an agent to **explore docs with shell commands** instead of receiving pre-selected chunks:
+
+```ts
+import { createDocsBashTool } from "leadtype/search/vercel";
+
+const { tools, instructions } = await createDocsBashTool(index, content);
+```
+
+The adapter exposes a read-only virtual `/docs` filesystem with `ls`, `cat`, `find`, `grep`, and `rg`. Network commands, code execution, and writes are disabled. TanStack and Cloudflare expose `createDocsBashTools` (plural) over the same filesystem.
+
+## Abuse guards
+
+Reusable utilities for the request path:
+
+
+| Helper                    | Purpose                                    |
+| ------------------------- | ------------------------------------------ |
+| `validateDocsQuery`       | Trim and cap query text.                   |
+| `readJsonWithLimit`       | Reject oversized JSON bodies before parse. |
+| `getClientIdentifier`     | Read common proxy IP headers.              |
+| `createMemoryRateLimiter` | Implements `RateLimiter` for demos.        |
+
+
+The in-memory limiter is fine for demos. Production apps should adapt the `RateLimiter` interface to a shared store — Redis, Vercel KV, Cloudflare KV, or Durable Objects.
+
+## When to add embeddings
+
+Start with the local index. It is static, cheap, edge-safe, and fast for exact API names, config keys, error messages, and paths. Add embeddings only when:
+
+- Users search with vocabulary that doesn't match the docs (e.g. "make it faster" matching a "performance optimization" page).
+- Your docs grow past tens of thousands of chunks and the cold-start memory hit becomes noticeable.
+
+Even then, keep the lexical index for exact matches and layer embeddings on top — they're complementary, not replacements.

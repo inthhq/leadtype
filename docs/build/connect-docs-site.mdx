@@ -1,0 +1,139 @@
+---
+title: "Connect a docs site"
+description: "Wire leadtype into a docs app build so it serves humans, agents, and search from one source."
+group: build
+---
+
+# Connect a docs site
+
+Use this path when **you run a docs site** (or want to). Leadtype runs before your build to convert MDX, generate the navigation, build the search index, and produce agent-readable bundles. Your site framework — TanStack Start, Next.js, Astro, anything — handles routing and rendering.
+
+The reference implementation lives in `apps/example/` in the leadtype repo. It's also the production docs site you're reading right now.
+
+## The flow
+
+<Mermaid chart={`flowchart LR
+  src["docs/*.mdx<br/>(your repo)"]
+  cli["leadtype generate"]
+  pub["public/<br/>llms.txt<br/>docs/*.md<br/>docs/llms-full/*.txt<br/>docs/search-index.json<br/>docs/search-content.json"]
+  gen["src/generated/<br/>docs-nav.json<br/>docs-search-*.json"]
+  vite["vite + content negotiation"]
+  human["Humans<br/>(HTML)"]
+  agent["Agents<br/>(text/markdown)"]
+  search["Search UI"]
+  src --> cli
+  cli --> pub
+  cli --> gen
+  pub --> vite
+  gen --> vite
+  vite -- "Accept: text/html" --> human
+  vite -- "Accept: text/markdown" --> agent
+  gen --> search`} />
+
+## One-off run
+
+For a single repo where docs and site live together:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --out public \
+  --base-url https://docs.example.com \
+  --name "my-docs" \
+  --summary "Short product summary."
+```
+
+That single command converts MDX, generates `llms.txt`, builds the search index, and resolves the navigation tree. Generated paths are listed by [`leadtype generate`](/docs/reference/cli) and inspected in detail under [How it works](/docs/how-it-works).
+
+## Wire it into the build
+
+Add a pipeline step before vite/Next/Astro builds. The example app does this with a `pipeline:build` script that runs each stage individually for incremental dev:
+
+```json
+{
+  "scripts": {
+    "pipeline:convert": "bun run scripts/mdx-convert.ts",
+    "pipeline:llm": "bun run scripts/llm-generate.ts",
+    "pipeline:search": "bun run scripts/search-generate.ts",
+    "pipeline:build": "bun run pipeline:convert && bun run pipeline:llm && bun run pipeline:search",
+    "build": "bun run pipeline:build && vite build"
+  }
+}
+```
+
+Splitting into separate scripts is optional — the CLI does all three in one pass. Use scripts when you want fine control over plugin order, base URL, or filtering. See [`apps/example/scripts/mdx-convert.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/scripts/mdx-convert.ts) for the canonical setup, including how to add `remarkInclude` for partial expansion or `remarkTypeTableToMarkdown` with a `basePath` for `<ExtractedTypeTable>`.
+
+## Configure the product and groups
+
+Author `docs/docs.config.ts` once and let every stage read from it:
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "my-docs",
+    summary: "Short product summary.",
+    bullets: ["What it does in one bullet.", "Another bullet."],
+    bestStartingPoints: [{ urlPath: "/docs" }, { urlPath: "/docs/quickstart" }],
+  },
+  groups: [
+    { slug: "get-started", title: "Get Started" },
+    { slug: "guides", title: "Guides" },
+  ],
+});
+```
+
+Pages declare `group:` in frontmatter. The config declares the tree. The two together produce the navigation manifest, the `llms.txt` sections, and the lint check that catches typos. See [Frontmatter](/docs/authoring/frontmatter) for the resolution rules.
+
+## Serve markdown to agents
+
+Drop a content-negotiation middleware in front of your static `/docs/*.md` files so agents can fetch markdown from the same URL humans visit. The example app's vite plugin (~30 lines) is in [`apps/example/vite.config.ts`](https://github.com/inthio/leadtype/blob/main/apps/example/vite.config.ts):
+
+```ts
+function rewriteToMarkdown(url, accept) {
+  if (!accept) return null;
+  if (!accept.includes("text/markdown")) return null;
+  if (accept.includes("text/html") && !accept.includes("q=")) return null;
+  // /docs/foo → /docs/foo.md
+  return `${url.replace(/\/$/, "")}.md`;
+}
+```
+
+Browsers send `text/html,*/*` and get HTML. Agents send `Accept: text/markdown` and get the converted `.md`. Same URL, two formats.
+
+For Next.js, wire the same logic in `middleware.ts` and serve `.md` from a route handler. For Cloudflare Pages, use a `_middleware` Worker.
+
+## Connect a remote source
+
+When the docs source lives in a different repo from the docs site:
+
+```bash
+git clone --depth 1 https://github.com/acme/package-a .docs-src/package-a
+npx leadtype lint .docs-src/package-a/docs --format github --error-unknown
+npx leadtype generate --src .docs-src/package-a --out public --json
+npm run build
+```
+
+Run lint first so missing or malformed frontmatter fails before the converter writes anything. Use `--format github` in CI to get inline annotations on the PR. Use `--json` on `generate` so automation can read the resolved groups and search index stats.
+
+This is the shape we expect for orgs hosting one docs UI for multiple package repos: the source lives next to the code it documents, the docs app pulls it in at build time. See [Bundle docs into a package](/docs/build/bundle-package-docs) if the package should *also* ship docs inside its npm tarball.
+
+## Verify
+
+After a clean build:
+
+- `public/docs/index.md` — the converted home page.
+- `public/llms.txt` — the routing index. Should mention every group from your config.
+- `public/docs/llms-full/<leaf>.txt` — one per leaf group, full content.
+- `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty.
+
+Then start the dev server and `curl -H "Accept: text/markdown" http://localhost:5173/docs/`. You should get the markdown body of `index.md`. If you get HTML, the negotiation middleware isn't wired.
+
+## What's next
+
+<Cards>
+  <Card title="CLI reference" description="Every flag, exit code, and JSON output shape." href="/docs/reference/cli" />
+  <Card title="Lint in CI" description="Fail PRs on broken links or schema drift." href="/docs/build/validate-in-ci" />
+  <Card title="Search reference" description="Index shape, BM25 weights, and answer streaming." href="/docs/reference/search" />
+</Cards>

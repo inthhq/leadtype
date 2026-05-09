@@ -1,18 +1,36 @@
 # leadtype
 
-Shared docs tooling for any docs app: framework-neutral MDX-to-markdown conversion, LLM bundles, validation, and static search.
+A docs pipeline. Write MDX once. Get a website, agent-readable bundles, and a static search index from a single command.
 
-`leadtype` is split into focused public entry points:
+```mermaid
+flowchart LR
+  src["docs/*.mdx"]
+  pipe["leadtype generate"]
+  md["clean markdown"]
+  llm["llms.txt + llms-full/*.txt"]
+  idx["search-index.json"]
+  nav["navigation tree"]
+  site["docs website (humans)"]
+  agent["agents · IDEs · CLIs"]
+  search["search UI · AI answers"]
+  src --> pipe
+  pipe --> md
+  pipe --> llm
+  pipe --> idx
+  pipe --> nav
+  md --> site
+  md --> agent
+  llm --> agent
+  idx --> search
+  nav --> site
+```
 
-- `leadtype/remark`: remark plugins plus `defaultRemarkPlugins`
-- `leadtype/convert`: MDX-to-markdown conversion APIs
-- `leadtype/llm`: `llms.txt` and topic-scoped full-context generation
-- `leadtype/search`: search runtime, content readers, guards, and rate limiter helpers
-- `leadtype/search/node`: Node-only search index generation
-- `leadtype/search/vercel`: Vercel AI Gateway / AI SDK answer streaming and bash tools
-- `leadtype/search/tanstack`: TanStack AI answer streaming and bash tools
-- `leadtype/search/cloudflare`: Cloudflare AI Gateway / Workers AI adapter helpers and bash tools
-- `leadtype/lint`: docs validation and the `leadtype lint` CLI
+leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
+
+## Choose your path
+
+- **[Build a docs site](https://docs.example.com/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
+- **[Bundle docs into your package](https://docs.example.com/docs/build/bundle-package-docs)** — ship agent-readable docs inside the npm tarball so IDEs and coding agents can read them offline.
 
 ## Install
 
@@ -20,28 +38,41 @@ Shared docs tooling for any docs app: framework-neutral MDX-to-markdown conversi
 pnpm add leadtype
 ```
 
-## Basic Usage
+## 30-second example
 
-### Own MDX components in your app
+```bash
+# In a repo with docs/*.mdx
+npx leadtype generate --src . --out public --base-url https://docs.example.com
+```
 
-`leadtype` does not export prebuilt React, Vue, Nuxt, Svelte, or Astro components. Define the MDX component map in the docs app that renders your pages.
+This converts every `.mdx` under `docs/`, writes `public/llms.txt` plus per-leaf `public/docs/llms-full/*.txt`, builds `public/docs/search-index.json`, and resolves the navigation tree.
 
-## Live Example App
+See [`apps/example/`](./apps/example) for the canonical docs-site setup, including content negotiation that serves markdown to agents on the same URL humans visit. See [`packages/leadtype/scripts/generate-docs.ts`](./packages/leadtype/scripts/generate-docs.ts) for the canonical "bundle docs into a package" pattern.
 
-The repo includes a canonical consumer demo at `apps/example`.
+## Documentation
 
-- Renders real `.mdx` fixture files through app-owned `mdxComponents`.
-- Uses TanStack Start for SSR and hydration coverage.
-- Shows extracted `ExtractedTypeTable` output while keeping pipeline fixtures in the validation path.
+Full docs at [docs.example.com](https://docs.example.com/docs):
 
-Local workflow:
+- [Quickstart](https://docs.example.com/docs/quickstart)
+- [How it works](https://docs.example.com/docs/how-it-works)
+- [Frontmatter](https://docs.example.com/docs/authoring/frontmatter)
+- [CLI reference](https://docs.example.com/docs/reference/cli)
+- [Methodology](https://docs.example.com/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
+
+## Repo layout
+
+- `packages/leadtype/` — the npm package (CLI + library entry points).
+- `apps/example/` — production docs site and reference template, on TanStack Start.
+- `docs/` — the source MDX rendered by both this site and the package's bundled docs.
+
+## Local workflow
 
 ```bash
 bun install
-bun run dev
+bun run dev          # build the package, run the pipeline, start the example app
 ```
 
-Pipeline and browser checks:
+Pipeline checks:
 
 ```bash
 bun run --filter example pipeline:build
@@ -49,84 +80,6 @@ bun run --filter example pipeline:test
 bun run --filter example test:e2e
 ```
 
-Validation layers:
+## License
 
-- Package unit tests in `packages/leadtype/src/**/*.test.ts*` cover framework-neutral conversion, search, linting, and generated docs behavior.
-- Pipeline fixtures in `apps/example/scripts` and `apps/example/content` cover MDX conversion, LLM generation, and `ExtractedTypeTable`.
-- The TanStack Start demo app in `apps/example/src` covers real browser rendering and hydration.
-
-## Where This Fits
-
-`leadtype` is not a hosted docs platform or a complete docs-site framework. Use tools such as Mintlify, Fumadocs, or Starlight when the primary job is shipping a polished docs website quickly.
-
-Use this package when the primary job is shared docs infrastructure: MDX-to-markdown conversion, LLM bundles, linting, static search artifacts, answer helpers, and agent-facing docs output that can feed multiple apps and tools.
-
-The pipeline entry points are framework-neutral. React, Vue, Nuxt, Svelte, Astro, and other stacks can use conversion, LLM, lint, and search APIs while owning their own runtime component rendering.
-
-## Wiring It Into An App
-
-In a c15t-style repo with a top-level `docs/` directory, wire `leadtype` into the docs app and docs scripts:
-
-- The docs app owns `mdxComponents` if it renders MDX directly.
-- A conversion script runs `convertAllMdx({ srcDir: process.cwd(), outDir: "public" })`.
-- LLM and search scripts read the converted markdown under `public/docs/`.
-- Product code does not import `leadtype` unless it also renders docs pages.
-
-### Convert MDX to markdown
-
-```ts
-import { convertAllMdx } from "leadtype/convert";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
-
-await convertAllMdx({
-  srcDir: "content",
-  outDir: "public",
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
-});
-```
-
-### Generate agent-facing docs bundles
-
-```ts
-import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
-```
-
-Source MDX for the package's own docs lives at the repo root in `/docs` (with `meta.json`). Run the docs generator locally with:
-
-```bash
-LEADTYPE_AGENT_BASE_URL=https://docs.example.com/leadtype bun run --filter leadtype docs:generate
-```
-
-This converts `/docs/*.mdx` into `packages/leadtype/docs/` (markdown, `llms.txt`, `llms-full.txt`, `llms-full/`). The output folder is gitignored and produced fresh at build time; only the converted output ships in the published tarball — the `.mdx` source does not.
-
-### Generate a static search index
-
-```ts
-import { generateDocsSearchFiles } from "leadtype/search/node";
-
-await generateDocsSearchFiles({
-  outDir: "public",
-  baseUrl: "https://docs.example.com",
-});
-```
-
-At runtime, query the generated JSON with `leadtype/search`. Add a provider entrypoint such as `leadtype/search/vercel` only when a user explicitly asks for a source-grounded answer.
-
-## Agent Docs
-
-The package ships a small, topic-scoped agent reference bundle in `docs/`:
-
-- `docs/llms.txt`: routing index
-- `docs/components.md`
-- `docs/convert.md`
-- `docs/remark.md`
-- `docs/llm.md`
-- `docs/search.md`
-- `docs/lint.md`
-
-Set `LEADTYPE_AGENT_BASE_URL` to the hosted docs base before generating publishable `llms*.txt` files.
-For the example app generator, base URL precedence is `LEADTYPE_AGENT_BASE_URL`, then generic deployment `BASE_URL`, then `PORTLESS_URL`, then the local default.
-
-## Repo Skill
-
-This repo also includes a local agent skill at `.agents/skills/leadtype/SKILL.md`. It routes agents to the packaged `docs` bundle in `node_modules/leadtype/docs` and falls back to the local workspace copy at `packages/leadtype/docs/` when the package is not installed.
+MIT.

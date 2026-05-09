@@ -1,9 +1,9 @@
 "use client";
 
 import { createFileRoute } from "@tanstack/react-router";
-import ConvertDoc from "../../../../../docs/convert.mdx";
+import ConvertDoc from "../../../../../../docs/reference/convert.mdx";
 
-export const Route = createFileRoute("/docs/convert")({
+export const Route = createFileRoute("/docs/reference/convert")({
   component: ConvertRoute,
 });
 

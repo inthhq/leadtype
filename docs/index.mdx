@@ -1,37 +1,69 @@
 ---
 title: "Leadtype"
-description: "Reference map for the shared MDX conversion, linting, and LLM doc-generation package."
-group: overview
+description: "One MDX source. A website for humans, llms.txt for agents, and a search index — all from a single pipeline."
+group: get-started
 ---
 
 # Leadtype
 
-`leadtype` is a shared docs package. It provides:
+Leadtype is a **docs pipeline**. You write MDX in one place. It produces every other shape your docs need to take: clean markdown, agent-readable bundles, a static search index, and a navigation tree.
 
-- A remark pipeline that flattens MDX components into LLM-friendly markdown.
-- MDX to markdown conversion utilities.
-- `llms.txt` and topic-scoped `llms-full/*.txt` generators.
-- Static docs search, content readers, source-grounded answer helpers, and optional bash-tool integration.
-- MDX linting utilities for frontmatter, `meta.json`, and docs links.
+It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
 
-## Package Surfaces
+<Mermaid chart={`flowchart LR
+  src["docs/*.mdx<br/>(your source)"]
+  pipe["leadtype generate<br/>(convert · llm · search · lint)"]
+  md["Clean markdown<br/>(.md per page)"]
+  llm["llms.txt<br/>llms-full/*.txt"]
+  idx["search-index.json<br/>search-content.json"]
+  nav["navigation tree<br/>(group → page)"]
+  site["Docs website<br/>humans"]
+  agent["Agents · IDEs · CLIs<br/>via npm package or HTTP"]
+  search["Search UI · AI answers"]
+  src --> pipe
+  pipe --> md
+  pipe --> llm
+  pipe --> idx
+  pipe --> nav
+  md --> site
+  md --> agent
+  llm --> agent
+  idx --> search
+  nav --> site`} />
 
-- [Components](/docs/components): The app-owned MDX component contract used by the remark pipeline.
-- [Convert](/docs/convert): `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`, and `convertAllMdx`.
-- [Remark](/docs/remark): individual remark plugins plus `defaultRemarkPlugins`.
-- [LLM](/docs/llm): `generateLlmsTxt` and `generateLLMFullContextFiles`.
-- [Search](/docs/search): `generateDocsSearchFiles`, `searchDocs`, source-grounded answer helpers, and the optional bash adapter.
-- [Lint](/docs/lint): `lintDocs` and the `leadtype lint` CLI.
+## Choose your path
 
-## When To Read Which Page
+Most teams arrive here for one of two reasons. Pick the journey that matches yours — each is a single page that takes you from zero to running.
 
-- Reach for [Components](/docs/components) when defining app-owned MDX components for authored docs.
-- Use [Convert](/docs/convert) when you need markdown output from `.mdx` files.
-- Check [Remark](/docs/remark) for custom plugin order or component flattening behavior.
-- Open [LLM](/docs/llm) when generating `llms.txt` or topic-scoped full-context bundles.
-- See [Search](/docs/search) for static indexing, runtime querying, or grounded answer streaming.
-- Use [Lint](/docs/lint) to validate frontmatter, docs URLs, or sidebar metadata.
+<Cards>
+  <Card
+    title="Build a docs site"
+    description="You run a docs site (or want to). Wire leadtype in front of your build to convert MDX, index search, and serve markdown to agents."
+    href="/docs/build/connect-docs-site"
+  />
+  <Card
+    title="Ship docs in your package"
+    description="You publish a library on npm. Bundle agent-readable docs inside the tarball so IDEs and coding agents can read them offline."
+    href="/docs/build/bundle-package-docs"
+  />
+</Cards>
 
-## Other Frameworks
+## What you get
 
-React, Vue, Nuxt, Svelte, Astro, and other stacks can use the conversion, LLM, lint, and search entry points today. Runtime MDX components belong in the consuming docs app, not this package.
+<Steps>
+  <Step title="Write once">
+    Author MDX with familiar components — `Callout`, `Tabs`, `Steps`, `Mermaid`, `TypeTable`, and others. Add `group:` in frontmatter to place pages in the navigation tree.
+  </Step>
+  <Step title="Run `leadtype generate`">
+    A single command converts MDX to markdown, builds `llms.txt` plus topic-scoped bundles, generates a static search index, and resolves the navigation tree.
+  </Step>
+  <Step title="Serve all of it">
+    Your site renders the source MDX; agents and tools fetch the markdown via HTTP content negotiation or load `llms.txt` from `node_modules`. Same content, three audiences.
+  </Step>
+</Steps>
+
+## Next
+
+- New here? Read the **[Quickstart](/docs/quickstart)** — five minutes to a generated bundle.
+- Want the mental model first? Read **[How it works](/docs/how-it-works)** for the pipeline diagram and the names of every artifact it produces.
+- Comparing tools? See **[Methodology](/docs/methodology)** for how leadtype differs from Fumadocs, Starlight, and Mintlify.

@@ -1,0 +1,117 @@
+---
+title: "Bundle docs into a package"
+description: "Ship agent-readable docs inside an npm tarball so IDEs and coding agents can read them offline."
+group: build
+---
+
+# Bundle docs into a package
+
+Use this path when **you publish a library on npm** and want agents, IDEs, and CLI tooling to read your docs without hitting the network. Run leadtype at prepack time, include the `docs/` output in `files`, and every install gets the same docs your website serves.
+
+The website is for humans. The package-bundled docs are for everyone else.
+
+The reference implementation is leadtype itself: see [`packages/leadtype/scripts/generate-docs.ts`](https://github.com/inthio/leadtype/blob/main/packages/leadtype/scripts/generate-docs.ts) and [`packages/leadtype/package.json`](https://github.com/inthio/leadtype/blob/main/packages/leadtype/package.json).
+
+## The flow
+
+<Mermaid chart={`flowchart LR
+  src["docs/*.mdx<br/>(your repo)"]
+  cli["leadtype generate<br/>--out packages/&lt;name&gt;"]
+  bundle["packages/&lt;name&gt;/docs/<br/>llms.txt<br/>llms-full/*.txt<br/>*.md<br/>search-index.json"]
+  publish["npm publish<br/>(docs in 'files')"]
+  install["npm install &lt;name&gt;"]
+  consume["node_modules/&lt;name&gt;/docs/<br/>read by agents · IDEs · CLIs"]
+  src --> cli
+  cli --> bundle
+  bundle --> publish
+  publish --> install
+  install --> consume`} />
+
+## Generate into the package
+
+If source docs live at the repo root:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --out packages/my-package \
+  --base-url https://docs.example.com/my-package \
+  --name "my-package" \
+  --summary "Docs for my-package." \
+  --json
+```
+
+This writes converted markdown, `llms.txt`, full-context bundles, and the search index under `packages/my-package/docs/`.
+
+## Filter to package-specific docs
+
+A monorepo with one shared `docs/` and many packages should bundle only the slice each package owns. Use `--include` (repeatable) and `--exclude`:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --out packages/react \
+  --name "@c15t/react" \
+  --include "frameworks/react/**" \
+  --include "shared/**" \
+  --exclude "**/internal/**" \
+  --json
+```
+
+Filters are explicit. If the package needs shared overview pages, list them too. `--exclude` is applied after `--include`.
+
+## Include in the published tarball
+
+Add `docs` to `files` and run generation as a build or prepack step:
+
+```json
+{
+  "files": ["dist", "docs", "README.md"],
+  "scripts": {
+    "build": "tsup && npx leadtype generate --src ../.. --out . --json"
+  }
+}
+```
+
+This is the shape leadtype itself uses — `packages/leadtype/package.json` lists `docs` in `files`, and the package build regenerates the bundle before publish so the output is always current.
+
+## Verify before publishing
+
+```bash
+npx leadtype generate --src . --out packages/my-package --json
+npm pack --dry-run
+```
+
+`npm pack --dry-run` should list:
+
+- `docs/llms.txt`
+- `docs/llms-full.txt`
+- `docs/llms-full/*.txt`
+- `docs/**/*.md`
+- `docs/search-index.json`
+- `docs/search-content.json`
+
+If something's missing, check `files` in `package.json` and the `--include`/`--exclude` filters.
+
+## How agents discover bundled docs
+
+After `npm install <your-package>`, the docs sit at `node_modules/<your-package>/docs/`. Agents and IDEs read them in two ways:
+
+- **Routing index** — open `node_modules/<your-package>/docs/llms.txt` first. It links to topic-scoped `llms-full/<group>.txt` files.
+- **Full text** — read the relevant `llms-full/<group>.txt` for deep context, or open individual `.md` files when only one page is needed.
+
+Set the right `--base-url` when generating so the URLs in `llms.txt` point to your hosted docs — agents can fall back to fetching live pages if the bundle is out of date.
+
+## When to use this
+
+Use this when **agents should understand the package from the installed dependency itself** — coding agents that don't have web access, IDE assistants, CLI tools, or air-gapped environments.
+
+Don't use this if your only goal is a public docs website. For that, see [Connect a docs site](/docs/build/connect-docs-site).
+
+## What's next
+
+<Cards>
+  <Card title="CLI reference" description="--include, --exclude, --base-url, and the JSON output shape." href="/docs/reference/cli" />
+  <Card title="LLM bundles" description="What llms.txt and llms-full files actually look like." href="/docs/reference/llm" />
+  <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/build/validate-in-ci" />
+</Cards>

@@ -1,51 +1,40 @@
 ---
 title: "Methodology"
-description: "How leadtype differs from Fumadocs, Mintlify, and Starlight"
-group: overview
+description: "How leadtype differs from Fumadocs, Starlight, and Mintlify."
+group: get-started
 ---
 
 # Methodology
 
-`leadtype` is not a docs website framework. It is the shared pipeline behind docs websites.
-
-We built it at Inth because projects like [c15t](https://c15t.com) and [dsar-sdk](https://dsar-sdk.dev) need one consistent docs system across packages, repos, websites, generated markdown, `llms.txt`, search, and package-bundled agent docs.
-
-The browser UI stays owned by your app. `leadtype` makes the content portable.
+Leadtype is **a docs pipeline, not a docs website framework**. It produces the artifacts a docs site needs (markdown, llms.txt, search index, navigation) and stays out of routing, layout, and theming.
 
 ## The short version
 
-- Fumadocs helps you build a React docs site.
-- Starlight helps you build an Astro docs site.
-- Mintlify gives you a hosted docs platform.
-- `leadtype` helps you reuse the same docs content across sites, packages, search, and agents.
+| Tool | What it gives you |
+| --- | --- |
+| Fumadocs | A React docs site framework. |
+| Starlight | An Astro docs site framework. |
+| Mintlify | A hosted docs platform with deployment, analytics, and AI built in. |
+| Leadtype | The portable content layer behind any of the above. |
 
-Use the others when the main job is publishing a polished website quickly. Use `leadtype` when the main job is standardizing the docs infrastructure behind one or more websites.
+Use a website framework when the main job is publishing a polished site quickly. Use a hosted platform when you want zero infra. Use leadtype when you want to **own the docs UI but standardize the content pipeline** across packages, repos, agent bundles, and search.
 
-## What it does
+## What leadtype owns
 
-`leadtype` gives you framework-neutral tools to:
+- MDX-to-markdown conversion via a remark plugin stack.
+- `llms.txt` and topic-scoped full-context bundles for agents.
+- A static, edge-safe search index plus optional source-grounded answer streaming.
+- Lint rules for frontmatter, navigation metadata, and internal links.
+- CLI orchestration so the whole pipeline runs from one command.
 
-- Convert MDX-heavy docs into clean markdown.
-- Generate `llms.txt` and full-context topic files.
-- Build static search artifacts.
-- Validate frontmatter, navigation metadata, and links.
-- Ship agent-readable docs inside published packages.
+## What leadtype does not own
 
-It does not provide the visual docs UI, routing, theme, or hosted deployment.
+- Visual UI, theming, or component styling.
+- Routing, hosting, deployment, or analytics.
+- A prebuilt MDX component library — your docs app provides those (see [Components](/docs/authoring/components)).
 
-## Unified docs across repos
+## When the combination shines
 
-This is useful when an organization has many packages but wants one docs experience.
+You want one docs experience across many repos, but each repo keeps its content next to the code it documents. A shared docs app — public, private, or templated — renders that content with your design system. Leadtype handles conversion, search, validation, and agent outputs identically across every repo.
 
-Each repo can keep its MDX next to the code it documents. A shared or private docs UI can render that content with the organization's design system, while `leadtype` handles conversion, linting, search data, and agent-doc generation.
-
-That gives every repo the same output contract without forcing every repo to own the same website implementation.
-
-## When to use what
-
-- Use Fumadocs for a composable React docs framework.
-- Use Starlight for an Astro-first docs site with strong defaults.
-- Use Mintlify for hosted docs with deployment, analytics, API docs, and AI features managed for you.
-- Use `leadtype` when you own the docs app but need shared infrastructure across repos, packages, generated markdown, search, and agent-facing docs.
-
-These tools can also be used together: use a docs framework or hosted platform for the browser experience, and use `leadtype` for portable docs outputs behind it.
+You can also pair leadtype *with* a website framework: use Fumadocs or Starlight for the UI, and run leadtype's pipeline alongside it for `llms.txt`, agent bundles, or a content-negotiated `text/markdown` endpoint your framework doesn't ship.

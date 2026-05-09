@@ -1,0 +1,168 @@
+---
+title: "Lint rules"
+description: "Schema, link, and navigation checks. CLI and library API."
+group: reference
+---
+
+# Lint rules
+
+`leadtype lint` validates source MDX before generation. Run it in CI to fail PRs on schema and link issues before they reach a build. CLI flags are documented in the [CLI reference](/docs/reference/cli) — this page covers the rules, schemas, and library API.
+
+```ts
+import { lintDocs } from "leadtype/lint";
+```
+
+## Rules
+
+Grouped by what they catch.
+
+### Frontmatter rules
+
+| Rule | Severity | Catches |
+| --- | --- | --- |
+| `schema` | error | Required field missing or wrong type. |
+| `unknown-field` | warn (default) | Top-level field not in the active schema. |
+| `parse-error` | error | YAML frontmatter or `meta.json` won't parse. |
+
+`unknown-field` upgrades to error with `--error-unknown`. Treat `parse-error` as the highest priority — it blocks every other check.
+
+### Content / link rules
+
+| Rule | Severity | Catches |
+| --- | --- | --- |
+| `invalid-link` | error | A `/docs/...` link points to a route that doesn't exist. |
+| `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
+| `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
+
+Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
+
+## Library API
+
+```ts
+import { lintDocs } from "leadtype/lint";
+
+const result = await lintDocs({
+  srcDir: "docs",
+  unknownFieldSeverity: "error",
+});
+```
+
+| Option | Description |
+| --- | --- |
+| `srcDir` | Required. Root of `.md`, `.mdx`, and `meta.json` files. |
+| `changelogDir` | Subdirectory under `srcDir` validated against the changelog schema. |
+| `ignore` | Glob patterns relative to `srcDir`. Defaults shown below. |
+| `unknownFieldSeverity` | `"warn"` or `"error"` for fields outside the schema. Default: `"warn"`. |
+| `schemas.frontmatter` | Custom Valibot schema for docs page frontmatter. |
+| `schemas.changelogFrontmatter` | Custom Valibot schema for changelog frontmatter. |
+| `schemas.meta` | Custom Valibot schema for `meta.json`. |
+
+Default ignore patterns: `**/shared/**`, `**/_shared/**`, `**/_partials/**`, `**/node_modules/**`.
+
+### Result shape
+
+```ts
+type LintResult = {
+  violations: Array<{
+    file: string;
+    kind: "frontmatter" | "changelog" | "meta" | "content";
+    severity: "error" | "warn";
+    rule:
+      | "schema"
+      | "unknown-field"
+      | "parse-error"
+      | "invalid-link"
+      | "unresolved-placeholder"
+      | "cross-framework-link";
+    field?: string;
+    message: string;
+  }>;
+  summary: {
+    filesScanned: number;
+    errors: number;
+    warnings: number;
+  };
+};
+```
+
+Required-field failures are reported as `schema` violations — that's the public rule for missing or invalid required fields.
+
+## Default schemas
+
+### Docs frontmatter
+
+| Field | Required | Type |
+| --- | --- | --- |
+| `title` | Yes | non-empty string |
+| `description` | No | string |
+| `icon` | No | string |
+| `deprecated` | No | boolean |
+| `deprecatedReason` | No | string |
+| `experimental` | No | boolean |
+| `canary` | No | boolean |
+| `new` | No | boolean |
+| `draft` | No | boolean |
+| `tags` | No | string array |
+| `group` | No | string or string array |
+| `availableIn` | No | array of `{ framework, url?, title? }` |
+| `full` | No | boolean |
+
+`lastModified` and `lastAuthor` are produced by the converter when `--enrich-git` is set. Don't author them.
+
+### Changelog frontmatter
+
+| Field | Required | Type |
+| --- | --- | --- |
+| `title` | Yes | non-empty string |
+| `version` | Yes | SemVer string |
+| `date` | Yes | ISO-8601 or parseable date |
+| `description` | No | string |
+| `icon` | No | string |
+| `type` | No | `release`, `improvement`, `retired`, or `deprecation` |
+| `tags` | No | string array |
+| `canary` | No | boolean |
+| `authors` | No | string or string array |
+| `draft` | No | boolean |
+
+### `meta.json`
+
+| Field | Required | Type |
+| --- | --- | --- |
+| `pages` | Yes | string array |
+| `title` | No | non-empty string |
+| `root` | No | boolean |
+| `icon` | No | string |
+| `defaultOpen` | No | boolean |
+| `nav.sidebar` | No | `section` or `combined` |
+| `nav.label` | No | string |
+| `nav.mode` | No | string |
+
+## Custom schemas
+
+Pass a Valibot schema to extend or replace the defaults:
+
+```ts
+import * as v from "valibot";
+import { lintDocs } from "leadtype/lint";
+
+const customFrontmatter = v.object({
+  title: v.pipe(v.string(), v.minLength(1)),
+  audience: v.picklist(["beginner", "advanced"]),
+});
+
+await lintDocs({
+  srcDir: "docs",
+  schemas: { frontmatter: customFrontmatter },
+});
+```
+
+Once you provide a custom schema, `unknown-field` warnings apply to *that* schema. Add `--error-unknown` in CI to keep your contract strict.
+
+## Practical guidance
+
+- Run lint **before** `leadtype generate` so content errors fail fast.
+- Use `--format github` in GitHub Actions and `--format json` in any other CI.
+- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `availableIn` or a stale URL template.
+- After a docs move, lint and run `meta.json` updates together; they drift at the same time.
+
+For wiring lint into pipelines, see [Validate in CI](/docs/build/validate-in-ci).

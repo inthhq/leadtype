@@ -1,9 +1,9 @@
 "use client";
 
 import { createFileRoute } from "@tanstack/react-router";
-import ConnectDocsSiteDoc from "../../../../../../docs/guides/connect-docs-site.mdx";
+import ConnectDocsSiteDoc from "../../../../../../docs/build/connect-docs-site.mdx";
 
-export const Route = createFileRoute("/docs/guides/connect-docs-site")({
+export const Route = createFileRoute("/docs/build/connect-docs-site")({
   component: ConnectDocsSiteRoute,
 });
 

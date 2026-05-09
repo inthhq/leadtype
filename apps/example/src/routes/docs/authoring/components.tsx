@@ -1,9 +1,9 @@
 "use client";
 
 import { createFileRoute } from "@tanstack/react-router";
-import ComponentsDoc from "../../../../../docs/components.mdx";
+import ComponentsDoc from "../../../../../../docs/authoring/components.mdx";
 
-export const Route = createFileRoute("/docs/components")({
+export const Route = createFileRoute("/docs/authoring/components")({
   component: ComponentsRoute,
 });
 
