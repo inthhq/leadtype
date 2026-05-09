@@ -399,8 +399,17 @@
 }
 
 [data-leadtype-mermaid] {
-  font-family: var(--font-mono);
-  @apply my-6 overflow-x-auto rounded-lg border border-border bg-secondary px-4 py-4 text-sm;
+  @apply my-6;
+}
+
+[data-leadtype-mermaid] [data-streamdown="mermaid-block"] {
+  @apply my-0;
+}
+
+[data-leadtype-mermaid]
+  [data-streamdown="mermaid-block"]
+  > div:has(> [data-streamdown="mermaid"]) {
+  @apply rounded-none border-none bg-transparent;
 }
 
 [data-leadtype-type-table],

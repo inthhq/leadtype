@@ -6,6 +6,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
+import { NotFound } from "@/components/not-found";
 import { useMDXComponents } from "@/mdx-components";
 import appCss from "../styles.css?url";
 
@@ -30,6 +31,7 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
+  notFoundComponent: NotFound,
   shellComponent: RootDocument,
 });
 

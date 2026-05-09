@@ -12,11 +12,6 @@ export interface NavigationRoute {
 /** Top-level header nav. */
 export const navigationRoutes: NavigationRoute[] = [
   {
-    label: "Home",
-    to: "/",
-    description: "Developer dashboard for the package.",
-  },
-  {
     label: "Docs",
     to: "/docs",
     description: "Reference docs rendered from /docs MDX source.",

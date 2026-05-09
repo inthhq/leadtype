@@ -1,20 +1,20 @@
+"use client";
+
+import { mermaid } from "@streamdown/mermaid";
 import type { ReactNode } from "react";
+import { Streamdown } from "streamdown";
 
 export interface MermaidProps {
   chart?: string;
   children?: ReactNode;
 }
 
-/**
- * Placeholder Mermaid renderer. Emits a `<pre data-mermaid>` block so
- * consumer apps can hydrate it with their preferred mermaid client
- * (mermaid.js, react-mermaid2, etc.) or style it as-is.
- */
 export function Mermaid({ chart, children }: MermaidProps) {
   const source = chart ?? (typeof children === "string" ? children : "");
+  const markdown = `\`\`\`mermaid\n${source}\n\`\`\``;
   return (
-    <pre data-leadtype-mermaid="">
-      <code>{source}</code>
-    </pre>
+    <div data-leadtype-mermaid="">
+      <Streamdown plugins={{ mermaid }}>{markdown}</Streamdown>
+    </div>
   );
 }
