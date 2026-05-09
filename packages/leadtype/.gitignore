@@ -1,7 +1,8 @@
 # Generated docs output. The MDX source lives at the repo-root /docs folder;
 # `bun run docs:generate` (run as part of the package build) reads from there
-# and writes converted markdown + LLM bundles into /docs here. The folder
-# ships in the published tarball; nothing in it is committed.
+# and writes AGENTS.md plus converted markdown into this package. These files
+# ship in the published tarball; nothing in them is committed.
+/AGENTS.md
 /docs/
 # Root-level byproducts of the llm helper. Not published (not in package.json
 # `files`); just regenerated alongside the docs/ output.
