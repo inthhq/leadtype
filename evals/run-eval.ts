@@ -32,6 +32,21 @@ type CliArgs = {
   runs: number;
 };
 
+function parsePositiveInt(value: string | undefined, flag: string): number {
+  const parsed = Number.parseInt(value ?? "1", 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`${flag} must be a positive integer, got ${value}`);
+  }
+  return parsed;
+}
+
+function parseMode(value: string | undefined): Mode {
+  if (value !== "treatment" && value !== "control") {
+    throw new Error(`--mode must be treatment|control, got ${value}`);
+  }
+  return value;
+}
+
 function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = { model: "claude-haiku-4-5", runs: 1 };
   let i = 0;
@@ -41,15 +56,11 @@ function parseArgs(argv: string[]): CliArgs {
     if (a === "--fixture") {
       args.fixture = argv[i++];
     } else if (a === "--mode") {
-      const v = argv[i++];
-      if (v !== "treatment" && v !== "control") {
-        throw new Error(`--mode must be treatment|control, got ${v}`);
-      }
-      args.mode = v;
+      args.mode = parseMode(argv[i++]);
     } else if (a === "--model") {
       args.model = argv[i++] ?? args.model;
     } else if (a === "--runs") {
-      args.runs = Number.parseInt(argv[i++] ?? "1", 10);
+      args.runs = parsePositiveInt(argv[i++], "--runs");
     } else if (a === "--help" || a === "-h") {
       printUsage();
       process.exit(0);
@@ -182,51 +193,54 @@ async function runOne(options: {
   };
   await writeTranscript(sandbox.tempDir, transcript);
 
-  const evalResult = await runVitest(fixture, sandbox.tempDir);
+  try {
+    const evalResult = await runVitest(fixture, sandbox.tempDir);
 
-  const discoveredAgentsMd = transcriptCalls.some((c) => {
-    if (c.tool !== "read") {
-      return false;
+    const discoveredAgentsMd = transcriptCalls.some((c) => {
+      if (c.tool !== "read") {
+        return false;
+      }
+      const p = (c.args.path as string | undefined) ?? "";
+      return p.includes("node_modules/leadtype/AGENTS.md");
+    });
+
+    process.stdout.write(
+      `  ${evalResult.passed ? "✓" : "✗"} ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} tool calls · ${inputTokens}in/${outputTokens}out${
+        discoveredAgentsMd ? " · read AGENTS.md" : ""
+      }\n`
+    );
+    if (errors.length > 0) {
+      for (const e of errors) {
+        process.stdout.write(`    ! ${e}\n`);
+      }
     }
-    const p = (c.args.path as string | undefined) ?? "";
-    return p.includes("node_modules/leadtype/AGENTS.md");
-  });
-
-  process.stdout.write(
-    `  ${evalResult.passed ? "✓" : "✗"} ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} tool calls · ${inputTokens}in/${outputTokens}out${
-      discoveredAgentsMd ? " · read AGENTS.md" : ""
-    }\n`
-  );
-  if (errors.length > 0) {
-    for (const e of errors) {
-      process.stdout.write(`    ! ${e}\n`);
+    if (!evalResult.passed) {
+      // Print just the last chunk of vitest's output — it contains the
+      // assertion error in whatever format vitest is using today.
+      const tailLines = evalResult.output.split("\n").slice(-25).join("\n");
+      process.stdout.write(`${tailLines}\n`);
     }
-  }
-  if (!evalResult.passed) {
-    // Print just the last chunk of vitest's output — it contains the
-    // assertion error in whatever format vitest is using today.
-    const tailLines = evalResult.output.split("\n").slice(-25).join("\n");
-    process.stdout.write(`${tailLines}\n`);
-  }
 
-  await archiveTranscript({
-    fixture,
-    mode,
-    runIndex,
-    tempDir: sandbox.tempDir,
-    transcript,
-  });
-  await sandbox.cleanup();
+    await archiveTranscript({
+      fixture,
+      mode,
+      runIndex,
+      tempDir: sandbox.tempDir,
+      transcript,
+    });
 
-  return {
-    fixture,
-    mode,
-    passed: evalResult.passed,
-    durationMs,
-    toolCalls: transcriptCalls.length,
-    discoveredAgentsMd,
-    evalOutput: evalResult.output,
-  };
+    return {
+      fixture,
+      mode,
+      passed: evalResult.passed,
+      durationMs,
+      toolCalls: transcriptCalls.length,
+      discoveredAgentsMd,
+      evalOutput: evalResult.output,
+    };
+  } finally {
+    await sandbox.cleanup();
+  }
 }
 
 async function archiveTranscript(opts: {
@@ -272,13 +286,32 @@ async function runVitest(
 ): Promise<{ passed: boolean; output: string }> {
   const evalFile = path.join(fixturesRoot, fixture, "EVAL.ts");
   return await new Promise((resolveSpawn) => {
-    const proc = spawn("bun", ["x", "vitest", "run", evalFile], {
-      cwd: evalsRoot,
-      env: {
-        ...process.env,
-        TRANSCRIPT_PATH: transcriptPathFor(tempDir),
-      },
-    });
+    let settled = false;
+    const settle = (result: { passed: boolean; output: string }) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolveSpawn(result);
+    };
+
+    let proc: ReturnType<typeof spawn>;
+    try {
+      proc = spawn("bun", ["x", "vitest", "run", evalFile], {
+        cwd: evalsRoot,
+        env: {
+          ...process.env,
+          TRANSCRIPT_PATH: transcriptPathFor(tempDir),
+        },
+      });
+    } catch (err) {
+      settle({
+        passed: false,
+        output: `failed to spawn vitest: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      return;
+    }
+
     let output = "";
     proc.stdout.on("data", (b) => {
       output += b.toString();
@@ -286,8 +319,14 @@ async function runVitest(
     proc.stderr.on("data", (b) => {
       output += b.toString();
     });
+    proc.on("error", (err) => {
+      settle({
+        passed: false,
+        output: `${output}\nspawn error: ${err.message}`,
+      });
+    });
     proc.on("close", (code) => {
-      resolveSpawn({ passed: code === 0, output });
+      settle({ passed: code === 0, output });
     });
   });
 }

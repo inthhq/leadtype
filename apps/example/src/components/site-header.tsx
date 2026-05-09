@@ -32,16 +32,18 @@ function RobotIcon() {
 const TRAILING_SLASH_PATTERN = /\/$/;
 
 function markdownHrefForPath(pathname: string): string | null {
-  if (!(pathname === "/docs" || pathname.startsWith("/docs/"))) {
+  // Normalize first so /docs/ falls into the same bucket as /docs.
+  const normalized = pathname.replace(TRAILING_SLASH_PATTERN, "");
+  if (!(normalized === "/docs" || normalized.startsWith("/docs/"))) {
     return null;
   }
-  if (pathname.endsWith(".md")) {
+  if (normalized.endsWith(".md")) {
     return null;
   }
-  if (pathname === "/docs") {
+  if (normalized === "/docs") {
     return "/docs/index.md";
   }
-  return `${pathname.replace(TRAILING_SLASH_PATTERN, "")}.md`;
+  return `${normalized}.md`;
 }
 
 export function SiteHeader() {

@@ -11,8 +11,16 @@ const projectRoot = process.env.TRANSCRIPT_PATH
   : "";
 
 const reads = transcript.toolCalls
-  .filter((c) => c.tool === "read")
-  .map((c) => (c.args.path as string) ?? "");
+  .filter((c) => c.tool === "read" && typeof c.args.path === "string")
+  .map((c) => c.args.path as string);
+
+function getViteConfigSource(): string {
+  const viteConfigPath = resolve(projectRoot, "vite.config.ts");
+  if (!existsSync(viteConfigPath)) {
+    throw new Error(`vite.config.ts not at expected path ${viteConfigPath}`);
+  }
+  return readFileSync(viteConfigPath, "utf-8");
+}
 
 describe("wire-content-negotiation", () => {
   it("agent discovered the bundled AGENTS.md", () => {
@@ -38,17 +46,12 @@ describe("wire-content-negotiation", () => {
   });
 
   it("middleware sets charset=utf-8", () => {
-    const viteConfigPath = resolve(projectRoot, "vite.config.ts");
-    if (!existsSync(viteConfigPath)) {
-      throw new Error(`vite.config.ts not at expected path ${viteConfigPath}`);
-    }
-    const source = readFileSync(viteConfigPath, "utf-8");
+    const source = getViteConfigSource();
     expect(source).toMatch(/charset=utf-8/i);
   });
 
   it("middleware rewrites /docs/* paths to .md", () => {
-    const viteConfigPath = resolve(projectRoot, "vite.config.ts");
-    const source = readFileSync(viteConfigPath, "utf-8");
+    const source = getViteConfigSource();
     expect(source).toMatch(/\/docs/);
     expect(source).toMatch(/\.md/);
     expect(source).toMatch(/text\/(markdown|plain)/i);

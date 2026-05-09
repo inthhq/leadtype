@@ -144,10 +144,10 @@ A few terms you will see throughout the docs.
 The `leadtype generate` command runs in a fixed order — each stage depends on the previous one's output:
 
 1. **Parse frontmatter** for every `.mdx` under `docs/`.
-2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to `public/docs/`.
+2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to the output directory (e.g. `public/docs/` in site mode, `<package>/docs/` with `--bundle`).
 3. **Resolve groups** from frontmatter, validate every page's `group:` matches a known slug.
-4. **Generate LLM bundles** by reading the converted markdown and grouping by leaf.
-5. **Build the search index** by chunking the converted markdown.
+4. In **site mode** (default): generate `llms.txt`, the `llms-full/<group>.txt` topic bundles, and the BM25 search index from the converted markdown.
+5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip `llms.txt`, `llms-full*`, and the search index — those are website-only.
 
 If step 3 finds an unknown group, the run fails. That is by design — broken navigation is a content bug, not a render-time problem.
 

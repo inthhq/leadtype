@@ -42,13 +42,21 @@ export async function createSandbox(options: {
   const { fixtureDir, mode } = options;
   const tempDir = await mkdtemp(path.join(tmpdir(), "leadtype-eval-"));
 
-  await cp(fixtureDir, tempDir, {
-    recursive: true,
-    filter: (src) => {
-      const base = path.basename(src);
-      return base !== "PROMPT.md" && base !== "EVAL.ts";
-    },
-  });
+  try {
+    await cp(fixtureDir, tempDir, {
+      recursive: true,
+      filter: (src) => {
+        const base = path.basename(src);
+        return base !== "PROMPT.md" && base !== "EVAL.ts";
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Failed to copy fixture ${fixtureDir} → ${tempDir}: ${message}`,
+      { cause: err instanceof Error ? err : undefined }
+    );
+  }
 
   const tarball = findLeadtypeTarball();
   await npmInstall(tempDir, tarball);

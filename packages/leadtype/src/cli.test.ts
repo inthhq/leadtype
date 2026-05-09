@@ -387,6 +387,9 @@ This page is valid, but the output path is not a directory.
     expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
       false
     );
+    expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
+      false
+    );
     // .md files should still ship.
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(

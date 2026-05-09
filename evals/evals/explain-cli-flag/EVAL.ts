@@ -9,8 +9,8 @@ const projectRoot = process.env.TRANSCRIPT_PATH
   : "";
 
 const reads = transcript.toolCalls
-  .filter((c) => c.tool === "read")
-  .map((c) => (c.args.path as string) ?? "");
+  .filter((c) => c.tool === "read" && typeof c.args.path === "string")
+  .map((c) => c.args.path as string);
 
 describe("explain-cli-flag", () => {
   it("agent read AGENTS.md", () => {
