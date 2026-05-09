@@ -343,6 +343,57 @@ This page is valid, but the output path is not a directory.
     expect(leakedTempDirs).toEqual([]);
   });
 
+  it("emits AGENTS.md and skips llms.txt in --bundle mode", async () => {
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--name",
+        "leadtype",
+        "--summary",
+        "Bundled docs for leadtype.",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      files: { agentsMd?: string; llmsTxt?: string };
+      mode: string;
+    };
+    expect(result.mode).toBe("bundle");
+    expect(result.files.agentsMd).toBe(path.join(outDir, "AGENTS.md"));
+    expect(result.files.llmsTxt).toBeUndefined();
+
+    // AGENTS.md exists, has the product header, and uses relative links.
+    expect(existsSync(path.join(outDir, "AGENTS.md"))).toBe(true);
+    const agentsMd = await readFile(path.join(outDir, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("# leadtype");
+    expect(agentsMd).toContain("](./docs/");
+    // Bundle mode must NOT emit website artifacts.
+    expect(existsSync(path.join(outDir, "llms.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
+      false
+    );
+    // .md files should still ship.
+    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
+    ).toBe(true);
+  });
+
   it("fails clearly when the docs source directory is missing", async () => {
     const tempDir = await createTempDir();
     const capture = createCapture();

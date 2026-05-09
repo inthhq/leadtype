@@ -17,23 +17,22 @@ pnpm add leadtype
 
 ## 30-second example
 
+For a hosted docs site:
+
 ```bash
-# In a repo with docs/*.mdx
 npx leadtype generate --src . --out public --base-url https://docs.example.com
+# → public/llms.txt, public/docs/*.md, public/docs/llms-full/*.txt,
+#   public/docs/search-index.json
 ```
 
-Output:
+For an npm-bundled doc set:
 
+```bash
+npx leadtype generate --bundle --src . --out packages/my-package
+# → packages/my-package/AGENTS.md, packages/my-package/docs/*.md
 ```
-public/
-├── llms.txt
-└── docs/
-    ├── *.md
-    ├── llms.txt
-    ├── llms-full/<group>.txt
-    ├── search-index.json
-    └── search-content.json
-```
+
+The website output is fetched by humans (HTML) and HTTP agents (`Accept: text/markdown` or `/llms.txt`). The bundled output is auto-discovered by [25+ coding agents](https://agents.md) (Claude Code, Codex, Cursor, Copilot, …) when the package is installed at `node_modules/<your-pkg>/AGENTS.md`.
 
 ## Documentation
 
@@ -52,7 +51,7 @@ Full docs at [docs.example.com](https://docs.example.com/docs). Highlights:
 | `leadtype` | `defineDocsConfig` — the config helper. |
 | `leadtype/convert` | MDX-to-markdown conversion. |
 | `leadtype/remark` | `defaultRemarkPlugins` plus individual plugins. |
-| `leadtype/llm` | `generateLlmsTxt`, `generateLLMFullContextFiles`, `resolveDocsNavigation`. |
+| `leadtype/llm` | `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`. |
 | `leadtype/search` | Edge-safe search runtime, content readers, request guards. |
 | `leadtype/search/node` | Build-time `generateDocsSearchFiles`. |
 | `leadtype/search/vercel` | Vercel AI SDK / AI Gateway answer streaming and bash tools. |
@@ -64,14 +63,20 @@ The `leadtype` binary wraps `generate` and `lint`. Use the library entry points 
 
 ## Bundled agent docs
 
-This package ships its own docs inside the published tarball at `node_modules/leadtype/docs/`:
+This package ships its own docs inside the published tarball:
 
-- `docs/llms.txt` — routing index
-- `docs/llms-full/*.txt` — per-leaf-group full content
-- `docs/*.md` — flattened markdown per page
-- `docs/search-index.json` + `docs/search-content.json`
+- `AGENTS.md` at the package root — auto-discovered by [25+ coding agents](https://agents.md) when leadtype is installed in any project.
+- `docs/*.md` — flattened markdown per page, organized by group.
 
-Agents and IDEs can read these offline. Set `LEADTYPE_AGENT_BASE_URL` before running `bun run docs:generate` so the URLs in `llms.txt` point to your hosted docs.
+After `npm install leadtype`, point your project's root `AGENTS.md` at the bundled docs:
+
+```md
+When working with the `leadtype` library, read
+`node_modules/leadtype/AGENTS.md` first — it points at version-matched
+markdown topic files.
+```
+
+The website-style outputs (`llms.txt`, `llms-full/*.txt`, `search-index.json`) are emitted only in default `leadtype generate` mode. They're served from a hosted docs site, not from the package tarball.
 
 ## License
 

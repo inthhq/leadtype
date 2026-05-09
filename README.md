@@ -1,28 +1,26 @@
 # leadtype
 
-A docs pipeline. Write MDX once. Get a website, agent-readable bundles, and a static search index from a single command.
+A docs pipeline. Write MDX once. Get a website for humans, an `llms.txt` for HTTP agents, an `AGENTS.md`-fronted bundle for offline coding agents, and a static search index — all from a single source.
 
 ```mermaid
 flowchart LR
   src["docs/*.mdx"]
-  pipe["leadtype generate"]
-  md["clean markdown"]
-  llm["llms.txt + llms-full/*.txt"]
-  idx["search-index.json"]
-  nav["navigation tree"]
-  site["docs website (humans)"]
-  agent["agents · IDEs · CLIs"]
+  site_run["leadtype generate"]
+  bundle_run["leadtype generate --bundle"]
+  site_out["public/<br/>llms.txt · llms-full/<br/>docs/*.md · search-index.json"]
+  bundle_out["packages/&lt;name&gt;/<br/>AGENTS.md · docs/*.md"]
+  humans["humans (browser)"]
+  http_agents["HTTP agents<br/>(/llms.txt or<br/>Accept: text/markdown)"]
   search["search UI · AI answers"]
-  src --> pipe
-  pipe --> md
-  pipe --> llm
-  pipe --> idx
-  pipe --> nav
-  md --> site
-  md --> agent
-  llm --> agent
-  idx --> search
-  nav --> site
+  offline_agents["coding agents<br/>(Claude Code, Codex, Cursor,<br/>Copilot…) read<br/>node_modules/&lt;pkg&gt;/AGENTS.md"]
+  src --> site_run
+  src --> bundle_run
+  site_run --> site_out
+  bundle_run --> bundle_out
+  site_out --> humans
+  site_out --> http_agents
+  site_out --> search
+  bundle_out --> offline_agents
 ```
 
 leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
@@ -30,7 +28,7 @@ leadtype is **not a docs website framework**. Bring your own UI — Next.js, Tan
 ## Choose your path
 
 - **[Build a docs site](https://docs.example.com/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
-- **[Bundle docs into your package](https://docs.example.com/docs/build/bundle-package-docs)** — ship agent-readable docs inside the npm tarball so IDEs and coding agents can read them offline.
+- **[Bundle docs into your package](https://docs.example.com/docs/build/bundle-package-docs)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so coding agents auto-discover them from `node_modules/<your-package>/AGENTS.md`.
 
 ## Install
 
@@ -40,14 +38,19 @@ pnpm add leadtype
 
 ## 30-second example
 
+For a hosted docs site:
+
 ```bash
-# In a repo with docs/*.mdx
 npx leadtype generate --src . --out public --base-url https://docs.example.com
 ```
 
-This converts every `.mdx` under `docs/`, writes `public/llms.txt` plus per-leaf `public/docs/llms-full/*.txt`, builds `public/docs/search-index.json`, and resolves the navigation tree.
+For an npm-bundled doc set:
 
-See [`apps/example/`](./apps/example) for the canonical docs-site setup, including content negotiation that serves markdown to agents on the same URL humans visit. See [`packages/leadtype/scripts/generate-docs.ts`](./packages/leadtype/scripts/generate-docs.ts) for the canonical "bundle docs into a package" pattern.
+```bash
+npx leadtype generate --bundle --src . --out packages/my-package
+```
+
+The first produces `public/llms.txt`, `public/docs/llms-full/*.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/my-package/AGENTS.md` and `packages/my-package/docs/*.md` — auto-discoverable by [25+ coding agents](https://agents.md) once the package is installed.
 
 ## Documentation
 

@@ -1,35 +1,33 @@
 ---
 title: "Leadtype"
-description: "One MDX source. A website for humans, llms.txt for agents, and a search index — all from a single pipeline."
+description: "One MDX source. A website for humans, AGENTS.md for offline coding agents, llms.txt for HTTP agents — all from a single pipeline."
 group: get-started
 ---
 
 # Leadtype
 
-Leadtype is a **docs pipeline**. You write MDX in one place. It produces every other shape your docs need to take: clean markdown, agent-readable bundles, a static search index, and a navigation tree.
+Leadtype is a **docs pipeline**. You write MDX in one place. It produces every shape your docs need to take: a website for humans, an `AGENTS.md`-fronted bundle for coding agents reading from `node_modules/`, an `llms.txt` for HTTP agents, and a static search index.
 
 It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
 
 <Mermaid chart={`flowchart LR
   src["docs/*.mdx<br/>(your source)"]
-  pipe["leadtype generate<br/>(convert · llm · search · lint)"]
-  md["Clean markdown<br/>(.md per page)"]
-  llm["llms.txt<br/>llms-full/*.txt"]
-  idx["search-index.json<br/>search-content.json"]
-  nav["navigation tree<br/>(group → page)"]
-  site["Docs website<br/>humans"]
-  agent["Agents · IDEs · CLIs<br/>via npm package or HTTP"]
-  search["Search UI · AI answers"]
-  src --> pipe
-  pipe --> md
-  pipe --> llm
-  pipe --> idx
-  pipe --> nav
-  md --> site
-  md --> agent
-  llm --> agent
-  idx --> search
-  nav --> site`} />
+  site_run["leadtype generate"]
+  bundle_run["leadtype generate --bundle"]
+  site_out["public/<br/>llms.txt · llms-full/<br/>docs/*.md · search-index.json"]
+  bundle_out["packages/&lt;name&gt;/<br/>AGENTS.md · docs/*.md"]
+  humans["Humans<br/>(browser)"]
+  http_agents["HTTP agents<br/>(via /llms.txt or<br/>Accept: text/markdown)"]
+  search["Search UI<br/>AI answers"]
+  offline_agents["Coding agents<br/>(Claude Code, Codex,<br/>Cursor, Copilot…)<br/>read node_modules/&lt;pkg&gt;/AGENTS.md"]
+  src --> site_run
+  src --> bundle_run
+  site_run --> site_out
+  bundle_run --> bundle_out
+  site_out --> humans
+  site_out --> http_agents
+  site_out --> search
+  bundle_out --> offline_agents`} />
 
 ## Choose your path
 
@@ -55,10 +53,10 @@ Most teams arrive here for one of two reasons. Pick the journey that matches you
     Author MDX with familiar components — `Callout`, `Tabs`, `Steps`, `Mermaid`, `TypeTable`, and others. Add `group:` in frontmatter to place pages in the navigation tree.
   </Step>
   <Step title="Run `leadtype generate`">
-    A single command converts MDX to markdown, builds `llms.txt` plus topic-scoped bundles, generates a static search index, and resolves the navigation tree.
+    For a website: converts MDX to markdown, builds `llms.txt` plus topic bundles, generates a search index, resolves navigation. With `--bundle`: emits `AGENTS.md` plus per-topic `.md` files for agents reading from `node_modules/`.
   </Step>
   <Step title="Serve all of it">
-    Your site renders the source MDX; agents and tools fetch the markdown via HTTP content negotiation or load `llms.txt` from `node_modules`. Same content, three audiences.
+    Humans get HTML. HTTP agents get markdown via content negotiation or fetch `llms.txt`. Coding agents working in a project that depends on your package auto-discover `AGENTS.md` from `node_modules/<your-pkg>/`. One source, three audiences.
   </Step>
 </Steps>
 

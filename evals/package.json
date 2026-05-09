@@ -1,0 +1,16 @@
+{
+  "name": "leadtype-evals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Agent discoverability evals for leadtype's bundled docs (AGENTS.md vs no-bundle control).",
+  "type": "module",
+  "scripts": {
+    "evals": "agent-eval",
+    "evals:dry": "agent-eval --dry",
+    "pack-leadtype": "cd ../packages/leadtype && npm pack --pack-destination ../../evals/.tarballs"
+  },
+  "devDependencies": {
+    "@vercel/agent-eval": "latest",
+    "vitest": "^2.1.8"
+  }
+}

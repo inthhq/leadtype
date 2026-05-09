@@ -37,3 +37,8 @@ yarn-error.log*
 .DS_Store
 *.pem
 .gstack/
+
+# Agent evals (@vercel/agent-eval)
+evals/.tarballs/
+evals/__agent_eval__/
+evals/**/__agent_eval__/

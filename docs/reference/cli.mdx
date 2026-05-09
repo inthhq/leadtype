@@ -14,7 +14,7 @@ Two commands: `generate` runs the full pipeline, `lint` validates content. Run `
 
 ## generate
 
-Convert MDX, build LLM bundles, and produce search artifacts in one pass.
+Convert MDX, then either produce website artifacts (default) or a package bundle (`--bundle`).
 
 ```bash
 leadtype generate [options]
@@ -24,11 +24,12 @@ leadtype generate [options]
 | --- | --- | --- |
 | `--src <dir>` | `.` | Repo or root directory containing the docs folder. |
 | `--docs-dir <dir>` | `docs` | Docs folder relative to `--src`. |
-| `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and `<out>/docs/*`. |
-| `--base-url <url>` | — | Base URL written into generated links. Recommended for any non-local run. |
-| `--name <name>` | from `package.json#name` | Product name in `llms.txt`. |
-| `--summary <text>` | from `package.json#description` | Product summary in `llms.txt`. |
-| `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. |
+| `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
+| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full*`, and the search index. |
+| `--base-url <url>` | — | Base URL for absolute links in `llms.txt`. Site mode only; ignored in `--bundle`. |
+| `--name <name>` | from `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). |
+| `--summary <text>` | from `package.json#description` | Product summary written into the index file. |
+| `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
 | `--exclude <glob>` | none | Docs-root-relative glob to exclude. Applied after `--include`. |
 | `--enrich-git` | off | Add `lastModified` and `lastAuthor` to frontmatter from git history. |
 | `--format <fmt>` | `text` | `text` or `json`. JSON prints a single result object on stdout. |
@@ -37,12 +38,21 @@ leadtype generate [options]
 
 Exit codes: `0` success, `1` runtime error (docs dir missing, unknown group, conversion error), `2` CLI usage error.
 
+### Bundle mode
+
+```bash
+leadtype generate --bundle --src . --out packages/my-package
+```
+
+Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `llms-full/*.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/build/bundle-package-docs).
+
 ### JSON output shape
 
-`--json` prints a single object describing what was generated:
+`--json` prints a single object describing what was generated. The shape varies by mode:
 
 ```json
 {
+  "mode": "site",
   "srcDir": "/abs/path/to/repo",
   "docsDir": "/abs/path/to/repo/docs",
   "outDir": "/abs/path/to/repo/public",
@@ -59,6 +69,8 @@ Exit codes: `0` success, `1` runtime error (docs dir missing, unknown group, con
   "search": { /* index stats */ }
 }
 ```
+
+In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, etc.) are absent.
 
 Errors in JSON mode print `{"error": "...", ...}` to stderr.
 
@@ -122,7 +134,7 @@ leadtype help lint
 The CLI is a thin wrapper. Every command is also available as a TypeScript API for custom build scripts:
 
 - [`leadtype/convert`](/docs/reference/convert) — `convertAllMdx`, `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`.
-- [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `resolveDocsNavigation`.
+- [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`.
 - [`leadtype/search/node`](/docs/reference/search) — `generateDocsSearchFiles`.
 - [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.
 - [`leadtype/remark`](/docs/reference/remark) — `defaultRemarkPlugins` and individual plugins.

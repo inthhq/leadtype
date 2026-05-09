@@ -1,0 +1,11 @@
+{
+  "name": "validate-in-ci-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}

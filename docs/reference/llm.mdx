@@ -1,20 +1,27 @@
 ---
 title: "LLM bundles"
-description: "Generate llms.txt and topic-scoped full-context files for agents."
+description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
 group: reference
 ---
 
 # LLM bundles
 
-The `leadtype/llm` entry point produces the agent-facing outputs: `llms.txt` (a routing index) and `llms-full/*.txt` (per-leaf-group full content). Both are derived from the same docs source.
+The `leadtype/llm` entry point produces three flavors of agent-facing index, all derived from the same docs source:
+
+- **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with absolute URLs.
+- **`generateLLMFullContextFiles`** — full-content topic bundles. Pairs with `generateLlmsTxt`.
+- **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
 
 ```ts
 import {
-  generateLlmsTxt,
+  generateAgentsMd,
   generateLLMFullContextFiles,
+  generateLlmsTxt,
   resolveDocsNavigation,
 } from "leadtype/llm";
 ```
+
+The CLI's default `leadtype generate` calls the first two; `leadtype generate --bundle` calls the third. Use these APIs directly when you need finer control.
 
 ## What gets generated
 
@@ -93,6 +100,54 @@ await generateLLMFullContextFiles({
 ```
 
 `generateLLMFullContextFiles` reads from `<outDir>/docs/`, so always run conversion first.
+
+## generateAgentsMd
+
+For npm-bundled docs that ship inside `node_modules/<pkg>/` and rely on filesystem auto-discovery (Claude Code, Codex, Cursor, Copilot, etc.):
+
+```ts
+import { generateAgentsMd } from "leadtype/llm";
+
+await generateAgentsMd({
+  srcDir: ".",
+  outDir: "packages/my-package",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+```
+
+Writes `<outDir>/AGENTS.md` (singular, at the root) with the same product summary and group structure as `generateLlmsTxt`, but every link is a **relative** path like `./docs/<segment>/<slug>.md` instead of an absolute URL.
+
+| Option | Description |
+| --- | --- |
+| `srcDir` | Repo root containing the `docs/` source. |
+| `outDir` | Package root. `AGENTS.md` is written at `<outDir>/AGENTS.md`. |
+| `product` | Same `ProductInfo` shape as `generateLlmsTxt`. `agentGuidance` is intentionally ignored — it's written for the website's URL-routing flow and would mislead an offline agent. |
+| `groups` | Group tree from `docs.config.ts`. Same shape as `generateLlmsTxt`. |
+| `docsSubdir` | Subdirectory under `outDir` that holds the `.md` files. Default: `docs`. Used as the relative-path prefix in every link. |
+
+Returns `{ outputPath: string }` pointing at the written `AGENTS.md`.
+
+### Example output
+
+```md
+# My Library
+
+> A library that does one thing well.
+
+These docs ship inside the package so coding agents can read them offline. Open the topic file you need from the list below — paths are relative to this file.
+
+## Get Started
+
+- [Quickstart](./docs/quickstart.md): Install and run the pipeline.
+- [How it works](./docs/how-it-works.md): The mental model.
+
+## Reference
+
+- [CLI](./docs/reference/cli.md): Every flag.
+```
+
+Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [Bundle docs into a package](/docs/build/bundle-package-docs) for the full flow.
 
 ## resolveDocsNavigation
 

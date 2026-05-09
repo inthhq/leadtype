@@ -34,6 +34,24 @@
           }
         }
       }
+    },
+    {
+      // @vercel/agent-eval requires fixture files to be named EVAL.ts (uppercase)
+      // and PROMPT.md. Eval test files are short, ad-hoc assertions over a
+      // transcript — useTopLevelRegex / useConsistentTypeDefinitions don't
+      // earn their lint cost here.
+      "includes": ["evals/**"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "useTopLevelRegex": "off"
+          },
+          "style": {
+            "useConsistentTypeDefinitions": "off",
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
     }
   ]
 }

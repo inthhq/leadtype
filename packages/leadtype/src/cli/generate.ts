@@ -6,7 +6,11 @@ import fg from "fast-glob";
 import matter from "gray-matter";
 import { convertAllMdx } from "../convert";
 import type { DocsGroup, ProductInfo } from "../llm";
-import { generateLLMFullContextFiles, generateLlmsTxt } from "../llm";
+import {
+  generateAgentsMd,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+} from "../llm";
 import { defaultRemarkPlugins } from "../remark";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
@@ -22,6 +26,7 @@ type GenerateFormat = "json" | "text";
 
 export type GenerateArgs = {
   baseUrl?: string;
+  bundle: boolean;
   docsDir: string;
   enrichGit: boolean;
   exclude: string[];
@@ -54,32 +59,42 @@ type GenerateFilters = {
 type GenerateResult = {
   docsDir: string;
   files: {
-    docsLlmsFullTxt: string;
-    docsLlmsTxt: string;
-    llmsTxt: string;
+    agentsMd?: string;
+    docsLlmsFullTxt?: string;
+    docsLlmsTxt?: string;
+    llmsTxt?: string;
     searchContent?: string;
-    searchIndex: string;
+    searchIndex?: string;
   };
   groups: DocsGroup[];
   filters: GenerateFilters;
+  mode: "site" | "bundle";
   outDir: string;
   product: ProductInfo;
-  search: GenerateDocsSearchFilesResult;
+  search?: GenerateDocsSearchFilesResult;
   srcDir: string;
 };
 
-const GENERATE_USAGE = `leadtype generate — convert MDX, generate LLM files, and build search artifacts
+const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
 
 Usage:
   leadtype generate [options]
+
+By default, runs in site mode and writes:
+  llms.txt, docs/*.md, docs/llms-full/*.txt, docs/search-index.json
+
+With --bundle, runs in package mode and writes:
+  AGENTS.md, docs/*.md
+  (skips llms.txt, llms-full, and search artifacts — those are website-only)
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
   --docs-dir <dir>   Docs folder relative to --src (default: docs)
   --out <dir>        Output root directory (default: public)
-  --base-url <url>   Base URL for generated links
-  --name <name>      Product name for generated LLM files
-  --summary <text>   Product summary for generated LLM files
+  --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
+  --base-url <url>   Base URL for generated links (site mode)
+  --name <name>      Product name for generated index files
+  --summary <text>   Product summary for generated index files
   --include <glob>   Include MDX paths matching this docs-root-relative glob
   --exclude <glob>   Exclude MDX paths matching this docs-root-relative glob
   --enrich-git       Add lastModified and lastAuthor from git history
@@ -102,6 +117,7 @@ function isGenerateFormat(value: string): value is GenerateFormat {
 
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
+    bundle: false,
     docsDir: DEFAULT_DOCS_DIR,
     enrichGit: false,
     exclude: [],
@@ -134,6 +150,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.exclude.push(readValue(argv, ++i, "--exclude"));
     } else if (arg === "--enrich-git") {
       args.enrichGit = true;
+    } else if (arg === "--bundle") {
+      args.bundle = true;
     } else if (arg === "--format") {
       const value = readValue(argv, ++i, "--format");
       if (!isGenerateFormat(value)) {
@@ -371,42 +389,63 @@ export async function runGenerateCommand(
       enrichFrontmatterFromGit: args.enrichGit,
     });
 
-    await generateLlmsTxt({
-      srcDir: sourceMirror.srcDir,
-      outDir,
-      baseUrl: args.baseUrl,
-      product,
-      groups,
-    });
+    let result: GenerateResult;
+    if (args.bundle) {
+      const agents = await generateAgentsMd({
+        srcDir: sourceMirror.srcDir,
+        outDir,
+        product,
+        groups,
+      });
+      result = {
+        docsDir,
+        files: { agentsMd: agents.outputPath },
+        filters: sourceMirror.filters,
+        groups,
+        mode: "bundle",
+        outDir,
+        product,
+        srcDir,
+      };
+    } else {
+      await generateLlmsTxt({
+        srcDir: sourceMirror.srcDir,
+        outDir,
+        baseUrl: args.baseUrl,
+        product,
+        groups,
+      });
 
-    await generateLLMFullContextFiles({
-      outDir,
-      baseUrl: args.baseUrl,
-      product: { name: product.name },
-      groups,
-    });
+      await generateLLMFullContextFiles({
+        outDir,
+        baseUrl: args.baseUrl,
+        product: { name: product.name },
+        groups,
+      });
 
-    const search = await generateDocsSearchFiles({
-      outDir,
-      baseUrl: args.baseUrl,
-    });
+      const search = await generateDocsSearchFiles({
+        outDir,
+        baseUrl: args.baseUrl,
+      });
 
-    const result: GenerateResult = {
-      docsDir,
-      files: {
-        docsLlmsFullTxt: path.join(outDir, "docs", "llms-full.txt"),
-        docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
-        llmsTxt: path.join(outDir, "llms.txt"),
-        searchContent: search.contentOutputPath,
-        searchIndex: search.outputPath,
-      },
-      filters: sourceMirror.filters,
-      groups,
-      outDir,
-      product,
-      search,
-      srcDir,
-    };
+      result = {
+        docsDir,
+        files: {
+          docsLlmsFullTxt: path.join(outDir, "docs", "llms-full.txt"),
+          docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
+          llmsTxt: path.join(outDir, "llms.txt"),
+          searchContent: search.contentOutputPath,
+          searchIndex: search.outputPath,
+        },
+        filters: sourceMirror.filters,
+        groups,
+        mode: "site",
+        outDir,
+        product,
+        search,
+        srcDir,
+      };
+    }
 
     if (args.format === "json") {
       io.stdout.write(`${renderGenerateResult(result)}\n`);

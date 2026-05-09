@@ -73,7 +73,17 @@ public/
     └── search-content.json   # chunk content store
 ```
 
-Open `public/llms.txt` to see what an agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and the agent bundles consume.
+Open `public/llms.txt` to see what an HTTP agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and the LLM bundles consume.
+
+## Bundle for offline agents
+
+The output above is for a **website**. To ship docs **inside an npm package** so coding agents reading from `node_modules/` find them, add `--bundle`:
+
+```bash
+npx leadtype generate --bundle --src . --out packages/my-package
+```
+
+That writes `packages/my-package/AGENTS.md` (the offline-readable index, auto-discovered by Claude Code, Codex, Cursor, Copilot, etc.) plus `packages/my-package/docs/*.md`. No `llms.txt`, no search index — those are website-only. See [Bundle docs into a package](/docs/build/bundle-package-docs) for the full flow.
 
 ## What's next
 

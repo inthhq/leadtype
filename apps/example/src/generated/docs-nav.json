@@ -11,7 +11,7 @@
         {
           "urlPath": "/docs",
           "title": "Leadtype",
-          "description": "One MDX source. A website for humans, llms.txt for agents, and a search index — all from a single pipeline.",
+          "description": "One MDX source. A website for humans, AGENTS.md for offline coding agents, llms.txt for HTTP agents — all from a single pipeline.",
           "groups": [
             "get-started"
           ]
@@ -19,7 +19,7 @@
         {
           "urlPath": "/docs/how-it-works",
           "title": "How it works",
-          "description": "The mental model: one MDX source, a remark pipeline, four artifacts, three audiences.",
+          "description": "The mental model: one MDX source, a remark pipeline, two output modes, three audiences.",
           "groups": [
             "get-started"
           ]
@@ -81,7 +81,7 @@
         {
           "urlPath": "/docs/build/bundle-package-docs",
           "title": "Bundle docs into a package",
-          "description": "Ship agent-readable docs inside an npm tarball so IDEs and coding agents can read them offline.",
+          "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
           "groups": [
             "build"
           ]
@@ -140,7 +140,7 @@
         {
           "urlPath": "/docs/reference/llm",
           "title": "LLM bundles",
-          "description": "Generate llms.txt and topic-scoped full-context files for agents.",
+          "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
           "groups": [
             "reference"
           ]
