@@ -9,7 +9,7 @@ const docs: DocsSearchDocument[] = [
     title: "Quickstart",
     description: "Install and configure the package.",
     urlPath: "/docs/guides/quickstart",
-    absoluteUrl: "https://docs.example.com/docs/guides/quickstart",
+    absoluteUrl: "https://leadtype.dev/docs/guides/quickstart",
     relativePath: "guides/quickstart",
     content:
       "# Quickstart\n\n## Install\n\nUse tabs to pick a package manager.",

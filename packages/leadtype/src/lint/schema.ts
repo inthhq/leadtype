@@ -21,7 +21,8 @@ const isoDate = v.pipe(
 
 /**
  * Cross-framework page link used by the "Available in other SDKs" widget.
- * Matches the monorepo's `availableIn` schema at c15t-docs/schema/docs.ts.
+ * Framework-neutral by default; projects can use this for SDK/framework
+ * switchers or ignore it entirely.
  */
 const availableInEntry = v.object({
   framework: v.string(),
@@ -30,11 +31,9 @@ const availableInEntry = v.object({
 });
 
 /**
- * Default frontmatter schema for docs pages. Mirrors the fields the monorepo
- * actually *consumes* at render time (verified via grep in
- * apps/c15t-docs/src). Anything defined in the monorepo's schema but never
- * read (deprecatedSince, since, tocStyle as of 2026-04-17) is deliberately
- * omitted so the linter flags them as legacy cruft.
+ * Default frontmatter schema for docs pages. It covers the common fields
+ * leadtype consumes for generation, linting, search, navigation, and agent
+ * bundles while staying generic enough for any docs framework.
  *
  * Callers can override via `lintDocs({ schemas: { frontmatter: ... } })`.
  */
@@ -67,7 +66,7 @@ export const defaultFrontmatterSchema = v.object({
 export type DefaultFrontmatter = v.InferOutput<typeof defaultFrontmatterSchema>;
 
 /**
- * Default schema for changelog entries. Mirrors c15t-docs/schema/changelog.ts.
+ * Default schema for changelog entries.
  * Enable via `lintDocs({ changelogDir: "./content/changelog" })`.
  */
 export const defaultChangelogFrontmatterSchema = v.object({

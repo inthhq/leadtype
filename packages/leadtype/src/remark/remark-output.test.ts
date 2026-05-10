@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { convertMdxToMarkdown } from "../convert";
-import { defaultRemarkPlugins, remarkInclude } from "./index";
+import {
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
+} from "./index";
 
 const tempDirs: string[] = [];
 
@@ -71,6 +75,36 @@ describe("remark markdown output", () => {
       '2. Clicking **"Customize"** opens a dialog'
     );
     expect(result.markdown).not.toContain('appearsClicking **"Customize"**');
+  });
+
+  it("resolves ExtractedTypeTable paths from docs by default", async () => {
+    const projectDir = await createTempProject();
+    const previousCwd = process.cwd();
+    try {
+      await writeProjectFile(
+        projectDir,
+        "docs/types.ts",
+        `export interface PipelineOptions {
+  /** Source directory for docs. */
+  srcDir: string;
+}`
+      );
+      const sourcePath = await writeProjectFile(
+        projectDir,
+        "docs/reference.mdx",
+        '<ExtractedTypeTable name="PipelineOptions" path="./types.ts" />'
+      );
+
+      process.chdir(projectDir);
+      const result = await convertMdxToMarkdown(sourcePath, [
+        [remarkTypeTableToMarkdown, {}],
+      ]);
+
+      expect(result.markdown).toContain("srcDir");
+      expect(result.markdown).toContain("Source directory for docs.");
+    } finally {
+      process.chdir(previousCwd);
+    }
   });
 
   it("converts card grids with interactive cards into markdown lists", async () => {

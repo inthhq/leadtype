@@ -168,7 +168,7 @@ test("agent readability discovery files are served at the site root", async ({
   const llmsText = await llmsTxt.text();
   expect(llmsText).toContain("](/docs/index.md)");
   expect(llmsText).toContain("](/docs/quickstart.md)");
-  expect(llmsText).not.toContain("https://docs.example.com/docs/quickstart");
+  expect(llmsText).not.toContain("https://leadtype.dev/docs/quickstart");
 
   for (const urlPath of ["/docs/index.md", "/docs/quickstart.md"]) {
     const markdownMirror = await request.get(urlPath);
@@ -194,7 +194,7 @@ test("docs pages expose canonical and markdown mirror metadata", async ({
   expect(htmlResponse.ok()).toBe(true);
   const html = await htmlResponse.text();
   expect(html).toContain('rel="canonical"');
-  expect(html).toContain("https://docs.example.com/docs/quickstart");
+  expect(html).toContain("https://leadtype.dev/docs/quickstart");
   expect(html).toContain('rel="alternate"');
   expect(html).toContain('type="text/markdown"');
   expect(html).toContain('property="og:title"');
@@ -207,7 +207,7 @@ test("docs pages expose canonical and markdown mirror metadata", async ({
   expect(markdownResponse.ok()).toBe(true);
   expect(markdownResponse.headers().vary).toContain("Accept");
   expect(markdownResponse.headers().link).toContain(
-    '<https://docs.example.com/docs/quickstart>; rel="canonical"'
+    '<https://leadtype.dev/docs/quickstart>; rel="canonical"'
   );
   expect(markdownResponse.headers()["cache-control"]).toContain("max-age=300");
   const markdown = await markdownResponse.text();

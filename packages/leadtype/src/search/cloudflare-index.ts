@@ -1,5 +1,5 @@
 /**
- * Cloudflare AI Gateway / Workers AI adapter helpers and docs bash tools.
+ * Cloudflare AI Gateway / Workers AI adapter helpers.
  *
  * @packageDocumentation
  */
@@ -11,8 +11,3 @@ export {
   type StreamDocsAnswerResult,
   streamDocsAnswer,
 } from "./cloudflare";
-export {
-  type CreateDocsBashToolsOptions,
-  createDocsBashTools,
-  type DocsTanStackBashResult,
-} from "./tanstack-bash";

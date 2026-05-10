@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import JSON5 from "json5";
 import type { RootContent, Table } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx";
-import * as ts from "typescript";
+import type * as ts from "typescript";
 import { u } from "unist-builder";
 import {
   createHeading,
@@ -27,7 +28,15 @@ type ObjectType = {
   deprecated?: boolean;
 };
 
+type TypeScriptModule = typeof ts;
+
+const require = createRequire(import.meta.url);
+const TYPESCRIPT_PACKAGE = "typescript";
+const MISSING_TYPESCRIPT_MESSAGE =
+  'ExtractedTypeTable requires "typescript" as an optional peer dependency. Install it with: bun add -d typescript';
+
 let __tsCompilerOptions: ts.CompilerOptions | null = null;
+let __ts: TypeScriptModule | null = null;
 const __tsProgramByRootFile = new Map<
   string,
   {
@@ -37,10 +46,40 @@ const __tsProgramByRootFile = new Map<
   }
 >();
 
+function isMissingTypeScriptError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const code = (error as { code?: unknown }).code;
+  return (
+    code === "MODULE_NOT_FOUND" ||
+    code === "ERR_MODULE_NOT_FOUND" ||
+    error.message.includes(`Cannot find module '${TYPESCRIPT_PACKAGE}'`) ||
+    error.message.includes(`Cannot find module "${TYPESCRIPT_PACKAGE}"`)
+  );
+}
+
+function getTypeScript(): TypeScriptModule {
+  if (__ts) {
+    return __ts;
+  }
+
+  try {
+    __ts = require(TYPESCRIPT_PACKAGE) as TypeScriptModule;
+    return __ts;
+  } catch (error) {
+    if (isMissingTypeScriptError(error)) {
+      throw new Error(MISSING_TYPESCRIPT_MESSAGE, { cause: error });
+    }
+    throw error;
+  }
+}
+
 function getTypeScriptCompilerOptions(): ts.CompilerOptions {
   if (__tsCompilerOptions) {
     return __tsCompilerOptions;
   }
+  const ts = getTypeScript();
 
   // Try to resolve tsconfig.json path relative to current working directory
   // This handles both local development and serverless environments
@@ -85,6 +124,7 @@ function getTypeScriptProgramForFile(rootFilePath: string): {
   checker: ts.TypeChecker;
   sourceFile: ts.SourceFile;
 } | null {
+  const ts = getTypeScript();
   const cached = __tsProgramByRootFile.get(rootFilePath);
   if (cached) {
     return cached;
@@ -124,6 +164,7 @@ const IMPORT_TYPE_PATTERN = /import\(["']([^"']+)["']\)\.(\w+)/;
 const JSDOC_PATTERN = /\/\*\*[\s\S]*?\*\//;
 
 const TRAILING_SLASHES_PATTERN = /\/+$/;
+const DEFAULT_EXTRACTED_TYPE_BASE_PATH = "docs";
 
 type ParsedProperty = {
   name: string;
@@ -225,6 +266,7 @@ function resolveTypeName(
   sourceFile?: ts.SourceFile,
   typeBeingExtracted?: string
 ): string {
+  const ts = getTypeScript();
   const fullTypeText = checker.typeToString(
     type,
     undefined,
@@ -263,6 +305,7 @@ function extractJSDocDescription(
   node: ts.Node,
   sourceFile: ts.SourceFile
 ): string {
+  const ts = getTypeScript();
   // Get JSDoc comments from the node
   const jsDocComments = ts.getJSDocCommentsAndTags(node);
 
@@ -298,6 +341,7 @@ function extractJSDocDescription(
 }
 
 function extractJSDocDefault(node: ts.Node): string {
+  const ts = getTypeScript();
   const jsDocTags = ts.getJSDocTags(node);
   for (const tag of jsDocTags) {
     if (tag.tagName && tag.tagName.text === "default") {
@@ -351,6 +395,7 @@ function extractInterfaceProperties(
   sourceFile: ts.SourceFile,
   typeBeingExtracted?: string
 ): Record<string, ObjectType> {
+  const ts = getTypeScript();
   const properties: Record<string, ObjectType> = {};
 
   for (const member of interfaceDecl.members) {
@@ -372,6 +417,7 @@ function extractInterfaceProperties(
 }
 
 function isStaticProperty(member: ts.PropertyDeclaration): boolean {
+  const ts = getTypeScript();
   const modifiers = ts.getModifiers(member);
   return (
     modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword) ?? false
@@ -383,6 +429,7 @@ function extractClassProperties(
   checker: ts.TypeChecker,
   sourceFile: ts.SourceFile
 ): Record<string, ObjectType> {
+  const ts = getTypeScript();
   const properties: Record<string, ObjectType> = {};
 
   for (const member of classDecl.members) {
@@ -422,6 +469,7 @@ function extractTypeAliasProperties(
   sourceFile: ts.SourceFile,
   typeName: string
 ): Record<string, ObjectType> | null {
+  const ts = getTypeScript();
   const typeNode = typeAlias.type;
 
   // If it's a type literal (object type), extract properties from it
@@ -479,6 +527,7 @@ function extractPropertiesFromSourceFile(
   typeName: string,
   checker: ts.TypeChecker
 ): Record<string, ObjectType> | null {
+  const ts = getTypeScript();
   // Visit all nodes to find interfaces, classes, and type aliases
   let interfaceDecl: ts.InterfaceDeclaration | null = null;
   let classDecl: ts.ClassDeclaration | null = null;
@@ -558,9 +607,9 @@ export function extractTypeFromFile(
         return rawPath;
       }
 
-      // Authors commonly write `path="./packages/..."` even when `basePath` is already
-      // pointing at a `.../packages` directory (e.g. `.c15t/packages`). In that case,
-      // the naive resolution becomes `.../packages/packages/...` and the file can't be found.
+      // Authors commonly write `path="./packages/..."` even when `basePath`
+      // already points at a `.../packages` directory. In that case, naive
+      // resolution becomes `.../packages/packages/...` and the file can't be found.
       const basePathNormalized = rawBasePath
         .replaceAll("\\", "/")
         .replace(TRAILING_SLASHES_PATTERN, "");
@@ -601,7 +650,13 @@ export function extractTypeFromFile(
       typeName,
       tsProgram.checker
     );
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === MISSING_TYPESCRIPT_MESSAGE
+    ) {
+      throw error;
+    }
     // Silently return null if file can't be found or parsed
     return null;
   }
@@ -843,7 +898,7 @@ export const remarkTypeTableToMarkdown = (
     includeDescriptions: true,
     includeDefaults: true,
     includeRequired: true,
-    basePath: resolve(process.cwd(), ".c15t"),
+    basePath: resolve(process.cwd(), DEFAULT_EXTRACTED_TYPE_BASE_PATH),
   };
   const resolved = { ...defaults, ...opts };
 

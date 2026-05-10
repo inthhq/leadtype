@@ -13,6 +13,16 @@ const BODY_WEIGHT = 1;
 const CODE_WEIGHT = 0.35;
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
+const EXACT_TERM_WEIGHT = 1;
+const STEM_TERM_WEIGHT = 0.82;
+const SYNONYM_TERM_WEIGHT = 0.72;
+const PREFIX_TERM_WEIGHT = 0.55;
+const TYPO_TERM_WEIGHT = 0.45;
+const PHRASE_MATCH_BOOST = 1.4;
+const PROXIMITY_MATCH_BOOST = 0.8;
+const MAX_PREFIX_EXPANSIONS = 24;
+const MAX_TYPO_EXPANSIONS = 16;
+const PROXIMITY_WINDOW = 8;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
 const FENCE_PATTERN = /^```/;
@@ -66,6 +76,25 @@ const STOPWORDS = new Set([
   "where",
   "with",
 ]);
+
+const DEFAULT_SYNONYMS: Record<string, string[]> = {
+  ai: ["agent", "llm"],
+  agents: ["ai", "llm"],
+  api: ["reference", "sdk"],
+  auth: ["authentication", "login", "signin"],
+  cli: ["command", "terminal"],
+  config: ["configure", "configuration", "settings", "options"],
+  docs: ["documentation", "guide", "guides"],
+  error: ["fail", "failure", "broken"],
+  find: ["search", "lookup"],
+  install: ["setup", "add"],
+  llm: ["agent", "ai"],
+  publish: ["deploy", "release"],
+  search: ["find", "lookup"],
+  setup: ["install", "configure"],
+  ts: ["typescript"],
+  typescript: ["ts"],
+};
 
 export type DocsSearchDocument = {
   id?: string;
@@ -163,6 +192,7 @@ export type CreateDocsSearchIndexOptions = {
 
 export type SearchDocsOptions = ContentStoreOptions & {
   limit?: number;
+  synonyms?: Record<string, string[]>;
 };
 
 export type DocsSearchResult = {
@@ -264,6 +294,11 @@ type ContentStoreOptions = {
   content?: DocsSearchContentStore;
 };
 
+type WeightedSearchTerm = {
+  term: string;
+  weight: number;
+};
+
 function normalizeText(input: string): string {
   return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
 }
@@ -287,6 +322,144 @@ function tokenize(input: string): string[] {
     }
   }
   return tokens;
+}
+
+function stemToken(token: string): string {
+  if (token.length < 4) {
+    return token;
+  }
+  if (token.endsWith("ies") && token.length > 5) {
+    return `${token.slice(0, -3)}y`;
+  }
+  if (token.endsWith("ing") && token.length > 6) {
+    return token.slice(0, -3);
+  }
+  if (token.endsWith("ed") && token.length > 5) {
+    return token.slice(0, -2);
+  }
+  if (token.endsWith("es") && token.length > 5) {
+    return token.slice(0, -2);
+  }
+  if (token.endsWith("s") && token.length > 4) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+function editDistanceWithin(
+  left: string,
+  right: string,
+  maxDistance: number
+): boolean {
+  if (Math.abs(left.length - right.length) > maxDistance) {
+    return false;
+  }
+
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    const current = [leftIndex];
+    let rowMinimum = current[0] ?? leftIndex;
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const substitutionCost =
+        left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+      const deletion = (previous[rightIndex] ?? 0) + 1;
+      const insertion = (current[rightIndex - 1] ?? 0) + 1;
+      const substitution = (previous[rightIndex - 1] ?? 0) + substitutionCost;
+      const value = Math.min(deletion, insertion, substitution);
+      current[rightIndex] = value;
+      rowMinimum = Math.min(rowMinimum, value);
+    }
+    if (rowMinimum > maxDistance) {
+      return false;
+    }
+    previous = current;
+  }
+
+  return (previous[right.length] ?? Number.POSITIVE_INFINITY) <= maxDistance;
+}
+
+function addWeightedTerm(
+  terms: Map<string, number>,
+  term: string,
+  weight: number
+): void {
+  const current = terms.get(term) ?? 0;
+  if (weight > current) {
+    terms.set(term, weight);
+  }
+}
+
+function synonymTokensFor(
+  token: string,
+  synonyms?: Record<string, string[]>
+): string[] {
+  return [
+    ...(DEFAULT_SYNONYMS[token] ?? []),
+    ...(synonyms?.[token] ?? []),
+  ].flatMap((entry) => tokenize(entry));
+}
+
+function collectWeightedSearchTerms(
+  index: DocsSearchIndex,
+  queryTokens: string[],
+  synonyms?: Record<string, string[]>
+): WeightedSearchTerm[] {
+  const weightedTerms = new Map<string, number>();
+  const indexTerms = Object.keys(index.terms);
+  const indexTermSet = new Set(indexTerms);
+
+  for (const token of queryTokens) {
+    if (indexTermSet.has(token)) {
+      addWeightedTerm(weightedTerms, token, EXACT_TERM_WEIGHT);
+    }
+
+    const tokenStem = stemToken(token);
+    if (tokenStem.length >= 4) {
+      for (const term of indexTerms) {
+        if (term !== token && stemToken(term) === tokenStem) {
+          addWeightedTerm(weightedTerms, term, STEM_TERM_WEIGHT);
+        }
+      }
+    }
+
+    for (const synonym of synonymTokensFor(token, synonyms)) {
+      if (indexTermSet.has(synonym)) {
+        addWeightedTerm(weightedTerms, synonym, SYNONYM_TERM_WEIGHT);
+      }
+    }
+
+    if (token.length >= 4) {
+      let prefixMatches = 0;
+      for (const term of indexTerms) {
+        if (term !== token && term.startsWith(token)) {
+          addWeightedTerm(weightedTerms, term, PREFIX_TERM_WEIGHT);
+          prefixMatches += 1;
+          if (prefixMatches >= MAX_PREFIX_EXPANSIONS) {
+            break;
+          }
+        }
+      }
+    }
+
+    if (token.length >= 4 && !indexTermSet.has(token)) {
+      const maxDistance = token.length >= 7 ? 2 : 1;
+      let typoMatches = 0;
+      for (const term of indexTerms) {
+        if (
+          term[0] === token[0] &&
+          editDistanceWithin(token, term, maxDistance)
+        ) {
+          addWeightedTerm(weightedTerms, term, TYPO_TERM_WEIGHT);
+          typoMatches += 1;
+          if (typoMatches >= MAX_TYPO_EXPANSIONS) {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(weightedTerms, ([term, weight]) => ({ term, weight }));
 }
 
 function countTerms(input: string): Map<string, number> {
@@ -477,6 +650,69 @@ function buildExcerpt(text: string, queryTokens: string[]): string {
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
+}
+
+function normalizeForPhraseMatch(input: string): string {
+  return tokenize(input).join(" ");
+}
+
+function hasOrderedProximityMatch(
+  textTokens: string[],
+  queryTokens: string[]
+): boolean {
+  if (queryTokens.length < 2) {
+    return false;
+  }
+
+  for (const [startIndex, token] of textTokens.entries()) {
+    if (token !== queryTokens[0]) {
+      continue;
+    }
+
+    let nextIndex = startIndex + 1;
+    let matched = true;
+    for (let queryIndex = 1; queryIndex < queryTokens.length; queryIndex += 1) {
+      const expectedToken = queryTokens[queryIndex];
+      const windowEnd = Math.min(
+        textTokens.length,
+        nextIndex + PROXIMITY_WINDOW
+      );
+      let foundIndex = -1;
+      for (let textIndex = nextIndex; textIndex < windowEnd; textIndex += 1) {
+        if (textTokens[textIndex] === expectedToken) {
+          foundIndex = textIndex;
+          break;
+        }
+      }
+      if (foundIndex < 0) {
+        matched = false;
+        break;
+      }
+      nextIndex = foundIndex + 1;
+    }
+    if (matched) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
+  if (queryTokens.length < 2) {
+    return 0;
+  }
+
+  const normalizedQuery = queryTokens.join(" ");
+  const normalizedText = normalizeForPhraseMatch(text);
+  if (normalizedText.includes(normalizedQuery)) {
+    return PHRASE_MATCH_BOOST;
+  }
+
+  const textTokens = tokenize(text);
+  return hasOrderedProximityMatch(textTokens, queryTokens)
+    ? PROXIMITY_MATCH_BOOST
+    : 0;
 }
 
 function compareResults(
@@ -693,9 +929,18 @@ export function searchDocs(
     return [];
   }
 
+  const weightedTerms = collectWeightedSearchTerms(
+    index,
+    queryTokens,
+    options.synonyms
+  );
+  if (weightedTerms.length === 0) {
+    return [];
+  }
+
   const scores = new Map<string, number>();
   const averageLength = Math.max(index.averageChunkLength, 1);
-  for (const term of queryTokens) {
+  for (const { term, weight } of weightedTerms) {
     const postings = index.terms[term];
     if (!postings || postings.length === 0) {
       continue;
@@ -726,13 +971,16 @@ export function searchDocs(
       scores.set(
         chunkId,
         (scores.get(chunkId) ?? 0) +
-          inverseDocumentFrequency * normalizedFrequency
+          inverseDocumentFrequency * normalizedFrequency * weight
       );
     }
   }
 
   const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
   const results: DocsSearchResult[] = [];
+  const excerptTokens = Array.from(
+    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
+  );
   for (const [chunkId, score] of scores) {
     const chunk = readDocsContentChunk(index, chunkId, options.content);
     if (!chunk) {
@@ -753,8 +1001,8 @@ export function searchDocs(
       relativePath: chunk.relativePath,
       anchor: chunk.anchor,
       headingPath: chunk.headingPath,
-      excerpt: buildExcerpt(excerptText, queryTokens),
-      score,
+      excerpt: buildExcerpt(excerptText, excerptTokens),
+      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
     });
   }
 
@@ -832,12 +1080,18 @@ export function createAnswerContext(
   query: string,
   options: AnswerContextOptions = {}
 ): DocsAnswerContext {
-  const productName = options.productName ?? "the documentation";
-  const maxSources = options.maxSources ?? DEFAULT_MAX_SOURCES;
-  const maxContextChars = options.maxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS;
+  const {
+    maxContextChars: configuredMaxContextChars,
+    maxSources: configuredMaxSources,
+    productName = "the documentation",
+    ...searchOptions
+  } = options;
+  const maxSources = configuredMaxSources ?? DEFAULT_MAX_SOURCES;
+  const maxContextChars =
+    configuredMaxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS;
   const results = searchDocs(index, query, {
-    content: options.content,
-    limit: Math.max(maxSources, options.limit ?? maxSources),
+    ...searchOptions,
+    limit: Math.max(maxSources, searchOptions.limit ?? maxSources),
   }).slice(0, maxSources);
   const sources: DocsAnswerSource[] = [];
   let remainingChars = maxContextChars;
@@ -846,7 +1100,7 @@ export function createAnswerContext(
     if (remainingChars <= 0) {
       break;
     }
-    const chunk = readDocsContentChunk(index, result.id, options.content);
+    const chunk = readDocsContentChunk(index, result.id, searchOptions.content);
     if (!chunk) {
       continue;
     }

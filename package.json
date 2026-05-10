@@ -12,7 +12,7 @@
     "typescript": "6.0.3",
     "ultracite": "7.6.5"
   },
-  "name": "suva",
+  "name": "leadtype-monorepo",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --filter=example",
@@ -30,6 +30,7 @@
   },
   "workspaces": [
     "apps/*",
+    "evals",
     "packages/*"
   ],
   "private": true,

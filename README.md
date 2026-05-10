@@ -27,8 +27,8 @@ leadtype is **not a docs website framework**. Bring your own UI — Next.js, Tan
 
 ## Choose your path
 
-- **[Build a docs site](https://docs.example.com/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
-- **[Bundle docs into your package](https://docs.example.com/docs/build/bundle-package-docs)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so coding agents auto-discover them from `node_modules/<your-package>/AGENTS.md`.
+- **[Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
+- **[Bundle docs into your package](https://leadtype.dev/docs/build/bundle-package-docs)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so coding agents auto-discover them from `node_modules/<your-package>/AGENTS.md`.
 
 ## Install
 
@@ -41,7 +41,7 @@ pnpm add leadtype
 For a hosted docs site:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://docs.example.com
+npx leadtype generate --src . --out public --base-url https://leadtype.dev
 ```
 
 For an npm-bundled doc set:
@@ -54,13 +54,13 @@ The first produces `public/llms.txt`, `public/docs/llms-full/*.txt`, `public/doc
 
 ## Documentation
 
-Full docs at [docs.example.com](https://docs.example.com/docs):
+Full docs at [leadtype.dev](https://leadtype.dev/docs):
 
-- [Quickstart](https://docs.example.com/docs/quickstart)
-- [How it works](https://docs.example.com/docs/how-it-works)
-- [Frontmatter](https://docs.example.com/docs/authoring/frontmatter)
-- [CLI reference](https://docs.example.com/docs/reference/cli)
-- [Methodology](https://docs.example.com/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
+- [Quickstart](https://leadtype.dev/docs/quickstart)
+- [How it works](https://leadtype.dev/docs/how-it-works)
+- [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
+- [CLI reference](https://leadtype.dev/docs/reference/cli)
+- [Methodology](https://leadtype.dev/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
 
 ## Repo layout
 

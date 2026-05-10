@@ -433,7 +433,7 @@ describe("generateAgentReadabilityArtifacts", () => {
 
     const result = await generateAgentReadabilityArtifacts({
       outDir: projectDir,
-      baseUrl: "https://docs.example.com",
+      baseUrl: "https://leadtype.dev",
       product: {
         name: "Leadtype",
         summary: "Docs pipeline.",
@@ -462,7 +462,7 @@ describe("generateAgentReadabilityArtifacts", () => {
     const sitemapXml = await readFile(result.files.sitemapXml, "utf8");
     expect(sitemapXml).toContain("<urlset");
     expect(sitemapXml).toContain(
-      "<loc>https://docs.example.com/docs/quickstart</loc>"
+      "<loc>https://leadtype.dev/docs/quickstart</loc>"
     );
     expect(sitemapXml).toContain("<lastmod>2026-05-01T12:00:00.000Z</lastmod>");
 
@@ -783,7 +783,7 @@ describe("agent artifact response helpers", () => {
   const manifest = {
     version: 1,
     generatedAt: "2026-05-01T00:00:00.000Z",
-    baseUrl: "https://docs.example.com",
+    baseUrl: "https://leadtype.dev",
     product: { name: "Leadtype", summary: "Docs pipeline." },
     files: {
       robotsTxt: "/docs/robots.txt",
@@ -816,9 +816,9 @@ describe("agent artifact response helpers", () => {
         title: "Quickstart",
         description: "Install.",
         urlPath: "/docs/quickstart",
-        absoluteUrl: "https://docs.example.com/docs/quickstart",
+        absoluteUrl: "https://leadtype.dev/docs/quickstart",
         markdownUrlPath: "/docs/quickstart.md",
-        markdownAbsoluteUrl: "https://docs.example.com/docs/quickstart.md",
+        markdownAbsoluteUrl: "https://leadtype.dev/docs/quickstart.md",
         relativePath: "quickstart",
         groups: ["get-started"],
         lastModified: "2026-05-01T12:00:00.000Z",
@@ -839,15 +839,13 @@ describe("agent artifact response helpers", () => {
     );
     const body = await response.text();
     expect(body).toContain("<loc>http://localhost:5173/docs/quickstart</loc>");
-    expect(body).not.toContain("https://docs.example.com");
+    expect(body).not.toContain("https://leadtype.dev");
   });
 
   it("createSitemapXmlResponse falls back to manifest.baseUrl", async () => {
     const response = createSitemapXmlResponse({ manifest });
     const body = await response.text();
-    expect(body).toContain(
-      "<loc>https://docs.example.com/docs/quickstart</loc>"
-    );
+    expect(body).toContain("<loc>https://leadtype.dev/docs/quickstart</loc>");
   });
 
   it("createSitemapXmlResponse accepts merged pages", async () => {
@@ -860,9 +858,9 @@ describe("agent artifact response helpers", () => {
           title: "Marketing",
           description: "",
           urlPath: "/about",
-          absoluteUrl: "https://docs.example.com/about",
+          absoluteUrl: "https://leadtype.dev/about",
           markdownUrlPath: "/about.md",
-          markdownAbsoluteUrl: "https://docs.example.com/about.md",
+          markdownAbsoluteUrl: "https://leadtype.dev/about.md",
           relativePath: "about",
           groups: [],
           lastModified: "2026-05-01T00:00:00.000Z",
@@ -923,7 +921,7 @@ describe("createDocsHead", () => {
   const manifest = {
     version: 1,
     generatedAt: "2026-05-01T00:00:00.000Z",
-    baseUrl: "https://docs.example.com",
+    baseUrl: "https://leadtype.dev",
     product: { name: "Leadtype", summary: "Docs pipeline." },
     files: {
       robotsTxt: "/docs/robots.txt",
@@ -936,9 +934,9 @@ describe("createDocsHead", () => {
         title: "Quickstart",
         description: "Install.",
         urlPath: "/docs/quickstart",
-        absoluteUrl: "https://docs.example.com/docs/quickstart",
+        absoluteUrl: "https://leadtype.dev/docs/quickstart",
         markdownUrlPath: "/docs/quickstart.md",
-        markdownAbsoluteUrl: "https://docs.example.com/docs/quickstart.md",
+        markdownAbsoluteUrl: "https://leadtype.dev/docs/quickstart.md",
         relativePath: "quickstart",
         groups: ["get-started"],
         lastModified: "2026-05-01T12:00:00.000Z",
@@ -961,12 +959,12 @@ describe("createDocsHead", () => {
     expect(jsonLdEntry).toBeDefined();
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://docs.example.com/docs/quickstart",
+      href: "https://leadtype.dev/docs/quickstart",
     });
     expect(head.links).toContainEqual({
       rel: "alternate",
       type: "text/markdown",
-      href: "https://docs.example.com/docs/quickstart.md",
+      href: "https://leadtype.dev/docs/quickstart.md",
     });
   });
 

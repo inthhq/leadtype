@@ -24,7 +24,7 @@ describe("generateDocsSearchFiles", () => {
       );
 
       const result = await generateDocsSearchFiles({
-        baseUrl: "https://docs.example.com",
+        baseUrl: "https://leadtype.dev",
         outDir: root,
       });
       const indexJson = await readFile(result.outputPath, "utf-8");
@@ -53,7 +53,7 @@ describe("generateDocsSearchFiles", () => {
 
       await expect(
         generateDocsSearchFiles({
-          baseUrl: "https://docs.example.com",
+          baseUrl: "https://leadtype.dev",
           outDir: root,
         })
       ).rejects.toThrow("found no markdown files");
@@ -73,14 +73,14 @@ describe("generateDocsSearchFiles", () => {
 
       await expect(
         generateDocsSearchFiles({
-          baseUrl: "https://docs.example.com",
+          baseUrl: "https://leadtype.dev",
           outDir: root,
           outputFile: "../search-index.json",
         })
       ).rejects.toThrow("must stay inside");
       await expect(
         generateDocsSearchFiles({
-          baseUrl: "https://docs.example.com",
+          baseUrl: "https://leadtype.dev",
           contentOutputFile: "../search-content.json",
           outDir: root,
         })
