@@ -69,8 +69,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun rollup -c && bun run docs:generate",
-    "dev": "bun rollup -c -w",
+    "build": "rollup -c --configPlugin rollup-plugin-esbuild && bun run docs:generate",
+    "dev": "rollup -c --configPlugin rollup-plugin-esbuild -w",
     "check-types": "tsgo --noEmit",
     "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
