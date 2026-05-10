@@ -6,7 +6,6 @@ import {
   normalizeWhitespace,
 } from "../libs";
 
-const TARGET_AGENT = "agent";
 const TARGET_HUMAN = "human";
 
 function unwrapStringLiteralExpression(value: string): string {
@@ -36,10 +35,6 @@ export function remarkAudienceToMarkdown(): Transformer<Root, Root> {
 
     if (target === TARGET_HUMAN) {
       return [];
-    }
-
-    if (target === TARGET_AGENT || target.length === 0) {
-      return (node.children ?? []) as RootContent[];
     }
 
     return (node.children ?? []) as RootContent[];

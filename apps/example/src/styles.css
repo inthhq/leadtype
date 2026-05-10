@@ -496,7 +496,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-leadtype-prompt-toggle-icon] {
+  [data-leadtype-prompt-toggle-icon],
+  [data-leadtype-file-tree-chevron] {
     transition: none;
   }
 }
