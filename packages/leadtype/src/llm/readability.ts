@@ -20,7 +20,7 @@ const QUERY_OR_HASH_PATTERN = /[?#]/;
 const ROOT_AGENT_ARTIFACT_PATTERN =
   /^\/(?:llms(?:-full)?\.txt|robots\.txt|sitemap\.(?:md|xml))$/;
 const DOCS_AGENT_ARTIFACT_PATTERN =
-  /^\/docs\/(?:agent-readability\.json|llms(?:-full)?\.txt|llms-full\/.+\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
+  /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
 const AI_USER_AGENT_PATTERN =
   /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-web|claudebot|google-extended|gptbot|metaexternalagent|meta-externalagent|mistralbot|oai-searchbot|perplexitybot|youbot)\b/i;
 const DEFAULT_AI_CRAWLER_USER_AGENTS = [

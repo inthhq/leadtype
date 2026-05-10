@@ -1,0 +1,15 @@
+{
+  "answerPatterns": [
+    "does not",
+    "database",
+    "vector",
+    "static",
+    "BM25",
+    "embeddings"
+  ],
+  "forbiddenAnswerPatterns": [
+    "includes a hosted database-backed vector index by default"
+  ],
+  "expectedGroups": ["reference"],
+  "expectedPages": ["docs/reference/search.md"]
+}

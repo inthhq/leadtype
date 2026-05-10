@@ -72,8 +72,8 @@ type GenerateResult = {
     docsRobotsTxt?: string;
     docsSitemapMd?: string;
     docsSitemapXml?: string;
-    docsLlmsFullTxt?: string;
     docsLlmsTxt?: string;
+    llmsFullTxt?: string;
     llmsTxt?: string;
     searchContent?: string;
     searchIndex?: string;
@@ -93,12 +93,12 @@ Usage:
   leadtype generate [options]
 
 By default, runs in site mode and writes:
-  llms.txt, docs/*.md, docs/llms-full/*.txt, docs/search-index.json,
+  llms.txt, llms-full.txt, docs/*.md, docs/search-index.json,
   docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
 
 With --bundle, runs in package mode and writes:
   AGENTS.md, docs/*.md
-  (skips llms.txt, llms-full, and search artifacts — those are website-only)
+  (skips llms.txt, llms-full.txt, and search artifacts — those are website-only)
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
@@ -459,8 +459,8 @@ export async function runGenerateCommand(
           docsRobotsTxt: agentReadability.files.robotsTxt,
           docsSitemapMd: agentReadability.files.sitemapMd,
           docsSitemapXml: agentReadability.files.sitemapXml,
-          docsLlmsFullTxt: path.join(outDir, "docs", "llms-full.txt"),
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
+          llmsFullTxt: path.join(outDir, "llms-full.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,

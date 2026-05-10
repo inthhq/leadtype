@@ -25,8 +25,8 @@ leadtype generate [options]
 | `--src <dir>` | `.` | Repo or root directory containing the docs folder. |
 | `--docs-dir <dir>` | `docs` | Docs folder relative to `--src`. |
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
-| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full*`, search, sitemap, robots, and Agent Readability artifacts. |
-| `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context bundle URLs. Site mode only; ignored in `--bundle`. |
+| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full.txt`, search, sitemap, robots, and Agent Readability artifacts. |
+| `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Site mode only; ignored in `--bundle`. |
 | `--name <name>` | from `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). |
 | `--summary <text>` | from `package.json#description` | Product summary written into the index file. |
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
@@ -44,7 +44,7 @@ Exit codes: `0` success, `1` runtime error (docs dir missing, unknown group, con
 leadtype generate --bundle --src . --out packages/my-package
 ```
 
-Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `llms-full/*.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/build/bundle-package-docs).
+Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/build/bundle-package-docs).
 
 ### JSON output shape
 
@@ -62,7 +62,7 @@ Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/d
   "files": {
     "llmsTxt": "/abs/path/.../public/llms.txt",
     "docsLlmsTxt": "/abs/path/.../public/docs/llms.txt",
-    "docsLlmsFullTxt": "/abs/path/.../public/docs/llms-full.txt",
+    "llmsFullTxt": "/abs/path/.../public/llms-full.txt",
     "searchIndex": "/abs/path/.../public/docs/search-index.json",
     "searchContent": "/abs/path/.../public/docs/search-content.json",
     "docsSitemapXml": "/abs/path/.../public/docs/sitemap.xml",
@@ -97,7 +97,7 @@ await generateLlmsTxt({
 });
 ```
 
-See [LLM bundles](/docs/reference/llm) for the rest of the script.
+See [LLM files](/docs/reference/llm) for the rest of the script.
 
 ## lint
 

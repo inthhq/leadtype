@@ -9,7 +9,7 @@ Use this path when **you run a docs site** (or want to). Leadtype runs before yo
 
 ## The flow
 
-&lt;Mermaid chart={`flowchart LR   src["docs/*.mdx<br/>(your repo)"]   cli["leadtype generate"]   pub["public/<br/>llms.txt<br/>docs/*.md<br/>docs/llms-full/*.txt<br/>docs/sitemap.xml<br/>docs/agent-readability.json"]   gen["src/generated/<br/>docs-nav.json<br/>docs-search-*.json"]   app["your docs app<br/>routing + HTML"]   human["Humans<br/>(HTML)"]   agent["Agents<br/>(markdown + discovery files)"]   search["Search UI"]   src --> cli   cli --> pub   cli --> gen   pub --> app   gen --> app   app --> human   app --> agent   gen --> search`} /&gt;
+&lt;Mermaid chart={`flowchart LR   src["docs/*.mdx<br/>(your repo)"]   cli["leadtype generate"]   pub["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md<br/>docs/sitemap.xml<br/>docs/agent-readability.json"]   gen["src/generated/<br/>docs-nav.json<br/>docs-search-*.json"]   app["your docs app<br/>routing + HTML"]   human["Humans<br/>(HTML)"]   agent["Agents<br/>(markdown + discovery files)"]   search["Search UI"]   src --> cli   cli --> pub   cli --> gen   pub --> app   gen --> app   app --> human   app --> agent   gen --> search`} /&gt;
 
 ## One-off run
 
@@ -164,7 +164,7 @@ After a clean build:
 
 - `public/docs/index.md` — the converted home page.
 - `public/llms.txt` — the routing index. Should mention every group from your config.
-- `public/docs/llms-full/<leaf>.txt` — one per leaf group, full content.
+- `public/llms-full.txt` — all generated markdown docs flattened into one fallback file.
 - `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty.
 - `public/docs/sitemap.xml`, `public/docs/sitemap.md`, and `public/docs/agent-readability.json` — docs-scoped discovery data. Merge these with your app's non-docs routes before serving root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
 
@@ -184,6 +184,8 @@ The markdown response should include `content-type: text/markdown; charset=utf-8
 <Cards>
 
   <Card title="Optimize docs for agents" description="Set up discovery files, JSON-LD, markdown responses, and audit checks." href="/docs/build/optimize-docs-for-agents" />
+
+  <Card title="Evals" description="See how Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt defaults." href="/docs/reference/evals" />
 
   <Card title="Lint in CI" description="Fail PRs on broken links or schema drift." href="/docs/build/validate-in-ci" />
 

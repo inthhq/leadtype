@@ -25,6 +25,7 @@ import { Route as DocsReferenceSearchRouteImport } from './routes/docs/reference
 import { Route as DocsReferenceRemarkRouteImport } from './routes/docs/reference/remark'
 import { Route as DocsReferenceLlmRouteImport } from './routes/docs/reference/llm'
 import { Route as DocsReferenceLintRouteImport } from './routes/docs/reference/lint'
+import { Route as DocsReferenceEvalsRouteImport } from './routes/docs/reference/evals'
 import { Route as DocsReferenceConvertRouteImport } from './routes/docs/reference/convert'
 import { Route as DocsReferenceCliRouteImport } from './routes/docs/reference/cli'
 import { Route as DocsBuildValidateInCiRouteImport } from './routes/docs/build/validate-in-ci'
@@ -117,6 +118,11 @@ const DocsReferenceLlmRoute = DocsReferenceLlmRouteImport.update({
 const DocsReferenceLintRoute = DocsReferenceLintRouteImport.update({
   id: '/reference/lint',
   path: '/reference/lint',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsReferenceEvalsRoute = DocsReferenceEvalsRouteImport.update({
+  id: '/reference/evals',
+  path: '/reference/evals',
   getParentRoute: () => DocsRouteRoute,
 } as any)
 const DocsReferenceConvertRoute = DocsReferenceConvertRouteImport.update({
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
+  '/docs/reference/evals': typeof DocsReferenceEvalsRoute
   '/docs/reference/lint': typeof DocsReferenceLintRoute
   '/docs/reference/llm': typeof DocsReferenceLlmRoute
   '/docs/reference/remark': typeof DocsReferenceRemarkRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
+  '/docs/reference/evals': typeof DocsReferenceEvalsRoute
   '/docs/reference/lint': typeof DocsReferenceLintRoute
   '/docs/reference/llm': typeof DocsReferenceLlmRoute
   '/docs/reference/remark': typeof DocsReferenceRemarkRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
+  '/docs/reference/evals': typeof DocsReferenceEvalsRoute
   '/docs/reference/lint': typeof DocsReferenceLintRoute
   '/docs/reference/llm': typeof DocsReferenceLlmRoute
   '/docs/reference/remark': typeof DocsReferenceRemarkRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
+    | '/docs/reference/evals'
     | '/docs/reference/lint'
     | '/docs/reference/llm'
     | '/docs/reference/remark'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
+    | '/docs/reference/evals'
     | '/docs/reference/lint'
     | '/docs/reference/llm'
     | '/docs/reference/remark'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
+    | '/docs/reference/evals'
     | '/docs/reference/lint'
     | '/docs/reference/llm'
     | '/docs/reference/remark'
@@ -498,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsReferenceLintRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/docs/reference/evals': {
+      id: '/docs/reference/evals'
+      path: '/reference/evals'
+      fullPath: '/docs/reference/evals'
+      preLoaderRoute: typeof DocsReferenceEvalsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/docs/reference/convert': {
       id: '/docs/reference/convert'
       path: '/reference/convert'
@@ -605,6 +624,7 @@ interface DocsRouteRouteChildren {
   DocsBuildValidateInCiRoute: typeof DocsBuildValidateInCiRoute
   DocsReferenceCliRoute: typeof DocsReferenceCliRoute
   DocsReferenceConvertRoute: typeof DocsReferenceConvertRoute
+  DocsReferenceEvalsRoute: typeof DocsReferenceEvalsRoute
   DocsReferenceLintRoute: typeof DocsReferenceLintRoute
   DocsReferenceLlmRoute: typeof DocsReferenceLlmRoute
   DocsReferenceRemarkRoute: typeof DocsReferenceRemarkRoute
@@ -624,6 +644,7 @@ const DocsRouteRouteChildren: DocsRouteRouteChildren = {
   DocsBuildValidateInCiRoute: DocsBuildValidateInCiRoute,
   DocsReferenceCliRoute: DocsReferenceCliRoute,
   DocsReferenceConvertRoute: DocsReferenceConvertRoute,
+  DocsReferenceEvalsRoute: DocsReferenceEvalsRoute,
   DocsReferenceLintRoute: DocsReferenceLintRoute,
   DocsReferenceLlmRoute: DocsReferenceLlmRoute,
   DocsReferenceRemarkRoute: DocsReferenceRemarkRoute,

@@ -1,0 +1,5 @@
+{
+  "answerPatterns": ["--json", "docsLlmsFullTxt", "docsLlmsTxt", "llmsTxt"],
+  "expectedGroups": ["reference"],
+  "expectedPages": ["docs/reference/cli.md"]
+}

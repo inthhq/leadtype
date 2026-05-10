@@ -20,11 +20,11 @@ group: build
 
 - `title` — required. Non-empty string. Renders as the page heading and as the entry text in `llms.txt` and the sidebar.
 - `description` — optional but recommended. Becomes the routing hint in `llms.txt`. If omitted, the converter synthesizes one from the body during conversion (see [convert behavior](/docs/reference/convert)).
-- `group` — optional. Slug of a group declared in `docs.config.ts`. Pages without a group are excluded from the nav and from `llms-full/*.txt`.
+- `group` — optional. Slug of a group declared in `docs.config.ts`. Pages without a group are excluded from the nav and grouped indexes, but still appear in generated markdown and the root `llms-full.txt` fallback.
 
 ## How groups become a nav tree
 
-Each page declares a single group slug. Each group is declared once in `docs.config.ts`. The intersection produces the nav tree, the section headings in `llms.txt`, and the per-leaf `llms-full/<slug>.txt` files.
+Each page declares a single group slug. Each group is declared once in `docs.config.ts`. The intersection produces the nav tree, the section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
 
 <Mermaid chart={`flowchart LR
   cfg["docs.config.ts<br/>groups: [authoring, build, reference]"]
@@ -34,14 +34,14 @@ Each page declares a single group slug. Each group is declared once in `docs.con
   resolver["group resolver"]
   nav["navigation tree"]
   llms["llms.txt sections"]
-  full["llms-full/build.txt<br/>llms-full/authoring.txt"]
+  agents["AGENTS.md sections"]
   cfg --> resolver
   page1 --> resolver
   page2 --> resolver
   page3 --> resolver
   resolver --> nav
   resolver --> llms
-  resolver --> full`} />
+  resolver --> agents`} />
 
 If a page declares a group slug that isn't in `docs.config.ts`, the build fails with `unknown group "<slug>"`. Same source of truth, no drift.
 
@@ -60,7 +60,7 @@ Declare children in the config to build deeper trees:
 }
 ```
 
-A page sets `group: bundle-package-docs` and lands in that nested slot. Only **leaf** groups (no children) get an `llms-full/<slug>.txt` file — non-leaves are headings only.
+A page sets `group: bundle-package-docs` and lands in that nested slot. Only **leaf** groups (no children) directly contain pages; non-leaf groups are headings only.
 
 ## Optional fields
 
@@ -77,7 +77,7 @@ The default lint schema also accepts:
     draft: { type: "boolean", description: "Excludes from generation entirely." },
     tags: { type: "string[]", description: "Free-form tags for search facets." },
     availableIn: { type: "Array<{ framework, url?, title? }>", description: "Cross-framework availability map for TopicSwitcher pages." },
-    full: { type: "boolean", description: "Forces the page into the full-context bundle even when normally excluded." },
+    full: { type: "boolean", description: "Layout hint for docs UIs that support full-width pages." },
   }}
 />
 
@@ -102,7 +102,7 @@ Once frontmatter is consistent, the rest of the pipeline works without per-page 
 
 - The sidebar position
 - The `llms.txt` section
-- The `llms-full/<group>.txt` bundle
+- Search metadata and AGENTS.md grouping
 - The search filtering UI (if you build one)
 - Cross-framework link checks in lint
 

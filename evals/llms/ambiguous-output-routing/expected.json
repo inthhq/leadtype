@@ -1,0 +1,10 @@
+{
+  "answerPatterns": [
+    "LLM bundles",
+    "generateLLMFullContextFiles",
+    "topic",
+    "one giant bundle"
+  ],
+  "expectedGroups": ["reference"],
+  "expectedPages": ["docs/reference/llm.md"]
+}

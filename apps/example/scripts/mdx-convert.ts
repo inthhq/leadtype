@@ -6,6 +6,7 @@
  */
 
 import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { convertAllMdx, type MdxToMarkdownOptions } from "leadtype/convert";
@@ -35,6 +36,8 @@ if (!existsSync(srcDir)) {
   process.stderr.write(`Source directory not found: ${srcDir}\n`);
   process.exit(1);
 }
+
+await rm(outDir, { recursive: true, force: true });
 
 await convertAllMdx({
   srcDir,

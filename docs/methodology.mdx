@@ -22,7 +22,7 @@ Choose a website framework when the main job is publishing a polished docs UI qu
 ## What leadtype owns
 
 - MDX-to-markdown conversion via a remark plugin stack.
-- `llms.txt` and topic-scoped full-context bundles for agents.
+- `llms.txt`, markdown mirrors, and root `llms-full.txt` fallback context for agents.
 - A static, edge-safe search index plus optional source-grounded answer streaming.
 - Lint rules for frontmatter, navigation metadata, and internal links.
 - CLI orchestration so the whole pipeline runs from one command.
@@ -37,4 +37,4 @@ Choose a website framework when the main job is publishing a polished docs UI qu
 
 You want one docs experience across many repos, but each repo keeps its content next to the code it documents. A shared docs app — public, private, or templated — renders that content with your design system. Leadtype handles conversion, search, validation, and agent outputs identically across every repo.
 
-You can also pair leadtype *with* a website framework: use Fumadocs or Starlight for the UI, and run leadtype alongside it when you want one portable pipeline for generated markdown, search, `llms.txt`, topic-scoped `llms-full/<group>.txt`, Agent Readability files, and npm-bundled `AGENTS.md` docs across frameworks and packages.
+You can also pair leadtype *with* a website framework: use Fumadocs or Starlight for the UI, and run leadtype alongside it when you want one portable pipeline for generated markdown, search, `llms.txt`, root `llms-full.txt`, Agent Readability files, and npm-bundled `AGENTS.md` docs across frameworks and packages.

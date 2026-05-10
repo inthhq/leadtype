@@ -54,6 +54,33 @@ bun run evals -- --model gpt-5.5
 bun run evals -- --runs 3
 ```
 
+## Topic-scoped `llms-full` benchmark
+
+Issue #22 asks whether agents actually use topic-scoped full-context bundles when `llms.txt` makes them discoverable. The separate llms benchmark simulates a hosted docs web root as local files: `/llms.txt` maps to `llms.txt`, `/docs/reference/cli.md` maps to `docs/reference/cli.md`, and so on.
+
+```bash
+# One fixture across all variants.
+bun run evals:llms -- --fixture single-page-cli-flag
+
+# One fixture on the router-first variant.
+bun run evals:llms -- --fixture exact-symbol-readability --variant router
+
+# Full llms matrix.
+bun run evals:llms
+```
+
+The variants are:
+
+| Variant | Meaning |
+| --- | --- |
+| `page-links` | Current-style `/llms.txt` with page-level `.md` links and guidance text only. |
+| `explicit-bundles` | `/llms.txt` links each `/docs/llms-full/<group>.txt` topic bundle directly. |
+| `monolith` | `/llms.txt` links one root `/llms-full.txt` containing all docs content. |
+| `router` | `/llms.txt` links root `/llms-full.txt`, and that file routes to `/docs/llms-full/<group>.txt`. |
+| `section-indexes` | `/llms.txt` links `/docs/<group>/llms.txt`; each section index links page `.md` files plus an optional section full-context bundle. |
+
+The `router` variant is intentionally distinct from `monolith`: it evaluates a base file that directs agents to topic bundles, not a root file containing all docs content.
+
 ## CLI flags
 
 | Flag | Default | Description |

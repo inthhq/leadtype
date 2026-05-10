@@ -59,7 +59,7 @@ This writes:
 
 Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/my-package/AGENTS.md` (during local dev) and at `node_modules/my-package/AGENTS.md` (after install).
 
-`--bundle` skips `llms.txt`, `llms-full*`, and the search index — those are website artifacts that don't make sense offline.
+`--bundle` skips `llms.txt`, `llms-full.txt`, and the search index — those are website artifacts that don't make sense offline.
 
 ## Filter to package-specific docs
 
@@ -175,6 +175,6 @@ Don't use this if your only goal is a public docs website. For that, see [Connec
 
 <Cards>
   <Card title="CLI reference" description="Every flag for --bundle and the standard pipeline." href="/docs/reference/cli" />
-  <Card title="LLM bundles" description="The website's llms.txt + llms-full output, side by side with the package's AGENTS.md." href="/docs/reference/llm" />
+  <Card title="LLM files" description="The website's llms.txt + llms-full.txt output, side by side with the package's AGENTS.md." href="/docs/reference/llm" />
   <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/build/validate-in-ci" />
 </Cards>
