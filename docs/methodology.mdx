@@ -12,12 +12,12 @@ Leadtype is **a docs pipeline, not a docs website framework**. It produces the a
 
 | Tool | What it gives you |
 | --- | --- |
-| Fumadocs | A React docs site framework. |
-| Starlight | An Astro docs site framework. |
-| Mintlify | A hosted docs platform with deployment, analytics, and AI built in. |
+| Fumadocs | A React docs framework (Next.js, TanStack Start, React Router, Waku). Supports `llms.txt` and content negotiation via framework route handlers. |
+| Starlight | An Astro docs site framework. `llms.txt` via the `starlight-llms-txt` community plugin (not built-in); static client-side search via Pagefind. |
+| Mintlify | A hosted docs SaaS (with an optional headless Astro mode that still calls Mintlify's search and assistant APIs). |
 | Leadtype | The portable content layer behind any of the above. |
 
-Use a website framework when the main job is publishing a polished site quickly. Use a hosted platform when you want zero infra. Use leadtype when you want to **own the docs UI but standardize the content pipeline** across packages, repos, agent bundles, and search.
+Use a website framework when the main job is publishing a polished docs UI quickly. Use a hosted platform when you want managed publishing, search, analytics, and AI features and accept that service dependency. Use leadtype when you want to **own the generated docs artifacts**: framework-agnostic markdown, navigation, search, `llms.txt`, topic-scoped context bundles, and optional `AGENTS.md` package bundles that ship inside npm tarballs.
 
 ## What leadtype owns
 
@@ -37,4 +37,4 @@ Use a website framework when the main job is publishing a polished site quickly.
 
 You want one docs experience across many repos, but each repo keeps its content next to the code it documents. A shared docs app — public, private, or templated — renders that content with your design system. Leadtype handles conversion, search, validation, and agent outputs identically across every repo.
 
-You can also pair leadtype *with* a website framework: use Fumadocs or Starlight for the UI, and run leadtype's pipeline alongside it for `llms.txt`, agent bundles, or a content-negotiated `text/markdown` endpoint your framework doesn't ship.
+You can also pair leadtype *with* a website framework: use Fumadocs or Starlight for the UI, and run leadtype alongside it when you want one portable pipeline for generated markdown, search, `llms.txt`, topic-scoped `llms-full/<group>.txt`, Agent Readability files, and npm-bundled `AGENTS.md` docs across frameworks and packages.
