@@ -83,6 +83,7 @@
 .docs-prose h2,
 .docs-prose h3,
 .docs-prose h4:not([data-leadtype-step-title]) {
+  scroll-margin-top: 5.25rem;
   @apply font-heading font-medium tracking-tight text-foreground;
 }
 

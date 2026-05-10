@@ -170,7 +170,7 @@ export function SearchBar() {
   const showEmptyState = !query.trim() && results.length === 0;
   const isAnswering =
     answerStatus === "loading" || answerStatus === "streaming";
-  const canAsk = query.trim().length > 0 && answerConfig.enabled;
+  const canAsk = query.trim().length > 0;
 
   return (
     <>
@@ -195,7 +195,7 @@ export function SearchBar() {
         <div
           aria-label="Search docs"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-start justify-center bg-background/70 p-4 pt-[12vh] backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-background/70 p-4 pt-[12vh]"
           role="dialog"
         >
           <button
@@ -253,6 +253,27 @@ export function SearchBar() {
                 </p>
               ) : null}
 
+              {answer || isAnswering ? (
+                <section className="border-border border-b px-5 py-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-medium text-foreground text-sm">
+                      Answer
+                    </h3>
+                    <span className="rounded bg-secondary px-2 py-0.5 text-muted-foreground text-xs">
+                      {answerConfig.model}
+                    </span>
+                  </div>
+                  <Streamdown
+                    caret="block"
+                    className="docs-answer text-sm"
+                    controls={false}
+                    isAnimating={answerStatus === "streaming"}
+                  >
+                    {answer || "Streaming…"}
+                  </Streamdown>
+                </section>
+              ) : null}
+
               {visibleResults.length > 0 ? (
                 <ul className="divide-y divide-border">
                   {visibleResults.map((result, index) => (
@@ -289,27 +310,6 @@ export function SearchBar() {
                     </li>
                   ))}
                 </ul>
-              ) : null}
-
-              {answer || isAnswering ? (
-                <section className="border-border border-t px-5 py-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="font-medium text-foreground text-sm">
-                      Answer
-                    </h3>
-                    <span className="rounded bg-secondary px-2 py-0.5 text-muted-foreground text-xs">
-                      {answerConfig.model}
-                    </span>
-                  </div>
-                  <Streamdown
-                    caret="block"
-                    className="docs-answer text-sm"
-                    controls={false}
-                    isAnimating={answerStatus === "streaming"}
-                  >
-                    {answer || "Streaming…"}
-                  </Streamdown>
-                </section>
               ) : null}
             </div>
 

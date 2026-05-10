@@ -26,12 +26,18 @@
     "pipeline:llm-real": "bun run scripts/llm-generate-real.ts"
   },
   "dependencies": {
+    "@cloudflare/tanstack-ai": "^0.1.7",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
     "@mdx-js/react": "^3.1.1",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@streamdown/mermaid": "^1.0.2",
+    "@tanstack/ai": "^0.14.0",
+    "@tanstack/ai-anthropic": "^0.8.2",
+    "@tanstack/ai-gemini": "^0.10.0",
+    "@tanstack/ai-openai": "^0.8.2",
+    "@tanstack/ai-openrouter": "^0.8.2",
     "@tanstack/react-router": "^1.167.4",
     "@tanstack/react-start": "^1.166.15",
     "ai": "^6.0.168",

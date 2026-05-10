@@ -5,6 +5,7 @@ import type { DemoSearchApiResult } from "@/lib/search";
 
 export interface AnswerConfig {
   enabled: boolean;
+  env?: Array<{ configured: boolean; label: string }>;
   model: string;
 }
 
@@ -139,7 +140,7 @@ export function useDocsSearch(initialQuery = ""): UseDocsSearchResult {
   const [error, setError] = useState("");
   const [answerConfig, setAnswerConfig] = useState<AnswerConfig>({
     enabled: false,
-    model: "moonshotai/kimi-k2.6",
+    model: "loading",
   });
 
   useEffect(() => {
@@ -307,7 +308,7 @@ export function useDocsSearch(initialQuery = ""): UseDocsSearchResult {
 
   const performAnswer = useCallback(
     async (trimmedQuery: string) => {
-      if (!(trimmedQuery && answerConfig.enabled)) {
+      if (!trimmedQuery) {
         return;
       }
 
@@ -371,12 +372,7 @@ export function useDocsSearch(initialQuery = ""): UseDocsSearchResult {
         }
       }
     },
-    [
-      answerConfig.enabled,
-      cancelPendingAnswer,
-      cancelPendingSearch,
-      performSearch,
-    ]
+    [cancelPendingAnswer, cancelPendingSearch, performSearch]
   );
 
   const askAi = useCallback(
