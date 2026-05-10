@@ -11,6 +11,8 @@ import { useMDXComponents } from "@/mdx-components";
 import appCss from "../styles.css?url";
 
 const HASH_PREFIX_PATTERN = /^#/;
+const DOCS_ANCHOR_OFFSET_PROPERTY = "--docs-anchor-offset-rem";
+const FALLBACK_HASH_SCROLL_OFFSET_PX = 84;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -42,21 +44,40 @@ export const Route = createRootRoute({
  * `navigate({ hash })` both land at the top of the page without this.
  */
 function ScrollToHash() {
-  const hash = useRouterState({ select: (state) => state.location.hash });
+  const location = useRouterState({
+    select: (state) => ({
+      hash: state.location.hash,
+      pathname: state.location.pathname,
+    }),
+  });
   useEffect(() => {
+    const { hash } = location;
     if (!hash) {
       return;
     }
-    const id = hash.replace(HASH_PREFIX_PATTERN, "");
+    const id = decodeURIComponent(hash.replace(HASH_PREFIX_PATTERN, ""));
     if (!id) {
       return;
     }
+    const scrollToElement = () => {
+      const element = document.getElementById(id);
+      if (!element) {
+        return;
+      }
+      const targetTop =
+        element.getBoundingClientRect().top +
+        window.scrollY -
+        getHashScrollOffsetPx();
+      window.scrollTo({ behavior: "auto", top: Math.max(targetTop, 0) });
+    };
     // Wait two frames so the destination route has rendered before we look up
     // the element by id. Single RAF is sometimes too early on initial mount.
+    let timeout: number | null = null;
     let inner: number | null = null;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView({ block: "start" });
+        scrollToElement();
+        timeout = window.setTimeout(scrollToElement, 100);
       });
     });
     return () => {
@@ -64,9 +85,26 @@ function ScrollToHash() {
       if (inner !== null) {
         cancelAnimationFrame(inner);
       }
+      if (timeout !== null) {
+        window.clearTimeout(timeout);
+      }
     };
-  }, [hash]);
+  }, [location]);
   return null;
+}
+
+function getHashScrollOffsetPx(): number {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const offsetRem = Number.parseFloat(
+    rootStyle.getPropertyValue(DOCS_ANCHOR_OFFSET_PROPERTY)
+  );
+  const rootFontSizePx = Number.parseFloat(rootStyle.fontSize);
+
+  if (Number.isFinite(offsetRem) && Number.isFinite(rootFontSizePx)) {
+    return offsetRem * rootFontSizePx;
+  }
+
+  return FALLBACK_HASH_SCROLL_OFFSET_PX;
 }
 
 function RootDocument({ children }: { children: ReactNode }) {

@@ -24,9 +24,9 @@ leadtype generate [options]
 | --- | --- | --- |
 | `--src <dir>` | `.` | Repo or root directory containing the docs folder. |
 | `--docs-dir <dir>` | `docs` | Docs folder relative to `--src`. |
-| `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
-| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full*`, and the search index. |
-| `--base-url <url>` | — | Base URL for absolute links in `llms.txt`. Site mode only; ignored in `--bundle`. |
+| `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
+| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full*`, search, sitemap, robots, and Agent Readability artifacts. |
+| `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context bundle URLs. Site mode only; ignored in `--bundle`. |
 | `--name <name>` | from `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). |
 | `--summary <text>` | from `package.json#description` | Product summary written into the index file. |
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
@@ -64,13 +64,19 @@ Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/d
     "docsLlmsTxt": "/abs/path/.../public/docs/llms.txt",
     "docsLlmsFullTxt": "/abs/path/.../public/docs/llms-full.txt",
     "searchIndex": "/abs/path/.../public/docs/search-index.json",
-    "searchContent": "/abs/path/.../public/docs/search-content.json"
+    "searchContent": "/abs/path/.../public/docs/search-content.json",
+    "docsSitemapXml": "/abs/path/.../public/docs/sitemap.xml",
+    "docsSitemapMd": "/abs/path/.../public/docs/sitemap.md",
+    "docsRobotsTxt": "/abs/path/.../public/docs/robots.txt",
+    "agentReadabilityManifest": "/abs/path/.../public/docs/agent-readability.json"
   },
   "search": { /* index stats */ }
 }
 ```
 
-In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, etc.) are absent.
+The sitemap and robots files are docs-scoped so the host app can merge them with blog, marketing, changelog, or product pages before serving site-root `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+
+In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, sitemap, robots, etc.) are absent.
 
 Errors in JSON mode print `{"error": "...", ...}` to stderr.
 
@@ -134,7 +140,8 @@ leadtype help lint
 The CLI is a thin wrapper. Every command is also available as a TypeScript API for custom build scripts:
 
 - [`leadtype/convert`](/docs/reference/convert) — `convertAllMdx`, `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`.
-- [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`.
+- [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`, `resolveDocsNavigation`.
+- [`leadtype/llm/readability`](/docs/reference/llm#agent-readability-helpers) — JSON-LD, markdown response, frontmatter, and agent request helpers for hosted docs sites.
 - [`leadtype/search/node`](/docs/reference/search) — `generateDocsSearchFiles`.
 - [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.
 - [`leadtype/remark`](/docs/reference/remark) — `defaultRemarkPlugins` and individual plugins.

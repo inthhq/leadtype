@@ -28,6 +28,10 @@
       "types": "./dist/llm/index.d.ts",
       "import": "./dist/llm/index.js"
     },
+    "./llm/readability": {
+      "types": "./dist/llm/readability.d.ts",
+      "import": "./dist/llm/readability.js"
+    },
     "./search": {
       "types": "./dist/search/index.d.ts",
       "import": "./dist/search/index.js"

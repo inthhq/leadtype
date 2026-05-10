@@ -4,10 +4,29 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
   resolveDocsNavigation,
 } from "./llm";
+import {
+  acceptsMarkdownHeader,
+  createAgentMarkdownResponse,
+  createDocsHead,
+  createMarkdownResponseHeaders,
+  createRobotsTxtResponse,
+  createSitemapMarkdownResponse,
+  createSitemapXmlResponse,
+  enrichMarkdownFrontmatter,
+  isAgentReadabilityArtifactPath,
+  isAgentUserAgent,
+  renderJsonLd,
+  renderJsonLdScript,
+  renderMissingMarkdown,
+  renderRobotsTxt,
+  renderSitemapXml,
+  resolveMarkdownMirrorTarget,
+} from "./readability";
 
 const tempDirs: string[] = [];
 
@@ -98,9 +117,18 @@ describe("generateLlmsTxt", () => {
       path.join(outDir, "docs", "llms.txt"),
       "utf8"
     );
+    const rootSummary = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(rootSummary).toContain("](/docs/frameworks/react/quickstart.md)");
+    expect(rootSummary).not.toContain(
+      "https://c15t.com/docs/frameworks/react/quickstart"
+    );
     expect(docsSummary).toContain("## Frameworks");
     expect(docsSummary).toContain("React Quickstart");
     expect(docsSummary).toContain("Next.js Quickstart");
+    expect(docsSummary).toContain("](/docs/frameworks/react/quickstart.md)");
+    expect(docsSummary).not.toContain(
+      "https://c15t.com/docs/frameworks/react/quickstart"
+    );
   });
 
   it("renders the product summary even when no groups are declared", async () => {
@@ -129,6 +157,7 @@ describe("generateLlmsTxt", () => {
     const rootSummary = await readFile(path.join(outDir, "llms.txt"), "utf8");
     expect(rootSummary).toContain("# c15t");
     expect(rootSummary).toContain("> Consent platform.");
+    expect(rootSummary).toContain("](/docs/index.md)");
   });
 
   it("renders shared pages under every group they declare", async () => {
@@ -381,6 +410,587 @@ describe("generateLLMFullContextFiles", () => {
         groups: [{ slug: "Bad/Slug", title: "Bad", description: "Bad." }],
       })
     ).rejects.toThrow(/Invalid group slug/);
+  });
+});
+
+describe("generateAgentReadabilityArtifacts", () => {
+  it("emits docs-scoped sitemap, robots, and manifest files", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter:
+          "title: Quickstart\ndescription: Install and run the package.\ngroup: get-started\nlastModified: 2026-05-01T12:00:00.000Z",
+        body: "# Quickstart\n\nBody.\n",
+      },
+      {
+        relativePath: "reference/cli.md",
+        frontmatter:
+          "title: CLI\ndescription: Command reference.\ngroup: reference\nlast_updated: 2026-05-02",
+        body: "# CLI\n\nBody.\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://docs.example.com",
+      product: {
+        name: "Leadtype",
+        summary: "Docs pipeline.",
+      },
+      groups: [
+        {
+          slug: "get-started",
+          title: "Get Started",
+          description: "Start here.",
+        },
+        {
+          slug: "reference",
+          title: "Reference",
+          description: "API and CLI reference.",
+        },
+      ],
+    });
+
+    expect(existsSync(path.join(projectDir, "docs", "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "docs", "sitemap.md"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "docs", "robots.txt"))).toBe(true);
+    expect(
+      existsSync(path.join(projectDir, "docs", "agent-readability.json"))
+    ).toBe(true);
+
+    const sitemapXml = await readFile(result.files.sitemapXml, "utf8");
+    expect(sitemapXml).toContain("<urlset");
+    expect(sitemapXml).toContain(
+      "<loc>https://docs.example.com/docs/quickstart</loc>"
+    );
+    expect(sitemapXml).toContain("<lastmod>2026-05-01T12:00:00.000Z</lastmod>");
+
+    const sitemapMd = await readFile(result.files.sitemapMd, "utf8");
+    expect(sitemapMd).toContain("## Get Started");
+    expect(sitemapMd).toContain("[Quickstart](/docs/quickstart)");
+    expect(sitemapMd).toContain("## Reference");
+
+    const robotsTxt = await readFile(result.files.robotsTxt, "utf8");
+    expect(robotsTxt).toContain("User-agent: GPTBot");
+    expect(robotsTxt).toContain("User-agent: ClaudeBot");
+    expect(robotsTxt).toContain("Allow: /llms.txt");
+    expect(robotsTxt).not.toContain("Disallow: /llms.txt");
+
+    expect(result.manifest.pages).toContainEqual(
+      expect.objectContaining({
+        markdownUrlPath: "/docs/quickstart.md",
+        urlPath: "/docs/quickstart",
+      })
+    );
+  });
+
+  it("renders helpers that host apps can merge with non-docs pages", () => {
+    const pages = [
+      {
+        title: "Quickstart",
+        description: "Install and run.",
+        urlPath: "/docs/quickstart",
+        absoluteUrl: "https://example.com/docs/quickstart",
+        markdownUrlPath: "/docs/quickstart.md",
+        markdownAbsoluteUrl: "https://example.com/docs/quickstart.md",
+        relativePath: "quickstart",
+        groups: ["get-started"],
+        lastModified: "2026-05-01T00:00:00.000Z",
+      },
+    ];
+
+    expect(renderSitemapXml(pages)).toContain(
+      "<loc>https://example.com/docs/quickstart</loc>"
+    );
+    expect(
+      renderRobotsTxt({
+        baseUrl: "https://example.com",
+        sitemapUrlPath: "/sitemap.xml",
+      })
+    ).toContain("Sitemap: https://example.com/sitemap.xml");
+  });
+});
+
+describe("agent readability helpers", () => {
+  const manifest = {
+    version: 1,
+    generatedAt: "2026-05-01T00:00:00.000Z",
+    baseUrl: "https://example.com",
+    product: { name: "Leadtype", summary: "Docs pipeline." },
+    files: {
+      robotsTxt: "/docs/robots.txt",
+      sitemapMd: "/docs/sitemap.md",
+      sitemapXml: "/docs/sitemap.xml",
+    },
+    navigation: { groups: [], ungrouped: [], unknown: [] },
+    pages: [
+      {
+        title: "Quickstart <start>",
+        description: "Install and run.",
+        urlPath: "/docs/quickstart",
+        absoluteUrl: "https://example.com/docs/quickstart",
+        markdownUrlPath: "/docs/quickstart.md",
+        markdownAbsoluteUrl: "https://example.com/docs/quickstart.md",
+        relativePath: "quickstart",
+        groups: ["get-started"],
+        lastModified: "2026-05-01T12:00:00.000Z",
+      },
+      {
+        title: "Docs",
+        description: "Overview.",
+        urlPath: "/docs",
+        absoluteUrl: "https://example.com/docs",
+        markdownUrlPath: "/docs/index.md",
+        markdownAbsoluteUrl: "https://example.com/docs/index.md",
+        relativePath: "index",
+        groups: [],
+        lastModified: "2026-05-01T00:00:00.000Z",
+      },
+    ],
+  } as const;
+
+  it("renders JSON-LD data and safe script tags from manifest pages", () => {
+    const page = manifest.pages[0];
+    if (!page) {
+      throw new Error("missing test page");
+    }
+
+    expect(renderJsonLd(page, manifest)).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      headline: "Quickstart <start>",
+      url: "https://example.com/docs/quickstart",
+      dateModified: "2026-05-01T12:00:00.000Z",
+    });
+    expect(renderJsonLdScript(page, manifest)).toContain(
+      '<script type="application/ld+json">'
+    );
+    expect(renderJsonLdScript(page, manifest)).toContain(
+      "Quickstart \\u003cstart\\u003e"
+    );
+  });
+
+  it("resolves markdown mirrors and leaves agent artifacts alone", () => {
+    expect(resolveMarkdownMirrorTarget("/docs")).toEqual(
+      expect.objectContaining({
+        urlPath: "/docs",
+        markdownUrlPath: "/docs/index.md",
+        filePath: "docs/index.md",
+      })
+    );
+    expect(resolveMarkdownMirrorTarget("/docs.md")).toEqual(
+      expect.objectContaining({ filePath: "docs/index.md" })
+    );
+    expect(resolveMarkdownMirrorTarget("/docs/quickstart.md")).toEqual(
+      expect.objectContaining({
+        urlPath: "/docs/quickstart",
+        filePath: "docs/quickstart.md",
+      })
+    );
+    expect(resolveMarkdownMirrorTarget("/docs/../secret")).toBeNull();
+    expect(isAgentReadabilityArtifactPath("/llms.txt")).toBe(true);
+    expect(isAgentReadabilityArtifactPath("/docs/search-index.json")).toBe(
+      true
+    );
+  });
+
+  it("detects markdown retrieval requests and builds response headers", () => {
+    expect(acceptsMarkdownHeader("text/markdown")).toBe(true);
+    expect(acceptsMarkdownHeader("text/plain")).toBe(true);
+    // Tied q-values default to HTML (browser-safety bias).
+    expect(acceptsMarkdownHeader("text/html, text/markdown")).toBe(false);
+    // Markdown wins when explicitly preferred via q-value.
+    expect(acceptsMarkdownHeader("text/html;q=0.5, text/markdown")).toBe(true);
+    // HTML wins when explicitly preferred.
+    expect(acceptsMarkdownHeader("text/html, text/markdown;q=0.5")).toBe(false);
+    expect(isAgentUserAgent("ClaudeBot/1.0")).toBe(true);
+    expect(isAgentUserAgent("AmazonBot/0.1 (+http://amazon.com/bot)")).toBe(
+      true
+    );
+    expect(isAgentUserAgent("Bingbot/2.0")).toBe(true);
+    expect(isAgentUserAgent("PrivateBot/1.0", /privatebot/i)).toBe(true);
+    expect(isAgentUserAgent("ChromeBot/1.0")).toBe(false);
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        includeUserAgentVary: true,
+      })
+    ).toEqual({
+      "Content-Type": "text/markdown; charset=utf-8",
+      Vary: "Accept, User-Agent",
+      Link: '<https://example.com/docs>; rel="canonical"',
+      "Cache-Control": "public, max-age=300, must-revalidate",
+    });
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        cacheControl: null,
+      })
+    ).not.toHaveProperty("Cache-Control");
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        cacheControl: "no-store",
+      })["Cache-Control"]
+    ).toBe("no-store");
+  });
+
+  it("adds agent-readable frontmatter aliases to markdown", () => {
+    const markdown = `---
+title: Quickstart
+description: Install.
+lastModified: 2026-05-01T12:00:00.000Z
+---
+# Quickstart
+`;
+
+    expect(
+      enrichMarkdownFrontmatter(markdown, {
+        canonicalUrl: "https://example.com/docs/quickstart",
+      })
+    ).toContain(
+      'canonical_url: "https://example.com/docs/quickstart"\nlast_updated: "2026-05-01T12:00:00.000Z"'
+    );
+  });
+
+  it("creates complete markdown responses for docs and agent 404s", async () => {
+    const markdown = `---
+title: Quickstart
+description: Install.
+lastModified: 2026-05-01T12:00:00.000Z
+---
+# Quickstart
+`;
+
+    const docsResponse = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { "user-agent": "ClaudeBot/1.0" },
+      manifest,
+      readMarkdownFile: () => markdown,
+    });
+
+    expect(docsResponse).not.toBeNull();
+    expect(docsResponse?.status).toBe(200);
+    expect(docsResponse?.headers.get("Content-Type")).toBe(
+      "text/markdown; charset=utf-8"
+    );
+    expect(docsResponse?.headers.get("Vary")).toBe("Accept, User-Agent");
+    expect(docsResponse?.headers.get("Cache-Control")).toBe(
+      "public, max-age=300, must-revalidate"
+    );
+    const docsBody = await docsResponse?.text();
+    expect(docsBody).toContain("# Quickstart");
+    expect(docsBody).toContain("canonical_url:");
+
+    const missingResponse = await createAgentMarkdownResponse({
+      urlPath: "/missing-page",
+      headers: { accept: "text/markdown" },
+      manifest,
+      requestOrigin: "http://localhost:3000",
+      now: new Date("2026-05-02T00:00:00.000Z"),
+      readMarkdownFile: () => null,
+    });
+
+    expect(missingResponse).not.toBeNull();
+    expect(missingResponse?.status).toBe(200);
+    expect(missingResponse?.headers.get("Link")).toBe(
+      '<http://localhost:3000/missing-page>; rel="canonical"'
+    );
+    const missingBody = await missingResponse?.text();
+    expect(missingBody).toContain("# Page not found");
+
+    expect(
+      renderMissingMarkdown({
+        urlPath: "/missing-page",
+        canonicalUrl: "https://example.com/missing-page",
+        lastUpdated: "2026-05-02T00:00:00.000Z",
+      })
+    ).toContain('last_updated: "2026-05-02T00:00:00.000Z"');
+  });
+
+  it("supports async readMarkdownFile for edge runtimes", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { "user-agent": "ClaudeBot/1.0" },
+      manifest,
+      readMarkdownFile: () =>
+        Promise.resolve("---\ntitle: Quickstart\n---\n# Quickstart from KV\n"),
+    });
+    expect(await response?.text()).toContain("# Quickstart from KV");
+  });
+
+  it("HEAD method returns headers with empty body", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      method: "HEAD",
+      headers: { accept: "text/markdown" },
+      manifest,
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+    expect(response?.headers.get("Content-Type")).toBe(
+      "text/markdown; charset=utf-8"
+    );
+    expect(await response?.text()).toBe("");
+  });
+
+  it("rejects non-readable methods", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      method: "POST",
+      headers: { accept: "text/markdown" },
+      manifest,
+      readMarkdownFile: () => "# x",
+    });
+    expect(response).toBeNull();
+  });
+
+  it("throws on unsupported manifest version", async () => {
+    const badManifest = {
+      ...manifest,
+      version: 2,
+    } as unknown as typeof manifest;
+    await expect(
+      createAgentMarkdownResponse({
+        urlPath: "/docs/quickstart",
+        headers: { accept: "text/markdown" },
+        manifest: badManifest,
+        readMarkdownFile: () => "# x",
+      })
+    ).rejects.toThrow(/manifest version 2/);
+  });
+
+  it("recognizes /llms-full.txt as an artifact (not a missing markdown page)", () => {
+    expect(isAgentReadabilityArtifactPath("/llms-full.txt")).toBe(true);
+    expect(isAgentReadabilityArtifactPath("/docs/llms-full.txt")).toBe(true);
+    expect(
+      isAgentReadabilityArtifactPath("/docs/llms-full/get-started.txt")
+    ).toBe(true);
+  });
+
+  it("enrichMarkdownFrontmatter tolerates CRLF line endings", () => {
+    const markdown =
+      "---\r\ntitle: Quickstart\r\nlastModified: 2026-05-01T12:00:00.000Z\r\n---\r\n# Quickstart\r\n";
+    expect(
+      enrichMarkdownFrontmatter(markdown, {
+        canonicalUrl: "https://example.com/docs/quickstart",
+      })
+    ).toContain('last_updated: "2026-05-01T12:00:00.000Z"');
+  });
+});
+
+describe("agent artifact response helpers", () => {
+  const manifest = {
+    version: 1,
+    generatedAt: "2026-05-01T00:00:00.000Z",
+    baseUrl: "https://docs.example.com",
+    product: { name: "Leadtype", summary: "Docs pipeline." },
+    files: {
+      robotsTxt: "/docs/robots.txt",
+      sitemapMd: "/docs/sitemap.md",
+      sitemapXml: "/docs/sitemap.xml",
+    },
+    navigation: {
+      groups: [
+        {
+          slug: "get-started",
+          segmentPath: ["get-started"],
+          title: "Get Started",
+          description: "Start here.",
+          pages: [
+            {
+              urlPath: "/docs/quickstart",
+              title: "Quickstart",
+              description: "Install.",
+              groups: ["get-started"],
+            },
+          ],
+          children: [],
+        },
+      ],
+      ungrouped: [],
+      unknown: [],
+    },
+    pages: [
+      {
+        title: "Quickstart",
+        description: "Install.",
+        urlPath: "/docs/quickstart",
+        absoluteUrl: "https://docs.example.com/docs/quickstart",
+        markdownUrlPath: "/docs/quickstart.md",
+        markdownAbsoluteUrl: "https://docs.example.com/docs/quickstart.md",
+        relativePath: "quickstart",
+        groups: ["get-started"],
+        lastModified: "2026-05-01T12:00:00.000Z",
+      },
+    ],
+  } as const;
+
+  it("createSitemapXmlResponse rebases absolute URLs against requestOrigin", async () => {
+    const response = createSitemapXmlResponse({
+      manifest,
+      requestOrigin: "http://localhost:5173",
+    });
+    expect(response.headers.get("Content-Type")).toBe(
+      "application/xml; charset=utf-8"
+    );
+    expect(response.headers.get("Cache-Control")).toBe(
+      "public, max-age=300, must-revalidate"
+    );
+    const body = await response.text();
+    expect(body).toContain("<loc>http://localhost:5173/docs/quickstart</loc>");
+    expect(body).not.toContain("https://docs.example.com");
+  });
+
+  it("createSitemapXmlResponse falls back to manifest.baseUrl", async () => {
+    const response = createSitemapXmlResponse({ manifest });
+    const body = await response.text();
+    expect(body).toContain(
+      "<loc>https://docs.example.com/docs/quickstart</loc>"
+    );
+  });
+
+  it("createSitemapXmlResponse accepts merged pages", async () => {
+    const response = createSitemapXmlResponse({
+      manifest,
+      requestOrigin: "https://example.com",
+      pages: [
+        ...manifest.pages,
+        {
+          title: "Marketing",
+          description: "",
+          urlPath: "/about",
+          absoluteUrl: "https://docs.example.com/about",
+          markdownUrlPath: "/about.md",
+          markdownAbsoluteUrl: "https://docs.example.com/about.md",
+          relativePath: "about",
+          groups: [],
+          lastModified: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    });
+    const body = await response.text();
+    expect(body).toContain("<loc>https://example.com/about</loc>");
+    expect(body).toContain("<loc>https://example.com/docs/quickstart</loc>");
+  });
+
+  it("createSitemapMarkdownResponse rebuilds the navigation tree", async () => {
+    const response = createSitemapMarkdownResponse({
+      manifest,
+      requestOrigin: "http://localhost:5173",
+    });
+    expect(response.headers.get("Content-Type")).toBe(
+      "text/markdown; charset=utf-8"
+    );
+    const body = await response.text();
+    expect(body).toContain("# Sitemap");
+    expect(body).toContain("## Get Started");
+    expect(body).toContain("[Quickstart](/docs/quickstart)");
+  });
+
+  it("createRobotsTxtResponse uses live origin for Sitemap directive", async () => {
+    const response = createRobotsTxtResponse({
+      manifest,
+      requestOrigin: "http://localhost:5173",
+    });
+    expect(response.headers.get("Content-Type")).toBe(
+      "text/plain; charset=utf-8"
+    );
+    const body = await response.text();
+    expect(body).toContain("Sitemap: http://localhost:5173/sitemap.xml");
+    expect(body).toContain("User-agent: AmazonBot");
+    expect(body).toContain("User-agent: Bingbot");
+  });
+
+  it("Cache-Control: null strips the header on artifact responses", () => {
+    const sitemap = createSitemapXmlResponse({ manifest, cacheControl: null });
+    expect(sitemap.headers.get("Cache-Control")).toBeNull();
+    const robots = createRobotsTxtResponse({ manifest, cacheControl: null });
+    expect(robots.headers.get("Cache-Control")).toBeNull();
+  });
+
+  it("artifact responses throw on unsupported manifest version", () => {
+    const bad = { ...manifest, version: 2 } as unknown as typeof manifest;
+    expect(() => createSitemapXmlResponse({ manifest: bad })).toThrow(
+      /manifest version 2/
+    );
+    expect(() => createSitemapMarkdownResponse({ manifest: bad })).toThrow();
+    expect(() => createRobotsTxtResponse({ manifest: bad })).toThrow();
+  });
+});
+
+describe("createDocsHead", () => {
+  const manifest = {
+    version: 1,
+    generatedAt: "2026-05-01T00:00:00.000Z",
+    baseUrl: "https://docs.example.com",
+    product: { name: "Leadtype", summary: "Docs pipeline." },
+    files: {
+      robotsTxt: "/docs/robots.txt",
+      sitemapMd: "/docs/sitemap.md",
+      sitemapXml: "/docs/sitemap.xml",
+    },
+    navigation: { groups: [], ungrouped: [], unknown: [] },
+    pages: [
+      {
+        title: "Quickstart",
+        description: "Install.",
+        urlPath: "/docs/quickstart",
+        absoluteUrl: "https://docs.example.com/docs/quickstart",
+        markdownUrlPath: "/docs/quickstart.md",
+        markdownAbsoluteUrl: "https://docs.example.com/docs/quickstart.md",
+        relativePath: "quickstart",
+        groups: ["get-started"],
+        lastModified: "2026-05-01T12:00:00.000Z",
+      },
+    ],
+  } as const;
+
+  it("returns title, og, json-ld meta + canonical and alternate links for known pages", () => {
+    const head = createDocsHead({ urlPath: "/docs/quickstart", manifest });
+    expect(head.meta).toContainEqual({ title: "Quickstart | Leadtype" });
+    expect(head.meta).toContainEqual({
+      name: "description",
+      content: "Install.",
+    });
+    expect(head.meta).toContainEqual({
+      property: "og:title",
+      content: "Quickstart | Leadtype",
+    });
+    const jsonLdEntry = head.meta.find((m) => "script:ld+json" in m);
+    expect(jsonLdEntry).toBeDefined();
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://docs.example.com/docs/quickstart",
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      type: "text/markdown",
+      href: "https://docs.example.com/docs/quickstart.md",
+    });
+  });
+
+  it("respects jsonLdMetaKey override", () => {
+    const head = createDocsHead({
+      urlPath: "/docs/quickstart",
+      manifest,
+      jsonLdMetaKey: "ldJson",
+    });
+    expect(head.meta.find((m) => "ldJson" in m)).toBeDefined();
+    expect(head.meta.find((m) => "script:ld+json" in m)).toBeUndefined();
+  });
+
+  it("returns empty arrays for unknown urlPath", () => {
+    const head = createDocsHead({ urlPath: "/docs/unknown", manifest });
+    expect(head.meta).toEqual([]);
+    expect(head.links).toEqual([]);
+  });
+
+  it("throws on unsupported manifest version", () => {
+    const bad = { ...manifest, version: 2 } as unknown as typeof manifest;
+    expect(() =>
+      createDocsHead({ urlPath: "/docs/quickstart", manifest: bad })
+    ).toThrow(/manifest version 2/);
   });
 });
 

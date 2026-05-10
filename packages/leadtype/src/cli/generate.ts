@@ -13,6 +13,7 @@ import {
 } from "../internal/logger";
 import type { DocsGroup, ProductInfo } from "../llm";
 import {
+  generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
@@ -67,6 +68,10 @@ type GenerateResult = {
   docsDir: string;
   files: {
     agentsMd?: string;
+    agentReadabilityManifest?: string;
+    docsRobotsTxt?: string;
+    docsSitemapMd?: string;
+    docsSitemapXml?: string;
     docsLlmsFullTxt?: string;
     docsLlmsTxt?: string;
     llmsTxt?: string;
@@ -88,7 +93,8 @@ Usage:
   leadtype generate [options]
 
 By default, runs in site mode and writes:
-  llms.txt, docs/*.md, docs/llms-full/*.txt, docs/search-index.json
+  llms.txt, docs/*.md, docs/llms-full/*.txt, docs/search-index.json,
+  docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
 
 With --bundle, runs in package mode and writes:
   AGENTS.md, docs/*.md
@@ -439,10 +445,20 @@ export async function runGenerateCommand(
         outDir,
         baseUrl: args.baseUrl,
       });
+      const agentReadability = await generateAgentReadabilityArtifacts({
+        outDir,
+        baseUrl: args.baseUrl,
+        product,
+        groups,
+      });
 
       result = {
         docsDir,
         files: {
+          agentReadabilityManifest: agentReadability.files.manifest,
+          docsRobotsTxt: agentReadability.files.robotsTxt,
+          docsSitemapMd: agentReadability.files.sitemapMd,
+          docsSitemapXml: agentReadability.files.sitemapXml,
           docsLlmsFullTxt: path.join(outDir, "docs", "llms-full.txt"),
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),

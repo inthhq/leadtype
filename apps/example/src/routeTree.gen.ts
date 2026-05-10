@@ -13,7 +13,11 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as PlaygroundRouteImport } from './routes/playground'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SearchIndexRouteImport } from './routes/search/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as SearchVercelRouteImport } from './routes/search/vercel'
+import { Route as SearchTanstackRouteImport } from './routes/search/tanstack'
+import { Route as SearchCloudflareRouteImport } from './routes/search/cloudflare'
 import { Route as DocsQuickstartRouteImport } from './routes/docs/quickstart'
 import { Route as DocsMethodologyRouteImport } from './routes/docs/methodology'
 import { Route as DocsHowItWorksRouteImport } from './routes/docs/how-it-works'
@@ -24,12 +28,16 @@ import { Route as DocsReferenceLintRouteImport } from './routes/docs/reference/l
 import { Route as DocsReferenceConvertRouteImport } from './routes/docs/reference/convert'
 import { Route as DocsReferenceCliRouteImport } from './routes/docs/reference/cli'
 import { Route as DocsBuildValidateInCiRouteImport } from './routes/docs/build/validate-in-ci'
+import { Route as DocsBuildOptimizeDocsForAgentsRouteImport } from './routes/docs/build/optimize-docs-for-agents'
 import { Route as DocsBuildConnectDocsSiteRouteImport } from './routes/docs/build/connect-docs-site'
 import { Route as DocsBuildBundlePackageDocsRouteImport } from './routes/docs/build/bundle-package-docs'
 import { Route as DocsAuthoringFrontmatterRouteImport } from './routes/docs/authoring/frontmatter'
 import { Route as DocsAuthoringComponentsRouteImport } from './routes/docs/authoring/components'
 import { Route as ApiDocsSearchRouteImport } from './routes/api/docs/search'
 import { Route as ApiDocsAskRouteImport } from './routes/api/docs/ask'
+import { Route as ApiDocsAskVercelRouteImport } from './routes/api/docs/ask/vercel'
+import { Route as ApiDocsAskTanstackRouteImport } from './routes/api/docs/ask/tanstack'
+import { Route as ApiDocsAskCloudflareRouteImport } from './routes/api/docs/ask/cloudflare'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -51,10 +59,30 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchIndexRoute = SearchIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchRoute,
+} as any)
 const DocsIndexRoute = DocsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DocsRouteRoute,
+} as any)
+const SearchVercelRoute = SearchVercelRouteImport.update({
+  id: '/vercel',
+  path: '/vercel',
+  getParentRoute: () => SearchRoute,
+} as any)
+const SearchTanstackRoute = SearchTanstackRouteImport.update({
+  id: '/tanstack',
+  path: '/tanstack',
+  getParentRoute: () => SearchRoute,
+} as any)
+const SearchCloudflareRoute = SearchCloudflareRouteImport.update({
+  id: '/cloudflare',
+  path: '/cloudflare',
+  getParentRoute: () => SearchRoute,
 } as any)
 const DocsQuickstartRoute = DocsQuickstartRouteImport.update({
   id: '/quickstart',
@@ -106,6 +134,12 @@ const DocsBuildValidateInCiRoute = DocsBuildValidateInCiRouteImport.update({
   path: '/build/validate-in-ci',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const DocsBuildOptimizeDocsForAgentsRoute =
+  DocsBuildOptimizeDocsForAgentsRouteImport.update({
+    id: '/build/optimize-docs-for-agents',
+    path: '/build/optimize-docs-for-agents',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
 const DocsBuildConnectDocsSiteRoute =
   DocsBuildConnectDocsSiteRouteImport.update({
     id: '/build/connect-docs-site',
@@ -139,22 +173,42 @@ const ApiDocsAskRoute = ApiDocsAskRouteImport.update({
   path: '/api/docs/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDocsAskVercelRoute = ApiDocsAskVercelRouteImport.update({
+  id: '/vercel',
+  path: '/vercel',
+  getParentRoute: () => ApiDocsAskRoute,
+} as any)
+const ApiDocsAskTanstackRoute = ApiDocsAskTanstackRouteImport.update({
+  id: '/tanstack',
+  path: '/tanstack',
+  getParentRoute: () => ApiDocsAskRoute,
+} as any)
+const ApiDocsAskCloudflareRoute = ApiDocsAskCloudflareRouteImport.update({
+  id: '/cloudflare',
+  path: '/cloudflare',
+  getParentRoute: () => ApiDocsAskRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
-  '/search': typeof SearchRoute
+  '/search': typeof SearchRouteWithChildren
   '/docs/how-it-works': typeof DocsHowItWorksRoute
   '/docs/methodology': typeof DocsMethodologyRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
+  '/search/cloudflare': typeof SearchCloudflareRoute
+  '/search/tanstack': typeof SearchTanstackRoute
+  '/search/vercel': typeof SearchVercelRoute
   '/docs/': typeof DocsIndexRoute
-  '/api/docs/ask': typeof ApiDocsAskRoute
+  '/search/': typeof SearchIndexRoute
+  '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
+  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -162,21 +216,28 @@ export interface FileRoutesByFullPath {
   '/docs/reference/llm': typeof DocsReferenceLlmRoute
   '/docs/reference/remark': typeof DocsReferenceRemarkRoute
   '/docs/reference/search': typeof DocsReferenceSearchRoute
+  '/api/docs/ask/cloudflare': typeof ApiDocsAskCloudflareRoute
+  '/api/docs/ask/tanstack': typeof ApiDocsAskTanstackRoute
+  '/api/docs/ask/vercel': typeof ApiDocsAskVercelRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/playground': typeof PlaygroundRoute
-  '/search': typeof SearchRoute
   '/docs/how-it-works': typeof DocsHowItWorksRoute
   '/docs/methodology': typeof DocsMethodologyRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
+  '/search/cloudflare': typeof SearchCloudflareRoute
+  '/search/tanstack': typeof SearchTanstackRoute
+  '/search/vercel': typeof SearchVercelRoute
   '/docs': typeof DocsIndexRoute
-  '/api/docs/ask': typeof ApiDocsAskRoute
+  '/search': typeof SearchIndexRoute
+  '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
+  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -184,23 +245,31 @@ export interface FileRoutesByTo {
   '/docs/reference/llm': typeof DocsReferenceLlmRoute
   '/docs/reference/remark': typeof DocsReferenceRemarkRoute
   '/docs/reference/search': typeof DocsReferenceSearchRoute
+  '/api/docs/ask/cloudflare': typeof ApiDocsAskCloudflareRoute
+  '/api/docs/ask/tanstack': typeof ApiDocsAskTanstackRoute
+  '/api/docs/ask/vercel': typeof ApiDocsAskVercelRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
-  '/search': typeof SearchRoute
+  '/search': typeof SearchRouteWithChildren
   '/docs/how-it-works': typeof DocsHowItWorksRoute
   '/docs/methodology': typeof DocsMethodologyRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
+  '/search/cloudflare': typeof SearchCloudflareRoute
+  '/search/tanstack': typeof SearchTanstackRoute
+  '/search/vercel': typeof SearchVercelRoute
   '/docs/': typeof DocsIndexRoute
-  '/api/docs/ask': typeof ApiDocsAskRoute
+  '/search/': typeof SearchIndexRoute
+  '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
+  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -208,6 +277,9 @@ export interface FileRoutesById {
   '/docs/reference/llm': typeof DocsReferenceLlmRoute
   '/docs/reference/remark': typeof DocsReferenceRemarkRoute
   '/docs/reference/search': typeof DocsReferenceSearchRoute
+  '/api/docs/ask/cloudflare': typeof ApiDocsAskCloudflareRoute
+  '/api/docs/ask/tanstack': typeof ApiDocsAskTanstackRoute
+  '/api/docs/ask/vercel': typeof ApiDocsAskVercelRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -219,13 +291,18 @@ export interface FileRouteTypes {
     | '/docs/how-it-works'
     | '/docs/methodology'
     | '/docs/quickstart'
+    | '/search/cloudflare'
+    | '/search/tanstack'
+    | '/search/vercel'
     | '/docs/'
+    | '/search/'
     | '/api/docs/ask'
     | '/api/docs/search'
     | '/docs/authoring/components'
     | '/docs/authoring/frontmatter'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
+    | '/docs/build/optimize-docs-for-agents'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -233,21 +310,28 @@ export interface FileRouteTypes {
     | '/docs/reference/llm'
     | '/docs/reference/remark'
     | '/docs/reference/search'
+    | '/api/docs/ask/cloudflare'
+    | '/api/docs/ask/tanstack'
+    | '/api/docs/ask/vercel'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/playground'
-    | '/search'
     | '/docs/how-it-works'
     | '/docs/methodology'
     | '/docs/quickstart'
+    | '/search/cloudflare'
+    | '/search/tanstack'
+    | '/search/vercel'
     | '/docs'
+    | '/search'
     | '/api/docs/ask'
     | '/api/docs/search'
     | '/docs/authoring/components'
     | '/docs/authoring/frontmatter'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
+    | '/docs/build/optimize-docs-for-agents'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -255,6 +339,9 @@ export interface FileRouteTypes {
     | '/docs/reference/llm'
     | '/docs/reference/remark'
     | '/docs/reference/search'
+    | '/api/docs/ask/cloudflare'
+    | '/api/docs/ask/tanstack'
+    | '/api/docs/ask/vercel'
   id:
     | '__root__'
     | '/'
@@ -264,13 +351,18 @@ export interface FileRouteTypes {
     | '/docs/how-it-works'
     | '/docs/methodology'
     | '/docs/quickstart'
+    | '/search/cloudflare'
+    | '/search/tanstack'
+    | '/search/vercel'
     | '/docs/'
+    | '/search/'
     | '/api/docs/ask'
     | '/api/docs/search'
     | '/docs/authoring/components'
     | '/docs/authoring/frontmatter'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
+    | '/docs/build/optimize-docs-for-agents'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -278,14 +370,17 @@ export interface FileRouteTypes {
     | '/docs/reference/llm'
     | '/docs/reference/remark'
     | '/docs/reference/search'
+    | '/api/docs/ask/cloudflare'
+    | '/api/docs/ask/tanstack'
+    | '/api/docs/ask/vercel'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   PlaygroundRoute: typeof PlaygroundRoute
-  SearchRoute: typeof SearchRoute
-  ApiDocsAskRoute: typeof ApiDocsAskRoute
+  SearchRoute: typeof SearchRouteWithChildren
+  ApiDocsAskRoute: typeof ApiDocsAskRouteWithChildren
   ApiDocsSearchRoute: typeof ApiDocsSearchRoute
 }
 
@@ -319,12 +414,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search/': {
+      id: '/search/'
+      path: '/'
+      fullPath: '/search/'
+      preLoaderRoute: typeof SearchIndexRouteImport
+      parentRoute: typeof SearchRoute
+    }
     '/docs/': {
       id: '/docs/'
       path: '/'
       fullPath: '/docs/'
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof DocsRouteRoute
+    }
+    '/search/vercel': {
+      id: '/search/vercel'
+      path: '/vercel'
+      fullPath: '/search/vercel'
+      preLoaderRoute: typeof SearchVercelRouteImport
+      parentRoute: typeof SearchRoute
+    }
+    '/search/tanstack': {
+      id: '/search/tanstack'
+      path: '/tanstack'
+      fullPath: '/search/tanstack'
+      preLoaderRoute: typeof SearchTanstackRouteImport
+      parentRoute: typeof SearchRoute
+    }
+    '/search/cloudflare': {
+      id: '/search/cloudflare'
+      path: '/cloudflare'
+      fullPath: '/search/cloudflare'
+      preLoaderRoute: typeof SearchCloudflareRouteImport
+      parentRoute: typeof SearchRoute
     }
     '/docs/quickstart': {
       id: '/docs/quickstart'
@@ -396,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsBuildValidateInCiRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/docs/build/optimize-docs-for-agents': {
+      id: '/docs/build/optimize-docs-for-agents'
+      path: '/build/optimize-docs-for-agents'
+      fullPath: '/docs/build/optimize-docs-for-agents'
+      preLoaderRoute: typeof DocsBuildOptimizeDocsForAgentsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/docs/build/connect-docs-site': {
       id: '/docs/build/connect-docs-site'
       path: '/build/connect-docs-site'
@@ -438,6 +568,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDocsAskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/docs/ask/vercel': {
+      id: '/api/docs/ask/vercel'
+      path: '/vercel'
+      fullPath: '/api/docs/ask/vercel'
+      preLoaderRoute: typeof ApiDocsAskVercelRouteImport
+      parentRoute: typeof ApiDocsAskRoute
+    }
+    '/api/docs/ask/tanstack': {
+      id: '/api/docs/ask/tanstack'
+      path: '/tanstack'
+      fullPath: '/api/docs/ask/tanstack'
+      preLoaderRoute: typeof ApiDocsAskTanstackRouteImport
+      parentRoute: typeof ApiDocsAskRoute
+    }
+    '/api/docs/ask/cloudflare': {
+      id: '/api/docs/ask/cloudflare'
+      path: '/cloudflare'
+      fullPath: '/api/docs/ask/cloudflare'
+      preLoaderRoute: typeof ApiDocsAskCloudflareRouteImport
+      parentRoute: typeof ApiDocsAskRoute
+    }
   }
 }
 
@@ -450,6 +601,7 @@ interface DocsRouteRouteChildren {
   DocsAuthoringFrontmatterRoute: typeof DocsAuthoringFrontmatterRoute
   DocsBuildBundlePackageDocsRoute: typeof DocsBuildBundlePackageDocsRoute
   DocsBuildConnectDocsSiteRoute: typeof DocsBuildConnectDocsSiteRoute
+  DocsBuildOptimizeDocsForAgentsRoute: typeof DocsBuildOptimizeDocsForAgentsRoute
   DocsBuildValidateInCiRoute: typeof DocsBuildValidateInCiRoute
   DocsReferenceCliRoute: typeof DocsReferenceCliRoute
   DocsReferenceConvertRoute: typeof DocsReferenceConvertRoute
@@ -468,6 +620,7 @@ const DocsRouteRouteChildren: DocsRouteRouteChildren = {
   DocsAuthoringFrontmatterRoute: DocsAuthoringFrontmatterRoute,
   DocsBuildBundlePackageDocsRoute: DocsBuildBundlePackageDocsRoute,
   DocsBuildConnectDocsSiteRoute: DocsBuildConnectDocsSiteRoute,
+  DocsBuildOptimizeDocsForAgentsRoute: DocsBuildOptimizeDocsForAgentsRoute,
   DocsBuildValidateInCiRoute: DocsBuildValidateInCiRoute,
   DocsReferenceCliRoute: DocsReferenceCliRoute,
   DocsReferenceConvertRoute: DocsReferenceConvertRoute,
@@ -481,12 +634,45 @@ const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(
   DocsRouteRouteChildren,
 )
 
+interface SearchRouteChildren {
+  SearchCloudflareRoute: typeof SearchCloudflareRoute
+  SearchTanstackRoute: typeof SearchTanstackRoute
+  SearchVercelRoute: typeof SearchVercelRoute
+  SearchIndexRoute: typeof SearchIndexRoute
+}
+
+const SearchRouteChildren: SearchRouteChildren = {
+  SearchCloudflareRoute: SearchCloudflareRoute,
+  SearchTanstackRoute: SearchTanstackRoute,
+  SearchVercelRoute: SearchVercelRoute,
+  SearchIndexRoute: SearchIndexRoute,
+}
+
+const SearchRouteWithChildren =
+  SearchRoute._addFileChildren(SearchRouteChildren)
+
+interface ApiDocsAskRouteChildren {
+  ApiDocsAskCloudflareRoute: typeof ApiDocsAskCloudflareRoute
+  ApiDocsAskTanstackRoute: typeof ApiDocsAskTanstackRoute
+  ApiDocsAskVercelRoute: typeof ApiDocsAskVercelRoute
+}
+
+const ApiDocsAskRouteChildren: ApiDocsAskRouteChildren = {
+  ApiDocsAskCloudflareRoute: ApiDocsAskCloudflareRoute,
+  ApiDocsAskTanstackRoute: ApiDocsAskTanstackRoute,
+  ApiDocsAskVercelRoute: ApiDocsAskVercelRoute,
+}
+
+const ApiDocsAskRouteWithChildren = ApiDocsAskRoute._addFileChildren(
+  ApiDocsAskRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRouteRoute: DocsRouteRouteWithChildren,
   PlaygroundRoute: PlaygroundRoute,
-  SearchRoute: SearchRoute,
-  ApiDocsAskRoute: ApiDocsAskRoute,
+  SearchRoute: SearchRouteWithChildren,
+  ApiDocsAskRoute: ApiDocsAskRouteWithChildren,
   ApiDocsSearchRoute: ApiDocsSearchRoute,
 }
 export const routeTree = rootRouteImport

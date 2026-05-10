@@ -32,6 +32,7 @@
 }
 
 :root {
+  --docs-anchor-offset-rem: 5.25rem;
   --background: oklch(0.992 0.004 245);
   --foreground: oklch(0.205 0.014 245);
   --card: oklch(0.998 0.002 245);
@@ -83,6 +84,7 @@
 .docs-prose h2,
 .docs-prose h3,
 .docs-prose h4:not([data-leadtype-step-title]) {
+  scroll-margin-top: var(--docs-anchor-offset-rem);
   @apply font-heading font-medium tracking-tight text-foreground;
 }
 

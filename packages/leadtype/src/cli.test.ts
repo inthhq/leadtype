@@ -127,6 +127,12 @@ describe("leadtype CLI", () => {
     expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
       true
     );
+    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "agent-readability.json"))
+    ).toBe(true);
 
     const docsSummary = await readFile(
       path.join(outDir, "docs", "llms.txt"),
@@ -134,6 +140,7 @@ describe("leadtype CLI", () => {
     );
     expect(docsSummary).toContain("Methodology");
     expect(docsSummary).toContain("Connect a docs site");
+    expect(docsSummary).toContain("](/docs/methodology.md)");
   });
 
   it("prints machine-readable generate output for agents", async () => {
@@ -161,7 +168,7 @@ describe("leadtype CLI", () => {
 
     expect(code).toBe(0);
     const result = JSON.parse(capture.stdout) as {
-      files: { searchIndex: string };
+      files: { agentReadabilityManifest: string; searchIndex: string };
       groups: Array<{ slug: string }>;
       outDir: string;
       search: { docs: number };
@@ -169,6 +176,9 @@ describe("leadtype CLI", () => {
     expect(result.outDir).toBe(outDir);
     expect(result.files.searchIndex).toBe(
       path.join(outDir, "docs", "search-index.json")
+    );
+    expect(result.files.agentReadabilityManifest).toBe(
+      path.join(outDir, "docs", "agent-readability.json")
     );
     expect(result.groups.map((group) => group.slug)).toContain("build");
     expect(result.search.docs).toBeGreaterThan(0);
@@ -368,12 +378,13 @@ This page is valid, but the output path is not a directory.
 
     expect(code).toBe(0);
     const result = JSON.parse(capture.stdout) as {
-      files: { agentsMd?: string; llmsTxt?: string };
+      files: { agentsMd?: string; docsSitemapXml?: string; llmsTxt?: string };
       mode: string;
     };
     expect(result.mode).toBe("bundle");
     expect(result.files.agentsMd).toBe(path.join(outDir, "AGENTS.md"));
     expect(result.files.llmsTxt).toBeUndefined();
+    expect(result.files.docsSitemapXml).toBeUndefined();
 
     // AGENTS.md exists, has the product header, and uses relative links.
     expect(existsSync(path.join(outDir, "AGENTS.md"))).toBe(true);
@@ -385,6 +396,8 @@ This page is valid, but the output path is not a directory.
     expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
       false
     );

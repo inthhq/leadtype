@@ -10,6 +10,7 @@ import {
 } from "./search";
 
 const DOCS_DIRNAME = "docs";
+const GENERATED_MARKDOWN_FILES = new Set(["sitemap.md"]);
 const DEFAULT_OUTPUT_FILE = "search-index.json";
 const DEFAULT_CONTENT_OUTPUT_FILE = "search-content.json";
 const WARN_INDEX_BYTES = 5 * 1024 * 1024;
@@ -147,6 +148,9 @@ async function readMarkdownDocs(
     const relativePath = path
       .relative(docsDir, filePath)
       .replace(WINDOWS_PATH_PATTERN, "/");
+    if (GENERATED_MARKDOWN_FILES.has(relativePath)) {
+      continue;
+    }
     const raw = await readFile(filePath, "utf-8");
     const parsed = matter(raw);
     const title =
