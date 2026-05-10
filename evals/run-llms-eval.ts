@@ -31,6 +31,7 @@ The docs site's web root is represented by files in the current project root. Tr
 Start at /llms.txt. Use only the docs files you read from this web-root representation. Write your final answer to ANSWER.md.`;
 
 const STEP_LIMIT = 40;
+const VITEST_TIMEOUT_MS = 60_000;
 
 type CliArgs = {
   fixture?: string;
@@ -67,7 +68,7 @@ function parseRequiredFlagValue(
   value: string | undefined,
   flag: string
 ): string {
-  if (!value || value.startsWith("--")) {
+  if (!value || /^-(?!\d)/.test(value)) {
     throw new Error(`${flag} requires a value`);
   }
   return value;
@@ -135,8 +136,7 @@ function namespaceModelId(modelId: string): string {
 
 function getModel(modelId: string): {
   provider: Provider;
-  // biome-ignore lint/suspicious/noExplicitAny: the AI SDK model handle is an opaque shape
-  model: any;
+  model: ReturnType<typeof gateway>;
 } {
   const namespaced = namespaceModelId(modelId);
   const provider: Provider = namespaced.startsWith("openai/")
@@ -281,14 +281,39 @@ async function archiveTranscript(opts: {
   );
   for (const rel of transcript.filesModified) {
     try {
-      const content = await readFile(path.join(tempDir, rel), "utf-8");
-      const dest = path.join(dir, "files", rel);
+      const safeRel = toSafeArchivePath(rel);
+      if (!safeRel) {
+        continue;
+      }
+      const content = await readFile(path.join(tempDir, safeRel), "utf-8");
+      const filesDir = path.join(dir, "files");
+      const dest = path.join(filesDir, safeRel);
+      const relativeDest = path.relative(filesDir, dest);
+      if (relativeDest.startsWith("..") || path.isAbsolute(relativeDest)) {
+        continue;
+      }
       await mkdir(path.dirname(dest), { recursive: true });
       await writeFile(dest, content);
     } catch {
       // Best effort archive for files that still exist.
     }
   }
+}
+
+function toSafeArchivePath(rel: string): string | undefined {
+  if (path.isAbsolute(rel)) {
+    return;
+  }
+  const normalized = path.normalize(rel);
+  if (
+    normalized === "." ||
+    normalized.startsWith("..") ||
+    path.isAbsolute(normalized) ||
+    normalized.split(path.sep).includes("..")
+  ) {
+    return;
+  }
+  return normalized;
 }
 
 async function runVitest(
@@ -298,11 +323,15 @@ async function runVitest(
   const evalFile = path.join(fixturesRoot, fixture, "EVAL.ts");
   return await new Promise((resolveSpawn) => {
     let settled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     const settle = (result: { passed: boolean; output: string }) => {
       if (settled) {
         return;
       }
       settled = true;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
       resolveSpawn(result);
     };
 
@@ -324,10 +353,17 @@ async function runVitest(
     }
 
     let output = "";
-    proc.stdout.on("data", (b) => {
+    timeout = setTimeout(() => {
+      proc.kill("SIGKILL");
+      settle({
+        passed: false,
+        output: `${output}\ntimeout after ${VITEST_TIMEOUT_MS}ms`,
+      });
+    }, VITEST_TIMEOUT_MS);
+    proc.stdout?.on("data", (b) => {
       output += b.toString();
     });
-    proc.stderr.on("data", (b) => {
+    proc.stderr?.on("data", (b) => {
       output += b.toString();
     });
     proc.on("error", (err) => {
@@ -400,7 +436,9 @@ async function main(): Promise<void> {
     process.stderr.write(`Fixture not found: ${args.fixture}\n`);
     process.exit(1);
   }
-  const variants = args.variant ? [args.variant] : [...LLMS_VARIANTS];
+  const variants = args.variant
+    ? [args.variant]
+    : LLMS_VARIANTS.map(parseLlmsVariant);
 
   const results: RunResult[] = [];
   for (const fixture of fixtures) {

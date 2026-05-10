@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export const LLMS_VARIANTS = [
+const LLMS_VARIANT_VALUES = [
   "page-links",
   "explicit-bundles",
   "monolith",
@@ -9,7 +9,9 @@ export const LLMS_VARIANTS = [
   "section-indexes",
 ] as const;
 
-export type LlmsVariant = (typeof LLMS_VARIANTS)[number];
+export type LlmsVariant = (typeof LLMS_VARIANT_VALUES)[number];
+
+export const LLMS_VARIANTS: readonly string[] = LLMS_VARIANT_VALUES;
 
 type DocsGroup = {
   slug: string;
@@ -197,9 +199,7 @@ export function parseLlmsVariant(value: string | undefined): LlmsVariant {
 }
 
 export function isLlmsVariant(value: unknown): value is LlmsVariant {
-  return (
-    typeof value === "string" && LLMS_VARIANTS.includes(value as LlmsVariant)
-  );
+  return typeof value === "string" && LLMS_VARIANTS.includes(value);
 }
 
 export async function materializeLlmsVariant(options: {

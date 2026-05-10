@@ -34,6 +34,7 @@ export async function assertLlmsFixture(fixtureUrl: URL): Promise<void> {
       expect(
         summary.readLlmsTxt ||
           summary.readRootFull ||
+          summary.sectionIndexReads.length > 0 ||
           summary.pageReads.length > 0 ||
           summary.groupReads.length > 0
       ).toBe(true);

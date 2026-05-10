@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-10T23:52:18.342Z",
+  "generatedAt": "2026-05-10T23:52:50.702Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -44,7 +44,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-10T22:54:48.000Z"
+      "lastModified": "2026-05-10T23:20:16.000Z"
     },
     {
       "title": "Bundle docs into a package",
@@ -70,7 +70,7 @@
       "groups": [
         "build"
       ],
-      "lastModified": "2026-05-10T22:54:48.000Z"
+      "lastModified": "2026-05-10T23:20:16.000Z"
     },
     {
       "title": "Optimize docs for agents",
@@ -109,7 +109,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-10T22:54:48.000Z"
+      "lastModified": "2026-05-10T23:20:16.000Z"
     },
     {
       "title": "Methodology",
