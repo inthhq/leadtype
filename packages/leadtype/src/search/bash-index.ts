@@ -6,6 +6,11 @@ export {
   type DocsBashFileMap,
 } from "./docs-bash";
 export {
+  type CreateDocsBashToolsOptions,
+  createDocsBashTools,
+  type DocsTanStackBashResult,
+} from "./tanstack-bash";
+export {
   type CreateDocsBashToolOptions,
   createDocsBashTool,
   type DocsBashToolResult,

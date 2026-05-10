@@ -23,7 +23,7 @@ import { generateDocsSearchFiles } from "leadtype/search/node";
 
 await generateDocsSearchFiles({
   outDir: "public",
-  baseUrl: "https://docs.example.com",
+  baseUrl: "https://leadtype.dev",
 });
 ```
 
@@ -57,6 +57,21 @@ const results = searchDocs(
 ```
 
 Results include heading paths, hash URLs, and snippets ready for a search UI.
+
+Search is still local and dependency-free, but it is not exact-token only. Query
+terms expand through lightweight stemming, prefix matches, typo-tolerant
+fallbacks, and a small built-in synonym map. Exact matches keep the highest
+weight so API names and config keys stay precise. Pass `synonyms` when your docs
+use product-specific vocabulary:
+
+```ts
+const results = searchDocs(index, "starter", {
+  content,
+  synonyms: {
+    starter: ["quickstart", "getting started"],
+  },
+});
+```
 
 ## Reading docs at runtime
 
@@ -121,12 +136,12 @@ For TanStack, pass an explicit `adapter`. For Cloudflare, build one with `create
 When you want an agent to **explore docs with shell commands** instead of receiving pre-selected chunks:
 
 ```ts
-import { createDocsBashTool } from "leadtype/search/vercel";
+import { createDocsBashTool, createDocsBashTools } from "leadtype/search/bash";
 
 const { tools, instructions } = await createDocsBashTool(index, content);
 ```
 
-The adapter exposes a read-only virtual `/docs` filesystem with `ls`, `cat`, `find`, `grep`, and `rg`. Network commands, code execution, and writes are disabled. TanStack and Cloudflare expose `createDocsBashTools` (plural) over the same filesystem.
+The adapter exposes a read-only virtual `/docs` filesystem with `ls`, `cat`, `find`, `grep`, and `rg`. Network commands, code execution, and writes are disabled. Use `createDocsBashTool` for Vercel AI SDK tool sets and `createDocsBashTools` for TanStack-compatible tools over the same filesystem.
 
 ## Abuse guards
 

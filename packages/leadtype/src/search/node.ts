@@ -2,6 +2,15 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import {
+  GENERIC_DOC_TITLES,
+  normalizeBaseUrl,
+  normalizeWhitespace as normalizeDescription,
+  normalizeDocsPath,
+  stripDocsExtension,
+  toAbsoluteUrl,
+  toDocsUrlPath,
+} from "../internal/docs-url";
 import { logger } from "../internal/logger";
 import {
   type CreateDocsSearchIndexOptions,
@@ -16,19 +25,7 @@ const DEFAULT_CONTENT_OUTPUT_FILE = "search-content.json";
 const WARN_INDEX_BYTES = 5 * 1024 * 1024;
 const WARN_TOTAL_BYTES = 10 * 1024 * 1024;
 const WARN_CHUNK_COUNT = 10_000;
-const WINDOWS_PATH_PATTERN = /\\/g;
-const MD_EXTENSION_PATTERN = /\.md$/;
-const INDEX_SEGMENT_PATTERN = /\/index$/;
-const ROOT_INDEX_PATTERN = /^index$/;
-const TRAILING_SLASHES_PATTERN = /\/+$/;
 const SEPARATOR_PATTERN = /[-_]/;
-const WHITESPACE_PATTERN = /\s+/g;
-const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
-
-type BrowserGlobal = typeof globalThis & {
-  location?: { origin?: string };
-  window?: { location?: { origin?: string } };
-};
 
 export type GenerateDocsSearchFilesConfig = {
   outDir: string;
@@ -50,47 +47,12 @@ export type GenerateDocsSearchFilesResult = {
   bytes: number;
 };
 
-function normalizeBaseUrl(baseUrl?: string): string {
-  const resolved =
-    baseUrl?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined) ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : undefined) ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : undefined) ||
-    process.env.PORTLESS_URL ||
-    getLocalBaseUrl();
-
-  return resolved.replace(TRAILING_SLASHES_PATTERN, "");
-}
-
-function getLocalBaseUrl(): string {
-  const browserGlobal = globalThis as BrowserGlobal;
-  const browserOrigin =
-    browserGlobal.window?.location?.origin ?? browserGlobal.location?.origin;
-  if (browserOrigin?.trim()) {
-    return browserOrigin.trim();
-  }
-
-  const port = process.env.PORT?.trim() || "3000";
-  return `http://localhost:${port}`;
-}
-
 function titleize(input: string): string {
   return input
     .split(SEPARATOR_PATTERN)
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
-}
-
-function normalizeDescription(input: string): string {
-  return input.replace(WHITESPACE_PATTERN, " ").trim();
 }
 
 function titleFromRelativePath(relativePath: string): string {
@@ -104,23 +66,6 @@ function titleFromRelativePath(relativePath: string): string {
       : fileName;
 
   return titleize(segment || "documentation");
-}
-
-function toUrlPath(relativePath: string): string {
-  const normalizedPath = relativePath
-    .replace(WINDOWS_PATH_PATTERN, "/")
-    .replace(MD_EXTENSION_PATTERN, "")
-    .replace(INDEX_SEGMENT_PATTERN, "")
-    .replace(ROOT_INDEX_PATTERN, "");
-
-  return normalizedPath.length > 0 ? `/docs/${normalizedPath}` : "/docs";
-}
-
-function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
-  if (urlPath.startsWith("http://") || urlPath.startsWith("https://")) {
-    return urlPath;
-  }
-  return `${baseUrl}${urlPath}`;
 }
 
 async function collectMarkdownFiles(rootDir: string): Promise<string[]> {
@@ -145,9 +90,7 @@ async function readMarkdownDocs(
   const docs: DocsSearchDocument[] = [];
 
   for (const filePath of files) {
-    const relativePath = path
-      .relative(docsDir, filePath)
-      .replace(WINDOWS_PATH_PATTERN, "/");
+    const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
     if (GENERATED_MARKDOWN_FILES.has(relativePath)) {
       continue;
     }
@@ -159,14 +102,14 @@ async function readMarkdownDocs(
     const description = normalizeDescription(
       String(parsed.data.description ?? "")
     );
-    const urlPath = toUrlPath(relativePath);
+    const urlPath = toDocsUrlPath(relativePath);
     docs.push({
-      id: relativePath.replace(MD_EXTENSION_PATTERN, ""),
+      id: stripDocsExtension(relativePath),
       title,
       description,
       urlPath,
       absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-      relativePath: relativePath.replace(MD_EXTENSION_PATTERN, ""),
+      relativePath: stripDocsExtension(relativePath),
       content: parsed.content.trim(),
     });
   }

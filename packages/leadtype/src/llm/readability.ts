@@ -6,10 +6,11 @@
  * Cloudflare Workers, Hono, Astro, Nuxt, Vite middleware, etc.
  */
 
+import { stripTrailingSlashes, toAbsoluteUrl } from "../internal/docs-url";
+
 const DOCS_DIRNAME = "docs";
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const TRAILING_SLASH_PATTERN = /\/$/;
-const TRAILING_SLASHES_PATTERN = /\/+$/;
 const MARKDOWN_ACCEPT_PATTERN = /text\/(markdown|plain)/i;
 const HTML_ACCEPT_PATTERN = /text\/html/i;
 const FRONTMATTER_BLOCK_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
@@ -221,17 +222,6 @@ function normalizeDate(value: unknown): string | undefined {
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
   }
   return;
-}
-
-function stripTrailingSlashes(value: string): string {
-  return value.replace(TRAILING_SLASHES_PATTERN, "");
-}
-
-function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
-  if (urlPath.startsWith("http://") || urlPath.startsWith("https://")) {
-    return urlPath;
-  }
-  return `${stripTrailingSlashes(baseUrl)}${urlPath}`;
 }
 
 function normalizeUrlPath(input: string): string {

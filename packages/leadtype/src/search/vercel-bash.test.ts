@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createDocsBashTool as createLegacyDocsBashTool } from "./bash-index";
+import { createDocsBashTool } from "./bash-index";
 import { createDocsSearchIndex, type DocsSearchDocument } from "./index";
-import { createDocsBashTool } from "./vercel-index";
 
 const docs: DocsSearchDocument[] = [
   {
@@ -9,17 +8,13 @@ const docs: DocsSearchDocument[] = [
     title: "Tabs",
     description: "Interactive tabs.",
     urlPath: "/docs/components/tabs",
-    absoluteUrl: "https://docs.example.com/docs/components/tabs",
+    absoluteUrl: "https://leadtype.dev/docs/components/tabs",
     relativePath: "components/tabs",
     content: "# Tabs\n\n## CommandTabs\n\nUse tabs to switch package managers.",
   },
 ];
 
 describe("Vercel docs bash tool", () => {
-  it("keeps the legacy bash alias compatible", () => {
-    expect(createLegacyDocsBashTool).toBe(createDocsBashTool);
-  });
-
   it("creates a bash-tool wrapper without writeFile by default", async () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

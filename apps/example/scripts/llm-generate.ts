@@ -32,7 +32,7 @@ const baseUrl =
   process.env.LEADTYPE_AGENT_BASE_URL?.trim() ||
   process.env.BASE_URL?.trim() ||
   process.env.PORTLESS_URL?.trim() ||
-  "https://docs.example.com";
+  "https://leadtype.dev";
 
 await generateLlmsTxt({
   srcDir,

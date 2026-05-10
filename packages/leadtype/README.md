@@ -20,7 +20,7 @@ pnpm add leadtype
 For a hosted docs site:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://docs.example.com
+npx leadtype generate --src . --out public --base-url https://leadtype.dev
 # → public/llms.txt, public/docs/*.md, public/docs/llms-full/*.txt,
 #   public/docs/search-index.json
 ```
@@ -36,13 +36,13 @@ The website output is fetched by humans (HTML) and HTTP agents (`Accept: text/ma
 
 ## Documentation
 
-Full docs at [docs.example.com](https://docs.example.com/docs). Highlights:
+Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 
-- [Quickstart](https://docs.example.com/docs/quickstart) — five-minute happy path.
-- [How it works](https://docs.example.com/docs/how-it-works) — the mental model.
-- [Build a docs site](https://docs.example.com/docs/build/connect-docs-site) — wire into your build.
-- [Bundle docs into a package](https://docs.example.com/docs/build/bundle-package-docs) — ship docs inside an npm tarball.
-- [CLI reference](https://docs.example.com/docs/reference/cli) — every flag.
+- [Quickstart](https://leadtype.dev/docs/quickstart) — five-minute happy path.
+- [How it works](https://leadtype.dev/docs/how-it-works) — the mental model.
+- [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site) — wire into your build.
+- [Bundle docs into a package](https://leadtype.dev/docs/build/bundle-package-docs) — ship docs inside an npm tarball.
+- [CLI reference](https://leadtype.dev/docs/reference/cli) — every flag.
 
 ## Entry points
 
@@ -54,9 +54,10 @@ Full docs at [docs.example.com](https://docs.example.com/docs). Highlights:
 | `leadtype/llm` | `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`. |
 | `leadtype/search` | Edge-safe search runtime, content readers, request guards. |
 | `leadtype/search/node` | Build-time `generateDocsSearchFiles`. |
-| `leadtype/search/vercel` | Vercel AI SDK / AI Gateway answer streaming and bash tools. |
-| `leadtype/search/tanstack` | TanStack AI answer streaming and bash tools. |
-| `leadtype/search/cloudflare` | Cloudflare AI Gateway / Workers AI adapter and bash tools. |
+| `leadtype/search/bash` | Read-only docs bash adapters for AI tools. |
+| `leadtype/search/vercel` | Vercel AI SDK / AI Gateway answer streaming. |
+| `leadtype/search/tanstack` | TanStack AI answer streaming. |
+| `leadtype/search/cloudflare` | Cloudflare AI Gateway / Workers AI adapter. |
 | `leadtype/lint` | `lintDocs` and the `leadtype lint` CLI. |
 
 The `leadtype` binary wraps `generate` and `lint`. Use the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.

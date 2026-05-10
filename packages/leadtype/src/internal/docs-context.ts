@@ -1,10 +1,8 @@
 import path from "node:path";
+import { normalizeDocsPath, toDocsUrlPath } from "./docs-url";
 
-const WINDOWS_PATH_PATTERN = /\\/g;
-const INDEX_SEGMENT_PATTERN = /\/index$/;
-const ROOT_INDEX_PATTERN = /^index$/;
-const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
-const TRAILING_SLASHES_PATTERN = /\/+$/;
+export { normalizeDocsUrl, toDocsUrlPath } from "./docs-url";
+
 const PLACEHOLDER_PATTERN = /\{([a-zA-Z][a-zA-Z0-9]*)(?::([^}]+))?\}/g;
 
 const FRAMEWORK_PATH_PATTERNS = [
@@ -17,10 +15,6 @@ export type DocContext = {
   sourcePath: string;
 };
 
-function normalizePath(input: string): string {
-  return input.replace(WINDOWS_PATH_PATTERN, "/");
-}
-
 /**
  * Build placeholder context from a docs source path.
  *
@@ -28,7 +22,7 @@ function normalizePath(input: string): string {
  * maintain a fixed allowlist of framework slugs.
  */
 export function deriveDocContext(sourcePath: string): DocContext {
-  const normalizedPath = normalizePath(sourcePath);
+  const normalizedPath = normalizeDocsPath(sourcePath);
 
   for (const pattern of FRAMEWORK_PATH_PATTERNS) {
     const match = normalizedPath.match(pattern);
@@ -120,26 +114,7 @@ export function resolvePlaceholderStrings<T>(value: T, context: DocContext): T {
   return value;
 }
 
-export function toDocsUrlPath(relativePath: string): string {
-  const normalizedPath = normalizePath(relativePath)
-    .replace(MD_EXTENSION_PATTERN, "")
-    .replace(INDEX_SEGMENT_PATTERN, "")
-    .replace(ROOT_INDEX_PATTERN, "");
-
-  return normalizedPath.length > 0 ? `/docs/${normalizedPath}` : "/docs";
-}
-
-export function normalizeDocsUrl(url: string): string {
-  const [withoutHashOrQuery] = url.split(/[?#]/, 1);
-  const normalized = (withoutHashOrQuery ?? "").replace(
-    TRAILING_SLASHES_PATTERN,
-    ""
-  );
-
-  return normalized.length > 0 ? normalized : "/docs";
-}
-
 export function routeFromFilePath(srcDir: string, filePath: string): string {
-  const relativePath = normalizePath(path.relative(srcDir, filePath));
+  const relativePath = normalizeDocsPath(path.relative(srcDir, filePath));
   return toDocsUrlPath(relativePath);
 }

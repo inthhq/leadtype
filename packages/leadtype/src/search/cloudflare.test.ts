@@ -21,10 +21,4 @@ describe("Cloudflare docs adapter", () => {
       })
     ).toMatchObject({ name: "workers-ai" });
   });
-
-  it("exports TanStack-compatible docs bash tools", async () => {
-    const { createDocsBashTools } = await import("./cloudflare-index");
-
-    expect(createDocsBashTools).toBeDefined();
-  });
 });

@@ -1,0 +1,5 @@
+---
+"leadtype": minor
+---
+
+Release leadtype

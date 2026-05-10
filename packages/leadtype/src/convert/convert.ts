@@ -61,6 +61,7 @@ const MDX_EXTENSION_REGEX = /\.mdx$/;
 const TITLE_CASE_REGEX = /\b\w/g;
 const NAME_SEPARATOR_REGEX = /[-_]+/g;
 const LIST_PREFIX_REGEX = /^\d+\.\s/;
+const DEFAULT_SOURCE_DIR = "docs";
 const GENERIC_DOC_NAMES = new Set(["home", "index", "readme"]);
 
 type RemarkProcessor = ReturnType<typeof remark>;
@@ -489,7 +490,7 @@ export async function writeMdxFileAsMarkdown(
 ): Promise<boolean> {
   const srcDir = config.srcDir
     ? resolve(config.srcDir)
-    : resolve(process.cwd(), ".c15t");
+    : resolve(process.cwd(), DEFAULT_SOURCE_DIR);
   const outDir = config.outDir
     ? resolve(config.outDir)
     : resolve(process.cwd(), "public");
@@ -513,7 +514,7 @@ export async function convertAllMdx(
 ): Promise<void> {
   const srcDir = config.srcDir
     ? resolve(config.srcDir)
-    : resolve(process.cwd(), ".c15t");
+    : resolve(process.cwd(), DEFAULT_SOURCE_DIR);
   const outDir = config.outDir
     ? resolve(config.outDir)
     : resolve(process.cwd(), "public");

@@ -10,6 +10,16 @@ import {
 import path from "node:path";
 import matter from "gray-matter";
 import {
+  GENERIC_DOC_TITLES,
+  normalizeBaseUrl,
+  normalizeWhitespace as normalizeDescription,
+  normalizeDocsPath,
+  stripDocsExtension,
+  toAbsoluteUrl,
+  toMarkdownUrlPath,
+  toDocsUrlPath as toUrlPath,
+} from "../internal/docs-url";
+import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
   type DocsNavigation,
@@ -36,21 +46,9 @@ function assertValidGroupSlug(slug: string, parentPath: string[]): string {
   }
   return slug;
 }
-const TRAILING_SLASHES_PATTERN = /\/+$/;
-const WINDOWS_PATH_PATTERN = /\\/g;
-const INDEX_SEGMENT_PATTERN = /\/index$/;
-const ROOT_INDEX_PATTERN = /^index$/;
-const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const GENERATED_MARKDOWN_FILES = new Set([SITEMAP_MARKDOWN_FILE]);
 const SEPARATOR_PATTERN = /[-_]/;
-const WHITESPACE_PATTERN = /\s+/g;
-const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
-
-type BrowserGlobal = typeof globalThis & {
-  location?: { origin?: string };
-  window?: { location?: { origin?: string } };
-};
 
 export type SourceDoc = {
   title: string;
@@ -227,10 +225,6 @@ function titleize(input: string): string {
     .join(" ");
 }
 
-function normalizeDescription(input: string): string {
-  return input.replace(WHITESPACE_PATTERN, " ").trim();
-}
-
 function titleFromRelativePath(
   relativePath: string,
   extension: ".md" | ".mdx"
@@ -245,58 +239,6 @@ function titleFromRelativePath(
   }
 
   return titleize(segment);
-}
-
-function normalizeBaseUrl(baseUrl?: string): string {
-  const resolved =
-    baseUrl?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined) ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : undefined) ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : undefined) ||
-    process.env.PORTLESS_URL ||
-    getLocalBaseUrl();
-
-  return resolved.replace(TRAILING_SLASHES_PATTERN, "");
-}
-
-function getLocalBaseUrl(): string {
-  const browserGlobal = globalThis as BrowserGlobal;
-  const browserOrigin =
-    browserGlobal.window?.location?.origin ?? browserGlobal.location?.origin;
-  if (browserOrigin?.trim()) {
-    return browserOrigin.trim();
-  }
-
-  const port = process.env.PORT?.trim() || "3000";
-  return `http://localhost:${port}`;
-}
-
-function toUrlPath(relativePath: string): string {
-  const normalizedPath = relativePath
-    .replace(WINDOWS_PATH_PATTERN, "/")
-    .replace(MD_EXTENSION_PATTERN, "")
-    .replace(INDEX_SEGMENT_PATTERN, "")
-    .replace(ROOT_INDEX_PATTERN, "");
-
-  return normalizedPath.length > 0 ? `/docs/${normalizedPath}` : "/docs";
-}
-
-function toMarkdownUrlPath(urlPath: string): string {
-  return urlPath === "/docs" ? "/docs/index.md" : `${urlPath}.md`;
-}
-
-function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
-  if (urlPath.startsWith("http://") || urlPath.startsWith("https://")) {
-    return urlPath;
-  }
-  return `${baseUrl}${urlPath}`;
 }
 
 function normalizeDate(value: unknown): string | undefined {
@@ -425,9 +367,7 @@ async function readSourceDocs(
 
   const entries = await Promise.all(
     files.map(async (filePath) => {
-      const relativePath = path
-        .relative(docsDir, filePath)
-        .replace(WINDOWS_PATH_PATTERN, "/");
+      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
       const raw = await readFile(filePath, "utf-8");
       const parsed = matter(raw);
       const title =
@@ -449,7 +389,7 @@ async function readSourceDocs(
           description,
           urlPath,
           absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-          relativePath: relativePath.replace(MD_EXTENSION_PATTERN, ""),
+          relativePath: stripDocsExtension(relativePath),
           groups,
         },
       };
@@ -481,9 +421,7 @@ async function readMarkdownDocs(
   const files = await collectFiles(docsDir, [".md"]);
   const docs = await Promise.all(
     files.map(async (filePath) => {
-      const relativePath = path
-        .relative(docsDir, filePath)
-        .replace(WINDOWS_PATH_PATTERN, "/");
+      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
       const raw = await readFile(filePath, "utf-8");
       const fileStat = await stat(filePath);
       const parsed = matter(raw);
