@@ -5,7 +5,7 @@ import {
 } from "@/lib/provider-answer";
 import { jsonResponse } from "@/lib/search";
 
-export const Route = createFileRoute("/api/docs/ask")({
+export const Route = createFileRoute("/api/docs/ask/vercel")({
   server: {
     handlers: {
       GET: async () => jsonResponse(getProviderAnswerConfig("vercel")),

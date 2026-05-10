@@ -5,12 +5,12 @@ import {
 } from "@/lib/provider-answer";
 import { jsonResponse } from "@/lib/search";
 
-export const Route = createFileRoute("/api/docs/ask")({
+export const Route = createFileRoute("/api/docs/ask/cloudflare")({
   server: {
     handlers: {
-      GET: async () => jsonResponse(getProviderAnswerConfig("vercel")),
+      GET: async () => jsonResponse(getProviderAnswerConfig("cloudflare")),
       POST: async ({ request }) =>
-        handleProviderAnswerRequest("vercel", request),
+        handleProviderAnswerRequest("cloudflare", request),
     },
   },
 });

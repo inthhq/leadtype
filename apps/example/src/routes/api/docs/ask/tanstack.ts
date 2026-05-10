@@ -5,12 +5,12 @@ import {
 } from "@/lib/provider-answer";
 import { jsonResponse } from "@/lib/search";
 
-export const Route = createFileRoute("/api/docs/ask")({
+export const Route = createFileRoute("/api/docs/ask/tanstack")({
   server: {
     handlers: {
-      GET: async () => jsonResponse(getProviderAnswerConfig("vercel")),
+      GET: async () => jsonResponse(getProviderAnswerConfig("tanstack")),
       POST: async ({ request }) =>
-        handleProviderAnswerRequest("vercel", request),
+        handleProviderAnswerRequest("tanstack", request),
     },
   },
 });
