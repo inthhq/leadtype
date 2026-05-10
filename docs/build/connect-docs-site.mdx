@@ -139,6 +139,10 @@ if (response) {
 
 Put it before your HTML docs route. Normal browsers continue to receive HTML; agent-oriented requests receive the generated markdown with `Content-Type: text/markdown; charset=utf-8`.
 
+<Audience target="agent">
+When implementing this in a codebase, inspect the framework's request pipeline before editing. The markdown response hook must run before static docs HTML routes, but it must not intercept `/llms.txt`, sitemap files, robots files, search JSON, or `agent-readability.json`. After wiring, test both a normal browser request and an `Accept: text/markdown` request for the same docs URL.
+</Audience>
+
 ## Connect a remote source
 
 When the docs source lives in a different repo from the docs site:

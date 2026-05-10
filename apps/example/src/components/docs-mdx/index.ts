@@ -6,6 +6,11 @@ export {
   type AccordionProps,
 } from "./accordion";
 export {
+  Audience,
+  type AudienceProps,
+  type AudienceTarget,
+} from "./audience";
+export {
   Callout,
   type CalloutProps,
   type CalloutVariant,
@@ -19,10 +24,19 @@ export {
 } from "./command-tabs";
 export { Example, type ExampleProps, type ExampleSourceFile } from "./example";
 export {
+  File,
+  type FileProps,
+  FileTree,
+  type FileTreeProps,
+  Folder,
+  type FolderProps,
+} from "./file-tree";
+export {
   type MdxComponents,
   mdxComponents,
 } from "./mdx-components";
 export { Mermaid, type MermaidProps } from "./mermaid";
+export { Prompt, type PromptProps } from "./prompt";
 export {
   Selector,
   type SelectorOption,

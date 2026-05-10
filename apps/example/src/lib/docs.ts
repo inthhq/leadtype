@@ -162,6 +162,21 @@ export const componentMatrix: Array<{
     note: "App-owned command switcher for install, run, or create commands.",
   },
   {
+    name: "Prompt",
+    coverage: ["runtime render", "browser hydration", "agent docs"],
+    note: "Copyable agent prompts that flatten into explicit prompt blocks.",
+  },
+  {
+    name: "Audience",
+    coverage: ["runtime render", "pipeline conversion", "agent docs"],
+    note: "Human-only and agent-only guidance without duplicating pages.",
+  },
+  {
+    name: "FileTree / Folder / File",
+    coverage: ["runtime render", "pipeline conversion", "agent docs"],
+    note: "Project structure diagrams that flatten into readable text trees.",
+  },
+  {
     name: "Accordion / AccordionItem",
     coverage: ["runtime render", "pipeline conversion", "agent docs"],
     note: "Collapsible details that still flatten into generated markdown.",

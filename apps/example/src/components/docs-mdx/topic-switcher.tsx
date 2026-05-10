@@ -20,8 +20,16 @@ export function TopicSwitcher({
   items,
   ...rest
 }: TopicSwitcherProps) {
+  const hasDescriptions = items.some((item) => item.description);
+  const variant = hasDescriptions ? "grid" : "segmented";
+
   return (
-    <nav aria-label={label} data-leadtype-topic-switcher="" {...rest}>
+    <nav
+      aria-label={label}
+      data-leadtype-topic-switcher=""
+      data-variant={variant}
+      {...rest}
+    >
       <p data-leadtype-topic-switcher-label="">{label}</p>
       <ul data-leadtype-topic-switcher-list="">
         {items.map(

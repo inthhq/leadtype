@@ -46,14 +46,16 @@ npx leadtype generate \
 
 This writes:
 
-```
-packages/my-package/
-├── AGENTS.md          # offline-readable index — agent's entry point
-└── docs/
-    ├── index.md
-    ├── quickstart.md
-    └── …              # one .md per source page, group subdirs preserved
-```
+<FileTree root="packages/my-package">
+  <File name="AGENTS.md" />
+  <Folder name="docs">
+    <File name="index.md" />
+    <File name="quickstart.md" />
+    <Folder name="reference">
+      <File name="cli.md" />
+    </Folder>
+  </Folder>
+</FileTree>
 
 Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/my-package/AGENTS.md` (during local dev) and at `node_modules/my-package/AGENTS.md` (after install).
 

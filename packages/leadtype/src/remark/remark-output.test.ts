@@ -325,6 +325,97 @@ export const enabled = true;\`,
     );
   });
 
+  it("converts prompts to explicit prompt code blocks", async () => {
+    const sourcePath = await createTempMdxFile(
+      "prompt.mdx",
+      `<Prompt
+  title="Use this with your coding agent"
+  description="Copy this into an agent session."
+>
+You are helping wire leadtype into a docs site.
+
+- Read \`docs/docs.config.ts\` first.
+- Place markdown negotiation before the HTML docs route.
+</Prompt>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("**Use this with your coding agent**");
+    expect(result.markdown).toContain("Copy this into an agent session.");
+    expect(result.markdown).toContain("```prompt");
+    expect(result.markdown).toContain(
+      "You are helping wire leadtype into a docs site."
+    );
+    expect(result.markdown).toContain("- Read `docs/docs.config.ts` first.");
+    expect(result.markdown).toContain(
+      "- Place markdown negotiation before the HTML docs route."
+    );
+  });
+
+  it("keeps agent audience content and removes human audience content", async () => {
+    const sourcePath = await createTempMdxFile(
+      "audience.mdx",
+      `<Audience target="human">
+  Click the robot icon in the example app header.
+</Audience>
+
+<Audience target="agent">
+  Read \`public/docs/agent-readability.json\` before editing middleware.
+</Audience>
+
+<Audience target={'human'}>
+  This JSX string expression is human-only.
+</Audience>
+
+<Audience target={"agent"}>
+  This JSX string expression is agent-readable.
+</Audience>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).not.toContain("Click the robot icon");
+    expect(result.markdown).not.toContain(
+      "This JSX string expression is human-only."
+    );
+    expect(result.markdown).not.toContain("<Audience");
+    expect(result.markdown).toContain(
+      "Read `public/docs/agent-readability.json` before editing middleware."
+    );
+    expect(result.markdown).toContain(
+      "This JSX string expression is agent-readable."
+    );
+  });
+
+  it("converts file trees to stable text fences", async () => {
+    const sourcePath = await createTempMdxFile(
+      "file-tree.mdx",
+      `<FileTree root="public">
+  <File name="llms.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+    <Folder name="llms-full">
+      <File name="get-started.txt" />
+    </Folder>
+  </Folder>
+</FileTree>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
+
+    expect(result.markdown).toContain("```text");
+    expect(result.markdown).toContain("public/");
+    expect(result.markdown).toContain("├── llms.txt");
+    expect(result.markdown).toContain("└── docs/");
+    expect(result.markdown).toContain("    ├── index.md");
+    expect(result.markdown).toContain("    └── llms-full/");
+    expect(result.markdown).toContain("        └── get-started.txt");
+  });
+
   it("resolves framework placeholders inside topic switcher item hrefs", async () => {
     const sourcePath = await createTempMdxFile(
       path.join("docs", "frameworks", "next", "quickstart.mdx"),
@@ -379,7 +470,10 @@ export const enabled = true;\`,
     const pluginNames = defaultRemarkPlugins.map((plugin) => plugin.name);
 
     expect(pluginNames).toContain("remarkAccordionToMarkdown");
+    expect(pluginNames).toContain("remarkAudienceToMarkdown");
     expect(pluginNames).toContain("remarkExampleToMarkdown");
+    expect(pluginNames).toContain("remarkFileTreeToMarkdown");
+    expect(pluginNames).toContain("remarkPromptToMarkdown");
     expect(pluginNames).toContain("remarkTopicSwitcherToMarkdown");
   });
 
