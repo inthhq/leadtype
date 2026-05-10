@@ -14,7 +14,7 @@ import {
   deriveDocContext,
   resolvePlaceholderStrings,
 } from "../internal/docs-context";
-import { log } from "../internal/logger";
+import { logger } from "../internal/logger";
 
 const execFileAsync = promisify(execFile);
 
@@ -426,11 +426,15 @@ async function processMdxFile(
   const resolvedPath = resolve(mdxFilePath);
 
   if (!resolvedPath.endsWith(".mdx")) {
-    log.error(`Not an MDX file: ${resolvedPath}`);
+    logger.error({
+      human: { message: `not an MDX file: ${resolvedPath}` },
+      json: { event: "convert.skip_non_mdx", fields: { path: resolvedPath } },
+    });
     return false;
   }
 
   try {
+    const startedAt = Date.now();
     const { markdown } = await convertMdxToMarkdown(
       resolvedPath,
       remarkPlugins,
@@ -446,11 +450,25 @@ async function processMdxFile(
     await writeFile(outputPath, markdown);
 
     if (!writeToStdout) {
-      log.summary(`Converted: ${resolvedPath} → ${outputPath}`);
+      const ms = Date.now() - startedAt;
+      logger.debug({
+        human: { message: `convert ${resolvedPath} → ${outputPath} (${ms}ms)` },
+        json: {
+          event: "convert.file",
+          fields: { src: resolvedPath, out: outputPath, ms },
+        },
+      });
     }
     return true;
   } catch (error) {
-    log.error(`Failed to process ${mdxFilePath}: ${String(error)}`);
+    const reason = error instanceof Error ? error.message : String(error);
+    logger.error({
+      human: {
+        message: `failed to process ${mdxFilePath}: ${reason}`,
+        hint: "run with LEADTYPE_VERBOSE=1 for stack",
+      },
+      json: { event: "convert.fail", fields: { file: mdxFilePath, reason } },
+    });
     return false;
   }
 }
@@ -495,7 +513,10 @@ export async function convertAllMdx(
     : resolve(process.cwd(), "public");
 
   if (!existsSync(srcDir)) {
-    log.verbose(`Source directory does not exist: ${srcDir}`);
+    logger.debug({
+      human: { message: `source directory does not exist: ${srcDir}` },
+      json: { event: "convert.batch.no_src", fields: { srcDir } },
+    });
     return;
   }
 
@@ -523,8 +544,10 @@ export async function convertAllMdx(
     Array.from(outputDirs, (dir) => mkdir(dir, { recursive: true }))
   );
 
+  const startedAt = Date.now();
   const results = await mapLimit(mdxFiles, concurrency, async (mdxFilePath) => {
     try {
+      const fileStartedAt = Date.now();
       const { markdown } = await convertMdxToMarkdown(
         mdxFilePath,
         remarkPlugins,
@@ -532,16 +555,51 @@ export async function convertAllMdx(
       );
       const outputPath = deriveOutputPath(mdxFilePath, srcDir, outDir);
       await writeFile(outputPath, markdown);
+      logger.debug({
+        human: {
+          message: `convert ${mdxFilePath} → ${outputPath} (${Date.now() - fileStartedAt}ms)`,
+        },
+        json: {
+          event: "convert.file",
+          fields: {
+            src: mdxFilePath,
+            out: outputPath,
+            ms: Date.now() - fileStartedAt,
+          },
+        },
+      });
       return true;
     } catch (fileError) {
-      log.error(`Failed to process ${mdxFilePath}: ${String(fileError)}`);
+      const reason =
+        fileError instanceof Error ? fileError.message : String(fileError);
+      logger.error({
+        human: { message: `failed to process ${mdxFilePath}: ${reason}` },
+        json: {
+          event: "convert.fail",
+          fields: { file: mdxFilePath, reason },
+        },
+      });
       return false;
     }
   });
 
-  const converted = results.filter(Boolean).length;
-  const failed = results.length - converted;
-  log.verbose(
-    `Converted ${converted} MDX files${failed > 0 ? `, ${failed} failed` : ""}`
-  );
+  const ok = results.filter(Boolean).length;
+  const failed = results.length - ok;
+  const ms = Date.now() - startedAt;
+  logger.info({
+    human: {
+      message: `Converted ${ok} docs in ${ms} ms${failed > 0 ? ` (${failed} failed)` : ""}`,
+    },
+    json: {
+      event: "convert.batch",
+      fields: {
+        srcDir,
+        outDir,
+        files: results.length,
+        ok,
+        failed,
+        ms,
+      },
+    },
+  });
 }

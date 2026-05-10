@@ -5,6 +5,7 @@ import path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import { convertAllMdx } from "../convert";
+import { logger, setLogFormat, setVerbose } from "../internal/logger";
 import type { DocsGroup, ProductInfo } from "../llm";
 import {
   generateAgentsMd,
@@ -37,6 +38,7 @@ export type GenerateArgs = {
   outDir: string;
   srcDir: string;
   summary?: string;
+  verbose: boolean;
 };
 
 export type GenerateIo = {
@@ -100,6 +102,7 @@ Options:
   --enrich-git       Add lastModified and lastAuthor from git history
   --format <fmt>     text | json (default: text)
   --json             Alias for --format json
+  -v, --verbose      Print per-file progress events to stderr
   -h, --help         Show this help
 `;
 
@@ -126,6 +129,7 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     include: [],
     outDir: DEFAULT_OUT_DIR,
     srcDir: ".",
+    verbose: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -160,6 +164,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.format = value;
     } else if (arg === "--json") {
       args.format = "json";
+    } else if (arg === "--verbose" || arg === "-v") {
+      args.verbose = true;
     } else if (arg) {
       throw new Error(`unknown option: ${arg}`);
     }
@@ -352,6 +358,13 @@ export async function runGenerateCommand(
     return 0;
   }
 
+  if (args.format === "json") {
+    setLogFormat("json");
+  }
+  if (args.verbose) {
+    setVerbose(true);
+  }
+
   const srcDir = path.resolve(args.srcDir);
   const docsDir = path.resolve(srcDir, args.docsDir);
   const outDir = path.resolve(args.outDir);
@@ -449,9 +462,14 @@ export async function runGenerateCommand(
 
     if (args.format === "json") {
       io.stdout.write(`${renderGenerateResult(result)}\n`);
-    } else {
-      io.stdout.write(`Generated docs pipeline output in ${outDir}\n`);
     }
+    logger.info({
+      human: { message: `Generated docs pipeline output in ${outDir}` },
+      json: {
+        event: "generate.done",
+        fields: { outDir, mode: result.mode },
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (args.format === "json") {

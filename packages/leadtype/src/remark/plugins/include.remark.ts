@@ -12,6 +12,7 @@ import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
 import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
+import { logger } from "../../internal/logger";
 
 // Regex patterns defined at top level for performance
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
@@ -364,9 +365,17 @@ async function processIncludeNode(
   if (!specifier) {
     // Misconfigured <include> / <import> — surface instead of silently
     // dropping so authors can find the offending tag in build logs.
-    process.stderr.write(
-      `[leadtype] <include> missing specifier (no text content and no src= attribute); attributes: ${JSON.stringify(params)}\n`
-    );
+    logger.warn({
+      human: {
+        message:
+          "<include> missing specifier (no text content and no src= attribute)",
+        hint: `attributes: ${JSON.stringify(params)}`,
+      },
+      json: {
+        event: "include.missing_specifier",
+        fields: { attributes: JSON.stringify(params) },
+      },
+    });
     return;
   }
 
@@ -426,9 +435,15 @@ async function processIncludeNode(
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    process.stderr.write(
-      `Warning: Failed to include file ${targetPath}: ${errorMessage}\n`
-    );
+    logger.warn({
+      human: {
+        message: `failed to include ${targetPath}: ${errorMessage}`,
+      },
+      json: {
+        event: "include.read_failed",
+        fields: { target: targetPath, reason: errorMessage },
+      },
+    });
 
     // Replace with error message
     Object.assign(node, {

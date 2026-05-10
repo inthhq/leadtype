@@ -4,7 +4,7 @@ import {
   type TimeoutConfiguration,
   type ToolSet,
 } from "ai";
-import { log } from "../internal/logger";
+import { logger } from "../internal/logger";
 import {
   appendToolInstructions,
   createDocsTextStreamResponse,
@@ -107,9 +107,14 @@ export function streamDocsAnswer(
     providerOptions: options.providerOptions,
     tools: options.tools,
     onError: ({ error }) => {
-      log.error(
-        `streamDocsAnswer provider error: ${getStreamErrorMessage(error)}`
-      );
+      const reason = getStreamErrorMessage(error);
+      logger.error({
+        human: { message: `streamDocsAnswer provider error: ${reason}` },
+        json: {
+          event: "search.stream_provider_error",
+          fields: { reason },
+        },
+      });
     },
   });
   const responseInit = getPlainTextResponseInit();

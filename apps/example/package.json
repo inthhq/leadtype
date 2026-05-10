@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --filter leadtype build && bun run pipeline:convert && PORTLESS_PORT=1355 PORTLESS_HTTPS=0 portless run vite dev",
-    "build": "bun run --filter leadtype build && bun run pipeline:convert && vite build",
+    "dev": "bun run --filter leadtype build && bun run --silent pipeline:convert && PORTLESS_PORT=1355 PORTLESS_HTTPS=0 portless run vite dev",
+    "build": "bun run --filter leadtype build && bun run --silent pipeline:convert && vite build",
     "preview": "PORTLESS_PORT=1355 PORTLESS_HTTPS=0 portless run vite preview",
     "check-types": "tsgo --noEmit",
     "test:e2e": "bun run --filter leadtype build && playwright test",

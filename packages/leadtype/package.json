@@ -69,7 +69,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rollup -c --configPlugin rollup-plugin-esbuild && bun run docs:generate",
+    "build": "rollup -c --configPlugin rollup-plugin-esbuild --silent && bun run --silent docs:generate",
     "dev": "rollup -c --configPlugin rollup-plugin-esbuild -w",
     "check-types": "tsgo --noEmit",
     "docs:generate": "bun run ./scripts/generate-docs.ts",

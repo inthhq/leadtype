@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
+import { setLogFormat, setVerbose } from "../internal/logger";
 import { type ReporterFormat, renderReport } from "./reporters";
 import { DEFAULT_IGNORE_GLOBS, type LintSeverity, lintDocs } from "./runner";
 
@@ -14,6 +15,7 @@ type CliArgs = {
   unknownFieldSeverity: LintSeverity;
   maxWarnings: number;
   help: boolean;
+  verbose: boolean;
 };
 
 export type LintCliIo = {
@@ -34,6 +36,7 @@ Options:
   --warn-unknown           Unknown fields warn (default)
   --error-unknown          Unknown fields error
   --max-warnings <n>       Exit non-zero if warnings exceed n (default: Infinity)
+  -v, --verbose            Print extra progress events to stderr
   -h, --help               Show this help
 
 Exit codes:
@@ -54,6 +57,7 @@ export function parseLintArgs(argv: string[]): CliArgs {
     unknownFieldSeverity: "warn",
     maxWarnings: Number.POSITIVE_INFINITY,
     help: false,
+    verbose: false,
   };
   let positional = 0;
   const readValue = (argv_: string[], index: number, flag: string): string => {
@@ -93,6 +97,8 @@ export function parseLintArgs(argv: string[]): CliArgs {
         throw new Error("--max-warnings must be a non-negative integer");
       }
       args.maxWarnings = parsed;
+    } else if (arg === "--verbose" || arg === "-v") {
+      args.verbose = true;
     } else if (arg && !arg.startsWith("-")) {
       if (positional === 0) {
         args.srcDir = arg;
@@ -126,6 +132,13 @@ export async function runLintCommand(
   if (args.help) {
     io.stdout.write(USAGE);
     return 0;
+  }
+
+  if (args.format === "json") {
+    setLogFormat("json");
+  }
+  if (args.verbose) {
+    setVerbose(true);
   }
 
   const resolvedSrcDir = resolve(args.srcDir);

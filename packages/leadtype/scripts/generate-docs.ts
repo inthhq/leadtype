@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import docsConfig from "../../../docs/docs.config";
 import { convertAllMdx } from "../src/convert/index";
+import { logger } from "../src/internal/logger";
 import { generateAgentsMd, resolveDocsNavigation } from "../src/llm/index";
 import { defaultRemarkPlugins } from "../src/remark/index";
 
@@ -34,9 +35,13 @@ const navigation = await resolveDocsNavigation({
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
-    process.stderr.write(
-      `error: ${urlPath} declares unknown group "${slug}".\n`
-    );
+    logger.error({
+      human: { message: `${urlPath} declares unknown group "${slug}"` },
+      json: {
+        event: "docs.unknown_group",
+        fields: { urlPath, slug },
+      },
+    });
   }
   process.exit(1);
 }
@@ -52,4 +57,12 @@ const { outputPath } = await generateAgentsMd({
   groups: docsConfig.groups,
 });
 
-process.stdout.write(`Generated ${outputPath} and ${OUT_DOCS_DIR}/*.md\n`);
+logger.info({
+  human: {
+    message: `Generated ${outputPath} and ${OUT_DOCS_DIR}/*.md`,
+  },
+  json: {
+    event: "docs.generate.done",
+    fields: { outputPath, docsDir: OUT_DOCS_DIR },
+  },
+});
