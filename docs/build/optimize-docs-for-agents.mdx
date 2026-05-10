@@ -1,0 +1,240 @@
+---
+title: "Optimize docs for agents"
+description: "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site."
+group: build
+---
+
+# Optimize docs for agents
+
+Use this guide when you already have a docs site and want agents to find, fetch, attribute, and cite the same content humans read in the browser.
+
+Leadtype handles the generated files. Your app wires those files into routing and HTML.
+
+## What good looks like
+
+An agent-readable docs site has four layers:
+
+<Steps>
+  <Step title="Discovery files">
+    `/llms.txt`, `/sitemap.xml`, `/sitemap.md`, and `/robots.txt` tell agents what exists and where to start.
+  </Step>
+  <Step title="Markdown retrieval">
+    Each docs page has a markdown mirror at `/docs/page.md`, and agent requests to `/docs/page` can receive markdown instead of HTML.
+  </Step>
+  <Step title="Structured HTML metadata">
+    Human HTML pages include JSON-LD, canonical links, and markdown alternate links so agents can extract page identity without guessing from the DOM.
+  </Step>
+  <Step title="Attribution metadata">
+    Markdown responses include `canonical_url` and `last_updated` frontmatter so copied content keeps its source and freshness.
+  </Step>
+</Steps>
+
+## 1. Generate the artifacts
+
+Run the site-mode pipeline before your app build:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --out public \
+  --base-url https://docs.example.com \
+  --name "My product" \
+  --summary "One sentence about the product."
+```
+
+This writes the docs-scoped files under `public/docs/` and the top-level `public/llms.txt`:
+
+```txt
+public/
+├── llms.txt
+└── docs/
+    ├── index.md
+    ├── quickstart.md
+    ├── llms.txt
+    ├── llms-full.txt
+    ├── llms-full/*.txt
+    ├── sitemap.xml
+    ├── sitemap.md
+    ├── robots.txt
+    └── agent-readability.json
+```
+
+The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, group navigation, and freshness dates.
+
+## 2. Serve root discovery files
+
+If your site is only docs, you can copy the docs-scoped discovery files to the root:
+
+```txt
+public/docs/sitemap.xml -> public/sitemap.xml
+public/docs/sitemap.md  -> public/sitemap.md
+public/docs/robots.txt  -> public/robots.txt
+```
+
+If the same app also has marketing, blog, changelog, or product pages, merge the docs pages with the rest of your site before serving root-level discovery files:
+
+```ts
+import {
+  generateAgentReadabilityArtifacts,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
+} from "leadtype/llm";
+
+const docs = await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+
+const pages = [
+  ...marketingPages,
+  ...blogPages,
+  ...docs.manifest.pages,
+];
+
+await writeFile("public/sitemap.xml", renderSitemapXml(pages));
+await writeFile(
+  "public/sitemap.md",
+  renderSitemapMarkdown({
+    product: docsConfig.product,
+    navigation: docs.manifest.navigation,
+    pages,
+  })
+);
+await writeFile(
+  "public/robots.txt",
+  renderRobotsTxt({ baseUrl: "https://docs.example.com" })
+);
+```
+
+Keep the docs-scoped versions too. Audits and agents may request both `/sitemap.xml` and `/docs/sitemap.xml`, especially when the audited URL is `/docs`.
+
+## 3. Add JSON-LD to docs pages
+
+Use the manifest entry for the current page and render Schema.org JSON-LD into the HTML head:
+
+```ts
+import agentManifest from "../public/docs/agent-readability.json";
+import { renderJsonLd, renderJsonLdScript } from "leadtype/llm/readability";
+
+const page = agentManifest.pages.find(
+  (entry) => entry.urlPath === "/docs/quickstart"
+);
+
+if (page) {
+  const jsonLd = renderJsonLd(page, agentManifest);
+  const script = renderJsonLdScript(page, agentManifest);
+}
+```
+
+Use `renderJsonLd(page, manifest)` if your framework has a typed metadata API. Use `renderJsonLdScript(page, manifest)` if your framework expects an HTML string.
+
+Also add canonical and markdown alternate links:
+
+```html
+<link rel="canonical" href="https://docs.example.com/docs/quickstart" />
+<link
+  rel="alternate"
+  type="text/markdown"
+  href="https://docs.example.com/docs/quickstart.md"
+/>
+```
+
+The JSON-LD gives agents the page title, description, canonical URL, last modified date, and breadcrumbs without scraping your rendered layout.
+
+## 4. Return markdown to agents
+
+Use `createAgentMarkdownResponse` from request middleware or route handlers. It handles:
+
+- `Accept: text/markdown` and `Accept: text/plain`.
+- Known AI user-agent headers.
+- Direct `.md` URLs such as `/docs/quickstart.md`.
+- `canonical_url` and `last_updated` frontmatter aliases.
+- 200 markdown responses for missing docs pages, so agents do not discard the body.
+- `Content-Type: text/markdown; charset=utf-8`.
+
+The framework-neutral shape is:
+
+```ts
+import manifest from "../public/docs/agent-readability.json";
+import { createAgentMarkdownResponse } from "leadtype/llm/readability";
+
+export async function handleRequest(request: Request): Promise<Response | null> {
+  const response = createAgentMarkdownResponse({
+    urlPath: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers),
+    manifest,
+    requestOrigin: new URL(request.url).origin,
+    readMarkdownFile(target) {
+      return readGeneratedFile(`public/${target.filePath}`);
+    },
+  });
+
+  if (!response) {
+    return null;
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: response.headers,
+  });
+}
+```
+
+Put that logic wherever your framework can intercept docs requests:
+
+| Framework/runtime | Where it usually goes |
+| --- | --- |
+| Next.js | Route handler or middleware plus a file reader for generated markdown. |
+| TanStack Start | Server handler before HTML rendering. |
+| Astro | Endpoint or middleware. |
+| Vite dev/preview | Plugin middleware. |
+| Cloudflare Workers/Pages | Worker middleware. |
+| Express/Hono/Fastify | Middleware before the docs HTML route. |
+
+Do not rewrite `llms.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt`, or `agent-readability.json` to page markdown. The helper leaves those artifact paths alone.
+
+## 5. Verify locally
+
+Start the docs site, then check the URLs agents use:
+
+```bash
+curl http://localhost:5173/llms.txt
+curl http://localhost:5173/sitemap.xml
+curl http://localhost:5173/sitemap.md
+curl http://localhost:5173/docs/sitemap.xml
+curl -I -H "Accept: text/markdown" http://localhost:5173/docs/quickstart
+curl http://localhost:5173/docs/quickstart.md
+curl -H "User-Agent: ChatGPT-User" http://localhost:5173/docs/quickstart
+```
+
+Expected results:
+
+- `llms.txt` links point to existing `.md` URLs.
+- Both root and docs-scoped sitemaps resolve.
+- Markdown responses use `Content-Type: text/markdown; charset=utf-8`.
+- Markdown frontmatter contains `canonical_url` and `last_updated`.
+- HTML pages contain one `application/ld+json` script.
+- Missing docs pages return a markdown body for agent-oriented requests.
+
+Then run the Vercel Agent Readability audit against the docs entry point:
+
+```bash
+npx @vercel/agent-readability audit http://localhost:5173/docs
+```
+
+If the audit reports broken links from `llms.txt`, check whether your generated URLs use the production `--base-url` while your local audit expects `localhost`. For local dev, serve root and docs-scoped sitemap/robots files from the current request origin, or run the audit against a preview URL that matches `--base-url`.
+
+## Minimal checklist
+
+- Generate `llms.txt`, markdown mirrors, `llms-full`, sitemap, robots, and `agent-readability.json`.
+- Serve root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+- Keep docs-scoped `/docs/sitemap.xml`, `/docs/sitemap.md`, and `/docs/robots.txt`.
+- Add JSON-LD to every docs HTML page.
+- Add canonical and markdown alternate links to every docs HTML page.
+- Return markdown for agent Accept headers, AI user agents, and `.md` URLs.
+- Include `canonical_url` and `last_updated` in markdown frontmatter.
+- Return markdown bodies for missing docs pages requested by agents.

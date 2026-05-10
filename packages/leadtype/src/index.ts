@@ -2,6 +2,10 @@
 // agent tooling, and the LLM-bundle pipeline. Specialized surfaces stay on
 // dedicated subpaths (`leadtype/convert`, `/llm`, `/search`, `/lint`).
 export {
+  type AgentReadabilityConfig,
+  type AgentReadabilityManifest,
+  type AgentReadabilityPage,
+  type AgentReadabilityResult,
   type CuratedLink,
   type DocsConfig,
   type DocsGroup,

@@ -6,31 +6,40 @@ group: reference
 
 # LLM bundles
 
-The `leadtype/llm` entry point produces three flavors of agent-facing index, all derived from the same docs source:
+The `leadtype/llm` entry point produces four flavors of agent-facing output, all derived from the same docs source:
 
-- **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with absolute URLs.
+- **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
 - **`generateLLMFullContextFiles`** — full-content topic bundles. Pairs with `generateLlmsTxt`.
+- **`generateAgentReadabilityArtifacts`** — docs-scoped `sitemap.xml`, `sitemap.md`, `robots.txt`, and JSON manifest data that a host app can merge into site-level files.
 - **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
 
 ```ts
 import {
+  generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
   resolveDocsNavigation,
 } from "leadtype/llm";
 ```
 
-The CLI's default `leadtype generate` calls the first two; `leadtype generate --bundle` calls the third. Use these APIs directly when you need finer control.
+The CLI's default `leadtype generate` calls the website APIs; `leadtype generate --bundle` calls `generateAgentsMd`. Use these APIs directly when you need finer control.
 
 ## What gets generated
 
 | File | Purpose |
 | --- | --- |
-| `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, links to deeper bundles. |
-| `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and entry links. |
+| `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, and root-relative markdown mirror links. |
+| `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and markdown entry links. |
 | `<out>/docs/llms-full.txt` | All pages flattened into one file. Use for agents with very large context windows. |
 | `<out>/docs/llms-full/<leaf>.txt` | One per leaf group. Topic-scoped full content for narrower context budgets. |
+| `<out>/docs/sitemap.xml` | Docs-scoped XML sitemap with canonical page URLs and `<lastmod>` dates. |
+| `<out>/docs/sitemap.md` | Docs-scoped markdown sitemap with headings and links. |
+| `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
+| `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
 Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf groups appear as headings inside the parent file.
 
@@ -47,21 +56,21 @@ Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf group
 
 ## Best Starting Points
 
-- [Documentation](https://docs.example.com/docs)
-- [Quickstart](https://docs.example.com/docs/quickstart)
+- [Documentation](/docs/index.md)
+- [Quickstart](/docs/quickstart.md)
 
 ## Get Started
 
 Five-minute happy path and the mental model.
 
-- [Quickstart](https://docs.example.com/docs/quickstart): Install and run the pipeline.
-- [How it works](https://docs.example.com/docs/how-it-works): The mental model.
+- [Quickstart](/docs/quickstart.md): Install and run the pipeline.
+- [How it works](/docs/how-it-works.md): The mental model.
 
 ## Reference
 
 CLI flags and conversion APIs.
 
-- [CLI](https://docs.example.com/docs/reference/cli): Every flag.
+- [CLI](/docs/reference/cli.md): Every flag.
 ```
 
 ## Typical sequence
@@ -70,6 +79,7 @@ CLI flags and conversion APIs.
 import { convertAllMdx } from "leadtype/convert";
 import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 import {
+  generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
 } from "leadtype/llm";
@@ -97,9 +107,133 @@ await generateLLMFullContextFiles({
   product: { name: "My Library" },
   groups: docsConfig.groups,
 });
+
+await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
 ```
 
-`generateLLMFullContextFiles` reads from `<outDir>/docs/`, so always run conversion first.
+`generateLLMFullContextFiles` and `generateAgentReadabilityArtifacts` read from `<outDir>/docs/`, so always run conversion first.
+
+## generateAgentReadabilityArtifacts
+
+For hosted docs sites that need the Vercel Agent Readability discovery layer without letting leadtype own the whole website:
+
+```ts
+import {
+  generateAgentReadabilityArtifacts,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
+} from "leadtype/llm";
+
+const result = await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+```
+
+Writes docs-scoped files under `<outDir>/docs/`. The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can then merge `result.manifest.pages` with non-docs routes before serving root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+
+```ts
+await writeFile("public/sitemap.xml", renderSitemapXml(result.manifest.pages));
+await writeFile(
+  "public/sitemap.md",
+  renderSitemapMarkdown({
+    product: docsConfig.product,
+    navigation: result.manifest.navigation,
+    pages: result.manifest.pages,
+  })
+);
+await writeFile(
+  "public/robots.txt",
+  renderRobotsTxt({ baseUrl: "https://docs.example.com" })
+);
+```
+
+## Agent readability helpers
+
+`generateAgentReadabilityArtifacts` gives you the manifest. The helper APIs turn
+that manifest into the per-request pieces your framework needs:
+
+```ts
+import {
+  acceptsMarkdownHeader,
+  createAgentMarkdownResponse,
+  createMarkdownResponseHeaders,
+  enrichMarkdownFrontmatter,
+  isAgentReadabilityArtifactPath,
+  isAgentUserAgent,
+  renderMissingMarkdown,
+  renderJsonLd,
+  renderJsonLdScript,
+  resolveMarkdownMirrorTarget,
+} from "leadtype/llm/readability";
+```
+
+Use `renderJsonLd(page, manifest)` when your framework has a typed metadata/head
+API. It returns a plain Schema.org object. Use `renderJsonLdScript(page,
+manifest)` when you need a framework-neutral HTML string:
+
+```ts
+const page = manifest.pages.find((entry) => entry.urlPath === "/docs/quickstart");
+
+if (page) {
+  const jsonLd = renderJsonLd(page, manifest);
+  const scriptTag = renderJsonLdScript(page, manifest);
+}
+```
+
+Use `createAgentMarkdownResponse` from middleware or route handlers to serve the
+generated markdown mirrors for `Accept: text/markdown`, AI user agents, and
+direct `.md` URLs. You provide the request path, headers, manifest, and a small
+reader for files under `<out>/docs/`; leadtype returns the status, headers, and
+body to send.
+
+```ts
+const response = createAgentMarkdownResponse({
+  urlPath: request.url,
+  method: request.method,
+  headers: Object.fromEntries(request.headers),
+  manifest,
+  requestOrigin: new URL(request.url).origin,
+  readMarkdownFile(target) {
+    return readFileSync(`public/${target.filePath}`, "utf8");
+  },
+});
+
+if (response) {
+  return new Response(response.body, {
+    status: response.status,
+    headers: response.headers,
+  });
+}
+```
+
+The response helper also enriches generated markdown frontmatter with
+`canonical_url` and `last_updated`, leaves `llms.txt` and sitemap/robots
+artifacts alone, and returns a 200 markdown "Page not found" body only for
+agent-oriented markdown requests.
+
+For a step-by-step integration guide, see [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
+
+| Helper | Use it for |
+| --- | --- |
+| `renderJsonLd` | Return a Schema.org object for framework metadata APIs. |
+| `renderJsonLdScript` | Return an escaped `<script type="application/ld+json">` string. |
+| `createAgentMarkdownResponse` | Build a complete markdown response for agent Accept headers, AI user agents, and direct `.md` URLs. |
+| `resolveMarkdownMirrorTarget` | Map `/docs/foo` or `/docs/foo.md` to the generated `docs/foo.md` file path. |
+| `createMarkdownResponseHeaders` | Produce canonical markdown headers with `Content-Type`, `Vary`, and `Link`. |
+| `enrichMarkdownFrontmatter` | Add `canonical_url` and `last_updated` aliases to generated markdown. |
+| `renderMissingMarkdown` | Render the 200 markdown body used for missing docs pages requested by agents. |
+| `acceptsMarkdownHeader` | Detect whether an `Accept` header is asking for markdown or plain text. |
+| `isAgentUserAgent` | Detect known AI crawler and agent user agents. |
+| `isAgentReadabilityArtifactPath` | Avoid rewriting `llms.txt`, sitemap, robots, search JSON, and manifest artifact paths. |
 
 ## generateAgentsMd
 

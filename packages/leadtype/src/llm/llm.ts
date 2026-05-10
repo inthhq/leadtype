@@ -1,9 +1,20 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 
 const DOCS_DIRNAME = "docs";
+const AGENT_READABILITY_MANIFEST_FILE = "agent-readability.json";
+const ROBOTS_FILE = "robots.txt";
+const SITEMAP_MARKDOWN_FILE = "sitemap.md";
+const SITEMAP_XML_FILE = "sitemap.xml";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 
 function assertValidGroupSlug(slug: string, parentPath: string[]): string {
@@ -21,9 +32,29 @@ const INDEX_SEGMENT_PATTERN = /\/index$/;
 const ROOT_INDEX_PATTERN = /^index$/;
 const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
+const GENERATED_MARKDOWN_FILES = new Set([SITEMAP_MARKDOWN_FILE]);
 const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
 const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
+const MARKDOWN_ACCEPT_PATTERN = /text\/(markdown|plain)/i;
+const HTML_ACCEPT_PATTERN = /text\/html/i;
+const MARKDOWN_Q_PATTERN = /text\/(markdown|plain)\s*;?\s*q=/i;
+const FRONTMATTER_BLOCK_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
+const YAML_QUOTE_PATTERN = /["\\]/g;
+const SCRIPT_JSON_ESCAPE_PATTERN = /[<>&\u2028\u2029]/g;
+const QUERY_OR_HASH_PATTERN = /[?#]/;
+const ROOT_AGENT_ARTIFACT_PATTERN =
+  /^\/(?:llms\.txt|robots\.txt|sitemap\.(?:md|xml))$/;
+const DOCS_AGENT_ARTIFACT_PATTERN =
+  /^\/docs\/(?:agent-readability\.json|llms(?:-full)?\.txt|llms-full\/.+\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
+const AI_USER_AGENT_PATTERN =
+  /\b(anthropic-ai|claude-web|claudebot|ccbot|chatgpt-user|gptbot|google-extended|oai-searchbot|perplexitybot)\b/i;
+const AI_CRAWLER_USER_AGENTS = [
+  "GPTBot",
+  "ClaudeBot",
+  "CCBot",
+  "Google-Extended",
+] as const;
 
 type BrowserGlobal = typeof globalThis & {
   location?: { origin?: string };
@@ -42,6 +73,7 @@ export type SourceDoc = {
 
 export type MarkdownDoc = SourceDoc & {
   content: string;
+  lastModified: string;
 };
 
 export type CuratedLink = {
@@ -110,6 +142,111 @@ export type LLMFullContextConfig = {
   product: Pick<ProductInfo, "name">;
   /** Group tree from `docs.config.ts`. Each leaf group becomes a `.txt`. */
   groups: DocsGroup[];
+};
+
+export type AgentReadabilityConfig = {
+  outDir: string;
+  baseUrl?: string;
+  product: Pick<ProductInfo, "name" | "summary">;
+  groups: DocsGroup[];
+};
+
+export type AgentReadabilityPage = {
+  title: string;
+  description: string;
+  urlPath: string;
+  absoluteUrl: string;
+  markdownUrlPath: string;
+  markdownAbsoluteUrl: string;
+  relativePath: string;
+  groups: string[];
+  lastModified: string;
+};
+
+export type AgentReadabilityManifest = {
+  version: 1;
+  generatedAt: string;
+  baseUrl: string;
+  product: Pick<ProductInfo, "name" | "summary">;
+  pages: AgentReadabilityPage[];
+  navigation: DocsNavigation;
+  files: {
+    robotsTxt: string;
+    sitemapMd: string;
+    sitemapXml: string;
+  };
+};
+
+export type AgentReadabilityResult = {
+  manifest: AgentReadabilityManifest;
+  files: {
+    manifest: string;
+    robotsTxt: string;
+    sitemapMd: string;
+    sitemapXml: string;
+  };
+};
+
+export type RenderSitemapMarkdownConfig = {
+  product: Pick<ProductInfo, "name">;
+  navigation: DocsNavigation;
+  pages: AgentReadabilityPage[];
+};
+
+export type RenderRobotsTxtConfig = {
+  baseUrl?: string;
+  sitemapUrlPath?: string;
+  allowPaths?: string[];
+  userAgents?: readonly string[];
+};
+
+export type JsonLdValue = Record<string, unknown>;
+
+export type MarkdownMirrorTarget = {
+  /** Canonical HTML route, e.g. `/docs/quickstart`. */
+  urlPath: string;
+  /** Markdown mirror route, e.g. `/docs/quickstart.md`. */
+  markdownUrlPath: string;
+  /** Path under a generated output directory, e.g. `docs/quickstart.md`. */
+  filePath: string;
+  /** Relative document key without extension, e.g. `quickstart`. */
+  relativePath: string;
+};
+
+export type AgentRequestHeaders = Record<string, string | string[] | undefined>;
+
+export type MarkdownResponseHeadersConfig = {
+  canonicalUrl: string;
+  includeUserAgentVary?: boolean;
+};
+
+export type EnrichMarkdownFrontmatterConfig = {
+  canonicalUrl: string;
+  lastUpdated?: string | Date;
+};
+
+export type RenderMissingMarkdownConfig = {
+  urlPath: string;
+  canonicalUrl: string;
+  lastUpdated?: string | Date;
+};
+
+export type AgentMarkdownResponse = {
+  status: 200;
+  headers: Record<string, string>;
+  body: string;
+  found: boolean;
+  target?: MarkdownMirrorTarget;
+};
+
+export type CreateAgentMarkdownResponseConfig = {
+  urlPath: string;
+  method?: string;
+  headers?: AgentRequestHeaders;
+  manifest: AgentReadabilityManifest;
+  readMarkdownFile: (target: MarkdownMirrorTarget) => string | null | undefined;
+  requestOrigin?: string;
+  now?: Date;
 };
 
 type ResolvedGroup = {
@@ -242,11 +379,360 @@ function toUrlPath(relativePath: string): string {
   return normalizedPath.length > 0 ? `/docs/${normalizedPath}` : "/docs";
 }
 
+function toMarkdownUrlPath(urlPath: string): string {
+  return urlPath === "/docs" ? "/docs/index.md" : `${urlPath}.md`;
+}
+
 function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
   if (urlPath.startsWith("http://") || urlPath.startsWith("https://")) {
     return urlPath;
   }
   return `${baseUrl}${urlPath}`;
+}
+
+function normalizeDate(value: unknown): string | undefined {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  }
+  return;
+}
+
+function readLastModified(
+  frontmatter: Record<string, unknown>,
+  fallback: Date
+): string {
+  return (
+    normalizeDate(frontmatter.lastModified) ??
+    normalizeDate(frontmatter.last_updated) ??
+    normalizeDate(frontmatter.lastUpdated) ??
+    fallback.toISOString()
+  );
+}
+
+function normalizeUrlPath(input: string): string {
+  try {
+    const pathname = new URL(input, "http://leadtype.local").pathname;
+    return pathname.startsWith("/") ? pathname : `/${pathname}`;
+  } catch {
+    const [pathname = "/"] = input.split(QUERY_OR_HASH_PATTERN, 1);
+    return pathname.startsWith("/") ? pathname : `/${pathname}`;
+  }
+}
+
+function toYamlScalar(value: string): string {
+  return `"${value.replace(YAML_QUOTE_PATTERN, "\\$&")}"`;
+}
+
+function frontmatterHasField(frontmatter: string, names: string[]): boolean {
+  return names.some((name) =>
+    new RegExp(`^${name}\\s*:`, "m").test(frontmatter)
+  );
+}
+
+function readFrontmatterField(
+  frontmatter: string,
+  names: string[]
+): string | null {
+  for (const name of names) {
+    const match = frontmatter.match(
+      new RegExp(`^${name}\\s*:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, "m")
+    );
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
+function getHeaderValue(
+  headers: AgentRequestHeaders | undefined,
+  name: string
+): string | undefined {
+  if (!headers) {
+    return;
+  }
+  const lowerName = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() !== lowerName) {
+      continue;
+    }
+    return Array.isArray(value) ? value.join(",") : value;
+  }
+  return;
+}
+
+function readableMethod(method: string | undefined): boolean {
+  return method === undefined || method === "GET" || method === "HEAD";
+}
+
+function jsonScriptEscape(value: string): string {
+  return value.replace(SCRIPT_JSON_ESCAPE_PATTERN, (character) => {
+    switch (character) {
+      case "<":
+        return "\\u003c";
+      case ">":
+        return "\\u003e";
+      case "&":
+        return "\\u0026";
+      case "\u2028":
+        return "\\u2028";
+      case "\u2029":
+        return "\\u2029";
+      default:
+        return character;
+    }
+  });
+}
+
+function jsonLdPageDescription(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest
+): string {
+  return (
+    page.description ||
+    `${page.title} documentation for ${manifest.product.name}.`
+  );
+}
+
+export function isAgentUserAgent(userAgent: string | undefined): boolean {
+  return Boolean(userAgent && AI_USER_AGENT_PATTERN.test(userAgent));
+}
+
+export function acceptsMarkdownHeader(accept: string | undefined): boolean {
+  if (!(accept && MARKDOWN_ACCEPT_PATTERN.test(accept))) {
+    return false;
+  }
+  return !(
+    HTML_ACCEPT_PATTERN.test(accept) && !MARKDOWN_Q_PATTERN.test(accept)
+  );
+}
+
+export function isAgentReadabilityArtifactPath(urlPath: string): boolean {
+  const pathname = normalizeUrlPath(urlPath);
+  return (
+    ROOT_AGENT_ARTIFACT_PATTERN.test(pathname) ||
+    DOCS_AGENT_ARTIFACT_PATTERN.test(pathname)
+  );
+}
+
+export function resolveMarkdownMirrorTarget(
+  urlPath: string
+): MarkdownMirrorTarget | null {
+  const pathname = normalizeUrlPath(urlPath).replace(/\/$/, "");
+
+  if (isAgentReadabilityArtifactPath(pathname)) {
+    return null;
+  }
+
+  if (
+    pathname === "/docs" ||
+    pathname === "/docs.md" ||
+    pathname === "/docs/index.md"
+  ) {
+    return {
+      urlPath: "/docs",
+      markdownUrlPath: "/docs/index.md",
+      filePath: "docs/index.md",
+      relativePath: "index",
+    };
+  }
+
+  if (!pathname.startsWith("/docs/")) {
+    return null;
+  }
+
+  const withoutExtension = pathname.replace(MD_ONLY_EXTENSION_PATTERN, "");
+  const relativePath = withoutExtension.slice("/docs/".length);
+  if (!(relativePath && !relativePath.split("/").includes(".."))) {
+    return null;
+  }
+
+  return {
+    urlPath: withoutExtension,
+    markdownUrlPath: `${withoutExtension}.md`,
+    filePath: `docs/${relativePath}.md`,
+    relativePath,
+  };
+}
+
+export function createMarkdownResponseHeaders(
+  config: MarkdownResponseHeadersConfig
+): Record<string, string> {
+  return {
+    "Content-Type": "text/markdown; charset=utf-8",
+    Vary: config.includeUserAgentVary ? "Accept, User-Agent" : "Accept",
+    Link: `<${config.canonicalUrl}>; rel="canonical"`,
+  };
+}
+
+export function enrichMarkdownFrontmatter(
+  markdown: string,
+  config: EnrichMarkdownFrontmatterConfig
+): string {
+  const match = markdown.match(FRONTMATTER_BLOCK_PATTERN);
+  if (!match) {
+    return markdown;
+  }
+
+  const frontmatter = match[1] ?? "";
+  const aliases: string[] = [];
+
+  if (!frontmatterHasField(frontmatter, ["canonical_url", "canonical"])) {
+    aliases.push(`canonical_url: ${toYamlScalar(config.canonicalUrl)}`);
+  }
+
+  if (!frontmatterHasField(frontmatter, ["last_updated", "lastmod", "date"])) {
+    const lastUpdated =
+      normalizeDate(config.lastUpdated) ??
+      readFrontmatterField(frontmatter, [
+        "lastModified",
+        "lastUpdated",
+        "last_modified",
+      ]) ??
+      new Date().toISOString();
+    aliases.push(`last_updated: ${toYamlScalar(lastUpdated)}`);
+  }
+
+  if (aliases.length === 0) {
+    return markdown;
+  }
+
+  const body = markdown.slice(match[0].length);
+  return `---\n${frontmatter.trimEnd()}\n${aliases.join("\n")}\n---\n${body}`;
+}
+
+export function renderMissingMarkdown(
+  config: RenderMissingMarkdownConfig
+): string {
+  const lastUpdated =
+    normalizeDate(config.lastUpdated) ?? new Date().toISOString();
+  return `---
+title: "Page not found"
+description: ${toYamlScalar(`No documentation page exists at ${config.urlPath}.`)}
+canonical_url: ${toYamlScalar(config.canonicalUrl)}
+last_updated: ${toYamlScalar(lastUpdated)}
+---
+# Page not found
+
+No documentation page exists at \`${config.urlPath}\`.
+
+Use [/llms.txt](/llms.txt) or [/sitemap.md](/sitemap.md) to find available pages.
+`;
+}
+
+export function renderJsonLd(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest
+): JsonLdValue {
+  return {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: page.title,
+    description: jsonLdPageDescription(page, manifest),
+    url: page.absoluteUrl,
+    dateModified: page.lastModified,
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Docs",
+          item: `${manifest.baseUrl}/docs`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: page.title,
+          item: page.absoluteUrl,
+        },
+      ],
+    },
+  };
+}
+
+export function renderJsonLdScript(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest
+): string {
+  const json = jsonScriptEscape(JSON.stringify(renderJsonLd(page, manifest)));
+  return `<script type="application/ld+json">${json}</script>`;
+}
+
+export function createAgentMarkdownResponse(
+  config: CreateAgentMarkdownResponseConfig
+): AgentMarkdownResponse | null {
+  const pathname = normalizeUrlPath(config.urlPath);
+  if (!readableMethod(config.method)) {
+    return null;
+  }
+
+  const accept = getHeaderValue(config.headers, "accept");
+  const userAgent = getHeaderValue(config.headers, "user-agent");
+  const wantsMarkdown =
+    acceptsMarkdownHeader(accept) || isAgentUserAgent(userAgent);
+  const target = resolveMarkdownMirrorTarget(pathname);
+
+  if (target && (wantsMarkdown || pathname.endsWith(".md"))) {
+    const page = config.manifest.pages.find(
+      (entry) => entry.urlPath === target.urlPath
+    );
+    const canonicalUrl =
+      page?.absoluteUrl ??
+      toAbsoluteUrl(target.urlPath, config.manifest.baseUrl);
+    const markdown = config.readMarkdownFile(target);
+    const body = markdown
+      ? enrichMarkdownFrontmatter(markdown, {
+          canonicalUrl,
+          lastUpdated: page?.lastModified,
+        })
+      : renderMissingMarkdown({
+          urlPath: target.urlPath,
+          canonicalUrl,
+          lastUpdated: config.now,
+        });
+    return {
+      status: 200,
+      headers: createMarkdownResponseHeaders({
+        canonicalUrl,
+        includeUserAgentVary: isAgentUserAgent(userAgent),
+      }),
+      body: config.method === "HEAD" ? "" : body,
+      found: Boolean(markdown),
+      target,
+    };
+  }
+
+  if (wantsMarkdown && !isAgentReadabilityArtifactPath(pathname)) {
+    const canonicalUrl = toAbsoluteUrl(
+      pathname,
+      config.requestOrigin
+        ? normalizeBaseUrl(config.requestOrigin)
+        : config.manifest.baseUrl
+    );
+    return {
+      status: 200,
+      headers: createMarkdownResponseHeaders({
+        canonicalUrl,
+        includeUserAgentVary: isAgentUserAgent(userAgent),
+      }),
+      body:
+        config.method === "HEAD"
+          ? ""
+          : renderMissingMarkdown({
+              urlPath: pathname,
+              canonicalUrl,
+              lastUpdated: config.now,
+            }),
+      found: false,
+    };
+  }
+
+  return null;
 }
 
 function normalizeGroupValue(raw: unknown): string[] {
@@ -272,12 +758,12 @@ function normalizeGroupValue(raw: unknown): string[] {
 
 type RenderedLink = {
   title: string;
-  absoluteUrl: string;
+  url: string;
   description: string;
 };
 
 function renderLink(link: RenderedLink): string {
-  return `- [${link.title}](${link.absoluteUrl}): ${link.description}`;
+  return `- [${link.title}](${link.url}): ${link.description}`;
 }
 
 function pageToRenderedLink(doc: SourceDoc): RenderedLink {
@@ -291,14 +777,13 @@ function pageToRenderedLink(doc: SourceDoc): RenderedLink {
   return {
     title,
     description,
-    absoluteUrl: doc.absoluteUrl,
+    url: toMarkdownUrlPath(doc.urlPath),
   };
 }
 
 function resolveCuratedLink(
   link: CuratedLink,
-  sourceDocs: Map<string, SourceDoc>,
-  baseUrl: string
+  sourceDocs: Map<string, SourceDoc>
 ): RenderedLink {
   const sourceDoc = sourceDocs.get(link.urlPath);
   const title =
@@ -315,7 +800,7 @@ function resolveCuratedLink(
   return {
     title,
     description: description || `Entry point for ${title} documentation.`,
-    absoluteUrl: toAbsoluteUrl(sourceDoc?.urlPath ?? link.urlPath, baseUrl),
+    url: toMarkdownUrlPath(sourceDoc?.urlPath ?? link.urlPath),
   };
 }
 
@@ -413,6 +898,7 @@ async function readMarkdownDocs(
         .relative(docsDir, filePath)
         .replace(WINDOWS_PATH_PATTERN, "/");
       const raw = await readFile(filePath, "utf-8");
+      const fileStat = await stat(filePath);
       const parsed = matter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
@@ -432,11 +918,14 @@ async function readMarkdownDocs(
         relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
         groups,
         content: parsed.content.trim(),
+        lastModified: readLastModified(parsed.data, fileStat.mtime),
       };
     })
   );
 
-  return docs.sort((left, right) => left.urlPath.localeCompare(right.urlPath));
+  return docs
+    .filter((doc) => !GENERATED_MARKDOWN_FILES.has(`${doc.relativePath}.md`))
+    .sort((left, right) => left.urlPath.localeCompare(right.urlPath));
 }
 
 type GroupMembership = {
@@ -513,12 +1002,11 @@ function pagesUnderGroup(
 
 function renderProductSummary(
   product: ProductInfo,
-  sourceDocs: Map<string, SourceDoc>,
-  baseUrl: string
+  sourceDocs: Map<string, SourceDoc>
 ): string {
   const startingPoints = product.bestStartingPoints ?? [];
   const links = startingPoints.map((link) =>
-    resolveCuratedLink(link, sourceDocs, baseUrl)
+    resolveCuratedLink(link, sourceDocs)
   );
 
   const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
@@ -700,7 +1188,7 @@ function renderLeafGroupDocument(
   );
   const links = groupPages.map((doc) => ({
     title: doc.title,
-    absoluteUrl: doc.absoluteUrl,
+    url: doc.absoluteUrl,
     description:
       doc.description || `Entry point for ${doc.title} documentation.`,
   }));
@@ -771,7 +1259,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
   await writeFile(
     path.join(outDir, "llms.txt"),
-    renderProductSummary(config.product, sourceDocs, baseUrl)
+    renderProductSummary(config.product, sourceDocs)
   );
 
   if (resolved.length > 0) {
@@ -819,6 +1307,247 @@ export async function generateLLMFullContextFiles(
   );
 
   await writeGroupTree(resolved, config.product, markdownDocs, llmsFullDir);
+}
+
+function escapeXml(value: string): string {
+  return value.replace(/[<>&'"]/g, (character) => {
+    switch (character) {
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "&":
+        return "&amp;";
+      case "'":
+        return "&apos;";
+      case '"':
+        return "&quot;";
+      default:
+        return character;
+    }
+  });
+}
+
+function toAgentReadabilityPage(
+  doc: MarkdownDoc,
+  baseUrl: string
+): AgentReadabilityPage {
+  const markdownUrlPath = toMarkdownUrlPath(doc.urlPath);
+  return {
+    title: doc.title,
+    description: doc.description,
+    urlPath: doc.urlPath,
+    absoluteUrl: doc.absoluteUrl,
+    markdownUrlPath,
+    markdownAbsoluteUrl: toAbsoluteUrl(markdownUrlPath, baseUrl),
+    relativePath: doc.relativePath,
+    groups: [...doc.groups],
+    lastModified: doc.lastModified,
+  };
+}
+
+export function renderSitemapXml(pages: AgentReadabilityPage[]): string {
+  const urls = pages
+    .map(
+      (page) => `  <url>
+    <loc>${escapeXml(page.absoluteUrl)}</loc>
+    <lastmod>${escapeXml(page.lastModified)}</lastmod>
+  </url>`
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>
+`;
+}
+
+function renderSitemapGroup(
+  group: DocsNavigationGroup,
+  pagesByPath: Map<string, AgentReadabilityPage>,
+  depth = 2
+): string[] {
+  const lines = [`${"#".repeat(depth)} ${group.title}`];
+  if (group.description) {
+    lines.push("", group.description);
+  }
+
+  const links: string[] = [];
+  for (const page of group.pages) {
+    const readablePage = pagesByPath.get(page.urlPath);
+    if (!readablePage) {
+      continue;
+    }
+    const description = readablePage.description
+      ? `: ${readablePage.description}`
+      : "";
+    links.push(
+      `- [${readablePage.title}](${readablePage.urlPath})${description}`
+    );
+  }
+
+  if (links.length > 0) {
+    lines.push("", ...links);
+  }
+
+  for (const child of group.children) {
+    lines.push("", ...renderSitemapGroup(child, pagesByPath, depth + 1));
+  }
+
+  return lines;
+}
+
+export function renderSitemapMarkdown(
+  config: RenderSitemapMarkdownConfig
+): string {
+  const pagesByPath = new Map(config.pages.map((page) => [page.urlPath, page]));
+  const lines = [
+    "# Sitemap",
+    "",
+    `Structured documentation sitemap for ${config.product.name}.`,
+  ];
+
+  for (const group of config.navigation.groups) {
+    lines.push("", ...renderSitemapGroup(group, pagesByPath));
+  }
+
+  if (config.navigation.ungrouped.length > 0) {
+    lines.push("", "## Other", "");
+    for (const page of config.navigation.ungrouped) {
+      const readablePage = pagesByPath.get(page.urlPath);
+      if (!readablePage) {
+        continue;
+      }
+      const description = readablePage.description
+        ? `: ${readablePage.description}`
+        : "";
+      lines.push(
+        `- [${readablePage.title}](${readablePage.urlPath})${description}`
+      );
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
+  const baseUrl = config.baseUrl
+    ? normalizeBaseUrl(config.baseUrl)
+    : normalizeBaseUrl(undefined);
+  const sitemapUrl = toAbsoluteUrl(
+    config.sitemapUrlPath ?? "/sitemap.xml",
+    baseUrl
+  );
+  const allowPaths = config.allowPaths ?? [
+    "/",
+    "/docs/",
+    "/llms.txt",
+    "/docs/llms.txt",
+    "/sitemap.xml",
+    "/sitemap.md",
+  ];
+  const userAgents = config.userAgents ?? AI_CRAWLER_USER_AGENTS;
+  const lines = ["User-agent: *"];
+  for (const allowPath of allowPaths) {
+    lines.push(`Allow: ${allowPath}`);
+  }
+  lines.push("");
+
+  for (const userAgent of userAgents) {
+    lines.push(`User-agent: ${userAgent}`);
+    for (const allowPath of allowPaths) {
+      lines.push(`Allow: ${allowPath}`);
+    }
+    lines.push("");
+  }
+
+  lines.push(`Sitemap: ${sitemapUrl}`, "");
+  return lines.join("\n");
+}
+
+function buildNavigationFromMarkdownDocs(
+  docs: MarkdownDoc[],
+  resolved: ResolvedGroup[]
+): DocsNavigation {
+  const membership = buildGroupMembership(docs, resolved);
+  return {
+    groups: resolved.map((group) => buildNavigationGroup(group, membership)),
+    ungrouped: membership.ungrouped.map(pageView),
+    unknown: membership.unknown.map(({ page, slug }) => ({
+      urlPath: page.urlPath,
+      slug,
+    })),
+  };
+}
+
+/**
+ * Generate docs-scoped Vercel Agent Readability discovery artifacts. These
+ * files are intentionally written under `/docs/` so host apps can merge them
+ * with blog, marketing, changelog, or product pages before serving root-level
+ * `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+ */
+export async function generateAgentReadabilityArtifacts(
+  config: AgentReadabilityConfig
+): Promise<AgentReadabilityResult> {
+  const outDir = path.resolve(config.outDir);
+  const docsDir = path.join(outDir, DOCS_DIRNAME);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
+
+  if (markdownDocs.length === 0) {
+    throw new Error(
+      `generateAgentReadabilityArtifacts found no markdown under "${docsDir}". Run convertAllMdx first, or check that config.outDir matches.`
+    );
+  }
+
+  const resolved = resolveGroups(config.groups);
+  const navigation = buildNavigationFromMarkdownDocs(markdownDocs, resolved);
+  const pages = markdownDocs.map((doc) => toAgentReadabilityPage(doc, baseUrl));
+  const manifest: AgentReadabilityManifest = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    baseUrl,
+    product: config.product,
+    pages,
+    navigation,
+    files: {
+      robotsTxt: `/docs/${ROBOTS_FILE}`,
+      sitemapMd: `/docs/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `/docs/${SITEMAP_XML_FILE}`,
+    },
+  };
+
+  const files = {
+    manifest: path.join(docsDir, AGENT_READABILITY_MANIFEST_FILE),
+    robotsTxt: path.join(docsDir, ROBOTS_FILE),
+    sitemapMd: path.join(docsDir, SITEMAP_MARKDOWN_FILE),
+    sitemapXml: path.join(docsDir, SITEMAP_XML_FILE),
+  };
+
+  await mkdir(docsDir, { recursive: true });
+  await writeFile(files.sitemapXml, renderSitemapXml(pages));
+  await writeFile(
+    files.sitemapMd,
+    renderSitemapMarkdown({
+      product: config.product,
+      navigation,
+      pages,
+    })
+  );
+  await writeFile(
+    files.robotsTxt,
+    renderRobotsTxt({
+      baseUrl,
+      sitemapUrlPath: "/docs/sitemap.xml",
+    })
+  );
+  await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    files,
+    manifest,
+  };
 }
 
 /* ---------------- AGENTS.md (offline package bundle) -------------------- */

@@ -1,0 +1,402 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-10T01:26:20.748Z",
+  "baseUrl": "https://docs.example.com",
+  "product": {
+    "name": "Leadtype",
+    "summary": "A docs pipeline that turns one MDX source into a website, agent-readable bundles, and a search index."
+  },
+  "pages": [
+    {
+      "title": "Leadtype",
+      "description": "One MDX source. A website for humans, AGENTS.md for offline coding agents, llms.txt for HTTP agents — all from a single pipeline.",
+      "urlPath": "/docs",
+      "absoluteUrl": "https://docs.example.com/docs",
+      "markdownUrlPath": "/docs/index.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/index.md",
+      "relativePath": "index",
+      "groups": [
+        "get-started"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Components",
+      "description": "MDX components the pipeline knows how to flatten into agent-readable markdown.",
+      "urlPath": "/docs/authoring/components",
+      "absoluteUrl": "https://docs.example.com/docs/authoring/components",
+      "markdownUrlPath": "/docs/authoring/components.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/authoring/components.md",
+      "relativePath": "authoring/components",
+      "groups": [
+        "authoring"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Frontmatter",
+      "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
+      "urlPath": "/docs/authoring/frontmatter",
+      "absoluteUrl": "https://docs.example.com/docs/authoring/frontmatter",
+      "markdownUrlPath": "/docs/authoring/frontmatter.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/authoring/frontmatter.md",
+      "relativePath": "authoring/frontmatter",
+      "groups": [
+        "authoring"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Bundle docs into a package",
+      "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
+      "urlPath": "/docs/build/bundle-package-docs",
+      "absoluteUrl": "https://docs.example.com/docs/build/bundle-package-docs",
+      "markdownUrlPath": "/docs/build/bundle-package-docs.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/build/bundle-package-docs.md",
+      "relativePath": "build/bundle-package-docs",
+      "groups": [
+        "build"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Connect a docs site",
+      "description": "Wire leadtype into a docs app build so humans, agents, and search use one source.",
+      "urlPath": "/docs/build/connect-docs-site",
+      "absoluteUrl": "https://docs.example.com/docs/build/connect-docs-site",
+      "markdownUrlPath": "/docs/build/connect-docs-site.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/build/connect-docs-site.md",
+      "relativePath": "build/connect-docs-site",
+      "groups": [
+        "build"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Optimize docs for agents",
+      "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
+      "urlPath": "/docs/build/optimize-docs-for-agents",
+      "absoluteUrl": "https://docs.example.com/docs/build/optimize-docs-for-agents",
+      "markdownUrlPath": "/docs/build/optimize-docs-for-agents.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/build/optimize-docs-for-agents.md",
+      "relativePath": "build/optimize-docs-for-agents",
+      "groups": [
+        "build"
+      ],
+      "lastModified": "2026-05-10T01:26:20.700Z"
+    },
+    {
+      "title": "Validate in CI",
+      "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
+      "urlPath": "/docs/build/validate-in-ci",
+      "absoluteUrl": "https://docs.example.com/docs/build/validate-in-ci",
+      "markdownUrlPath": "/docs/build/validate-in-ci.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/build/validate-in-ci.md",
+      "relativePath": "build/validate-in-ci",
+      "groups": [
+        "build"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "How it works",
+      "description": "The mental model: one MDX source, a remark pipeline, two output modes, three audiences.",
+      "urlPath": "/docs/how-it-works",
+      "absoluteUrl": "https://docs.example.com/docs/how-it-works",
+      "markdownUrlPath": "/docs/how-it-works.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/how-it-works.md",
+      "relativePath": "how-it-works",
+      "groups": [
+        "get-started"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Methodology",
+      "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+      "urlPath": "/docs/methodology",
+      "absoluteUrl": "https://docs.example.com/docs/methodology",
+      "markdownUrlPath": "/docs/methodology.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/methodology.md",
+      "relativePath": "methodology",
+      "groups": [
+        "get-started"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Quickstart",
+      "description": "Install leadtype, run it against a docs folder, and inspect the artifacts it produces.",
+      "urlPath": "/docs/quickstart",
+      "absoluteUrl": "https://docs.example.com/docs/quickstart",
+      "markdownUrlPath": "/docs/quickstart.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/quickstart.md",
+      "relativePath": "quickstart",
+      "groups": [
+        "get-started"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "CLI",
+      "description": "leadtype generate and leadtype lint — flags, exit codes, and JSON output.",
+      "urlPath": "/docs/reference/cli",
+      "absoluteUrl": "https://docs.example.com/docs/reference/cli",
+      "markdownUrlPath": "/docs/reference/cli.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/reference/cli.md",
+      "relativePath": "reference/cli",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Convert",
+      "description": "MDX-to-markdown conversion APIs from leadtype/convert.",
+      "urlPath": "/docs/reference/convert",
+      "absoluteUrl": "https://docs.example.com/docs/reference/convert",
+      "markdownUrlPath": "/docs/reference/convert.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/reference/convert.md",
+      "relativePath": "reference/convert",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Lint rules",
+      "description": "Schema, link, and navigation checks. CLI and library API.",
+      "urlPath": "/docs/reference/lint",
+      "absoluteUrl": "https://docs.example.com/docs/reference/lint",
+      "markdownUrlPath": "/docs/reference/lint.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/reference/lint.md",
+      "relativePath": "reference/lint",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "LLM bundles",
+      "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
+      "urlPath": "/docs/reference/llm",
+      "absoluteUrl": "https://docs.example.com/docs/reference/llm",
+      "markdownUrlPath": "/docs/reference/llm.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/reference/llm.md",
+      "relativePath": "reference/llm",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Remark plugins",
+      "description": "The default plugin stack that flattens MDX components into markdown.",
+      "urlPath": "/docs/reference/remark",
+      "absoluteUrl": "https://docs.example.com/docs/reference/remark",
+      "markdownUrlPath": "/docs/reference/remark.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/reference/remark.md",
+      "relativePath": "reference/remark",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    },
+    {
+      "title": "Search",
+      "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
+      "urlPath": "/docs/reference/search",
+      "absoluteUrl": "https://docs.example.com/docs/reference/search",
+      "markdownUrlPath": "/docs/reference/search.md",
+      "markdownAbsoluteUrl": "https://docs.example.com/docs/reference/search.md",
+      "relativePath": "reference/search",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-09T22:38:26.000Z"
+    }
+  ],
+  "navigation": {
+    "groups": [
+      {
+        "slug": "get-started",
+        "segmentPath": [
+          "get-started"
+        ],
+        "title": "Get Started",
+        "description": "What leadtype is, how it fits together, and the five-minute happy path.",
+        "pages": [
+          {
+            "urlPath": "/docs",
+            "title": "Leadtype",
+            "description": "One MDX source. A website for humans, AGENTS.md for offline coding agents, llms.txt for HTTP agents — all from a single pipeline.",
+            "groups": [
+              "get-started"
+            ]
+          },
+          {
+            "urlPath": "/docs/how-it-works",
+            "title": "How it works",
+            "description": "The mental model: one MDX source, a remark pipeline, two output modes, three audiences.",
+            "groups": [
+              "get-started"
+            ]
+          },
+          {
+            "urlPath": "/docs/methodology",
+            "title": "Methodology",
+            "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+            "groups": [
+              "get-started"
+            ]
+          },
+          {
+            "urlPath": "/docs/quickstart",
+            "title": "Quickstart",
+            "description": "Install leadtype, run it against a docs folder, and inspect the artifacts it produces.",
+            "groups": [
+              "get-started"
+            ]
+          }
+        ],
+        "children": []
+      },
+      {
+        "slug": "authoring",
+        "segmentPath": [
+          "authoring"
+        ],
+        "title": "Authoring",
+        "description": "The content contract: frontmatter, groups, and the MDX components the pipeline can flatten.",
+        "pages": [
+          {
+            "urlPath": "/docs/authoring/components",
+            "title": "Components",
+            "description": "MDX components the pipeline knows how to flatten into agent-readable markdown.",
+            "groups": [
+              "authoring"
+            ]
+          },
+          {
+            "urlPath": "/docs/authoring/frontmatter",
+            "title": "Frontmatter",
+            "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
+            "groups": [
+              "authoring"
+            ]
+          }
+        ],
+        "children": []
+      },
+      {
+        "slug": "build",
+        "segmentPath": [
+          "build"
+        ],
+        "title": "Build",
+        "description": "Two journeys: ship docs inside an npm package, or wire leadtype into a docs site.",
+        "pages": [
+          {
+            "urlPath": "/docs/build/bundle-package-docs",
+            "title": "Bundle docs into a package",
+            "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
+            "groups": [
+              "build"
+            ]
+          },
+          {
+            "urlPath": "/docs/build/connect-docs-site",
+            "title": "Connect a docs site",
+            "description": "Wire leadtype into a docs app build so humans, agents, and search use one source.",
+            "groups": [
+              "build"
+            ]
+          },
+          {
+            "urlPath": "/docs/build/optimize-docs-for-agents",
+            "title": "Optimize docs for agents",
+            "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
+            "groups": [
+              "build"
+            ]
+          },
+          {
+            "urlPath": "/docs/build/validate-in-ci",
+            "title": "Validate in CI",
+            "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
+            "groups": [
+              "build"
+            ]
+          }
+        ],
+        "children": []
+      },
+      {
+        "slug": "reference",
+        "segmentPath": [
+          "reference"
+        ],
+        "title": "Reference",
+        "description": "CLI flags, conversion APIs, remark plugins, LLM bundles, search, and lint rules.",
+        "pages": [
+          {
+            "urlPath": "/docs/reference/cli",
+            "title": "CLI",
+            "description": "leadtype generate and leadtype lint — flags, exit codes, and JSON output.",
+            "groups": [
+              "reference"
+            ]
+          },
+          {
+            "urlPath": "/docs/reference/convert",
+            "title": "Convert",
+            "description": "MDX-to-markdown conversion APIs from leadtype/convert.",
+            "groups": [
+              "reference"
+            ]
+          },
+          {
+            "urlPath": "/docs/reference/lint",
+            "title": "Lint rules",
+            "description": "Schema, link, and navigation checks. CLI and library API.",
+            "groups": [
+              "reference"
+            ]
+          },
+          {
+            "urlPath": "/docs/reference/llm",
+            "title": "LLM bundles",
+            "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
+            "groups": [
+              "reference"
+            ]
+          },
+          {
+            "urlPath": "/docs/reference/remark",
+            "title": "Remark plugins",
+            "description": "The default plugin stack that flattens MDX components into markdown.",
+            "groups": [
+              "reference"
+            ]
+          },
+          {
+            "urlPath": "/docs/reference/search",
+            "title": "Search",
+            "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
+            "groups": [
+              "reference"
+            ]
+          }
+        ],
+        "children": []
+      }
+    ],
+    "ungrouped": [],
+    "unknown": []
+  },
+  "files": {
+    "robotsTxt": "/docs/robots.txt",
+    "sitemapMd": "/docs/sitemap.md",
+    "sitemapXml": "/docs/sitemap.xml"
+  }
+}

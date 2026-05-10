@@ -11,8 +11,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
   resolveDocsNavigation,
 } from "leadtype/llm";
 import docsConfig from "../../../docs/docs.config";
@@ -48,6 +52,16 @@ await generateLLMFullContextFiles({
   groups: docsConfig.groups,
 });
 
+const agentReadability = await generateAgentReadabilityArtifacts({
+  outDir,
+  baseUrl,
+  product: {
+    name: docsConfig.product.name,
+    summary: docsConfig.product.summary,
+  },
+  groups: docsConfig.groups,
+});
+
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
 // the docs.config.ts as the single source of truth: the same call resolves
 // frontmatter membership for the LLM bundles AND for the in-app sidebar.
@@ -71,5 +85,29 @@ await writeFile(
   join(generatedDir, "docs-nav.json"),
   `${JSON.stringify(navigation, null, 2)}\n`
 );
+await writeFile(
+  join(generatedDir, "agent-readability.json"),
+  `${JSON.stringify(agentReadability.manifest, null, 2)}\n`
+);
 
-process.stdout.write("LLM files + nav manifest generated\n");
+await writeFile(
+  join(outDir, "sitemap.xml"),
+  renderSitemapXml(agentReadability.manifest.pages)
+);
+await writeFile(
+  join(outDir, "sitemap.md"),
+  renderSitemapMarkdown({
+    product: { name: docsConfig.product.name },
+    navigation: agentReadability.manifest.navigation,
+    pages: agentReadability.manifest.pages,
+  })
+);
+await writeFile(
+  join(outDir, "robots.txt"),
+  renderRobotsTxt({
+    baseUrl,
+    sitemapUrlPath: "/sitemap.xml",
+  })
+);
+
+process.stdout.write("LLM files + agent readability manifests generated\n");

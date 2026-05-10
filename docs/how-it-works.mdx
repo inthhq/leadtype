@@ -16,7 +16,7 @@ Leadtype takes one input — a folder of MDX — and produces every shape your d
   remark["remark plugin stack<br/>(strip imports → flatten components)"]
   groups["group resolver<br/>(nav tree from frontmatter)"]
   md["docs/*.md"]
-  site_idx["llms.txt · llms-full/*.txt<br/>(website mode only)"]
+  site_idx["llms.txt · llms-full/*.txt<br/>sitemap · robots · manifest<br/>(website mode only)"]
   search["search-index.json · search-content.json<br/>(website mode only)"]
   agents_md["AGENTS.md<br/>(--bundle mode only)"]
   nav["navigation manifest<br/>(group → page)"]
@@ -43,12 +43,12 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "Site mode (default)": {
       type: "leadtype generate --out public",
       description:
-        "Writes llms.txt, docs/llms-full/*.txt, docs/search-index.json, and docs/*.md to a public/ directory your docs website serves. Links use absolute URLs (set with --base-url). This is what you wire into a vite/Next/Astro build.",
+        "Writes llms.txt, docs/llms-full/*.txt, docs/search-index.json, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Vite, Next.js, Astro, or TanStack Start build.",
     },
     "Bundle mode": {
       type: "leadtype generate --bundle --out packages/foo",
       description:
-        "Writes AGENTS.md at the package root and docs/*.md beneath it, both with relative paths. Skips llms.txt, llms-full, and the search index — those are website-only. Designed for npm tarballs that ship docs alongside the published code.",
+        "Writes AGENTS.md at the package root and docs/*.md beneath it, both with relative paths. Skips llms.txt, llms-full, search, sitemap, robots, and Agent Readability files — those are website-only. Designed for npm tarballs that ship docs alongside the published code.",
     },
   }}
 />
@@ -70,12 +70,17 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "llms.txt + llms-full": {
       type: "<out>/llms.txt + <out>/docs/llms-full/<group>.txt",
       description:
-        "Site mode only. The llms.txt convention is for websites — agents fetch /llms.txt over HTTP and follow absolute URLs to deeper context. Useless inside an npm tarball, so bundle mode skips this.",
+        "Site mode only. The llms.txt convention is for websites — agents fetch /llms.txt over HTTP and follow markdown mirror links to deeper context. Useless inside an npm tarball, so bundle mode skips this.",
     },
     "Search index": {
       type: "<out>/docs/search-index.json + search-content.json",
       description:
         "Site mode only. BM25-ranked inverted index over headings, titles, body, and code. Content is stored separately so the index stays small. Bundle mode skips it — agents reading from disk grep the .md files directly.",
+    },
+    "Agent Readability": {
+      type: "<out>/docs/sitemap.xml + sitemap.md + robots.txt + agent-readability.json",
+      description:
+        "Site mode only. Docs-scoped discovery files and structured page data. Host apps merge this with blog, marketing, changelog, or product pages before serving root sitemap and robots files.",
     },
     "Navigation manifest": {
       type: "docs-nav.json (build script)",
@@ -134,7 +139,7 @@ A few terms you will see throughout the docs.
     "content negotiation": {
       type: "noun",
       description:
-        "Middleware that rewrites GET /docs/foo to /docs/foo.md when the request advertises Accept: text/markdown. Same URL, two formats. Implement it wherever your framework intercepts requests — Next.js middleware, an Astro endpoint, a Cloudflare Worker, a Vite plugin.",
+        "Middleware or route logic that returns generated markdown when a request advertises Accept: text/markdown, uses an AI user agent, or asks for /docs/foo.md. Same content, two formats. Implement it wherever your framework intercepts requests — Next.js route handlers, Astro endpoints, Cloudflare Workers, Vite plugins, or server middleware.",
     },
   }}
 />
@@ -146,8 +151,8 @@ The `leadtype generate` command runs in a fixed order — each stage depends on 
 1. **Parse frontmatter** for every `.mdx` under `docs/`.
 2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to the output directory (e.g. `public/docs/` in site mode, `<package>/docs/` with `--bundle`).
 3. **Resolve groups** from frontmatter, validate every page's `group:` matches a known slug.
-4. In **site mode** (default): generate `llms.txt`, the `llms-full/<group>.txt` topic bundles, and the BM25 search index from the converted markdown.
-5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip `llms.txt`, `llms-full*`, and the search index — those are website-only.
+4. In **site mode** (default): generate `llms.txt`, the `llms-full/<group>.txt` topic bundles, the BM25 search index, and Agent Readability discovery files from the converted markdown.
+5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip `llms.txt`, `llms-full*`, search, sitemap, robots, and Agent Readability files — those are website-only.
 
 If step 3 finds an unknown group, the run fails. That is by design — broken navigation is a content bug, not a render-time problem.
 

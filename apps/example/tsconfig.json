@@ -22,6 +22,7 @@
     "allowJs": true,
     "types": ["node", "vite/client"],
     "paths": {
+      "leadtype": ["../../packages/leadtype/src/index.ts"],
       "@/*": ["./src/*"],
       "@docs/*": ["../../docs/*"],
       "leadtype/remark": ["../../packages/leadtype/src/remark/index.ts"],

@@ -14,7 +14,7 @@ It is not a docs website framework. Bring your own UI — Next.js, TanStack Star
   src["docs/*.mdx<br/>(your source)"]
   site_run["leadtype generate"]
   bundle_run["leadtype generate --bundle"]
-  site_out["public/<br/>llms.txt · llms-full/<br/>docs/*.md · search-index.json"]
+  site_out["public/<br/>llms.txt · llms-full<br/>docs/*.md · sitemap<br/>agent-readability.json"]
   bundle_out["packages/&lt;name&gt;/<br/>AGENTS.md · docs/*.md"]
   humans["Humans<br/>(browser)"]
   http_agents["HTTP agents<br/>(via /llms.txt or<br/>Accept: text/markdown)"]
@@ -36,7 +36,7 @@ Most teams arrive here for one of two reasons. Pick the journey that matches you
 <Cards>
   <Card
     title="Build a docs site"
-    description="You run a docs site (or want to). Wire leadtype in front of your build to convert MDX, index search, and serve markdown to agents."
+    description="You run a docs site (or want to). Wire leadtype in front of your build to convert MDX, index search, and add agent-readable discovery."
     href="/docs/build/connect-docs-site"
   />
   <Card
@@ -53,7 +53,7 @@ Most teams arrive here for one of two reasons. Pick the journey that matches you
     Author MDX with familiar components — `Callout`, `Tabs`, `Steps`, `Mermaid`, `TypeTable`, and others. Add `group:` in frontmatter to place pages in the navigation tree.
   </Step>
   <Step title="Run `leadtype generate`">
-    For a website: converts MDX to markdown, builds `llms.txt` plus topic bundles, generates a search index, resolves navigation. With `--bundle`: emits `AGENTS.md` plus per-topic `.md` files for agents reading from `node_modules/`.
+    For a website: converts MDX to markdown, builds `llms.txt` plus topic bundles, generates a search index, writes Agent Readability discovery files, and resolves navigation. With `--bundle`: emits `AGENTS.md` plus per-topic `.md` files for agents reading from `node_modules/`.
   </Step>
   <Step title="Serve all of it">
     Humans get HTML. HTTP agents get markdown via content negotiation or fetch `llms.txt`. Coding agents working in a project that depends on your package auto-discover `AGENTS.md` from `node_modules/<your-pkg>/`. One source, three audiences.

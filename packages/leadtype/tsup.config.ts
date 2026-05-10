@@ -6,6 +6,7 @@ export default defineConfig({
     "remark/index": "src/remark/index.ts",
     "convert/index": "src/convert/index.ts",
     "llm/index": "src/llm/index.ts",
+    "llm/readability": "src/llm/readability.ts",
     "search/index": "src/search/index.ts",
     "search/node-index": "src/search/node-index.ts",
     "search/ai-index": "src/search/ai-index.ts",
