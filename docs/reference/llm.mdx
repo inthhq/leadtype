@@ -158,67 +158,116 @@ await writeFile(
 
 ## Agent readability helpers
 
-`generateAgentReadabilityArtifacts` gives you the manifest. The helper APIs turn
-that manifest into the per-request pieces your framework needs:
+`generateAgentReadabilityArtifacts` gives you the manifest. The runtime helpers turn it into Web `Response` objects your framework can return directly:
 
 ```ts
 import {
   acceptsMarkdownHeader,
   createAgentMarkdownResponse,
+  createDocsHead,
   createMarkdownResponseHeaders,
+  createRobotsTxtResponse,
+  createSitemapMarkdownResponse,
+  createSitemapXmlResponse,
   enrichMarkdownFrontmatter,
   isAgentReadabilityArtifactPath,
   isAgentUserAgent,
-  renderMissingMarkdown,
   renderJsonLd,
   renderJsonLdScript,
+  renderMissingMarkdown,
   resolveMarkdownMirrorTarget,
 } from "leadtype/llm/readability";
 ```
 
-Use `renderJsonLd(page, manifest)` when your framework has a typed metadata/head
-API. It returns a plain Schema.org object. Use `renderJsonLdScript(page,
-manifest)` when you need a framework-neutral HTML string:
+The whole module is fs-free and edge-runtime safe: it works in Node, Bun, Vercel Edge, Cloudflare Workers, and any framework with a Web `Request`/`Response` API.
+
+### createAgentMarkdownResponse
+
+Markdown content negotiation for docs pages. Returns `Response | null` (`null` means the path is not an agent-oriented markdown request — fall through to your HTML route). `readMarkdownFile` may be sync or async.
 
 ```ts
-const page = manifest.pages.find((entry) => entry.urlPath === "/docs/quickstart");
-
-if (page) {
-  const jsonLd = renderJsonLd(page, manifest);
-  const scriptTag = renderJsonLdScript(page, manifest);
-}
-```
-
-Use `createAgentMarkdownResponse` from middleware or route handlers to serve the
-generated markdown mirrors for `Accept: text/markdown`, AI user agents, and
-direct `.md` URLs. You provide the request path, headers, manifest, and a small
-reader for files under `<out>/docs/`; leadtype returns the status, headers, and
-body to send.
-
-```ts
-const response = createAgentMarkdownResponse({
+const response = await createAgentMarkdownResponse({
   urlPath: request.url,
   method: request.method,
   headers: Object.fromEntries(request.headers),
   manifest,
   requestOrigin: new URL(request.url).origin,
-  readMarkdownFile(target) {
-    return readFileSync(`public/${target.filePath}`, "utf8");
+  async readMarkdownFile(target) {
+    return await readGeneratedFile(`public/${target.filePath}`);
   },
 });
 
 if (response) {
-  return new Response(response.body, {
-    status: response.status,
-    headers: response.headers,
-  });
+  return response;
 }
 ```
 
-The response helper also enriches generated markdown frontmatter with
-`canonical_url` and `last_updated`, leaves `llms.txt` and sitemap/robots
-artifacts alone, and returns a 200 markdown "Page not found" body only for
-agent-oriented markdown requests.
+Headers it sets:
+
+- `Content-Type: text/markdown; charset=utf-8`
+- `Vary: Accept` (and `, User-Agent` when an AI UA is detected)
+- `Link: <canonical>; rel="canonical"`
+- `Cache-Control: public, max-age=300, must-revalidate` (override with `cacheControl: "<directive>"` or omit with `cacheControl: null`)
+
+It also enriches frontmatter with `canonical_url` and `last_updated`, leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, `llms-full*.txt`, search JSON) alone, and returns a 200 markdown "Page not found" body only for agent-oriented requests.
+
+Optional `userAgentPattern` overrides the default AI user-agent regex (defaults cover GPTBot, ChatGPT-User, OAI-SearchBot, Claude-Web, ClaudeBot, anthropic-ai, CCBot, Google-Extended, AmazonBot, Bingbot, MetaExternalAgent, ByteSpider, PerplexityBot, MistralBot, AppleBot, YouBot).
+
+### createSitemapXmlResponse / createSitemapMarkdownResponse / createRobotsTxtResponse
+
+Build sitemap and robots responses at request time so the `<loc>` and `Sitemap:` directives reflect the live origin (preview, staging, prod), no string-replace hacks needed.
+
+```ts
+const sitemap = createSitemapXmlResponse({
+  manifest,
+  requestOrigin: new URL(request.url).origin,
+  // Optional: merge non-docs pages into the sitemap before rebasing.
+  pages: [...manifest.pages, ...marketingPages],
+});
+
+const robots = createRobotsTxtResponse({
+  manifest,
+  requestOrigin: new URL(request.url).origin,
+  // Optional: docs-scoped robots points to /docs/sitemap.xml.
+  sitemapUrlPath: "/docs/sitemap.xml",
+});
+```
+
+`requestOrigin` is optional — when omitted, the helpers fall back to `manifest.baseUrl`.
+
+### createDocsHead
+
+Build canonical/alternate/og/JSON-LD head metadata for a docs page from the manifest. Returns `{ meta, links }` in a framework-neutral shape (TanStack Router, Next.js Metadata, Astro, etc.).
+
+```ts
+import manifest from "../public/docs/agent-readability.json";
+import { createDocsHead } from "leadtype/llm/readability";
+
+const head = createDocsHead({
+  urlPath: "/docs/quickstart",
+  manifest,
+  // Optional: override the JSON-LD meta key (default: "script:ld+json"
+  // for TanStack Router; use "ldJson" for typed Metadata APIs).
+  jsonLdMetaKey: "script:ld+json",
+});
+
+// head.meta = [
+//   { title: "Quickstart | Leadtype" },
+//   { name: "description", content: "Install and run." },
+//   { property: "og:title", content: "Quickstart | Leadtype" },
+//   { property: "og:description", content: "Install and run." },
+//   { "script:ld+json": { "@context": "https://schema.org", ... } },
+// ];
+// head.links = [
+//   { rel: "canonical", href: "https://docs.example.com/docs/quickstart" },
+//   { rel: "alternate", type: "text/markdown",
+//     href: "https://docs.example.com/docs/quickstart.md" },
+// ];
+```
+
+If the page is not in the manifest, both arrays are empty so the caller can fall back to its own metadata.
+
+### Lower-level helpers
 
 For a step-by-step integration guide, see [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
 
@@ -226,14 +275,24 @@ For a step-by-step integration guide, see [Optimize docs for agents](/docs/build
 | --- | --- |
 | `renderJsonLd` | Return a Schema.org object for framework metadata APIs. |
 | `renderJsonLdScript` | Return an escaped `<script type="application/ld+json">` string. |
-| `createAgentMarkdownResponse` | Build a complete markdown response for agent Accept headers, AI user agents, and direct `.md` URLs. |
+| `createAgentMarkdownResponse` | Build a complete markdown `Response` for agent Accept headers, AI user agents, and direct `.md` URLs. |
+| `createSitemapXmlResponse` / `createSitemapMarkdownResponse` / `createRobotsTxtResponse` | Build sitemap/robots `Response`s rebased to the live origin. |
+| `createDocsHead` | Build canonical/alternate/og/JSON-LD head entries from the manifest. |
 | `resolveMarkdownMirrorTarget` | Map `/docs/foo` or `/docs/foo.md` to the generated `docs/foo.md` file path. |
-| `createMarkdownResponseHeaders` | Produce canonical markdown headers with `Content-Type`, `Vary`, and `Link`. |
-| `enrichMarkdownFrontmatter` | Add `canonical_url` and `last_updated` aliases to generated markdown. |
+| `createMarkdownResponseHeaders` | Produce canonical markdown headers with `Content-Type`, `Vary`, `Link`, `Cache-Control`. |
+| `enrichMarkdownFrontmatter` | Add `canonical_url` and `last_updated` aliases to generated markdown (CRLF-tolerant). |
 | `renderMissingMarkdown` | Render the 200 markdown body used for missing docs pages requested by agents. |
-| `acceptsMarkdownHeader` | Detect whether an `Accept` header is asking for markdown or plain text. |
-| `isAgentUserAgent` | Detect known AI crawler and agent user agents. |
-| `isAgentReadabilityArtifactPath` | Avoid rewriting `llms.txt`, sitemap, robots, search JSON, and manifest artifact paths. |
+| `acceptsMarkdownHeader` | Detect whether an `Accept` header is asking for markdown (q-value aware). |
+| `isAgentUserAgent` | Detect known AI crawler and agent user agents. Accepts an optional regex override. |
+| `isAgentReadabilityArtifactPath` | Avoid rewriting `llms.txt`, `llms-full.txt`, sitemap, robots, search JSON, and manifest artifact paths. |
+
+### Cache-Control and CDN
+
+Every helper sets `Cache-Control: public, max-age=300, must-revalidate` by default and pairs it with `Vary: Accept` (and `, User-Agent` for AI UAs). When you cache responses on a CDN, make sure it shards by `Accept` and `User-Agent` so agents and browsers don't cross-pollinate cached HTML and markdown variants. Pass `cacheControl: "<directive>"` to override or `cacheControl: null` to omit the header (when you set caching at the CDN layer).
+
+### Manifest version
+
+Every helper asserts `manifest.version === 1` at the entry point and throws a clear error otherwise — so a stale dev `agent-readability.json` from a different leadtype version fails loudly instead of silently producing wrong responses.
 
 ## generateAgentsMd
 

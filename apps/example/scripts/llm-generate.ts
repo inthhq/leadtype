@@ -7,16 +7,13 @@
  * consumers.
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
-  renderRobotsTxt,
-  renderSitemapMarkdown,
-  renderSitemapXml,
   resolveDocsNavigation,
 } from "leadtype/llm";
 import docsConfig from "../../../docs/docs.config";
@@ -90,24 +87,17 @@ await writeFile(
   `${JSON.stringify(agentReadability.manifest, null, 2)}\n`
 );
 
-await writeFile(
-  join(outDir, "sitemap.xml"),
-  renderSitemapXml(agentReadability.manifest.pages)
-);
-await writeFile(
-  join(outDir, "sitemap.md"),
-  renderSitemapMarkdown({
-    product: { name: docsConfig.product.name },
-    navigation: agentReadability.manifest.navigation,
-    pages: agentReadability.manifest.pages,
-  })
-);
-await writeFile(
-  join(outDir, "robots.txt"),
-  renderRobotsTxt({
-    baseUrl,
-    sitemapUrlPath: "/sitemap.xml",
-  })
+// Static copies would be served by Vite/nitro before the middleware runs,
+// so the live origin would never make it into <loc> / Sitemap:.
+await Promise.all(
+  [
+    join(outDir, "sitemap.xml"),
+    join(outDir, "sitemap.md"),
+    join(outDir, "robots.txt"),
+    join(outDir, "docs", "sitemap.xml"),
+    join(outDir, "docs", "sitemap.md"),
+    join(outDir, "docs", "robots.txt"),
+  ].map((file) => rm(file, { force: true }))
 );
 
 process.stdout.write("LLM files + agent readability manifests generated\n");

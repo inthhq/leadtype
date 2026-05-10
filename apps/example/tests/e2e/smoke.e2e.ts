@@ -174,6 +174,17 @@ test("agent readability discovery files are served at the site root", async ({
     const markdownMirror = await request.get(urlPath);
     expect(markdownMirror.ok()).toBe(true);
   }
+
+  // /llms-full.txt is an agent artifact, not a markdown mirror — even when
+  // an agent asks for markdown the static text file should be returned, not
+  // a "Page not found" body.
+  const llmsFullTxt = await request.get("/llms-full.txt", {
+    headers: { Accept: "text/markdown" },
+  });
+  expect(llmsFullTxt.ok()).toBe(true);
+  const llmsFullText = await llmsFullTxt.text();
+  expect(llmsFullText).toContain("Full Context Router");
+  expect(llmsFullText).not.toContain("# Page not found");
 });
 
 test("docs pages expose canonical and markdown mirror metadata", async ({
@@ -198,6 +209,7 @@ test("docs pages expose canonical and markdown mirror metadata", async ({
   expect(markdownResponse.headers().link).toContain(
     '<https://docs.example.com/docs/quickstart>; rel="canonical"'
   );
+  expect(markdownResponse.headers()["cache-control"]).toContain("max-age=300");
   const markdown = await markdownResponse.text();
   expect(markdown).toContain("# Quickstart");
   expect(markdown).toContain("canonical_url:");
