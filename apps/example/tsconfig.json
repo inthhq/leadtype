@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "../../packages/typescript-config/base.json",
+  "extends": "@repo/typescript-config/base.json",
   "include": [
     "playwright.config.ts",
     "scripts/**/*",
@@ -12,14 +12,10 @@
     "vite.config.ts"
   ],
   "compilerOptions": {
-    "target": "ES2022",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
     "allowJs": true,
     "types": ["node", "vite/client"],
     "paths": {
