@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   AgentReadabilityManifest,
@@ -14,8 +14,10 @@ import manifestJson from "../../src/generated/agent-readability.json" with {
   type: "json",
 };
 
-export const agentReadabilityManifest =
-  manifestJson as AgentReadabilityManifest;
+export const agentReadabilityManifest: AgentReadabilityManifest = {
+  ...manifestJson,
+  version: 1,
+};
 
 export function getRequestOrigin(event: H3Event): string | undefined {
   const forwardedHost = getHeader(event, "x-forwarded-host")
@@ -32,9 +34,14 @@ export function getRequestOrigin(event: H3Event): string | undefined {
   return url.origin;
 }
 
-export function readMarkdownFile(target: MarkdownMirrorTarget): string | null {
+export async function readMarkdownFile(
+  target: MarkdownMirrorTarget
+): Promise<string | null> {
   try {
-    return readFileSync(join(process.cwd(), "public", target.filePath), "utf8");
+    return await readFile(
+      join(process.cwd(), "public", target.filePath),
+      "utf8"
+    );
   } catch {
     return null;
   }
