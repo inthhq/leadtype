@@ -364,15 +364,29 @@ You are helping wire leadtype into a docs site.
 <Audience target="agent">
   Read \`public/docs/agent-readability.json\` before editing middleware.
 </Audience>
+
+<Audience target={'human'}>
+  This JSX string expression is human-only.
+</Audience>
+
+<Audience target={"agent"}>
+  This JSX string expression is agent-readable.
+</Audience>
 `
     );
 
     const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).not.toContain("Click the robot icon");
+    expect(result.markdown).not.toContain(
+      "This JSX string expression is human-only."
+    );
     expect(result.markdown).not.toContain("<Audience");
     expect(result.markdown).toContain(
       "Read `public/docs/agent-readability.json` before editing middleware."
+    );
+    expect(result.markdown).toContain(
+      "This JSX string expression is agent-readable."
     );
   });
 

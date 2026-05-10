@@ -4,6 +4,7 @@ import type {
   LiHTMLAttributes,
   ReactNode,
 } from "react";
+import { useState } from "react";
 
 function FolderIcon() {
   return (
@@ -105,9 +106,18 @@ export function Folder({
   children,
   ...rest
 }: FolderProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
     <li data-leadtype-file-tree-item="">
-      <details data-leadtype-file-tree-folder="" open={defaultOpen} {...rest}>
+      <details
+        data-leadtype-file-tree-folder=""
+        onToggle={(event) =>
+          setIsOpen((event.target as HTMLDetailsElement).open)
+        }
+        open={isOpen}
+        {...rest}
+      >
         <summary data-leadtype-file-tree-summary="">
           <ChevronIcon />
           <FolderIcon />

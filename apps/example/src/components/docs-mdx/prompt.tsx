@@ -131,20 +131,25 @@ export function Prompt({
     return () => observer.disconnect();
   }, []);
 
-  function copyPrompt() {
+  async function copyPrompt() {
     const text = contentRef.current?.innerText.trim();
     if (!text) {
       return;
     }
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), COPIED_TIMEOUT_MS);
-      })
-      .catch(() => {
-        setCopied(false);
-      });
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), COPIED_TIMEOUT_MS);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  function handleCopyClick() {
+    copyPrompt().catch(() => {
+      setCopied(false);
+    });
   }
 
   const isExpanded = expanded || !overflows;
@@ -169,7 +174,7 @@ export function Prompt({
           aria-label={copied ? "Copied to clipboard" : "Copy prompt"}
           data-copied={copied || undefined}
           data-leadtype-prompt-copy=""
-          onClick={copyPrompt}
+          onClick={handleCopyClick}
           type="button"
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
