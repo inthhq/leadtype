@@ -112,7 +112,8 @@ describe("leadtype CLI", () => {
     );
 
     expect(code).toBe(0);
-    expect(capture.stdout).toContain("Generated docs pipeline output");
+    expect(capture.stdout).toBe("");
+    expect(capture.stderr).toContain("Generated docs pipeline output");
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))

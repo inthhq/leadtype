@@ -2,6 +2,7 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
+import { logger, setLogStreams } from "./internal/logger";
 import { getLintUsage, runLintCommand } from "./lint/cli";
 
 type CliIo = {
@@ -36,6 +37,7 @@ export async function runCli(
   argv: string[],
   io: CliIo = { stderr: process.stderr, stdout: process.stdout }
 ): Promise<number> {
+  setLogStreams(io);
   const [command, ...rest] = argv;
 
   if (!command || command === "-h" || command === "--help") {
@@ -72,7 +74,10 @@ if (isDirectRun()) {
     })
     .catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`leadtype: ${message}\n`);
+      logger.error({
+        human: { message, hint: "set DEBUG=1 to print the stack" },
+        json: { event: "cli.fatal", fields: { message } },
+      });
       if (process.env.DEBUG && error instanceof Error && error.stack) {
         process.stderr.write(`${error.stack}\n`);
       }

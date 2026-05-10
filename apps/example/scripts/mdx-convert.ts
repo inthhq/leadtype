@@ -36,11 +36,9 @@ if (!existsSync(srcDir)) {
   process.exit(1);
 }
 
-process.stdout.write(`Converting MDX from ${srcDir} → ${outDir}\n`);
 await convertAllMdx({
   srcDir,
   outDir,
   remarkPlugins,
   enrichFrontmatterFromGit: true,
 });
-process.stdout.write("MDX conversion complete\n");

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import { logger } from "../internal/logger";
 import {
   type CreateDocsSearchIndexOptions,
   createDocsSearchIndex,
@@ -173,22 +174,54 @@ async function readMarkdownDocs(
   return docs;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${bytes} B`;
+}
+
 function warnIfLarge(result: GenerateDocsSearchFilesResult): void {
-  if (result.indexBytes > WARN_INDEX_BYTES) {
-    process.stderr.write(
-      `Search index is ${result.indexBytes} bytes, which is above the ${WARN_INDEX_BYTES} byte guidance threshold.\n`
+  const overIndex = result.indexBytes > WARN_INDEX_BYTES;
+  const overTotal = result.bytes > WARN_TOTAL_BYTES;
+  const overChunks = result.chunks > WARN_CHUNK_COUNT;
+  if (!(overIndex || overTotal || overChunks)) {
+    return;
+  }
+  const breaches: string[] = [];
+  if (overIndex) {
+    breaches.push(
+      `index ${formatBytes(result.indexBytes)} exceeds ${formatBytes(WARN_INDEX_BYTES)}`
     );
   }
-  if (result.bytes > WARN_TOTAL_BYTES) {
-    process.stderr.write(
-      `Search index and content are ${result.bytes} bytes, which is above the ${WARN_TOTAL_BYTES} byte guidance threshold.\n`
+  if (overTotal) {
+    breaches.push(
+      `total ${formatBytes(result.bytes)} exceeds ${formatBytes(WARN_TOTAL_BYTES)}`
     );
   }
-  if (result.chunks > WARN_CHUNK_COUNT) {
-    process.stderr.write(
-      `Search index has ${result.chunks} chunks, which is above the ${WARN_CHUNK_COUNT} chunk guidance threshold.\n`
-    );
+  if (overChunks) {
+    breaches.push(`chunks ${result.chunks} exceeds ${WARN_CHUNK_COUNT}`);
   }
+  logger.warn({
+    human: {
+      message: `search index size: ${breaches.join("; ")}`,
+      hint: "consider --include / --exclude to scope the index",
+    },
+    json: {
+      event: "search.index.size",
+      fields: {
+        indexBytes: result.indexBytes,
+        totalBytes: result.bytes,
+        chunks: result.chunks,
+        indexThreshold: WARN_INDEX_BYTES,
+        totalThreshold: WARN_TOTAL_BYTES,
+        chunksThreshold: WARN_CHUNK_COUNT,
+      },
+    },
+  });
 }
 
 function resolveDocsOutputPath(
