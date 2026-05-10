@@ -102,7 +102,7 @@ async function bench(): Promise<Stats[]> {
       await generateLlmsTxt({
         srcDir: SRC_DIR,
         outDir: OUT_DIR,
-        baseUrl: "https://docs.example.com",
+        baseUrl: "https://leadtype.dev",
         product: {
           name: "Bench SDK",
           summary: "Benchmark fixture.",
@@ -112,7 +112,7 @@ async function bench(): Promise<Stats[]> {
       });
       await generateLLMFullContextFiles({
         outDir: OUT_DIR,
-        baseUrl: "https://docs.example.com",
+        baseUrl: "https://leadtype.dev",
         product: { name: "Bench SDK" },
         groups: BENCH_GROUPS,
       });

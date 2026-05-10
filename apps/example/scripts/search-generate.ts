@@ -17,7 +17,7 @@ const generatedContentPath = join(generatedDir, "docs-search-content.json");
 
 const result = await generateDocsSearchFiles({
   outDir,
-  baseUrl: "https://docs.example.com",
+  baseUrl: "https://leadtype.dev",
 });
 
 await mkdir(generatedDir, { recursive: true });

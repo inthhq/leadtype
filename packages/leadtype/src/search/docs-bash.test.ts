@@ -13,7 +13,7 @@ const docs: DocsSearchDocument[] = [
     title: "Tabs",
     description: "Interactive tabs.",
     urlPath: "/docs/components/tabs",
-    absoluteUrl: "https://docs.example.com/docs/components/tabs",
+    absoluteUrl: "https://leadtype.dev/docs/components/tabs",
     relativePath: "components/tabs",
     content: "# Tabs\n\n## CommandTabs\n\nUse tabs to switch package managers.",
   },

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import packageJson from "../../package.json";
 
@@ -29,5 +30,32 @@ describe("package surface", () => {
     expect(exportedPaths).not.toContain("./react");
     expect(exportedPaths).not.toContain("./vue");
     expect(exportedPaths).not.toContain("./svelte");
+  });
+
+  it("keeps optional TypeScript loading out of the remark entry import path", () => {
+    const typeTableSource = readFileSync(
+      new URL("../remark/plugins/type-table.remark.ts", import.meta.url),
+      "utf8"
+    );
+
+    expect(typeTableSource).not.toContain('import * as ts from "typescript"');
+    expect(typeTableSource).toContain('import type * as ts from "typescript"');
+  });
+
+  it("keeps provider answer subpaths free of bash adapters", () => {
+    const providerEntryPaths = [
+      "../search/ai-index.ts",
+      "../search/cloudflare-index.ts",
+      "../search/tanstack-index.ts",
+      "../search/vercel-index.ts",
+    ] as const;
+
+    for (const entryPath of providerEntryPaths) {
+      const source = readFileSync(new URL(entryPath, import.meta.url), "utf8");
+      expect(source).not.toContain("vercel-bash");
+      expect(source).not.toContain("tanstack-bash");
+      expect(source).not.toContain("docs-bash");
+      expect(source).not.toContain("createDocsBash");
+    }
   });
 });

@@ -22,7 +22,7 @@ const docs: DocsSearchDocument[] = [
     title: "Quickstart",
     description: "Install and configure the package.",
     urlPath: "/docs/guides/quickstart",
-    absoluteUrl: "https://docs.example.com/docs/guides/quickstart",
+    absoluteUrl: "https://leadtype.dev/docs/guides/quickstart",
     relativePath: "guides/quickstart",
     content: `---
 title: Quickstart
@@ -42,7 +42,7 @@ Use tabs to switch between npm, pnpm, and bun install commands.
     title: "Tabs",
     description: "Interactive tab controls.",
     urlPath: "/docs/components/tabs",
-    absoluteUrl: "https://docs.example.com/docs/components/tabs",
+    absoluteUrl: "https://leadtype.dev/docs/components/tabs",
     relativePath: "components/tabs",
     content: `# Components
 
@@ -56,7 +56,7 @@ Panels can be changed with arrow keys.
     title: "Components",
     description: "General component details.",
     urlPath: "/docs/components",
-    absoluteUrl: "https://docs.example.com/docs/components",
+    absoluteUrl: "https://leadtype.dev/docs/components",
     relativePath: "components",
     content: `# Components
 
@@ -68,7 +68,7 @@ This page mentions tabs in body copy only.
     title: "Code",
     description: "Code examples.",
     urlPath: "/docs/code",
-    absoluteUrl: "https://docs.example.com/docs/code",
+    absoluteUrl: "https://leadtype.dev/docs/code",
     relativePath: "code",
     content: `# Code
 
@@ -91,7 +91,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
       "Quickstart",
       "Install and configure the package.",
       "/docs/guides/quickstart",
-      "https://docs.example.com/docs/guides/quickstart",
+      "https://leadtype.dev/docs/guides/quickstart",
       "guides/quickstart",
     ]);
     expect(index.chunks[0]).toHaveLength(6);
@@ -108,6 +108,69 @@ describe("createDocsSearchIndex and searchDocs", () => {
     const results = searchDocs(index, "CAFÉ!!!");
 
     expect(results[0]?.title).toBe("Code");
+  });
+
+  it("expands queries with synonyms while keeping exact matches first", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const results = searchDocs(index, "setup package");
+
+    expect(results[0]?.title).toBe("Quickstart");
+    expect(results[0]?.excerpt).toContain("Install");
+  });
+
+  it("supports custom synonyms at query time", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const results = searchDocs(index, "switcher", {
+      synonyms: { switcher: ["keyboard"] },
+    });
+
+    expect(results[0]?.title).toBe("Tabs");
+  });
+
+  it("falls back to prefix and typo-tolerant matches", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(searchDocs(index, "keyb")[0]?.title).toBe("Tabs");
+    expect(searchDocs(index, "caff")[0]?.title).toBe("Code");
+  });
+
+  it("boosts phrase matches when content is available", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "phrase",
+          title: "Guide",
+          urlPath: "/docs/phrase",
+          absoluteUrl: "https://leadtype.dev/docs/phrase",
+          relativePath: "phrase",
+          content: "# Guide\n\nInstall the package with the CLI.",
+        },
+        {
+          id: "split",
+          title: "Guide",
+          urlPath: "/docs/split",
+          absoluteUrl: "https://leadtype.dev/docs/split",
+          relativePath: "split",
+          content:
+            "# Guide\n\nInstall the tool first. The package manager comes later.",
+        },
+      ],
+      {
+        generatedAt: "2026-01-01T00:00:00.000Z",
+      }
+    );
+
+    expect(searchDocs(index, "install package")[0]?.urlPath).toBe(
+      "/docs/phrase"
+    );
   });
 
   it("preserves heading paths in chunks and results", () => {
@@ -130,7 +193,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.anchor).toBe("commandtabs");
     expect(result?.urlWithHash).toBe("/docs/guides/quickstart#commandtabs");
     expect(result?.absoluteUrlWithHash).toBe(
-      "https://docs.example.com/docs/guides/quickstart#commandtabs"
+      "https://leadtype.dev/docs/guides/quickstart#commandtabs"
     );
   });
 
@@ -146,7 +209,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
         id: "title",
         title: "Tabs",
         urlPath: "/docs/title",
-        absoluteUrl: "https://docs.example.com/docs/title",
+        absoluteUrl: "https://leadtype.dev/docs/title",
         relativePath: "title",
         content: "# Overview\n\nShort body.",
       },
@@ -154,7 +217,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
         id: "heading",
         title: "Guide",
         urlPath: "/docs/heading",
-        absoluteUrl: "https://docs.example.com/docs/heading",
+        absoluteUrl: "https://leadtype.dev/docs/heading",
         relativePath: "heading",
         content: "# Guide\n\n## Tabs\n\nShort body.",
       },
@@ -162,7 +225,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
         id: "body",
         title: "Guide",
         urlPath: "/docs/body",
-        absoluteUrl: "https://docs.example.com/docs/body",
+        absoluteUrl: "https://leadtype.dev/docs/body",
         relativePath: "body",
         content: "# Guide\n\nThis page mentions tabs in body copy only.",
       },
@@ -238,7 +301,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(fileByUrl?.title).toBe("Quickstart");
     expect(file?.chunks[0]?.anchor).toBe("quickstart");
     expect(chunk?.absoluteUrlWithHash).toBe(
-      "https://docs.example.com/docs/guides/quickstart#commandtabs"
+      "https://leadtype.dev/docs/guides/quickstart#commandtabs"
     );
     expect(chunk?.text).toContain("bun install commands");
   });
