@@ -23,7 +23,7 @@ This means the same content reaches three audiences (humans, agents, search) wit
 
 The remark pipeline recognizes these names. If your components use the same names, flattening Just Works:
 
-`Accordion`, `AccordionItem`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `Mermaid`, `Section`, `Selector`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+`Accordion`, `AccordionItem`, `Audience`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Selector`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
 
 If your app uses different names, you have two options: rename to match, or add a custom remark plugin that maps your names back to the contract above.
 
@@ -37,7 +37,11 @@ const components = {
 
 ## Component reference
 
-Each section below shows the authored MDX and a live render. Switch to the agent view (the robot icon in the example app header) to see the flattened markdown side-by-side.
+Each section below shows the authored MDX and a live render.
+
+<Audience target="human">
+Switch to the agent view (the robot icon in the example app header) to see the flattened markdown side-by-side.
+</Audience>
 
 ### Callout
 
@@ -138,6 +142,63 @@ Use `mode="install"` when `command` is a package name, `mode="run"` when `comman
 <CommandTabs command="leadtype" mode="install" />
 
 <CommandTabs command="leadtype lint" mode="run" />
+
+### Prompt
+
+Displays an agent-ready prompt with a copy action. Flattening preserves the prompt body as a fenced `prompt` block so copied instructions also survive in `.md`, `llms-full.txt`, and bundled `AGENTS.md` output.
+
+```tsx
+<Prompt title="Copy prompt for your coding agent" description="Use this after generating artifacts.">
+  Inspect `public/docs/agent-readability.json`, then wire markdown responses before the HTML docs route.
+</Prompt>
+```
+
+<Prompt
+  title="Copy prompt for your coding agent"
+  description="Use this after generating artifacts."
+>
+  Inspect `public/docs/agent-readability.json`, then wire markdown responses before the HTML docs route.
+</Prompt>
+
+### Audience
+
+Splits browser-only and agent-only guidance without forking the page. Human content renders in the docs UI and is omitted from markdown output; agent content is hidden in the browser and included in generated markdown.
+
+```tsx
+<Audience target="human">Click the robot icon in the header.</Audience>
+<Audience target="agent">Read generated markdown before editing runtime routes.</Audience>
+```
+
+<Audience target="human">
+  This sentence renders for human readers in the browser.
+</Audience>
+
+<Audience target="agent">
+  This sentence appears only in generated markdown for agents.
+</Audience>
+
+### FileTree
+
+Shows project structure in guides and release instructions. Flattening emits a fenced text tree so agents can read the same hierarchy without JSX.
+
+```tsx
+<FileTree root="public">
+  <File name="llms.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+  </Folder>
+</FileTree>
+```
+
+<FileTree root="public">
+  <File name="llms.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+    <Folder name="llms-full">
+      <File name="get-started.txt" />
+    </Folder>
+  </Folder>
+</FileTree>
 
 ### Accordion
 

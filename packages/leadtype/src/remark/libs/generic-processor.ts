@@ -56,7 +56,7 @@ export function createJsxComponentProcessor(
         if (result.length === 0) {
           if (removeIfEmpty) {
             parent.children.splice(index, 1);
-            return SKIP;
+            return [SKIP, index];
           }
           // If not removing empty, just continue without SKIP to leave node as-is
           return;
@@ -64,7 +64,7 @@ export function createJsxComponentProcessor(
 
         // Replace the node with processed content
         parent.children.splice(index, 1, ...result);
-        return SKIP;
+        return [SKIP, index];
       }
     );
     return tree;

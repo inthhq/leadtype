@@ -7,13 +7,16 @@ export {
 } from "./plugins/type-table.remark";
 
 import { remarkAccordionToMarkdown } from "./plugins/accordion.remark";
+import { remarkAudienceToMarkdown } from "./plugins/audience.remark";
 import { remarkCalloutToMarkdown } from "./plugins/callout.remark";
 import { remarkCardsToMarkdown } from "./plugins/cards.remark";
 import { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
 import { remarkDetailsToMarkdown } from "./plugins/details.remark";
 import { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
 import { remarkExampleToMarkdown } from "./plugins/example.remark";
+import { remarkFileTreeToMarkdown } from "./plugins/file-tree.remark";
 import { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
+import { remarkPromptToMarkdown } from "./plugins/prompt.remark";
 import { remarkRemoveImports } from "./plugins/remove-imports.remark";
 import { remarkRemoveJsxComments } from "./plugins/remove-jsx-comments.remark";
 import { remarkSectionToMarkdown } from "./plugins/section.remark";
@@ -31,6 +34,7 @@ export const defaultRemarkPlugins = [
   remarkRemoveImports,
   remarkRemoveJsxComments,
   remarkResolveDocPlaceholders,
+  remarkAudienceToMarkdown,
   remarkSectionToMarkdown,
   remarkCalloutToMarkdown,
   remarkCardsToMarkdown,
@@ -42,5 +46,7 @@ export const defaultRemarkPlugins = [
   remarkTypeTableToMarkdown,
   remarkAccordionToMarkdown,
   remarkTopicSwitcherToMarkdown,
+  remarkFileTreeToMarkdown,
+  remarkPromptToMarkdown,
   remarkExampleToMarkdown,
 ] as const;

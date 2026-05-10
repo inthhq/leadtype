@@ -388,6 +388,72 @@
   @apply overflow-x-auto rounded-lg border border-border bg-background px-4 py-3 text-[13px] leading-6 text-foreground;
 }
 
+[data-leadtype-prompt] {
+  @apply my-6 overflow-hidden rounded-lg border border-border bg-card;
+}
+
+[data-leadtype-prompt-header] {
+  @apply flex flex-col gap-3 border-border border-b px-4 py-4 sm:flex-row sm:items-start sm:justify-between;
+}
+
+[data-leadtype-prompt-title] {
+  @apply m-0 text-base font-semibold tracking-tight text-foreground;
+}
+
+[data-leadtype-prompt-description] {
+  @apply mt-1 text-sm leading-6 text-muted-foreground;
+}
+
+[data-leadtype-prompt-copy] {
+  @apply inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary;
+}
+
+[data-leadtype-prompt-content] {
+  @apply bg-secondary/70 px-4 py-4 text-sm leading-7 text-muted-foreground;
+}
+
+[data-leadtype-prompt-content] > :first-child {
+  @apply mt-0;
+}
+
+[data-leadtype-prompt-content] > :last-child {
+  @apply mb-0;
+}
+
+[data-leadtype-file-tree] {
+  font-family: var(--font-mono);
+  @apply my-6 rounded-lg border border-border bg-secondary px-4 py-4 text-sm leading-7 text-foreground;
+}
+
+[data-leadtype-file-tree-root] {
+  @apply font-medium;
+}
+
+[data-leadtype-file-tree-list] {
+  @apply m-0 list-none space-y-0 pl-5;
+}
+
+[data-leadtype-file-tree] > [data-leadtype-file-tree-list] {
+  @apply mt-1 pl-0;
+}
+
+[data-leadtype-file-tree-item],
+[data-leadtype-file-tree-file] {
+  @apply m-0;
+}
+
+[data-leadtype-file-tree-folder] {
+  @apply my-0;
+}
+
+[data-leadtype-file-tree-name] {
+  @apply text-foreground;
+}
+
+[data-leadtype-file-tree-folder] > summary {
+  @apply cursor-pointer select-none;
+}
+
 [data-leadtype-topic-switcher] {
   @apply my-6 rounded-lg border border-border bg-card p-4;
 }

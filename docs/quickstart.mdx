@@ -63,24 +63,32 @@ The CLI does five things in one pass:
 
 ## Inspect the output
 
-```
-public/
-├── llms.txt                  # routing index for agents
-└── docs/
-    ├── index.md              # converted, agent-readable
-    ├── llms.txt              # docs-scoped routing index
-    ├── llms-full.txt         # all pages flattened
-    ├── llms-full/
-    │   └── get-started.txt   # per-leaf-group bundle
-    ├── sitemap.xml           # docs-scoped XML sitemap
-    ├── sitemap.md            # docs-scoped markdown sitemap
-    ├── robots.txt            # mergeable crawl policy
-    ├── agent-readability.json
-    ├── search-index.json     # BM25 index
-    └── search-content.json   # chunk content store
-```
+<FileTree root="public">
+  <File name="llms.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+    <File name="llms.txt" />
+    <File name="llms-full.txt" />
+    <Folder name="llms-full">
+      <File name="get-started.txt" />
+    </Folder>
+    <File name="sitemap.xml" />
+    <File name="sitemap.md" />
+    <File name="robots.txt" />
+    <File name="agent-readability.json" />
+    <File name="search-index.json" />
+    <File name="search-content.json" />
+  </Folder>
+</FileTree>
 
 Open `public/llms.txt` to see what an HTTP agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and the LLM bundles consume.
+
+<Prompt
+  title="Copy prompt for your coding agent"
+  description="Use this after generating artifacts to wire the docs site runtime."
+>
+You are integrating leadtype into this docs site. First inspect `public/docs/agent-readability.json`, `public/llms.txt`, and `public/docs/index.md`. Then wire markdown responses before the HTML docs route using `createAgentMarkdownResponse` from `leadtype/llm/readability`. Preserve browser HTML for normal requests, but return markdown for `Accept: text/markdown`, known AI user agents, and direct `.md` URLs. After changes, verify `curl -I -H "Accept: text/markdown" http://localhost:5173/docs/quickstart` returns `content-type: text/markdown; charset=utf-8`.
+</Prompt>
 
 ## Bundle for offline agents
 
