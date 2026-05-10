@@ -13,6 +13,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as PlaygroundRouteImport } from './routes/playground'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SearchIndexRouteImport } from './routes/search/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as SearchVercelRouteImport } from './routes/search/vercel'
 import { Route as SearchTanstackRouteImport } from './routes/search/tanstack'
@@ -57,6 +58,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SearchIndexRoute = SearchIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchRoute,
 } as any)
 const DocsIndexRoute = DocsIndexRouteImport.update({
   id: '/',
@@ -195,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/search/tanstack': typeof SearchTanstackRoute
   '/search/vercel': typeof SearchVercelRoute
   '/docs/': typeof DocsIndexRoute
+  '/search/': typeof SearchIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
@@ -216,7 +223,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/playground': typeof PlaygroundRoute
-  '/search': typeof SearchRouteWithChildren
   '/docs/how-it-works': typeof DocsHowItWorksRoute
   '/docs/methodology': typeof DocsMethodologyRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
@@ -224,6 +230,7 @@ export interface FileRoutesByTo {
   '/search/tanstack': typeof SearchTanstackRoute
   '/search/vercel': typeof SearchVercelRoute
   '/docs': typeof DocsIndexRoute
+  '/search': typeof SearchIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
@@ -255,6 +262,7 @@ export interface FileRoutesById {
   '/search/tanstack': typeof SearchTanstackRoute
   '/search/vercel': typeof SearchVercelRoute
   '/docs/': typeof DocsIndexRoute
+  '/search/': typeof SearchIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
@@ -287,6 +295,7 @@ export interface FileRouteTypes {
     | '/search/tanstack'
     | '/search/vercel'
     | '/docs/'
+    | '/search/'
     | '/api/docs/ask'
     | '/api/docs/search'
     | '/docs/authoring/components'
@@ -308,7 +317,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/playground'
-    | '/search'
     | '/docs/how-it-works'
     | '/docs/methodology'
     | '/docs/quickstart'
@@ -316,6 +324,7 @@ export interface FileRouteTypes {
     | '/search/tanstack'
     | '/search/vercel'
     | '/docs'
+    | '/search'
     | '/api/docs/ask'
     | '/api/docs/search'
     | '/docs/authoring/components'
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/search/tanstack'
     | '/search/vercel'
     | '/docs/'
+    | '/search/'
     | '/api/docs/ask'
     | '/api/docs/search'
     | '/docs/authoring/components'
@@ -403,6 +413,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/search/': {
+      id: '/search/'
+      path: '/'
+      fullPath: '/search/'
+      preLoaderRoute: typeof SearchIndexRouteImport
+      parentRoute: typeof SearchRoute
     }
     '/docs/': {
       id: '/docs/'
@@ -621,12 +638,14 @@ interface SearchRouteChildren {
   SearchCloudflareRoute: typeof SearchCloudflareRoute
   SearchTanstackRoute: typeof SearchTanstackRoute
   SearchVercelRoute: typeof SearchVercelRoute
+  SearchIndexRoute: typeof SearchIndexRoute
 }
 
 const SearchRouteChildren: SearchRouteChildren = {
   SearchCloudflareRoute: SearchCloudflareRoute,
   SearchTanstackRoute: SearchTanstackRoute,
   SearchVercelRoute: SearchVercelRoute,
+  SearchIndexRoute: SearchIndexRoute,
 }
 
 const SearchRouteWithChildren =

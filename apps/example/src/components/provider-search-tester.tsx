@@ -83,18 +83,29 @@ export function ProviderSearchTester({
 
   useEffect(() => {
     let active = true;
+    setAnswerConfig(null);
+    setError("");
     async function loadConfig() {
       const response = await fetch(`/api/docs/ask/${provider}`);
       if (!response.ok) {
-        return;
+        throw new Error(await readErrorMessage(response));
       }
       const data = (await response.json()) as ProviderAnswerConfig;
       if (active) {
+        setError("");
         setAnswerConfig(data);
       }
     }
     const promise = loadConfig();
-    promise.catch(() => undefined);
+    promise.catch((caughtError: unknown) => {
+      if (active) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Provider configuration failed."
+        );
+      }
+    });
     return () => {
       active = false;
     };

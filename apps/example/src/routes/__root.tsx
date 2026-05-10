@@ -11,7 +11,8 @@ import { useMDXComponents } from "@/mdx-components";
 import appCss from "../styles.css?url";
 
 const HASH_PREFIX_PATTERN = /^#/;
-const HASH_SCROLL_OFFSET_PX = 84;
+const DOCS_ANCHOR_OFFSET_PROPERTY = "--docs-anchor-offset-rem";
+const FALLBACK_HASH_SCROLL_OFFSET_PX = 84;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -66,7 +67,7 @@ function ScrollToHash() {
       const targetTop =
         element.getBoundingClientRect().top +
         window.scrollY -
-        HASH_SCROLL_OFFSET_PX;
+        getHashScrollOffsetPx();
       window.scrollTo({ behavior: "auto", top: Math.max(targetTop, 0) });
     };
     // Wait two frames so the destination route has rendered before we look up
@@ -90,6 +91,20 @@ function ScrollToHash() {
     };
   }, [location]);
   return null;
+}
+
+function getHashScrollOffsetPx(): number {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const offsetRem = Number.parseFloat(
+    rootStyle.getPropertyValue(DOCS_ANCHOR_OFFSET_PROPERTY)
+  );
+  const rootFontSizePx = Number.parseFloat(rootStyle.fontSize);
+
+  if (Number.isFinite(offsetRem) && Number.isFinite(rootFontSizePx)) {
+    return offsetRem * rootFontSizePx;
+  }
+
+  return FALLBACK_HASH_SCROLL_OFFSET_PX;
 }
 
 function RootDocument({ children }: { children: ReactNode }) {

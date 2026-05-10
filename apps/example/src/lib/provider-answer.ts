@@ -1,3 +1,4 @@
+import type { WorkersAiTextModel } from "@cloudflare/tanstack-ai";
 import type { AnyTextAdapter } from "@tanstack/ai";
 import { createAnthropicChat } from "@tanstack/ai-anthropic";
 import { createGeminiChat } from "@tanstack/ai-gemini";
@@ -29,7 +30,7 @@ import {
   jsonResponse,
 } from "@/lib/search";
 
-const VERCEL_DEFAULT_MODEL = "openai/gpt-5.4-mini";
+const VERCEL_DEFAULT_MODEL = "openai/gpt-5.4";
 const TANSTACK_DEFAULT_MODELS = {
   anthropic: "claude-sonnet-4-5",
   gemini: "gemini-2.0-flash",
@@ -202,12 +203,23 @@ function createLiveCloudflareAdapter(): AnyTextAdapter {
   if (!options) {
     throw new Error("Cloudflare Workers AI credentials are not configured.");
   }
+  const model = getCloudflareWorkersAiModel();
 
   return createCloudflareDocsAdapter({
-    model: getProviderModel("cloudflare") as never,
+    model,
     options,
     provider: "workers-ai",
   });
+}
+
+function getCloudflareWorkersAiModel(): WorkersAiTextModel {
+  const model = getProviderModel("cloudflare");
+  if (!model.startsWith("@cf/")) {
+    throw new Error(
+      `Cloudflare Workers AI model must start with "@cf/". Received "${model}".`
+    );
+  }
+  return model;
 }
 
 function streamProviderAnswer(provider: DemoProviderId, query: string) {
