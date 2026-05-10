@@ -34,6 +34,15 @@ export function getRequestOrigin(event: H3Event): string | undefined {
   return url.origin;
 }
 
+function isMissingFileError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "ENOENT" || error.code === "ENOTDIR")
+  );
+}
+
 export async function readMarkdownFile(
   target: MarkdownMirrorTarget
 ): Promise<string | null> {
@@ -42,7 +51,11 @@ export async function readMarkdownFile(
       join(process.cwd(), "public", target.filePath),
       "utf8"
     );
-  } catch {
-    return null;
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null;
+    }
+
+    throw error;
   }
 }
