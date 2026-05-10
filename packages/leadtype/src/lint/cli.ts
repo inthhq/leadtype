@@ -134,6 +134,8 @@ export async function runLintCommand(
     return 0;
   }
 
+  setLogFormat("human");
+  setVerbose(false);
   if (args.format === "json") {
     setLogFormat("json");
   }

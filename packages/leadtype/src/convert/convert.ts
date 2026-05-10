@@ -462,12 +462,18 @@ async function processMdxFile(
     return true;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
     logger.error({
       human: {
         message: `failed to process ${mdxFilePath}: ${reason}`,
-        hint: "run with LEADTYPE_VERBOSE=1 for stack",
+        hint: stack ?? "run with LEADTYPE_VERBOSE=1 for more verbose logs",
       },
-      json: { event: "convert.fail", fields: { file: mdxFilePath, reason } },
+      json: {
+        event: "convert.fail",
+        fields: stack
+          ? { file: mdxFilePath, reason, stack }
+          : { file: mdxFilePath, reason },
+      },
     });
     return false;
   }

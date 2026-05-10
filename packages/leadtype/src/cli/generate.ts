@@ -358,12 +358,8 @@ export async function runGenerateCommand(
     return 0;
   }
 
-  if (args.format === "json") {
-    setLogFormat("json");
-  }
-  if (args.verbose) {
-    setVerbose(true);
-  }
+  setLogFormat(args.format === "json" ? "json" : "human");
+  setVerbose(args.verbose);
 
   const srcDir = path.resolve(args.srcDir);
   const docsDir = path.resolve(srcDir, args.docsDir);
@@ -371,16 +367,13 @@ export async function runGenerateCommand(
 
   if (!existsSync(docsDir)) {
     if (args.format === "json") {
-      io.stderr.write(
-        `${JSON.stringify(
-          {
-            error: "docs directory not found",
-            path: docsDir,
-          },
-          null,
-          2
-        )}\n`
-      );
+      logger.error({
+        human: { message: `docs directory not found at ${docsDir}` },
+        json: {
+          event: "generate.docs_not_found",
+          fields: { error: "docs directory not found", path: docsDir },
+        },
+      });
     } else {
       io.stderr.write(
         `leadtype generate: docs directory not found at ${docsDir}\n`
@@ -473,19 +466,19 @@ export async function runGenerateCommand(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (args.format === "json") {
-      io.stderr.write(
-        `${JSON.stringify(
-          {
+      logger.error({
+        human: { message },
+        json: {
+          event: "generate.fail",
+          fields: {
             error: message,
             filters: {
               exclude: args.exclude,
               include: args.include,
             },
           },
-          null,
-          2
-        )}\n`
-      );
+        },
+      });
     } else {
       io.stderr.write(`leadtype generate: ${message}\n`);
     }

@@ -1,6 +1,14 @@
 type Level = "error" | "warn" | "info" | "debug";
-type Value = string | number | boolean | null | undefined;
+type Value =
+  | boolean
+  | null
+  | number
+  | string
+  | undefined
+  | Value[]
+  | { [key: string]: Value };
 type Fields = Record<string, Value>;
+const RESERVED_JSON_FIELDS = new Set(["ts", "level", "event"]);
 
 export type LogCall = {
   human: { message: string; hint?: string };
@@ -26,6 +34,20 @@ export function setLogStreams(s: { stderr: Stream }): void {
   stderr = s.stderr;
 }
 
+function sanitizeJsonFields(fields: Fields | undefined): Fields {
+  const sanitized: Fields = {};
+  if (!fields) {
+    return sanitized;
+  }
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined || RESERVED_JSON_FIELDS.has(key)) {
+      continue;
+    }
+    sanitized[key] = value;
+  }
+  return sanitized;
+}
+
 function emit(level: Level, call: LogCall): void {
   if (level === "debug" && !verbose) {
     return;
@@ -36,7 +58,7 @@ function emit(level: Level, call: LogCall): void {
         ts: new Date().toISOString(),
         level,
         event: call.json.event,
-        ...call.json.fields,
+        ...sanitizeJsonFields(call.json.fields),
       })}\n`
     );
     return;
