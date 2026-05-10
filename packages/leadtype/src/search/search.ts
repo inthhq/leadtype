@@ -1080,12 +1080,18 @@ export function createAnswerContext(
   query: string,
   options: AnswerContextOptions = {}
 ): DocsAnswerContext {
-  const productName = options.productName ?? "the documentation";
-  const maxSources = options.maxSources ?? DEFAULT_MAX_SOURCES;
-  const maxContextChars = options.maxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS;
+  const {
+    maxContextChars: configuredMaxContextChars,
+    maxSources: configuredMaxSources,
+    productName = "the documentation",
+    ...searchOptions
+  } = options;
+  const maxSources = configuredMaxSources ?? DEFAULT_MAX_SOURCES;
+  const maxContextChars =
+    configuredMaxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS;
   const results = searchDocs(index, query, {
-    content: options.content,
-    limit: Math.max(maxSources, options.limit ?? maxSources),
+    ...searchOptions,
+    limit: Math.max(maxSources, searchOptions.limit ?? maxSources),
   }).slice(0, maxSources);
   const sources: DocsAnswerSource[] = [];
   let remainingChars = maxContextChars;
@@ -1094,7 +1100,7 @@ export function createAnswerContext(
     if (remainingChars <= 0) {
       break;
     }
-    const chunk = readDocsContentChunk(index, result.id, options.content);
+    const chunk = readDocsContentChunk(index, result.id, searchOptions.content);
     if (!chunk) {
       continue;
     }

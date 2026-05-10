@@ -339,6 +339,18 @@ describe("createAnswerContext", () => {
     expect(context.prompt).toContain("[1]");
     expect(context.prompt).toContain("#");
   });
+
+  it("forwards custom search synonyms into source retrieval", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const context = createAnswerContext(index, "switcher", {
+      synonyms: { switcher: ["keyboard"] },
+    });
+
+    expect(context.sources[0]?.title).toBe("Tabs");
+  });
 });
 
 describe("request guards", () => {
