@@ -5,7 +5,12 @@ import path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import { convertAllMdx } from "../convert";
-import { logger, setLogFormat, setVerbose } from "../internal/logger";
+import {
+  logger,
+  setLogFormat,
+  setLogStreams,
+  setVerbose,
+} from "../internal/logger";
 import type { DocsGroup, ProductInfo } from "../llm";
 import {
   generateAgentsMd,
@@ -360,6 +365,7 @@ export async function runGenerateCommand(
 
   setLogFormat(args.format === "json" ? "json" : "human");
   setVerbose(args.verbose);
+  setLogStreams({ stderr: io.stderr });
 
   const srcDir = path.resolve(args.srcDir);
   const docsDir = path.resolve(srcDir, args.docsDir);
