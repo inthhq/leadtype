@@ -7,6 +7,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "sideEffects": false,
   "exports": {
     ".": {
@@ -66,8 +69,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup && bun run docs:generate",
-    "dev": "tsup --watch",
+    "build": "rollup -c --configPlugin rollup-plugin-esbuild && bun run docs:generate",
+    "dev": "rollup -c --configPlugin rollup-plugin-esbuild -w",
     "check-types": "tsgo --noEmit",
     "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
@@ -92,28 +95,30 @@
     "unist-builder": "4.0.0",
     "unist-util-is": "6.0.1",
     "unist-util-visit": "5.1.0",
-    "valibot": "1.0.0"
+    "valibot": "1.4.0"
   },
   "devDependencies": {
     "@cloudflare/tanstack-ai": "^0.1.7",
-    "@repo/typescript-config": "*",
-    "@tanstack/ai": "^0.14.0",
-    "@typescript/native-preview": "7.0.0-dev.20260427.1",
+    "@repo/typescript-config": "workspace:*",
+    "@tanstack/ai": "^0.15.0",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
     "@types/mdast": "4.0.4",
-    "@types/node": "^22.10.0",
-    "ai": "^6.0.168",
+    "@types/node": "^22.0.0",
+    "ai": "^6.0.177",
     "bash-tool": "1.3.16",
-    "just-bash": "2.14.2",
-    "tsup": "^8.3.5",
+    "just-bash": "2.14.5",
+    "rollup": "^4.40.0",
+    "rollup-plugin-dts": "^6.2.1",
+    "rollup-plugin-esbuild": "^6.2.1",
     "typescript": "6.0.3",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.5"
   },
   "peerDependencies": {
     "@cloudflare/tanstack-ai": ">=0.1.7",
-    "@tanstack/ai": ">=0.14.0",
+    "@tanstack/ai": ">=0.15.0",
     "ai": ">=6.0.0",
     "bash-tool": ">=1.3.16",
-    "just-bash": ">=2.14.2",
+    "just-bash": ">=2.14.5",
     "typescript": ">=5.0.0"
   },
   "peerDependenciesMeta": {
