@@ -1,6 +1,6 @@
 ---
 title: "Quickstart"
-description: "Install leadtype, run it against a docs folder, and inspect the four artifacts it produces."
+description: "Install leadtype, run it against a docs folder, and inspect the artifacts it produces."
 group: get-started
 ---
 
@@ -41,7 +41,7 @@ npx leadtype generate \
   --base-url https://docs.example.com
 ```
 
-The CLI does four things in one pass:
+The CLI does five things in one pass:
 
 <Steps>
   <Step title="Convert MDX to markdown">
@@ -52,6 +52,9 @@ The CLI does four things in one pass:
   </Step>
   <Step title="Build a search index">
     Writes `public/docs/search-index.json` and `public/docs/search-content.json` — a BM25 index and a separate content store for excerpts.
+  </Step>
+  <Step title="Write Agent Readability data">
+    Writes docs-scoped `public/docs/sitemap.xml`, `public/docs/sitemap.md`, `public/docs/robots.txt`, and `public/docs/agent-readability.json`. Merge these into root site files when the same app also has blog, marketing, changelog, or product pages.
   </Step>
   <Step title="Resolve groups">
     Reads `group:` from every page's frontmatter and reports which groups it found. The same group tree drives both the nav and `llms.txt`.
@@ -69,6 +72,10 @@ public/
     ├── llms-full.txt         # all pages flattened
     ├── llms-full/
     │   └── get-started.txt   # per-leaf-group bundle
+    ├── sitemap.xml           # docs-scoped XML sitemap
+    ├── sitemap.md            # docs-scoped markdown sitemap
+    ├── robots.txt            # mergeable crawl policy
+    ├── agent-readability.json
     ├── search-index.json     # BM25 index
     └── search-content.json   # chunk content store
 ```
@@ -87,13 +94,18 @@ That writes `packages/my-package/AGENTS.md` (the offline-readable index, auto-di
 
 ## What's next
 
-You now have the four primitives. From here:
+You now have the core primitives. From here:
 
 <Cards>
   <Card
     title="Wire it into a docs site"
-    description="Serve the markdown to humans (HTML) and agents (text/markdown) from one URL via a content-negotiation middleware."
+    description="Connect generation, routing, search, and agent-readable artifacts to your web framework."
     href="/docs/build/connect-docs-site"
+  />
+  <Card
+    title="Optimize docs for agents"
+    description="Add discovery files, JSON-LD, markdown responses, and audit checks to a hosted docs site."
+    href="/docs/build/optimize-docs-for-agents"
   />
   <Card
     title="Bundle docs into your package"

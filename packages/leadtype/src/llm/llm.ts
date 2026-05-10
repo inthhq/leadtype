@@ -1,9 +1,30 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import {
+  type AgentReadabilityManifest,
+  type AgentReadabilityPage,
+  type DocsNavigation,
+  type DocsNavigationGroup,
+  type DocsNavigationPage,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
+} from "./readability";
 
 const DOCS_DIRNAME = "docs";
+const AGENT_READABILITY_MANIFEST_FILE = "agent-readability.json";
+const ROBOTS_FILE = "robots.txt";
+const SITEMAP_MARKDOWN_FILE = "sitemap.md";
+const SITEMAP_XML_FILE = "sitemap.xml";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 
 function assertValidGroupSlug(slug: string, parentPath: string[]): string {
@@ -21,6 +42,7 @@ const INDEX_SEGMENT_PATTERN = /\/index$/;
 const ROOT_INDEX_PATTERN = /^index$/;
 const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
+const GENERATED_MARKDOWN_FILES = new Set([SITEMAP_MARKDOWN_FILE]);
 const SEPARATOR_PATTERN = /[-_]/;
 const WHITESPACE_PATTERN = /\s+/g;
 const GENERIC_DOC_TITLES = new Set(["home", "index", "readme"]);
@@ -42,6 +64,7 @@ export type SourceDoc = {
 
 export type MarkdownDoc = SourceDoc & {
   content: string;
+  lastModified: string;
 };
 
 export type CuratedLink = {
@@ -109,6 +132,29 @@ export type LLMFullContextConfig = {
   baseUrl?: string;
   product: Pick<ProductInfo, "name">;
   /** Group tree from `docs.config.ts`. Each leaf group becomes a `.txt`. */
+  groups: DocsGroup[];
+};
+
+export type AgentReadabilityConfig = {
+  outDir: string;
+  baseUrl?: string;
+  product: Pick<ProductInfo, "name" | "summary">;
+  groups: DocsGroup[];
+};
+
+export type AgentReadabilityResult = {
+  manifest: AgentReadabilityManifest;
+  files: {
+    manifest: string;
+    robotsTxt: string;
+    sitemapMd: string;
+    sitemapXml: string;
+  };
+};
+
+export type ResolveDocsNavigationConfig = {
+  srcDir: string;
+  baseUrl?: string;
   groups: DocsGroup[];
 };
 
@@ -242,11 +288,38 @@ function toUrlPath(relativePath: string): string {
   return normalizedPath.length > 0 ? `/docs/${normalizedPath}` : "/docs";
 }
 
+function toMarkdownUrlPath(urlPath: string): string {
+  return urlPath === "/docs" ? "/docs/index.md" : `${urlPath}.md`;
+}
+
 function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
   if (urlPath.startsWith("http://") || urlPath.startsWith("https://")) {
     return urlPath;
   }
   return `${baseUrl}${urlPath}`;
+}
+
+function normalizeDate(value: unknown): string | undefined {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  }
+  return;
+}
+
+function readLastModified(
+  frontmatter: Record<string, unknown>,
+  fallback: Date
+): string {
+  return (
+    normalizeDate(frontmatter.lastModified) ??
+    normalizeDate(frontmatter.last_updated) ??
+    normalizeDate(frontmatter.lastUpdated) ??
+    fallback.toISOString()
+  );
 }
 
 function normalizeGroupValue(raw: unknown): string[] {
@@ -272,12 +345,12 @@ function normalizeGroupValue(raw: unknown): string[] {
 
 type RenderedLink = {
   title: string;
-  absoluteUrl: string;
+  url: string;
   description: string;
 };
 
 function renderLink(link: RenderedLink): string {
-  return `- [${link.title}](${link.absoluteUrl}): ${link.description}`;
+  return `- [${link.title}](${link.url}): ${link.description}`;
 }
 
 function pageToRenderedLink(doc: SourceDoc): RenderedLink {
@@ -291,14 +364,13 @@ function pageToRenderedLink(doc: SourceDoc): RenderedLink {
   return {
     title,
     description,
-    absoluteUrl: doc.absoluteUrl,
+    url: toMarkdownUrlPath(doc.urlPath),
   };
 }
 
 function resolveCuratedLink(
   link: CuratedLink,
-  sourceDocs: Map<string, SourceDoc>,
-  baseUrl: string
+  sourceDocs: Map<string, SourceDoc>
 ): RenderedLink {
   const sourceDoc = sourceDocs.get(link.urlPath);
   const title =
@@ -315,7 +387,7 @@ function resolveCuratedLink(
   return {
     title,
     description: description || `Entry point for ${title} documentation.`,
-    absoluteUrl: toAbsoluteUrl(sourceDoc?.urlPath ?? link.urlPath, baseUrl),
+    url: toMarkdownUrlPath(sourceDoc?.urlPath ?? link.urlPath),
   };
 }
 
@@ -413,6 +485,7 @@ async function readMarkdownDocs(
         .relative(docsDir, filePath)
         .replace(WINDOWS_PATH_PATTERN, "/");
       const raw = await readFile(filePath, "utf-8");
+      const fileStat = await stat(filePath);
       const parsed = matter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
@@ -432,11 +505,14 @@ async function readMarkdownDocs(
         relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
         groups,
         content: parsed.content.trim(),
+        lastModified: readLastModified(parsed.data, fileStat.mtime),
       };
     })
   );
 
-  return docs.sort((left, right) => left.urlPath.localeCompare(right.urlPath));
+  return docs
+    .filter((doc) => !GENERATED_MARKDOWN_FILES.has(`${doc.relativePath}.md`))
+    .sort((left, right) => left.urlPath.localeCompare(right.urlPath));
 }
 
 type GroupMembership = {
@@ -513,12 +589,11 @@ function pagesUnderGroup(
 
 function renderProductSummary(
   product: ProductInfo,
-  sourceDocs: Map<string, SourceDoc>,
-  baseUrl: string
+  sourceDocs: Map<string, SourceDoc>
 ): string {
   const startingPoints = product.bestStartingPoints ?? [];
   const links = startingPoints.map((link) =>
-    resolveCuratedLink(link, sourceDocs, baseUrl)
+    resolveCuratedLink(link, sourceDocs)
   );
 
   const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
@@ -667,7 +742,6 @@ function renderGroupSubRouter(
 
 function renderRootFullRouter(
   product: Pick<ProductInfo, "name">,
-  baseUrl: string,
   hasDocsSummary: boolean
 ): string {
   const lines = [
@@ -677,15 +751,15 @@ function renderRootFullRouter(
     "",
     "## Recommended Flow",
     "",
-    `- [Product Summary](${toAbsoluteUrl("/llms.txt", baseUrl)}): Short product-oriented overview of ${product.name}.`,
+    `- [Product Summary](/llms.txt): Short product-oriented overview of ${product.name}.`,
   ];
   if (hasDocsSummary) {
     lines.push(
-      `- [Documentation Summary](${toAbsoluteUrl("/docs/llms.txt", baseUrl)}): Curated docs map for implementation work.`
+      "- [Documentation Summary](/docs/llms.txt): Curated docs map for implementation work."
     );
   }
   lines.push(
-    `- [Documentation Full Router](${toAbsoluteUrl("/docs/llms-full.txt", baseUrl)}): Topic-specific deep-context files.`
+    "- [Documentation Full Router](/docs/llms-full.txt): Topic-specific deep-context files."
   );
   return lines.join("\n");
 }
@@ -700,7 +774,7 @@ function renderLeafGroupDocument(
   );
   const links = groupPages.map((doc) => ({
     title: doc.title,
-    absoluteUrl: doc.absoluteUrl,
+    url: doc.absoluteUrl,
     description:
       doc.description || `Entry point for ${doc.title} documentation.`,
   }));
@@ -771,7 +845,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
   await writeFile(
     path.join(outDir, "llms.txt"),
-    renderProductSummary(config.product, sourceDocs, baseUrl)
+    renderProductSummary(config.product, sourceDocs)
   );
 
   if (resolved.length > 0) {
@@ -811,7 +885,7 @@ export async function generateLLMFullContextFiles(
   await mkdir(llmsFullDir, { recursive: true });
   await writeFile(
     path.join(outDir, "llms-full.txt"),
-    renderRootFullRouter(config.product, baseUrl, hasDocsSummary)
+    renderRootFullRouter(config.product, hasDocsSummary)
   );
   await writeFile(
     path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
@@ -819,6 +893,108 @@ export async function generateLLMFullContextFiles(
   );
 
   await writeGroupTree(resolved, config.product, markdownDocs, llmsFullDir);
+}
+
+function toAgentReadabilityPage(
+  doc: MarkdownDoc,
+  baseUrl: string
+): AgentReadabilityPage {
+  const markdownUrlPath = toMarkdownUrlPath(doc.urlPath);
+  return {
+    title: doc.title,
+    description: doc.description,
+    urlPath: doc.urlPath,
+    absoluteUrl: doc.absoluteUrl,
+    markdownUrlPath,
+    markdownAbsoluteUrl: toAbsoluteUrl(markdownUrlPath, baseUrl),
+    relativePath: doc.relativePath,
+    groups: [...doc.groups],
+    lastModified: doc.lastModified,
+  };
+}
+
+function buildNavigationFromMarkdownDocs(
+  docs: MarkdownDoc[],
+  resolved: ResolvedGroup[]
+): DocsNavigation {
+  const membership = buildGroupMembership(docs, resolved);
+  return {
+    groups: resolved.map((group) => buildNavigationGroup(group, membership)),
+    ungrouped: membership.ungrouped.map(pageView),
+    unknown: membership.unknown.map(({ page, slug }) => ({
+      urlPath: page.urlPath,
+      slug,
+    })),
+  };
+}
+
+/**
+ * Generate docs-scoped Vercel Agent Readability discovery artifacts. These
+ * files are intentionally written under `/docs/` so host apps can merge them
+ * with blog, marketing, changelog, or product pages before serving root-level
+ * `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+ */
+export async function generateAgentReadabilityArtifacts(
+  config: AgentReadabilityConfig
+): Promise<AgentReadabilityResult> {
+  const outDir = path.resolve(config.outDir);
+  const docsDir = path.join(outDir, DOCS_DIRNAME);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
+
+  if (markdownDocs.length === 0) {
+    throw new Error(
+      `generateAgentReadabilityArtifacts found no markdown under "${docsDir}". Run convertAllMdx first, or check that config.outDir matches.`
+    );
+  }
+
+  const resolved = resolveGroups(config.groups);
+  const navigation = buildNavigationFromMarkdownDocs(markdownDocs, resolved);
+  const pages = markdownDocs.map((doc) => toAgentReadabilityPage(doc, baseUrl));
+  const manifest: AgentReadabilityManifest = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    baseUrl,
+    product: config.product,
+    pages,
+    navigation,
+    files: {
+      robotsTxt: `/docs/${ROBOTS_FILE}`,
+      sitemapMd: `/docs/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `/docs/${SITEMAP_XML_FILE}`,
+    },
+  };
+
+  const files = {
+    manifest: path.join(docsDir, AGENT_READABILITY_MANIFEST_FILE),
+    robotsTxt: path.join(docsDir, ROBOTS_FILE),
+    sitemapMd: path.join(docsDir, SITEMAP_MARKDOWN_FILE),
+    sitemapXml: path.join(docsDir, SITEMAP_XML_FILE),
+  };
+
+  await mkdir(docsDir, { recursive: true });
+  await writeFile(files.sitemapXml, renderSitemapXml(pages));
+  await writeFile(
+    files.sitemapMd,
+    renderSitemapMarkdown({
+      product: config.product,
+      navigation,
+      pages,
+    })
+  );
+  await writeFile(
+    files.robotsTxt,
+    renderRobotsTxt({
+      baseUrl,
+      sitemapUrlPath: "/docs/sitemap.xml",
+    })
+  );
+  await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    files,
+    manifest,
+  };
 }
 
 /* ---------------- AGENTS.md (offline package bundle) -------------------- */
@@ -948,36 +1124,6 @@ export async function generateAgentsMd(
 }
 
 /* ---------------- Navigation manifest ----------------------------------- */
-
-export type DocsNavigationPage = {
-  urlPath: string;
-  title: string;
-  description: string;
-  /** All group slugs the page declared (normalized). */
-  groups: string[];
-};
-
-export type DocsNavigationGroup = {
-  slug: string;
-  segmentPath: string[];
-  title: string;
-  description?: string;
-  pages: DocsNavigationPage[];
-  children: DocsNavigationGroup[];
-};
-
-export type DocsNavigation = {
-  groups: DocsNavigationGroup[];
-  ungrouped: DocsNavigationPage[];
-  /** Pages that named a group slug not present in the config. */
-  unknown: { urlPath: string; slug: string }[];
-};
-
-export type ResolveDocsNavigationConfig = {
-  srcDir: string;
-  baseUrl?: string;
-  groups: DocsGroup[];
-};
 
 function pageView(doc: SourceDoc): DocsNavigationPage {
   return {

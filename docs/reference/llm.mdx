@@ -6,31 +6,40 @@ group: reference
 
 # LLM bundles
 
-The `leadtype/llm` entry point produces three flavors of agent-facing index, all derived from the same docs source:
+The `leadtype/llm` entry point produces four flavors of agent-facing output, all derived from the same docs source:
 
-- **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with absolute URLs.
+- **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
 - **`generateLLMFullContextFiles`** — full-content topic bundles. Pairs with `generateLlmsTxt`.
+- **`generateAgentReadabilityArtifacts`** — docs-scoped `sitemap.xml`, `sitemap.md`, `robots.txt`, and JSON manifest data that a host app can merge into site-level files.
 - **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
 
 ```ts
 import {
+  generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
   resolveDocsNavigation,
 } from "leadtype/llm";
 ```
 
-The CLI's default `leadtype generate` calls the first two; `leadtype generate --bundle` calls the third. Use these APIs directly when you need finer control.
+The CLI's default `leadtype generate` calls the website APIs; `leadtype generate --bundle` calls `generateAgentsMd`. Use these APIs directly when you need finer control.
 
 ## What gets generated
 
 | File | Purpose |
 | --- | --- |
-| `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, links to deeper bundles. |
-| `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and entry links. |
+| `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, and root-relative markdown mirror links. |
+| `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and markdown entry links. |
 | `<out>/docs/llms-full.txt` | All pages flattened into one file. Use for agents with very large context windows. |
 | `<out>/docs/llms-full/<leaf>.txt` | One per leaf group. Topic-scoped full content for narrower context budgets. |
+| `<out>/docs/sitemap.xml` | Docs-scoped XML sitemap with canonical page URLs and `<lastmod>` dates. |
+| `<out>/docs/sitemap.md` | Docs-scoped markdown sitemap with headings and links. |
+| `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
+| `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
 Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf groups appear as headings inside the parent file.
 
@@ -47,21 +56,21 @@ Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf group
 
 ## Best Starting Points
 
-- [Documentation](https://docs.example.com/docs)
-- [Quickstart](https://docs.example.com/docs/quickstart)
+- [Documentation](/docs/index.md)
+- [Quickstart](/docs/quickstart.md)
 
 ## Get Started
 
 Five-minute happy path and the mental model.
 
-- [Quickstart](https://docs.example.com/docs/quickstart): Install and run the pipeline.
-- [How it works](https://docs.example.com/docs/how-it-works): The mental model.
+- [Quickstart](/docs/quickstart.md): Install and run the pipeline.
+- [How it works](/docs/how-it-works.md): The mental model.
 
 ## Reference
 
 CLI flags and conversion APIs.
 
-- [CLI](https://docs.example.com/docs/reference/cli): Every flag.
+- [CLI](/docs/reference/cli.md): Every flag.
 ```
 
 ## Typical sequence
@@ -70,6 +79,7 @@ CLI flags and conversion APIs.
 import { convertAllMdx } from "leadtype/convert";
 import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 import {
+  generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
 } from "leadtype/llm";
@@ -97,9 +107,192 @@ await generateLLMFullContextFiles({
   product: { name: "My Library" },
   groups: docsConfig.groups,
 });
+
+await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
 ```
 
-`generateLLMFullContextFiles` reads from `<outDir>/docs/`, so always run conversion first.
+`generateLLMFullContextFiles` and `generateAgentReadabilityArtifacts` read from `<outDir>/docs/`, so always run conversion first.
+
+## generateAgentReadabilityArtifacts
+
+For hosted docs sites that need the Vercel Agent Readability discovery layer without letting leadtype own the whole website:
+
+```ts
+import {
+  generateAgentReadabilityArtifacts,
+  renderRobotsTxt,
+  renderSitemapMarkdown,
+  renderSitemapXml,
+} from "leadtype/llm";
+
+const result = await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+```
+
+Writes docs-scoped files under `<outDir>/docs/`. The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can then merge `result.manifest.pages` with non-docs routes before serving root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+
+```ts
+await writeFile("public/sitemap.xml", renderSitemapXml(result.manifest.pages));
+await writeFile(
+  "public/sitemap.md",
+  renderSitemapMarkdown({
+    product: docsConfig.product,
+    navigation: result.manifest.navigation,
+    pages: result.manifest.pages,
+  })
+);
+await writeFile(
+  "public/robots.txt",
+  renderRobotsTxt({ baseUrl: "https://docs.example.com" })
+);
+```
+
+## Agent readability helpers
+
+`generateAgentReadabilityArtifacts` gives you the manifest. The runtime helpers turn it into Web `Response` objects your framework can return directly:
+
+```ts
+import {
+  acceptsMarkdownHeader,
+  createAgentMarkdownResponse,
+  createDocsHead,
+  createMarkdownResponseHeaders,
+  createRobotsTxtResponse,
+  createSitemapMarkdownResponse,
+  createSitemapXmlResponse,
+  enrichMarkdownFrontmatter,
+  isAgentReadabilityArtifactPath,
+  isAgentUserAgent,
+  renderJsonLd,
+  renderJsonLdScript,
+  renderMissingMarkdown,
+  resolveMarkdownMirrorTarget,
+} from "leadtype/llm/readability";
+```
+
+The whole module is fs-free and edge-runtime safe: it works in Node, Bun, Vercel Edge, Cloudflare Workers, and any framework with a Web `Request`/`Response` API.
+
+### createAgentMarkdownResponse
+
+Markdown content negotiation for docs pages. Returns `Response | null` (`null` means the path is not an agent-oriented markdown request — fall through to your HTML route). `readMarkdownFile` may be sync or async.
+
+```ts
+const response = await createAgentMarkdownResponse({
+  urlPath: request.url,
+  method: request.method,
+  headers: Object.fromEntries(request.headers),
+  manifest,
+  requestOrigin: new URL(request.url).origin,
+  async readMarkdownFile(target) {
+    return await readGeneratedFile(`public/${target.filePath}`);
+  },
+});
+
+if (response) {
+  return response;
+}
+```
+
+Headers it sets:
+
+- `Content-Type: text/markdown; charset=utf-8`
+- `Vary: Accept` (and `, User-Agent` when an AI UA is detected)
+- `Link: <canonical>; rel="canonical"`
+- `Cache-Control: public, max-age=300, must-revalidate` (override with `cacheControl: "<directive>"` or omit with `cacheControl: null`)
+
+It also enriches frontmatter with `canonical_url` and `last_updated`, leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, `llms-full*.txt`, search JSON) alone, and returns a 200 markdown "Page not found" body only for agent-oriented requests.
+
+Optional `userAgentPattern` overrides the default AI user-agent regex (defaults cover GPTBot, ChatGPT-User, OAI-SearchBot, Claude-Web, ClaudeBot, anthropic-ai, CCBot, Google-Extended, AmazonBot, Bingbot, MetaExternalAgent, ByteSpider, PerplexityBot, MistralBot, AppleBot, YouBot).
+
+### createSitemapXmlResponse / createSitemapMarkdownResponse / createRobotsTxtResponse
+
+Build sitemap and robots responses at request time so the `<loc>` and `Sitemap:` directives reflect the live origin (preview, staging, prod), no string-replace hacks needed.
+
+```ts
+const sitemap = createSitemapXmlResponse({
+  manifest,
+  requestOrigin: new URL(request.url).origin,
+  // Optional: merge non-docs pages into the sitemap before rebasing.
+  pages: [...manifest.pages, ...marketingPages],
+});
+
+const robots = createRobotsTxtResponse({
+  manifest,
+  requestOrigin: new URL(request.url).origin,
+  // Optional: docs-scoped robots points to /docs/sitemap.xml.
+  sitemapUrlPath: "/docs/sitemap.xml",
+});
+```
+
+`requestOrigin` is optional — when omitted, the helpers fall back to `manifest.baseUrl`.
+
+### createDocsHead
+
+Build canonical/alternate/og/JSON-LD head metadata for a docs page from the manifest. Returns `{ meta, links }` in a framework-neutral shape (TanStack Router, Next.js Metadata, Astro, etc.).
+
+```ts
+import manifest from "../public/docs/agent-readability.json";
+import { createDocsHead } from "leadtype/llm/readability";
+
+const head = createDocsHead({
+  urlPath: "/docs/quickstart",
+  manifest,
+  // Optional: override the JSON-LD meta key (default: "script:ld+json"
+  // for TanStack Router; use "ldJson" for typed Metadata APIs).
+  jsonLdMetaKey: "script:ld+json",
+});
+
+// head.meta = [
+//   { title: "Quickstart | Leadtype" },
+//   { name: "description", content: "Install and run." },
+//   { property: "og:title", content: "Quickstart | Leadtype" },
+//   { property: "og:description", content: "Install and run." },
+//   { "script:ld+json": { "@context": "https://schema.org", ... } },
+// ];
+// head.links = [
+//   { rel: "canonical", href: "https://docs.example.com/docs/quickstart" },
+//   { rel: "alternate", type: "text/markdown",
+//     href: "https://docs.example.com/docs/quickstart.md" },
+// ];
+```
+
+If the page is not in the manifest, both arrays are empty so the caller can fall back to its own metadata.
+
+### Lower-level helpers
+
+For a step-by-step integration guide, see [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
+
+| Helper | Use it for |
+| --- | --- |
+| `renderJsonLd` | Return a Schema.org object for framework metadata APIs. |
+| `renderJsonLdScript` | Return an escaped `<script type="application/ld+json">` string. |
+| `createAgentMarkdownResponse` | Build a complete markdown `Response` for agent Accept headers, AI user agents, and direct `.md` URLs. |
+| `createSitemapXmlResponse` / `createSitemapMarkdownResponse` / `createRobotsTxtResponse` | Build sitemap/robots `Response`s rebased to the live origin. |
+| `createDocsHead` | Build canonical/alternate/og/JSON-LD head entries from the manifest. |
+| `resolveMarkdownMirrorTarget` | Map `/docs/foo` or `/docs/foo.md` to the generated `docs/foo.md` file path. |
+| `createMarkdownResponseHeaders` | Produce canonical markdown headers with `Content-Type`, `Vary`, `Link`, `Cache-Control`. |
+| `enrichMarkdownFrontmatter` | Add `canonical_url` and `last_updated` aliases to generated markdown (CRLF-tolerant). |
+| `renderMissingMarkdown` | Render the 200 markdown body used for missing docs pages requested by agents. |
+| `acceptsMarkdownHeader` | Detect whether an `Accept` header is asking for markdown (q-value aware). |
+| `isAgentUserAgent` | Detect known AI crawler and agent user agents. Accepts an optional regex override. |
+| `isAgentReadabilityArtifactPath` | Avoid rewriting `llms.txt`, `llms-full.txt`, sitemap, robots, search JSON, and manifest artifact paths. |
+
+### Cache-Control and CDN
+
+Every helper sets `Cache-Control: public, max-age=300, must-revalidate` by default and pairs it with `Vary: Accept` (and `, User-Agent` for AI UAs). When you cache responses on a CDN, make sure it shards by `Accept` and `User-Agent` so agents and browsers don't cross-pollinate cached HTML and markdown variants. Pass `cacheControl: "<directive>"` to override or `cacheControl: null` to omit the header (when you set caching at the CDN layer).
+
+### Manifest version
+
+Every helper asserts `manifest.version === 1` at the entry point and throws a clear error otherwise — so a stale dev `agent-readability.json` from a different leadtype version fails loudly instead of silently producing wrong responses.
 
 ## generateAgentsMd
 

@@ -4,6 +4,7 @@
   "include": [
     "playwright.config.ts",
     "scripts/**/*",
+    "server/**/*",
     "src/**/*.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
@@ -18,11 +19,15 @@
     "allowJs": true,
     "types": ["node", "vite/client"],
     "paths": {
+      "leadtype": ["../../packages/leadtype/src/index.ts"],
       "@/*": ["./src/*"],
       "@docs/*": ["../../docs/*"],
       "leadtype/remark": ["../../packages/leadtype/src/remark/index.ts"],
       "leadtype/convert": ["../../packages/leadtype/src/convert/index.ts"],
       "leadtype/llm": ["../../packages/leadtype/src/llm/index.ts"],
+      "leadtype/llm/readability": [
+        "../../packages/leadtype/src/llm/readability.ts"
+      ],
       "leadtype/search": ["../../packages/leadtype/src/search/index.ts"],
       "leadtype/search/node": [
         "../../packages/leadtype/src/search/node-index.ts"

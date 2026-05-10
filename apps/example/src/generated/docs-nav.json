@@ -35,7 +35,7 @@
         {
           "urlPath": "/docs/quickstart",
           "title": "Quickstart",
-          "description": "Install leadtype, run it against a docs folder, and inspect the four artifacts it produces.",
+          "description": "Install leadtype, run it against a docs folder, and inspect the artifacts it produces.",
           "groups": [
             "get-started"
           ]
@@ -89,7 +89,15 @@
         {
           "urlPath": "/docs/build/connect-docs-site",
           "title": "Connect a docs site",
-          "description": "Wire leadtype into a docs app build so it serves humans, agents, and search from one source.",
+          "description": "Wire leadtype into a docs app build so humans, agents, and search use one source.",
+          "groups": [
+            "build"
+          ]
+        },
+        {
+          "urlPath": "/docs/build/optimize-docs-for-agents",
+          "title": "Optimize docs for agents",
+          "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
           "groups": [
             "build"
           ]

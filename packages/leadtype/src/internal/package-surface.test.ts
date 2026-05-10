@@ -10,6 +10,7 @@ describe("package surface", () => {
       "./remark",
       "./convert",
       "./llm",
+      "./llm/readability",
       "./search",
       "./search/node",
       "./search/ai",

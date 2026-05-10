@@ -24,6 +24,7 @@ import { Route as DocsReferenceLintRouteImport } from './routes/docs/reference/l
 import { Route as DocsReferenceConvertRouteImport } from './routes/docs/reference/convert'
 import { Route as DocsReferenceCliRouteImport } from './routes/docs/reference/cli'
 import { Route as DocsBuildValidateInCiRouteImport } from './routes/docs/build/validate-in-ci'
+import { Route as DocsBuildOptimizeDocsForAgentsRouteImport } from './routes/docs/build/optimize-docs-for-agents'
 import { Route as DocsBuildConnectDocsSiteRouteImport } from './routes/docs/build/connect-docs-site'
 import { Route as DocsBuildBundlePackageDocsRouteImport } from './routes/docs/build/bundle-package-docs'
 import { Route as DocsAuthoringFrontmatterRouteImport } from './routes/docs/authoring/frontmatter'
@@ -106,6 +107,12 @@ const DocsBuildValidateInCiRoute = DocsBuildValidateInCiRouteImport.update({
   path: '/build/validate-in-ci',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const DocsBuildOptimizeDocsForAgentsRoute =
+  DocsBuildOptimizeDocsForAgentsRouteImport.update({
+    id: '/build/optimize-docs-for-agents',
+    path: '/build/optimize-docs-for-agents',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
 const DocsBuildConnectDocsSiteRoute =
   DocsBuildConnectDocsSiteRouteImport.update({
     id: '/build/connect-docs-site',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
+  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -177,6 +185,7 @@ export interface FileRoutesByTo {
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
+  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -201,6 +210,7 @@ export interface FileRoutesById {
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
+  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/docs/authoring/frontmatter'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
+    | '/docs/build/optimize-docs-for-agents'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/docs/authoring/frontmatter'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
+    | '/docs/build/optimize-docs-for-agents'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -271,6 +283,7 @@ export interface FileRouteTypes {
     | '/docs/authoring/frontmatter'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
+    | '/docs/build/optimize-docs-for-agents'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsBuildValidateInCiRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/docs/build/optimize-docs-for-agents': {
+      id: '/docs/build/optimize-docs-for-agents'
+      path: '/build/optimize-docs-for-agents'
+      fullPath: '/docs/build/optimize-docs-for-agents'
+      preLoaderRoute: typeof DocsBuildOptimizeDocsForAgentsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/docs/build/connect-docs-site': {
       id: '/docs/build/connect-docs-site'
       path: '/build/connect-docs-site'
@@ -450,6 +470,7 @@ interface DocsRouteRouteChildren {
   DocsAuthoringFrontmatterRoute: typeof DocsAuthoringFrontmatterRoute
   DocsBuildBundlePackageDocsRoute: typeof DocsBuildBundlePackageDocsRoute
   DocsBuildConnectDocsSiteRoute: typeof DocsBuildConnectDocsSiteRoute
+  DocsBuildOptimizeDocsForAgentsRoute: typeof DocsBuildOptimizeDocsForAgentsRoute
   DocsBuildValidateInCiRoute: typeof DocsBuildValidateInCiRoute
   DocsReferenceCliRoute: typeof DocsReferenceCliRoute
   DocsReferenceConvertRoute: typeof DocsReferenceConvertRoute
@@ -468,6 +489,7 @@ const DocsRouteRouteChildren: DocsRouteRouteChildren = {
   DocsAuthoringFrontmatterRoute: DocsAuthoringFrontmatterRoute,
   DocsBuildBundlePackageDocsRoute: DocsBuildBundlePackageDocsRoute,
   DocsBuildConnectDocsSiteRoute: DocsBuildConnectDocsSiteRoute,
+  DocsBuildOptimizeDocsForAgentsRoute: DocsBuildOptimizeDocsForAgentsRoute,
   DocsBuildValidateInCiRoute: DocsBuildValidateInCiRoute,
   DocsReferenceCliRoute: DocsReferenceCliRoute,
   DocsReferenceConvertRoute: DocsReferenceConvertRoute,
