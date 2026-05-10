@@ -16,6 +16,7 @@ export default defineDocsConfig({
       { urlPath: "/docs/quickstart" },
       { urlPath: "/docs/how-it-works" },
       { urlPath: "/docs/build/connect-docs-site" },
+      { urlPath: "/docs/build/optimize-docs-for-agents" },
       { urlPath: "/docs/build/bundle-package-docs" },
     ],
     agentGuidance:
