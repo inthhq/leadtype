@@ -65,7 +65,7 @@ const PAGES: DocsPage[] = [
 
 Install Leadtype in a docs project, author MDX under docs/, and run leadtype generate.
 
-Website mode writes /llms.txt, /docs/llms.txt, /llms-full.txt, /docs/llms-full.txt, topic files under /docs/llms-full/, markdown mirrors under /docs/*.md, sitemap files, robots.txt, agent-readability.json, and search JSON.
+Website mode writes /llms.txt, /docs/llms.txt, /llms-full.txt, markdown mirrors under /docs/*.md, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, docs/agent-readability.json, docs/search-index.json, and docs/search-content.json.
 
 Bundle mode is different. leadtype generate --bundle writes AGENTS.md and docs/*.md for npm packages, with relative links that work inside node_modules.`,
   },
@@ -93,7 +93,7 @@ The two flows complement each other. A package can publish bundled offline docs 
 
 Each MDX page has YAML frontmatter. title is required. description is optional but recommended because it becomes the routing hint in llms.txt. group is optional and should match a slug from docs.config.ts.
 
-The group value drives the sidebar position, the llms.txt section, and the topic-scoped /docs/llms-full/<group>.txt bundle. If a page declares an unknown group, the build fails.
+The group value drives the sidebar position, the llms.txt section, search metadata, and AGENTS.md grouping. Pages can belong to multiple groups with group: [a, b]. The root /llms-full.txt fallback contains all generated markdown pages and is not split by group. If a page declares an unknown group, the build fails.
 
 Optional fields include icon, deprecated, deprecatedReason, experimental, canary, new, draft, tags, availableIn, full, lastModified, and lastAuthor. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
   },
@@ -137,7 +137,7 @@ Use leadtype generate --bundle when publishing an npm package. Bundle mode write
 
 AGENTS.md uses relative links like ./docs/reference/cli.md so coding agents can read docs inside node_modules without a network request.
 
-Bundle mode skips website-only artifacts: llms.txt, llms-full.txt, llms-full/*.txt, search-index.json, search-content.json, sitemap files, robots.txt, and agent-readability.json.`,
+Bundle mode skips website-only artifacts: llms.txt, llms-full.txt, search JSON, sitemap files, robots.txt, and agent-readability.json.`,
   },
   {
     path: "docs/reference/cli.md",
@@ -149,27 +149,27 @@ Bundle mode skips website-only artifacts: llms.txt, llms-full.txt, llms-full/*.t
 
 leadtype generate converts docs and writes agent-readable artifacts. Important flags include --src, --out, --base-url, --bundle, --json, --enrich-git, and --strict.
 
-When --json is enabled, generate prints a JSON object with paths for the generated artifacts. The website-mode object includes docsLlmsFullTxt, docsLlmsTxt, llmsTxt, agentReadabilityJson, sitemapXml, sitemapMd, robotsTxt, searchIndex, and searchContent.
+When --json is enabled, generate prints a JSON object with paths for the generated artifacts. The website-mode object includes llmsFullTxt, docsLlmsTxt, llmsTxt, agentReadabilityJson, sitemapXml, sitemapMd, robotsTxt, searchIndex, and searchContent.
 
 leadtype lint validates frontmatter, group references, links, and schema rules. Use --format github in CI and --error-unknown with --max-warnings 0 when unknown frontmatter fields should fail the build.`,
   },
   {
     path: "docs/reference/llm.md",
-    title: "LLM bundles",
+    title: "LLM files",
     description:
-      "Generate llms.txt, topic-scoped full-context bundles, and AGENTS.md.",
+      "Generate llms.txt, the root full-context fallback, and AGENTS.md.",
     group: "reference",
-    content: `# LLM bundles
+    content: `# LLM files
 
 generateLlmsTxt writes the product-level /llms.txt and the docs-scoped /docs/llms.txt map for hosted websites.
 
-generateLLMFullContextFiles writes /llms-full.txt, /docs/llms-full.txt, and one /docs/llms-full/<group>.txt file for each leaf group. Topic-scoped files are meant to be smaller than a monolithic all-docs bundle.
+generateLLMFullContextFiles writes one root /llms-full.txt file containing every generated markdown docs page. Groups still organize llms.txt sections, navigation, search metadata, and AGENTS.md; they are not published as per-group full-context files by default.
 
 generateAgentsMd writes AGENTS.md for npm-bundled docs. It intentionally ignores product.agentGuidance because that text is written for website URL routing.
 
 isAgentReadabilityArtifactPath identifies artifact paths that should not be rewritten as missing markdown pages. It covers llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json.
 
-Prefer narrow leaf groups over one giant bundle. Group descriptions should be routing hints, not marketing copy.`,
+Use groups for routing, not sharding. Group descriptions should be routing hints, not marketing copy.`,
   },
   {
     path: "docs/reference/search.md",

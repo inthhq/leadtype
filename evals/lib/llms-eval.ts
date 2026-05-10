@@ -15,9 +15,10 @@ export async function assertLlmsFixture(fixtureUrl: URL): Promise<void> {
   const transcript = await readTranscript();
   const selection = selectionMatchesVariant(transcript, expected);
   const summary = summarizeLlmsReads(transcript);
-  const projectRoot = process.env.TRANSCRIPT_PATH
-    ? resolve(dirname(process.env.TRANSCRIPT_PATH), "..")
-    : "";
+  if (!process.env.TRANSCRIPT_PATH) {
+    throw new Error("TRANSCRIPT_PATH must be set");
+  }
+  const projectRoot = resolve(dirname(process.env.TRANSCRIPT_PATH), "..");
   const answerPath = resolve(projectRoot, "ANSWER.md");
 
   describe(transcript.fixture, () => {

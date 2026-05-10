@@ -24,7 +24,7 @@ group: build
 
 ## How groups become a nav tree
 
-Each page declares a single group slug. Each group is declared once in `docs.config.ts`. The intersection produces the nav tree, the section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
+Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple groups. Each group is declared once in `docs.config.ts`. The intersection produces the nav tree, the section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
 
 <Mermaid chart={`flowchart LR
   cfg["docs.config.ts<br/>groups: [authoring, build, reference]"]

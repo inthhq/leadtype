@@ -53,7 +53,10 @@ type RunResult = {
 };
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
-  const parsed = Number.parseInt(value ?? "1", 10);
+  if (value === undefined) {
+    throw new Error(`${flag} requires a value`);
+  }
+  const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new Error(`${flag} must be a positive integer, got ${value}`);
   }
@@ -79,7 +82,9 @@ function parseArgs(argv: string[]): CliArgs {
     if (a === "--fixture") {
       args.fixture = parseRequiredFlagValue(argv[i++], "--fixture");
     } else if (a === "--variant") {
-      args.variant = parseLlmsVariant(argv[i++]);
+      args.variant = parseLlmsVariant(
+        parseRequiredFlagValue(argv[i++], "--variant")
+      );
     } else if (a === "--model") {
       args.model = parseRequiredFlagValue(argv[i++], "--model");
     } else if (a === "--runs") {

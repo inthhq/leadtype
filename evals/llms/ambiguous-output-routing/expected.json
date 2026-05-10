@@ -1,9 +1,9 @@
 {
   "answerPatterns": [
-    "LLM bundles",
+    "LLM files",
     "generateLLMFullContextFiles",
-    "topic",
-    "one giant bundle"
+    "llms-full",
+    "fallback"
   ],
   "expectedGroups": ["reference"],
   "expectedPages": ["docs/reference/llm.md"]

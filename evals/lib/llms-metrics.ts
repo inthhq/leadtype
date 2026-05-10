@@ -99,7 +99,7 @@ export function selectionMatchesVariant(
   );
 
   return {
-    passed: reasons.length === 0,
+    passed: reasons.length === 0 && (wrongGroupReads?.length ?? 0) === 0,
     reasons,
     wrongGroupReads,
   };

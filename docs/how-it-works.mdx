@@ -43,7 +43,7 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "Site mode (default)": {
       type: "leadtype generate --out public",
       description:
-        "Writes llms.txt, llms-full.txt, docs/search-index.json, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Vite, Next.js, Astro, or TanStack Start build.",
+        "Writes llms.txt, llms-full.txt, docs/search-index.json, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, docs/agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Vite, Next.js, Astro, or TanStack Start build.",
     },
     "Bundle mode": {
       type: "leadtype generate --bundle --out packages/foo",
@@ -78,7 +78,7 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
         "Site mode only. BM25-ranked inverted index over headings, titles, body, and code. Content is stored separately so the index stays small. Bundle mode skips it — agents reading from disk grep the .md files directly.",
     },
     "Agent Readability": {
-      type: "<out>/docs/sitemap.xml + sitemap.md + robots.txt + agent-readability.json",
+      type: "<out>/docs/sitemap.xml + docs/sitemap.md + docs/robots.txt + docs/agent-readability.json",
       description:
         "Site mode only. Docs-scoped discovery files and structured page data. Host apps merge this with blog, marketing, changelog, or product pages before serving root sitemap and robots files.",
     },
