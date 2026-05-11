@@ -97,6 +97,9 @@ async function glob(
     onlyFiles: true,
     ignore,
     dot: false,
+    // Preserve fast-glob semantics: callers can pass user-supplied ignores,
+    // and bare directory entries should not auto-expand to `dir/**`.
+    expandDirectories: false,
   });
 }
 

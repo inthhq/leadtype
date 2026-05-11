@@ -436,6 +436,11 @@ async function createSourceMirror(
     const files = await fg(patterns, {
       absolute: false,
       cwd: docsDir,
+      // tinyglobby expands bare directory names (`build` → `build/**`) by
+      // default; fast-glob did not. Disable it so `--include build` still
+      // reports "No MDX files matched" instead of silently slurping everything
+      // under `build/`.
+      expandDirectories: false,
       ignore: filters.exclude,
       onlyFiles: true,
     });

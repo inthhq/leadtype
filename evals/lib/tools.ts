@@ -235,6 +235,9 @@ export function scopedTools(ctx: ToolCtx) {
               absolute: false,
               dot: false,
               followSymbolicLinks: false,
+              // Agent supplies the pattern; keep fast-glob semantics so a
+              // bare directory name doesn't silently expand to `dir/**`.
+              expandDirectories: false,
             });
             return matches.join("\n");
           },
