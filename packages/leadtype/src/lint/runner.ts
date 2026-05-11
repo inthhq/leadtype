@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import fg from "fast-glob";
-import matter from "gray-matter";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import { visit } from "unist-util-visit";
@@ -14,6 +13,7 @@ import {
   normalizeDocsUrl,
   routeFromFilePath,
 } from "../internal/docs-context";
+import { parseFrontmatter } from "../internal/frontmatter";
 import { defaultRemarkPlugins, remarkInclude } from "../remark";
 import {
   allowedKeys,
@@ -392,8 +392,8 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     const relativeFile = toRelative(srcDir, file);
     try {
       const raw = await readFile(file, "utf-8");
-      const parsed = matter(raw);
-      data = parsed.data as Record<string, unknown>;
+      const parsed = parseFrontmatter(raw);
+      data = parsed.data;
     } catch (error) {
       violations.push({
         file: relativeFile,
@@ -414,7 +414,7 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
         remarkInclude,
         ...defaultRemarkPlugins,
       ]);
-      const rendered = matter(converted.markdown);
+      const rendered = parseFrontmatter(converted.markdown);
       const currentFramework = deriveDocContext(file).framework;
 
       violations.push(

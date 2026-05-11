@@ -1,9 +1,7 @@
-import { decodeNamedCharacterReference } from "decode-named-character-reference";
 import type { Blockquote, ListItem, Node, Paragraph, Root, Table } from "mdast";
-import { compact } from "mdast-util-compact";
 import { toString as mdastToString } from "mdast-util-to-string";
 import type { Plugin } from "unified";
-import { is } from "unist-util-is";
+import { visit } from "unist-util-visit";
 import {
   createJsxComponentProcessor,
   createOrderedList,
@@ -15,8 +13,29 @@ import {
   processContentNode,
 } from "../libs";
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  apos: "'",
+  copy: "©",
+  gt: ">",
+  hellip: "…",
+  ldquo: "“",
+  lsquo: "‘",
+  lt: "<",
+  mdash: "—",
+  nbsp: " ",
+  ndash: "–",
+  quot: '"',
+  rdquo: "”",
+  reg: "®",
+  rsquo: "’",
+  trade: "™",
+};
+
 /**
- * Decode HTML entities in text (both named and numeric character references)
+ * Decode HTML entities in text (both named and numeric character references).
+ * Named entities are limited to the common set above; rare ones are left as-is,
+ * matching the existing behavior for entities the previous library couldn't resolve.
  */
 function decodeText(text: string): string {
   const HEX_PREFIX_LENGTH = 2; // Length of "#x" prefix
@@ -45,9 +64,8 @@ function decodeText(text: string): string {
           !(num >= SURROGATE_MIN && num <= SURROGATE_MAX); // exclude surrogate range
         return inUnicodeRange ? String.fromCodePoint(num) : `&${ent};`;
       }
-      // Named
-      const decoded = decodeNamedCharacterReference(`&${ent};`);
-      return decoded === false ? `&${ent};` : decoded;
+      // Named — use a small map of common entities; pass through the rest.
+      return NAMED_ENTITIES[ent] ?? `&${ent};`;
     }
   );
   return normalizeWhitespace(decodedText);
@@ -63,8 +81,9 @@ function isStepNode(node: unknown): node is MdxNode {
     return false;
   }
 
+  const type = (node as { type?: unknown }).type;
   const isJsxElement =
-    is(node, "mdxJsxFlowElement") || is(node, "mdxJsxTextElement");
+    type === "mdxJsxFlowElement" || type === "mdxJsxTextElement";
   if (!isJsxElement) {
     return false;
   }
@@ -88,7 +107,7 @@ function extractStepTitle(
 
   const children = (step.children ?? []) as unknown[] as Node[];
   const titleNode =
-    children.find((c) => is(c, "heading") || is(c, "paragraph")) ??
+    children.find((c) => c.type === "heading" || c.type === "paragraph") ??
     children.find((c) => c.type === "text" || c.type === "mdxTextExpression") ??
     null;
   if (!titleNode) {
@@ -176,7 +195,11 @@ function stepToListItem(step: MdxNode): ListItem | null {
   const contentNodes = getContentNodes(step, titleNode);
 
   // Handle special case: if first paragraph was used as title and there are no following siblings
-  if (contentNodes.length === 0 && titleNode && is(titleNode, "paragraph")) {
+  if (
+    contentNodes.length === 0 &&
+    titleNode &&
+    titleNode.type === "paragraph"
+  ) {
     return {
       type: "listItem",
       children: [createStrongParagraph(title)],
@@ -251,6 +274,39 @@ function processStepsNode(node: MdxNode): ListItem[] {
 }
 
 /**
+ * Merge adjacent text nodes and blockquotes in place. Mirrors the small subset
+ * of mdast-util-compact behavior that this plugin relies on.
+ */
+function compactTree(tree: Root): void {
+  visit(tree, (child, index, parent) => {
+    if (
+      !parent ||
+      index === null ||
+      index === undefined ||
+      index === 0 ||
+      (child.type !== "text" && child.type !== "blockquote")
+    ) {
+      return;
+    }
+    const previous = parent.children[index - 1];
+    if (!previous || previous.type !== child.type) {
+      return;
+    }
+    if ("value" in child && "value" in previous) {
+      (previous as { value: string }).value += child.value;
+    }
+    if ("children" in child && "children" in previous) {
+      (previous as { children: Node[] }).children = [
+        ...(previous as { children: Node[] }).children,
+        ...(child.children as Node[]),
+      ];
+    }
+    parent.children.splice(index, 1);
+    return index;
+  });
+}
+
+/**
  * Remark plugin to convert Steps JSX elements to numbered markdown lists
  */
 export const remarkStepsToMarkdown: Plugin<[], Root> = () => {
@@ -269,8 +325,7 @@ export const remarkStepsToMarkdown: Plugin<[], Root> = () => {
 
     processor(tree);
 
-    // Clean up whitespace and empty paragraphs
-    compact(tree);
+    compactTree(tree);
     return tree;
   };
 };

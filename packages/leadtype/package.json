@@ -91,22 +91,18 @@
   },
   "dependencies": {
     "@types/mdast": "4.0.4",
-    "decode-named-character-reference": "1.3.0",
     "fast-glob": "3.3.3",
-    "gray-matter": "4.0.3",
-    "jiti": "^2.7.0",
     "json5": "2.2.3",
-    "mdast-util-compact": "5.0.0",
-    "mdast-util-to-markdown": "2.1.2",
     "mdast-util-to-string": "4.0.0",
     "remark": "15.0.1",
     "remark-gfm": "4.0.1",
     "remark-mdx": "3.1.1",
     "unified": "11.0.5",
-    "unist-builder": "4.0.0",
-    "unist-util-is": "6.0.1",
     "unist-util-visit": "5.1.0",
-    "valibot": "1.4.0"
+    "valibot": "1.4.0",
+    "vfile": "^6.0.3",
+    "vfile-matter": "^5.0.1",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@cloudflare/tanstack-ai": "^0.1.7",
@@ -115,6 +111,7 @@
     "@types/node": "^22.0.0",
     "ai": "^6.0.177",
     "bash-tool": "1.3.16",
+    "jiti": "^2.7.0",
     "just-bash": "2.14.5",
     "mdast-util-mdx": "3.0.0",
     "mdast-util-mdx-jsx": "3.2.0",
@@ -123,7 +120,6 @@
     "rollup-plugin-dts": "^6.2.1",
     "rollup-plugin-esbuild": "^6.2.1",
     "typescript": "6.0.3",
-    "ultracite": "7.6.5",
     "vitest": "^4.1.5"
   },
   "peerDependencies": {
@@ -131,6 +127,7 @@
     "@tanstack/ai": ">=0.15.0",
     "ai": ">=6.0.0",
     "bash-tool": ">=1.3.16",
+    "jiti": ">=2.0.0",
     "just-bash": ">=2.14.5",
     "typescript": ">=5.0.0"
   },
@@ -145,6 +142,9 @@
       "optional": true
     },
     "bash-tool": {
+      "optional": true
+    },
+    "jiti": {
       "optional": true
     },
     "just-bash": {

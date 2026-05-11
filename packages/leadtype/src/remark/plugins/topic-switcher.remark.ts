@@ -8,7 +8,6 @@ import type {
   Root,
 } from "mdast";
 import type { Transformer } from "unified";
-import { u } from "unist-builder";
 import { SKIP, visit } from "unist-util-visit";
 import {
   deriveDocContext,
@@ -77,16 +76,18 @@ function itemToListItem(
 ): ListItem {
   const context = deriveDocContext(sourcePath);
   const href = resolveDocPlaceholders(item.href, context).value;
-  const linkNode: Link = u("link", { url: href }, [
-    u("text", item.label),
-  ]) as Link;
+  const linkNode: Link = {
+    type: "link",
+    url: href,
+    children: [{ type: "text", value: item.label }],
+  };
   const children: PhrasingContent[] = [linkNode];
 
   if (withDescriptions && item.description) {
-    children.push(u("text", ` — ${item.description}`) as PhrasingContent);
+    children.push({ type: "text", value: ` — ${item.description}` });
   }
 
-  const paragraph: Paragraph = u("paragraph", children) as Paragraph;
+  const paragraph: Paragraph = { type: "paragraph", children };
 
   return {
     type: "listItem",

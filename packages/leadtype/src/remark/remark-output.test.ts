@@ -482,7 +482,7 @@ You are helping wire leadtype into a docs site.
       path.join("docs", "frameworks", "next", "quickstart.mdx"),
       `---
 title: Quickstart
-publishedAt: 2026-04-19
+publishedAt: 2026-04-19T12:00:00Z
 url: /docs/frameworks/{framework}/quickstart
 ---
 Body
@@ -491,7 +491,7 @@ Body
 
     const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
-    expect(result.markdown).toContain("publishedAt: 2026-04-19T00:00:00.000Z");
+    expect(result.markdown).toContain("publishedAt: 2026-04-19T12:00:00");
     expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");
   });
 

@@ -8,7 +8,6 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
   GENERIC_DOC_TITLES,
@@ -20,6 +19,7 @@ import {
   toMarkdownUrlPath,
   toDocsUrlPath as toUrlPath,
 } from "../internal/docs-url";
+import { parseFrontmatter } from "../internal/frontmatter";
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
@@ -527,7 +527,7 @@ async function readSourceDocs(
     files.map(async (filePath) => {
       const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
       const raw = await readFile(filePath, "utf-8");
-      const parsed = matter(raw);
+      const parsed = parseFrontmatter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
         titleFromRelativePath(
@@ -583,7 +583,7 @@ async function readMarkdownDocs(
       const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
       const raw = await readFile(filePath, "utf-8");
       const fileStat = await stat(filePath);
-      const parsed = matter(raw);
+      const parsed = parseFrontmatter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
         titleFromRelativePath(relativePath, ".md") ||

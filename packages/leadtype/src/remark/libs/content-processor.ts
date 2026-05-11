@@ -1,8 +1,6 @@
 /** @biome-ignore lint/complexity/noExcessiveCognitiveComplexity:  this is okay */
 import type { Blockquote, List, Node, Paragraph, Table, Text } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
-import { u } from "unist-builder";
-import { is } from "unist-util-is";
 import {
   extractBlockquoteContent,
   extractParagraphContent,
@@ -18,7 +16,7 @@ import {
 export function processContentNode(
   node: Node
 ): Paragraph | Table | Blockquote | List | Node | null {
-  if (is(node, "paragraph")) {
+  if (node.type === "paragraph") {
     const content = extractParagraphContent(node as Paragraph);
     if (content.length === 0) {
       return null;
@@ -34,17 +32,17 @@ export function processContentNode(
       children: [{ type: "text", value: text }],
     } as Paragraph;
   }
-  if (is(node, "table")) {
+  if (node.type === "table") {
     // Return the table node as-is instead of extracting text content
     // This preserves the full table structure including all rows
     return node as Table;
   }
-  if (is(node, "list")) {
+  if (node.type === "list") {
     // Preserve nested list structure so step/checklist content survives
     // markdown round-tripping instead of collapsing into plain text.
     return node as List;
   }
-  if (is(node, "blockquote")) {
+  if (node.type === "blockquote") {
     const content = extractBlockquoteContent(node as Blockquote);
     if (content.length === 0) {
       return null;
@@ -71,11 +69,11 @@ export function processContentNode(
   if (node.type === "code") {
     // Handle code blocks directly as AST nodes
     const codeNode = node as { lang?: string; value?: string };
-    return u(
-      "code",
-      { lang: codeNode.lang || "" },
-      codeNode.value || ""
-    ) as Node;
+    return {
+      type: "code",
+      lang: codeNode.lang || "",
+      value: codeNode.value || "",
+    } as Node;
   }
   if (node.type === "text") {
     const textNode = node as Text;
