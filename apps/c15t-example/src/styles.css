@@ -69,18 +69,27 @@ pre {
   font-size: 21px;
 }
 
-.framework-select {
+.framework-select,
+.section-context {
   padding: 12px;
   margin: 12px;
   color: #a4a4a4;
   border: 1px solid #292b2c;
 }
 
-.framework-select > span {
+.framework-select > span,
+.section-context > span {
   display: block;
   margin-bottom: 9px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.section-context p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #d6d6d6;
 }
 
 .framework-select button,

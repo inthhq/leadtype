@@ -26,6 +26,16 @@ interface Heading {
   text: string;
 }
 
+interface SidebarItem {
+  label: string;
+  route: string;
+}
+
+interface SidebarGroup {
+  items: SidebarItem[];
+  title: string;
+}
+
 const mdxExtensionRegex = /\.mdx$/;
 const indexRouteRegex = /\/index$/;
 const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
@@ -105,9 +115,87 @@ const sidebarGroups = [
   },
 ] as const;
 
+const integrationsSidebarGroups = [
+  {
+    title: "Start",
+    items: [
+      { label: "Overview", route: "/docs/integrations/overview" },
+      {
+        label: "Building Integrations",
+        route: "/docs/integrations/building-integrations",
+      },
+    ],
+  },
+  {
+    title: "Tag Management",
+    items: [
+      {
+        label: "Google Tag Manager",
+        route: "/docs/integrations/google-tag-manager",
+      },
+      { label: "Google Tag", route: "/docs/integrations/google-tag" },
+    ],
+  },
+  {
+    title: "Measurement",
+    items: [
+      { label: "Databuddy", route: "/docs/integrations/databuddy" },
+      { label: "PostHog", route: "/docs/integrations/posthog" },
+    ],
+  },
+  {
+    title: "Advertising",
+    items: [
+      { label: "Meta Pixel", route: "/docs/integrations/meta-pixel" },
+      { label: "TikTok Pixel", route: "/docs/integrations/tiktok-pixel" },
+      {
+        label: "LinkedIn Insights",
+        route: "/docs/integrations/linkedin-insights",
+      },
+      { label: "Microsoft UET", route: "/docs/integrations/microsoft-uet" },
+      { label: "X Pixel", route: "/docs/integrations/x-pixel" },
+    ],
+  },
+] satisfies SidebarGroup[];
+
+const selfHostSidebarGroups = [
+  {
+    title: "Start",
+    items: [{ label: "Quickstart", route: "/docs/self-host/quickstart" }],
+  },
+  {
+    title: "Guides",
+    items: [
+      {
+        label: "Database Setup",
+        route: "/docs/self-host/guides/database-setup",
+      },
+      {
+        label: "Framework Integration",
+        route: "/docs/self-host/guides/framework-integration",
+      },
+      {
+        label: "Edge Deployment",
+        route: "/docs/self-host/guides/edge-deployment",
+      },
+      { label: "Caching", route: "/docs/self-host/guides/caching" },
+      { label: "IAB TCF", route: "/docs/self-host/guides/iab-tcf" },
+      { label: "Policy Packs", route: "/docs/self-host/guides/policy-packs" },
+      { label: "Observability", route: "/docs/self-host/guides/observability" },
+    ],
+  },
+  {
+    title: "API Reference",
+    items: [
+      { label: "Endpoints", route: "/docs/self-host/api/endpoints" },
+      { label: "Configuration", route: "/docs/self-host/api/configuration" },
+    ],
+  },
+] satisfies SidebarGroup[];
+
 const topNavItems = [
   { label: "Frontend", route: "/docs/frameworks/next/quickstart" },
-  { label: "Integrations", route: "/docs/integrations/databuddy" },
+  { label: "Integrations", route: "/docs/integrations/overview" },
   { label: "Self Host", route: "/docs/self-host/quickstart" },
 ] as const;
 
@@ -227,6 +315,98 @@ const getFrameworkRoute = (currentRoute: string, nextFramework: string) => {
   return pagesByRoute.has(preferredRoute)
     ? preferredRoute
     : `/docs/frameworks/${nextFramework}/quickstart`;
+};
+
+const filterExistingGroups = (groups: SidebarGroup[]) =>
+  groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => pagesByRoute.has(item.route)),
+    }))
+    .filter((group) => group.items.length > 0);
+
+const getFrameworkSidebarGroups = (frameworkId: string) =>
+  filterExistingGroups(
+    sidebarGroups.map((group) => ({
+      title: group.title,
+      items: group.items.map(([suffix, label]) => {
+        const isSharedPage = suffix === "ai-agents";
+        return {
+          label,
+          route: isSharedPage
+            ? "/docs/ai-agents"
+            : `/docs/frameworks/${frameworkId}/${suffix}`,
+        };
+      }),
+    }))
+  );
+
+const getChangelogSidebarGroups = () => [
+  {
+    title: "Releases",
+    items: changelogPages.map((page) => ({
+      label: page.label,
+      route: page.route,
+    })),
+  },
+];
+
+const getFallbackSidebarGroups = () => [
+  {
+    title: "Docs",
+    items: [
+      { label: "Frameworks", route: "/docs/frameworks" },
+      { label: "AI Agents", route: "/docs/ai-agents" },
+      { label: "CLI", route: "/docs/cli/overview" },
+      { label: "Open Source", route: "/docs/oss/why-open-source" },
+    ],
+  },
+];
+
+const getSidebarConfig = (route: string) => {
+  const currentFramework = getFramework(route);
+  if (currentFramework) {
+    return {
+      description: "Frontend docs",
+      groups: getFrameworkSidebarGroups(currentFramework.id),
+      title: "Select a framework",
+      type: "framework",
+    };
+  }
+
+  if (route.startsWith("/docs/integrations")) {
+    return {
+      description: "Scripts, analytics, and ad platform helpers",
+      groups: filterExistingGroups(integrationsSidebarGroups),
+      title: "Integrations",
+      type: "section",
+    };
+  }
+
+  if (route.startsWith("/docs/self-host")) {
+    return {
+      description: "Backend setup, deployment, and API reference",
+      groups: filterExistingGroups(selfHostSidebarGroups),
+      title: "Self-Hosting",
+      type: "section",
+    };
+  }
+
+  if (route.startsWith("/changelog")) {
+    return {
+      description: "Release notes and product updates",
+      groups: getChangelogSidebarGroups(),
+      title: "Changelog",
+      type: "section",
+    };
+  }
+
+  return {
+    description: "Project documentation",
+    groups: filterExistingGroups(getFallbackSidebarGroups()),
+    title: "Documentation",
+    type: "section",
+  };
 };
 
 const slugify = (text: string) =>
@@ -505,6 +685,7 @@ const mdxComponents = {
 
 const Sidebar = ({ route }: { route: string }) => {
   const currentFramework = getFramework(route) ?? frameworks[0];
+  const sidebarConfig = getSidebarConfig(route);
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -517,51 +698,49 @@ const Sidebar = ({ route }: { route: string }) => {
         <span className="network">c15t</span>
       </div>
 
-      <div className="framework-select">
-        <span>Select a framework</span>
-        <div>
-          {frameworks.map((framework) => (
-            <button
-              aria-pressed={framework.id === currentFramework.id}
-              key={framework.id}
-              onClick={() => navigateTo(getFrameworkRoute(route, framework.id))}
-              type="button"
-            >
-              <Icon name={framework.id === "next" ? "nextjs" : framework.id} />
-              {framework.label}
-            </button>
-          ))}
+      {sidebarConfig.type === "framework" ? (
+        <div className="framework-select">
+          <span>{sidebarConfig.title}</span>
+          <div>
+            {frameworks.map((framework) => (
+              <button
+                aria-pressed={framework.id === currentFramework.id}
+                key={framework.id}
+                onClick={() =>
+                  navigateTo(getFrameworkRoute(route, framework.id))
+                }
+                type="button"
+              >
+                <Icon
+                  name={framework.id === "next" ? "nextjs" : framework.id}
+                />
+                {framework.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="section-context">
+          <span>{sidebarConfig.title}</span>
+          <p>{sidebarConfig.description}</p>
+        </div>
+      )}
 
       <nav className="side-nav">
-        {sidebarGroups.map((group) => {
-          const items = group.items
-            .map(([suffix, label]) => ({
-              label,
-              route: `/docs/frameworks/${currentFramework.id}/${suffix}`,
-            }))
-            .filter((item) => pagesByRoute.has(item.route));
-
-          if (items.length === 0) {
-            return null;
-          }
-
-          return (
-            <section key={group.title}>
-              <h2>{group.title}</h2>
-              {items.map((item) => (
-                <ShellLink
-                  className={item.route === route ? "active" : undefined}
-                  href={item.route}
-                  key={item.route}
-                >
-                  {item.label}
-                </ShellLink>
-              ))}
-            </section>
-          );
-        })}
+        {sidebarConfig.groups.map((group) => (
+          <section key={group.title}>
+            <h2>{group.title}</h2>
+            {group.items.map((item) => (
+              <ShellLink
+                className={item.route === route ? "active" : undefined}
+                href={item.route}
+                key={item.route}
+              >
+                {item.label}
+              </ShellLink>
+            ))}
+          </section>
+        ))}
       </nav>
     </aside>
   );
