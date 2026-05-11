@@ -45,7 +45,7 @@ const DEFAULT_TOC_MIN_LEVEL = 2;
 const DEFAULT_TOC_MAX_LEVEL = 3;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
-const FENCE_PATTERN = /^```/;
+const FENCE_PATTERN = /^(`{3,}|~{3,})/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
@@ -379,19 +379,30 @@ export function extractDocsTableOfContents(
   const { minLevel, maxLevel } = resolveTocOptions(options);
   const items: DocsTableOfContentsItem[] = [];
   const stack: DocsTableOfContentsItem[] = [];
-  let inCodeFence = false;
+  const slugCounts = new Map<string, number>();
+  let activeFence: "`" | "~" | null = null;
 
   for (const line of stripFrontmatter(content).split("\n")) {
-    if (FENCE_PATTERN.test(line.trim())) {
-      inCodeFence = !inCodeFence;
+    const trimmedLine = line.trim();
+    const fenceMatch = trimmedLine.match(FENCE_PATTERN);
+    if (fenceMatch) {
+      const fenceMarker = fenceMatch[1] ?? "";
+      const fenceChar: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
+      if (activeFence === fenceChar) {
+        activeFence = null;
+        continue;
+      }
+      if (activeFence === null) {
+        activeFence = fenceChar;
+        continue;
+      }
+    }
+
+    if (activeFence !== null) {
       continue;
     }
 
-    if (inCodeFence) {
-      continue;
-    }
-
-    const headingMatch = HEADING_PATTERN.exec(line.trim());
+    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
     if (!headingMatch) {
       continue;
     }
@@ -412,7 +423,10 @@ export function extractDocsTableOfContents(
       continue;
     }
 
-    const id = slugifyDocsHeading(title);
+    const slug = slugifyDocsHeading(title);
+    const slugCount = slugCounts.get(slug) ?? 0;
+    slugCounts.set(slug, slugCount + 1);
+    const id = slugCount === 0 ? slug : `${slug}-${slugCount}`;
     const item: DocsTableOfContentsItem = {
       id,
       title,

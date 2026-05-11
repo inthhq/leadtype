@@ -992,6 +992,9 @@ describe("extractDocsTableOfContents", () => {
         "```md",
         "## Not a heading",
         "```",
+        "~~~md",
+        "## Not a tilde heading",
+        "~~~",
         "#### Too deep",
         "## Café API: Quick Start!",
       ].join("\n"),
@@ -1033,6 +1036,52 @@ describe("extractDocsTableOfContents", () => {
         children: [],
       },
     ]);
+  });
+
+  it("only closes a code fence with the matching marker type", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## Before",
+        "```md",
+        "## Hidden in backticks",
+        "~~~",
+        "## Still hidden",
+        "```",
+        "## After",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
+  });
+
+  it("deduplicates repeated heading anchors per page", () => {
+    const toc = extractDocsTableOfContents(
+      ["## Install", "### Install", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc[0]).toMatchObject({
+      id: "install",
+      urlWithHash: "/docs/example#install",
+      absoluteUrlWithHash: "https://leadtype.dev/docs/example#install",
+    });
+    expect(toc[0]?.children[0]).toMatchObject({
+      id: "install-1",
+      urlWithHash: "/docs/example#install-1",
+      absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-1",
+    });
+    expect(toc[1]).toMatchObject({
+      id: "install-2",
+      urlWithHash: "/docs/example#install-2",
+      absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-2",
+    });
   });
 
   it("respects custom heading level ranges", () => {
