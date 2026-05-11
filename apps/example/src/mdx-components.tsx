@@ -15,7 +15,7 @@ function textFromChildren(children: unknown): string {
     return String(children);
   }
   if (Array.isArray(children)) {
-    return children.map(textFromChildren).join(" ");
+    return children.map(textFromChildren).join("");
   }
   if (isValidElement(children)) {
     const elementProps = children.props as { children?: unknown };
