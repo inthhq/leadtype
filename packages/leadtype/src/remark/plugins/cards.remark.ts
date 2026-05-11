@@ -5,7 +5,6 @@ import type {
   Paragraph,
   PhrasingContent,
   Root,
-  Text,
 } from "mdast";
 import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
@@ -95,12 +94,12 @@ function toListItem(item: LinkItem, withDescriptions: boolean): ListItem {
   const linkNode: Link = {
     type: "link",
     url: item.href,
-    children: [{ type: "text", value: item.text } as Text],
+    children: [{ type: "text", value: item.text }],
   };
 
   const phrasing: PhrasingContent[] = [linkNode];
   if (withDescriptions && item.description) {
-    phrasing.push({ type: "text", value: ` — ${item.description}` } as Text);
+    phrasing.push({ type: "text", value: ` — ${item.description}` });
   }
 
   const para: Paragraph = { type: "paragraph", children: phrasing };
