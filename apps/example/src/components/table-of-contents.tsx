@@ -129,7 +129,13 @@ export function TableOfContents({ items }: TableOfContentsProps) {
     };
 
     const updateFromHash = () => {
-      const hashId = decodeURIComponent(window.location.hash.slice(1));
+      const rawHash = window.location.hash.slice(1);
+      let hashId = rawHash;
+      try {
+        hashId = decodeURIComponent(rawHash);
+      } catch {
+        // malformed % sequence; fall back to the raw hash
+      }
       const hashHeading = headings.find((heading) => heading.id === hashId);
       if (hashHeading) {
         setActiveId(hashHeading.id);

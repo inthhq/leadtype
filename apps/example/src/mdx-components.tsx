@@ -1,17 +1,25 @@
 import { slugifyDocsHeading } from "leadtype/llm/readability";
 import type { MDXComponents } from "mdx/types";
-import type { ComponentPropsWithoutRef, MouseEvent } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  isValidElement,
+  type MouseEvent,
+} from "react";
 import { mdxComponents } from "@/components/docs-mdx";
 import { cn } from "@/lib/utils";
 
 type HeadingProps = ComponentPropsWithoutRef<"h1">;
 
-function textFromChildren(children: HeadingProps["children"]): string {
+function textFromChildren(children: unknown): string {
   if (typeof children === "string" || typeof children === "number") {
     return String(children);
   }
   if (Array.isArray(children)) {
     return children.map(textFromChildren).join(" ");
+  }
+  if (isValidElement(children)) {
+    const elementProps = children.props as { children?: unknown };
+    return textFromChildren(elementProps.children);
   }
   return "";
 }
@@ -23,7 +31,7 @@ async function copyHeadingUrl(
   if (!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) {
     event.preventDefault();
     history.replaceState(null, "", hash);
-    document.querySelector(hash)?.scrollIntoView();
+    document.getElementById(hash.slice(1))?.scrollIntoView();
   }
 
   const url = new URL(window.location.href);

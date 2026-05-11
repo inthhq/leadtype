@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 
 const AI_DISABLED_MESSAGE = /AI answers are disabled/i;
 const REMARK_DOCS_URL = /\/docs\/reference\/remark/;
+const DIGIT_LEADING_HASH_URL = /#1-generate-the-artifacts$/;
 
 async function waitForClientHydration(page: Page): Promise<void> {
   await page.waitForFunction(
@@ -97,6 +98,39 @@ test("/docs/reference/search renders the search APIs reference", async ({
     "/docs/reference/search#runtime-search"
   );
   await expect(page.locator("#runtime-search")).toBeAttached();
+});
+
+test("heading anchors handle inline markup and digit-leading slugs", async ({
+  page,
+}) => {
+  // Inline-markup heading: `### `meta.json`` must render with id="meta-json"
+  // so the TOC anchor link resolves. Pre-fix, textFromChildren returned ""
+  // for ReactElement children, so the heading had no id.
+  await page.goto("/docs/reference/lint", { waitUntil: "networkidle" });
+  await waitForClientHydration(page);
+  await expect(page.locator('[id="meta-json"]')).toBeAttached();
+  const lintToc = page.getByRole("navigation", { name: "On this page" });
+  await expect(
+    lintToc.getByRole("link", { name: "meta.json" })
+  ).toHaveAttribute("href", "/docs/reference/lint#meta-json");
+
+  // Digit-leading heading slug (`## 1. Generate the artifacts`): clicking the
+  // in-content heading anchor previously called querySelector("#1-...") which
+  // throws SyntaxError because CSS idents can't start with a digit, so the
+  // scrollIntoView never fired. Now uses getElementById.
+  await page.goto("/docs/build/optimize-docs-for-agents", {
+    waitUntil: "networkidle",
+  });
+  await waitForClientHydration(page);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const heading = page.locator('[id="1-generate-the-artifacts"]');
+  await expect(heading).toBeAttached();
+  await heading.locator("a[data-docs-heading-anchor]").click();
+  await expect(page).toHaveURL(DIGIT_LEADING_HASH_URL);
+  // If the click handler crashed before scrollIntoView, the heading would
+  // still be below the fold. Post-fix it is scrolled into view.
+  const top = await heading.evaluate((el) => el.getBoundingClientRect().top);
+  expect(top).toBeLessThan(200);
 });
 
 test("/search returns local docs results and answer configuration", async ({
