@@ -1,6 +1,7 @@
 // Root entry for `leadtype`. Exposes config helpers used by docs sites,
 // agent tooling, and the LLM-bundle pipeline. Specialized surfaces stay on
 // dedicated subpaths (`leadtype/convert`, `/llm`, `/search`, `/lint`).
+// TOC extraction APIs and slug helpers live on `leadtype/llm` only.
 export {
   type AgentReadabilityConfig,
   type AgentReadabilityManifest,
@@ -9,13 +10,6 @@ export {
   type CuratedLink,
   type DocsConfig,
   type DocsGroup,
-  type DocsTableOfContentsItem,
-  type DocsTableOfContentsOptions,
-  type DocsTableOfContentsPage,
   defineDocsConfig,
-  extractDocsTableOfContents,
   type ProductInfo,
-  type ResolveDocsTableOfContentsConfig,
-  resolveDocsTableOfContents,
-  slugifyDocsHeading,
 } from "./llm";

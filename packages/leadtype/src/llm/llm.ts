@@ -47,7 +47,7 @@ const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
 const FENCE_PATTERN = /^```/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
-const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
+const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
 
 function assertValidGroupSlug(slug: string, parentPath: string[]): string {

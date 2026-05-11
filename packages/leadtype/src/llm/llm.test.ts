@@ -1024,7 +1024,7 @@ describe("extractDocsTableOfContents", () => {
       },
       {
         id: "cafe-api-quick-start",
-        title: "Café API Quick Start!",
+        title: "Café API: Quick Start!",
         level: 2,
         urlPath: "/docs/example",
         urlWithHash: "/docs/example#cafe-api-quick-start",

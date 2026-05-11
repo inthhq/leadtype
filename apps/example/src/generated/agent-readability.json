@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-11T01:15:57.254Z",
+  "generatedAt": "2026-05-11T01:23:25.019Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -31,7 +31,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-11T00:53:02.000Z"
+      "lastModified": "2026-05-11T01:16:54.000Z"
     },
     {
       "title": "Frontmatter",
