@@ -6,7 +6,11 @@
  * Cloudflare Workers, Hono, Astro, Nuxt, Vite middleware, etc.
  */
 
-import { stripTrailingSlashes, toAbsoluteUrl } from "../internal/docs-url";
+import {
+  normalizeDocsPath,
+  stripTrailingSlashes,
+  toAbsoluteUrl,
+} from "../internal/docs-url";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
 
@@ -468,6 +472,32 @@ export function resolveMarkdownMirrorTarget(
   };
 }
 
+function resolveManifestMarkdownMirrorTarget(
+  urlPath: string,
+  manifest: AgentReadabilityManifest
+): MarkdownMirrorTarget | null {
+  const pathname = normalizeUrlPath(urlPath).replace(
+    TRAILING_SLASH_PATTERN,
+    ""
+  );
+  const page = manifest.pages.find(
+    (entry) => entry.urlPath === pathname || entry.markdownUrlPath === pathname
+  );
+  if (!page) {
+    return null;
+  }
+  const relativePath = normalizeDocsPath(page.relativePath);
+  if (!(relativePath && !relativePath.split("/").includes(".."))) {
+    return null;
+  }
+  return {
+    urlPath: page.urlPath,
+    markdownUrlPath: page.markdownUrlPath,
+    filePath: `${DOCS_DIRNAME}/${relativePath}.md`,
+    relativePath,
+  };
+}
+
 /* ----------------------- markdown response builders -------------------- */
 
 export function createMarkdownResponseHeaders(
@@ -601,7 +631,9 @@ export async function createAgentMarkdownResponse(
   const userAgent = getHeaderValue(config.headers, "user-agent");
   const matchesAgentUa = isAgentUserAgent(userAgent, config.userAgentPattern);
   const wantsMarkdown = acceptsMarkdownHeader(accept) || matchesAgentUa;
-  const target = resolveMarkdownMirrorTarget(pathname);
+  const target =
+    resolveManifestMarkdownMirrorTarget(pathname, config.manifest) ??
+    resolveMarkdownMirrorTarget(pathname);
   const isHead = config.method === "HEAD";
 
   if (target && (wantsMarkdown || pathname.endsWith(".md"))) {

@@ -29,6 +29,48 @@ If your app uses different names, you have two options: rename to match, or add 
 
 Runtime registration, heading IDs, and "On this page" sidebars are docs-app concerns. See [Render MDX and TOC](/docs/build/render-mdx-and-toc) for that setup.
 
+## Reuse shared content
+
+Use include tags when several pages need the same explanation, warning, setup step, or code sample. Add `remarkInclude` before the default plugin stack in custom conversion scripts:
+
+```ts
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+
+remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+```
+
+Include a whole markdown or MDX partial with `src` or text content:
+
+```mdx
+<include src="./shared/session-flow.mdx" />
+
+<include>./shared/session-flow.mdx</include>
+```
+
+You can also include code files. Leadtype emits them as fenced code blocks:
+
+```mdx
+<include src="../examples/session.ts" />
+
+<include src="../examples/env" lang="bash" />
+```
+
+To reuse only one block from a larger file, append `#section-id` and wrap that block in a lowercase HTML `section`:
+
+```mdx
+<include src="./shared/auth.mdx#session-flow" />
+```
+
+```mdx
+<section id="session-flow">
+  This content can be reused in multiple pages.
+</section>
+```
+
+Section reuse matches lowercase `<section id="...">` only. A capitalized `<Section id="...">` component is flattened later for markdown output, but it is not an include anchor.
+
+Relative paths resolve from the including file first. Nested includes are supported, so a shared partial can include files next to itself. See [Remark plugins](/docs/reference/remark#remarkinclude) for base paths and plugin details.
+
 ## Component reference
 
 Each section below shows the authored MDX and a live render.

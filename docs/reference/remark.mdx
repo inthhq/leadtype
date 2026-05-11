@@ -75,10 +75,59 @@ Don't reorder casually. If you need a custom plugin to run before a flattener (f
 Add this when the source docs use include tags or partial composition:
 
 ```ts
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+
 remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
 ```
 
 Place it before the default stack so included content expands before any flattener sees it.
+
+Use `src` or text content to point at a shared markdown, MDX, or code file:
+
+```mdx
+<include src="./shared/auth.mdx" />
+
+<include>./shared/auth.mdx</include>
+
+<import src="./shared/auth.mdx" />
+
+<include-c15t src="./shared/auth.mdx" />
+```
+
+Markdown and MDX files are parsed and spliced into the current page. Frontmatter from the included file is stripped. Non-markdown files are included as fenced code; pass `lang` when the extension is not enough:
+
+```mdx
+<include src="../examples/login.ts" />
+
+<include src="../examples/env" lang="bash" />
+```
+
+To reuse one section from a larger partial, append `#section-id` and wrap the reusable block in a lowercase HTML `section` element:
+
+```mdx
+<include src="./shared/auth.mdx#session-flow" />
+```
+
+```mdx
+<section id="session-flow">
+  This content can be reused in multiple pages.
+</section>
+```
+
+Section extraction currently matches lowercase `<section id="...">` only. A capitalized MDX component such as `<Section id="session-flow">` is flattened later by `remarkSectionToMarkdown`, but it is not an include anchor.
+
+Relative paths resolve from the including file first. You can also pass base paths to the plugin for shared partial roots:
+
+```ts
+remarkPlugins: [
+  [remarkInclude, ["docs", "content"]],
+  ...defaultRemarkPlugins,
+];
+```
+
+Nested includes are supported. The plugin keeps the included file's directory as `baseDir` for nested relative paths, so a partial can include files next to itself.
+
+`leadtype lint` runs `remarkInclude` so broken includes are caught during validation. Custom conversion scripts must add `remarkInclude` explicitly. The `leadtype generate` CLI uses the default stack today; use a script when your generated artifacts depend on partial expansion.
 
 ### remarkTypeTableToMarkdown (with basePath)
 

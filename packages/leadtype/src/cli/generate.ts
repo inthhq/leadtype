@@ -7,6 +7,11 @@ import { createJiti } from "jiti";
 import { glob as fg } from "tinyglobby";
 import { convertAllMdx } from "../convert";
 import {
+  type DocsPathMount,
+  normalizeDocsPath,
+  normalizeUrlPrefix,
+} from "../internal/docs-url";
+import {
   logger,
   setLogFormat,
   setLogStreams,
@@ -42,7 +47,7 @@ type GenerateFormat = "json" | "text";
 export type GenerateArgs = {
   baseUrl?: string;
   bundle: boolean;
-  docsDir: string;
+  docsDirs: string[];
   enrichGit: boolean;
   exclude: string[];
   format: GenerateFormat;
@@ -74,6 +79,7 @@ type GenerateFilters = {
 
 type GenerateResult = {
   docsDir: string;
+  docsDirs: string[];
   files: {
     agentsMd?: string;
     agentReadabilityManifest?: string;
@@ -88,6 +94,7 @@ type GenerateResult = {
   };
   groups: DocsGroup[];
   filters: GenerateFilters;
+  mounts: DocsPathMount[];
   mode: "site" | "bundle";
   outDir: string;
   product: ProductInfo;
@@ -121,7 +128,8 @@ With --bundle, runs in package mode and writes:
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
-  --docs-dir <dir>   Docs folder relative to --src (default: docs)
+  --docs-dir <dir>   Docs source folder relative to --src (default: docs). Repeat to merge multiple folders.
+                     Use <dir>=<url-prefix> to mount a source outside /docs, e.g. changelog=/changelog.
   --out <dir>        Output root directory (default: public)
   --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
   --base-url <url>   Base URL for generated links (site mode)
@@ -151,7 +159,7 @@ function isGenerateFormat(value: string): value is GenerateFormat {
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
     bundle: false,
-    docsDir: DEFAULT_DOCS_DIR,
+    docsDirs: [],
     enrichGit: false,
     exclude: [],
     format: "text",
@@ -169,7 +177,7 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg === "--src") {
       args.srcDir = readValue(argv, ++i, "--src");
     } else if (arg === "--docs-dir") {
-      args.docsDir = readValue(argv, ++i, "--docs-dir");
+      args.docsDirs.push(readValue(argv, ++i, "--docs-dir"));
     } else if (arg === "--out") {
       args.outDir = readValue(argv, ++i, "--out");
     } else if (arg === "--base-url") {
@@ -199,6 +207,10 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg) {
       throw new Error(`unknown option: ${arg}`);
     }
+  }
+
+  if (args.docsDirs.length === 0) {
+    args.docsDirs = [DEFAULT_DOCS_DIR];
   }
 
   return args;
@@ -314,7 +326,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   return { groups, product };
 }
 
-async function loadDocsConfig(
+async function loadDocsConfigFromDir(
   docsDir: string
 ): Promise<LoadedDocsConfig | null> {
   const configPath = DOCS_CONFIG_FILENAMES.map((filename) =>
@@ -338,6 +350,18 @@ async function loadDocsConfig(
       `failed to load docs config at "${configPath}": ${message}`
     );
   }
+}
+
+async function loadDocsConfig(
+  docsDirs: string[]
+): Promise<LoadedDocsConfig | null> {
+  for (const docsDir of docsDirs) {
+    const loaded = await loadDocsConfigFromDir(docsDir);
+    if (loaded) {
+      return loaded;
+    }
+  }
+  return null;
 }
 
 async function readPackageProduct(
@@ -387,10 +411,10 @@ function applyProductOverrides(
 
 async function resolveGenerateMetadata(
   srcDir: string,
-  docsDir: string,
+  docsDirs: string[],
   args: GenerateArgs
 ): Promise<ResolvedGenerateMetadata> {
-  const loadedConfig = await loadDocsConfig(docsDir);
+  const loadedConfig = await loadDocsConfig(docsDirs);
   if (loadedConfig) {
     return {
       configPath: loadedConfig.path,
@@ -400,42 +424,137 @@ async function resolveGenerateMetadata(
   }
 
   return {
-    groups: await inferGroups(docsDir),
+    groups: [],
     product: await readPackageProduct(srcDir, args),
   };
 }
 
-async function createSourceMirror(
-  srcDir: string,
-  docsDir: string,
-  args: GenerateArgs
-): Promise<SourceMirror> {
-  const filters = {
-    exclude: [...args.exclude],
-    include: [...args.include],
-  };
-  const hasFilters = filters.include.length > 0 || filters.exclude.length > 0;
+type ResolvedDocsSource = {
+  docsDir: string;
+  input: string;
+  mountPath: string;
+  urlPrefix: string;
+};
 
-  if (path.normalize(args.docsDir) === DEFAULT_DOCS_DIR && !hasFilters) {
-    return {
-      cleanup: async () => {
-        return;
-      },
-      docsDir,
-      filters,
-      srcDir,
-    };
+function normalizeDocsSourceInput(input: string): string {
+  return path.normalize(input).replace(/[/\\]+$/, "");
+}
+
+function parseDocsSourceInput(input: string): {
+  docsDir: string;
+  urlPrefix?: string;
+} {
+  const separatorIndex = input.indexOf("=");
+  if (separatorIndex === -1) {
+    return { docsDir: input };
   }
+  const docsDir = input.slice(0, separatorIndex);
+  const urlPrefix = input.slice(separatorIndex + 1);
+  if (!(docsDir.trim() && urlPrefix.trim())) {
+    throw new Error(
+      `Invalid --docs-dir value "${input}". Use <dir> or <dir>=<url-prefix>.`
+    );
+  }
+  if (normalizeUrlPrefix(urlPrefix) === "/") {
+    throw new Error(
+      `Invalid --docs-dir value "${input}". URL prefix must not be the site root.`
+    );
+  }
+  return { docsDir, urlPrefix };
+}
 
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "leadtype-generate-"));
-  const tempDocsDir = path.join(tempRoot, DEFAULT_DOCS_DIR);
+function resolveDocsSources(
+  srcDir: string,
+  docsDirs: string[]
+): ResolvedDocsSource[] {
+  const parsedInputs = docsDirs.map(parseDocsSourceInput);
+  const normalizedInputs = parsedInputs.map((entry) => ({
+    input: normalizeDocsSourceInput(entry.docsDir),
+    urlPrefix: entry.urlPrefix
+      ? normalizeUrlPrefix(entry.urlPrefix)
+      : undefined,
+  }));
+  const mountPaths = new Set<string>();
+  return normalizedInputs.map(({ input, urlPrefix }, index) => {
+    const docsDir = path.resolve(srcDir, input);
+    const mountPath =
+      index === 0 ? "" : normalizeDocsPath(path.basename(input || docsDir));
+    if (mountPath) {
+      const mountKey = mountPath.toLowerCase();
+      if (mountPaths.has(mountKey)) {
+        throw new Error(
+          `Multiple docs sources resolve to the same mount path "${mountPath}". Use distinct source folder names.`
+        );
+      }
+      mountPaths.add(mountKey);
+    }
+    const resolvedUrlPrefix =
+      urlPrefix ?? (mountPath ? `/docs/${mountPath}` : "/docs");
+    return { docsDir, input, mountPath, urlPrefix: resolvedUrlPrefix };
+  });
+}
 
-  if (hasFilters) {
+function sourceMounts(sources: ResolvedDocsSource[]): DocsPathMount[] {
+  return sources.map((source) => ({
+    pathPrefix: source.mountPath,
+    urlPrefix: source.urlPrefix,
+  }));
+}
+
+function joinDocsRelativePath(mountPath: string, relativePath: string): string {
+  if (!mountPath) {
+    return normalizeDocsPath(relativePath);
+  }
+  return normalizeDocsPath(path.join(mountPath, relativePath));
+}
+
+async function copySourceFiles(
+  source: ResolvedDocsSource,
+  targetDocsDir: string,
+  relativePaths?: string[]
+): Promise<void> {
+  const files =
+    relativePaths ??
+    (await fg("**/*", {
+      absolute: false,
+      cwd: source.docsDir,
+      dot: true,
+      onlyFiles: true,
+    }));
+
+  await Promise.all(
+    files.map(async (file) => {
+      const sourcePath = path.join(source.docsDir, file);
+      const targetRelativePath = joinDocsRelativePath(source.mountPath, file);
+      const targetPath = path.join(targetDocsDir, targetRelativePath);
+      if (existsSync(targetPath)) {
+        throw new Error(
+          `Multiple docs sources produce "${targetRelativePath}". Rename one source file or mount source.`
+        );
+      }
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await cp(sourcePath, targetPath);
+    })
+  );
+}
+
+async function copyFilteredSourceFiles(
+  sources: ResolvedDocsSource[],
+  targetDocsDir: string,
+  filters: GenerateFilters
+): Promise<void> {
+  const stagingRoot = await mkdtemp(path.join(tmpdir(), "leadtype-sources-"));
+  const stagingDocsDir = path.join(stagingRoot, DEFAULT_DOCS_DIR);
+  try {
+    for (const source of sources) {
+      await copySourceFiles(source, stagingDocsDir);
+    }
+
     const patterns =
       filters.include.length > 0 ? filters.include : ["**/*.mdx"];
     const files = await fg(patterns, {
       absolute: false,
-      cwd: docsDir,
+      cwd: stagingDocsDir,
       // tinyglobby expands bare directory names (`build` → `build/**`) by
       // default; fast-glob did not. Disable it so `--include build` still
       // reports "No MDX files matched" instead of silently slurping everything
@@ -449,7 +568,6 @@ async function createSourceMirror(
       .sort((left, right) => left.localeCompare(right));
 
     if (mdxFiles.length === 0) {
-      await rm(tempRoot, { force: true, recursive: true });
       throw new Error(
         "No MDX files matched the provided include/exclude filters"
       );
@@ -457,16 +575,112 @@ async function createSourceMirror(
 
     await Promise.all(
       mdxFiles.map(async (file) => {
-        const sourcePath = path.join(docsDir, file);
-        const targetPath = path.join(tempDocsDir, file);
+        const sourcePath = path.join(stagingDocsDir, file);
+        const targetPath = path.join(targetDocsDir, file);
         await mkdir(path.dirname(targetPath), { recursive: true });
         await cp(sourcePath, targetPath);
       })
     );
-  } else {
-    await cp(docsDir, tempDocsDir, {
-      recursive: true,
-    });
+  } finally {
+    await rm(stagingRoot, { force: true, recursive: true });
+  }
+}
+
+function expectedDocsUrlPrefix(mountPath: string): string {
+  return mountPath ? `/docs/${mountPath}` : "/docs";
+}
+
+function outputDirForUrlPrefix(outDir: string, urlPrefix: string): string {
+  const relativePath = normalizeDocsPath(urlPrefix).replace(/^\/+/, "");
+  return path.join(outDir, relativePath);
+}
+
+async function copyMountedMarkdownMirrors(
+  outDir: string,
+  mounts: DocsPathMount[]
+): Promise<void> {
+  await Promise.all(
+    mounts.map(async (mount) => {
+      const pathPrefix = normalizeDocsPath(mount.pathPrefix);
+      const urlPrefix = normalizeUrlPrefix(mount.urlPrefix);
+      if (urlPrefix === expectedDocsUrlPrefix(pathPrefix)) {
+        return;
+      }
+
+      const sourceDir = path.join(outDir, DEFAULT_DOCS_DIR, pathPrefix);
+      if (!existsSync(sourceDir)) {
+        return;
+      }
+      const targetDir = outputDirForUrlPrefix(outDir, urlPrefix);
+      const relativeToOut = path.relative(outDir, targetDir);
+      if (
+        !relativeToOut ||
+        relativeToOut.startsWith("..") ||
+        path.isAbsolute(relativeToOut)
+      ) {
+        throw new Error(
+          `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
+        );
+      }
+      await rm(targetDir, { force: true, recursive: true });
+      const files = await fg("**/*.md", {
+        absolute: false,
+        cwd: sourceDir,
+        onlyFiles: true,
+      });
+      await Promise.all(
+        files.map(async (file) => {
+          const sourcePath = path.join(sourceDir, file);
+          const targetPath = path.join(targetDir, file);
+          await mkdir(path.dirname(targetPath), { recursive: true });
+          await cp(sourcePath, targetPath);
+        })
+      );
+    })
+  );
+}
+
+async function createSourceMirror(
+  srcDir: string,
+  sources: ResolvedDocsSource[],
+  args: GenerateArgs
+): Promise<SourceMirror> {
+  const filters = {
+    exclude: [...args.exclude],
+    include: [...args.include],
+  };
+  const hasFilters = filters.include.length > 0 || filters.exclude.length > 0;
+
+  const isDefaultSingleSource =
+    sources.length === 1 &&
+    normalizeDocsSourceInput(sources[0]?.input ?? "") === DEFAULT_DOCS_DIR;
+
+  if (isDefaultSingleSource && !hasFilters) {
+    const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
+    return {
+      cleanup: async () => {
+        return;
+      },
+      docsDir,
+      filters,
+      srcDir,
+    };
+  }
+
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "leadtype-generate-"));
+  const tempDocsDir = path.join(tempRoot, DEFAULT_DOCS_DIR);
+
+  try {
+    if (hasFilters) {
+      await copyFilteredSourceFiles(sources, tempDocsDir, filters);
+    } else {
+      for (const source of sources) {
+        await copySourceFiles(source, tempDocsDir);
+      }
+    }
+  } catch (error) {
+    await rm(tempRoot, { force: true, recursive: true });
+    throw error;
   }
 
   return {
@@ -509,21 +723,32 @@ export async function runGenerateCommand(
   setLogStreams({ stderr: io.stderr });
 
   const srcDir = path.resolve(args.srcDir);
-  const docsDir = path.resolve(srcDir, args.docsDir);
+  let docsSources: ResolvedDocsSource[];
+  try {
+    docsSources = resolveDocsSources(srcDir, args.docsDirs);
+  } catch (error) {
+    io.stderr.write(`${String(error)}\n`);
+    return 1;
+  }
+  const docsDir =
+    docsSources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
+  const docsDirs = docsSources.map((source) => source.docsDir);
+  const mounts = sourceMounts(docsSources);
   const outDir = path.resolve(args.outDir);
 
-  if (!existsSync(docsDir)) {
+  const missingDocsDir = docsDirs.find((candidate) => !existsSync(candidate));
+  if (missingDocsDir) {
     if (args.format === "json") {
       logger.error({
-        human: { message: `docs directory not found at ${docsDir}` },
+        human: { message: `docs directory not found at ${missingDocsDir}` },
         json: {
           event: "generate.docs_not_found",
-          fields: { error: "docs directory not found", path: docsDir },
+          fields: { error: "docs directory not found", path: missingDocsDir },
         },
       });
     } else {
       io.stderr.write(
-        `leadtype generate: docs directory not found at ${docsDir}\n`
+        `leadtype generate: docs directory not found at ${missingDocsDir}\n`
       );
     }
     return 1;
@@ -531,8 +756,8 @@ export async function runGenerateCommand(
 
   let sourceMirror: SourceMirror | undefined;
   try {
-    const metadata = await resolveGenerateMetadata(srcDir, docsDir, args);
-    sourceMirror = await createSourceMirror(srcDir, docsDir, args);
+    const metadata = await resolveGenerateMetadata(srcDir, docsDirs, args);
+    sourceMirror = await createSourceMirror(srcDir, docsSources, args);
     const { groups, product } = metadata.configPath
       ? metadata
       : {
@@ -543,6 +768,7 @@ export async function runGenerateCommand(
     const navigation = await resolveDocsNavigation({
       srcDir: sourceMirror.srcDir,
       groups,
+      mounts,
     });
     const firstUnknownGroup = navigation.unknown[0];
     if (firstUnknownGroup) {
@@ -568,21 +794,25 @@ export async function runGenerateCommand(
       });
       result = {
         docsDir,
+        docsDirs,
         files: { agentsMd: agents.outputPath },
         filters: sourceMirror.filters,
         groups,
+        mounts,
         mode: "bundle",
         outDir,
         product,
         srcDir,
       };
     } else {
+      await copyMountedMarkdownMirrors(outDir, mounts);
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
         baseUrl: args.baseUrl,
         product,
         groups,
+        mounts,
       });
 
       await generateLLMFullContextFiles({
@@ -590,21 +820,25 @@ export async function runGenerateCommand(
         baseUrl: args.baseUrl,
         product: { name: product.name },
         groups,
+        mounts,
       });
 
       const search = await generateDocsSearchFiles({
         outDir,
         baseUrl: args.baseUrl,
+        mounts,
       });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
         baseUrl: args.baseUrl,
         product,
         groups,
+        mounts,
       });
 
       result = {
         docsDir,
+        docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
           docsRobotsTxt: agentReadability.files.robotsTxt,
@@ -618,6 +852,7 @@ export async function runGenerateCommand(
         },
         filters: sourceMirror.filters,
         groups,
+        mounts,
         mode: "site",
         outDir,
         product,

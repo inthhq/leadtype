@@ -66,6 +66,46 @@ That command writes:
 
 Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
 
+## Add sibling sources
+
+Some projects keep docs and release notes side by side instead of putting everything under `docs/`:
+
+<FileTree root=".docs-src/c15t">
+  <Folder name="docs">
+    <File name="quickstart.mdx" />
+    <File name="docs.config.ts" />
+  </Folder>
+  <Folder name="changelog">
+    <File name="v1.mdx" />
+  </Folder>
+</FileTree>
+
+Repeat `--docs-dir` to include those folders in the same generated corpus:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --docs-dir docs \
+  --docs-dir changelog \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+By default, extra sources are mounted under `/docs/<folder>`, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1.md`.
+
+Use `<dir>=<url-prefix>` when the folder should keep its own public route:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --docs-dir docs \
+  --docs-dir changelog=/changelog \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+That still keeps an internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, but it also writes `public/changelog/v1.md` and emits canonical links such as `/changelog/v1` and `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
+
 ## Wire it into the app build
 
 Make the source checkout, lint, and generation steps run before the framework build:
@@ -129,10 +169,21 @@ import { generateDocsSearchFiles } from "leadtype/search/node";
 import docsConfig from "../.docs-src/c15t/docs/docs.config";
 
 const sourceRoot = ".docs-src/c15t";
+const mounts = [
+  { pathPrefix: "", urlPrefix: "/docs" },
+  { pathPrefix: "changelog", urlPrefix: "/changelog" },
+];
 
 await convertAllMdx({
   srcDir: `${sourceRoot}/docs`,
   outDir: "public/docs",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  enrichFrontmatterFromGit: true,
+});
+
+await convertAllMdx({
+  srcDir: `${sourceRoot}/changelog`,
+  outDir: "public/docs/changelog",
   remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
   enrichFrontmatterFromGit: true,
 });
@@ -143,6 +194,7 @@ await generateLlmsTxt({
   baseUrl: "https://docs.example.com",
   product: docsConfig.product,
   groups: docsConfig.groups,
+  mounts,
 });
 
 await generateLLMFullContextFiles({
@@ -150,11 +202,13 @@ await generateLLMFullContextFiles({
   baseUrl: "https://docs.example.com",
   product: { name: docsConfig.product.name },
   groups: docsConfig.groups,
+  mounts,
 });
 
 await generateDocsSearchFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
+  mounts,
 });
 
 const agentReadability = await generateAgentReadabilityArtifacts({
@@ -162,16 +216,18 @@ const agentReadability = await generateAgentReadabilityArtifacts({
   baseUrl: "https://docs.example.com",
   product: docsConfig.product,
   groups: docsConfig.groups,
+  mounts,
 });
 
 const navigation = await resolveDocsNavigation({
   srcDir: sourceRoot,
   baseUrl: "https://docs.example.com",
   groups: docsConfig.groups,
+  mounts,
 });
 ```
 
-Write `navigation` to a generated JSON file if your sidebar should use the same group tree as `llms.txt`. Write `agentReadability.manifest` if your runtime needs to merge docs pages with marketing, blog, changelog, or product routes.
+Write `navigation` to a generated JSON file if your sidebar should use the same group tree as `llms.txt`. Write `agentReadability.manifest` if your runtime needs to merge docs pages with marketing, blog, changelog, or product routes. Custom scripts that need plain static markdown at mounted paths should also copy `public/docs/changelog/*.md` to `public/changelog/*.md`; the CLI does that automatically.
 
 ## Wire the app runtime
 

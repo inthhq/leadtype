@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import {
+  type DocsPathMount,
   GENERIC_DOC_TITLES,
   normalizeBaseUrl,
   normalizeWhitespace as normalizeDescription,
@@ -30,6 +31,7 @@ const SEPARATOR_PATTERN = /[-_]/;
 export type GenerateDocsSearchFilesConfig = {
   outDir: string;
   baseUrl?: string;
+  mounts?: DocsPathMount[];
   outputFile?: string;
   contentOutputFile?: string;
   embedContent?: boolean;
@@ -84,7 +86,8 @@ async function collectMarkdownFiles(rootDir: string): Promise<string[]> {
 
 async function readMarkdownDocs(
   docsDir: string,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[]
 ): Promise<DocsSearchDocument[]> {
   const files = await collectMarkdownFiles(docsDir);
   const docs: DocsSearchDocument[] = [];
@@ -102,7 +105,7 @@ async function readMarkdownDocs(
     const description = normalizeDescription(
       String(parsed.data.description ?? "")
     );
-    const urlPath = toDocsUrlPath(relativePath);
+    const urlPath = toDocsUrlPath(relativePath, mounts);
     docs.push({
       id: stripDocsExtension(relativePath),
       title,
@@ -194,7 +197,7 @@ export async function generateDocsSearchFiles(
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const docs = await readMarkdownDocs(docsDir, baseUrl);
+  const docs = await readMarkdownDocs(docsDir, baseUrl, config.mounts);
   if (docs.length === 0) {
     throw new Error(
       `generateDocsSearchFiles found no markdown files under "${docsDir}". Run convertAllMdx first, or check config.outDir.`
