@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tool } from "ai";
-import fg from "fast-glob";
+import { glob as fg } from "tinyglobby";
 import { z } from "zod";
 import type { ToolCall } from "./transcript";
 
@@ -235,6 +235,9 @@ export function scopedTools(ctx: ToolCtx) {
               absolute: false,
               dot: false,
               followSymbolicLinks: false,
+              // Agent supplies the pattern; keep fast-glob semantics so a
+              // bare directory name doesn't silently expand to `dir/**`.
+              expandDirectories: false,
             });
             return matches.join("\n");
           },

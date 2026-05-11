@@ -4,11 +4,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import fg from "fast-glob";
 import matter from "gray-matter";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
+import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
 import {
   deriveDocContext,

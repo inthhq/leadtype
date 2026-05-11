@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import fg from "fast-glob";
+import { glob as fg } from "tinyglobby";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "./cli";
 
@@ -522,6 +522,38 @@ describe("leadtype CLI", () => {
     };
     expect(error.error).toContain("No MDX files matched");
     expect(error.filters.include).toEqual(["nope/**"]);
+  });
+
+  it("treats a bare directory in --include as matching no MDX files", async () => {
+    // tinyglobby expands bare directory names to `dir/**` by default; fast-glob
+    // didn't. With expandDirectories disabled at the call site, `--include build`
+    // should fail the same way `--include nope` does — not silently include
+    // every file under `docs/build/`.
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--include",
+        "build",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as {
+      error: string;
+      filters: { include: string[] };
+    };
+    expect(error.error).toContain("No MDX files matched");
+    expect(error.filters.include).toEqual(["build"]);
   });
 
   it("rejects invalid generate formats as usage errors", async () => {
