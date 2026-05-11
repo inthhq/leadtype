@@ -325,7 +325,7 @@ async function loadDocsConfig(
     return null;
   }
 
-  const jiti = createJiti(import.meta.url);
+  const jiti = createJiti(import.meta.url, { moduleCache: false });
   try {
     const imported = await jiti.import(configPath, { default: true });
     return {
