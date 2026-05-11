@@ -1,7 +1,7 @@
 ---
 title: "Optimize docs for agents"
 description: "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site."
-group: build
+group: docs-site
 ---
 
 # Optimize docs for agents
@@ -62,31 +62,83 @@ public/
 
 The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, group navigation, and freshness dates.
 
-## 2. Serve root discovery files
+## 2. Add one middleware
 
-The recommended setup is **runtime regenerators** rather than static files for the few artifacts that need absolute URLs. That keeps preview and staging environments honest without rebuilding.
+Put the agent-readable routes before your HTML docs route. This Node/Bun example handles root discovery files, docs-scoped discovery files, direct `.md` URLs, and `Accept: text/markdown` requests in one place:
 
 ```ts
-// In your framework's middleware (Vite plugin, Next.js middleware, Astro
-// endpoint, Cloudflare Worker, etc.):
-import manifest from "../public/docs/agent-readability.json";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import manifestJson from "../public/docs/agent-readability.json" with {
+  type: "json",
+};
 import {
+  createAgentMarkdownResponse,
   createRobotsTxtResponse,
   createSitemapMarkdownResponse,
   createSitemapXmlResponse,
+  type AgentReadabilityManifest,
+  type MarkdownMirrorTarget,
 } from "leadtype/llm/readability";
 
-const url = new URL(request.url);
-const requestOrigin = url.origin;
+const manifest = {
+  ...manifestJson,
+  version: 1,
+} as AgentReadabilityManifest;
 
-if (url.pathname === "/sitemap.xml" || url.pathname === "/docs/sitemap.xml") {
-  return createSitemapXmlResponse({ manifest, requestOrigin });
+async function readMarkdownFile(
+  target: MarkdownMirrorTarget
+): Promise<string | null> {
+  try {
+    return await readFile(join(process.cwd(), "public", target.filePath), "utf8");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error.code === "ENOENT" || error.code === "ENOTDIR")
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
-if (url.pathname === "/sitemap.md" || url.pathname === "/docs/sitemap.md") {
-  return createSitemapMarkdownResponse({ manifest, requestOrigin });
-}
-if (url.pathname === "/robots.txt") {
-  return createRobotsTxtResponse({ manifest, requestOrigin });
+
+export async function handleDocsRequest(
+  request: Request
+): Promise<Response | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return null;
+  }
+
+  const url = new URL(request.url);
+  const requestOrigin = url.origin;
+
+  switch (url.pathname) {
+    case "/sitemap.xml":
+    case "/docs/sitemap.xml":
+      return createSitemapXmlResponse({ manifest, requestOrigin });
+    case "/sitemap.md":
+    case "/docs/sitemap.md":
+      return createSitemapMarkdownResponse({ manifest, requestOrigin });
+    case "/robots.txt":
+      return createRobotsTxtResponse({ manifest, requestOrigin });
+    case "/docs/robots.txt":
+      return createRobotsTxtResponse({
+        manifest,
+        requestOrigin,
+        sitemapUrlPath: "/docs/sitemap.xml",
+      });
+    default:
+      return createAgentMarkdownResponse({
+        urlPath: url.pathname,
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+        manifest,
+        readMarkdownFile,
+        requestOrigin,
+      });
+  }
 }
 ```
 
@@ -139,7 +191,7 @@ The JSON-LD gives agents the page title, description, canonical URL, last modifi
 
 ## 4. Return markdown to agents
 
-Use `createAgentMarkdownResponse` from request middleware or route handlers. It returns a Web `Response` (or `null` when the path is not an agent-oriented markdown request) and handles:
+The middleware above uses `createAgentMarkdownResponse`. It returns a Web `Response` (or `null` when the path is not an agent-oriented markdown request) and handles:
 
 - `Accept: text/markdown` and `Accept: text/plain` content negotiation (q-values respected).
 - Known AI user-agent headers (GPTBot, ClaudeBot, Bingbot, AmazonBot, MetaExternalAgent, PerplexityBot, MistralBot, AppleBot, ByteSpider, YouBot, …).
@@ -148,28 +200,7 @@ Use `createAgentMarkdownResponse` from request middleware or route handlers. It 
 - 200 markdown responses for missing docs pages, so agents do not discard the body.
 - `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical"`, `Cache-Control: public, max-age=300, must-revalidate`.
 
-`readMarkdownFile` may be sync or async, so the same code works on Node, Bun, Vercel Edge, Cloudflare Workers, and other edge runtimes:
-
-```ts
-import manifest from "../public/docs/agent-readability.json";
-import { createAgentMarkdownResponse } from "leadtype/llm/readability";
-
-export async function handleRequest(request: Request): Promise<Response | null> {
-  return createAgentMarkdownResponse({
-    urlPath: request.url,
-    method: request.method,
-    headers: Object.fromEntries(request.headers),
-    manifest,
-    requestOrigin: new URL(request.url).origin,
-    async readMarkdownFile(target) {
-      // Node/Bun: read from disk.
-      // Cloudflare: fetch from KV / R2 / asset binding.
-      // Vercel Edge: fetch from the deployment's static asset URL.
-      return await readGeneratedFile(`public/${target.filePath}`);
-    },
-  });
-}
-```
+`readMarkdownFile` may be sync or async. In Node/Bun, read from disk. In Cloudflare, fetch from KV/R2 or an asset binding. In Vercel Edge, fetch from the deployment's static asset URL.
 
 Put that logic wherever your framework can intercept docs requests before its HTML route:
 

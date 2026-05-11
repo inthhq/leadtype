@@ -1,12 +1,12 @@
 ---
 title: "Leadtype"
-description: "One MDX source. A website for humans, AGENTS.md for offline coding agents, llms.txt for HTTP agents — all from a single pipeline."
+description: "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline."
 group: get-started
 ---
 
 # Leadtype
 
-Leadtype is a **docs pipeline**. You write MDX in one place. It produces every shape your docs need to take: a website for humans, an `AGENTS.md`-fronted bundle for coding agents reading from `node_modules/`, an `llms.txt` for HTTP agents, and a static search index.
+Leadtype is a **docs pipeline**. You write MDX in one place. It produces the generated artifacts your docs need: markdown mirrors, `llms.txt`, root `llms-full.txt`, search JSON, Agent Readability metadata, and package-bundled `AGENTS.md` output.
 
 It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
 
@@ -19,7 +19,7 @@ It is not a docs website framework. Bring your own UI — Next.js, TanStack Star
   humans["Humans<br/>(browser)"]
   http_agents["HTTP agents<br/>(via /llms.txt or<br/>Accept: text/markdown)"]
   search["Search UI<br/>AI answers"]
-  offline_agents["Coding agents<br/>(Claude Code, Codex,<br/>Cursor, Copilot…)<br/>read node_modules/&lt;pkg&gt;/AGENTS.md"]
+  offline_agents["Coding agents<br/>can read version-matched<br/>node_modules/&lt;pkg&gt;/AGENTS.md"]
   src --> site_run
   src --> bundle_run
   site_run --> site_out
@@ -31,17 +31,22 @@ It is not a docs website framework. Bring your own UI — Next.js, TanStack Star
 
 ## Choose your path
 
-Most teams arrive here for one of two reasons. Pick the journey that matches yours — each is a single page that takes you from zero to running.
+Pick the job that matches what you are building. Each path starts with the minimum setup, then links to the lower-level API reference only when you need it.
 
 <Cards>
   <Card
-    title="Build a docs site"
-    description="You run a docs site (or want to). Wire leadtype in front of your build to convert MDX, index search, and add agent-readable discovery."
+    title="Build a shared docs site"
+    description="Clone source docs from a package repo, generate hosted artifacts, and wire the output into your app."
     href="/docs/build/connect-docs-site"
   />
   <Card
+    title="Add search"
+    description="Generate a static BM25 index, query it at runtime, and optionally stream source-grounded answers."
+    href="/docs/build/add-search"
+  />
+  <Card
     title="Ship docs in your package"
-    description="You publish a library on npm. Bundle agent-readable docs inside the tarball so IDEs and coding agents can read them offline."
+    description="Publish AGENTS.md plus relative markdown files inside an npm tarball."
     href="/docs/build/bundle-package-docs"
   />
 </Cards>
@@ -53,10 +58,10 @@ Most teams arrive here for one of two reasons. Pick the journey that matches you
     Author MDX with familiar components — `Callout`, `Tabs`, `Steps`, `Mermaid`, `TypeTable`, and others. Add `group:` in frontmatter to place pages in the navigation tree.
   </Step>
   <Step title="Run `leadtype generate`">
-    For a website: converts MDX to markdown, builds `llms.txt` plus root `llms-full.txt`, generates a search index, writes Agent Readability discovery files, and resolves navigation. With `--bundle`: emits `AGENTS.md` plus per-topic `.md` files for agents reading from `node_modules/`.
+    For a website: converts MDX to markdown, builds `llms.txt` plus root `llms-full.txt`, generates a search index, writes Agent Readability discovery files, and resolves navigation. With `--bundle`: emits `AGENTS.md` plus per-topic `.md` files with relative links that still work after npm install.
   </Step>
   <Step title="Serve all of it">
-    Humans get HTML. HTTP agents get markdown via content negotiation or fetch `llms.txt`. Coding agents working in a project that depends on your package auto-discover `AGENTS.md` from `node_modules/<your-pkg>/`. One source, three audiences.
+    Humans get HTML from your app. HTTP agents get markdown via content negotiation or `/llms.txt`. Package consumers can point their root `AGENTS.md` or README at `node_modules/<your-pkg>/AGENTS.md` for version-matched offline docs.
   </Step>
 </Steps>
 

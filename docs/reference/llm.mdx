@@ -297,7 +297,7 @@ Every helper asserts `manifest.version === 1` at the entry point and throws a cl
 
 ## generateAgentsMd
 
-For npm-bundled docs that ship inside `node_modules/<pkg>/` and rely on filesystem auto-discovery (Claude Code, Codex, Cursor, Copilot, etc.):
+For npm-bundled docs that ship inside `node_modules/<pkg>/` and need relative filesystem links:
 
 ```ts
 import { generateAgentsMd } from "leadtype/llm";
@@ -378,7 +378,7 @@ Now your sidebar can import a static manifest with the same group tree the LLM f
 
 ## Tables of contents
 
-For the heading slug contract and renderer wiring, see [Components → Headings and table of contents](/docs/authoring/components#headings-and-table-of-contents). This section covers the build-time APIs only.
+For the heading slug contract and renderer wiring, see [Render MDX and TOC](/docs/build/render-mdx-and-toc). This section covers the build-time APIs only.
 
 `resolveDocsNavigation` includes a `toc` array on every page by default. The default range is `h2`–`h3`, which keeps page-level `h1` titles out of sidebars.
 

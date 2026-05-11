@@ -29,9 +29,11 @@ import { Route as DocsReferenceEvalsRouteImport } from './routes/docs/reference/
 import { Route as DocsReferenceConvertRouteImport } from './routes/docs/reference/convert'
 import { Route as DocsReferenceCliRouteImport } from './routes/docs/reference/cli'
 import { Route as DocsBuildValidateInCiRouteImport } from './routes/docs/build/validate-in-ci'
+import { Route as DocsBuildRenderMdxAndTocRouteImport } from './routes/docs/build/render-mdx-and-toc'
 import { Route as DocsBuildOptimizeDocsForAgentsRouteImport } from './routes/docs/build/optimize-docs-for-agents'
 import { Route as DocsBuildConnectDocsSiteRouteImport } from './routes/docs/build/connect-docs-site'
 import { Route as DocsBuildBundlePackageDocsRouteImport } from './routes/docs/build/bundle-package-docs'
+import { Route as DocsBuildAddSearchRouteImport } from './routes/docs/build/add-search'
 import { Route as DocsAuthoringFrontmatterRouteImport } from './routes/docs/authoring/frontmatter'
 import { Route as DocsAuthoringComponentsRouteImport } from './routes/docs/authoring/components'
 import { Route as ApiDocsSearchRouteImport } from './routes/api/docs/search'
@@ -140,6 +142,12 @@ const DocsBuildValidateInCiRoute = DocsBuildValidateInCiRouteImport.update({
   path: '/build/validate-in-ci',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const DocsBuildRenderMdxAndTocRoute =
+  DocsBuildRenderMdxAndTocRouteImport.update({
+    id: '/build/render-mdx-and-toc',
+    path: '/build/render-mdx-and-toc',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
 const DocsBuildOptimizeDocsForAgentsRoute =
   DocsBuildOptimizeDocsForAgentsRouteImport.update({
     id: '/build/optimize-docs-for-agents',
@@ -158,6 +166,11 @@ const DocsBuildBundlePackageDocsRoute =
     path: '/build/bundle-package-docs',
     getParentRoute: () => DocsRouteRoute,
   } as any)
+const DocsBuildAddSearchRoute = DocsBuildAddSearchRouteImport.update({
+  id: '/build/add-search',
+  path: '/build/add-search',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
 const DocsAuthoringFrontmatterRoute =
   DocsAuthoringFrontmatterRouteImport.update({
     id: '/authoring/frontmatter',
@@ -212,9 +225,11 @@ export interface FileRoutesByFullPath {
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
+  '/docs/build/add-search': typeof DocsBuildAddSearchRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
   '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
+  '/docs/build/render-mdx-and-toc': typeof DocsBuildRenderMdxAndTocRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -242,9 +257,11 @@ export interface FileRoutesByTo {
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
+  '/docs/build/add-search': typeof DocsBuildAddSearchRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
   '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
+  '/docs/build/render-mdx-and-toc': typeof DocsBuildRenderMdxAndTocRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -275,9 +292,11 @@ export interface FileRoutesById {
   '/api/docs/search': typeof ApiDocsSearchRoute
   '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
   '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
+  '/docs/build/add-search': typeof DocsBuildAddSearchRoute
   '/docs/build/bundle-package-docs': typeof DocsBuildBundlePackageDocsRoute
   '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
   '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
+  '/docs/build/render-mdx-and-toc': typeof DocsBuildRenderMdxAndTocRoute
   '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
   '/docs/reference/cli': typeof DocsReferenceCliRoute
   '/docs/reference/convert': typeof DocsReferenceConvertRoute
@@ -309,9 +328,11 @@ export interface FileRouteTypes {
     | '/api/docs/search'
     | '/docs/authoring/components'
     | '/docs/authoring/frontmatter'
+    | '/docs/build/add-search'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
     | '/docs/build/optimize-docs-for-agents'
+    | '/docs/build/render-mdx-and-toc'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -339,9 +360,11 @@ export interface FileRouteTypes {
     | '/api/docs/search'
     | '/docs/authoring/components'
     | '/docs/authoring/frontmatter'
+    | '/docs/build/add-search'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
     | '/docs/build/optimize-docs-for-agents'
+    | '/docs/build/render-mdx-and-toc'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -371,9 +394,11 @@ export interface FileRouteTypes {
     | '/api/docs/search'
     | '/docs/authoring/components'
     | '/docs/authoring/frontmatter'
+    | '/docs/build/add-search'
     | '/docs/build/bundle-package-docs'
     | '/docs/build/connect-docs-site'
     | '/docs/build/optimize-docs-for-agents'
+    | '/docs/build/render-mdx-and-toc'
     | '/docs/build/validate-in-ci'
     | '/docs/reference/cli'
     | '/docs/reference/convert'
@@ -538,6 +563,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsBuildValidateInCiRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/docs/build/render-mdx-and-toc': {
+      id: '/docs/build/render-mdx-and-toc'
+      path: '/build/render-mdx-and-toc'
+      fullPath: '/docs/build/render-mdx-and-toc'
+      preLoaderRoute: typeof DocsBuildRenderMdxAndTocRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/docs/build/optimize-docs-for-agents': {
       id: '/docs/build/optimize-docs-for-agents'
       path: '/build/optimize-docs-for-agents'
@@ -557,6 +589,13 @@ declare module '@tanstack/react-router' {
       path: '/build/bundle-package-docs'
       fullPath: '/docs/build/bundle-package-docs'
       preLoaderRoute: typeof DocsBuildBundlePackageDocsRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/build/add-search': {
+      id: '/docs/build/add-search'
+      path: '/build/add-search'
+      fullPath: '/docs/build/add-search'
+      preLoaderRoute: typeof DocsBuildAddSearchRouteImport
       parentRoute: typeof DocsRouteRoute
     }
     '/docs/authoring/frontmatter': {
@@ -618,9 +657,11 @@ interface DocsRouteRouteChildren {
   DocsIndexRoute: typeof DocsIndexRoute
   DocsAuthoringComponentsRoute: typeof DocsAuthoringComponentsRoute
   DocsAuthoringFrontmatterRoute: typeof DocsAuthoringFrontmatterRoute
+  DocsBuildAddSearchRoute: typeof DocsBuildAddSearchRoute
   DocsBuildBundlePackageDocsRoute: typeof DocsBuildBundlePackageDocsRoute
   DocsBuildConnectDocsSiteRoute: typeof DocsBuildConnectDocsSiteRoute
   DocsBuildOptimizeDocsForAgentsRoute: typeof DocsBuildOptimizeDocsForAgentsRoute
+  DocsBuildRenderMdxAndTocRoute: typeof DocsBuildRenderMdxAndTocRoute
   DocsBuildValidateInCiRoute: typeof DocsBuildValidateInCiRoute
   DocsReferenceCliRoute: typeof DocsReferenceCliRoute
   DocsReferenceConvertRoute: typeof DocsReferenceConvertRoute
@@ -638,9 +679,11 @@ const DocsRouteRouteChildren: DocsRouteRouteChildren = {
   DocsIndexRoute: DocsIndexRoute,
   DocsAuthoringComponentsRoute: DocsAuthoringComponentsRoute,
   DocsAuthoringFrontmatterRoute: DocsAuthoringFrontmatterRoute,
+  DocsBuildAddSearchRoute: DocsBuildAddSearchRoute,
   DocsBuildBundlePackageDocsRoute: DocsBuildBundlePackageDocsRoute,
   DocsBuildConnectDocsSiteRoute: DocsBuildConnectDocsSiteRoute,
   DocsBuildOptimizeDocsForAgentsRoute: DocsBuildOptimizeDocsForAgentsRoute,
+  DocsBuildRenderMdxAndTocRoute: DocsBuildRenderMdxAndTocRoute,
   DocsBuildValidateInCiRoute: DocsBuildValidateInCiRoute,
   DocsReferenceCliRoute: DocsReferenceCliRoute,
   DocsReferenceConvertRoute: DocsReferenceConvertRoute,

@@ -58,6 +58,27 @@ async function createTempDir(): Promise<string> {
   return dir;
 }
 
+async function writeMdxPage(
+  srcDir: string,
+  relativePath: string,
+  frontmatter: string,
+  body = "Fixture body."
+): Promise<void> {
+  const filePath = path.join(srcDir, "docs", relativePath);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(
+    filePath,
+    `---
+${frontmatter}
+---
+
+# ${path.basename(relativePath, ".mdx")}
+
+${body}
+`
+  );
+}
+
 afterEach(async () => {
   await Promise.all(
     tempDirs.splice(0).map(async (dir) => {
@@ -193,8 +214,225 @@ describe("leadtype CLI", () => {
     );
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
     expect(result.files.docsLlmsFullTxt).toBeUndefined();
-    expect(result.groups.map((group) => group.slug)).toContain("build");
+    expect(result.groups.map((group) => group.slug)).toContain("docs-site");
     expect(result.search.docs).toBeGreaterThan(0);
+  });
+
+  it("loads docs.config.ts for product metadata and group order", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "package.json"),
+      JSON.stringify({
+        description: "Package fallback summary.",
+        name: "package-fallback",
+      })
+    );
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Configured Product",
+    summary: "Configured product summary.",
+  },
+  groups: [
+    { slug: "zeta", title: "Zeta First" },
+    { slug: "alpha", title: "Alpha Second" },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "alpha.mdx",
+      'title: "Alpha"\ndescription: "Alpha docs."\ngroup: alpha'
+    );
+    await writeMdxPage(
+      srcDir,
+      "zeta.mdx",
+      'title: "Zeta"\ndescription: "Zeta docs."\ngroup: zeta'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      groups: Array<{ slug: string; title: string }>;
+      product: { name: string; summary: string };
+    };
+    expect(result.product).toEqual({
+      name: "Configured Product",
+      summary: "Configured product summary.",
+    });
+    expect(result.groups.map((group) => group.slug)).toEqual(["zeta", "alpha"]);
+    expect(result.groups.map((group) => group.title)).toEqual([
+      "Zeta First",
+      "Alpha Second",
+    ]);
+
+    const llmsTxt = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llmsTxt).toContain("# Configured Product");
+    expect(llmsTxt).toContain("> Configured product summary.");
+
+    const docsLlmsTxt = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsLlmsTxt.indexOf("## Zeta First")).toBeLessThan(
+      docsLlmsTxt.indexOf("## Alpha Second")
+    );
+  });
+
+  it("lets --name and --summary override docs config product fields", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Configured Product",
+    summary: "Configured product summary.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "CLI Product",
+        "--summary",
+        "CLI summary.",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      product: { name: string; summary: string };
+    };
+    expect(result.product).toEqual({
+      name: "CLI Product",
+      summary: "CLI summary.",
+    });
+  });
+
+  it("infers groups when no docs config exists", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "package.json"),
+      JSON.stringify({
+        description: "Fallback docs summary.",
+        name: "fallback-docs",
+      })
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: getting-started'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      groups: Array<{ slug: string; title: string }>;
+      product: { name: string; summary: string };
+    };
+    expect(result.product).toEqual({
+      name: "fallback-docs",
+      summary: "Fallback docs summary.",
+    });
+    expect(result.groups).toEqual([
+      { slug: "getting-started", title: "Getting Started" },
+    ]);
+  });
+
+  it("fails clearly when docs config is invalid", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      "export default { product: { name: 'Broken' } };"
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain("failed to load docs config");
+    expect(error.error).toContain("product.name and product.summary");
+  });
+
+  it("fails when a configured docs set references an unknown group", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Configured Product",
+    summary: "Configured product summary.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: missing'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      '/docs/quickstart declares unknown group "missing"'
+    );
   });
 
   it("filters generated docs by include path globs", async () => {
