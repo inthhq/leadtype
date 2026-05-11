@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import fg from "fast-glob";
+import { glob as fg } from "tinyglobby";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "./cli";
 

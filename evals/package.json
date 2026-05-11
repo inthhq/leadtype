@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "ai": "^6.0.168",
-    "fast-glob": "3.3.3",
+    "tinyglobby": "0.2.16",
     "vitest": "^2.1.8",
     "zod": "^3.23.8"
   }

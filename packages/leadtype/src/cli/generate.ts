@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import fg from "fast-glob";
 import matter from "gray-matter";
 import { createJiti } from "jiti";
+import { glob as fg } from "tinyglobby";
 import { convertAllMdx } from "../convert";
 import {
   logger,

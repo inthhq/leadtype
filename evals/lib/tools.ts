@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tool } from "ai";
-import fg from "fast-glob";
+import { glob as fg } from "tinyglobby";
 import { z } from "zod";
 import type { ToolCall } from "./transcript";
 
