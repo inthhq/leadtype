@@ -7,7 +7,9 @@ export {
   type CuratedLink,
   type DocsConfig,
   type DocsGroup,
+  type DocsTableOfContentsPage,
   defineDocsConfig,
+  extractDocsTableOfContents,
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
@@ -17,7 +19,9 @@ export {
   type MarkdownDoc,
   type ProductInfo,
   type ResolveDocsNavigationConfig,
+  type ResolveDocsTableOfContentsConfig,
   resolveDocsNavigation,
+  resolveDocsTableOfContents,
   type SourceDoc,
 } from "./llm";
 // Runtime + shared types and helpers.
@@ -42,6 +46,8 @@ export {
   type DocsNavigation,
   type DocsNavigationGroup,
   type DocsNavigationPage,
+  type DocsTableOfContentsItem,
+  type DocsTableOfContentsOptions,
   type EnrichMarkdownFrontmatterConfig,
   enrichMarkdownFrontmatter,
   isAgentReadabilityArtifactPath,
@@ -59,4 +65,5 @@ export {
   renderSitemapMarkdown,
   renderSitemapXml,
   resolveMarkdownMirrorTarget,
+  slugifyDocsHeading,
 } from "./readability";

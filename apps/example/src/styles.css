@@ -115,8 +115,12 @@
 .docs-prose
   a:not([data-leadtype-card]):not([data-leadtype-topic-switcher-link]):not(
     [data-leadtype-prompt-content] *
-  ) {
+  ):not([data-docs-heading-anchor]) {
   @apply underline underline-offset-4;
+}
+
+.docs-prose [data-docs-heading-anchor] {
+  @apply no-underline;
 }
 
 .docs-prose

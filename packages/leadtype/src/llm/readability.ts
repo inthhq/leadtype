@@ -8,6 +8,8 @@
 
 import { stripTrailingSlashes, toAbsoluteUrl } from "../internal/docs-url";
 
+export { slugifyDocsHeading } from "../internal/docs-heading";
+
 const DOCS_DIRNAME = "docs";
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const TRAILING_SLASH_PATTERN = /\/$/;
@@ -59,12 +61,28 @@ export type AgentReadabilityPage = {
   lastModified: string;
 };
 
+export type DocsTableOfContentsItem = {
+  id: string;
+  title: string;
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  urlPath: string;
+  urlWithHash: string;
+  absoluteUrlWithHash: string;
+  children: DocsTableOfContentsItem[];
+};
+
+export type DocsTableOfContentsOptions = {
+  minLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+  maxLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+};
+
 export type DocsNavigationPage = {
   urlPath: string;
   title: string;
   description: string;
   /** All group slugs the page declared (normalized). */
   groups: string[];
+  toc: DocsTableOfContentsItem[];
 };
 
 export type DocsNavigationGroup = {
