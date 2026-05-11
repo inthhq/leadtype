@@ -176,7 +176,9 @@ async function runOne(options: {
     const start = Date.now();
     const transcriptCalls: ToolCall[] = [];
     const filesModified = new Set<string>();
-    const tools = scopedTools({
+    // The llms eval is a docs-reading task: the model should not invoke `npm`.
+    // Omit it from the toolset so the model does not waste steps exploring it.
+    const { npm: _omit, ...tools } = scopedTools({
       tempDir: sandbox.tempDir,
       transcript: transcriptCalls,
       filesModified,

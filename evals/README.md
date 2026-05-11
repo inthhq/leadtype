@@ -95,16 +95,30 @@ The `router` variant is intentionally distinct from `monolith`: it evaluates a b
 ```
 evals/
 ├── lib/
-│   ├── tools.ts        # 6 path-scoped AI SDK tools (read/write/list/glob/grep/npm)
-│   ├── tools.test.ts   # path-escape unit tests
-│   ├── sandbox.ts      # tempdir lifecycle, npm install, control-mode strip
-│   └── transcript.ts   # transcript types + writer/reader
-├── evals/              # fixtures
+│   ├── tools.ts             # path-scoped AI SDK tools (read/write/list/glob/grep/npm)
+│   ├── tools.test.ts        # path-escape unit tests
+│   ├── sandbox.ts           # package-eval tempdir lifecycle, npm install, control strip
+│   ├── llms-sandbox.ts      # llms-eval tempdir lifecycle, web-root materialization
+│   ├── llms-variants.ts     # five llms.txt/llms-full.txt artifact shapes under test
+│   ├── llms-metrics.ts      # transcript → selection/context-match decisions
+│   ├── llms-metrics.test.ts # unit tests for the metrics + variant materializer
+│   ├── llms-eval.ts         # vitest helper used by every llms fixture's EVAL.ts
+│   └── transcript.ts        # transcript types + writer/reader
+├── evals/                   # package-docs benchmark fixtures
 │   ├── wire-content-negotiation/  (PROMPT.md, EVAL.ts, vite.config.ts, package.json)
 │   ├── validate-in-ci/            (PROMPT.md, EVAL.ts, package.json)
 │   ├── explain-cli-flag/          (PROMPT.md, EVAL.ts, package.json)
 │   └── bundle-own-docs/           (PROMPT.md, EVAL.ts, package.json)
-└── run-eval.ts         # entry — discovers fixtures, dispatches runs, prints summary
+├── llms/                    # hosted-docs (llms.txt) benchmark fixtures
+│   ├── single-page-cli-flag/      (PROMPT.md, EVAL.ts, expected.json)
+│   ├── single-group-authoring/    (PROMPT.md, EVAL.ts, expected.json)
+│   ├── cross-group-agent-flows/   (PROMPT.md, EVAL.ts, expected.json)
+│   ├── exact-symbol-readability/  (PROMPT.md, EVAL.ts, expected.json)
+│   ├── ambiguous-output-routing/  (PROMPT.md, EVAL.ts, expected.json)
+│   └── negative-vector-index/     (PROMPT.md, EVAL.ts, expected.json)
+├── vitest.config.ts         # globs lib/**/*.test.ts and **/EVAL.ts under both benchmarks
+├── run-eval.ts              # entry — package-docs benchmark
+└── run-llms-eval.ts         # entry — hosted-docs (llms.txt) benchmark
 ```
 
 Each fixture's `PROMPT.md` is the task description. `EVAL.ts` reads the transcript via `readTranscript()` and asserts on `transcript.toolCalls` (e.g. did `read` tool open AGENTS.md?) plus the final state of files the agent wrote.

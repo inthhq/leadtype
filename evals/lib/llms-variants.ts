@@ -211,24 +211,27 @@ export async function materializeLlmsVariant(options: {
 
   await writeTextFile(tempDir, "llms.txt", renderLlmsTxt(variant));
 
-  if (
-    variant === "explicit-bundles" ||
-    variant === "router" ||
-    variant === "section-indexes"
-  ) {
-    await writeTopicBundles(tempDir);
-  }
-
-  if (variant === "section-indexes") {
-    await writeSectionIndexes(tempDir);
-  }
-
-  if (variant === "monolith") {
-    await writeTextFile(tempDir, "llms-full.txt", renderMonolith());
-  }
-
-  if (variant === "router") {
-    await writeTextFile(tempDir, "llms-full.txt", renderRootRouter());
+  switch (variant) {
+    case "page-links":
+      return;
+    case "explicit-bundles":
+      await writeTopicBundles(tempDir);
+      return;
+    case "monolith":
+      await writeTextFile(tempDir, "llms-full.txt", renderMonolith());
+      return;
+    case "router":
+      await writeTopicBundles(tempDir);
+      await writeTextFile(tempDir, "llms-full.txt", renderRootRouter());
+      return;
+    case "section-indexes":
+      await writeTopicBundles(tempDir);
+      await writeSectionIndexes(tempDir);
+      return;
+    default: {
+      const _exhaustive: never = variant;
+      throw new Error(`Unhandled llms variant: ${String(_exhaustive)}`);
+    }
   }
 }
 
@@ -252,70 +255,69 @@ function renderLlmsTxt(variant: LlmsVariant): string {
     "",
   ];
 
-  if (variant === "page-links") {
-    lines.push(
-      "## How To Use",
-      "",
-      "Use the page-level markdown links below. Read the smallest page or pages that answer the task.",
-      "",
-      ...renderPageSections()
-    );
-    return lines.join("\n");
+  switch (variant) {
+    case "page-links":
+      lines.push(
+        "## How To Use",
+        "",
+        "Use the page-level markdown links below. Read the smallest page or pages that answer the task.",
+        "",
+        ...renderPageSections()
+      );
+      return lines.join("\n");
+    case "explicit-bundles":
+      lines.push(
+        "## How To Use",
+        "",
+        "Choose the smallest full-context bundle that matches the task.",
+        "",
+        "## Full Context Bundles",
+        "",
+        ...renderBundleLinks()
+      );
+      return lines.join("\n");
+    case "monolith":
+      lines.push(
+        "## How To Use",
+        "",
+        "Read the single all-docs full-context file when task-specific context is needed.",
+        "",
+        renderLink(
+          "All Docs Full Context",
+          "/llms-full.txt",
+          "Every generated markdown docs page flattened into one file."
+        )
+      );
+      return lines.join("\n");
+    case "section-indexes":
+      lines.push(
+        "## How To Use",
+        "",
+        "Choose the smallest section index that matches the task, then read the linked page markdown. Use a section full-context bundle only when page links are not enough.",
+        "",
+        "## Section Indexes",
+        "",
+        ...renderSectionIndexLinks()
+      );
+      return lines.join("\n");
+    case "router":
+      lines.push(
+        "## How To Use",
+        "",
+        "Read the full-context router, then choose the smallest topic file that matches the task.",
+        "",
+        renderLink(
+          "Full Context Router",
+          "/llms-full.txt",
+          "Routes to topic-specific deep-context files."
+        )
+      );
+      return lines.join("\n");
+    default: {
+      const _exhaustive: never = variant;
+      throw new Error(`Unhandled llms variant: ${String(_exhaustive)}`);
+    }
   }
-
-  if (variant === "explicit-bundles") {
-    lines.push(
-      "## How To Use",
-      "",
-      "Choose the smallest full-context bundle that matches the task.",
-      "",
-      "## Full Context Bundles",
-      "",
-      ...renderBundleLinks()
-    );
-    return lines.join("\n");
-  }
-
-  if (variant === "monolith") {
-    lines.push(
-      "## How To Use",
-      "",
-      "Read the single all-docs full-context file when task-specific context is needed.",
-      "",
-      renderLink(
-        "All Docs Full Context",
-        "/llms-full.txt",
-        "Every generated markdown docs page flattened into one file."
-      )
-    );
-    return lines.join("\n");
-  }
-
-  if (variant === "section-indexes") {
-    lines.push(
-      "## How To Use",
-      "",
-      "Choose the smallest section index that matches the task, then read the linked page markdown. Use a section full-context bundle only when page links are not enough.",
-      "",
-      "## Section Indexes",
-      "",
-      ...renderSectionIndexLinks()
-    );
-    return lines.join("\n");
-  }
-
-  lines.push(
-    "## How To Use",
-    "",
-    "Read the full-context router, then choose the smallest topic file that matches the task.",
-    "",
-    renderLink(
-      "Full Context Router",
-      "/llms-full.txt",
-      "Routes to topic-specific deep-context files."
-    )
-  );
-  return lines.join("\n");
 }
 
 function renderSectionIndexLinks(): string[] {

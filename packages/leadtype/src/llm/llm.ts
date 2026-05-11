@@ -591,10 +591,22 @@ Read the summary links first. If the page links are not enough, use \`/llms-full
 ${renderedSections.join("\n\n")}`;
 }
 
-function stripLeadingTitleHeading(content: string, title: string): string {
+const LEADING_H1_PATTERN = /^[ \t]*#[ \t]+\S/;
+
+// We prepend our own `# ${title}` per page; strip any leading H1 from the
+// source markdown to avoid duplicate H1s when the source's title differs from
+// frontmatter (whitespace, decorators, mismatch).
+function stripLeadingTitleHeading(content: string): string {
   const lines = content.split("\n");
-  if ((lines[0] ?? "").trim() === `# ${title}`) {
-    return lines.slice(1).join("\n").trimStart();
+  let cursor = 0;
+  while (cursor < lines.length && (lines[cursor] ?? "").trim() === "") {
+    cursor++;
+  }
+  if (cursor < lines.length && LEADING_H1_PATTERN.test(lines[cursor] ?? "")) {
+    return lines
+      .slice(cursor + 1)
+      .join("\n")
+      .trimStart();
   }
   return content;
 }
@@ -611,7 +623,7 @@ function renderFullContextDocument(
   }));
   const contentBlocks = pages.map((doc) => {
     const description = doc.description ? `${doc.description}\n` : "";
-    const content = stripLeadingTitleHeading(doc.content, doc.title);
+    const content = stripLeadingTitleHeading(doc.content);
     return `# ${doc.title}
 URL: ${doc.absoluteUrl}
 ${description}

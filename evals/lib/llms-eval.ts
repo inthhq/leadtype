@@ -15,10 +15,13 @@ export async function assertLlmsFixture(fixtureUrl: URL): Promise<void> {
   const transcript = await readTranscript();
   const selection = selectionMatchesVariant(transcript, expected);
   const summary = summarizeLlmsReads(transcript);
-  if (!process.env.TRANSCRIPT_PATH) {
-    throw new Error("TRANSCRIPT_PATH must be set");
+  const transcriptPath = process.env.TRANSCRIPT_PATH;
+  if (!transcriptPath) {
+    throw new Error(
+      "TRANSCRIPT_PATH must be set (readTranscript should have already thrown — investigate)"
+    );
   }
-  const projectRoot = resolve(dirname(process.env.TRANSCRIPT_PATH), "..");
+  const projectRoot = resolve(dirname(transcriptPath), "..");
   const answerPath = resolve(projectRoot, "ANSWER.md");
 
   describe(transcript.fixture, () => {
