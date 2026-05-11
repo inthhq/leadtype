@@ -119,6 +119,10 @@
   @apply underline underline-offset-4;
 }
 
+.docs-prose [data-docs-heading-anchor] {
+  @apply no-underline;
+}
+
 .docs-prose
   ul:not([data-leadtype-file-tree-list]):not(
     [data-leadtype-topic-switcher-list]

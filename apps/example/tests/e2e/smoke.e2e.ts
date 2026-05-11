@@ -89,6 +89,14 @@ test("/docs/reference/search renders the search APIs reference", async ({
   await expect(
     page.getByRole("heading", { name: "Search", exact: true })
   ).toBeVisible();
+  const toc = page.getByRole("navigation", { name: "On this page" });
+  await expect(toc.getByRole("link", { name: "Runtime search" })).toBeVisible();
+  const runtimeSearch = toc.getByRole("link", { name: "Runtime search" });
+  await expect(runtimeSearch).toHaveAttribute(
+    "href",
+    "/docs/reference/search#runtime-search"
+  );
+  await expect(page.locator("#runtime-search")).toBeAttached();
 });
 
 test("/search returns local docs results and answer configuration", async ({

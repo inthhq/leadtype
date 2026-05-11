@@ -9,6 +9,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
   GENERIC_DOC_TITLES,
   normalizeBaseUrl,
@@ -25,10 +26,14 @@ import {
   type DocsNavigation,
   type DocsNavigationGroup,
   type DocsNavigationPage,
+  type DocsTableOfContentsItem,
+  type DocsTableOfContentsOptions,
   renderRobotsTxt,
   renderSitemapMarkdown,
   renderSitemapXml,
 } from "./readability";
+
+export { slugifyDocsHeading } from "../internal/docs-heading";
 
 const DOCS_DIRNAME = "docs";
 const AGENT_READABILITY_MANIFEST_FILE = "agent-readability.json";
@@ -36,6 +41,14 @@ const ROBOTS_FILE = "robots.txt";
 const SITEMAP_MARKDOWN_FILE = "sitemap.md";
 const SITEMAP_XML_FILE = "sitemap.xml";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
+const DEFAULT_TOC_MIN_LEVEL = 2;
+const DEFAULT_TOC_MAX_LEVEL = 3;
+const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
+const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
+const FENCE_PATTERN = /^```/;
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
+const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
+const WHITESPACE_PATTERN = /\s+/g;
 
 function assertValidGroupSlug(slug: string, parentPath: string[]): string {
   if (!SLUG_PATTERN.test(slug)) {
@@ -60,9 +73,20 @@ export type SourceDoc = {
   groups: string[];
 };
 
+type SourceDocWithContent = SourceDoc & {
+  content: string;
+};
+
 export type MarkdownDoc = SourceDoc & {
   content: string;
   lastModified: string;
+};
+
+export type DocsTableOfContentsPage = Pick<
+  SourceDoc,
+  "absoluteUrl" | "description" | "relativePath" | "title" | "urlPath"
+> & {
+  toc: DocsTableOfContentsItem[];
 };
 
 export type CuratedLink = {
@@ -154,6 +178,13 @@ export type ResolveDocsNavigationConfig = {
   srcDir: string;
   baseUrl?: string;
   groups: DocsGroup[];
+  toc?: boolean | DocsTableOfContentsOptions;
+};
+
+export type ResolveDocsTableOfContentsConfig = {
+  srcDir: string;
+  baseUrl?: string;
+  options?: DocsTableOfContentsOptions;
 };
 
 type ResolvedGroup = {
@@ -291,6 +322,123 @@ function renderLink(link: RenderedLink): string {
   return `- [${link.title}](${link.url}): ${link.description}`;
 }
 
+function withHash(url: string, anchor: string): string {
+  return anchor ? `${url}#${anchor}` : url;
+}
+
+function stripFrontmatter(input: string): string {
+  return input.replace(FRONTMATTER_PATTERN, "");
+}
+
+function cleanHeadingText(input: string): string {
+  return input
+    .replace(/\s+#+\s*$/, "")
+    .replace(MARKDOWN_LINK_PATTERN, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(MARKDOWN_INLINE_PATTERN, " ")
+    .replace(WHITESPACE_PATTERN, " ")
+    .trim();
+}
+
+function resolveTocOptions(
+  options: DocsTableOfContentsOptions = {}
+): Required<DocsTableOfContentsOptions> {
+  const minLevel = options.minLevel ?? DEFAULT_TOC_MIN_LEVEL;
+  const maxLevel = options.maxLevel ?? DEFAULT_TOC_MAX_LEVEL;
+  if (minLevel > maxLevel) {
+    throw new Error(
+      `Invalid TOC range: minLevel (${minLevel}) must be less than or equal to maxLevel (${maxLevel}).`
+    );
+  }
+  return { minLevel, maxLevel };
+}
+
+function resolveNavigationTocOptions(
+  toc: ResolveDocsNavigationConfig["toc"]
+): DocsTableOfContentsOptions | false {
+  if (toc === false) {
+    return false;
+  }
+  return toc === true || toc === undefined ? {} : toc;
+}
+
+function isTocHeadingLevel(level: number): level is 1 | 2 | 3 | 4 | 5 | 6 {
+  return level >= 1 && level <= 6;
+}
+
+/**
+ * Extract a nested table of contents from markdown or MDX content. This helper
+ * is framework-neutral and intentionally returns plain JSON so any docs app can
+ * render it with its own router and component system.
+ */
+export function extractDocsTableOfContents(
+  content: string,
+  page: Pick<SourceDoc, "absoluteUrl" | "urlPath">,
+  options?: DocsTableOfContentsOptions
+): DocsTableOfContentsItem[] {
+  const { minLevel, maxLevel } = resolveTocOptions(options);
+  const items: DocsTableOfContentsItem[] = [];
+  const stack: DocsTableOfContentsItem[] = [];
+  let inCodeFence = false;
+
+  for (const line of stripFrontmatter(content).split("\n")) {
+    if (FENCE_PATTERN.test(line.trim())) {
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+
+    if (inCodeFence) {
+      continue;
+    }
+
+    const headingMatch = HEADING_PATTERN.exec(line.trim());
+    if (!headingMatch) {
+      continue;
+    }
+
+    const marker = headingMatch[1];
+    const rawTitle = headingMatch[2];
+    if (!(marker && rawTitle)) {
+      continue;
+    }
+
+    const level = marker.length;
+    if (!isTocHeadingLevel(level) || level < minLevel || level > maxLevel) {
+      continue;
+    }
+
+    const title = cleanHeadingText(rawTitle);
+    if (!title) {
+      continue;
+    }
+
+    const id = slugifyDocsHeading(title);
+    const item: DocsTableOfContentsItem = {
+      id,
+      title,
+      level,
+      urlPath: page.urlPath,
+      urlWithHash: withHash(page.urlPath, id),
+      absoluteUrlWithHash: withHash(page.absoluteUrl, id),
+      children: [],
+    };
+
+    while (stack.length > 0 && (stack.at(-1)?.level ?? 0) >= level) {
+      stack.pop();
+    }
+
+    const parent = stack.at(-1);
+    if (parent) {
+      parent.children.push(item);
+    } else {
+      items.push(item);
+    }
+    stack.push(item);
+  }
+
+  return items;
+}
+
 function pageToRenderedLink(doc: SourceDoc): RenderedLink {
   const title =
     doc.title && !GENERIC_DOC_TITLES.has(doc.title.toLowerCase())
@@ -351,9 +499,9 @@ async function collectFiles(
 async function readSourceDocs(
   srcDir: string,
   baseUrl: string
-): Promise<Map<string, SourceDoc>> {
+): Promise<Map<string, SourceDocWithContent>> {
   const docsDir = path.join(srcDir, DOCS_DIRNAME);
-  const docs = new Map<string, SourceDoc>();
+  const docs = new Map<string, SourceDocWithContent>();
 
   if (!existsSync(docsDir)) {
     return docs;
@@ -387,6 +535,7 @@ async function readSourceDocs(
           absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
           relativePath: stripDocsExtension(relativePath),
           groups,
+          content: parsed.content,
         },
       };
     })
@@ -725,9 +874,17 @@ function buildNavigationFromMarkdownDocs(
   resolved: ResolvedGroup[]
 ): DocsNavigation {
   const membership = buildGroupMembership(docs, resolved);
+  const tocByUrlPath = new Map(
+    docs.map((doc) => [
+      doc.urlPath,
+      extractDocsTableOfContents(doc.content, doc),
+    ])
+  );
   return {
-    groups: resolved.map((group) => buildNavigationGroup(group, membership)),
-    ungrouped: membership.ungrouped.map(pageView),
+    groups: resolved.map((group) =>
+      buildNavigationGroup(group, membership, tocByUrlPath)
+    ),
+    ungrouped: membership.ungrouped.map((page) => pageView(page, tocByUrlPath)),
     unknown: membership.unknown.map(({ page, slug }) => ({
       urlPath: page.urlPath,
       slug,
@@ -932,18 +1089,23 @@ export async function generateAgentsMd(
 
 /* ---------------- Navigation manifest ----------------------------------- */
 
-function pageView(doc: SourceDoc): DocsNavigationPage {
+function pageView(
+  doc: SourceDoc,
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>
+): DocsNavigationPage {
   return {
     urlPath: doc.urlPath,
     title: doc.title,
     description: doc.description,
     groups: [...doc.groups],
+    toc: tocByUrlPath.get(doc.urlPath) ?? [],
   };
 }
 
 function buildNavigationGroup(
   group: ResolvedGroup,
-  membership: GroupMembership
+  membership: GroupMembership,
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>
 ): DocsNavigationGroup {
   const directPages = membership.byGroupSlug.get(group.slugKey) ?? [];
   return {
@@ -951,9 +1113,9 @@ function buildNavigationGroup(
     segmentPath: group.segmentPath,
     title: group.title,
     description: group.description,
-    pages: directPages.map(pageView),
+    pages: directPages.map((page) => pageView(page, tocByUrlPath)),
     children: group.children.map((child) =>
-      buildNavigationGroup(child, membership)
+      buildNavigationGroup(child, membership, tocByUrlPath)
     ),
   };
 }
@@ -972,13 +1134,45 @@ export async function resolveDocsNavigation(
   const sourceDocs = await readSourceDocs(srcDir, baseUrl);
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+  const tocOptions = resolveNavigationTocOptions(config.toc);
+  const tocByUrlPath = new Map<string, DocsTableOfContentsItem[]>();
+
+  if (tocOptions !== false) {
+    for (const page of sourceDocs.values()) {
+      tocByUrlPath.set(
+        page.urlPath,
+        extractDocsTableOfContents(page.content, page, tocOptions)
+      );
+    }
+  }
 
   return {
-    groups: resolved.map((group) => buildNavigationGroup(group, membership)),
-    ungrouped: membership.ungrouped.map(pageView),
+    groups: resolved.map((group) =>
+      buildNavigationGroup(group, membership, tocByUrlPath)
+    ),
+    ungrouped: membership.ungrouped.map((page) => pageView(page, tocByUrlPath)),
     unknown: membership.unknown.map(({ page, slug }) => ({
       urlPath: page.urlPath,
       slug,
     })),
   };
+}
+
+export async function resolveDocsTableOfContents(
+  config: ResolveDocsTableOfContentsConfig
+): Promise<DocsTableOfContentsPage[]> {
+  const srcDir = path.resolve(config.srcDir);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+
+  return [...sourceDocs.values()]
+    .sort((left, right) => left.urlPath.localeCompare(right.urlPath))
+    .map((page) => ({
+      absoluteUrl: page.absoluteUrl,
+      description: page.description,
+      relativePath: page.relativePath,
+      title: page.title,
+      urlPath: page.urlPath,
+      toc: extractDocsTableOfContents(page.content, page, config.options),
+    }));
 }

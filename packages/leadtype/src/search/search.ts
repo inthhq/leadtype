@@ -1,3 +1,5 @@
+import { slugifyDocsHeading } from "../internal/docs-heading";
+
 const DEFAULT_MAX_CHUNK_CHARS = 1200;
 const DEFAULT_OVERLAP_CHARS = 160;
 const DEFAULT_SEARCH_LIMIT = 8;
@@ -30,6 +32,7 @@ const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
 const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
+
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
 const DOCUMENT_ID = 0;
 const DOCUMENT_TITLE = 1;
@@ -303,11 +306,7 @@ function normalizeText(input: string): string {
   return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
 }
 
-export function slugifyDocsHeading(input: string): string {
-  return normalizeText(input)
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "");
-}
+export { slugifyDocsHeading } from "../internal/docs-heading";
 
 function withHash(url: string, anchor: string): string {
   return anchor ? `${url}#${anchor}` : url;

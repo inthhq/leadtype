@@ -2,20 +2,29 @@
 
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { docsSidebarSections } from "@/lib/docs";
+import { docsSidebarSections, findDocsNavigationPage } from "@/lib/docs";
 import { cn } from "@/lib/utils";
 import { SiteFooter } from "./site-footer";
 import { SiteHeader } from "./site-header";
+import { TableOfContents } from "./table-of-contents";
 
 export function DocsShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const currentPage = findDocsNavigationPage(pathname);
+  const tocItems = currentPage?.toc ?? [];
+  const hasToc = tocItems.length > 0;
 
   return (
     <div className="flex min-h-svh flex-col">
       <SiteHeader />
-      <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[90rem] flex-1 gap-6 px-4 py-7 sm:px-6 lg:grid-cols-[200px_minmax(0,1fr)]",
+          hasToc && "lg:grid-cols-[200px_minmax(0,1fr)_220px]"
+        )}
+      >
         <aside className="space-y-5">
           {docsSidebarSections.map((section) => (
             <div className="space-y-2" key={section.title}>
@@ -48,6 +57,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
             {children}
           </section>
         </main>
+        <TableOfContents items={tocItems} />
       </div>
       <SiteFooter />
     </div>

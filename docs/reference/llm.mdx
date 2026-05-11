@@ -15,6 +15,7 @@ The `leadtype/llm` entry point produces four flavors of agent-facing output, all
 
 ```ts
 import {
+  extractDocsTableOfContents,
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
@@ -23,6 +24,7 @@ import {
   renderSitemapMarkdown,
   renderSitemapXml,
   resolveDocsNavigation,
+  resolveDocsTableOfContents,
 } from "leadtype/llm";
 ```
 
@@ -373,6 +375,32 @@ await writeFile(
 ```
 
 Now your sidebar can import a static manifest with the same group tree the LLM files use.
+
+## Tables of contents
+
+For the heading slug contract and renderer wiring, see [Components → Headings and table of contents](/docs/authoring/components#headings-and-table-of-contents). This section covers the build-time APIs only.
+
+`resolveDocsNavigation` includes a `toc` array on every page by default. The default range is `h2`–`h3`, which keeps page-level `h1` titles out of sidebars.
+
+```ts
+const navigation = await resolveDocsNavigation({
+  srcDir: ".",
+  baseUrl: "https://leadtype.dev",
+  groups: docsConfig.groups,
+  toc: { minLevel: 2, maxLevel: 4 },
+});
+```
+
+If you only need TOC data and not the full group tree, call `resolveDocsTableOfContents`:
+
+```ts
+const pages = await resolveDocsTableOfContents({
+  srcDir: ".",
+  baseUrl: "https://leadtype.dev",
+});
+```
+
+For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX string plus page URL metadata and returns plain JSON. It ignores frontmatter and fenced code blocks, and it uses the same `slugifyDocsHeading` helper that rendered headings must use to keep `id` attributes in sync.
 
 ## Group design
 

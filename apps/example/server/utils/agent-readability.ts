@@ -14,10 +14,10 @@ import manifestJson from "../../src/generated/agent-readability.json" with {
   type: "json",
 };
 
-export const agentReadabilityManifest: AgentReadabilityManifest = {
+export const agentReadabilityManifest = {
   ...manifestJson,
   version: 1,
-};
+} as unknown as AgentReadabilityManifest;
 
 export function getRequestOrigin(event: H3Event): string | undefined {
   const forwardedHost = getHeader(event, "x-forwarded-host")

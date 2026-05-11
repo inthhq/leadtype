@@ -1,7 +1,14 @@
-import type { DocsNavigation, DocsNavigationGroup } from "leadtype/llm";
+import type {
+  DocsNavigation,
+  DocsNavigationGroup,
+  DocsNavigationPage,
+} from "leadtype/llm";
 import docsNavigation from "@/generated/docs-nav.json";
 
-const navigation = docsNavigation as DocsNavigation;
+const TRAILING_SLASH_PATTERN = /\/$/;
+
+export const docsNavigationManifest =
+  docsNavigation as unknown as DocsNavigation;
 
 export interface NavigationRoute {
   description: string;
@@ -55,13 +62,47 @@ function flattenGroupPages(group: DocsNavigationGroup): DocsSidebarLink[] {
  * `group:` frontmatter on each `/docs/*.mdx`. This is exactly how an external
  * consumer like c15t/c15t would wire its sidebar.
  */
-export const docsSidebarSections: DocsSidebarSection[] = navigation.groups.map(
-  (group) => ({
+export const docsSidebarSections: DocsSidebarSection[] =
+  docsNavigationManifest.groups.map((group) => ({
     title: group.title,
     description: group.description,
     links: flattenGroupPages(group),
-  })
-);
+  }));
+
+function findPageInGroup(
+  group: DocsNavigationGroup,
+  pathname: string
+): DocsNavigationPage | undefined {
+  const directPage = group.pages.find((page) => page.urlPath === pathname);
+  if (directPage) {
+    return directPage;
+  }
+
+  for (const child of group.children) {
+    const page = findPageInGroup(child, pathname);
+    if (page) {
+      return page;
+    }
+  }
+}
+
+export function findDocsNavigationPage(pathname: string) {
+  const normalizedPathname =
+    pathname.length > 1
+      ? pathname.replace(TRAILING_SLASH_PATTERN, "")
+      : pathname;
+
+  for (const group of docsNavigationManifest.groups) {
+    const page = findPageInGroup(group, normalizedPathname);
+    if (page) {
+      return page;
+    }
+  }
+
+  return docsNavigationManifest.ungrouped.find(
+    (page) => page.urlPath === normalizedPathname
+  );
+}
 
 export interface PackageSurface {
   description: string;

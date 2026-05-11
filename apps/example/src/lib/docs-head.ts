@@ -5,10 +5,10 @@ import {
 } from "leadtype/llm/readability";
 import agentReadability from "@/generated/agent-readability.json";
 
-const manifest: AgentReadabilityManifest = {
+const manifest = {
   ...agentReadability,
   version: 1,
-};
+} as unknown as AgentReadabilityManifest;
 
 export function createDocsHead(urlPath: string): DocsHead {
   return createDocsHeadCore({ urlPath, manifest });

@@ -4,10 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  extractDocsTableOfContents,
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
   resolveDocsNavigation,
+  resolveDocsTableOfContents,
 } from "./llm";
 import {
   acceptsMarkdownHeader,
@@ -977,6 +979,77 @@ describe("createDocsHead", () => {
   });
 });
 
+describe("extractDocsTableOfContents", () => {
+  it("extracts nested h2/h3 entries and ignores frontmatter and code fences", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "---",
+        "title: Example",
+        "---",
+        "# Page title",
+        "## Install [`leadtype`](/docs/quickstart)",
+        "### Configure",
+        "```md",
+        "## Not a heading",
+        "```",
+        "#### Too deep",
+        "## Café API: Quick Start!",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toEqual([
+      {
+        id: "install-leadtype",
+        title: "Install leadtype",
+        level: 2,
+        urlPath: "/docs/example",
+        urlWithHash: "/docs/example#install-leadtype",
+        absoluteUrlWithHash:
+          "https://leadtype.dev/docs/example#install-leadtype",
+        children: [
+          {
+            id: "configure",
+            title: "Configure",
+            level: 3,
+            urlPath: "/docs/example",
+            urlWithHash: "/docs/example#configure",
+            absoluteUrlWithHash: "https://leadtype.dev/docs/example#configure",
+            children: [],
+          },
+        ],
+      },
+      {
+        id: "cafe-api-quick-start",
+        title: "Café API Quick Start!",
+        level: 2,
+        urlPath: "/docs/example",
+        urlWithHash: "/docs/example#cafe-api-quick-start",
+        absoluteUrlWithHash:
+          "https://leadtype.dev/docs/example#cafe-api-quick-start",
+        children: [],
+      },
+    ]);
+  });
+
+  it("respects custom heading level ranges", () => {
+    const toc = extractDocsTableOfContents(
+      ["# Page", "## Section", "### Child", "#### Detail"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      },
+      { minLevel: 3, maxLevel: 4 }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["Child"]);
+    expect(toc[0]?.children.map((item) => item.title)).toEqual(["Detail"]);
+  });
+});
+
 describe("resolveDocsNavigation", () => {
   it("returns the group tree, attached pages, and unknown-group references", async () => {
     const projectDir = await createTempProject();
@@ -984,6 +1057,7 @@ describe("resolveDocsNavigation", () => {
       {
         relativePath: "frameworks/react.mdx",
         frontmatter: "title: React\ndescription: React.\ngroup: react",
+        body: "## Install\n\n### Configure",
       },
       {
         relativePath: "frameworks/next.mdx",
@@ -1026,6 +1100,18 @@ describe("resolveDocsNavigation", () => {
     const reactPages = nav.groups[0]?.children[0]?.pages.map((p) => p.title);
     expect(reactPages).toContain("React");
     expect(reactPages).toContain("Rate Limit");
+    const reactPage = nav.groups[0]?.children[0]?.pages.find(
+      (page) => page.title === "React"
+    );
+    expect(reactPage?.toc[0]).toMatchObject({
+      id: "install",
+      title: "Install",
+      urlWithHash: "/docs/frameworks/react#install",
+    });
+    expect(reactPage?.toc[0]?.children[0]).toMatchObject({
+      id: "configure",
+      title: "Configure",
+    });
 
     const ungroupedTitles = nav.ungrouped.map((p) => p.title);
     expect(ungroupedTitles).toContain("Ungrouped");
@@ -1033,6 +1119,60 @@ describe("resolveDocsNavigation", () => {
     expect(nav.unknown).toContainEqual({
       urlPath: "/docs/rate-limiting",
       slug: "mystery",
+    });
+  });
+
+  it("can disable TOC extraction while preserving page shape", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter:
+          "title: Quickstart\ndescription: Start.\ngroup: get-started",
+        body: "## Install",
+      },
+    ]);
+
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      toc: false,
+    });
+
+    expect(nav.groups[0]?.pages[0]?.toc).toEqual([]);
+  });
+});
+
+describe("resolveDocsTableOfContents", () => {
+  it("returns TOC pages without requiring navigation groups", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start.",
+        body: "## Install\n\n## Run",
+      },
+    ]);
+
+    const pages = await resolveDocsTableOfContents({
+      srcDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+    });
+
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toMatchObject({
+      title: "Quickstart",
+      urlPath: "/docs/quickstart",
+      toc: [
+        {
+          title: "Install",
+          urlWithHash: "/docs/quickstart#install",
+        },
+        {
+          title: "Run",
+          urlWithHash: "/docs/quickstart#run",
+        },
+      ],
     });
   });
 });

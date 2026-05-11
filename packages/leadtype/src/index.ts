@@ -9,6 +9,13 @@ export {
   type CuratedLink,
   type DocsConfig,
   type DocsGroup,
+  type DocsTableOfContentsItem,
+  type DocsTableOfContentsOptions,
+  type DocsTableOfContentsPage,
   defineDocsConfig,
+  extractDocsTableOfContents,
   type ProductInfo,
+  type ResolveDocsTableOfContentsConfig,
+  resolveDocsTableOfContents,
+  slugifyDocsHeading,
 } from "./llm";
