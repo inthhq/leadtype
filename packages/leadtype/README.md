@@ -41,7 +41,7 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 - [Quickstart](https://leadtype.dev/docs/quickstart) — five-minute happy path.
 - [How it works](https://leadtype.dev/docs/how-it-works) — the mental model.
 - [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site) — wire into your build.
-- [Bundle docs into a package](https://leadtype.dev/docs/build/bundle-package-docs) — ship docs inside an npm tarball.
+- [Bundle docs into a package](https://leadtype.dev/docs/package-docs/bundle) — ship docs inside an npm tarball.
 - [Add search](https://leadtype.dev/docs/build/add-search) — generate and query the static search index.
 - [CLI reference](https://leadtype.dev/docs/reference/cli) — every flag.
 

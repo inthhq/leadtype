@@ -463,7 +463,7 @@ describe("leadtype CLI", () => {
       existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "bundle-package-docs.md"))
+      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(false);
   });
@@ -489,7 +489,7 @@ describe("leadtype CLI", () => {
 
     expect(code).toBe(0);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "bundle-package-docs.md"))
+      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
     ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))

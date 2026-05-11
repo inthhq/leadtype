@@ -217,41 +217,9 @@ Put that logic wherever your framework can intercept docs requests before its HT
 
 Do not rewrite `llms.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt`, `llms-full.txt`, or `agent-readability.json` to page markdown. The helper leaves those artifact paths alone.
 
-### Serve sitemap.xml and robots.txt with the live origin
+### Why the sitemap and robots responses are regenerated, not static
 
-`sitemap.xml`'s `<loc>` requires absolute URLs, and `robots.txt`'s `Sitemap:` directive is conventionally absolute too. So those two files cannot be plain static assets if you want previews/staging to advertise the right origin. Use the runtime regenerators — they rebuild from the manifest with `requestOrigin`:
-
-```ts
-import manifest from "../public/docs/agent-readability.json";
-import {
-  createRobotsTxtResponse,
-  createSitemapMarkdownResponse,
-  createSitemapXmlResponse,
-} from "leadtype/llm/readability";
-
-export function handleAgentArtifact(request: Request): Response | null {
-  const url = new URL(request.url);
-  const requestOrigin = url.origin;
-  switch (url.pathname) {
-    case "/sitemap.xml":
-    case "/docs/sitemap.xml":
-      return createSitemapXmlResponse({ manifest, requestOrigin });
-    case "/sitemap.md":
-    case "/docs/sitemap.md":
-      return createSitemapMarkdownResponse({ manifest, requestOrigin });
-    case "/robots.txt":
-      return createRobotsTxtResponse({ manifest, requestOrigin });
-    case "/docs/robots.txt":
-      return createRobotsTxtResponse({
-        manifest,
-        requestOrigin,
-        sitemapUrlPath: "/docs/sitemap.xml",
-      });
-    default:
-      return null;
-  }
-}
-```
+`sitemap.xml`'s `<loc>` requires absolute URLs, and `robots.txt`'s `Sitemap:` directive is conventionally absolute too. So those two files cannot be plain static assets if you want previews and staging to advertise the right origin. The middleware in step 2 already calls `createSitemapXmlResponse`, `createSitemapMarkdownResponse`, and `createRobotsTxtResponse` — each rebuilds from the manifest using the live `requestOrigin`, so preview, staging, and prod all advertise the right URLs without per-environment config.
 
 The other generated files (`/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
 

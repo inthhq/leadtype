@@ -60,6 +60,10 @@ That command reads `docs/*.mdx`, converts it to markdown, resolves groups, build
 
 Open `public/docs/index.md` first. It shows what your MDX becomes after the remark component flattening pipeline runs. Then open `public/llms.txt` to see the hosted routing file that HTTP agents start from.
 
+<Callout title="Working reference" variant="tip">
+  `apps/example/` in the [leadtype repo](https://github.com/inthhq/leadtype) is the production docs site for these docs. It runs the same pipeline you just ran, on TanStack Start, with markdown content negotiation, sitemap regeneration, and JSON-LD wired up. Clone it when you want a copy-pastable end-to-end setup.
+</Callout>
+
 ## Choose the next setup step
 
 | Goal | Next page |
@@ -68,7 +72,7 @@ Open `public/docs/index.md` first. It shows what your MDX becomes after the rema
 | Render HTML pages and an "On this page" sidebar | [Render MDX and TOC](/docs/build/render-mdx-and-toc) |
 | Serve markdown, sitemaps, robots, and JSON-LD for agents | [Optimize docs for agents](/docs/build/optimize-docs-for-agents) |
 | Query the generated static search index | [Add search](/docs/build/add-search) |
-| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/build/bundle-package-docs) |
+| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
 
 <Cards>
   <Card
@@ -89,6 +93,6 @@ Open `public/docs/index.md` first. It shows what your MDX becomes after the rema
   <Card
     title="Bundle docs into a package"
     description="Emit AGENTS.md plus docs/*.md into an npm package tarball."
-    href="/docs/build/bundle-package-docs"
+    href="/docs/package-docs/bundle"
   />
 </Cards>

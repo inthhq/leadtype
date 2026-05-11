@@ -67,7 +67,7 @@ If no config file exists, the CLI falls back to `package.json` for product metad
 leadtype generate --bundle --src . --out packages/my-package
 ```
 
-Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/build/bundle-package-docs).
+Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/package-docs/bundle).
 
 ### JSON output shape
 

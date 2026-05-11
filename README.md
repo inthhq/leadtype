@@ -28,7 +28,7 @@ leadtype is **not a docs website framework**. Bring your own UI — Next.js, Tan
 ## Choose your path
 
 - **[Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
-- **[Bundle docs into your package](https://leadtype.dev/docs/build/bundle-package-docs)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`.
+- **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`.
 
 ## Install
 
@@ -59,7 +59,7 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 - [Quickstart](https://leadtype.dev/docs/quickstart)
 - [How it works](https://leadtype.dev/docs/how-it-works)
 - [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)
-- [Bundle docs into your package](https://leadtype.dev/docs/build/bundle-package-docs)
+- [Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)
 - [Add search](https://leadtype.dev/docs/build/add-search)
 - [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
 - [CLI reference](https://leadtype.dev/docs/reference/cli)

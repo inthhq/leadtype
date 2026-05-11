@@ -27,7 +27,12 @@ type DocsPage = {
   content: string;
 };
 
-type LlmsVariantGroup = "get-started" | "authoring" | "build" | "reference";
+type LlmsVariantGroup =
+  | "get-started"
+  | "authoring"
+  | "build"
+  | "package-docs"
+  | "reference";
 
 const GROUPS: Record<LlmsVariantGroup, DocsGroup> = {
   "get-started": {
@@ -45,8 +50,13 @@ const GROUPS: Record<LlmsVariantGroup, DocsGroup> = {
   build: {
     slug: "build",
     title: "Build",
+    description: "Docs-site wiring and agent-readable deployment artifacts.",
+  },
+  "package-docs": {
+    slug: "package-docs",
+    title: "Ship Package Docs",
     description:
-      "Package bundles, docs-site wiring, and agent-readable deployment artifacts.",
+      "Bundle AGENTS.md and version-matched markdown inside an npm tarball.",
   },
   reference: {
     slug: "reference",
@@ -128,11 +138,11 @@ For agent requests, serve markdown when Accept asks for text/markdown or when a 
 Good verification checks include fetching /llms.txt, fetching a docs page with Accept: text/markdown, checking /docs/sitemap.xml, and confirming /robots.txt allows /llms.txt.`,
   },
   {
-    path: "docs/build/bundle-package-docs.md",
+    path: "docs/package-docs/bundle.md",
     title: "Bundle docs into a package",
     description:
       "Ship AGENTS.md and markdown docs inside an npm tarball for offline agents.",
-    group: "build",
+    group: "package-docs",
     content: `# Bundle docs into a package
 
 Use leadtype generate --bundle when publishing an npm package. Bundle mode writes AGENTS.md at the package root and docs/*.md beneath it.

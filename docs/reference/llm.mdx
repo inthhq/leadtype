@@ -44,6 +44,39 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 
 Group metadata still drives `llms.txt` sections, navigation, search metadata, and `AGENTS.md`, but site mode no longer emits per-group full-context files by default. See [Evals](/docs/reference/evals) for the benchmark behind that default.
 
+## ProductInfo
+
+Every generator that writes a top-level index file (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) takes the same `product` object:
+
+<TypeTable
+  properties={{
+    name: {
+      type: "string",
+      required: true,
+      description: "Product display name. Rendered as the H1 of llms.txt and AGENTS.md.",
+    },
+    summary: {
+      type: "string",
+      required: true,
+      description: "Single-line summary rendered as the blockquote under the H1.",
+    },
+    bullets: {
+      type: "string[]",
+      description: "Rendered under '## Product Summary'. Use for top-level feature highlights.",
+    },
+    bestStartingPoints: {
+      type: "Array<{ urlPath: string, title?: string, description?: string }>",
+      description: "Curated entry points rendered under '## Best Starting Points'. Titles and descriptions fall back to each page's frontmatter when omitted.",
+    },
+    agentGuidance: {
+      type: "string",
+      description: "Optional routing instruction appended at the bottom of llms.txt. Ignored by generateAgentsMd — the URL-routing flow doesn't apply to offline package docs.",
+    },
+  }}
+/>
+
+The `docs.config.ts` `product` field has this exact shape; both the CLI and the library APIs read it.
+
 ## Example llms.txt
 
 ```txt
@@ -341,7 +374,7 @@ These docs ship inside the package so coding agents can read them offline. Open 
 - [CLI](./docs/reference/cli.md): Every flag.
 ```
 
-Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [Bundle docs into a package](/docs/build/bundle-package-docs) for the full flow.
+Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [Bundle docs into a package](/docs/package-docs/bundle) for the full flow.
 
 ## resolveDocsNavigation
 

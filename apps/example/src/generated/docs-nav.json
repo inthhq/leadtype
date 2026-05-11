@@ -669,12 +669,12 @@
               "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#4-return-markdown-to-agents",
               "children": [
                 {
-                  "id": "serve-sitemap-xml-and-robots-txt-with-the-live-origin",
-                  "title": "Serve sitemap.xml and robots.txt with the live origin",
+                  "id": "why-the-sitemap-and-robots-responses-are-regenerated-not-static",
+                  "title": "Why the sitemap and robots responses are regenerated, not static",
                   "level": 3,
                   "urlPath": "/docs/build/optimize-docs-for-agents",
-                  "urlWithHash": "/docs/build/optimize-docs-for-agents#serve-sitemap-xml-and-robots-txt-with-the-live-origin",
-                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#serve-sitemap-xml-and-robots-txt-with-the-live-origin",
+                  "urlWithHash": "/docs/build/optimize-docs-for-agents#why-the-sitemap-and-robots-responses-are-regenerated-not-static",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#why-the-sitemap-and-robots-responses-are-regenerated-not-static",
                   "children": []
                 },
                 {
@@ -839,7 +839,7 @@
       "description": "Bundle AGENTS.md and version-matched markdown docs inside an npm package.",
       "pages": [
         {
-          "urlPath": "/docs/build/bundle-package-docs",
+          "urlPath": "/docs/package-docs/bundle",
           "title": "Bundle docs into a package",
           "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
           "groups": [
@@ -850,81 +850,81 @@
               "id": "the-flow",
               "title": "The flow",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#the-flow",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#the-flow",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#the-flow",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#the-flow",
               "children": []
             },
             {
               "id": "why-agents-md-not-llms-txt",
               "title": "Why AGENTS.md, not llms.txt?",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#why-agents-md-not-llms-txt",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#why-agents-md-not-llms-txt",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#why-agents-md-not-llms-txt",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#why-agents-md-not-llms-txt",
               "children": []
             },
             {
               "id": "generate-into-the-package",
               "title": "Generate into the package",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#generate-into-the-package",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#generate-into-the-package",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#generate-into-the-package",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#generate-into-the-package",
               "children": []
             },
             {
               "id": "filter-to-package-specific-docs",
               "title": "Filter to package-specific docs",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#filter-to-package-specific-docs",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#filter-to-package-specific-docs",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#filter-to-package-specific-docs",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#filter-to-package-specific-docs",
               "children": []
             },
             {
               "id": "include-in-the-published-tarball",
               "title": "Include in the published tarball",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#include-in-the-published-tarball",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#include-in-the-published-tarball",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#include-in-the-published-tarball",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#include-in-the-published-tarball",
               "children": []
             },
             {
               "id": "verify-before-publishing",
               "title": "Verify before publishing",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#verify-before-publishing",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#verify-before-publishing",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#verify-before-publishing",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#verify-before-publishing",
               "children": []
             },
             {
               "id": "tell-consuming-projects-to-use-the-bundle",
               "title": "Tell consuming projects to use the bundle",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#tell-consuming-projects-to-use-the-bundle",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#tell-consuming-projects-to-use-the-bundle",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#tell-consuming-projects-to-use-the-bundle",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#tell-consuming-projects-to-use-the-bundle",
               "children": []
             },
             {
               "id": "when-to-use-this",
               "title": "When to use this",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#when-to-use-this",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#when-to-use-this",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#when-to-use-this",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#when-to-use-this",
               "children": []
             },
             {
               "id": "what-s-next",
               "title": "What's next",
               "level": 2,
-              "urlPath": "/docs/build/bundle-package-docs",
-              "urlWithHash": "/docs/build/bundle-package-docs#what-s-next",
-              "absoluteUrlWithHash": "https://leadtype.dev/docs/build/bundle-package-docs#what-s-next",
+              "urlPath": "/docs/package-docs/bundle",
+              "urlWithHash": "/docs/package-docs/bundle#what-s-next",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#what-s-next",
               "children": []
             }
           ]
@@ -1260,6 +1260,15 @@
               "urlPath": "/docs/reference/llm",
               "urlWithHash": "/docs/reference/llm#what-gets-generated",
               "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#what-gets-generated",
+              "children": []
+            },
+            {
+              "id": "productinfo",
+              "title": "ProductInfo",
+              "level": 2,
+              "urlPath": "/docs/reference/llm",
+              "urlWithHash": "/docs/reference/llm#productinfo",
+              "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#productinfo",
               "children": []
             },
             {
