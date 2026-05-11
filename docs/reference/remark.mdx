@@ -127,7 +127,7 @@ remarkPlugins: [
 
 Nested includes are supported. The plugin keeps the included file's directory as `baseDir` for nested relative paths, so a partial can include files next to itself.
 
-`leadtype lint` runs `remarkInclude` so broken includes are caught during validation. Custom conversion scripts must add `remarkInclude` explicitly. The `leadtype generate` CLI uses the default stack today; use a script when your generated artifacts depend on partial expansion.
+`leadtype generate` and `leadtype lint` run `remarkInclude` automatically. Custom conversion scripts must add it explicitly.
 
 ### remarkTypeTableToMarkdown (with basePath)
 

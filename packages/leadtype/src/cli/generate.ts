@@ -25,7 +25,7 @@ import {
   generateLlmsTxt,
   resolveDocsNavigation,
 } from "../llm";
-import { defaultRemarkPlugins } from "../remark";
+import { defaultRemarkPlugins, remarkInclude } from "../remark";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 
@@ -780,7 +780,7 @@ export async function runGenerateCommand(
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
-      remarkPlugins: [...defaultRemarkPlugins],
+      remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
       enrichFrontmatterFromGit: args.enrichGit,
     });
 

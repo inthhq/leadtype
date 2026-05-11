@@ -465,6 +465,49 @@ Initial release.
     );
   });
 
+  it("expands include partials during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides',
+      '<import src="./shared.mdx#snippet" />'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "shared.mdx"),
+      `<section id="snippet">
+Shared content from a partial.
+</section>
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "Fixture",
+        "--summary",
+        "Fixture docs.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("Shared content from a partial.");
+    expect(markdown).not.toContain("<import");
+  });
+
   it("mounts an extra source folder at a custom public URL prefix", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
