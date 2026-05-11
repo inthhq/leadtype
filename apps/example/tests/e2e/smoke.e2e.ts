@@ -183,7 +183,8 @@ test("agent readability discovery files are served at the site root", async ({
   });
   expect(llmsFullTxt.ok()).toBe(true);
   const llmsFullText = await llmsFullTxt.text();
-  expect(llmsFullText).toContain("Full Context Router");
+  expect(llmsFullText).toContain("Full Context");
+  expect(llmsFullText).toContain("Quickstart");
   expect(llmsFullText).not.toContain("# Page not found");
 });
 

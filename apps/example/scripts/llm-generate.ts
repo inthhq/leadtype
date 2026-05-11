@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
  * Reads the package's `docs.config.ts` and `/docs` MDX source, then generates
- * `/llms.txt`, `/docs/llms-full/*.txt`, and a `docs-nav.json` manifest into
+ * `/llms.txt`, `/llms-full.txt`, and a `docs-nav.json` manifest into
  * `apps/example/public/`. The config drives both the package's own published
- * docs bundle and this example app's served bundle — same source, two
+ * docs artifacts and this example app's served artifacts — same source, two
  * consumers.
  */
 
@@ -61,7 +61,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
 // the docs.config.ts as the single source of truth: the same call resolves
-// frontmatter membership for the LLM bundles AND for the in-app sidebar.
+// frontmatter membership for the LLM indexes AND for the in-app sidebar.
 const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,

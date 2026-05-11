@@ -4,10 +4,10 @@ export default defineDocsConfig({
   product: {
     name: "Leadtype",
     summary:
-      "A docs pipeline that turns one MDX source into a website, agent-readable bundles, and a search index.",
+      "A docs pipeline that turns one MDX source into a website, agent-readable artifacts, and a search index.",
     bullets: [
       "Convert MDX into clean markdown that agents and tools can read.",
-      "Generate llms.txt and topic-scoped full-context bundles.",
+      "Generate llms.txt, a root llms-full.txt fallback, and markdown mirrors.",
       "Build a static search index plus optional source-grounded answers.",
       "Validate frontmatter, navigation, and internal links before publish.",
     ],
@@ -20,7 +20,7 @@ export default defineDocsConfig({
       { urlPath: "/docs/build/bundle-package-docs" },
     ],
     agentGuidance:
-      "Open /docs/llms.txt to route the task, then load the smallest matching topic file from /docs/llms-full/.",
+      "Open /docs/llms.txt to route the task, then use /llms-full.txt only when page-level markdown is not enough.",
   },
   groups: [
     {
@@ -45,7 +45,7 @@ export default defineDocsConfig({
       slug: "reference",
       title: "Reference",
       description:
-        "CLI flags, conversion APIs, remark plugins, LLM bundles, search, and lint rules.",
+        "CLI flags, conversion APIs, remark plugins, LLM files, search, and lint rules.",
     },
   ],
 });

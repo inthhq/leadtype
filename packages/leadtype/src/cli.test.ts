@@ -119,8 +119,10 @@ describe("leadtype CLI", () => {
       existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(true);
     expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms-full"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
       true
     );
@@ -141,6 +143,10 @@ describe("leadtype CLI", () => {
     expect(docsSummary).toContain("Methodology");
     expect(docsSummary).toContain("Connect a docs site");
     expect(docsSummary).toContain("](/docs/methodology.md)");
+
+    const llmsFull = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
+    expect(llmsFull).toContain("# leadtype Full Context");
+    expect(llmsFull).toContain("Methodology");
   });
 
   it("prints machine-readable generate output for agents", async () => {
@@ -168,7 +174,12 @@ describe("leadtype CLI", () => {
 
     expect(code).toBe(0);
     const result = JSON.parse(capture.stdout) as {
-      files: { agentReadabilityManifest: string; searchIndex: string };
+      files: {
+        agentReadabilityManifest: string;
+        docsLlmsFullTxt?: string;
+        llmsFullTxt: string;
+        searchIndex: string;
+      };
       groups: Array<{ slug: string }>;
       outDir: string;
       search: { docs: number };
@@ -180,6 +191,8 @@ describe("leadtype CLI", () => {
     expect(result.files.agentReadabilityManifest).toBe(
       path.join(outDir, "docs", "agent-readability.json")
     );
+    expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
+    expect(result.files.docsLlmsFullTxt).toBeUndefined();
     expect(result.groups.map((group) => group.slug)).toContain("build");
     expect(result.search.docs).toBeGreaterThan(0);
   });
@@ -395,6 +408,7 @@ This page is valid, but the output path is not a directory.
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms-full"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);

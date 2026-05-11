@@ -1,0 +1,10 @@
+{
+  "answerPatterns": [
+    "LLM files",
+    "generateLLMFullContextFiles",
+    "llms-full",
+    "fallback"
+  ],
+  "expectedGroups": ["reference"],
+  "expectedPages": ["docs/reference/llm.md"]
+}

@@ -47,8 +47,8 @@ The CLI does five things in one pass:
   <Step title="Convert MDX to markdown">
     Walks `docs/`, runs each file through the default remark plugin stack, writes flattened `.md` to `public/docs/`.
   </Step>
-  <Step title="Generate LLM bundles">
-    Writes `public/llms.txt` (the routing index) plus `public/docs/llms-full/*.txt` (one file per leaf group, with full content).
+  <Step title="Generate LLM files">
+    Writes `public/llms.txt` (the routing index) plus `public/llms-full.txt` (all generated markdown docs flattened into one fallback file).
   </Step>
   <Step title="Build a search index">
     Writes `public/docs/search-index.json` and `public/docs/search-content.json` — a BM25 index and a separate content store for excerpts.
@@ -65,12 +65,10 @@ The CLI does five things in one pass:
 
 <FileTree root="public">
   <File name="llms.txt" />
+  <File name="llms-full.txt" />
   <Folder name="docs">
     <File name="index.md" />
     <File name="llms.txt" />
-    <Folder name="llms-full">
-      <File name="get-started.txt" />
-    </Folder>
     <File name="sitemap.xml" />
     <File name="sitemap.md" />
     <File name="robots.txt" />
@@ -80,7 +78,7 @@ The CLI does five things in one pass:
   </Folder>
 </FileTree>
 
-Open `public/llms.txt` to see what an HTTP agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and the LLM bundles consume.
+Open `public/llms.txt` to see what an HTTP agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and `llms-full.txt` consume.
 
 <Prompt
   title="Copy prompt for your coding agent"

@@ -119,7 +119,7 @@
         "reference"
       ],
       "title": "Reference",
-      "description": "CLI flags, conversion APIs, remark plugins, LLM bundles, search, and lint rules.",
+      "description": "CLI flags, conversion APIs, remark plugins, LLM files, search, and lint rules.",
       "pages": [
         {
           "urlPath": "/docs/reference/cli",
@@ -138,6 +138,14 @@
           ]
         },
         {
+          "urlPath": "/docs/reference/evals",
+          "title": "Evals",
+          "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
+          "groups": [
+            "reference"
+          ]
+        },
+        {
           "urlPath": "/docs/reference/lint",
           "title": "Lint rules",
           "description": "Schema, link, and navigation checks. CLI and library API.",
@@ -147,7 +155,7 @@
         },
         {
           "urlPath": "/docs/reference/llm",
-          "title": "LLM bundles",
+          "title": "LLM files",
           "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
           "groups": [
             "reference"

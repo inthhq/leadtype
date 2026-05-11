@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "evals": "bun run run-eval.ts",
+    "evals:llms": "bun run run-llms-eval.ts",
     "test": "vitest run lib",
     "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && npm pack --pack-destination ../../evals/.tarballs"
   },

@@ -129,7 +129,7 @@ export type LLMFullContextConfig = {
   outDir: string;
   baseUrl?: string;
   product: Pick<ProductInfo, "name">;
-  /** Group tree from `docs.config.ts`. Each leaf group becomes a `.txt`. */
+  /** Group tree from `docs.config.ts`. Preserved for config validation. */
   groups: DocsGroup[];
 };
 
@@ -211,10 +211,6 @@ function flattenGroups(groups: ResolvedGroup[]): ResolvedGroup[] {
     }
   }
   return result;
-}
-
-function isLeafGroup(group: ResolvedGroup): boolean {
-  return group.children.length === 0;
 }
 
 function titleize(input: string): string {
@@ -590,181 +586,65 @@ function renderDocsSummary(
 
 ## How To Use This File
 
-Read the summary links first. If the summary is not enough, choose the smallest relevant topic file from \`/docs/llms-full.txt\`.
+Read the summary links first. If the page links are not enough, use \`/llms-full.txt\` as the broad full-context fallback.
 
 ${renderedSections.join("\n\n")}`;
 }
 
-function topicFilePath(segmentPath: string[]): string {
-  return `/docs/llms-full/${segmentPath.join("/")}.txt`;
-}
+const LEADING_H1_PATTERN = /^[ \t]*#[ \t]+\S/;
 
-function routerFilePath(segmentPath: string[]): string {
-  return segmentPath.length > 0
-    ? `/docs/llms-full/${segmentPath.join("/")}.txt`
-    : "/docs/llms-full.txt";
-}
-
-function toRelativeRouterLink(
-  fromSegmentPath: string[],
-  toSegmentPath: string[]
-): string {
-  const fromFilePath = routerFilePath(fromSegmentPath);
-  const targetFilePath = topicFilePath(toSegmentPath);
-  const relativePath = path.posix.relative(
-    path.posix.dirname(fromFilePath),
-    targetFilePath
-  );
-
-  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
-}
-
-function renderGroupRouterLinks(
-  groups: ResolvedGroup[],
-  currentSegmentPath: string[],
-  indentLevel = 0
-): string[] {
-  const indent = "  ".repeat(indentLevel);
-  const lines: string[] = [];
-  for (const group of groups) {
-    const relativeUrl = toRelativeRouterLink(
-      currentSegmentPath,
-      group.segmentPath
-    );
-    const description = group.description ?? "";
-    lines.push(
-      `${indent}- [${group.title}](${relativeUrl})${description ? `: ${description}` : ""}`
-    );
-    if (!isLeafGroup(group)) {
-      lines.push(
-        ...renderGroupRouterLinks(
-          group.children,
-          currentSegmentPath,
-          indentLevel + 1
-        )
-      );
-    }
+// We prepend our own `# ${title}` per page; strip any leading H1 from the
+// source markdown to avoid duplicate H1s when the source's title differs from
+// frontmatter (whitespace, decorators, mismatch).
+function stripLeadingTitleHeading(content: string): string {
+  const lines = content.split("\n");
+  let cursor = 0;
+  while (cursor < lines.length && (lines[cursor] ?? "").trim() === "") {
+    cursor++;
   }
-  return lines;
-}
-
-function renderDocsFullRouter(
-  product: Pick<ProductInfo, "name">,
-  resolved: ResolvedGroup[]
-): string {
-  return [
-    `# ${product.name} Documentation Full Context`,
-    "",
-    "> Choose the smallest topic file that matches the task.",
-    "",
-    "## Topics",
-    "",
-    ...renderGroupRouterLinks(resolved, []),
-  ].join("\n");
-}
-
-function renderGroupSubRouter(
-  product: Pick<ProductInfo, "name">,
-  parent: ResolvedGroup
-): string {
-  return [
-    `# ${product.name} ${parent.title} Full Context`,
-    "",
-    `> ${parent.description ?? ""}`,
-    "",
-    "## Topics",
-    "",
-    ...renderGroupRouterLinks(parent.children, parent.segmentPath),
-  ].join("\n");
-}
-
-function renderRootFullRouter(
-  product: Pick<ProductInfo, "name">,
-  hasDocsSummary: boolean
-): string {
-  const lines = [
-    `# ${product.name} Full Context Router`,
-    "",
-    "> Start with the product summary, then the curated docs summary, then one topic-specific full-context file if needed.",
-    "",
-    "## Recommended Flow",
-    "",
-    `- [Product Summary](/llms.txt): Short product-oriented overview of ${product.name}.`,
-  ];
-  if (hasDocsSummary) {
-    lines.push(
-      "- [Documentation Summary](/docs/llms.txt): Curated docs map for implementation work."
-    );
+  if (cursor < lines.length && LEADING_H1_PATTERN.test(lines[cursor] ?? "")) {
+    return lines
+      .slice(cursor + 1)
+      .join("\n")
+      .trimStart();
   }
-  lines.push(
-    "- [Documentation Full Router](/docs/llms-full.txt): Topic-specific deep-context files."
-  );
-  return lines.join("\n");
+  return content;
 }
 
-function renderLeafGroupDocument(
+function renderFullContextDocument(
   product: Pick<ProductInfo, "name">,
-  leaf: ResolvedGroup,
   pages: MarkdownDoc[]
 ): string {
-  const groupPages = pages.filter((page) =>
-    page.groups.some((slug) => slug.toLowerCase() === leaf.slugKey)
-  );
-  const links = groupPages.map((doc) => ({
+  const links = pages.map((doc) => ({
     title: doc.title,
     url: doc.absoluteUrl,
     description:
       doc.description || `Entry point for ${doc.title} documentation.`,
   }));
-  const contentBlocks = groupPages.map((doc) => {
+  const contentBlocks = pages.map((doc) => {
     const description = doc.description ? `${doc.description}\n` : "";
+    const content = stripLeadingTitleHeading(doc.content);
     return `# ${doc.title}
 URL: ${doc.absoluteUrl}
 ${description}
-${doc.content}`.trim();
+${content}`.trim();
   });
 
   return [
-    `# ${product.name} ${leaf.title} Full Context`,
+    `# ${product.name} Full Context`,
     "",
-    `> ${leaf.description ?? ""}`,
+    "> All generated markdown documentation pages flattened into one file.",
     "",
     "## Included Pages",
     "",
     links.length > 0
       ? links.map(renderLink).join("\n")
-      : "_No pages declare this group in their frontmatter._",
+      : "_No generated documentation pages were found._",
     "",
     "## Content",
     "",
     contentBlocks.join("\n\n"),
   ].join("\n");
-}
-
-async function writeGroupTree(
-  groups: ResolvedGroup[],
-  product: Pick<ProductInfo, "name">,
-  markdownDocs: MarkdownDoc[],
-  llmsFullDir: string
-): Promise<void> {
-  for (const group of groups) {
-    const filePath = path.join(
-      llmsFullDir,
-      ...group.segmentPath.slice(0, -1),
-      `${group.slug}.txt`
-    );
-    await mkdir(path.dirname(filePath), { recursive: true });
-
-    if (isLeafGroup(group)) {
-      await writeFile(
-        filePath,
-        renderLeafGroupDocument(product, group, markdownDocs)
-      );
-      continue;
-    }
-    await writeFile(filePath, renderGroupSubRouter(product, group));
-    await writeGroupTree(group.children, product, markdownDocs, llmsFullDir);
-  }
 }
 
 /**
@@ -795,9 +675,8 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
 }
 
 /**
- * Generate the full-context routers and one topic-specific .txt per leaf
- * group under `/docs/llms-full/`. Reads generated .md files from
- * `{outDir}/docs/`.
+ * Generate the root `/llms-full.txt` full-context file. Reads generated .md
+ * files from `{outDir}/docs/`.
  */
 export async function generateLLMFullContextFiles(
   config: LLMFullContextConfig
@@ -812,25 +691,15 @@ export async function generateLLMFullContextFiles(
     );
   }
 
-  const resolved = resolveGroups(config.groups);
-
-  const hasDocsSummary = existsSync(
-    path.join(outDir, DOCS_DIRNAME, "llms.txt")
-  );
+  resolveGroups(config.groups);
 
   const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
   await rm(llmsFullDir, { recursive: true, force: true });
-  await mkdir(llmsFullDir, { recursive: true });
+  await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
   await writeFile(
     path.join(outDir, "llms-full.txt"),
-    renderRootFullRouter(config.product, hasDocsSummary)
+    renderFullContextDocument(config.product, markdownDocs)
   );
-  await writeFile(
-    path.join(outDir, DOCS_DIRNAME, "llms-full.txt"),
-    renderDocsFullRouter(config.product, resolved)
-  );
-
-  await writeGroupTree(resolved, config.product, markdownDocs, llmsFullDir);
 }
 
 function toAgentReadabilityPage(

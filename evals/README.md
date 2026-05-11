@@ -54,6 +54,33 @@ bun run evals -- --model gpt-5.5
 bun run evals -- --runs 3
 ```
 
+## Topic-scoped `llms-full` benchmark
+
+Issue #22 asks whether agents actually use topic-scoped full-context bundles when `llms.txt` makes them discoverable. The separate llms benchmark simulates a hosted docs web root as local files: `/llms.txt` maps to `llms.txt`, `/docs/reference/cli.md` maps to `docs/reference/cli.md`, and so on.
+
+```bash
+# One fixture across all variants.
+bun run evals:llms -- --fixture single-page-cli-flag
+
+# One fixture on the router-first variant.
+bun run evals:llms -- --fixture exact-symbol-readability --variant router
+
+# Full llms matrix.
+bun run evals:llms
+```
+
+The variants are:
+
+| Variant | Meaning |
+| --- | --- |
+| `page-links` | Current-style `/llms.txt` with page-level `.md` links and guidance text only. |
+| `explicit-bundles` | `/llms.txt` links each `/docs/llms-full/<group>.txt` topic bundle directly. |
+| `monolith` | `/llms.txt` links one root `/llms-full.txt` containing all docs content. |
+| `router` | `/llms.txt` links root `/llms-full.txt`, and that file routes to `/docs/llms-full/<group>.txt`. |
+| `section-indexes` | `/llms.txt` links `/docs/<group>/llms.txt`; each section index links page `.md` files plus an optional section full-context bundle. |
+
+The `router` variant is intentionally distinct from `monolith`: it evaluates a base file that directs agents to topic bundles, not a root file containing all docs content.
+
 ## CLI flags
 
 | Flag | Default | Description |
@@ -68,16 +95,30 @@ bun run evals -- --runs 3
 ```
 evals/
 ├── lib/
-│   ├── tools.ts        # 6 path-scoped AI SDK tools (read/write/list/glob/grep/npm)
-│   ├── tools.test.ts   # path-escape unit tests
-│   ├── sandbox.ts      # tempdir lifecycle, npm install, control-mode strip
-│   └── transcript.ts   # transcript types + writer/reader
-├── evals/              # fixtures
+│   ├── tools.ts             # path-scoped AI SDK tools (read/write/list/glob/grep/npm)
+│   ├── tools.test.ts        # path-escape unit tests
+│   ├── sandbox.ts           # package-eval tempdir lifecycle, npm install, control strip
+│   ├── llms-sandbox.ts      # llms-eval tempdir lifecycle, web-root materialization
+│   ├── llms-variants.ts     # five llms.txt/llms-full.txt artifact shapes under test
+│   ├── llms-metrics.ts      # transcript → selection/context-match decisions
+│   ├── llms-metrics.test.ts # unit tests for the metrics + variant materializer
+│   ├── llms-eval.ts         # vitest helper used by every llms fixture's EVAL.ts
+│   └── transcript.ts        # transcript types + writer/reader
+├── evals/                   # package-docs benchmark fixtures
 │   ├── wire-content-negotiation/  (PROMPT.md, EVAL.ts, vite.config.ts, package.json)
 │   ├── validate-in-ci/            (PROMPT.md, EVAL.ts, package.json)
 │   ├── explain-cli-flag/          (PROMPT.md, EVAL.ts, package.json)
 │   └── bundle-own-docs/           (PROMPT.md, EVAL.ts, package.json)
-└── run-eval.ts         # entry — discovers fixtures, dispatches runs, prints summary
+├── llms/                    # hosted-docs (llms.txt) benchmark fixtures
+│   ├── single-page-cli-flag/      (PROMPT.md, EVAL.ts, expected.json)
+│   ├── single-group-authoring/    (PROMPT.md, EVAL.ts, expected.json)
+│   ├── cross-group-agent-flows/   (PROMPT.md, EVAL.ts, expected.json)
+│   ├── exact-symbol-readability/  (PROMPT.md, EVAL.ts, expected.json)
+│   ├── ambiguous-output-routing/  (PROMPT.md, EVAL.ts, expected.json)
+│   └── negative-vector-index/     (PROMPT.md, EVAL.ts, expected.json)
+├── vitest.config.ts         # globs lib/**/*.test.ts and **/EVAL.ts under both benchmarks
+├── run-eval.ts              # entry — package-docs benchmark
+└── run-llms-eval.ts         # entry — hosted-docs (llms.txt) benchmark
 ```
 
 Each fixture's `PROMPT.md` is the task description. `EVAL.ts` reads the transcript via `readTranscript()` and asserts on `transcript.toolCalls` (e.g. did `read` tool open AGENTS.md?) plus the final state of files the agent wrote.

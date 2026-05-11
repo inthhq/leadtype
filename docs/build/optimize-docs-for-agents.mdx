@@ -10,6 +10,8 @@ Use this guide when you already have a docs site and want agents to find, fetch,
 
 Leadtype handles the generated files. Your app wires those files into routing and HTML.
 
+The default output shape is based on the repo's agent evals. See [Evals](/docs/reference/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
+
 ## What good looks like
 
 An agent-readable docs site has four layers:
@@ -47,12 +49,11 @@ This writes the docs-scoped files under `public/docs/` and the top-level `public
 ```txt
 public/
 ├── llms.txt
+├── llms-full.txt
 └── docs/
     ├── index.md
     ├── quickstart.md
     ├── llms.txt
-    ├── llms-full.txt
-    ├── llms-full/*.txt
     ├── sitemap.xml
     ├── sitemap.md
     ├── robots.txt
@@ -99,7 +100,7 @@ return createSitemapXmlResponse({
 });
 ```
 
-The other generated artifacts — `/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/llms-full.txt`, `/docs/llms-full/*.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
+The other generated artifacts — `/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
 
 Keep the docs-scoped versions too (`/docs/sitemap.xml` etc.). Audits and agents may request both `/sitemap.xml` and `/docs/sitemap.xml`, especially when the audited URL is `/docs`.
 
@@ -221,7 +222,7 @@ export function handleAgentArtifact(request: Request): Response | null {
 }
 ```
 
-The other generated files (`/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/llms-full.txt`, `/docs/llms-full/*.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
+The other generated files (`/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
 
 ### Cache-Control and CDN
 
@@ -260,7 +261,7 @@ If the audit reports broken links from `llms.txt`, check whether your generated 
 
 ## Minimal checklist
 
-- Generate `llms.txt`, markdown mirrors, `llms-full`, sitemap, robots, and `agent-readability.json`.
+- Generate `llms.txt`, markdown mirrors, `llms-full.txt`, sitemap, robots, and `agent-readability.json`.
 - Serve root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
 - Keep docs-scoped `/docs/sitemap.xml`, `/docs/sitemap.md`, and `/docs/robots.txt`.
 - Add JSON-LD to every docs HTML page.

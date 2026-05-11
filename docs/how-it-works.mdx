@@ -16,7 +16,7 @@ Leadtype takes one input — a folder of MDX — and produces every shape your d
   remark["remark plugin stack<br/>(strip imports → flatten components)"]
   groups["group resolver<br/>(nav tree from frontmatter)"]
   md["docs/*.md"]
-  site_idx["llms.txt · llms-full/*.txt<br/>sitemap · robots · manifest<br/>(website mode only)"]
+  site_idx["llms.txt · llms-full.txt<br/>sitemap · robots · manifest<br/>(website mode only)"]
   search["search-index.json · search-content.json<br/>(website mode only)"]
   agents_md["AGENTS.md<br/>(--bundle mode only)"]
   nav["navigation manifest<br/>(group → page)"]
@@ -43,12 +43,12 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "Site mode (default)": {
       type: "leadtype generate --out public",
       description:
-        "Writes llms.txt, docs/llms-full/*.txt, docs/search-index.json, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Vite, Next.js, Astro, or TanStack Start build.",
+        "Writes llms.txt, llms-full.txt, docs/search-index.json, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, docs/agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Vite, Next.js, Astro, or TanStack Start build.",
     },
     "Bundle mode": {
       type: "leadtype generate --bundle --out packages/foo",
       description:
-        "Writes AGENTS.md at the package root and docs/*.md beneath it, both with relative paths. Skips llms.txt, llms-full, search, sitemap, robots, and Agent Readability files — those are website-only. Designed for npm tarballs that ship docs alongside the published code.",
+        "Writes AGENTS.md at the package root and docs/*.md beneath it, both with relative paths. Skips llms.txt, llms-full.txt, search, sitemap, robots, and Agent Readability files — those are website-only. Designed for npm tarballs that ship docs alongside the published code.",
     },
   }}
 />
@@ -67,10 +67,10 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
       description:
         "Bundle mode only. Offline-readable index that 25+ coding agents auto-discover (Claude Code, Codex, Cursor, Copilot, …). Every link is a relative ./docs/<path>.md path so the file works inside an installed npm package.",
     },
-    "llms.txt + llms-full": {
-      type: "<out>/llms.txt + <out>/docs/llms-full/<group>.txt",
+    "llms.txt + llms-full.txt": {
+      type: "<out>/llms.txt + <out>/llms-full.txt",
       description:
-        "Site mode only. The llms.txt convention is for websites — agents fetch /llms.txt over HTTP and follow markdown mirror links to deeper context. Useless inside an npm tarball, so bundle mode skips this.",
+        "Site mode only. Agents fetch /llms.txt over HTTP and follow page-level markdown links first. The root /llms-full.txt file is a broad all-docs fallback when page links are not enough. Useless inside an npm tarball, so bundle mode skips this.",
     },
     "Search index": {
       type: "<out>/docs/search-index.json + search-content.json",
@@ -78,7 +78,7 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
         "Site mode only. BM25-ranked inverted index over headings, titles, body, and code. Content is stored separately so the index stays small. Bundle mode skips it — agents reading from disk grep the .md files directly.",
     },
     "Agent Readability": {
-      type: "<out>/docs/sitemap.xml + sitemap.md + robots.txt + agent-readability.json",
+      type: "<out>/docs/sitemap.xml + <out>/docs/sitemap.md + <out>/docs/robots.txt + <out>/docs/agent-readability.json",
       description:
         "Site mode only. Docs-scoped discovery files and structured page data. Host apps merge this with blog, marketing, changelog, or product pages before serving root sitemap and robots files.",
     },
@@ -124,12 +124,12 @@ A few terms you will see throughout the docs.
     group: {
       type: "frontmatter field",
       description:
-        "A slug declaring which group a page belongs to. The same string drives the sidebar position, the llms.txt section, and the llms-full/<slug>.txt file.",
+        "A slug declaring which group a page belongs to. The same string drives the sidebar position, the llms.txt section, search metadata, and AGENTS.md grouping.",
     },
     leaf: {
       type: "noun",
       description:
-        "A group that has no children. Each leaf gets its own llms-full file; non-leaf groups are summary headings only.",
+        "A group that has no children. Leaves can directly contain pages in the navigation tree; non-leaf groups are summary headings only.",
     },
     chunk: {
       type: "noun",
@@ -151,8 +151,8 @@ The `leadtype generate` command runs in a fixed order — each stage depends on 
 1. **Parse frontmatter** for every `.mdx` under `docs/`.
 2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to the output directory (e.g. `public/docs/` in site mode, `<package>/docs/` with `--bundle`).
 3. **Resolve groups** from frontmatter, validate every page's `group:` matches a known slug.
-4. In **site mode** (default): generate `llms.txt`, the `llms-full/<group>.txt` topic bundles, the BM25 search index, and Agent Readability discovery files from the converted markdown.
-5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip `llms.txt`, `llms-full*`, search, sitemap, robots, and Agent Readability files — those are website-only.
+4. In **site mode** (default): generate `llms.txt`, root `llms-full.txt`, the BM25 search index, and Agent Readability discovery files from the converted markdown.
+5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip `llms.txt`, `llms-full.txt`, search, sitemap, robots, and Agent Readability files — those are website-only.
 
 If step 3 finds an unknown group, the run fails. That is by design — broken navigation is a content bug, not a render-time problem.
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /**
  * Runs the llm generator against real c15t docs so we can inspect
- * /llms.txt and the nested /docs/llms-full/** tree.
+ * /llms.txt and /llms-full.txt.
  *
- * The group tree demonstrates the intended shape for any multi-surface SDK:
- * agents pick a task-scoped leaf (e.g. `frameworks/react.txt`) instead of
- * downloading an entire monolithic `llms-full.txt` they'll mostly ignore.
+ * The group tree still demonstrates routing metadata for a multi-surface SDK:
+ * agents start with page-level markdown links and use llms-full.txt only when
+ * narrower pages are not enough.
  *
  * NOTE: c15t MDX doesn't currently declare `group:` in frontmatter, so the
  * leaves render empty. Run `bun run scripts/inject-real-groups.ts` (TODO)
@@ -33,7 +33,7 @@ await generateLlmsTxt({
     ],
     bestStartingPoints: [{ urlPath: "/docs/frameworks" }],
     agentGuidance:
-      "Start with the framework guide that matches your stack, then consult the matching full-context file under /docs/llms-full/.",
+      "Start with the framework guide that matches your stack, then consult /llms-full.txt only when page-level context is not enough.",
   },
   groups: [
     {

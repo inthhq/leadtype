@@ -33,11 +33,23 @@ type CliArgs = {
 };
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
-  const parsed = Number.parseInt(value ?? "1", 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
+  if (value === undefined) {
+    throw new Error(`${flag} requires a value`);
+  }
+  if (!/^[1-9]\d*$/.test(value)) {
     throw new Error(`${flag} must be a positive integer, got ${value}`);
   }
-  return parsed;
+  return Number(value);
+}
+
+function parseRequiredFlagValue(
+  value: string | undefined,
+  flag: string
+): string {
+  if (!value || /^-(?!\d)/.test(value)) {
+    throw new Error(`${flag} requires a value`);
+  }
+  return value;
 }
 
 function parseMode(value: string | undefined): Mode {
@@ -54,11 +66,11 @@ function parseArgs(argv: string[]): CliArgs {
     const a = argv[i];
     i++;
     if (a === "--fixture") {
-      args.fixture = argv[i++];
+      args.fixture = parseRequiredFlagValue(argv[i++], "--fixture");
     } else if (a === "--mode") {
       args.mode = parseMode(argv[i++]);
     } else if (a === "--model") {
-      args.model = argv[i++] ?? args.model;
+      args.model = parseRequiredFlagValue(argv[i++], "--model");
     } else if (a === "--runs") {
       args.runs = parsePositiveInt(argv[i++], "--runs");
     } else if (a === "--help" || a === "-h") {
@@ -181,6 +193,7 @@ async function runOne(options: {
   const durationMs = Date.now() - start;
   const transcript: Transcript = {
     fixture,
+    benchmark: "package",
     mode,
     agent: { provider, model: modelId },
     toolCalls: transcriptCalls,
@@ -312,10 +325,10 @@ async function runVitest(
     }
 
     let output = "";
-    proc.stdout.on("data", (b) => {
+    proc.stdout?.on("data", (b) => {
       output += b.toString();
     });
-    proc.stderr.on("data", (b) => {
+    proc.stderr?.on("data", (b) => {
       output += b.toString();
     });
     proc.on("error", (err) => {

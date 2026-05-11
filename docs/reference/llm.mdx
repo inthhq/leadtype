@@ -1,15 +1,15 @@
 ---
-title: "LLM bundles"
+title: "LLM files"
 description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
 group: reference
 ---
 
-# LLM bundles
+# LLM files
 
 The `leadtype/llm` entry point produces four flavors of agent-facing output, all derived from the same docs source:
 
 - **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
-- **`generateLLMFullContextFiles`** — full-content topic bundles. Pairs with `generateLlmsTxt`.
+- **`generateLLMFullContextFiles`** — root `/llms-full.txt` fallback containing all generated markdown docs. Pairs with `generateLlmsTxt`.
 - **`generateAgentReadabilityArtifacts`** — docs-scoped `sitemap.xml`, `sitemap.md`, `robots.txt`, and JSON manifest data that a host app can merge into site-level files.
 - **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
 
@@ -34,14 +34,13 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 | --- | --- |
 | `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, and root-relative markdown mirror links. |
 | `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and markdown entry links. |
-| `<out>/docs/llms-full.txt` | All pages flattened into one file. Use for agents with very large context windows. |
-| `<out>/docs/llms-full/<leaf>.txt` | One per leaf group. Topic-scoped full content for narrower context budgets. |
+| `<out>/llms-full.txt` | All generated markdown docs flattened into one fallback file. Use when page-level links are not enough. |
 | `<out>/docs/sitemap.xml` | Docs-scoped XML sitemap with canonical page URLs and `<lastmod>` dates. |
 | `<out>/docs/sitemap.md` | Docs-scoped markdown sitemap with headings and links. |
 | `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
 | `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
-Only **leaf** groups (no children) get an `llms-full/<leaf>.txt`. Non-leaf groups appear as headings inside the parent file.
+Group metadata still drives `llms.txt` sections, navigation, search metadata, and `AGENTS.md`, but site mode no longer emits per-group full-context files by default. See [Evals](/docs/reference/evals) for the benchmark behind that default.
 
 ## Example llms.txt
 
@@ -209,7 +208,7 @@ Headers it sets:
 - `Link: <canonical>; rel="canonical"`
 - `Cache-Control: public, max-age=300, must-revalidate` (override with `cacheControl: "<directive>"` or omit with `cacheControl: null`)
 
-It also enriches frontmatter with `canonical_url` and `last_updated`, leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, `llms-full*.txt`, search JSON) alone, and returns a 200 markdown "Page not found" body only for agent-oriented requests.
+It also enriches frontmatter with `canonical_url` and `last_updated`, leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, root `llms-full.txt`, search JSON) alone, and returns a 200 markdown "Page not found" body only for agent-oriented requests.
 
 Optional `userAgentPattern` overrides the default AI user-agent regex (defaults cover GPTBot, ChatGPT-User, OAI-SearchBot, Claude-Web, ClaudeBot, anthropic-ai, CCBot, Google-Extended, AmazonBot, Bingbot, MetaExternalAgent, ByteSpider, PerplexityBot, MistralBot, AppleBot, YouBot).
 
@@ -344,7 +343,7 @@ Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [
 
 ## resolveDocsNavigation
 
-Same group-resolution logic the LLM bundles use, but returns the navigation manifest as a plain object — useful for driving a sidebar UI:
+Same group-resolution logic the LLM files use, but returns the navigation manifest as a plain object — useful for driving a sidebar UI:
 
 ```ts
 const navigation = await resolveDocsNavigation({
@@ -373,14 +372,14 @@ await writeFile(
 );
 ```
 
-Now your sidebar can import a static manifest with the same group tree the LLM bundles use.
+Now your sidebar can import a static manifest with the same group tree the LLM files use.
 
-## Topic design
+## Group design
 
 The `groups` you pass to these APIs come from `docs.config.ts`. Two principles:
 
-- **Prefer narrow leaves over one giant bundle.** A leaf with 5 pages produces a focused `llms-full` file an agent can load quickly. A single catch-all leaf with 50 pages produces something most agents will truncate.
-- **Write group descriptions for routing, not flavor text.** Agents read those descriptions to decide which bundle to load. "How to install and run" beats "Welcome to our guides!"
+- **Use groups for routing, not sharding.** Groups organize `llms.txt`, navigation, search metadata, and `AGENTS.md`. The root `llms-full.txt` remains the broad fallback.
+- **Write group descriptions for routing, not flavor text.** Agents read those descriptions to decide which pages to load. "How to install and run" beats "Welcome to our guides!"
 
 ## Base URL precedence
 

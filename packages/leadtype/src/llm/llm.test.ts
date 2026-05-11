@@ -206,7 +206,7 @@ describe("generateLlmsTxt", () => {
 });
 
 describe("generateLLMFullContextFiles", () => {
-  it("emits sub-routers and leaves at nested paths", async () => {
+  it("emits one root full-context file with all generated docs", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
       {
@@ -248,36 +248,26 @@ describe("generateLLMFullContextFiles", () => {
       ],
     });
 
-    const rootRouter = await readFile(
-      path.join(projectDir, "docs", "llms-full.txt"),
+    const llmsFull = await readFile(
+      path.join(projectDir, "llms-full.txt"),
       "utf8"
     );
-    expect(rootRouter).toContain("Frameworks");
-
-    const frameworksRouter = await readFile(
-      path.join(projectDir, "docs", "llms-full", "frameworks.txt"),
-      "utf8"
+    expect(llmsFull).toContain("# c15t Full Context");
+    expect(llmsFull).toContain("React Quickstart");
+    expect(llmsFull).toContain("Next.js Quickstart");
+    expect(llmsFull).toContain(
+      "https://c15t.com/docs/frameworks/react/quickstart"
     );
-    expect(frameworksRouter).toContain("# c15t Frameworks Full Context");
-    expect(frameworksRouter).toContain("React");
-
-    const reactLeaf = await readFile(
-      path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt"),
-      "utf8"
+    expect(llmsFull).toContain(
+      "https://c15t.com/docs/frameworks/next/quickstart"
     );
-    expect(reactLeaf).toContain("# c15t React Full Context");
-    expect(reactLeaf).toContain("React Quickstart");
-    expect(reactLeaf).not.toContain("Next.js Quickstart");
-
-    const nextLeaf = await readFile(
-      path.join(projectDir, "docs", "llms-full", "frameworks", "next.txt"),
-      "utf8"
+    expect(existsSync(path.join(projectDir, "docs", "llms-full.txt"))).toBe(
+      false
     );
-    expect(nextLeaf).toContain("Next.js Quickstart");
-    expect(nextLeaf).not.toContain("React Quickstart");
+    expect(existsSync(path.join(projectDir, "docs", "llms-full"))).toBe(false);
   });
 
-  it("inlines a multi-group page in every named leaf", async () => {
+  it("inlines a multi-group page only once", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
       {
@@ -302,20 +292,27 @@ describe("generateLLMFullContextFiles", () => {
       ],
     });
 
-    const searchLeaf = await readFile(
-      path.join(projectDir, "docs", "llms-full", "search.txt"),
+    const llmsFull = await readFile(
+      path.join(projectDir, "llms-full.txt"),
       "utf8"
     );
-    const selfHostLeaf = await readFile(
-      path.join(projectDir, "docs", "llms-full", "self-host.txt"),
-      "utf8"
-    );
-    expect(searchLeaf).toContain("Rate Limiting");
-    expect(selfHostLeaf).toContain("Rate Limiting");
+    expect(llmsFull.match(/^# Rate Limiting$/gm)).toHaveLength(1);
+    expect(llmsFull).toContain("Shared body.");
   });
 
-  it("clears stale nested files before rewriting the group tree", async () => {
+  it("clears stale docs-scoped full-context files", async () => {
     const projectDir = await createTempProject();
+    await mkdir(path.join(projectDir, "docs", "llms-full", "frameworks"), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(projectDir, "docs", "llms-full.txt"),
+      "stale docs router"
+    );
+    await writeFile(
+      path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt"),
+      "stale nested topic"
+    );
     await seedDocs(projectDir, [
       {
         relativePath: "frameworks/react/quickstart.md",
@@ -339,22 +336,10 @@ describe("generateLLMFullContextFiles", () => {
       ],
     });
 
-    expect(
-      existsSync(
-        path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt")
-      )
-    ).toBe(true);
-
-    // Rerun with a flatter shape; the nested react.txt must be removed.
-    await generateLLMFullContextFiles({
-      outDir: projectDir,
-      baseUrl: "https://c15t.com",
-      product: { name: "c15t" },
-      groups: [
-        { slug: "frameworks", title: "Frameworks", description: "Flat." },
-      ],
-    });
-
+    expect(existsSync(path.join(projectDir, "llms-full.txt"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "docs", "llms-full.txt"))).toBe(
+      false
+    );
     expect(
       existsSync(
         path.join(projectDir, "docs", "llms-full", "frameworks", "react.txt")
@@ -762,10 +747,10 @@ lastModified: 2026-05-01T12:00:00.000Z
 
   it("recognizes /llms-full.txt as an artifact (not a missing markdown page)", () => {
     expect(isAgentReadabilityArtifactPath("/llms-full.txt")).toBe(true);
-    expect(isAgentReadabilityArtifactPath("/docs/llms-full.txt")).toBe(true);
+    expect(isAgentReadabilityArtifactPath("/docs/llms-full.txt")).toBe(false);
     expect(
       isAgentReadabilityArtifactPath("/docs/llms-full/get-started.txt")
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("enrichMarkdownFrontmatter tolerates CRLF line endings", () => {

@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-10T22:53:55.289Z",
+  "generatedAt": "2026-05-10T23:52:50.702Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
-    "summary": "A docs pipeline that turns one MDX source into a website, agent-readable bundles, and a search index."
+    "summary": "A docs pipeline that turns one MDX source into a website, agent-readable artifacts, and a search index."
   },
   "pages": [
     {
@@ -18,7 +18,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-10T06:25:37.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Components",
@@ -31,7 +31,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-09T22:38:26.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Frontmatter",
@@ -44,7 +44,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-09T22:38:26.000Z"
+      "lastModified": "2026-05-10T23:20:16.000Z"
     },
     {
       "title": "Bundle docs into a package",
@@ -57,7 +57,7 @@
       "groups": [
         "build"
       ],
-      "lastModified": "2026-05-09T22:38:26.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Connect a docs site",
@@ -70,7 +70,7 @@
       "groups": [
         "build"
       ],
-      "lastModified": "2026-05-10T20:56:41.000Z"
+      "lastModified": "2026-05-10T23:20:16.000Z"
     },
     {
       "title": "Optimize docs for agents",
@@ -83,7 +83,7 @@
       "groups": [
         "build"
       ],
-      "lastModified": "2026-05-10T20:56:41.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Validate in CI",
@@ -109,7 +109,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-10T06:25:37.000Z"
+      "lastModified": "2026-05-10T23:20:16.000Z"
     },
     {
       "title": "Methodology",
@@ -122,7 +122,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-09T22:38:26.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Quickstart",
@@ -135,7 +135,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-10T20:56:41.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "CLI",
@@ -148,7 +148,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-10T20:56:41.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Convert",
@@ -164,6 +164,19 @@
       "lastModified": "2026-05-09T22:38:26.000Z"
     },
     {
+      "title": "Evals",
+      "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
+      "urlPath": "/docs/reference/evals",
+      "absoluteUrl": "https://leadtype.dev/docs/reference/evals",
+      "markdownUrlPath": "/docs/reference/evals.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/evals.md",
+      "relativePath": "reference/evals",
+      "groups": [
+        "reference"
+      ],
+      "lastModified": "2026-05-10T22:54:48.000Z"
+    },
+    {
       "title": "Lint rules",
       "description": "Schema, link, and navigation checks. CLI and library API.",
       "urlPath": "/docs/reference/lint",
@@ -177,7 +190,7 @@
       "lastModified": "2026-05-09T22:38:26.000Z"
     },
     {
-      "title": "LLM bundles",
+      "title": "LLM files",
       "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
       "urlPath": "/docs/reference/llm",
       "absoluteUrl": "https://leadtype.dev/docs/reference/llm",
@@ -187,7 +200,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-10T20:56:41.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Remark plugins",
@@ -200,7 +213,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-09T22:38:26.000Z"
+      "lastModified": "2026-05-10T22:54:48.000Z"
     },
     {
       "title": "Search",
@@ -337,7 +350,7 @@
           "reference"
         ],
         "title": "Reference",
-        "description": "CLI flags, conversion APIs, remark plugins, LLM bundles, search, and lint rules.",
+        "description": "CLI flags, conversion APIs, remark plugins, LLM files, search, and lint rules.",
         "pages": [
           {
             "urlPath": "/docs/reference/cli",
@@ -356,6 +369,14 @@
             ]
           },
           {
+            "urlPath": "/docs/reference/evals",
+            "title": "Evals",
+            "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
+            "groups": [
+              "reference"
+            ]
+          },
+          {
             "urlPath": "/docs/reference/lint",
             "title": "Lint rules",
             "description": "Schema, link, and navigation checks. CLI and library API.",
@@ -365,7 +386,7 @@
           },
           {
             "urlPath": "/docs/reference/llm",
-            "title": "LLM bundles",
+            "title": "LLM files",
             "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
             "groups": [
               "reference"
