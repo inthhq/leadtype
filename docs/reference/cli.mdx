@@ -27,8 +27,8 @@ leadtype generate [options]
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
 | `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full.txt`, search, sitemap, robots, and Agent Readability artifacts. |
 | `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Site mode only; ignored in `--bundle`. |
-| `--name <name>` | from `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). |
-| `--summary <text>` | from `package.json#description` | Product summary written into the index file. |
+| `--name <name>` | from `docs.config.ts` or `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). Overrides config. |
+| `--summary <text>` | from `docs.config.ts` or `package.json#description` | Product summary written into the index file. Overrides config. |
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
 | `--exclude <glob>` | none | Docs-root-relative glob to exclude. Applied after `--include`. |
 | `--enrich-git` | off | Add `lastModified` and `lastAuthor` to frontmatter from git history. |
@@ -36,7 +36,30 @@ leadtype generate [options]
 | `--json` | — | Alias for `--format json`. |
 | `-h`, `--help` | — | Print usage. |
 
-Exit codes: `0` success, `1` runtime error (docs dir missing, unknown group, conversion error), `2` CLI usage error.
+Exit codes: `0` success, `1` runtime error (docs dir missing, config load error, unknown group, conversion error), `2` CLI usage error.
+
+### Config loading
+
+`leadtype generate` automatically loads `docs.config.ts` from the docs folder (`<src>/<docs-dir>/docs.config.ts`). JavaScript config files also work: `docs.config.js`, `docs.config.mjs`, and `docs.config.cjs`.
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My Library",
+    summary: "A library that does one thing well.",
+  },
+  groups: [
+    { slug: "get-started", title: "Get Started" },
+    { slug: "reference", title: "Reference" },
+  ],
+});
+```
+
+The config supplies product metadata, group titles, group order, group descriptions, best starting points, and agent guidance. Pages still declare membership with `group:` in frontmatter. If a page names a group that is not in the loaded config, generation fails.
+
+If no config file exists, the CLI falls back to `package.json` for product metadata and infers groups from the union of `group:` values across the generated pages. Inferred groups are sorted alphabetically and title-cased. Use `docs.config.ts` when order or descriptions matter.
 
 ### Bundle mode
 
@@ -44,7 +67,7 @@ Exit codes: `0` success, `1` runtime error (docs dir missing, unknown group, con
 leadtype generate --bundle --src . --out packages/my-package
 ```
 
-Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/build/bundle-package-docs).
+Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/package-docs/bundle).
 
 ### JSON output shape
 
@@ -80,9 +103,9 @@ In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. S
 
 Errors in JSON mode print `{"error": "...", ...}` to stderr.
 
-### Group inference
+### Custom script config
 
-When `docs.config.ts` is not loaded explicitly (the CLI runs without an importing script), groups are **inferred from the union of `group:` values across every page**. The inferred groups become the section structure for `llms.txt`. To control the title/order of groups, run the pipeline from a script that imports `docs.config.ts` directly:
+Custom build scripts do not auto-discover config. Import `docs.config.ts` directly and pass the values to the lower-level APIs:
 
 ```ts
 import { generateLlmsTxt } from "leadtype/llm";

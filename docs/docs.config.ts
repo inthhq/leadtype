@@ -16,8 +16,9 @@ export default defineDocsConfig({
       { urlPath: "/docs/quickstart" },
       { urlPath: "/docs/how-it-works" },
       { urlPath: "/docs/build/connect-docs-site" },
+      { urlPath: "/docs/build/add-search" },
       { urlPath: "/docs/build/optimize-docs-for-agents" },
-      { urlPath: "/docs/build/bundle-package-docs" },
+      { urlPath: "/docs/package-docs/bundle" },
     ],
     agentGuidance:
       "Open /docs/llms.txt to route the task, then use /llms-full.txt only when page-level markdown is not enough.",
@@ -36,10 +37,16 @@ export default defineDocsConfig({
         "The content contract: frontmatter, groups, and the MDX components the pipeline can flatten.",
     },
     {
-      slug: "build",
-      title: "Build",
+      slug: "docs-site",
+      title: "Build a Docs Site",
       description:
-        "Two journeys: ship docs inside an npm package, or wire leadtype into a docs site.",
+        "Generate hosted docs artifacts, wire them into an app, add search, and make pages agent-readable.",
+    },
+    {
+      slug: "package-docs",
+      title: "Ship Package Docs",
+      description:
+        "Bundle AGENTS.md and version-matched markdown docs inside an npm package.",
     },
     {
       slug: "reference",

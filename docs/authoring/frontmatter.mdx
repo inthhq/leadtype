@@ -14,7 +14,7 @@ Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads three 
 ---
 title: "Connect a docs site"
 description: "Wire leadtype into a docs app build."
-group: build
+group: docs-site
 ---
 ```
 
@@ -24,13 +24,13 @@ group: build
 
 ## How groups become a nav tree
 
-Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple groups. Each group is declared once in `docs.config.ts`. The intersection produces the nav tree, the section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
+Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple groups. Each group is declared once in `docs.config.ts`. `leadtype generate` loads that config automatically when it exists. The intersection produces the nav tree, the section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
 
 <Mermaid chart={`flowchart LR
-  cfg["docs.config.ts<br/>groups: [authoring, build, reference]"]
+  cfg["docs.config.ts<br/>groups: [authoring, docs-site, reference]"]
   page1["page A<br/>group: authoring"]
-  page2["page B<br/>group: build"]
-  page3["page C<br/>group: build"]
+  page2["page B<br/>group: docs-site"]
+  page3["page C<br/>group: docs-site"]
   resolver["group resolver"]
   nav["navigation tree"]
   llms["llms.txt sections"]
@@ -45,22 +45,24 @@ Each page may declare one or more group slugs with `group: <slug>` or `group: [a
 
 If a page declares a group slug that isn't in `docs.config.ts`, the build fails with `unknown group "<slug>"`. Same source of truth, no drift.
 
+If you do not have a `docs.config.ts`, the CLI infers groups from the `group:` values it finds. That fallback is enough for small docs sets, but use config when you need stable order, descriptions, or nested groups.
+
 ### Nested groups
 
 Declare children in the config to build deeper trees:
 
 ```ts
 {
-  slug: "build",
-  title: "Build",
+  slug: "docs-site",
+  title: "Build a Docs Site",
   children: [
-    { slug: "bundle-package-docs", title: "Bundle a package" },
+    { slug: "remote-source", title: "Remote source" },
     { slug: "connect-docs-site", title: "Connect a docs site" },
   ],
 }
 ```
 
-A page sets `group: bundle-package-docs` and lands in that nested slot. Only **leaf** groups (no children) directly contain pages; non-leaf groups are headings only.
+A page sets `group: remote-source` and lands in that nested slot. Only **leaf** groups (no children) directly contain pages; non-leaf groups are headings only.
 
 ## Optional fields
 

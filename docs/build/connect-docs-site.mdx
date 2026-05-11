@@ -1,194 +1,194 @@
 ---
 title: "Connect a docs site"
-description: "Wire leadtype into a docs app build so humans, agents, and search use one source."
-group: build
+description: "Build a shared docs app from source docs that live with the code they document."
+group: docs-site
 ---
+
 # Connect a docs site
 
-Use this path when **you run a docs site** (or want to). Leadtype runs before your build to convert MDX, generate navigation data, build the search index, and produce agent-readable artifacts. Your site framework — TanStack Start, Next.js, Astro, anything — handles routing and rendering.
+Use this path when you run a docs app that renders docs from one or more source repos. This is the main Leadtype docs-site model: content stays next to the code it documents, while the docs app clones or checks out that content during build and serves the generated artifacts.
+
+Your framework still owns routes, HTML, styling, and deployment. Leadtype owns the source-to-artifact pipeline.
 
 ## The flow
 
-<Mermaid chart={`flowchart LR   src["docs/*.mdx<br/>(your repo)"]   cli["leadtype generate"]   pub["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md<br/>docs/sitemap.xml<br/>docs/agent-readability.json"]   gen["src/generated/<br/>docs-nav.json<br/>docs-search-*.json"]   app["your docs app<br/>routing + HTML"]   human["Humans<br/>(HTML)"]   agent["Agents<br/>(markdown + discovery files)"]   search["Search UI"]   src --> cli   cli --> pub   cli --> gen   pub --> app   gen --> app   app --> human   app --> agent   gen --> search`} />
+<Mermaid chart={`flowchart LR
+  repo["source repo<br/>docs/*.mdx"]
+  clone["checkout or clone<br/>.docs-src/c15t"]
+  lint["leadtype lint"]
+  generate["leadtype generate"]
+  public["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md<br/>search · agent metadata"]
+  app["docs app<br/>routing + HTML"]
+  repo --> clone --> lint --> generate --> public --> app`} />
 
-## One-off run
+## Fetch the source repo
 
-For a single repo where docs and site live together:
+In CI, check out the docs source before the docs app build. For a public repo, a shallow clone is enough:
+
+```bash
+rm -rf .docs-src/c15t
+git clone --depth 1 https://github.com/c15t/c15t .docs-src/c15t
+```
+
+For private repos, use your CI platform's checkout action or a read-only deploy key. The important part is that Leadtype receives a normal filesystem path whose root contains `docs/`.
+
+## Lint before generate
+
+Run lint against the fetched docs before writing generated output:
+
+```bash
+npx leadtype lint .docs-src/c15t/docs \
+  --format github \
+  --error-unknown \
+  --max-warnings 0
+```
+
+Lint fails with file and line context for frontmatter, internal links, placeholders, and schema issues. That is easier to debug than a later app build using stale or partial artifacts.
+
+## Generate hosted artifacts
+
+Point `--src` at the fetched repository root and `--out` at the docs app public directory:
 
 ```bash
 npx leadtype generate \
-  --src . \
+  --src .docs-src/c15t \
   --out public \
-  --base-url https://leadtype.dev \
-  --name "my-docs" \
-  --summary "Short product summary."
+  --base-url https://docs.example.com \
+  --json
 ```
 
-That single command converts MDX, generates `llms.txt`, writes Agent Readability discovery files, builds the search index, and resolves the navigation tree. Generated paths are listed by [leadtype generate](/docs/reference/cli) and inspected in detail under [How it works](/docs/how-it-works).
+That command writes:
 
-## Wire it into the build
+- `public/llms.txt` and `public/llms-full.txt`
+- `public/docs/*.md`
+- `public/docs/search-index.json` and `public/docs/search-content.json`
+- `public/docs/sitemap.xml`, `sitemap.md`, `robots.txt`, and `agent-readability.json`
 
-Add a pipeline step before vite/Next/Astro builds. The simplest setup is one script per stage so you can rerun convert/search independently during dev:
+Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
+
+## Wire it into the app build
+
+Make the source checkout, lint, and generation steps run before the framework build:
 
 ```json
 {
   "scripts": {
-    "pipeline:convert": "bun run scripts/mdx-convert.ts",
-    "pipeline:llm": "bun run scripts/llm-generate.ts",
-    "pipeline:search": "bun run scripts/search-generate.ts",
-    "pipeline:build": "bun run pipeline:convert && bun run pipeline:llm && bun run pipeline:search",
-    "build": "bun run pipeline:build && vite build"
+    "docs:fetch": "rm -rf .docs-src/c15t && git clone --depth 1 https://github.com/c15t/c15t .docs-src/c15t",
+    "docs:lint": "leadtype lint .docs-src/c15t/docs --format github --error-unknown --max-warnings 0",
+    "docs:generate": "leadtype generate --src .docs-src/c15t --out public --base-url https://docs.example.com --json",
+    "build": "npm run docs:fetch && npm run docs:lint && npm run docs:generate && vite build"
   }
 }
 ```
 
-Splitting into separate scripts is optional — the CLI does all three in one pass. Use scripts when you want fine control over plugin order, base URL, or filtering. A canonical convert script:
+If the docs source and docs app live in the same repo, skip `docs:fetch` and point `--src` at `.`:
 
-```ts
-// scripts/mdx-convert.ts
-import { convertAllMdx, type MdxToMarkdownOptions } from "leadtype/convert";
-import {
-  defaultRemarkPlugins,
-  remarkInclude,
-  remarkTypeTableToMarkdown,
-} from "leadtype/remark";
-
-const repoRoot = process.cwd();
-const srcDir = `${repoRoot}/docs`;
-const outDir = `${repoRoot}/public/docs`;
-
-// `<ExtractedTypeTable>` reads TypeScript files at conversion time.
-// Pass basePath so the component can resolve relative paths.
-const typeTablePlugin: NonNullable<
-  MdxToMarkdownOptions["remarkPlugins"]
->[number] = [remarkTypeTableToMarkdown, { basePath: repoRoot }];
-
-await convertAllMdx({
-  srcDir,
-  outDir,
-  remarkPlugins: [
-    remarkInclude,
-    ...defaultRemarkPlugins.filter((p) => p !== remarkTypeTableToMarkdown),
-    typeTablePlugin,
-  ],
-  enrichFrontmatterFromGit: true,
-});
+```bash
+npx leadtype lint docs --error-unknown
+npx leadtype generate --src . --out public --base-url https://docs.example.com
 ```
 
-`remarkInclude` enables `{/*include:foo*/}`-style partial expansion. The `basePath` swap on `remarkTypeTableToMarkdown` is only needed if your docs use `<ExtractedTypeTable>`. See [Remark plugins](/docs/reference/remark) for the full plugin order.
+## Configure product and groups
 
-## Configure the product and groups
-
-Author `docs/docs.config.ts` once and let every stage read from it:
+The source repo should own `docs/docs.config.ts` so its groups and product metadata version with the docs. `leadtype generate` loads this file automatically from the docs folder:
 
 ```ts
 import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
   product: {
-    name: "my-docs",
-    summary: "Short product summary.",
-    bullets: ["What it does in one bullet.", "Another bullet."],
+    name: "c15t",
+    summary: "Consent infrastructure for modern web apps.",
+    bullets: ["Framework integrations.", "Consent primitives.", "Audit-friendly docs."],
     bestStartingPoints: [{ urlPath: "/docs" }, { urlPath: "/docs/quickstart" }],
   },
   groups: [
     { slug: "get-started", title: "Get Started" },
     { slug: "guides", title: "Guides" },
+    { slug: "reference", title: "Reference" },
   ],
 });
 ```
 
-Pages declare `group:` in frontmatter. The config declares the tree. The two together produce the navigation manifest, the `llms.txt` sections, and the lint check that catches typos. See [Frontmatter](/docs/authoring/frontmatter) for the resolution rules.
+Pages declare `group:` in frontmatter. The config declares titles, order, and descriptions. Together they drive navigation, `llms.txt`, search metadata, and package `AGENTS.md` sections. If no config exists, the CLI infers groups from frontmatter, but inferred groups have no descriptions or custom order. See [Frontmatter](/docs/authoring/frontmatter).
 
-## Make the site agent-readable
+## Use scripts for custom pipelines
 
-After generation, wire the runtime pieces into your docs app:
-
-- Serve root discovery files: `/llms.txt`, `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
-- Keep docs-scoped discovery files available under `/docs/`.
-- Add JSON-LD, canonical links, and markdown alternate links to docs HTML pages.
-- Return markdown for `Accept: text/markdown`, known AI user agents, and direct `.md` URLs.
-- Preserve `canonical_url` and `last_updated` frontmatter in markdown responses.
-
-Leadtype provides `leadtype/llm/readability` so you do not have to hand-roll request detection, frontmatter aliases, missing-page markdown, or JSON-LD escaping. The full setup guide is [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
-
-The core request hook looks like this in any framework:
+The CLI is the happy path. Use the library APIs directly when you need custom plugin order, filters, or generated JSON paths. Keep conversion first because LLM files, search, and Agent Readability artifacts read the generated markdown.
 
 ```ts
-import manifest from "../public/docs/agent-readability.json";
-import { createAgentMarkdownResponse } from "leadtype/llm/readability";
+import { convertAllMdx } from "leadtype/convert";
+import {
+  generateAgentReadabilityArtifacts,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+  resolveDocsNavigation,
+} from "leadtype/llm";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { generateDocsSearchFiles } from "leadtype/search/node";
+import docsConfig from "../.docs-src/c15t/docs/docs.config";
 
-const response = createAgentMarkdownResponse({
-  urlPath: request.url,
-  method: request.method,
-  headers: Object.fromEntries(request.headers),
-  manifest,
-  requestOrigin: new URL(request.url).origin,
-  readMarkdownFile(target) {
-    return readGeneratedFile(`public/${target.filePath}`);
-  },
+const sourceRoot = ".docs-src/c15t";
+
+await convertAllMdx({
+  srcDir: `${sourceRoot}/docs`,
+  outDir: "public/docs",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  enrichFrontmatterFromGit: true,
 });
 
-if (response) {
-  return new Response(response.body, {
-    status: response.status,
-    headers: response.headers,
-  });
-}
+await generateLlmsTxt({
+  srcDir: sourceRoot,
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: { name: docsConfig.product.name },
+  groups: docsConfig.groups,
+});
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+});
+
+const agentReadability = await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+});
+
+const navigation = await resolveDocsNavigation({
+  srcDir: sourceRoot,
+  baseUrl: "https://docs.example.com",
+  groups: docsConfig.groups,
+});
 ```
 
-Put it before your HTML docs route. Normal browsers continue to receive HTML; agent-oriented requests receive the generated markdown with `Content-Type: text/markdown; charset=utf-8`.
+Write `navigation` to a generated JSON file if your sidebar should use the same group tree as `llms.txt`. Write `agentReadability.manifest` if your runtime needs to merge docs pages with marketing, blog, changelog, or product routes.
 
-<Audience target="agent">
-When implementing this in a codebase, inspect the framework's request pipeline before editing. The markdown response hook must run before static docs HTML routes, but it must not intercept `/llms.txt`, sitemap files, robots files, search JSON, or `agent-readability.json`. After wiring, test both a normal browser request and an `Accept: text/markdown` request for the same docs URL.
-</Audience>
+## Wire the app runtime
 
-## Connect a remote source
+After generation, choose the runtime pieces your site needs:
 
-When the docs source lives in a different repo from the docs site:
-
-```bash
-git clone --depth 1 https://github.com/acme/package-a .docs-src/package-a
-npx leadtype lint .docs-src/package-a/docs --format github --error-unknown
-npx leadtype generate --src .docs-src/package-a --out public --json
-npm run build
-```
-
-Run lint first so missing or malformed frontmatter fails before the converter writes anything. Use `--format github` in CI to get inline annotations on the PR. Use `--json` on `generate` so automation can read the resolved groups and search index stats.
-
-This is the shape we expect for orgs hosting one docs UI for multiple package repos: the source lives next to the code it documents, the docs app pulls it in at build time. See [Bundle docs into a package](/docs/build/bundle-package-docs) if the package should *also* ship docs inside its npm tarball.
+- Render source MDX as HTML with your own components: [Render MDX and TOC](/docs/build/render-mdx-and-toc).
+- Return markdown for agent requests and serve discovery files: [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
+- Add local search and optional source-grounded answers: [Add search](/docs/build/add-search).
 
 ## Verify
 
-After a clean build:
+After a clean build, inspect these files:
 
-- `public/docs/index.md` — the converted home page.
-- `public/llms.txt` — the routing index. Should mention every group from your config.
-- `public/llms-full.txt` — all generated markdown docs flattened into one fallback file.
-- `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty.
-- `public/docs/sitemap.xml`, `public/docs/sitemap.md`, and `public/docs/agent-readability.json` — docs-scoped discovery data. Merge these with your app's non-docs routes before serving root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+- `public/docs/index.md` — converted markdown for the source repo home page.
+- `public/llms.txt` — hosted routing index with page-level markdown links.
+- `public/llms-full.txt` — all generated markdown docs in one fallback file.
+- `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty search files.
+- `public/docs/agent-readability.json` — manifest for markdown responses, JSON-LD, sitemap, and robots helpers.
 
-Then start the dev server and check the agent-facing routes:
-
-```bash
-curl http://localhost:5173/llms.txt
-curl http://localhost:5173/sitemap.xml
-curl http://localhost:5173/docs/sitemap.xml
-curl -I -H "Accept: text/markdown" http://localhost:5173/docs/
-```
-
-The markdown response should include `content-type: text/markdown; charset=utf-8`. If you get `text/html` back, the markdown response hook is not running before the docs HTML route.
-
-## What's next
-
-<Cards>
-
-  <Card title="Optimize docs for agents" description="Set up discovery files, JSON-LD, markdown responses, and audit checks." href="/docs/build/optimize-docs-for-agents" />
-
-  <Card title="Evals" description="See how Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt defaults." href="/docs/reference/evals" />
-
-  <Card title="Lint in CI" description="Fail PRs on broken links or schema drift." href="/docs/build/validate-in-ci" />
-
-  <Card title="Search reference" description="Index shape, BM25 weights, and answer streaming." href="/docs/reference/search" />
-
-</Cards>
+Then start your app and check at least one browser HTML page and one markdown response path.

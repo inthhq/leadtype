@@ -1,18 +1,18 @@
 ---
 title: "Quickstart"
-description: "Install leadtype, run it against a docs folder, and inspect the artifacts it produces."
+description: "Install leadtype, run the hosted-docs pipeline once, and inspect the generated artifacts."
 group: get-started
 ---
 
 # Quickstart
 
-Five minutes from a folder of MDX to a complete pipeline output.
+Five minutes from a folder of MDX to generated docs artifacts.
 
 ## Install
 
 <CommandTabs command="leadtype" mode="install" />
 
-`leadtype` ships an executable plus a set of focused entry points (`leadtype/convert`, `leadtype/llm`, `leadtype/search`, `leadtype/lint`, `leadtype/remark`). The CLI is usually all you need.
+`leadtype` ships a CLI plus focused library entry points. Start with the CLI; use the APIs only when your build needs custom plugin order, filtering, or output paths.
 
 ## Author one page
 
@@ -30,38 +30,18 @@ group: get-started
 Welcome.
 ```
 
-Every page needs at minimum a `title`. Add a `group:` to place it in the nav tree — see [Frontmatter](/docs/authoring/frontmatter).
+Every page needs a `title`. Add `group:` when the page should appear in generated navigation and `llms.txt` sections. See [Frontmatter](/docs/authoring/frontmatter) for the full content contract.
 
-## Generate
+## Generate hosted docs output
 
 ```bash
 npx leadtype generate \
   --src . \
   --out public \
-  --base-url https://leadtype.dev
+  --base-url https://example.com
 ```
 
-The CLI does five things in one pass:
-
-<Steps>
-  <Step title="Convert MDX to markdown">
-    Walks `docs/`, runs each file through the default remark plugin stack, writes flattened `.md` to `public/docs/`.
-  </Step>
-  <Step title="Generate LLM files">
-    Writes `public/llms.txt` (the routing index) plus `public/llms-full.txt` (all generated markdown docs flattened into one fallback file).
-  </Step>
-  <Step title="Build a search index">
-    Writes `public/docs/search-index.json` and `public/docs/search-content.json` — a BM25 index and a separate content store for excerpts.
-  </Step>
-  <Step title="Write Agent Readability data">
-    Writes docs-scoped `public/docs/sitemap.xml`, `public/docs/sitemap.md`, `public/docs/robots.txt`, and `public/docs/agent-readability.json`. Merge these into root site files when the same app also has blog, marketing, changelog, or product pages.
-  </Step>
-  <Step title="Resolve groups">
-    Reads `group:` from every page's frontmatter and reports which groups it found. The same group tree drives both the nav and `llms.txt`.
-  </Step>
-</Steps>
-
-## Inspect the output
+That command reads `docs/*.mdx`, converts it to markdown, resolves groups, builds search JSON, and writes hosted agent artifacts.
 
 <FileTree root="public">
   <File name="llms.txt" />
@@ -78,48 +58,41 @@ The CLI does five things in one pass:
   </Folder>
 </FileTree>
 
-Open `public/llms.txt` to see what an HTTP agent will see when you publish. Open `public/docs/index.md` to see what your authored MDX looks like once flattened — that's the same content the search index and `llms-full.txt` consume.
+Open `public/docs/index.md` first. It shows what your MDX becomes after the remark component flattening pipeline runs. Then open `public/llms.txt` to see the hosted routing file that HTTP agents start from.
 
-<Prompt
-  title="Copy prompt for your coding agent"
-  description="Use this after generating artifacts to wire the docs site runtime."
->
-You are integrating leadtype into this docs site. First inspect `public/docs/agent-readability.json`, `public/llms.txt`, and `public/docs/index.md`. Then wire markdown responses before the HTML docs route using `createAgentMarkdownResponse` from `leadtype/llm/readability`. Preserve browser HTML for normal requests, but return markdown for `Accept: text/markdown`, known AI user agents, and direct `.md` URLs. After changes, verify `curl -I -H "Accept: text/markdown" http://localhost:5173/docs/quickstart` returns `content-type: text/markdown; charset=utf-8`.
-</Prompt>
+<Callout title="Working reference" variant="tip">
+  `apps/example/` in the [leadtype repo](https://github.com/inthhq/leadtype) is the production docs site for these docs. It runs the same pipeline you just ran, on TanStack Start, with markdown content negotiation, sitemap regeneration, and JSON-LD wired up. Clone it when you want a copy-pastable end-to-end setup.
+</Callout>
 
-## Bundle for offline agents
+## Choose the next setup step
 
-The output above is for a **website**. To ship docs **inside an npm package** so coding agents reading from `node_modules/` find them, add `--bundle`:
-
-```bash
-npx leadtype generate --bundle --src . --out packages/my-package
-```
-
-That writes `packages/my-package/AGENTS.md` (the offline-readable index, auto-discovered by Claude Code, Codex, Cursor, Copilot, etc.) plus `packages/my-package/docs/*.md`. No `llms.txt`, no search index — those are website-only. See [Bundle docs into a package](/docs/build/bundle-package-docs) for the full flow.
-
-## What's next
-
-You now have the core primitives. From here:
+| Goal | Next page |
+| --- | --- |
+| Wire the generator into an app build | [Connect a docs site](/docs/build/connect-docs-site) |
+| Render HTML pages and an "On this page" sidebar | [Render MDX and TOC](/docs/build/render-mdx-and-toc) |
+| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Optimize docs for agents](/docs/build/optimize-docs-for-agents) |
+| Query the generated static search index | [Add search](/docs/build/add-search) |
+| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
 
 <Cards>
   <Card
-    title="Wire it into a docs site"
-    description="Connect generation, routing, search, and agent-readable artifacts to your web framework."
+    title="Connect a docs site"
+    description="Wire generation into your app build and serve the output from your framework."
     href="/docs/build/connect-docs-site"
   />
   <Card
-    title="Optimize docs for agents"
-    description="Add discovery files, JSON-LD, markdown responses, and audit checks to a hosted docs site."
+    title="Render MDX and TOC"
+    description="Set up runtime MDX components, heading IDs, and an On this page sidebar."
+    href="/docs/build/render-mdx-and-toc"
+  />
+  <Card
+    title="Make the site agent-readable"
+    description="Serve llms.txt, markdown mirrors, JSON-LD, sitemaps, and robots.txt correctly."
     href="/docs/build/optimize-docs-for-agents"
   />
   <Card
-    title="Bundle docs into your package"
-    description="Add docs/ to your published files and run leadtype generate at prepack time so installers get them in node_modules."
-    href="/docs/build/bundle-package-docs"
-  />
-  <Card
-    title="Understand the pipeline"
-    description="Names, terms, and an annotated diagram of every artifact and who consumes it."
-    href="/docs/how-it-works"
+    title="Bundle docs into a package"
+    description="Emit AGENTS.md plus docs/*.md into an npm package tarball."
+    href="/docs/package-docs/bundle"
   />
 </Cards>

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
+import { createJiti } from "jiti";
 import { convertAllMdx } from "../convert";
 import {
   logger,
@@ -11,12 +12,13 @@ import {
   setLogStreams,
   setVerbose,
 } from "../internal/logger";
-import type { DocsGroup, ProductInfo } from "../llm";
+import type { DocsConfig, DocsGroup, ProductInfo } from "../llm";
 import {
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  resolveDocsNavigation,
 } from "../llm";
 import { defaultRemarkPlugins } from "../remark";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
@@ -24,6 +26,12 @@ import { generateDocsSearchFiles } from "../search/node";
 
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
+const DOCS_CONFIG_FILENAMES = [
+  "docs.config.ts",
+  "docs.config.js",
+  "docs.config.mjs",
+  "docs.config.cjs",
+] as const;
 const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
 const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
@@ -85,6 +93,17 @@ type GenerateResult = {
   product: ProductInfo;
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
+};
+
+type LoadedDocsConfig = {
+  config: DocsConfig;
+  path: string;
+};
+
+type ResolvedGenerateMetadata = {
+  configPath?: string;
+  groups: DocsGroup[];
+  product: ProductInfo;
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -241,6 +260,86 @@ async function inferGroups(docsDir: string): Promise<DocsGroup[]> {
     }));
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateProductInfo(value: unknown): ProductInfo | undefined {
+  if (!isPlainRecord(value)) {
+    return;
+  }
+  if (typeof value.name !== "string" || typeof value.summary !== "string") {
+    return;
+  }
+  return value as ProductInfo;
+}
+
+function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
+  if (!Array.isArray(value)) {
+    return;
+  }
+  for (const group of value) {
+    if (!isPlainRecord(group)) {
+      return;
+    }
+    if (typeof group.slug !== "string" || typeof group.title !== "string") {
+      return;
+    }
+    if (
+      group.children !== undefined &&
+      validateDocsGroups(group.children) === undefined
+    ) {
+      return;
+    }
+  }
+  return value as DocsGroup[];
+}
+
+function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}" must export an object`);
+  }
+  const product = validateProductInfo(value.product);
+  if (!product) {
+    throw new Error(
+      `docs config at "${configPath}" must export product.name and product.summary`
+    );
+  }
+  const groups = validateDocsGroups(value.groups);
+  if (!groups) {
+    throw new Error(
+      `docs config at "${configPath}" must export groups as an array of { slug, title } entries`
+    );
+  }
+  return { groups, product };
+}
+
+async function loadDocsConfig(
+  docsDir: string
+): Promise<LoadedDocsConfig | null> {
+  const configPath = DOCS_CONFIG_FILENAMES.map((filename) =>
+    path.join(docsDir, filename)
+  ).find((candidate) => existsSync(candidate));
+
+  if (!configPath) {
+    return null;
+  }
+
+  const jiti = createJiti(import.meta.url, { moduleCache: false });
+  try {
+    const imported = await jiti.import(configPath, { default: true });
+    return {
+      config: validateDocsConfig(imported, configPath),
+      path: configPath,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `failed to load docs config at "${configPath}": ${message}`
+    );
+  }
+}
+
 async function readPackageProduct(
   srcDir: string,
   args: GenerateArgs
@@ -272,6 +371,37 @@ async function readPackageProduct(
   return {
     name: name || "Docs",
     summary: summary || "Generated documentation.",
+  };
+}
+
+function applyProductOverrides(
+  product: ProductInfo,
+  args: GenerateArgs
+): ProductInfo {
+  return {
+    ...product,
+    name: args.name ?? product.name,
+    summary: args.summary ?? product.summary,
+  };
+}
+
+async function resolveGenerateMetadata(
+  srcDir: string,
+  docsDir: string,
+  args: GenerateArgs
+): Promise<ResolvedGenerateMetadata> {
+  const loadedConfig = await loadDocsConfig(docsDir);
+  if (loadedConfig) {
+    return {
+      configPath: loadedConfig.path,
+      groups: loadedConfig.config.groups,
+      product: applyProductOverrides(loadedConfig.config.product, args),
+    };
+  }
+
+  return {
+    groups: await inferGroups(docsDir),
+    product: await readPackageProduct(srcDir, args),
   };
 }
 
@@ -396,9 +526,25 @@ export async function runGenerateCommand(
 
   let sourceMirror: SourceMirror | undefined;
   try {
-    const product = await readPackageProduct(srcDir, args);
+    const metadata = await resolveGenerateMetadata(srcDir, docsDir, args);
     sourceMirror = await createSourceMirror(srcDir, docsDir, args);
-    const groups = await inferGroups(sourceMirror.docsDir);
+    const { groups, product } = metadata.configPath
+      ? metadata
+      : {
+          ...metadata,
+          groups: await inferGroups(sourceMirror.docsDir),
+        };
+
+    const navigation = await resolveDocsNavigation({
+      srcDir: sourceMirror.srcDir,
+      groups,
+    });
+    const firstUnknownGroup = navigation.unknown[0];
+    if (firstUnknownGroup) {
+      throw new Error(
+        `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`
+      );
+    }
 
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,

@@ -7,7 +7,7 @@ flowchart LR
   src["docs/*.mdx"]
   site_run["leadtype generate"]
   bundle_run["leadtype generate --bundle"]
-  site_out["public/<br/>llms.txt · llms-full/<br/>docs/*.md · search-index.json"]
+  site_out["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md · search-index.json"]
   bundle_out["packages/&lt;name&gt;/<br/>AGENTS.md · docs/*.md"]
   humans["humans (browser)"]
   http_agents["HTTP agents<br/>(/llms.txt or<br/>Accept: text/markdown)"]
@@ -28,7 +28,7 @@ leadtype is **not a docs website framework**. Bring your own UI — Next.js, Tan
 ## Choose your path
 
 - **[Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
-- **[Bundle docs into your package](https://leadtype.dev/docs/build/bundle-package-docs)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so coding agents auto-discover them from `node_modules/<your-package>/AGENTS.md`.
+- **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`.
 
 ## Install
 
@@ -50,7 +50,7 @@ For an npm-bundled doc set:
 npx leadtype generate --bundle --src . --out packages/my-package
 ```
 
-The first produces `public/llms.txt`, `public/docs/llms-full/*.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/my-package/AGENTS.md` and `packages/my-package/docs/*.md` — auto-discoverable by [25+ coding agents](https://agents.md) once the package is installed.
+The first produces `public/llms.txt`, `public/llms-full.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/my-package/AGENTS.md` and `packages/my-package/docs/*.md` with relative links that still work after npm install.
 
 ## Documentation
 
@@ -58,6 +58,9 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 
 - [Quickstart](https://leadtype.dev/docs/quickstart)
 - [How it works](https://leadtype.dev/docs/how-it-works)
+- [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)
+- [Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)
+- [Add search](https://leadtype.dev/docs/build/add-search)
 - [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
 - [CLI reference](https://leadtype.dev/docs/reference/cli)
 - [Methodology](https://leadtype.dev/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify

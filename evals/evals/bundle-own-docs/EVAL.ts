@@ -21,10 +21,10 @@ describe("bundle-own-docs", () => {
     ).toBe(true);
   });
 
-  it("agent read the bundle-package-docs guide", () => {
+  it("agent read the bundle guide", () => {
     expect(
       reads.some((p) =>
-        p.includes("node_modules/leadtype/docs/build/bundle-package-docs.md")
+        p.includes("node_modules/leadtype/docs/package-docs/bundle.md")
       )
     ).toBe(true);
   });

@@ -65,7 +65,7 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "AGENTS.md": {
       type: "<package-root>/AGENTS.md",
       description:
-        "Bundle mode only. Offline-readable index that 25+ coding agents auto-discover (Claude Code, Codex, Cursor, Copilot, …). Every link is a relative ./docs/<path>.md path so the file works inside an installed npm package.",
+        "Bundle mode only. Offline-readable package index. Every link is a relative ./docs/<path>.md path so the file works inside an installed npm package.",
     },
     "llms.txt + llms-full.txt": {
       type: "<out>/llms.txt + <out>/llms-full.txt",
@@ -102,11 +102,11 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
   site_out -- "HTML render of MDX" --> human
   site_out -- "absolute URLs" --> http_agent
   site_out -- "search-index.json" --> search_ui
-  bundle_out -- "AGENTS.md auto-discovery" --> offline_agent`} />
+  bundle_out -- "version-matched AGENTS.md" --> offline_agent`} />
 
 - **Humans** see the HTML your docs site renders from MDX.
 - **HTTP agents** fetch `/llms.txt` over the network or use `Accept: text/markdown` content negotiation to get the converted `.md` from your docs site URL.
-- **Coding agents working in a project that depends on your package** auto-discover `AGENTS.md` at `node_modules/<your-package>/AGENTS.md`. The 25+ tools supporting [agents.md](https://agents.md) read it without being told to. From there they follow relative `./docs/<topic>.md` links.
+- **Coding agents working in a project that depends on your package** can read `node_modules/<your-package>/AGENTS.md` for version-matched offline docs. The reliable consumer pattern is to point the consuming project's root `AGENTS.md` or README at that file. From there they follow relative `./docs/<topic>.md` links.
 
 The two flows complement each other. A package that wants to be agent-friendly publishes both: `--bundle` output inside the tarball *and* a hosted website with `llms.txt`. Different agents use different flows; you don't pick one.
 

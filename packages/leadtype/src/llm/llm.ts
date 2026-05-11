@@ -1009,8 +1009,7 @@ function pageDescription(doc: SourceDoc, fallback?: string): string {
 }
 
 /**
- * Generate `AGENTS.md` at the package root for offline-readable docs that
- * coding agents auto-discover (Claude Code, Codex, Cursor, etc.). Unlike
+ * Generate `AGENTS.md` at the package root for offline-readable docs. Unlike
  * `generateLlmsTxt`, every link is a **relative** filesystem path
  * (`./docs/<segment>/<slug>.md`) so the file works inside a published npm
  * tarball at `node_modules/<pkg>/AGENTS.md`.

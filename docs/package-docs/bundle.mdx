@@ -1,14 +1,14 @@
 ---
 title: "Bundle docs into a package"
 description: "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files."
-group: build
+group: package-docs
 ---
 
 # Bundle docs into a package
 
-Use this path when **you publish a library on npm** and want coding agents, IDEs, and CLI tooling to read your docs without hitting the network. Run `leadtype generate --bundle` at prepack time, include the output in your published `files`, and every install ships **`AGENTS.md` + per-topic markdown** that the 25+ tools supporting [agents.md](https://agents.md) auto-discover.
+Use this path when **you publish a library on npm** and want version-matched docs available without a network request. Run `leadtype generate --bundle` at prepack time, include the output in your published `files`, and every install ships **`AGENTS.md` + per-topic markdown** inside `node_modules/<your-package>/`.
 
-The website is for humans. The package-bundled docs are for everyone else.
+The website is for humans and HTTP agents. The package-bundled docs are for coding agents, IDEs, and CLI tooling that can read files from the installed dependency.
 
 ## The flow
 
@@ -18,7 +18,7 @@ The website is for humans. The package-bundled docs are for everyone else.
   bundle["packages/&lt;name&gt;/<br/>AGENTS.md<br/>docs/*.md"]
   publish["npm publish"]
   install["npm install &lt;name&gt;"]
-  consume["node_modules/&lt;name&gt;/<br/>AGENTS.md → docs/*.md<br/>read by Claude Code, Codex,<br/>Cursor, Copilot, …"]
+  consume["node_modules/&lt;name&gt;/<br/>AGENTS.md → docs/*.md<br/>version-matched offline docs"]
   src --> cli
   cli --> bundle
   bundle --> publish
@@ -29,7 +29,7 @@ The website is for humans. The package-bundled docs are for everyone else.
 
 [`llms.txt`](https://llmstxt.org) is a **website convention** — a file at `/llms.txt` with absolute URLs that an agent fetches over HTTP. Inside an npm tarball it's the wrong shape: every link points at a hosted URL the agent may not be able to reach, and no major coding agent looks for `node_modules/<pkg>/llms.txt` anyway.
 
-[`AGENTS.md`](https://agents.md) is the **filesystem convention** that solves this. Tools like Claude Code, OpenAI Codex, Cursor, GitHub Copilot, Aider, Devin, and others auto-read `AGENTS.md` when working in a repo. Nested `AGENTS.md` files are also supported — "the closest one wins" — so an `AGENTS.md` inside `node_modules/<your-package>/` is the natural place to tell agents about your library.
+[`AGENTS.md`](https://agents.md) is the **filesystem convention** that solves this. Tools like Claude Code, OpenAI Codex, Cursor, GitHub Copilot, Aider, Devin, and others can read `AGENTS.md` when working with files on disk. An `AGENTS.md` inside `node_modules/<your-package>/` is the right shape for version-matched package docs: relative links work, no network is required, and the content matches the installed version.
 
 leadtype emits both — `llms.txt` in [website mode](/docs/build/connect-docs-site) for HTTP-discoverable agents, and `AGENTS.md` in `--bundle` mode for offline filesystem-discoverable agents.
 
@@ -151,7 +151,7 @@ If `AGENTS.md` is missing, check `files` in `package.json`. If `.md` files are m
 
 ## Tell consuming projects to use the bundle
 
-`AGENTS.md` inside your tarball is auto-discovered by agents working **in your published package** — but for a project that *depends* on your package, the agent's working directory is the consumer's repo, not yours. You need to point them at the bundled docs.
+`AGENTS.md` inside your tarball is available at `node_modules/<your-package>/AGENTS.md` after install. Some agents discover dependency docs from tool use or search. The reliable pattern is to point the consuming project at the bundled docs.
 
 Recommend this snippet in your README so consumers add it to their own root `AGENTS.md`:
 

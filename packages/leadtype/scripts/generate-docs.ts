@@ -46,10 +46,9 @@ if (navigation.unknown.length > 0) {
   process.exit(1);
 }
 
-// Emit AGENTS.md at the package root. Coding agents auto-discover this file
-// (Claude Code, Codex, Cursor, Copilot, Aider, etc.) when working in a repo
-// that depends on leadtype. Every link inside is a relative path to the
-// bundled `.md` topic — no URL fetches required.
+// Emit AGENTS.md at the package root. Every link inside is a relative path to
+// the bundled `.md` topic, so the docs remain valid after npm install at
+// node_modules/leadtype/ with no URL fetches required.
 const { outputPath } = await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,

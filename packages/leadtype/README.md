@@ -3,7 +3,7 @@
 A docs pipeline. Write MDX once. Get a website, agent-readable bundles, and a static search index from a single command.
 
 - Flattens MDX components into clean markdown that agents and tools can read.
-- Generates `llms.txt` plus topic-scoped full-context bundles.
+- Generates `llms.txt`, markdown mirrors, and a root `llms-full.txt` fallback.
 - Builds a static, edge-safe search index (BM25, optional source-grounded answers).
 - Validates frontmatter, navigation, and internal links.
 
@@ -21,7 +21,7 @@ For a hosted docs site:
 
 ```bash
 npx leadtype generate --src . --out public --base-url https://leadtype.dev
-# → public/llms.txt, public/docs/*.md, public/docs/llms-full/*.txt,
+# → public/llms.txt, public/llms-full.txt, public/docs/*.md,
 #   public/docs/search-index.json
 ```
 
@@ -32,7 +32,7 @@ npx leadtype generate --bundle --src . --out packages/my-package
 # → packages/my-package/AGENTS.md, packages/my-package/docs/*.md
 ```
 
-The website output is fetched by humans (HTML) and HTTP agents (`Accept: text/markdown` or `/llms.txt`). The bundled output is auto-discovered by [25+ coding agents](https://agents.md) (Claude Code, Codex, Cursor, Copilot, …) when the package is installed at `node_modules/<your-pkg>/AGENTS.md`.
+The website output is fetched by humans (HTML) and HTTP agents (`Accept: text/markdown` or `/llms.txt`). The bundled output lives at `node_modules/<your-pkg>/AGENTS.md` after install so consumers can point coding agents at version-matched offline docs.
 
 ## Documentation
 
@@ -41,7 +41,8 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 - [Quickstart](https://leadtype.dev/docs/quickstart) — five-minute happy path.
 - [How it works](https://leadtype.dev/docs/how-it-works) — the mental model.
 - [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site) — wire into your build.
-- [Bundle docs into a package](https://leadtype.dev/docs/build/bundle-package-docs) — ship docs inside an npm tarball.
+- [Bundle docs into a package](https://leadtype.dev/docs/package-docs/bundle) — ship docs inside an npm tarball.
+- [Add search](https://leadtype.dev/docs/build/add-search) — generate and query the static search index.
 - [CLI reference](https://leadtype.dev/docs/reference/cli) — every flag.
 
 ## Entry points
@@ -66,7 +67,7 @@ The `leadtype` binary wraps `generate` and `lint`. Use the library entry points 
 
 This package ships its own docs inside the published tarball:
 
-- `AGENTS.md` at the package root — auto-discovered by [25+ coding agents](https://agents.md) when leadtype is installed in any project.
+- `AGENTS.md` at the package root — a version-matched entry point for coding agents reading the installed package from disk.
 - `docs/*.md` — flattened markdown per page, organized by group.
 
 After `npm install leadtype`, point your project's root `AGENTS.md` at the bundled docs:
@@ -77,7 +78,7 @@ When working with the `leadtype` library, read
 markdown topic files.
 ```
 
-The website-style outputs (`llms.txt`, `llms-full/*.txt`, `search-index.json`) are emitted only in default `leadtype generate` mode. They're served from a hosted docs site, not from the package tarball.
+The website-style outputs (`llms.txt`, root `llms-full.txt`, `search-index.json`) are emitted only in default `leadtype generate` mode. They're served from a hosted docs site, not from the package tarball.
 
 ## License
 
