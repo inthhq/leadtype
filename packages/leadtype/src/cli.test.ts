@@ -408,6 +408,7 @@ This page is valid, but the output path is not a directory.
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "llms.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "llms-full"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);

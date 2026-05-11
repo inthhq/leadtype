@@ -31,6 +31,14 @@ The docs site's web root is represented by files in the current project root. Tr
 Start at /llms.txt. Use only the docs files you read from this web-root representation. Write your final answer to ANSWER.md.`;
 
 const STEP_LIMIT = 40;
+const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
+const MODEL_TIMEOUT_MS =
+  process.env.LLMS_EVAL_MODEL_TIMEOUT_MS === undefined
+    ? DEFAULT_MODEL_TIMEOUT_MS
+    : parsePositiveInt(
+        process.env.LLMS_EVAL_MODEL_TIMEOUT_MS,
+        "LLMS_EVAL_MODEL_TIMEOUT_MS"
+      );
 const VITEST_TIMEOUT_MS = 60_000;
 
 type CliArgs = {
@@ -57,10 +65,10 @@ function parsePositiveInt(value: string | undefined, flag: string): number {
   if (value === undefined) {
     throw new Error(`${flag} requires a value`);
   }
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
+  if (!/^[1-9]\d*$/.test(value)) {
     throw new Error(`${flag} must be a positive integer, got ${value}`);
   }
+  const parsed = Number(value);
   return parsed;
 }
 
@@ -164,56 +172,57 @@ async function runOne(options: {
   );
 
   const sandbox = await createLlmsSandbox({ fixtureDir, variant });
-  const start = Date.now();
-  const transcriptCalls: ToolCall[] = [];
-  const filesModified = new Set<string>();
-  const tools = scopedTools({
-    tempDir: sandbox.tempDir,
-    transcript: transcriptCalls,
-    filesModified,
-  });
-
-  const { provider, model } = getModel(modelId);
-  const errors: string[] = [];
-  let finalText = "";
-  let steps = 0;
-  let inputTokens = 0;
-  let outputTokens = 0;
-
   try {
-    const result = await generateText({
-      model,
-      system: SYSTEM_PROMPT,
-      prompt: promptText,
-      tools,
-      stopWhen: stepCountIs(STEP_LIMIT),
+    const start = Date.now();
+    const transcriptCalls: ToolCall[] = [];
+    const filesModified = new Set<string>();
+    const tools = scopedTools({
+      tempDir: sandbox.tempDir,
+      transcript: transcriptCalls,
+      filesModified,
     });
-    finalText = result.text ?? "";
-    steps = result.steps?.length ?? 0;
-    inputTokens = result.usage?.inputTokens ?? 0;
-    outputTokens = result.usage?.outputTokens ?? 0;
-  } catch (err) {
-    errors.push(err instanceof Error ? err.message : String(err));
-  }
 
-  const durationMs = Date.now() - start;
-  const transcript: Transcript = {
-    fixture,
-    benchmark: "llms",
-    mode: "treatment",
-    variant,
-    agent: { provider, model: modelId },
-    toolCalls: transcriptCalls,
-    filesModified: [...filesModified].sort(),
-    finalText,
-    durationMs,
-    steps,
-    errors,
-    tokens: { input: inputTokens, output: outputTokens },
-  };
-  await writeTranscript(sandbox.tempDir, transcript);
+    const { provider, model } = getModel(modelId);
+    const errors: string[] = [];
+    let finalText = "";
+    let steps = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
 
-  try {
+    try {
+      const result = await generateText({
+        model,
+        system: SYSTEM_PROMPT,
+        prompt: promptText,
+        tools,
+        stopWhen: stepCountIs(STEP_LIMIT),
+        timeout: MODEL_TIMEOUT_MS,
+      });
+      finalText = result.text ?? "";
+      steps = result.steps?.length ?? 0;
+      inputTokens = result.usage?.inputTokens ?? 0;
+      outputTokens = result.usage?.outputTokens ?? 0;
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err));
+    }
+
+    const durationMs = Date.now() - start;
+    const transcript: Transcript = {
+      fixture,
+      benchmark: "llms",
+      mode: "treatment",
+      variant,
+      agent: { provider, model: modelId },
+      toolCalls: transcriptCalls,
+      filesModified: [...filesModified].sort(),
+      finalText,
+      durationMs,
+      steps,
+      errors,
+      tokens: { input: inputTokens, output: outputTokens },
+    };
+    await writeTranscript(sandbox.tempDir, transcript);
+
     const expected = loadLlmsExpected(fixtureDir);
     const selection = selectionMatchesVariant(transcript, expected);
     const evalResult = await runVitest(fixture, sandbox.tempDir);

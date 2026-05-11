@@ -44,7 +44,7 @@ function parseRequiredFlagValue(
   value: string | undefined,
   flag: string
 ): string {
-  if (!value || value.startsWith("--")) {
+  if (!value || value.startsWith("-")) {
     throw new Error(`${flag} requires a value`);
   }
   return value;
@@ -323,10 +323,10 @@ async function runVitest(
     }
 
     let output = "";
-    proc.stdout.on("data", (b) => {
+    proc.stdout?.on("data", (b) => {
       output += b.toString();
     });
-    proc.stderr.on("data", (b) => {
+    proc.stderr?.on("data", (b) => {
       output += b.toString();
     });
     proc.on("error", (err) => {

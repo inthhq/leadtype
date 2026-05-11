@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { type LlmsVariant, materializeLlmsVariant } from "./llms-variants";
 
+const ROOT_FIXTURE_FILES = new Set(["PROMPT.md", "EVAL.ts", "expected.json"]);
+
 export type LlmsSandboxHandle = {
   tempDir: string;
   cleanup: () => Promise<void>;
@@ -19,9 +21,10 @@ export async function createLlmsSandbox(options: {
     await cp(fixtureDir, tempDir, {
       recursive: true,
       filter: (src) => {
-        const base = path.basename(src);
-        return (
-          base !== "PROMPT.md" && base !== "EVAL.ts" && base !== "expected.json"
+        const rel = path.relative(fixtureDir, src);
+        const isRootFixtureFile = rel !== "" && path.dirname(rel) === ".";
+        return !(
+          isRootFixtureFile && ROOT_FIXTURE_FILES.has(path.basename(rel))
         );
       },
     });
