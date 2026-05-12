@@ -2,8 +2,7 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import matter from "gray-matter";
-import { createJiti } from "jiti";
+import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
@@ -12,6 +11,7 @@ import {
   normalizeDocsPath,
   normalizeUrlPrefix,
 } from "../internal/docs-url";
+import { parseFrontmatter } from "../internal/frontmatter";
 import {
   logger,
   setLogFormat,
@@ -266,7 +266,7 @@ async function inferGroups(docsDir: string): Promise<DocsGroup[]> {
     const groupArrays = await Promise.all(
       batch.map(async (file) => {
         const raw = await readFile(file, "utf8");
-        const parsed = matter(raw);
+        const parsed = parseFrontmatter(raw);
         return normalizeGroupValues(parsed.data.group);
       })
     );
@@ -343,6 +343,26 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   return { groups, product };
 }
 
+async function importConfigModule(configPath: string): Promise<unknown> {
+  if (configPath.endsWith(".ts")) {
+    let createJiti: typeof import("jiti").createJiti;
+    try {
+      ({ createJiti } = await import("jiti"));
+    } catch {
+      throw new Error(
+        `loading TypeScript docs config at "${configPath}" requires the optional peer dependency \`jiti\`. Install it (\`bun add -D jiti\`) or use a .js/.mjs/.cjs config.`
+      );
+    }
+    const jiti = createJiti(import.meta.url, { moduleCache: false });
+    return jiti.import(configPath, { default: true });
+  }
+
+  const mod = (await import(pathToFileURL(configPath).href)) as {
+    default?: unknown;
+  };
+  return mod.default ?? mod;
+}
+
 async function loadDocsConfigFromDir(
   docsDir: string
 ): Promise<LoadedDocsConfig | null> {
@@ -354,9 +374,8 @@ async function loadDocsConfigFromDir(
     return null;
   }
 
-  const jiti = createJiti(import.meta.url, { moduleCache: false });
   try {
-    const imported = await jiti.import(configPath, { default: true });
+    const imported = await importConfigModule(configPath);
     return {
       config: validateDocsConfig(imported, configPath),
       path: configPath,

@@ -1,5 +1,6 @@
 import type { Code, Root, RootContent } from "mdast";
-import { toMarkdown } from "mdast-util-to-markdown";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
 import type { Transformer } from "unified";
 import {
   createJsxComponentProcessor,
@@ -8,6 +9,15 @@ import {
   getAttributeValue,
   normalizeWhitespace,
 } from "../libs";
+
+const stringifier = remark().use(remarkGfm).data("settings", {
+  bullet: "-",
+  emphasis: "_",
+  fence: "`",
+  fences: true,
+  listItemIndent: "one",
+  rule: "-",
+});
 
 function createCodeBlock(value: string): Code {
   return {
@@ -18,20 +28,9 @@ function createCodeBlock(value: string): Code {
 }
 
 function childrenToMarkdown(children: readonly RootContent[]): string {
-  return toMarkdown(
-    {
-      type: "root",
-      children: [...children],
-    },
-    {
-      bullet: "-",
-      emphasis: "_",
-      fence: "`",
-      fences: true,
-      listItemIndent: "one",
-      rule: "-",
-    }
-  ).trim();
+  return stringifier
+    .stringify({ type: "root", children: [...children] })
+    .trim();
 }
 
 export function remarkPromptToMarkdown(): Transformer<Root, Root> {

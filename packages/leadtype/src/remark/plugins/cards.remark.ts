@@ -5,10 +5,8 @@ import type {
   Paragraph,
   PhrasingContent,
   Root,
-  Text,
 } from "mdast";
 import type { Transformer } from "unified";
-import { u } from "unist-builder";
 import { visit } from "unist-util-visit";
 import {
   extractNodeText,
@@ -93,16 +91,18 @@ function collectLinksFromContainer(container: MdxNode): LinkItem[] {
 }
 
 function toListItem(item: LinkItem, withDescriptions: boolean): ListItem {
-  const linkNode: Link = u("link", { url: item.href }, [
-    u("text", item.text) as Text,
-  ]) as Link;
+  const linkNode: Link = {
+    type: "link",
+    url: item.href,
+    children: [{ type: "text", value: item.text }],
+  };
 
   const phrasing: PhrasingContent[] = [linkNode];
   if (withDescriptions && item.description) {
-    phrasing.push(u("text", ` — ${item.description}`) as Text);
+    phrasing.push({ type: "text", value: ` — ${item.description}` });
   }
 
-  const para: Paragraph = u("paragraph", phrasing) as Paragraph;
+  const para: Paragraph = { type: "paragraph", children: phrasing };
 
   return {
     type: "listItem",

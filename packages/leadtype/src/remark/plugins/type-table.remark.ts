@@ -5,7 +5,6 @@ import JSON5 from "json5";
 import type { RootContent, Table } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx";
 import type * as ts from "typescript";
-import { u } from "unist-builder";
 import {
   createHeading,
   createJsxComponentProcessor,
@@ -874,13 +873,7 @@ function processTypeTableNode(
 
   const tableRows = [createTableRow(headers), ...rows.map(createTableRow)];
 
-  const table: Table = u(
-    "table",
-    {
-      align,
-    },
-    tableRows
-  ) as Table;
+  const table: Table = { type: "table", align, children: tableRows };
 
   const content: RootContent[] = [];
 
