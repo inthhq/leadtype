@@ -4,6 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCli } from "../../../packages/leadtype/src/cli";
+import { generateTypeTables } from "./generate-type-tables";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
@@ -40,3 +41,8 @@ const code = await runCli([
 if (code !== 0) {
   process.exit(code);
 }
+
+await generateTypeTables({
+  outFile: join(outDir, "type-tables.json"),
+  sourceRoot,
+});

@@ -36,6 +36,28 @@ interface SidebarGroup {
   title: string;
 }
 
+interface TypeTableRow {
+  default?: string;
+  deprecated?: boolean;
+  description?: string;
+  name: string;
+  required?: boolean;
+  type: string;
+  typeDescription?: string;
+}
+
+interface TypeTableRecord {
+  key: string;
+  name: string;
+  path: string;
+  rows: TypeTableRow[];
+}
+
+interface TypeTablesPayload {
+  tables: Record<string, TypeTableRecord>;
+  version: number;
+}
+
 const mdxExtensionRegex = /\.mdx$/;
 const indexRouteRegex = /\/index$/;
 const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
@@ -45,6 +67,7 @@ const changelogDatePrefixRegex = /^\d{4}-\d{2}-\d{2}-/;
 const trailingSlashRegex = /\/$/;
 const slugCharacterRegex = /[^a-z0-9\s-]/g;
 const whitespaceRegex = /\s+/g;
+let typeTablesPromise: Promise<TypeTablesPayload> | null = null;
 
 const docsModules = import.meta.glob<MdxModule>(
   "../../../.docs-src/c15t/docs/**/*.mdx",
@@ -531,6 +554,26 @@ const formatDate = (date?: string) => {
 const markdownHref = (route: string) =>
   `${route === "/docs" || route === "/changelog" ? `${route}/index` : route}.md`;
 
+const typeTableKey = (path: string, name: string) => `${path}#${name}`;
+
+const loadTypeTables = () => {
+  if (!typeTablesPromise) {
+    typeTablesPromise = fetch("/type-tables.json").then((response) => {
+      if (!response.ok) {
+        throw new Error(`Unable to load type tables: ${response.status}`);
+      }
+      return response.json() as Promise<TypeTablesPayload>;
+    });
+  }
+  return typeTablesPromise;
+};
+
+const formatTypeTableDefault = (value?: string) =>
+  value && value.length > 0 ? value : "-";
+
+const formatTypeTableRequired = (value?: boolean) =>
+  value ? "Required" : "Optional";
+
 const ShellLink = ({ children, className, href = "" }: ComponentProps<"a">) => {
   const isInternal = href.startsWith("/");
   return (
@@ -712,12 +755,105 @@ const AccordionItem = ({
   </details>
 );
 
-const AutoTypeTable = ({ name, path }: { name?: string; path?: string }) => (
-  <div className="type-placeholder">
-    <strong>{name ?? "Type"}</strong>
-    {path ? <code>{path}</code> : null}
-  </div>
-);
+const AutoTypeTable = ({ name, path }: { name?: string; path?: string }) => {
+  const [typeTable, setTypeTable] = useState<TypeTableRecord | null>(null);
+  const [typeTableError, setTypeTableError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!(name && path)) {
+      return;
+    }
+
+    let cancelled = false;
+    loadTypeTables()
+      .then((payload) => {
+        if (cancelled) {
+          return;
+        }
+        setTypeTable(payload.tables[typeTableKey(path, name)] ?? null);
+        setTypeTableError(null);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setTypeTableError(
+          error instanceof Error ? error.message : "Unable to load type table"
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [name, path]);
+
+  if (!(name && path)) {
+    return (
+      <div className="type-placeholder">
+        <strong>{name ?? "Type"}</strong>
+        {path ? <code>{path}</code> : null}
+      </div>
+    );
+  }
+
+  if (typeTableError) {
+    return (
+      <div className="type-placeholder">
+        <strong>{name}</strong>
+        <span>{typeTableError}</span>
+      </div>
+    );
+  }
+
+  if (!typeTable) {
+    return (
+      <div className="type-placeholder">
+        <strong>{name}</strong>
+        <code>{path}</code>
+        <span>Loading extracted props...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="type-table">
+      <div className="type-table-header">
+        <strong>{typeTable.name}</strong>
+        <code>{typeTable.path}</code>
+      </div>
+      <div className="type-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Default</th>
+              <th>Required</th>
+            </tr>
+          </thead>
+          <tbody>
+            {typeTable.rows.map((row) => (
+              <tr key={row.name}>
+                <td>
+                  <code>{row.name}</code>
+                </td>
+                <td>
+                  <code>{row.type}</code>
+                </td>
+                <td>{row.description ?? row.typeDescription ?? "-"}</td>
+                <td>
+                  <code>{formatTypeTableDefault(row.default)}</code>
+                </td>
+                <td>{formatTypeTableRequired(row.required)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 const Passthrough = ({ children }: { children?: ReactNode }) => <>{children}</>;
 

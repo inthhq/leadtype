@@ -107,6 +107,38 @@ describe("remark markdown output", () => {
     }
   });
 
+  it("supports AutoTypeTable as an ExtractedTypeTable alias", async () => {
+    const projectDir = await createTempProject();
+    const previousCwd = process.cwd();
+    try {
+      await writeProjectFile(
+        projectDir,
+        "docs/types.ts",
+        `export interface ConsentBannerProps {
+  /** Content to display as the banner's title. */
+  title?: string;
+}`
+      );
+      const sourcePath = await writeProjectFile(
+        projectDir,
+        "docs/reference.mdx",
+        '<AutoTypeTable name="ConsentBannerProps" path="./types.ts" />'
+      );
+
+      process.chdir(projectDir);
+      const result = await convertMdxToMarkdown(sourcePath, [
+        [remarkTypeTableToMarkdown, {}],
+      ]);
+
+      expect(result.markdown).toContain("title");
+      expect(result.markdown).toContain(
+        "Content to display as the banner's title."
+      );
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
   it("converts card grids with interactive cards into markdown lists", async () => {
     const sourcePath = await createTempMdxFile(
       "index.mdx",

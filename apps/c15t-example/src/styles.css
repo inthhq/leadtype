@@ -456,6 +456,63 @@ button[aria-pressed="true"],
   color: #cfcfcf;
 }
 
+.type-table {
+  margin: 24px 0;
+  overflow: hidden;
+  color: #cfcfcf;
+  background: #101111;
+  border: 1px solid #2b2d2e;
+  border-radius: 6px;
+}
+
+.type-table-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #2b2d2e;
+}
+
+.type-table-header strong {
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.type-table-scroll {
+  overflow: auto;
+}
+
+.type-table table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.type-table th,
+.type-table td {
+  padding: 12px 14px;
+  vertical-align: top;
+  text-align: left;
+  border-bottom: 1px solid #242728;
+}
+
+.type-table th {
+  font-size: 13px;
+  color: #ffffff;
+  background: #151717;
+}
+
+.type-table td {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.type-table td:nth-child(2) code {
+  white-space: normal;
+}
+
 .not-found {
   padding: 80px;
 }
