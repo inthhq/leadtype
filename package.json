@@ -7,7 +7,6 @@
     "@mdx-js/react": "^3.1.1",
     "@typescript/native-preview": "7.0.0-dev.20260509.2",
     "husky": "^9.1.7",
-    "prettier": "^3.7.4",
     "turbo": "^2.9.12",
     "typescript": "6.0.3",
     "ultracite": "7.6.5"
@@ -17,7 +16,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev --filter=example",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "format": "ultracite fix",
     "check-types": "turbo run check-types",
     "check": "ultracite check",
     "fix": "ultracite fix",

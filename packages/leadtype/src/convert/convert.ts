@@ -4,7 +4,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import matter from "gray-matter";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
@@ -14,6 +13,10 @@ import {
   deriveDocContext,
   resolvePlaceholderStrings,
 } from "../internal/docs-context";
+import {
+  parseFrontmatter,
+  stringifyFrontmatter,
+} from "../internal/frontmatter";
 import { logger } from "../internal/logger";
 
 const execFileAsync = promisify(execFile);
@@ -298,17 +301,13 @@ function applyEnrichment(
   if (!(enrichment.lastModified || enrichment.lastAuthor)) {
     return frontmatterBlock;
   }
-  const parsed = matter(`---\n${frontmatterBlock}\n---\n`);
+  const parsed = parseFrontmatter(`---\n${frontmatterBlock}\n---\n`);
   const merged: Record<string, unknown> = {
     ...parsed.data,
     ...(enrichment.lastModified && { lastModified: enrichment.lastModified }),
     ...(enrichment.lastAuthor && { lastAuthor: enrichment.lastAuthor }),
   };
-  const restringified = matter.stringify("", merged).trim();
-  return restringified
-    .replace(/^---\s*\n/, "")
-    .replace(/\n---\s*$/, "")
-    .trim();
+  return stringifyFrontmatter(merged);
 }
 
 function resolveFrontmatterPlaceholders(
@@ -319,17 +318,12 @@ function resolveFrontmatterPlaceholders(
     return frontmatterBlock;
   }
 
-  const parsed = matter(`---\n${frontmatterBlock}\n---\n`);
+  const parsed = parseFrontmatter(`---\n${frontmatterBlock}\n---\n`);
   const resolvedData = resolvePlaceholderStrings(
     parsed.data,
     deriveDocContext(sourcePath)
   );
-  const restringified = matter.stringify("", resolvedData).trim();
-
-  return restringified
-    .replace(/^---\s*\n/, "")
-    .replace(/\n---\s*$/, "")
-    .trim();
+  return stringifyFrontmatter(resolvedData);
 }
 
 export type ConvertResult = {

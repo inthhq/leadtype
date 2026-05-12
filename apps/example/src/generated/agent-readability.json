@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-11T17:26:32.280Z",
+  "generatedAt": "2026-05-11T23:20:44.255Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -18,7 +18,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Components",
@@ -31,7 +31,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Frontmatter",
@@ -44,7 +44,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Add search",
@@ -57,7 +57,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Connect a docs site",
@@ -70,7 +70,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Optimize docs for agents",
@@ -83,7 +83,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Render MDX and TOC",
@@ -96,7 +96,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Validate in CI",
@@ -109,7 +109,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "How it works",
@@ -122,7 +122,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Methodology",
@@ -135,7 +135,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Bundle docs into a package",
@@ -148,7 +148,7 @@
       "groups": [
         "package-docs"
       ],
-      "lastModified": "2026-05-11T17:26:32.216Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Quickstart",
@@ -161,7 +161,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "CLI",
@@ -174,7 +174,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Convert",
@@ -200,7 +200,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-11T01:01:43.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Lint rules",
@@ -226,7 +226,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-11T16:24:34.000Z"
+      "lastModified": "2026-05-11T17:53:02.000Z"
     },
     {
       "title": "Remark plugins",
