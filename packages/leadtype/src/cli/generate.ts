@@ -2,8 +2,10 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
 import { pathToFileURL } from "node:url";
-import fg from "fast-glob";
+import { glob as fg } from "tinyglobby";
+
 import { convertAllMdx } from "../convert";
 import { parseFrontmatter } from "../internal/frontmatter";
 import {
@@ -455,6 +457,11 @@ async function createSourceMirror(
     const files = await fg(patterns, {
       absolute: false,
       cwd: docsDir,
+      // tinyglobby expands bare directory names (`build` → `build/**`) by
+      // default; fast-glob did not. Disable it so `--include build` still
+      // reports "No MDX files matched" instead of silently slurping everything
+      // under `build/`.
+      expandDirectories: false,
       ignore: filters.exclude,
       onlyFiles: true,
     });

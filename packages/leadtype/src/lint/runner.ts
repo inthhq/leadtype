@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
-import fg from "fast-glob";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
+import { glob as fg } from "tinyglobby";
 import { visit } from "unist-util-visit";
 import * as v from "valibot";
 import { convertMdxToMarkdown } from "../convert";
@@ -97,6 +97,9 @@ async function glob(
     onlyFiles: true,
     ignore,
     dot: false,
+    // Preserve fast-glob semantics: callers can pass user-supplied ignores,
+    // and bare directory entries should not auto-expand to `dir/**`.
+    expandDirectories: false,
   });
 }
 
