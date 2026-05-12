@@ -508,6 +508,76 @@ Shared content from a partial.
     expect(markdown).not.toContain("<import");
   });
 
+  it("resolves AutoTypeTable paths against the source root during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(
+      srcDir,
+      "reference.mdx",
+      'title: "Reference"\ndescription: "Type reference."\ngroup: reference',
+      '<AutoTypeTable name="ConsentBannerProps" path="./packages/react/src/components/consent-banner/consent-banner.tsx" />'
+    );
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "changelog", "v1.mdx"),
+      `---
+title: "v1"
+description: "First release."
+---
+
+# v1
+`
+    );
+    const typePath = path.join(
+      srcDir,
+      "packages",
+      "react",
+      "src",
+      "components",
+      "consent-banner",
+      "consent-banner.tsx"
+    );
+    await mkdir(path.dirname(typePath), { recursive: true });
+    await writeFile(
+      typePath,
+      `export interface ConsentBannerProps {
+  /** Content to display as the banner's title. */
+  title?: string;
+}
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--docs-dir",
+        "docs",
+        "--docs-dir",
+        "changelog=/changelog",
+        "--out",
+        outDir,
+        "--name",
+        "Fixture",
+        "--summary",
+        "Fixture docs.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "reference.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("title");
+    expect(markdown).toContain("Content to display as the banner's title.");
+    expect(markdown).not.toContain("Could not extract");
+  });
+
   it("mounts an extra source folder at a custom public URL prefix", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

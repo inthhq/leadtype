@@ -5,6 +5,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import { createJiti } from "jiti";
 import { glob as fg } from "tinyglobby";
+import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
 import {
   type DocsPathMount,
@@ -25,7 +26,11 @@ import {
   generateLlmsTxt,
   resolveDocsNavigation,
 } from "../llm";
-import { defaultRemarkPlugins, remarkInclude } from "../remark";
+import {
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
+} from "../remark";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 
@@ -101,6 +106,18 @@ type GenerateResult = {
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
 };
+
+function createGenerateRemarkPlugins(sourceRoot: string): PluggableList {
+  const plugins: PluggableList = [remarkInclude];
+  for (const plugin of defaultRemarkPlugins) {
+    plugins.push(
+      plugin === remarkTypeTableToMarkdown
+        ? ([remarkTypeTableToMarkdown, { basePath: sourceRoot }] as Pluggable)
+        : plugin
+    );
+  }
+  return plugins;
+}
 
 type LoadedDocsConfig = {
   config: DocsConfig;
@@ -780,7 +797,7 @@ export async function runGenerateCommand(
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
-      remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+      remarkPlugins: createGenerateRemarkPlugins(srcDir),
       enrichFrontmatterFromGit: args.enrichGit,
     });
 
