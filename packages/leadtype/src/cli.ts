@@ -1,5 +1,6 @@
+import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
 import { logger, setLogStreams } from "./internal/logger";
 import { getLintUsage, runLintCommand } from "./lint/cli";
@@ -61,9 +62,21 @@ export async function runCli(
   return 2;
 }
 
-function isDirectRun(): boolean {
-  const entry = process.argv[1];
-  return entry ? import.meta.url === pathToFileURL(resolve(entry)).href : false;
+function resolveRealPath(filePath: string): string {
+  try {
+    return realpathSync.native(resolve(filePath));
+  } catch {
+    return resolve(filePath);
+  }
+}
+
+export function isDirectRun(
+  entry = process.argv[1],
+  moduleUrl = import.meta.url
+): boolean {
+  return entry
+    ? resolveRealPath(entry) === resolveRealPath(fileURLToPath(moduleUrl))
+    : false;
 }
 
 if (isDirectRun()) {
