@@ -2,7 +2,7 @@ import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import { MDXProvider } from "@mdx-js/react";
 import type { ComponentProps, ComponentType, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Children, useEffect, useMemo, useState } from "react";
 
 interface MdxModule {
   default: ComponentType;
@@ -520,14 +520,23 @@ const slugify = (text: string) =>
     .trim()
     .replace(whitespaceRegex, "-");
 
-const collectHeadings = () =>
-  Array.from(
+const collectHeadings = () => {
+  const usedIds = new Set<string>();
+  return Array.from(
     document.querySelectorAll<HTMLElement>(".doc-content h2, .doc-content h3")
   )
-    .map((element) => {
-      if (!element.id) {
-        element.id = slugify(element.textContent ?? "");
+    .map((element, index) => {
+      const baseId = element.id || slugify(element.textContent ?? "");
+      let nextId = baseId || `heading-${index + 1}`;
+      let suffix = 1;
+
+      while (usedIds.has(nextId)) {
+        nextId = `${baseId}-${suffix}`;
+        suffix += 1;
       }
+
+      usedIds.add(nextId);
+      element.id = nextId;
       return {
         id: element.id,
         level: Number(element.tagName.slice(1)),
@@ -535,6 +544,7 @@ const collectHeadings = () =>
       };
     })
     .filter((heading) => heading.id && heading.text);
+};
 
 const formatDate = (date?: string) => {
   if (!date) {
@@ -558,12 +568,17 @@ const typeTableKey = (path: string, name: string) => `${path}#${name}`;
 
 const loadTypeTables = () => {
   if (!typeTablesPromise) {
-    typeTablesPromise = fetch("/type-tables.json").then((response) => {
-      if (!response.ok) {
-        throw new Error(`Unable to load type tables: ${response.status}`);
-      }
-      return response.json() as Promise<TypeTablesPayload>;
-    });
+    typeTablesPromise = fetch("/type-tables.json")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Unable to load type tables: ${response.status}`);
+        }
+        return response.json() as Promise<TypeTablesPayload>;
+      })
+      .catch((error: unknown) => {
+        typeTablesPromise = null;
+        throw error;
+      });
   }
   return typeTablesPromise;
 };
@@ -574,24 +589,57 @@ const formatTypeTableDefault = (value?: string) =>
 const formatTypeTableRequired = (value?: boolean) =>
   value ? "Required" : "Optional";
 
-const ShellLink = ({ children, className, href = "" }: ComponentProps<"a">) => {
-  const isInternal = href.startsWith("/");
-  return (
-    <a
-      className={className}
-      href={href}
-      onClick={(event) => {
-        if (!isInternal) {
-          return;
-        }
-        event.preventDefault();
-        navigateTo(href);
-      }}
-    >
-      {children}
-    </a>
-  );
-};
+const ShellLink = ({
+  children,
+  className,
+  href = "",
+  onClick,
+  ref,
+  target,
+  ...props
+}: ComponentProps<"a">) => (
+  <a
+    {...props}
+    className={className}
+    href={href}
+    onClick={(event) => {
+      onClick?.(event);
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        (target && target !== "_self")
+      ) {
+        return;
+      }
+
+      if (!href) {
+        return;
+      }
+
+      let url: URL;
+      try {
+        url = new URL(href, window.location.href);
+      } catch {
+        return;
+      }
+
+      if (url.origin !== window.location.origin) {
+        return;
+      }
+
+      event.preventDefault();
+      navigateTo(`${url.pathname}${url.search}${url.hash}`);
+    }}
+    ref={ref}
+    target={target}
+  >
+    {children}
+  </a>
+);
 
 const getIconLabel = (name?: string) => {
   if (name === "react") {
@@ -679,6 +727,7 @@ const PackageCommandTabs = ({
   command: string;
   mode?: "install" | "run";
 }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const commands =
     mode === "install"
       ? [
@@ -697,14 +746,19 @@ const PackageCommandTabs = ({
   return (
     <div className="command-tabs">
       <div className="command-tabs-list">
-        {commands.map(([manager]) => (
-          <button key={manager} type="button">
+        {commands.map(([manager], index) => (
+          <button
+            className={index === selectedIndex ? "is-active" : undefined}
+            key={manager}
+            onClick={() => setSelectedIndex(index)}
+            type="button"
+          >
             {manager}
           </button>
         ))}
       </div>
       <pre>
-        <code>{commands[0]?.[1]}</code>
+        <code>{commands[selectedIndex]?.[1]}</code>
       </pre>
     </div>
   );
@@ -716,20 +770,33 @@ const Tabs = ({
 }: {
   children: ReactNode;
   items?: string[];
-}) => (
-  <div className="inline-tabs">
-    {items ? (
+}) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const childrenArray = Children.toArray(children);
+  const tabLabels =
+    items && items.length > 0
+      ? items
+      : childrenArray.map((_, index) => `Tab ${index + 1}`);
+  const activeChild = childrenArray[selectedIndex] ?? childrenArray[0] ?? null;
+
+  return (
+    <div className="inline-tabs">
       <div className="inline-tab-list">
-        {items.map((item) => (
-          <button key={item} type="button">
+        {tabLabels.map((item, index) => (
+          <button
+            className={index === selectedIndex ? "is-active" : undefined}
+            key={item}
+            onClick={() => setSelectedIndex(index)}
+            type="button"
+          >
             {item}
           </button>
         ))}
       </div>
-    ) : null}
-    {children}
-  </div>
-);
+      {activeChild}
+    </div>
+  );
+};
 
 const Tab = ({ children, value }: { children: ReactNode; value?: string }) => (
   <section className="inline-tab-panel">
@@ -756,7 +823,9 @@ const AccordionItem = ({
 );
 
 const AutoTypeTable = ({ name, path }: { name?: string; path?: string }) => {
-  const [typeTable, setTypeTable] = useState<TypeTableRecord | null>(null);
+  const [typeTable, setTypeTable] = useState<
+    TypeTableRecord | null | undefined
+  >();
   const [typeTableError, setTypeTableError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -765,6 +834,7 @@ const AutoTypeTable = ({ name, path }: { name?: string; path?: string }) => {
     }
 
     let cancelled = false;
+    setTypeTable(undefined);
     loadTypeTables()
       .then((payload) => {
         if (cancelled) {
@@ -805,12 +875,22 @@ const AutoTypeTable = ({ name, path }: { name?: string; path?: string }) => {
     );
   }
 
-  if (!typeTable) {
+  if (typeTable === undefined) {
     return (
       <div className="type-placeholder">
         <strong>{name}</strong>
         <code>{path}</code>
         <span>Loading extracted props...</span>
+      </div>
+    );
+  }
+
+  if (typeTable === null) {
+    return (
+      <div className="type-placeholder">
+        <strong>{name}</strong>
+        <code>{path}</code>
+        <span>No extracted props.</span>
       </div>
     );
   }

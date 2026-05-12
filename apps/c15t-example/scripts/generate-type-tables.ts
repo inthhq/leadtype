@@ -35,6 +35,8 @@ interface GenerateTypeTablesOptions {
 const autoTypeTableTagRegex = /<AutoTypeTable\b[^>]*>/g;
 const attributeRegex = /\b(name|path)=["']([^"']+)["']/g;
 const markdownExtensions = new Set([".md", ".mdx"]);
+const packagesPathRegex = /^\.?\/?packages\//;
+const leadingCurrentDirectoryRegex = /^\.?\//;
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const defaultRepoRoot = join(scriptsRoot, "..", "..", "..");
@@ -48,6 +50,13 @@ const defaultOutFile = join(
 );
 
 const typeTableKey = (path: string, name: string) => `${path}#${name}`;
+
+function normalizeReferencePathForDocsRoot(referencePath: string): string {
+  if (packagesPathRegex.test(referencePath)) {
+    return `../${referencePath.replace(leadingCurrentDirectoryRegex, "")}`;
+  }
+  return referencePath;
+}
 
 async function collectMarkdownFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -126,11 +135,10 @@ export async function generateTypeTables({
   const references = await findAutoTypeTableReferences(docsRoot);
 
   for (const reference of references) {
-    const extractedType = extractTypeFromFile(
-      reference.path,
-      reference.name,
-      sourceRoot
-    );
+    const docsRootPath = normalizeReferencePathForDocsRoot(reference.path);
+    const extractedType =
+      extractTypeFromFile(docsRootPath, reference.name, docsRoot) ??
+      extractTypeFromFile(reference.path, reference.name, sourceRoot);
     if (!extractedType) {
       continue;
     }

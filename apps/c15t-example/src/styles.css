@@ -4,7 +4,7 @@
   color: #eeeeee;
   color-scheme: dark;
   background: #090a0a;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
 }
 
 * {
@@ -424,8 +424,8 @@ button[aria-pressed="true"],
   border-bottom: 2px solid transparent;
 }
 
-.command-tabs button:first-child,
-.inline-tabs button:first-child {
+.command-tabs button.is-active,
+.inline-tabs button.is-active {
   color: #ffffff;
   border-color: #38b5a6;
 }
