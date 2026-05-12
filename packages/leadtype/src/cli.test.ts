@@ -1,11 +1,18 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import { afterEach, describe, expect, it } from "vitest";
-import { runCli } from "./cli";
+import { isDirectRun, runCli } from "./cli";
 
 const tempDirs: string[] = [];
 const repoRoot = path.resolve(
@@ -88,6 +95,38 @@ afterEach(async () => {
 });
 
 describe("leadtype CLI", () => {
+  it("treats symlinked package-manager bin paths as direct runs", async () => {
+    const fixtureDir = await createTempDir();
+    const realCliPath = path.join(fixtureDir, "packages", "leadtype", "dist");
+    const linkedPackagePath = path.join(
+      fixtureDir,
+      "node_modules",
+      "leadtype",
+      "dist"
+    );
+    const linkType = process.platform === "win32" ? "junction" : "dir";
+    const binPath = path.join(fixtureDir, "node_modules", ".bin", "leadtype");
+    const cliPath = path.join(realCliPath, "cli.js");
+
+    await mkdir(realCliPath, { recursive: true });
+    await mkdir(path.dirname(binPath), { recursive: true });
+    await writeFile(cliPath, "#!/usr/bin/env node\n");
+    await symlink(
+      path.join(fixtureDir, "packages", "leadtype"),
+      path.join(fixtureDir, "node_modules", "leadtype"),
+      linkType
+    );
+    await symlink(path.join(linkedPackagePath, "cli.js"), binPath);
+
+    expect(isDirectRun(binPath, pathToFileURL(cliPath).href)).toBe(true);
+    expect(
+      isDirectRun(
+        path.join(linkedPackagePath, "cli.js"),
+        pathToFileURL(cliPath).href
+      )
+    ).toBe(true);
+  });
+
   it("prints the command list", async () => {
     const capture = createCapture();
 
