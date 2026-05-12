@@ -69,51 +69,126 @@ const frameworks = [
   { id: "javascript", label: "JavaScript", shortLabel: "JS" },
 ] as const;
 
-const sidebarGroups = [
+const commonConceptItems = [
+  ["concepts/initialization-flow", "Initialization Flow"],
+  ["concepts/client-modes", "Client Modes"],
+  ["concepts/consent-models", "Consent Models"],
+  ["concepts/policy-packs", "Policy Packs"],
+  ["concepts/consent-categories", "Consent Categories"],
+  ["concepts/cookie-management", "Cookie Management"],
+  ["concepts/glossary", "Glossary"],
+] as const;
+
+const commonGuideItems = [
+  ["script-loader", "Script Loader"],
+  ["iframe-blocking", "Iframe Blocking"],
+  ["network-blocker", "Network Blocker"],
+  ["callbacks", "Callbacks"],
+  ["internationalization", "Internationalization"],
+  ["policy-packs", "Policy Packs"],
+] as const;
+
+const reactFrameworkGroups = [
   {
     title: "Start",
     items: [
       ["quickstart", "Quickstart"],
       ["optimization", "Optimization"],
-      ["ai-agents", "AI Agents"],
+      ["../../ai-agents", "AI Agents"],
     ],
   },
-  {
-    title: "Concepts",
-    items: [
-      ["concepts/initialization-flow", "Initialization Flow"],
-      ["concepts/client-modes", "Client Modes"],
-      ["concepts/consent-models", "Consent Models"],
-      ["concepts/policy-packs", "Policy Packs"],
-      ["concepts/consent-categories", "Consent Categories"],
-      ["concepts/cookie-management", "Cookie Management"],
-      ["concepts/glossary", "Glossary"],
-    ],
-  },
+  { title: "Concepts", items: commonConceptItems },
   {
     title: "Guides",
     items: [
-      ["script-loader", "Script Loader"],
-      ["iframe-blocking", "Iframe Blocking"],
-      ["network-blocker", "Network Blocker"],
-      ["callbacks", "Callbacks"],
-      ["internationalization", "Internationalization"],
-      ["policy-packs", "Policy Packs"],
+      ...commonGuideItems,
       ["server-side", "Server Side"],
-      ["headless", "Headless Components"],
+      ["building-headless-components", "Building Headless Components"],
+      ["headless", "Headless Mode"],
     ],
   },
   {
     title: "Components",
     items: [
+      ["components/consent-manager-provider", "Provider"],
       ["components/consent-banner", "Consent Banner"],
       ["components/consent-dialog", "Consent Dialog"],
       ["components/consent-widget", "Consent Widget"],
-      ["components/consent-manager-provider", "Provider"],
+      ["components/consent-dialog-trigger", "Dialog Trigger"],
+      ["components/consent-dialog-link", "Dialog Link"],
+      ["components/frame", "Frame"],
       ["components/dev-tools", "DevTools"],
     ],
   },
+  {
+    title: "Styling",
+    items: [
+      ["styling/overview", "Overview"],
+      ["styling/tokens", "Tokens"],
+      ["styling/slots", "Slots"],
+      ["styling/classnames", "Class Names"],
+      ["styling/tailwind", "Tailwind"],
+      ["styling/color-scheme", "Color Scheme"],
+      ["styling/css-variables", "CSS Variables"],
+    ],
+  },
+  {
+    title: "Hooks",
+    items: [
+      ["hooks/use-consent-manager/overview", "useConsentManager"],
+      ["hooks/use-translations", "useTranslations"],
+      ["hooks/use-focus-trap", "useFocusTrap"],
+      ["hooks/use-color-scheme", "useColorScheme"],
+      ["hooks/use-reduced-motion", "useReducedMotion"],
+      ["hooks/use-text-direction", "useTextDirection"],
+      ["hooks/use-ssr-status", "useSSRStatus"],
+      ["hooks/use-draggable", "useDraggable"],
+    ],
+  },
+  {
+    title: "IAB TCF",
+    items: [
+      ["iab/overview", "Overview"],
+      ["iab/consent-banner", "Consent Banner"],
+      ["iab/consent-dialog", "Consent Dialog"],
+      ["iab/use-gvl-data", "useGVLData"],
+    ],
+  },
 ] as const;
+
+const frameworkSidebarGroupsById = {
+  next: reactFrameworkGroups,
+  react: reactFrameworkGroups,
+  javascript: [
+    {
+      title: "Start",
+      items: [
+        ["quickstart", "Quickstart"],
+        ["optimization", "Optimization"],
+        ["../../ai-agents", "AI Agents"],
+      ],
+    },
+    { title: "Concepts", items: commonConceptItems },
+    { title: "Guides", items: commonGuideItems },
+    {
+      title: "Store API",
+      items: [
+        ["api/overview", "Overview"],
+        ["api/checking-consent", "Checking Consent"],
+        ["api/setting-consent", "Setting Consent"],
+        ["api/location-info", "Location Info"],
+      ],
+    },
+    {
+      title: "Building Framework Libraries",
+      items: [["building-ui", "Building UI"]],
+    },
+    {
+      title: "IAB TCF",
+      items: [["iab/overview", "Overview"]],
+    },
+  ],
+} as const;
 
 const integrationsSidebarGroups = [
   {
@@ -327,14 +402,20 @@ const filterExistingGroups = (groups: SidebarGroup[]) =>
 
 const getFrameworkSidebarGroups = (frameworkId: string) =>
   filterExistingGroups(
-    sidebarGroups.map((group) => ({
-      title: group.title,
+    frameworkSidebarGroupsById[
+      frameworkId as keyof typeof frameworkSidebarGroupsById
+    ].map((group, index) => ({
+      title:
+        index === 0
+          ? (frameworks.find((framework) => framework.id === frameworkId)
+              ?.label ?? group.title)
+          : group.title,
       items: group.items.map(([suffix, label]) => {
-        const isSharedPage = suffix === "ai-agents";
+        const isSharedPage = suffix.startsWith("../");
         return {
           label,
           route: isSharedPage
-            ? "/docs/ai-agents"
+            ? `/docs/${suffix.replace(/^\.\.\//g, "")}`
             : `/docs/frameworks/${frameworkId}/${suffix}`,
         };
       }),
