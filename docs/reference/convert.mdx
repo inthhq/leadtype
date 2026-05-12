@@ -89,3 +89,5 @@ remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
 ```
 
 Place `remarkInclude` *before* the defaults so includes expand into the source AST before component flattening sees them. See [Remark plugins](/docs/reference/remark) for the full stack and order rationale.
+
+The include plugin supports tags such as `<include src="./shared/auth.mdx" />` and section reuse with `<include src="./shared/auth.mdx#session-flow" />`. Section reuse expects a lowercase `<section id="session-flow">` block in the included file.

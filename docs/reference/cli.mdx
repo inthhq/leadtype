@@ -23,7 +23,7 @@ leadtype generate [options]
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--src <dir>` | `.` | Repo or root directory containing the docs folder. |
-| `--docs-dir <dir>` | `docs` | Docs folder relative to `--src`. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeat to merge multiple folders into one generated docs tree. |
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
 | `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full.txt`, search, sitemap, robots, and Agent Readability artifacts. |
 | `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Site mode only; ignored in `--bundle`. |
@@ -61,6 +61,32 @@ The config supplies product metadata, group titles, group order, group descripti
 
 If no config file exists, the CLI falls back to `package.json` for product metadata and infers groups from the union of `group:` values across the generated pages. Inferred groups are sorted alphabetically and title-cased. Use `docs.config.ts` when order or descriptions matter.
 
+### Multiple source folders
+
+Repeat `--docs-dir` when a project keeps related agent-readable content outside the main docs folder, such as a sibling changelog:
+
+```bash
+leadtype generate \
+  --src . \
+  --docs-dir docs \
+  --docs-dir changelog \
+  --out public
+```
+
+The first source folder is mounted at the generated docs root. Additional source folders are mounted under their folder name, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1.md`. `--include` and `--exclude` still match docs-root-relative paths after that merge, for example `--include "changelog/**"`.
+
+Use `<dir>=<url-prefix>` when a source should have its own public URL prefix:
+
+```bash
+leadtype generate \
+  --src . \
+  --docs-dir docs \
+  --docs-dir changelog=/changelog \
+  --out public
+```
+
+That keeps the internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, also writes a static markdown mirror at `public/changelog/v1.md`, and emits canonical links such as `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
+
 ### Bundle mode
 
 ```bash
@@ -78,10 +104,12 @@ Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/d
   "mode": "site",
   "srcDir": "/abs/path/to/repo",
   "docsDir": "/abs/path/to/repo/docs",
+  "docsDirs": ["/abs/path/to/repo/docs"],
   "outDir": "/abs/path/to/repo/public",
   "product": { "name": "...", "summary": "..." },
   "groups": [{ "slug": "get-started", "title": "Get Started" }],
   "filters": { "include": [], "exclude": [] },
+  "mounts": [{ "pathPrefix": "", "urlPrefix": "/docs" }],
   "files": {
     "llmsTxt": "/abs/path/.../public/llms.txt",
     "docsLlmsTxt": "/abs/path/.../public/docs/llms.txt",

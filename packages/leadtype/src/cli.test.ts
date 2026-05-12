@@ -374,6 +374,316 @@ describe("leadtype CLI", () => {
     ]);
   });
 
+  it("generates one docs tree from multiple source folders", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "c15t",
+    summary: "Consent tooling docs.",
+  },
+  groups: [
+    { slug: "guides", title: "Guides" },
+    { slug: "changelog", title: "Changelog" },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "changelog", "v1.mdx"),
+      `---
+title: "Version 1"
+description: "First c15t release."
+group: changelog
+---
+
+# Version 1
+
+Initial release.
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--docs-dir",
+        "docs",
+        "--docs-dir",
+        "changelog",
+        "--out",
+        outDir,
+        "--base-url",
+        "https://c15t.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      docsDir: string;
+      docsDirs: string[];
+    };
+    expect(result.docsDir).toBe(path.join(srcDir, "docs"));
+    expect(result.docsDirs).toEqual([
+      path.join(srcDir, "docs"),
+      path.join(srcDir, "changelog"),
+    ]);
+    expect(existsSync(path.join(outDir, "docs", "quickstart.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "changelog", "v1.md"))).toBe(
+      true
+    );
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("## Changelog");
+    expect(docsSummary).toContain("](/docs/changelog/v1.md)");
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as { pages: Array<{ urlPath: string }> };
+    expect(manifest.pages.map((page) => page.urlPath)).toContain(
+      "/docs/changelog/v1"
+    );
+  });
+
+  it("expands include partials during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides',
+      '<import src="./shared.mdx#snippet" />'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "shared.mdx"),
+      `<section id="snippet">
+Shared content from a partial.
+</section>
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "Fixture",
+        "--summary",
+        "Fixture docs.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("Shared content from a partial.");
+    expect(markdown).not.toContain("<import");
+  });
+
+  it("resolves AutoTypeTable paths against the source root during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(
+      srcDir,
+      "reference.mdx",
+      'title: "Reference"\ndescription: "Type reference."\ngroup: reference',
+      '<AutoTypeTable name="ConsentBannerProps" path="./packages/react/src/components/consent-banner/consent-banner.tsx" />'
+    );
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "changelog", "v1.mdx"),
+      `---
+title: "v1"
+description: "First release."
+---
+
+# v1
+`
+    );
+    const typePath = path.join(
+      srcDir,
+      "packages",
+      "react",
+      "src",
+      "components",
+      "consent-banner",
+      "consent-banner.tsx"
+    );
+    await mkdir(path.dirname(typePath), { recursive: true });
+    await writeFile(
+      typePath,
+      `export interface ConsentBannerProps {
+  /** Content to display as the banner's title. */
+  title?: string;
+}
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--docs-dir",
+        "docs",
+        "--docs-dir",
+        "changelog=/changelog",
+        "--out",
+        outDir,
+        "--name",
+        "Fixture",
+        "--summary",
+        "Fixture docs.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "reference.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("title");
+    expect(markdown).toContain("Content to display as the banner's title.");
+    expect(markdown).not.toContain("Could not extract");
+  });
+
+  it("mounts an extra source folder at a custom public URL prefix", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "c15t",
+    summary: "Consent tooling docs.",
+  },
+  groups: [
+    { slug: "guides", title: "Guides" },
+    { slug: "changelog", title: "Changelog" },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "changelog", "v1.mdx"),
+      `---
+title: "Version 1"
+description: "First c15t release."
+group: changelog
+---
+
+# Version 1
+
+Initial release.
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--docs-dir",
+        "docs",
+        "--docs-dir",
+        "changelog=/changelog",
+        "--out",
+        outDir,
+        "--base-url",
+        "https://c15t.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      mounts: Array<{ pathPrefix: string; urlPrefix: string }>;
+    };
+    expect(result.mounts).toEqual([
+      { pathPrefix: "", urlPrefix: "/docs" },
+      { pathPrefix: "changelog", urlPrefix: "/changelog" },
+    ]);
+    expect(existsSync(path.join(outDir, "docs", "changelog", "v1.md"))).toBe(
+      true
+    );
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("](/changelog/v1.md)");
+    expect(docsSummary).not.toContain("](/docs/changelog/v1.md)");
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as {
+      pages: Array<{
+        markdownUrlPath: string;
+        relativePath: string;
+        urlPath: string;
+      }>;
+    };
+    expect(manifest.pages).toContainEqual(
+      expect.objectContaining({
+        markdownUrlPath: "/changelog/v1.md",
+        relativePath: "changelog/v1",
+        urlPath: "/changelog/v1",
+      })
+    );
+
+    const searchIndex = JSON.parse(
+      await readFile(path.join(outDir, "docs", "search-index.json"), "utf8")
+    ) as { documents: [string, string, string, string][] };
+    expect(searchIndex.documents.map((doc) => doc[3])).toContain(
+      "/changelog/v1"
+    );
+  });
+
   it("fails clearly when docs config is invalid", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

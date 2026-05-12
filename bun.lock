@@ -17,6 +17,33 @@
         "ultracite": "7.6.5",
       },
     },
+    "apps/c15t-example": {
+      "name": "c15t-example",
+      "version": "0.0.0",
+      "dependencies": {
+        "@fontsource-variable/geist": "^5.2.8",
+        "@fontsource-variable/geist-mono": "^5.2.7",
+        "@mdx-js/react": "^3.1.1",
+        "@vitejs/plugin-react": "^6.0.1",
+        "leadtype": "workspace:*",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "vite": "^8.0.11",
+      },
+      "devDependencies": {
+        "@mdx-js/rollup": "^3.1.1",
+        "@repo/typescript-config": "workspace:*",
+        "@types/mdast": "^4.0.4",
+        "@types/node": "^25.6.2",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "@typescript/native-preview": "7.0.0-dev.20260509.2",
+        "remark-frontmatter": "^5.0.0",
+        "remark-gfm": "^4.0.1",
+        "typescript": "6.0.3",
+        "vite-tsconfig-paths": "^6.1.1",
+      },
+    },
     "apps/example": {
       "name": "example",
       "version": "0.0.0",
@@ -806,6 +833,8 @@
     "buffer": ["buffer@5.7.1", "", { "dependencies": { "base64-js": "^1.3.1", "ieee754": "^1.1.13" } }, "sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ=="],
 
     "buffer-equal-constant-time": ["buffer-equal-constant-time@1.0.1", "", {}, "sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA=="],
+
+    "c15t-example": ["c15t-example@workspace:apps/c15t-example"],
 
     "caniuse-lite": ["caniuse-lite@1.0.30001791", "", {}, "sha512-yk0l/YSrOnFZk3UROpDLQD9+kC1l4meK/wed583AXrzoarMGJcbRi2Q4RaUYbKxYAsZ8sWmaSa/DsLmdBeI1vQ=="],
 

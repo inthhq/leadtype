@@ -152,6 +152,47 @@ await generateAgentReadabilityArtifacts({
 
 `generateLLMFullContextFiles` and `generateAgentReadabilityArtifacts` read from `<outDir>/docs/`, so always run conversion first.
 
+## Mounted URL prefixes
+
+By default, generated markdown under `<outDir>/docs/` maps to public URLs under `/docs`. Use `mounts` when part of that generated tree should have a different canonical URL, such as a changelog that lives beside docs in the source repo:
+
+```ts
+const mounts = [
+  { pathPrefix: "", urlPrefix: "/docs" },
+  { pathPrefix: "changelog", urlPrefix: "/changelog" },
+];
+```
+
+With those mounts, `public/docs/quickstart.md` is still `/docs/quickstart.md`, while `public/docs/changelog/v1.md` is described as `/changelog/v1.md` in `llms.txt`, `llms-full.txt`, navigation, sitemap data, Agent Readability metadata, and search metadata.
+
+Pass the same `mounts` array to every artifact generator that reads generated markdown:
+
+```ts
+await generateLlmsTxt({
+  srcDir: ".",
+  outDir: "public",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+  mounts,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  product: { name: docsConfig.product.name },
+  groups: docsConfig.groups,
+  mounts,
+});
+
+await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+  mounts,
+});
+```
+
+`resolveDocsNavigation` and `resolveDocsTableOfContents` also accept `mounts` so sidebars and page metadata use the same URL paths. If you use the CLI, prefer `--docs-dir changelog=/changelog`; it creates the equivalent mounts and also writes static markdown mirrors at `public/changelog/*.md`.
+
 ## generateAgentReadabilityArtifacts
 
 For hosted docs sites that need the Vercel Agent Readability discovery layer without letting leadtype own the whole website:

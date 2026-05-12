@@ -10,6 +10,7 @@ import {
 import path from "node:path";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
+  type DocsPathMount,
   GENERIC_DOC_TITLES,
   normalizeBaseUrl,
   normalizeWhitespace as normalizeDescription,
@@ -17,6 +18,7 @@ import {
   stripDocsExtension,
   toAbsoluteUrl,
   toMarkdownUrlPath,
+  toMountedMarkdownUrlPath,
   toDocsUrlPath as toUrlPath,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
@@ -147,6 +149,8 @@ export type LlmsTxtConfig = {
   product: ProductInfo;
   /** Group tree from `docs.config.ts`. Used for `/docs/llms.txt` sections. */
   groups: DocsGroup[];
+  /** Optional path-to-URL mounts for generated docs, e.g. changelog -> /changelog. */
+  mounts?: DocsPathMount[];
 };
 
 export type LLMFullContextConfig = {
@@ -155,6 +159,7 @@ export type LLMFullContextConfig = {
   product: Pick<ProductInfo, "name">;
   /** Group tree from `docs.config.ts`. Preserved for config validation. */
   groups: DocsGroup[];
+  mounts?: DocsPathMount[];
 };
 
 export type AgentReadabilityConfig = {
@@ -162,6 +167,7 @@ export type AgentReadabilityConfig = {
   baseUrl?: string;
   product: Pick<ProductInfo, "name" | "summary">;
   groups: DocsGroup[];
+  mounts?: DocsPathMount[];
 };
 
 export type AgentReadabilityResult = {
@@ -178,12 +184,14 @@ export type ResolveDocsNavigationConfig = {
   srcDir: string;
   baseUrl?: string;
   groups: DocsGroup[];
+  mounts?: DocsPathMount[];
   toc?: boolean | DocsTableOfContentsOptions;
 };
 
 export type ResolveDocsTableOfContentsConfig = {
   srcDir: string;
   baseUrl?: string;
+  mounts?: DocsPathMount[];
   options?: DocsTableOfContentsOptions;
 };
 
@@ -453,7 +461,10 @@ export function extractDocsTableOfContents(
   return items;
 }
 
-function pageToRenderedLink(doc: SourceDoc): RenderedLink {
+function pageToRenderedLink(
+  doc: SourceDoc,
+  mounts?: DocsPathMount[]
+): RenderedLink {
   const title =
     doc.title && !GENERIC_DOC_TITLES.has(doc.title.toLowerCase())
       ? doc.title
@@ -464,13 +475,14 @@ function pageToRenderedLink(doc: SourceDoc): RenderedLink {
   return {
     title,
     description,
-    url: toMarkdownUrlPath(doc.urlPath),
+    url: toMountedMarkdownUrlPath(`${doc.relativePath}.md`, mounts),
   };
 }
 
 function resolveCuratedLink(
   link: CuratedLink,
-  sourceDocs: Map<string, SourceDoc>
+  sourceDocs: Map<string, SourceDoc>,
+  mounts?: DocsPathMount[]
 ): RenderedLink {
   const sourceDoc = sourceDocs.get(link.urlPath);
   const title =
@@ -487,7 +499,9 @@ function resolveCuratedLink(
   return {
     title,
     description: description || `Entry point for ${title} documentation.`,
-    url: toMarkdownUrlPath(sourceDoc?.urlPath ?? link.urlPath),
+    url: sourceDoc
+      ? toMountedMarkdownUrlPath(`${sourceDoc.relativePath}.md`, mounts)
+      : toMarkdownUrlPath(link.urlPath),
   };
 }
 
@@ -512,7 +526,8 @@ async function collectFiles(
 
 async function readSourceDocs(
   srcDir: string,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[]
 ): Promise<Map<string, SourceDocWithContent>> {
   const docsDir = path.join(srcDir, DOCS_DIRNAME);
   const docs = new Map<string, SourceDocWithContent>();
@@ -538,7 +553,7 @@ async function readSourceDocs(
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
       );
-      const urlPath = toUrlPath(relativePath);
+      const urlPath = toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
       return {
         urlPath,
@@ -570,7 +585,8 @@ async function readSourceDocs(
 
 async function readMarkdownDocs(
   outDir: string,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[]
 ): Promise<MarkdownDoc[]> {
   const docsDir = path.join(outDir, DOCS_DIRNAME);
   if (!existsSync(docsDir)) {
@@ -591,7 +607,7 @@ async function readMarkdownDocs(
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
       );
-      const urlPath = toUrlPath(relativePath);
+      const urlPath = toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
 
       return {
@@ -686,11 +702,12 @@ function pagesUnderGroup(
 
 function renderProductSummary(
   product: ProductInfo,
-  sourceDocs: Map<string, SourceDoc>
+  sourceDocs: Map<string, SourceDoc>,
+  mounts?: DocsPathMount[]
 ): string {
   const startingPoints = product.bestStartingPoints ?? [];
   const links = startingPoints.map((link) =>
-    resolveCuratedLink(link, sourceDocs)
+    resolveCuratedLink(link, sourceDocs, mounts)
   );
 
   const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
@@ -718,7 +735,8 @@ function renderProductSummary(
 function renderDocsSummary(
   product: ProductInfo,
   resolved: ResolvedGroup[],
-  membership: GroupMembership
+  membership: GroupMembership,
+  mounts?: DocsPathMount[]
 ): string {
   const renderedSections: string[] = [];
   for (const group of resolved) {
@@ -730,7 +748,10 @@ function renderDocsSummary(
     if (group.description) {
       lines.push("", group.description);
     }
-    lines.push("", ...pages.map(pageToRenderedLink).map(renderLink));
+    lines.push(
+      "",
+      ...pages.map((page) => pageToRenderedLink(page, mounts)).map(renderLink)
+    );
     renderedSections.push(lines.join("\n"));
   }
 
@@ -738,7 +759,9 @@ function renderDocsSummary(
     const lines = ["## Other"];
     lines.push(
       "",
-      ...membership.ungrouped.map(pageToRenderedLink).map(renderLink)
+      ...membership.ungrouped
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink)
     );
     renderedSections.push(lines.join("\n"));
   }
@@ -818,7 +841,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   const srcDir = path.resolve(config.srcDir);
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const sourceDocs = await readSourceDocs(srcDir, baseUrl, config.mounts);
 
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
@@ -826,13 +849,13 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
   await writeFile(
     path.join(outDir, "llms.txt"),
-    renderProductSummary(config.product, sourceDocs)
+    renderProductSummary(config.product, sourceDocs, config.mounts)
   );
 
   if (resolved.length > 0) {
     await writeFile(
       path.join(outDir, DOCS_DIRNAME, "llms.txt"),
-      renderDocsSummary(config.product, resolved, membership)
+      renderDocsSummary(config.product, resolved, membership, config.mounts)
     );
   }
 }
@@ -846,7 +869,7 @@ export async function generateLLMFullContextFiles(
 ): Promise<void> {
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts);
 
   if (markdownDocs.length === 0) {
     throw new Error(
@@ -867,9 +890,13 @@ export async function generateLLMFullContextFiles(
 
 function toAgentReadabilityPage(
   doc: MarkdownDoc,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[]
 ): AgentReadabilityPage {
-  const markdownUrlPath = toMarkdownUrlPath(doc.urlPath);
+  const markdownUrlPath = toMountedMarkdownUrlPath(
+    `${doc.relativePath}.md`,
+    mounts
+  );
   return {
     title: doc.title,
     description: doc.description,
@@ -918,7 +945,7 @@ export async function generateAgentReadabilityArtifacts(
   const outDir = path.resolve(config.outDir);
   const docsDir = path.join(outDir, DOCS_DIRNAME);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts);
 
   if (markdownDocs.length === 0) {
     throw new Error(
@@ -928,7 +955,9 @@ export async function generateAgentReadabilityArtifacts(
 
   const resolved = resolveGroups(config.groups);
   const navigation = buildNavigationFromMarkdownDocs(markdownDocs, resolved);
-  const pages = markdownDocs.map((doc) => toAgentReadabilityPage(doc, baseUrl));
+  const pages = markdownDocs.map((doc) =>
+    toAgentReadabilityPage(doc, baseUrl, config.mounts)
+  );
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: new Date().toISOString(),
@@ -1144,7 +1173,7 @@ export async function resolveDocsNavigation(
 ): Promise<DocsNavigation> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const sourceDocs = await readSourceDocs(srcDir, baseUrl, config.mounts);
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
   const tocOptions = resolveNavigationTocOptions(config.toc);
@@ -1176,7 +1205,7 @@ export async function resolveDocsTableOfContents(
 ): Promise<DocsTableOfContentsPage[]> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const sourceDocs = await readSourceDocs(srcDir, baseUrl, config.mounts);
 
   return [...sourceDocs.values()]
     .sort((left, right) => left.urlPath.localeCompare(right.urlPath))

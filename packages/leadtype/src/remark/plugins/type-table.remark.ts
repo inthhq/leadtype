@@ -781,10 +781,16 @@ function processExtractedTypeTableNode(
   return content;
 }
 
+function isExtractedTypeTableNode(
+  node: MdxJsxFlowElement | MdxJsxTextElement
+): boolean {
+  return hasName(node, "ExtractedTypeTable") || hasName(node, "AutoTypeTable");
+}
+
 function isValidTableNode(
   node: MdxJsxFlowElement | MdxJsxTextElement
 ): boolean {
-  return hasName(node, "TypeTable") || hasName(node, "ExtractedTypeTable");
+  return hasName(node, "TypeTable") || isExtractedTypeTableNode(node);
 }
 
 function processTypeTableNode(
@@ -803,7 +809,7 @@ function processTypeTableNode(
   }
 
   // Handle ExtractedTypeTable components separately
-  if (hasName(node, "ExtractedTypeTable")) {
+  if (isExtractedTypeTableNode(node)) {
     return processExtractedTypeTableNode(node, options);
   }
 
@@ -896,9 +902,9 @@ export const remarkTypeTableToMarkdown = (
   const resolved = { ...defaults, ...opts };
 
   return createJsxComponentProcessor(
-    ["TypeTable", "ExtractedTypeTable"],
+    ["TypeTable", "ExtractedTypeTable", "AutoTypeTable"],
     (node) => {
-      if (hasName(node, "ExtractedTypeTable")) {
+      if (isExtractedTypeTableNode(node)) {
         return processExtractedTypeTableNode(node, resolved);
       }
       return processTypeTableNode(node, resolved);

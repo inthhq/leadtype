@@ -36,6 +36,21 @@ The generator reads markdown under `<outDir>/docs/` and writes:
 
 Splitting them keeps the index small (load on every search) while content stays cheap (load on result hover or answer generation).
 
+When generated markdown uses mounted URL prefixes, pass the same `mounts` array used by the LLM and Agent Readability generators:
+
+```ts
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://leadtype.dev",
+  mounts: [
+    { pathPrefix: "", urlPrefix: "/docs" },
+    { pathPrefix: "changelog", urlPrefix: "/changelog" },
+  ],
+});
+```
+
+The index still reads content from `<outDir>/docs/changelog/*.md`, but search results point at `/changelog/*`.
+
 ## Runtime search
 
 The runtime is edge-safe — no Node APIs, works on Vercel, Cloudflare, and anywhere else:
