@@ -8,6 +8,7 @@ import {
   remarkInclude,
   remarkTypeTableToMarkdown,
 } from "./index";
+import { resolveDefaultTypeTableBasePath } from "./plugins/type-table.remark";
 
 const tempDirs: string[] = [];
 
@@ -77,13 +78,13 @@ describe("remark markdown output", () => {
     expect(result.markdown).not.toContain('appearsClicking **"Customize"**');
   });
 
-  it("resolves ExtractedTypeTable paths from docs by default", async () => {
+  it("resolves ExtractedTypeTable paths from the source root by default", async () => {
     const projectDir = await createTempProject();
     const previousCwd = process.cwd();
     try {
       await writeProjectFile(
         projectDir,
-        "docs/types.ts",
+        "types.ts",
         `export interface PipelineOptions {
   /** Source directory for docs. */
   srcDir: string;
@@ -113,7 +114,7 @@ describe("remark markdown output", () => {
     try {
       await writeProjectFile(
         projectDir,
-        "docs/types.ts",
+        "types.ts",
         `export interface ConsentBannerProps {
   /** Content to display as the banner's title. */
   title?: string;
@@ -137,6 +138,18 @@ describe("remark markdown output", () => {
     } finally {
       process.chdir(previousCwd);
     }
+  });
+
+  it("uses the first docs segment when deriving the fallback type-table base path", () => {
+    expect(
+      resolveDefaultTypeTableBasePath("/repo/docs/reference/docs/page.mdx")
+    ).toBe("/repo");
+    expect(resolveDefaultTypeTableBasePath("docs/reference/page.mdx")).toBe(
+      process.cwd()
+    );
+    expect(resolveDefaultTypeTableBasePath("/repo/content/page.mdx")).toBe(
+      process.cwd()
+    );
   });
 
   it("converts card grids with interactive cards into markdown lists", async () => {

@@ -11,17 +11,23 @@
  * Use this in the `mdxSourcePlugins` preset shipped from `leadtype/mdx`.
  */
 
-import { resolve } from "node:path";
-import type { Root } from "mdast";
+import type { Paragraph, Root, RootContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx";
-import { getAttributeValue, hasName, type MdxNode } from "../libs";
-import { extractTypeFromFile } from "./type-table.remark";
-
-const DEFAULT_EXTRACTED_TYPE_BASE_PATH = "docs";
+import type { VFile } from "vfile";
+import { createText, getAttributeValue, hasName, type MdxNode } from "../libs";
+import {
+  createTypeTableExtractionFailureMessage,
+  extractTypeFromFile,
+  resolveDefaultTypeTableBasePath,
+} from "./type-table.remark";
 
 export type RemarkResolveTypeTableJsxOptions = {
   /** Base directory used to resolve relative `path=` attributes. */
   basePath?: string;
+  /** Throw when extraction fails instead of emitting a visible warning node. */
+  strict?: boolean;
+  /** Emit a visible warning node when extraction fails. Defaults to true. */
+  warnOnFailure?: boolean;
 };
 
 type AttrValueExpression = {
@@ -81,25 +87,40 @@ function buildTypeTableNode(opts: {
   };
 }
 
+function getVFilePath(file?: VFile): string | undefined {
+  return typeof file?.path === "string" && file.path.length > 0
+    ? file.path
+    : undefined;
+}
+
+function createWarningParagraph(message: string): Paragraph {
+  return {
+    type: "paragraph",
+    children: [
+      { type: "strong", children: [createText("Warning:")] },
+      createText(` ${message}`),
+    ],
+  };
+}
+
 export function remarkResolveTypeTableJsx(
   options: RemarkResolveTypeTableJsxOptions = {}
-): (tree: Root) => Root {
-  const defaultBasePath = resolve(
-    process.cwd(),
-    DEFAULT_EXTRACTED_TYPE_BASE_PATH
-  );
-  const basePath = options.basePath ?? defaultBasePath;
-
-  return (tree: Root): Root => {
+): (tree: Root, file?: VFile) => Root {
+  return (tree: Root, file?: VFile): Root => {
+    const basePath =
+      options.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file));
     const replace = (
       parentChildren: Root["children"],
       index: number,
-      replacement: MdxJsxFlowElement
+      replacement: RootContent | RootContent[]
     ) => {
+      const replacements = Array.isArray(replacement)
+        ? replacement
+        : [replacement];
       parentChildren.splice(
         index,
         1,
-        replacement as unknown as Root["children"][number]
+        ...(replacements as unknown as Root["children"])
       );
     };
 
@@ -134,20 +155,38 @@ export function remarkResolveTypeTableJsx(
           }
 
           // Always rewrite the tag to `<TypeTable>` so consumers only ever
-          // implement one runtime component. If extraction failed, `properties`
-          // is `{}` and `name`/`path` are still passed through — the consumer's
-          // TypeTable can render a placeholder for that case.
+          // implement one runtime component. If extraction fails, emit a
+          // visible warning before the placeholder table unless strict mode
+          // has been enabled.
           const extracted = extractTypeFromFile(path, name, overrideBasePath);
+          const typeTableNode = buildTypeTableNode({
+            properties: extracted ?? {},
+            title,
+            description,
+            name,
+            path,
+          });
+          if (!extracted) {
+            const message = createTypeTableExtractionFailureMessage({
+              basePath: overrideBasePath,
+              path,
+              typeName: name,
+            });
+            if (options.strict) {
+              throw new Error(message);
+            }
+            if (options.warnOnFailure ?? true) {
+              replace(parentChildren, index, [
+                createWarningParagraph(message),
+                typeTableNode as unknown as RootContent,
+              ]);
+              continue;
+            }
+          }
           replace(
             parentChildren,
             index,
-            buildTypeTableNode({
-              properties: extracted ?? {},
-              title,
-              description,
-              name,
-              path,
-            })
+            typeTableNode as unknown as RootContent
           );
           continue;
         }

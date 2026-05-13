@@ -9,7 +9,7 @@
  *   - Next App Router: import the source object, call `loadPage(slug)` from a
  *     server component, render `result.ast` with `@mdx-js/mdx`.
  *   - Vite + @mdx-js/rollup: import source `.mdx` directly through the bundler
- *     with `mdxSourcePlugins`; this primitive provides nav + search.
+ *     with `createMdxSourcePlugins()`; this primitive provides nav + search.
  *
  * The primitive does **no I/O on construction** beyond a directory scan for
  * `listPages()`. Page bodies are loaded on demand.
@@ -38,7 +38,7 @@ import type {
 } from "../llm";
 import { extractDocsTableOfContents, resolveDocsNavigation } from "../llm";
 import type { DocsNavigation } from "../llm/readability";
-import { mdxSourcePlugins } from "../mdx/source-preset";
+import { createMdxSourcePlugins } from "../mdx/source-preset";
 import {
   type IncludeResolution,
   type ResolveIncludeOptions,
@@ -97,11 +97,19 @@ export type CreateDocsSourceConfig = {
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */
   mounts?: DocsPathMount[];
   /**
-   * Remark plugins to apply when loading pages. Defaults to `mdxSourcePlugins`
-   * (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
+   * Remark plugins to apply when loading pages. Defaults to Leadtype's source
+   * preset (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
    * Pass `[]` to skip transforms.
    */
   remarkPlugins?: PluggableList;
+  /**
+   * Base directory for `<ExtractedTypeTable>` / `<AutoTypeTable path="…">`
+   * resolution. Defaults to the parent of `contentDir`, matching a source
+   * root such as `.c15t` for `.c15t/docs`.
+   */
+  typeTableBasePath?: string;
+  /** Throw when a referenced type cannot be extracted. */
+  typeTableStrict?: boolean;
   /** TOC extraction options. Pass `false` to skip TOC computation entirely. */
   toc?: DocsTableOfContentsOptions | false;
   /** Search-index tuning. */
@@ -212,7 +220,18 @@ export async function createDocsSource(
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const remarkPlugins = config.remarkPlugins ?? mdxSourcePlugins;
+  const contentParentDir = path.dirname(contentDir);
+  const defaultTypeTableBasePath =
+    contentParentDir === contentDir ? contentDir : contentParentDir;
+  const typeTableBasePath = path.resolve(
+    config.typeTableBasePath ?? defaultTypeTableBasePath
+  );
+  const remarkPlugins =
+    config.remarkPlugins ??
+    createMdxSourcePlugins({
+      typeTableBasePath,
+      typeTableStrict: config.typeTableStrict,
+    });
   const tocOptions: DocsTableOfContentsOptions | false =
     config.toc === false ? false : (config.toc ?? {});
 

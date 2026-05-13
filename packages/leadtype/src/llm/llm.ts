@@ -138,6 +138,13 @@ export type DocsGroup = {
 export type DocsConfig = {
   product: ProductInfo;
   groups: DocsGroup[];
+  /**
+   * Optional base directory for ExtractedTypeTable / AutoTypeTable path
+   * resolution during generation. Relative values are resolved from `--src`.
+   */
+  typeTableBasePath?: string;
+  /** Throw during generation when a referenced type cannot be extracted. */
+  typeTableStrict?: boolean;
 };
 
 /**
