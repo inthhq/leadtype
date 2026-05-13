@@ -1,7 +1,13 @@
-// Root entry for `leadtype`. Exposes config helpers used by docs sites,
-// agent tooling, and the LLM-bundle pipeline. Specialized surfaces stay on
-// dedicated subpaths (`leadtype/convert`, `/llm`, `/search`, `/lint`).
-// TOC extraction APIs and slug helpers live on `leadtype/llm` only.
+// Root entry for `leadtype`. Exposes the docs source primitive and the
+// config helpers used across docs sites, agent tooling, and the LLM-bundle
+// pipeline. Specialized surfaces stay on dedicated subpaths:
+//   - `leadtype/mdx` — tag types, source remark preset, include resolver
+//   - `leadtype/fumadocs` — adapter for fumadocs-core's Source interface
+//   - `leadtype/remark` — agent/LLM flattening plugins
+//   - `leadtype/convert` — MDX → markdown helpers
+//   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
+//   - `leadtype/search` — search index + per-host adapters
+//   - `leadtype/lint` — frontmatter / meta.json validation
 export {
   type AgentReadabilityConfig,
   type AgentReadabilityManifest,
@@ -13,3 +19,11 @@ export {
   defineDocsConfig,
   type ProductInfo,
 } from "./llm";
+
+export {
+  type CreateDocsSourceConfig,
+  createDocsSource,
+  type DocsPage,
+  type DocsPageMeta,
+  type DocsSource,
+} from "./source";

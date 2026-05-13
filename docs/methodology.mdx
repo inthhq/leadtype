@@ -21,17 +21,21 @@ Choose a website framework when the main job is publishing a polished docs UI qu
 
 ## What leadtype owns
 
-- MDX-to-markdown conversion via a remark plugin stack.
-- `llms.txt`, markdown mirrors, and root `llms-full.txt` fallback context for agents.
-- A static, edge-safe search index plus optional source-grounded answer streaming.
-- Lint rules for frontmatter, navigation metadata, and internal links.
-- CLI orchestration so the whole pipeline runs from one command.
+- The **MDX tag contract** — typed prop shapes for `<Callout>`, `<Tabs>`, `<Steps>`, `<TypeTable>`, and the rest of the custom tags (see [`leadtype/mdx`](/docs/reference/mdx)).
+- A **build-time source preset** that expands `<include>` partials, resolves `<ExtractedTypeTable>`, and strips authoring `import`s — without flattening live components.
+- A **framework-neutral source primitive** (`createDocsSource`) exposing navigation, page loading, search index building, and include resolution.
+- A thin **fumadocs adapter** (`leadtype/fumadocs`) wiring the source into fumadocs's `Source` interface.
+- The agent / LLM pipeline: MDX-to-markdown conversion, `llms.txt`, root `llms-full.txt` fallback context, markdown mirrors, sitemap, and AGENTS.md bundles.
+- A static, edge-safe **search index** plus optional source-grounded answer streaming.
+- **Lint rules** for frontmatter, navigation metadata, and internal links.
+- **CLI orchestration** so the whole pipeline runs from one command.
 
 ## What leadtype does not own
 
 - Visual UI, theming, or component styling.
+- Runtime component implementations — your docs app implements components against the tag contract (see [Components](/docs/authoring/components) and [`leadtype/mdx`](/docs/reference/mdx)).
 - Routing, hosting, deployment, or analytics.
-- A prebuilt MDX component library — your docs app provides those (see [Components](/docs/authoring/components)).
+- The MDX compiler — leadtype produces the source preset; your bundler (Next App Router, Vite, fumadocs-mdx, Astro) does the compile.
 
 ## When the combination shines
 

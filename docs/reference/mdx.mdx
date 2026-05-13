@@ -1,0 +1,257 @@
+---
+title: "leadtype/mdx"
+description: "Tag type contracts and the build-time source preset for consumers rendering MDX themselves."
+group: reference
+---
+
+# `leadtype/mdx`
+
+The `leadtype/mdx` subpath is the **consumer-facing MDX surface** — everything you need to compile leadtype-authored MDX in your own renderer (fumadocs, Next App Router, Vite + @mdx-js, Astro content collections).
+
+It exports three things:
+
+1. **Tag type contracts** — typed prop shapes for every custom MDX tag.
+2. **`mdxSourcePlugins`** — a remark preset that performs build-time resolution only (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s) and leaves every other custom tag as JSX.
+3. **Include-resolution helpers** — `resolveInclude`, `parseIncludeSpecifier`, `extractMdxSection` for direct use.
+
+Pair it with `leadtype/remark` (markdown flattening for the agent/LLM pipeline) — they are sibling surfaces, not alternatives. Most projects use both.
+
+## The MDX-source preset
+
+```ts
+import createMDX from "@next/mdx";
+import { mdxSourcePlugins } from "leadtype/mdx";
+
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [...mdxSourcePlugins],
+  },
+});
+```
+
+The preset is intentionally minimal — only the transforms that **must** run at build time:
+
+| Plugin | Purpose |
+| --- | --- |
+| `remarkInclude` | Expands `<include src="…" />`, `<import>`, `<include-c15t>` |
+| `remarkResolveTypeTableJsx` | `<ExtractedTypeTable name path />` → `<TypeTable properties={…} />` |
+| `remarkResolveDocPlaceholders` | Resolves `{{...}}` placeholders against doc context |
+| `remarkRemoveImports` | Strips authoring `import` statements that aren't needed at runtime |
+
+Every other custom tag (`<Callout>`, `<Tabs>`, `<Steps>`, `<Mermaid>`, …) stays JSX so your runtime components render them.
+
+## Framework-neutral by design
+
+Tag types describe the **author surface** — the attributes that appear on a tag in source MDX. They deliberately do **not** import from any UI framework: `children` is typed as `unknown` so you can intersect with your framework's native child type.
+
+The same shape works in React, Vue, Svelte, Solid, Astro, Qwik, or anything else with an MDX compiler that accepts remark plugins.
+
+### React
+
+```tsx
+import type { CalloutProps } from "leadtype/mdx";
+import type { HTMLAttributes, ReactNode } from "react";
+
+type ReactCalloutProps = Omit<CalloutProps, "children"> &
+  HTMLAttributes<HTMLElement> & { children?: ReactNode };
+
+export function Callout({ variant, title, children, ...rest }: ReactCalloutProps) {
+  return (
+    <aside data-variant={variant ?? "info"} {...rest}>
+      {title ? <strong>{title}</strong> : null}
+      <div>{children}</div>
+    </aside>
+  );
+}
+```
+
+### Vue
+
+```vue
+<script setup lang="ts">
+import type { CalloutProps } from "leadtype/mdx";
+
+defineProps<Omit<CalloutProps, "children">>();
+</script>
+
+<template>
+  <aside :data-variant="variant ?? 'info'">
+    <strong v-if="title">{{ title }}</strong>
+    <div><slot /></div>
+  </aside>
+</template>
+```
+
+### Svelte
+
+```svelte
+<script lang="ts">
+  import type { CalloutProps } from "leadtype/mdx";
+  import type { Snippet } from "svelte";
+
+  let {
+    variant = "info",
+    title,
+    children,
+  }: Omit<CalloutProps, "children"> & { children?: Snippet } = $props();
+</script>
+
+<aside data-variant={variant}>
+  {#if title}<strong>{title}</strong>{/if}
+  <div>{@render children?.()}</div>
+</aside>
+```
+
+### Solid
+
+```tsx
+import type { CalloutProps } from "leadtype/mdx";
+import type { JSX } from "solid-js";
+
+type SolidCalloutProps = Omit<CalloutProps, "children"> & {
+  children?: JSX.Element;
+};
+
+export function Callout(props: SolidCalloutProps) {
+  return (
+    <aside data-variant={props.variant ?? "info"}>
+      {props.title ? <strong>{props.title}</strong> : null}
+      <div>{props.children}</div>
+    </aside>
+  );
+}
+```
+
+### Astro
+
+```astro
+---
+import type { CalloutProps } from "leadtype/mdx";
+type Props = Omit<CalloutProps, "children">;
+const { variant = "info", title } = Astro.props as Props;
+---
+
+<aside data-variant={variant}>
+  {title && <strong>{title}</strong>}
+  <div><slot /></div>
+</aside>
+```
+
+### Full type inventory
+
+```ts
+import type {
+  // Layout
+  AudienceProps,
+  AudienceTarget,
+  SectionProps,
+  DetailsProps,
+
+  // Callouts
+  CalloutProps,
+  CalloutVariant,
+  CalloutTypeAlias,
+
+  // Navigation / structure
+  TabsProps,
+  TabProps,
+  StepsProps,
+  StepProps,
+  AccordionProps,
+  AccordionItemProps,
+
+  // Cards / topics
+  CardsProps,
+  CardProps,
+  CardVariant,
+  TopicSwitcherProps,
+  TopicSwitcherItem,
+
+  // File tree
+  FileTreeProps,
+  FolderProps,
+  FileProps,
+
+  // Code / commands
+  CommandTabsProps,
+  CommandMode,
+  PackageManager,
+  ExampleProps,
+  ExampleSourceFile,
+  PromptProps,
+
+  // Type tables
+  TypeTableProps,
+  TypeTableProperty,
+  ExtractedTypeTableProps,
+
+  // Diagrams
+  MermaidProps,
+} from "leadtype/mdx";
+```
+
+Every prop name is part of the 1.0 contract — bumping a shape is a breaking change. New optional props are minor.
+
+### Build-time only: `<ExtractedTypeTable>`
+
+`<ExtractedTypeTable name="X" path="..." />` is an authoring convenience. The source preset replaces it at build time with `<TypeTable properties={…extracted} />`, so consumers only implement the runtime `<TypeTable>` component:
+
+```ts
+import type { TypeTableProps } from "leadtype/mdx";
+
+export function TypeTable({ properties, title, description }: TypeTableProps) {
+  return (
+    <section>
+      {title ? <h3>{title}</h3> : null}
+      {description ? <p>{description}</p> : null}
+      <table>
+        {Object.entries(properties).map(([name, prop]) => (
+          <tr key={name}>
+            <td><code>{name}</code></td>
+            <td><code>{prop.type}</code></td>
+            <td>{prop.description}</td>
+          </tr>
+        ))}
+      </table>
+    </section>
+  );
+}
+```
+
+`<ExtractedTypeTable>` requires `typescript` to be installed as an optional peer dep in your docs project.
+
+## Include resolution
+
+`resolveInclude` reads + classifies an include target without going through remark — useful when loading a partial outside of the bundler pipeline:
+
+```ts
+import { resolveInclude } from "leadtype/mdx";
+
+const result = await resolveInclude("./shared/install.mdx#bun", {
+  fromDir: process.cwd(),
+});
+
+if (result.kind === "markdown") {
+  console.log(result.content); // frontmatter-stripped body
+  console.log(result.section); // "bun"
+} else {
+  console.log(result.lang, result.content); // code-block form
+}
+```
+
+`parseIncludeSpecifier(specifier)` and `extractMdxSection(root, id)` are exposed for callers that want to compose their own pipeline.
+
+## Re-exported path helpers
+
+Routing primitives that previously lived under `leadtype/internal` are re-exported for consumer use:
+
+```ts
+import {
+  type DocsPathMount,
+  normalizeBaseUrl,
+  normalizeDocsPath,
+  normalizeUrlPrefix,
+  stripDocsExtension,
+  toDocsUrlPath,
+} from "leadtype/mdx";
+```

@@ -2,6 +2,7 @@ import mdx from "@mdx-js/rollup";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
+import { mdxSourcePlugins } from "leadtype/mdx";
 import type { Root } from "mdast";
 import { nitro } from "nitro/vite";
 import remarkFrontmatter from "remark-frontmatter";
@@ -35,7 +36,16 @@ export default defineConfig({
     {
       ...mdx({
         providerImportSource: "@mdx-js/react",
-        remarkPlugins: [remarkFrontmatter, remarkGfm, stripYamlFrontmatter],
+        remarkPlugins: [
+          // Frontmatter parsing first (mdxSourcePlugins expects bodies only).
+          remarkFrontmatter,
+          stripYamlFrontmatter,
+          remarkGfm,
+          // Leadtype's MDX-source preset: expand <include>, resolve
+          // <ExtractedTypeTable>, strip authoring `import`s. Keeps every
+          // other custom tag as live JSX for the React components below.
+          ...mdxSourcePlugins,
+        ],
       }),
       enforce: "pre",
     },

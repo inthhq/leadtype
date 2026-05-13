@@ -73,6 +73,12 @@ export type SourceDoc = {
   relativePath: string;
   /** Group slugs declared in frontmatter `group:`. Empty array = ungrouped. */
   groups: string[];
+  /**
+   * Sidebar order within a group, parsed from frontmatter `order:`. Pages
+   * with an explicit order sort first (ascending). Pages without `order`
+   * fall back to alphabetical urlPath ordering.
+   */
+  order?: number;
 };
 
 type SourceDocWithContent = SourceDoc & {
@@ -186,6 +192,13 @@ export type ResolveDocsNavigationConfig = {
   groups: DocsGroup[];
   mounts?: DocsPathMount[];
   toc?: boolean | DocsTableOfContentsOptions;
+  /**
+   * Name of the docs subdirectory under `srcDir`. Defaults to `"docs"` for
+   * backward compatibility. Set this when the docs folder isn't named `docs`
+   * (e.g. fumadocs sites using `content/docs` — the directory containing the
+   * `.mdx` files would be `srcDir/content`'s `docs` child).
+   */
+  docsDirName?: string;
 };
 
 export type ResolveDocsTableOfContentsConfig = {
@@ -527,9 +540,10 @@ async function collectFiles(
 async function readSourceDocs(
   srcDir: string,
   baseUrl: string,
-  mounts?: DocsPathMount[]
+  mounts?: DocsPathMount[],
+  docsDirName: string = DOCS_DIRNAME
 ): Promise<Map<string, SourceDocWithContent>> {
-  const docsDir = path.join(srcDir, DOCS_DIRNAME);
+  const docsDir = path.join(srcDir, docsDirName);
   const docs = new Map<string, SourceDocWithContent>();
 
   if (!existsSync(docsDir)) {
@@ -555,6 +569,11 @@ async function readSourceDocs(
       );
       const urlPath = toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
+      const orderRaw = parsed.data.order;
+      const order =
+        typeof orderRaw === "number" && Number.isFinite(orderRaw)
+          ? orderRaw
+          : undefined;
       return {
         urlPath,
         doc: {
@@ -564,6 +583,7 @@ async function readSourceDocs(
           absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
           relativePath: stripDocsExtension(relativePath),
           groups,
+          ...(order === undefined ? {} : { order }),
           content: parsed.content,
         },
       };
@@ -647,12 +667,20 @@ function buildGroupMembership(
   const ungrouped: SourceDoc[] = [];
   const unknown: { page: SourceDoc; slug: string }[] = [];
 
-  // Stable page order: by urlPath. Inputs are already iteration-order-stable
-  // when they come from a Map in insertion order, but explicit sort makes
-  // the rendered llms.txt deterministic regardless of source.
-  const ordered = [...pages].sort((left, right) =>
-    left.urlPath.localeCompare(right.urlPath)
-  );
+  // Page order within a group:
+  //   1. Pages with an explicit `order:` field sort first, ascending.
+  //   2. Pages without `order` sort alphabetically by urlPath as a tiebreaker.
+  // This lets authors pin a few key pages with `order: 10, 20, 30, …` and
+  // leave the rest at the default. Sorting is stable and deterministic so
+  // the rendered llms.txt, sidebar, and AGENTS.md match across runs.
+  const ordered = [...pages].sort((left, right) => {
+    const leftOrder = left.order ?? Number.POSITIVE_INFINITY;
+    const rightOrder = right.order ?? Number.POSITIVE_INFINITY;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    return left.urlPath.localeCompare(right.urlPath);
+  });
 
   for (const page of ordered) {
     if (page.groups.length === 0) {
@@ -1173,7 +1201,12 @@ export async function resolveDocsNavigation(
 ): Promise<DocsNavigation> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl, config.mounts);
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    config.mounts,
+    config.docsDirName
+  );
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
   const tocOptions = resolveNavigationTocOptions(config.toc);

@@ -5,6 +5,8 @@ import esbuild from "rollup-plugin-esbuild";
 
 const entries = {
   index: "src/index.ts",
+  "mdx/index": "src/mdx/index.ts",
+  "fumadocs/index": "src/fumadocs/index.ts",
   "remark/index": "src/remark/index.ts",
   "convert/index": "src/convert/index.ts",
   "llm/index": "src/llm/index.ts",

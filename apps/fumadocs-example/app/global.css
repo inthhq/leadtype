@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+/* Tailwind v4 only scans the files you point it at. fumadocs-ui ships its
+   classes inside its compiled JS — without this @source line, Tailwind won't
+   emit any of fumadocs-ui's utility classes and the layout falls back to
+   unstyled text. */
+@source "../node_modules/fumadocs-ui/dist/**/*.js";

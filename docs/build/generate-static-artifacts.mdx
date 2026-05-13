@@ -1,0 +1,206 @@
+---
+title: "Generate static artifacts"
+description: "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk."
+group: docs-site
+order: 40
+---
+
+# Generate static artifacts
+
+Use this path when your runtime needs files on disk — a CDN-only deploy, a static export, a separate agent-only service, or multiple sibling apps sharing one corpus. The `leadtype generate` CLI walks your MDX source and writes a complete set of files into `public/`.
+
+For app runtimes that compile MDX through a bundler (Next, Astro, Vite, Fumadocs), prefer [the source primitive](/docs/build/use-the-source-primitive) — it skips the disk round-trip.
+
+## The flow
+
+<Mermaid chart={`flowchart LR
+  repo["source repo<br/>docs/*.mdx"]
+  clone["checkout or clone<br/>.docs-src/c15t"]
+  lint["leadtype lint"]
+  generate["leadtype generate"]
+  public["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md<br/>search · agent metadata"]
+  app["any consumer<br/>(docs app, agent, CDN)"]
+  repo --> clone --> lint --> generate --> public --> app`} />
+
+## Fetch the source repo
+
+In CI, check out the docs source before the build. For a public repo, a shallow clone is enough:
+
+```bash
+rm -rf .docs-src/c15t
+git clone --depth 1 https://github.com/c15t/c15t .docs-src/c15t
+```
+
+For private repos, use your CI platform's checkout action or a read-only deploy key. The important part is that leadtype receives a normal filesystem path whose root contains `docs/`.
+
+## Lint before generate
+
+Run lint against the fetched docs before writing generated output. Lint fails with file and line context, which is easier to debug than a later app build using stale artifacts:
+
+```bash
+npx leadtype lint .docs-src/c15t/docs \
+  --format github \
+  --error-unknown \
+  --max-warnings 0
+```
+
+## Generate
+
+Point `--src` at the fetched repo root and `--out` at the directory you'll serve:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --out public \
+  --base-url https://docs.example.com \
+  --json
+```
+
+That command writes:
+
+- `public/llms.txt` and `public/llms-full.txt`
+- `public/docs/*.md`
+- `public/docs/search-index.json` and `public/docs/search-content.json`
+- `public/docs/sitemap.xml`, `sitemap.md`, `robots.txt`, and `agent-readability.json`
+
+Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
+
+## Multi-source mounting
+
+Some projects keep docs and release notes side by side instead of putting everything under `docs/`:
+
+<FileTree root=".docs-src/c15t">
+  <Folder name="docs">
+    <File name="quickstart.mdx" />
+    <File name="docs.config.ts" />
+  </Folder>
+  <Folder name="changelog">
+    <File name="v1.mdx" />
+  </Folder>
+</FileTree>
+
+Repeat `--docs-dir` to include those folders in the same generated corpus:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --docs-dir docs \
+  --docs-dir changelog \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+By default, extra sources are mounted under `/docs/<folder>`, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1.md`.
+
+Use `<dir>=<url-prefix>` when the folder should keep its own public route:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --docs-dir docs \
+  --docs-dir changelog=/changelog \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+That still keeps an internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, but it also writes `public/changelog/v1.md` and emits canonical links such as `/changelog/v1` and `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
+
+## Wire it into the build
+
+Make checkout, lint, and generation run before the framework build:
+
+```json
+{
+  "scripts": {
+    "docs:fetch": "rm -rf .docs-src/c15t && git clone --depth 1 https://github.com/c15t/c15t .docs-src/c15t",
+    "docs:lint": "leadtype lint .docs-src/c15t/docs --format github --error-unknown --max-warnings 0",
+    "docs:generate": "leadtype generate --src .docs-src/c15t --out public --base-url https://docs.example.com --json",
+    "build": "npm run docs:fetch && npm run docs:lint && npm run docs:generate && vite build"
+  }
+}
+```
+
+If the docs source and docs app live in the same repo, skip `docs:fetch` and point `--src` at `.`:
+
+```bash
+npx leadtype lint docs --error-unknown
+npx leadtype generate --src . --out public --base-url https://docs.example.com
+```
+
+## Use library APIs for custom pipelines
+
+The CLI is the happy path. Use the library APIs directly when you need custom plugin order, filters, or generated JSON paths. Keep conversion first — LLM files, search, and Agent Readability artifacts read the generated markdown:
+
+```ts
+import { convertAllMdx } from "leadtype/convert";
+import {
+  generateAgentReadabilityArtifacts,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+  resolveDocsNavigation,
+} from "leadtype/llm";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { generateDocsSearchFiles } from "leadtype/search/node";
+import docsConfig from "../.docs-src/c15t/docs/docs.config";
+
+const sourceRoot = ".docs-src/c15t";
+const mounts = [
+  { pathPrefix: "", urlPrefix: "/docs" },
+  { pathPrefix: "changelog", urlPrefix: "/changelog" },
+];
+
+await convertAllMdx({
+  srcDir: `${sourceRoot}/docs`,
+  outDir: "public/docs",
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  enrichFrontmatterFromGit: true,
+});
+
+await generateLlmsTxt({
+  srcDir: sourceRoot,
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+  mounts,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: { name: docsConfig.product.name },
+  groups: docsConfig.groups,
+  mounts,
+});
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  mounts,
+});
+
+await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  groups: docsConfig.groups,
+  mounts,
+});
+
+const navigation = await resolveDocsNavigation({
+  srcDir: sourceRoot,
+  baseUrl: "https://docs.example.com",
+  groups: docsConfig.groups,
+  mounts,
+});
+```
+
+## Verify
+
+After a clean build, inspect these files:
+
+- `public/docs/index.md` — converted markdown for the source repo home page
+- `public/llms.txt` — hosted routing index with page-level markdown links
+- `public/llms-full.txt` — all generated markdown docs in one fallback file
+- `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty search files
+- `public/docs/agent-readability.json` — manifest for markdown responses, JSON-LD, sitemap, and robots helpers

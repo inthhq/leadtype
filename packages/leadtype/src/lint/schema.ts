@@ -54,6 +54,15 @@ export const defaultFrontmatterSchema = v.object({
   tags: v.optional(v.array(v.string())),
   group: v.optional(v.union([v.string(), v.array(v.string())])),
   availableIn: v.optional(v.array(availableInEntry)),
+  /**
+   * Sidebar ordering within a group. Lower numbers come first. Pages
+   * without `order` sort alphabetically by URL path **after** explicitly
+   * ordered pages, so you can pin a few key pages and leave the rest as
+   * default. Conventionally numbered in tens (10, 20, 30) to leave room
+   * for insertions. Must be an integer — fractional orders are rejected
+   * by lint.
+   */
+  order: v.optional(v.pipe(v.number(), v.integer())),
 
   // Layout
   full: v.optional(v.boolean()),

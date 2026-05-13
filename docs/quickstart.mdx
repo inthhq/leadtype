@@ -1,28 +1,23 @@
 ---
 title: "Quickstart"
-description: "Install leadtype, run the hosted-docs pipeline once, and inspect the generated artifacts."
+description: "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using."
 group: get-started
 ---
 
 # Quickstart
 
-Five minutes from a folder of MDX to generated docs artifacts.
+Three steps to a working source primitive. Then plug it into your framework — Next, Fumadocs, Astro, Vite + Vue/Solid/Svelte, Nuxt, SvelteKit — using one of the recipes below.
 
 ## Install
 
 <CommandTabs command="leadtype" mode="install" />
 
-`leadtype` ships a CLI plus focused library entry points. Start with the CLI; use the APIs only when your build needs custom plugin order, filtering, or output paths.
-
 ## Author one page
 
-Create `docs/index.mdx` in your repo:
-
-```mdx
+```mdx title="content/docs/index.mdx"
 ---
 title: "My library"
 description: "What it does in one sentence."
-group: get-started
 ---
 
 # My library
@@ -32,67 +27,84 @@ Welcome.
 
 Every page needs a `title`. Add `group:` when the page should appear in generated navigation and `llms.txt` sections. See [Frontmatter](/docs/authoring/frontmatter) for the full content contract.
 
-## Generate hosted docs output
+## Create the source
 
-```bash
-npx leadtype generate \
-  --src . \
-  --out public \
-  --base-url https://example.com
+```ts title="lib/source.ts"
+import { createDocsSource } from "leadtype";
+
+export const source = await createDocsSource({
+  contentDir: "./content/docs",
+  baseUrl: "https://example.com",
+});
 ```
 
-That command reads `docs/*.mdx`, converts it to markdown, resolves groups, builds search JSON, and writes hosted agent artifacts.
+That's the framework-neutral primitive. You can now call:
 
-<FileTree root="public">
-  <File name="llms.txt" />
-  <File name="llms-full.txt" />
-  <Folder name="docs">
-    <File name="index.md" />
-    <File name="llms.txt" />
-    <File name="sitemap.xml" />
-    <File name="sitemap.md" />
-    <File name="robots.txt" />
-    <File name="agent-readability.json" />
-    <File name="search-index.json" />
-    <File name="search-content.json" />
-  </Folder>
-</FileTree>
+- `source.loadPage(slug)` — resolved markdown + AST + frontmatter + TOC
+- `source.listPages()` — every page's slug, urlPath, and metadata
+- `source.getNavigation()` — grouped sidebar tree
+- `source.buildSearchIndex()` — static search bundle
+- `source.resolveInclude(specifier)` — standalone include resolver
 
-Open `public/docs/index.md` first. It shows what your MDX becomes after the remark component flattening pipeline runs. Then open `public/llms.txt` to see the hosted routing file that HTTP agents start from.
+## Plug it into your framework
 
-<Callout title="Working reference" variant="tip">
-  `apps/example/` in the [leadtype repo](https://github.com/inthhq/leadtype) is the production docs site for these docs. It runs the same pipeline you just ran, on TanStack Start, with markdown content negotiation, sitemap regeneration, and JSON-LD wired up. Clone it when you want a copy-pastable end-to-end setup.
-</Callout>
-
-## Choose the next setup step
-
-| Goal | Next page |
-| --- | --- |
-| Wire the generator into an app build | [Connect a docs site](/docs/build/connect-docs-site) |
-| Render HTML pages and an "On this page" sidebar | [Render MDX and TOC](/docs/build/render-mdx-and-toc) |
-| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Optimize docs for agents](/docs/build/optimize-docs-for-agents) |
-| Query the generated static search index | [Add search](/docs/build/add-search) |
-| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
+Pick the recipe that matches your stack. Each one shows the wiring on top of the same `createDocsSource()` you just set up.
 
 <Cards>
   <Card
-    title="Connect a docs site"
-    description="Wire generation into your app build and serve the output from your framework."
-    href="/docs/build/connect-docs-site"
+    title="Next App Router"
+    description="Catch-all route + @next/mdx + mdxSourcePlugins."
+    href="/docs/build/use-the-source-primitive#next-app-router"
   />
   <Card
-    title="Render MDX and TOC"
-    description="Set up runtime MDX components, heading IDs, and an On this page sidebar."
-    href="/docs/build/render-mdx-and-toc"
+    title="Fumadocs"
+    description="First-party leadtype/fumadocs adapter — Source interface + meta.json."
+    href="/docs/build/integrate-with-fumadocs"
   />
   <Card
-    title="Make the site agent-readable"
-    description="Serve llms.txt, markdown mirrors, JSON-LD, sitemaps, and robots.txt correctly."
-    href="/docs/build/optimize-docs-for-agents"
+    title="TanStack Start"
+    description="@mdx-js/rollup + viteReact + TanStack Router catch-all."
+    href="/docs/build/use-the-source-primitive#tanstack-start"
   />
   <Card
-    title="Bundle docs into a package"
-    description="Emit AGENTS.md plus docs/*.md into an npm package tarball."
-    href="/docs/package-docs/bundle"
+    title="Astro Content Collections"
+    description="@astrojs/mdx + mdxSourcePlugins. Compose with Astro's native content schema."
+    href="/docs/build/use-the-source-primitive#astro-content-collections"
+  />
+  <Card
+    title="Vite + Vue / Solid / Svelte"
+    description="@mdx-js/rollup wiring that works for every Vite-based starter."
+    href="/docs/build/use-the-source-primitive#vite-mdx-js-rollup-works-for-vue-solid-svelte-starters"
+  />
+  <Card
+    title="Nuxt"
+    description="@nuxtjs/mdc + mdxSourcePlugins."
+    href="/docs/build/use-the-source-primitive#nuxt"
+  />
+  <Card
+    title="SvelteKit"
+    description="mdsvex preprocessor + mdxSourcePlugins."
+    href="/docs/build/use-the-source-primitive#sveltekit-mdsvex"
   />
 </Cards>
+
+## Or: write static artifacts to disk
+
+Some pipelines need flat files — CDN-only deploys, static exports, agent-only services, multiple sibling apps sharing one corpus. Use the CLI:
+
+```sh
+npx leadtype generate --src . --out public --base-url https://example.com
+```
+
+That writes `llms.txt`, `llms-full.txt`, `docs/*.md`, search index, sitemap, and `agent-readability.json` to disk. See [Generate static artifacts](/docs/build/generate-static-artifacts) for the full flow.
+
+## Next steps
+
+| Goal | Page |
+| --- | --- |
+| Compare every integration shape side-by-side | [Build a docs site](/docs/build/build-a-docs-site) |
+| Implement custom MDX tags (Callout, Tabs, Steps, …) | [`leadtype/mdx`](/docs/reference/mdx) |
+| Add search | [Add search](/docs/build/add-search) |
+| Validate frontmatter and links in CI | [Validate in CI](/docs/build/validate-in-ci) |
+| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Optimize docs for agents](/docs/build/optimize-docs-for-agents) |
+| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
