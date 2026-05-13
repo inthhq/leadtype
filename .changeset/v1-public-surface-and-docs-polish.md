@@ -1,5 +1,5 @@
 ---
-"leadtype": minor
+"leadtype": patch
 ---
 
 Ship the v1 headless integration surface plus docs polish.
