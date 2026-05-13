@@ -244,10 +244,34 @@ export async function createDocsSource(
     const metas = await Promise.all(
       files.map((filePath) => readPageMeta(filePath, contentDir, config.mounts))
     );
+    // Reject duplicate slugs / urlPaths. Without this guard, two files that
+    // normalize to the same route (e.g. `guide.mdx` and `guide/index.mdx`, or
+    // both `.md` and `.mdx` variants) would silently overwrite each other in
+    // the slug Map below, leaving consumers with an indeterminate page.
+    // `resolveDocsNavigation` already errors on this; keep the source
+    // primitive consistent.
+    const slugIndex = new Map<string, DocsPageMeta>();
+    const urlPathIndex = new Map<string, DocsPageMeta>();
+    for (const meta of metas) {
+      const slugKey = meta.slug.join("/");
+      const existingSlug = slugIndex.get(slugKey);
+      if (existingSlug) {
+        throw new Error(
+          `Duplicate slug "/${slugKey}" — both "${existingSlug.relativePath}${existingSlug.extension}" and "${meta.relativePath}${meta.extension}" resolve to the same route. Rename one or remove it.`
+        );
+      }
+      const existingUrl = urlPathIndex.get(meta.urlPath);
+      if (existingUrl) {
+        throw new Error(
+          `Duplicate URL path "${meta.urlPath}" — both "${existingUrl.relativePath}${existingUrl.extension}" and "${meta.relativePath}${meta.extension}" resolve to the same route. Rename one or remove it.`
+        );
+      }
+      slugIndex.set(slugKey, meta);
+      urlPathIndex.set(meta.urlPath, meta);
+    }
+
     cachedMetas = metas;
-    cachedMetaBySlug = new Map(
-      metas.map((meta) => [meta.slug.join("/"), meta])
-    );
+    cachedMetaBySlug = slugIndex;
     return cachedMetas;
   }
 

@@ -107,8 +107,9 @@ See [MDX tag contract](/docs/reference/mdx) for the full prop list across all 14
 
 ```tsx title="app/docs/[[...slug]]/page.tsx"
 import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote-client/rsc";
 import { source } from "@/content/source";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { mdxComponents } from "@/lib/mdx-components";
 
 export default async function Page({
   params,
@@ -116,7 +117,7 @@ export default async function Page({
   params: Promise<{ slug?: string[] }>;
 }) {
   const { slug } = await params;
-  const page = await source.loadPage(slug ?? []);
+  const page = await source.leadtype.loadPage(slug ?? []);
   if (!page) {
     notFound();
   }

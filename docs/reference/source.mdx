@@ -165,7 +165,7 @@ import { mdxSourcePlugins } from "leadtype/mdx";
 export default defineNuxtConfig({
   modules: ["@nuxtjs/mdc"],
   mdc: {
-    remarkPlugins: { ...mdxSourcePlugins },
+    remarkPlugins: [...mdxSourcePlugins],
   },
 });
 ```

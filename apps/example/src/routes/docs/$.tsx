@@ -47,7 +47,7 @@ function MissingMdxModule({ urlPath }: { urlPath: string }) {
   return (
     <div data-leadtype-mdx-error>
       MDX module not found for <code>{urlPath}</code>. Re-run{" "}
-      <code>bun run docs-source-manifest</code> after adding docs files.
+      <code>bun run pipeline:source-manifest</code> after adding docs files.
     </div>
   );
 }

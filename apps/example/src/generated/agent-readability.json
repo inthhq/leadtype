@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-13T15:49:48.460Z",
+  "generatedAt": "2026-05-13T16:31:40.961Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -96,7 +96,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-13T07:19:12.000Z"
+      "lastModified": "2026-05-13T15:50:55.000Z"
     },
     {
       "title": "Optimize docs for agents",

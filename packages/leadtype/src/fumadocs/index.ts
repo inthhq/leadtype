@@ -136,7 +136,18 @@ async function readMetaFiles(contentDir: string): Promise<
       const raw = await readFile(filePath, "utf8");
       let data: LeadtypeFumadocsMetaData = {};
       try {
-        data = JSON.parse(raw) as LeadtypeFumadocsMetaData;
+        const parsed = JSON.parse(raw) as unknown;
+        // Only accept plain objects. Arrays, strings, numbers, null, etc.
+        // are treated the same as malformed JSON — fumadocs expects an
+        // object-shaped meta record, and passing it through would break
+        // downstream consumers.
+        if (
+          parsed !== null &&
+          typeof parsed === "object" &&
+          !Array.isArray(parsed)
+        ) {
+          data = parsed as LeadtypeFumadocsMetaData;
+        }
       } catch {
         // Malformed meta.json: keep the entry so fumadocs can surface a
         // helpful warning during page-tree building instead of silently
