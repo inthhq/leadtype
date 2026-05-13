@@ -59,7 +59,6 @@ const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 const HEADING_REGEX = /^#\s+(.+)$/m;
 const YAML_QUOTE_REGEX = /["\\]/g;
 const TABLE_DIVIDER_REGEX = /^:?-{2,}:?$/;
-const MERMAID_FENCE_REGEX = /```mermaid\r?\n([\s\S]*?)\r?\n```/g;
 const MDX_EXTENSION_REGEX = /\.mdx$/;
 const TITLE_CASE_REGEX = /\b\w/g;
 const NAME_SEPARATOR_REGEX = /[-_]+/g;
@@ -225,11 +224,12 @@ function compactMarkdownTables(markdown: string): string {
 }
 
 function compactMermaidBlocks(markdown: string): string {
-  // No-op pass kept as a stable seam for future per-line normalization of
-  // mermaid bodies. The previous implementation replaced `<br/>` with ` - `
-  // for "readability", but `<br/>` is mermaid's own syntax for line breaks
-  // inside node labels — substituting it breaks any downstream renderer.
-  return markdown.replace(MERMAID_FENCE_REGEX, (block) => block);
+  // The previous implementation replaced `<br/>` with ` - ` inside mermaid
+  // bodies for "readability", but `<br/>` is mermaid's own syntax for line
+  // breaks inside node labels — substituting it broke any downstream
+  // renderer. No transform is currently needed; the function is kept as
+  // a named call site for future per-line normalization if it's ever needed.
+  return markdown;
 }
 
 export type MdxToMarkdownOptions = {

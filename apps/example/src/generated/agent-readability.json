@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-13T06:50:55.183Z",
+  "generatedAt": "2026-05-13T15:49:48.460Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -18,7 +18,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Components",
@@ -31,7 +31,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-12T02:59:25.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Frontmatter",
@@ -44,7 +44,7 @@
       "groups": [
         "authoring"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Add search",
@@ -57,7 +57,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Build a docs site",
@@ -70,7 +70,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-13T06:50:55.052Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Generate static artifacts",
@@ -83,7 +83,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-13T06:50:55.038Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Integrate with Fumadocs",
@@ -96,7 +96,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-13T06:50:55.049Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Optimize docs for agents",
@@ -109,7 +109,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Use the source primitive",
@@ -122,7 +122,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-13T06:50:55.035Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Validate in CI",
@@ -135,7 +135,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "How it works",
@@ -161,7 +161,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Bundle docs into a package",
@@ -174,7 +174,7 @@
       "groups": [
         "package-docs"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Quickstart",
@@ -187,7 +187,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "CLI",
@@ -226,7 +226,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-11T17:53:02.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Lint rules",
@@ -252,7 +252,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-12T02:59:25.000Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "leadtype/mdx",
@@ -265,7 +265,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-13T06:50:54.985Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     },
     {
       "title": "Remark plugins",
@@ -304,7 +304,7 @@
       "groups": [
         "reference"
       ],
-      "lastModified": "2026-05-13T06:50:54.987Z"
+      "lastModified": "2026-05-13T07:19:12.000Z"
     }
   ],
   "navigation": {

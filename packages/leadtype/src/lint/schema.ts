@@ -59,9 +59,10 @@ export const defaultFrontmatterSchema = v.object({
    * without `order` sort alphabetically by URL path **after** explicitly
    * ordered pages, so you can pin a few key pages and leave the rest as
    * default. Conventionally numbered in tens (10, 20, 30) to leave room
-   * for insertions.
+   * for insertions. Must be an integer — fractional orders are rejected
+   * by lint.
    */
-  order: v.optional(v.number()),
+  order: v.optional(v.pipe(v.number(), v.integer())),
 
   // Layout
   full: v.optional(v.boolean()),

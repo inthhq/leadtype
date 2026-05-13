@@ -67,9 +67,16 @@ export const Route = createFileRoute("/docs/$")({
 
 function DocsCatchAllRoute() {
   const { _splat } = Route.useParams();
-  // beforeLoad throws notFound() for missing pages, so page is non-null here
-  // by the time this component renders. Cast keeps the hook unconditional.
-  const page = resolvePage(_splat) as DocsPage;
+  // beforeLoad throws notFound() for missing pages, so this should always
+  // resolve by the time the component renders. The explicit check both
+  // narrows the type and surfaces a clear error if the invariant ever breaks.
+  const pageCandidate = resolvePage(_splat);
+  if (!pageCandidate) {
+    throw new Error(
+      `DocsCatchAllRoute rendered with no resolvable page for splat "${_splat}". beforeLoad should have thrown notFound() — file a bug if you see this.`
+    );
+  }
+  const page: DocsPage = pageCandidate;
 
   const MdxComponent = useMemo(() => {
     const loader = mdxModules[page.globKey];

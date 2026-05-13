@@ -14,10 +14,15 @@
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, sep as platformSep, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createDocsSource } from "leadtype";
 import docsConfig from "../../../docs/docs.config";
+
+/** `import.meta.glob` keys are always POSIX even on Windows. */
+function toPosix(input: string): string {
+  return platformSep === "/" ? input : input.replaceAll(platformSep, "/");
+}
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
@@ -44,8 +49,11 @@ const manifest = pages.map((page) => ({
   groups: page.groups,
   // Path the runtime catch-all can use to look up the MDX module against
   // `import.meta.glob('../../../../docs/**/*.mdx')`. Always relative to
-  // src/routes/docs/$.tsx so the glob key matches exactly.
-  globKey: `${relative(join(appRoot, "src", "routes", "docs"), join(contentDir, page.relativePath))}${page.extension}`,
+  // src/routes/docs/$.tsx with POSIX separators so the key matches the
+  // glob output on every platform (Windows otherwise emits backslashes).
+  globKey: toPosix(
+    `${relative(join(appRoot, "src", "routes", "docs"), join(contentDir, page.relativePath))}${page.extension}`
+  ),
 }));
 
 await mkdir(generatedDir, { recursive: true });

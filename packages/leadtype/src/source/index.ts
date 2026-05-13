@@ -213,13 +213,13 @@ export async function createDocsSource(
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const remarkPlugins = config.remarkPlugins ?? mdxSourcePlugins;
-  const tocOptions =
-    config.toc === false
-      ? false
-      : (config.toc ?? ({} as DocsTableOfContentsOptions));
+  const tocOptions: DocsTableOfContentsOptions | false =
+    config.toc === false ? false : (config.toc ?? {});
 
   let cachedFiles: string[] | null = null;
   let cachedMetas: DocsPageMeta[] | null = null;
+  // Slug → meta lookup populated alongside cachedMetas so loadPage runs in O(1).
+  let cachedMetaBySlug: Map<string, DocsPageMeta> | null = null;
 
   async function listFiles(): Promise<string[]> {
     if (cachedFiles) {
@@ -241,24 +241,21 @@ export async function createDocsSource(
       return cachedMetas;
     }
     const files = await listFiles();
-    cachedMetas = await Promise.all(
+    const metas = await Promise.all(
       files.map((filePath) => readPageMeta(filePath, contentDir, config.mounts))
+    );
+    cachedMetas = metas;
+    cachedMetaBySlug = new Map(
+      metas.map((meta) => [meta.slug.join("/"), meta])
     );
     return cachedMetas;
   }
 
-  function findMetaForSlug(
-    slug: string[],
-    metas: DocsPageMeta[]
-  ): DocsPageMeta | null {
-    const target = slug.join("/");
-    for (const meta of metas) {
-      const metaPath = meta.slug.join("/");
-      if (metaPath === target) {
-        return meta;
-      }
-    }
-    return null;
+  async function findMetaForSlug(slug: string[]): Promise<DocsPageMeta | null> {
+    // Ensure the slug index is populated. `listMetas()` is cached after the
+    // first call so subsequent loadPage() invocations are O(1).
+    await listMetas();
+    return cachedMetaBySlug?.get(slug.join("/")) ?? null;
   }
 
   async function getNavigation(): Promise<DocsNavigation> {
@@ -282,8 +279,7 @@ export async function createDocsSource(
     const slug = Array.isArray(slugInput)
       ? slugInput
       : slugInput.split("/").filter(Boolean);
-    const metas = await listMetas();
-    const meta = findMetaForSlug(slug, metas);
+    const meta = await findMetaForSlug(slug);
     if (!meta) {
       return null;
     }

@@ -106,6 +106,7 @@ See [MDX tag contract](/docs/reference/mdx) for the full prop list across all 14
 ## Load a page from a server component
 
 ```tsx title="app/docs/[[...slug]]/page.tsx"
+import { notFound } from "next/navigation";
 import { source } from "@/content/source";
 import { MDXRemote } from "next-mdx-remote/rsc";
 

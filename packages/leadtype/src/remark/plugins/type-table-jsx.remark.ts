@@ -83,7 +83,7 @@ function buildTypeTableNode(opts: {
 
 export function remarkResolveTypeTableJsx(
   options: RemarkResolveTypeTableJsxOptions = {}
-) {
+): (tree: Root) => Root {
   const defaultBasePath = resolve(
     process.cwd(),
     DEFAULT_EXTRACTED_TYPE_BASE_PATH

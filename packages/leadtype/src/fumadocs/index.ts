@@ -111,7 +111,7 @@ export async function fumadocsSource(
   return {
     files: [...pageFiles, ...metaFiles],
     leadtype,
-    loadPage: (slug) => leadtype.loadPage(slug),
+    loadPage: leadtype.loadPage,
   };
 }
 
