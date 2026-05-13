@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import mdx from "@mdx-js/rollup";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -11,7 +12,8 @@ import remarkGfm from "remark-gfm";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
-const typeTableBasePath = resolve(process.cwd(), "..", "..");
+const configDir = dirname(fileURLToPath(import.meta.url));
+const typeTableBasePath = resolve(configDir, "..", "..");
 
 function stripYamlFrontmatter() {
   return (tree: Root) => {
