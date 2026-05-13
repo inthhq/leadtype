@@ -5,6 +5,8 @@ import JSON5 from "json5";
 import type { RootContent, Table } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx";
 import type * as ts from "typescript";
+import type { VFile } from "vfile";
+import { logger } from "../../internal/logger";
 import {
   createHeading,
   createJsxComponentProcessor,
@@ -152,6 +154,10 @@ type TypeTableOptions = {
   includeRequired?: boolean;
   /** Base path to resolve relative file paths for ExtractedTypeTable components. */
   basePath?: string;
+  /** Throw when an ExtractedTypeTable / AutoTypeTable reference cannot be resolved. */
+  strict?: boolean;
+  /** Emit a stderr warning when extraction fails. Defaults to true. */
+  warnOnFailure?: boolean;
 };
 
 const TABLE_HEADING_DEPTH = 3 as const;
@@ -163,12 +169,82 @@ const IMPORT_TYPE_PATTERN = /import\(["']([^"']+)["']\)\.(\w+)/;
 const JSDOC_PATTERN = /\/\*\*[\s\S]*?\*\//;
 
 const TRAILING_SLASHES_PATTERN = /\/+$/;
-const DEFAULT_EXTRACTED_TYPE_BASE_PATH = "docs";
+const DEFAULT_DOCS_DIR = "docs";
 
 type ParsedProperty = {
   name: string;
   property: ObjectType;
 };
+
+function getVFilePath(file?: VFile): string | undefined {
+  return typeof file?.path === "string" && file.path.length > 0
+    ? file.path
+    : undefined;
+}
+
+export function resolveDefaultTypeTableBasePath(sourcePath?: string): string {
+  if (!sourcePath) {
+    return process.cwd();
+  }
+
+  const normalizedPath = sourcePath.replaceAll("\\", "/");
+  const segments = normalizedPath.split("/");
+  const docsIndex = segments.lastIndexOf(DEFAULT_DOCS_DIR);
+  if (docsIndex > 0) {
+    return segments.slice(0, docsIndex).join("/") || "/";
+  }
+
+  return process.cwd();
+}
+
+export function createTypeTableExtractionFailureMessage({
+  basePath,
+  path,
+  typeName,
+}: {
+  basePath?: string;
+  path: string;
+  typeName: string;
+}): string {
+  const basePathHint = basePath ? ` using base path "${basePath}"` : "";
+  return `ExtractedTypeTable: Could not extract "${typeName}" from "${path}"${basePathHint}. Verify the path/name and that the file is included by your tsconfig.`;
+}
+
+function reportTypeTableExtractionFailure({
+  basePath,
+  path,
+  strict,
+  typeName,
+  warnOnFailure,
+}: {
+  basePath?: string;
+  path: string;
+  strict?: boolean;
+  typeName: string;
+  warnOnFailure?: boolean;
+}): string {
+  const message = createTypeTableExtractionFailureMessage({
+    basePath,
+    path,
+    typeName,
+  });
+
+  if (strict) {
+    throw new Error(message);
+  }
+
+  if (warnOnFailure ?? true) {
+    logger.warn({
+      human: { message },
+      json: {
+        event: "type_table.extraction_failed",
+        fields: { basePath, path, typeName },
+      },
+    });
+  }
+
+  return message;
+}
 
 /**
  * Parse a JavaScript object literal from an MDX attribute value expression.
@@ -758,6 +834,13 @@ function processExtractedTypeTableNode(
       content.push(table);
     }
   } else {
+    const failureMessage = reportTypeTableExtractionFailure({
+      basePath: overrideBasePath || options.basePath,
+      path: extractedTypePath,
+      strict: options.strict,
+      typeName: extractedTypeName,
+      warnOnFailure: options.warnOnFailure,
+    });
     // Fallback to simple info table if extraction failed
     const infoTable = createTable(
       ["Property", "Value"],
@@ -771,11 +854,7 @@ function processExtractedTypeTableNode(
     content.push(infoTable);
 
     // Add a note about this being an ExtractedTypeTable
-    content.push(
-      createParagraph(
-        `*ExtractedTypeTable: Could not extract \`${extractedTypeName}\` from \`${extractedTypePath}\`. Verify the path/name and that the file is included by your tsconfig.*`
-      )
-    );
+    content.push(createParagraph(`*${failureMessage}*`));
   }
 
   return content;
@@ -897,13 +976,18 @@ export const remarkTypeTableToMarkdown = (
     includeDescriptions: true,
     includeDefaults: true,
     includeRequired: true,
-    basePath: resolve(process.cwd(), DEFAULT_EXTRACTED_TYPE_BASE_PATH),
+    warnOnFailure: true,
   };
-  const resolved = { ...defaults, ...opts };
 
   return createJsxComponentProcessor(
     ["TypeTable", "ExtractedTypeTable", "AutoTypeTable"],
-    (node) => {
+    (node, _index, _parent, file) => {
+      const resolved = {
+        ...defaults,
+        ...opts,
+        basePath:
+          opts.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file)),
+      };
       if (isExtractedTypeTableNode(node)) {
         return processExtractedTypeTableNode(node, resolved);
       }

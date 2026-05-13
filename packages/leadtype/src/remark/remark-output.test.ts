@@ -77,13 +77,13 @@ describe("remark markdown output", () => {
     expect(result.markdown).not.toContain('appearsClicking **"Customize"**');
   });
 
-  it("resolves ExtractedTypeTable paths from docs by default", async () => {
+  it("resolves ExtractedTypeTable paths from the source root by default", async () => {
     const projectDir = await createTempProject();
     const previousCwd = process.cwd();
     try {
       await writeProjectFile(
         projectDir,
-        "docs/types.ts",
+        "types.ts",
         `export interface PipelineOptions {
   /** Source directory for docs. */
   srcDir: string;
@@ -113,7 +113,7 @@ describe("remark markdown output", () => {
     try {
       await writeProjectFile(
         projectDir,
-        "docs/types.ts",
+        "types.ts",
         `export interface ConsentBannerProps {
   /** Content to display as the banner's title. */
   title?: string;

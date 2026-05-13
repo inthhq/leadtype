@@ -39,7 +39,11 @@ export {
   resolveIncludePath,
 } from "../remark/plugins/include.remark";
 // Source preset for bundler consumers
-export { mdxSourcePlugins } from "./source-preset";
+export {
+  createMdxSourcePlugins,
+  type MdxSourcePluginsOptions,
+  mdxSourcePlugins,
+} from "./source-preset";
 // Tag type contracts
 export type {
   AccordionItemProps,

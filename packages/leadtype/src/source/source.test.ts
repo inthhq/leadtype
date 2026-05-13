@@ -11,13 +11,18 @@ async function writeMdx(filePath: string, content: string): Promise<void> {
 
 describe("createDocsSource", () => {
   let contentDir: string;
+  const extraTempDirs: string[] = [];
 
   beforeEach(async () => {
     contentDir = await mkdtemp(path.join(tmpdir(), "leadtype-source-"));
   });
 
   afterEach(async () => {
-    await rm(contentDir, { force: true, recursive: true });
+    await Promise.all(
+      [contentDir, ...extraTempDirs.splice(0)].map(async (dir) => {
+        await rm(dir, { force: true, recursive: true });
+      })
+    );
   });
 
   it("lists every .md / .mdx page under contentDir with stable slug derivation", async () => {
@@ -108,6 +113,115 @@ describe("createDocsSource", () => {
 
     expect(page?.markdown).toContain("## Install");
     expect(page?.markdown).toContain("bun add leadtype");
+  });
+
+  it("resolves AutoTypeTable paths from the source root by default", async () => {
+    const sourceRoot = await mkdtemp(
+      path.join(tmpdir(), "leadtype-source-root-")
+    );
+    extraTempDirs.push(sourceRoot);
+    await rm(contentDir, { force: true, recursive: true });
+    contentDir = path.join(sourceRoot, "docs");
+    await writeMdx(
+      path.join(
+        sourceRoot,
+        "packages/react/src/components/consent-banner/consent-banner.tsx"
+      ),
+      `export interface ConsentBannerProps {
+  /** Banner title shown above consent choices. */
+  title?: string;
+}
+`
+    );
+    await writeMdx(
+      path.join(contentDir, "reference.mdx"),
+      '<AutoTypeTable name="ConsentBannerProps" path="./packages/react/src/components/consent-banner/consent-banner.tsx" />'
+    );
+
+    const source = await createDocsSource({ contentDir });
+    const page = await source.loadPage("reference");
+
+    expect(page?.markdown).toContain("title");
+    expect(page?.markdown).toContain(
+      "Banner title shown above consent choices."
+    );
+    expect(page?.markdown).not.toContain(
+      'Could not extract "ConsentBannerProps"'
+    );
+  });
+
+  it("allows typeTableBasePath to override source-root type resolution", async () => {
+    const sourceRoot = await mkdtemp(
+      path.join(tmpdir(), "leadtype-source-root-")
+    );
+    const typeRoot = await mkdtemp(path.join(tmpdir(), "leadtype-types-"));
+    extraTempDirs.push(sourceRoot, typeRoot);
+    await rm(contentDir, { force: true, recursive: true });
+    contentDir = path.join(sourceRoot, "docs");
+    await writeMdx(
+      path.join(typeRoot, "packages/react/types.ts"),
+      `export interface OverrideProps {
+  /** Resolved from an explicit type-table base path. */
+  enabled: boolean;
+}
+`
+    );
+    await writeMdx(
+      path.join(contentDir, "reference.mdx"),
+      '<AutoTypeTable name="OverrideProps" path="./packages/react/types.ts" />'
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      typeTableBasePath: typeRoot,
+    });
+    const page = await source.loadPage("reference");
+
+    expect(page?.markdown).toContain("enabled");
+    expect(page?.markdown).toContain(
+      "Resolved from an explicit type-table base path."
+    );
+  });
+
+  it("emits a visible warning when source type extraction fails", async () => {
+    const sourceRoot = await mkdtemp(
+      path.join(tmpdir(), "leadtype-source-root-")
+    );
+    extraTempDirs.push(sourceRoot);
+    await rm(contentDir, { force: true, recursive: true });
+    contentDir = path.join(sourceRoot, "docs");
+    await writeMdx(
+      path.join(contentDir, "reference.mdx"),
+      '<AutoTypeTable name="MissingProps" path="./packages/react/missing.ts" />'
+    );
+
+    const source = await createDocsSource({ contentDir });
+    const page = await source.loadPage("reference");
+
+    expect(page?.markdown).toContain("Warning:");
+    expect(page?.markdown).toContain('Could not extract "MissingProps"');
+  });
+
+  it("throws in strict mode when source type extraction fails", async () => {
+    const sourceRoot = await mkdtemp(
+      path.join(tmpdir(), "leadtype-source-root-")
+    );
+    extraTempDirs.push(sourceRoot);
+    await rm(contentDir, { force: true, recursive: true });
+    contentDir = path.join(sourceRoot, "docs");
+    await writeMdx(
+      path.join(contentDir, "reference.mdx"),
+      '<AutoTypeTable name="MissingProps" path="./packages/react/missing.ts" />'
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      typeTableStrict: true,
+    });
+
+    await expect(source.loadPage("reference")).rejects.toThrow(
+      /Could not extract "MissingProps"/
+    );
   });
 
   it("buildSearchIndex emits an index whose document ids match urlPaths", async () => {

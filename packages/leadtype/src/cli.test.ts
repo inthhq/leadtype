@@ -784,6 +784,40 @@ Initial release.
     );
   });
 
+  it("fails generation when typeTableStrict extraction fails", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Configured Product",
+    summary: "Configured product summary.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  typeTableStrict: true,
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides',
+      '<AutoTypeTable name="MissingProps" path="./packages/react/missing.ts" />'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('Could not extract "MissingProps"');
+    expect(capture.stderr).toContain("Failed to convert 1 docs file(s).");
+  });
+
   it("filters generated docs by include path globs", async () => {
     const outDir = await createTempDir();
     const capture = createCapture();

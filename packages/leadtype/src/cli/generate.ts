@@ -107,12 +107,26 @@ type GenerateResult = {
   srcDir: string;
 };
 
-function createGenerateRemarkPlugins(sourceRoot: string): PluggableList {
+function createGenerateRemarkPlugins({
+  sourceRoot,
+  typeTableBasePath,
+  typeTableStrict,
+}: {
+  sourceRoot: string;
+  typeTableBasePath?: string;
+  typeTableStrict?: boolean;
+}): PluggableList {
   const plugins: PluggableList = [remarkInclude];
   for (const plugin of defaultRemarkPlugins) {
     plugins.push(
       plugin === remarkTypeTableToMarkdown
-        ? ([remarkTypeTableToMarkdown, { basePath: sourceRoot }] as Pluggable)
+        ? ([
+            remarkTypeTableToMarkdown,
+            {
+              basePath: typeTableBasePath ?? sourceRoot,
+              strict: typeTableStrict,
+            },
+          ] as Pluggable)
         : plugin
     );
   }
@@ -128,6 +142,8 @@ type ResolvedGenerateMetadata = {
   configPath?: string;
   groups: DocsGroup[];
   product: ProductInfo;
+  typeTableBasePath?: string;
+  typeTableStrict?: boolean;
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -340,7 +356,18 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
       `docs config at "${configPath}" must export groups as an array of { slug, title } entries`
     );
   }
-  return { groups, product };
+  return {
+    groups,
+    product,
+    typeTableBasePath:
+      typeof value.typeTableBasePath === "string"
+        ? value.typeTableBasePath
+        : undefined,
+    typeTableStrict:
+      typeof value.typeTableStrict === "boolean"
+        ? value.typeTableStrict
+        : undefined,
+  };
 }
 
 async function importConfigModule(configPath: string): Promise<unknown> {
@@ -456,6 +483,10 @@ async function resolveGenerateMetadata(
       configPath: loadedConfig.path,
       groups: loadedConfig.config.groups,
       product: applyProductOverrides(loadedConfig.config.product, args),
+      typeTableBasePath: loadedConfig.config.typeTableBasePath
+        ? path.resolve(srcDir, loadedConfig.config.typeTableBasePath)
+        : undefined,
+      typeTableStrict: loadedConfig.config.typeTableStrict,
     };
   }
 
@@ -794,12 +825,13 @@ export async function runGenerateCommand(
   try {
     const metadata = await resolveGenerateMetadata(srcDir, docsDirs, args);
     sourceMirror = await createSourceMirror(srcDir, docsSources, args);
-    const { groups, product } = metadata.configPath
-      ? metadata
-      : {
-          ...metadata,
-          groups: await inferGroups(sourceMirror.docsDir),
-        };
+    const { groups, product, typeTableBasePath, typeTableStrict } =
+      metadata.configPath
+        ? metadata
+        : {
+            ...metadata,
+            groups: await inferGroups(sourceMirror.docsDir),
+          };
 
     const navigation = await resolveDocsNavigation({
       srcDir: sourceMirror.srcDir,
@@ -816,8 +848,13 @@ export async function runGenerateCommand(
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
-      remarkPlugins: createGenerateRemarkPlugins(srcDir),
+      remarkPlugins: createGenerateRemarkPlugins({
+        sourceRoot: srcDir,
+        typeTableBasePath,
+        typeTableStrict,
+      }),
       enrichFrontmatterFromGit: args.enrichGit,
+      failOnError: typeTableStrict,
     });
 
     let result: GenerateResult;

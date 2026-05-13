@@ -38,7 +38,7 @@ import type {
 } from "../llm";
 import { extractDocsTableOfContents, resolveDocsNavigation } from "../llm";
 import type { DocsNavigation } from "../llm/readability";
-import { mdxSourcePlugins } from "../mdx/source-preset";
+import { createMdxSourcePlugins } from "../mdx/source-preset";
 import {
   type IncludeResolution,
   type ResolveIncludeOptions,
@@ -102,6 +102,14 @@ export type CreateDocsSourceConfig = {
    * Pass `[]` to skip transforms.
    */
   remarkPlugins?: PluggableList;
+  /**
+   * Base directory for `<ExtractedTypeTable>` / `<AutoTypeTable path="…">`
+   * resolution. Defaults to the parent of `contentDir`, matching a source
+   * root such as `.c15t` for `.c15t/docs`.
+   */
+  typeTableBasePath?: string;
+  /** Throw when a referenced type cannot be extracted. */
+  typeTableStrict?: boolean;
   /** TOC extraction options. Pass `false` to skip TOC computation entirely. */
   toc?: DocsTableOfContentsOptions | false;
   /** Search-index tuning. */
@@ -212,7 +220,15 @@ export async function createDocsSource(
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const remarkPlugins = config.remarkPlugins ?? mdxSourcePlugins;
+  const typeTableBasePath = path.resolve(
+    config.typeTableBasePath ?? path.dirname(contentDir)
+  );
+  const remarkPlugins =
+    config.remarkPlugins ??
+    createMdxSourcePlugins({
+      typeTableBasePath,
+      typeTableStrict: config.typeTableStrict,
+    });
   const tocOptions: DocsTableOfContentsOptions | false =
     config.toc === false ? false : (config.toc ?? {});
 

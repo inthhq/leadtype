@@ -252,6 +252,8 @@ export type MdxToMarkdownOptions = {
    * `min(cpuCount, 16)` with a floor of 2.
    */
   concurrency?: number;
+  /** Throw after batch conversion if any file fails. */
+  failOnError?: boolean;
 };
 
 type GitEnrichment = {
@@ -676,4 +678,8 @@ export async function convertAllMdx(
       },
     },
   });
+
+  if (failed > 0 && config.failOnError) {
+    throw new Error(`Failed to convert ${failed} docs file(s).`);
+  }
 }

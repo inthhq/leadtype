@@ -1,5 +1,6 @@
 import type { Parent, Root, RootContent } from "mdast";
 import { SKIP, visit } from "unist-util-visit";
+import type { VFile } from "vfile";
 import { hasName } from "./guards";
 import type { MdxNode } from "./types";
 
@@ -9,7 +10,8 @@ import type { MdxNode } from "./types";
 type ComponentProcessor = (
   node: MdxNode,
   index: number,
-  parent: Parent
+  parent: Parent,
+  file?: VFile
 ) => RootContent[] | undefined;
 
 /**
@@ -28,10 +30,10 @@ export function createJsxComponentProcessor(
   componentName: string | string[],
   processor: ComponentProcessor,
   removeIfEmpty = true
-): (tree: Root) => Root {
+): (tree: Root, file?: VFile) => Root {
   const names = Array.isArray(componentName) ? componentName : [componentName];
 
-  return (tree: Root): Root => {
+  return (tree: Root, file?: VFile): Root => {
     visit(
       tree,
       ["mdxJsxFlowElement", "mdxJsxTextElement"],
@@ -45,7 +47,7 @@ export function createJsxComponentProcessor(
           return;
         }
 
-        const result = processor(node as MdxNode, index, parent);
+        const result = processor(node as MdxNode, index, parent, file);
 
         // If processor returns void, assume it handled replacement internally
         if (result === undefined) {
@@ -79,14 +81,15 @@ export function createSimpleJsxComponentProcessor(
   processor: (
     node: MdxNode,
     index: number,
-    parent: Parent
+    parent: Parent,
+    file?: VFile
   ) => RootContent | null,
   removeIfEmpty = true
 ) {
   return createJsxComponentProcessor(
     componentName,
-    (node, index, parent) => {
-      const result = processor(node, index, parent);
+    (node, index, parent, file) => {
+      const result = processor(node, index, parent, file);
       return result ? [result] : [];
     },
     removeIfEmpty
