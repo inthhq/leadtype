@@ -118,14 +118,13 @@ export default defineConfig({
 
 ```tsx title="src/routes/docs/$.tsx"
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { type ComponentType, lazy, Suspense } from "react";
+import { type ComponentType, lazy, Suspense, useMemo } from "react";
 import docsPages from "@/generated/docs-pages.json";
 
-const pagesBySlug = new Map(
-  (docsPages as { slug: string[]; globKey: string }[]).map((p) => [
-    p.slug.join("/"),
-    p,
-  ])
+type DocsPage = { slug: string[]; globKey: string; urlPath: string };
+
+const pagesBySlug = new Map<string, DocsPage>(
+  (docsPages as DocsPage[]).map((p) => [p.slug.join("/"), p])
 );
 
 // import.meta.glob keys are POSIX paths; the build-time manifest writes
@@ -134,25 +133,51 @@ const mdxModules = import.meta.glob<{ default: ComponentType }>(
   "../../../content/docs/**/*.mdx"
 );
 
+const TRAILING_SLASH = /\/+$/;
+
+function resolvePage(splat: string | undefined): DocsPage | null {
+  if (!splat) return null;
+  return pagesBySlug.get(splat.replace(TRAILING_SLASH, "")) ?? null;
+}
+
+function MissingMdxModule({ urlPath }: { urlPath: string }) {
+  return (
+    <div>
+      MDX module not found for <code>{urlPath}</code>. Re-run your docs
+      manifest script after adding new pages.
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/docs/$")({
   beforeLoad: ({ params }) => {
-    if (!pagesBySlug.get((params._splat ?? "").replace(/\/+$/, ""))) {
-      throw notFound();
-    }
+    if (!resolvePage(params._splat)) throw notFound();
   },
   component: DocsCatchAllRoute,
 });
 
 function DocsCatchAllRoute() {
   const { _splat } = Route.useParams();
-  const page = pagesBySlug.get((_splat ?? "").replace(/\/+$/, ""));
-  if (!page) {
-    return null;
-  }
-  const Mdx = lazy(mdxModules[page.globKey]);
+  // beforeLoad guarantees this is non-null when the component renders.
+  const page = resolvePage(_splat) as DocsPage;
+
+  // `lazy()` must run outside the render body — calling it inline returns
+  // a fresh lazy component every render, defeats Suspense caching, and
+  // remounts the MDX page on every parent re-render. Memoize on the
+  // globKey so the cached lazy component is reused across renders. Guard
+  // the lookup in case the manifest references a file the glob didn't
+  // pick up (stale manifest, file deleted between builds, …).
+  const MdxComponent = useMemo(() => {
+    const loader = mdxModules[page.globKey];
+    if (!loader) {
+      return () => <MissingMdxModule urlPath={page.urlPath} />;
+    }
+    return lazy(loader);
+  }, [page.globKey, page.urlPath]);
+
   return (
     <Suspense fallback={null}>
-      <Mdx />
+      <MdxComponent />
     </Suspense>
   );
 }
