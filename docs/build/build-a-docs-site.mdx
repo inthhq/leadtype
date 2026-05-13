@@ -22,7 +22,7 @@ Leadtype offers two integration shapes for a docs site. Pick the one that fits h
 
 | Path | When to choose | What you wire |
 | --- | --- | --- |
-| **Source primitive** | Most cases. You're building a Next, Vite, Astro, or Fumadocs app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `mdxSourcePlugins` |
+| **Source primitive** | Most cases. You're building a Next, Vite, Astro, or Fumadocs app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
 | **Static artifacts** | Your runtime needs flat files on disk (CDN-only deploy, static export, agent-only consumption, multi-app sharing). | `leadtype generate` CLI in your build script |
 
 The two paths are not mutually exclusive — you can use the source primitive for your UI and still run `leadtype generate` for the `llms.txt` and agent-readability artifacts.

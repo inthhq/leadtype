@@ -11,7 +11,7 @@ The `leadtype/mdx` subpath is the **consumer-facing MDX surface** — everything
 It exports three things:
 
 1. **Tag type contracts** — typed prop shapes for every custom MDX tag.
-2. **`mdxSourcePlugins`** — a remark preset that performs build-time resolution only (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s) and leaves every other custom tag as JSX.
+2. **`createMdxSourcePlugins()` / `mdxSourcePlugins`** — a remark preset that performs build-time resolution only (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s) and leaves every other custom tag as JSX.
 3. **Include-resolution helpers** — `resolveInclude`, `parseIncludeSpecifier`, `extractMdxSection` for direct use.
 
 Pair it with `leadtype/remark` (markdown flattening for the agent/LLM pipeline) — they are sibling surfaces, not alternatives. Most projects use both.
@@ -20,14 +20,21 @@ Pair it with `leadtype/remark` (markdown flattening for the agent/LLM pipeline) 
 
 ```ts
 import createMDX from "@next/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
 
 const withMDX = createMDX({
   options: {
-    remarkPlugins: [...mdxSourcePlugins],
+    remarkPlugins: [
+      ...createMdxSourcePlugins({ typeTableBasePath }),
+    ],
   },
 });
 ```
+
+Use the `mdxSourcePlugins` constant only when the default path inference is enough for your project. When `<ExtractedTypeTable path="./packages/..." />` should resolve from a known source root (`.c15t`, `.leadtype`, the repo root, or a docs folder), prefer `createMdxSourcePlugins({ typeTableBasePath })`. If you intentionally keep type files inside `docs/`, pass `path.resolve(process.cwd(), "docs")`.
 
 The preset is intentionally minimal — only the transforms that **must** run at build time:
 
@@ -218,7 +225,7 @@ export function TypeTable({ properties, title, description }: TypeTableProps) {
 }
 ```
 
-`<ExtractedTypeTable>` requires `typescript` to be installed as an optional peer dep in your docs project.
+`<ExtractedTypeTable>` requires `typescript` to be installed as an optional peer dep in your docs project. Failed extraction emits a visible warning by default; pass `typeTableStrict: true` to `createMdxSourcePlugins()` when a missing type should fail the build.
 
 ## Include resolution
 

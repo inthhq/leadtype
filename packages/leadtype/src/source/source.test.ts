@@ -202,6 +202,32 @@ describe("createDocsSource", () => {
     expect(page?.markdown).toContain('Could not extract "MissingProps"');
   });
 
+  it("treats an extracted empty interface as a successful type table", async () => {
+    const sourceRoot = await mkdtemp(
+      path.join(tmpdir(), "leadtype-source-root-")
+    );
+    extraTempDirs.push(sourceRoot);
+    await rm(contentDir, { force: true, recursive: true });
+    contentDir = path.join(sourceRoot, "docs");
+    await writeMdx(
+      path.join(sourceRoot, "packages/react/types.ts"),
+      "export interface Marker {}\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "reference.mdx"),
+      '<AutoTypeTable name="Marker" path="./packages/react/types.ts" />'
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      typeTableStrict: true,
+    });
+    const page = await source.loadPage("reference");
+
+    expect(page?.markdown).toContain("<TypeTable properties={{}}");
+    expect(page?.markdown).not.toContain('Could not extract "Marker"');
+  });
+
   it("throws in strict mode when source type extraction fails", async () => {
     const sourceRoot = await mkdtemp(
       path.join(tmpdir(), "leadtype-source-root-")

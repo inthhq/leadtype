@@ -35,7 +35,9 @@ For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/build/integr
 | `baseUrl` | `string` | Used for absolute URLs in TOC and search index. |
 | `groups` | `DocsGroup[]` | Doc groups for navigation. Empty groups = all pages ungrouped. |
 | `mounts` | `DocsPathMount[]` | Multi-mount routing (advanced). |
-| `remarkPlugins` | `PluggableList` | Defaults to `mdxSourcePlugins`. Pass `[]` to skip transforms. |
+| `remarkPlugins` | `PluggableList` | Defaults to Leadtype's source preset. Pass `[]` to skip transforms. |
+| `typeTableBasePath` | `string` | Base directory for `<ExtractedTypeTable>` / `<AutoTypeTable path="…">`. Defaults to the parent of `contentDir`. |
+| `typeTableStrict` | `boolean` | Throw when a referenced type cannot be extracted instead of emitting a visible warning. |
 | `toc` | `DocsTableOfContentsOptions \| false` | TOC tuning; `false` skips TOC entirely. |
 | `searchIndex` | `CreateDocsSearchIndexOptions` | Search-index tuning. |
 
@@ -97,7 +99,7 @@ Convenience wrapper around `resolveInclude` from `leadtype/mdx` with `fromDir` d
 
 ## Choosing between `loadPage` and direct `.mdx` imports
 
-For most bundler-driven consumers (Next App Router, Vite, Astro), you'll **import source `.mdx` directly** and let the bundler's MDX pipeline compile it with `mdxSourcePlugins`. `loadPage()` is for cases where you need the resolved markdown body or AST programmatically:
+For most bundler-driven consumers (Next App Router, Vite, Astro), you'll **import source `.mdx` directly** and let the bundler's MDX pipeline compile it with `createMdxSourcePlugins()`. `loadPage()` is for cases where you need the resolved markdown body or AST programmatically:
 
 - Server-rendering through `next-mdx-remote` instead of bundler-native MDX
 - Streaming partials to an agent / LLM at runtime
@@ -111,10 +113,15 @@ For most bundler-driven consumers (Next App Router, Vite, Astro), you'll **impor
 
 ```ts title="next.config.mjs"
 import createMDX from "@next/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
 
 export default createMDX({
-  options: { remarkPlugins: [...mdxSourcePlugins] },
+  options: {
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
+  },
 })({ pageExtensions: ["ts", "tsx", "mdx"] });
 ```
 
@@ -134,10 +141,10 @@ export default async function Page({ params }) {
 ```ts title="astro.config.mjs"
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default defineConfig({
-  integrations: [mdx({ remarkPlugins: [...mdxSourcePlugins] })],
+  integrations: [mdx({ remarkPlugins: [...createMdxSourcePlugins()] })],
 });
 ```
 
@@ -149,16 +156,22 @@ Use Astro's built-in content collection schema for typed frontmatter; use `creat
 import mdx from "@mdx-js/rollup";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
 import remarkFrontmatter from "remark-frontmatter";
 import { defineConfig } from "vite";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
 
 export default defineConfig({
   plugins: [
     {
       ...mdx({
         providerImportSource: "@mdx-js/react",
-        remarkPlugins: [remarkFrontmatter, ...mdxSourcePlugins],
+        remarkPlugins: [
+          remarkFrontmatter,
+          ...createMdxSourcePlugins({ typeTableBasePath }),
+        ],
       }),
       enforce: "pre",
     },
@@ -174,11 +187,11 @@ Pair with a TanStack Router catch-all (`src/routes/docs/$.tsx`) that consumes a 
 
 ```ts title="vite.config.ts"
 import mdx from "@mdx-js/rollup";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default {
   plugins: [
-    mdx({ remarkPlugins: [...mdxSourcePlugins] }),
+    mdx({ remarkPlugins: [...createMdxSourcePlugins()] }),
     // ...your framework plugin: viteReact / vue / solid / svelte
   ],
 };
@@ -187,12 +200,12 @@ export default {
 ### Nuxt
 
 ```ts title="nuxt.config.ts"
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default defineNuxtConfig({
   modules: ["@nuxtjs/mdc"],
   mdc: {
-    remarkPlugins: [...mdxSourcePlugins],
+    remarkPlugins: [...createMdxSourcePlugins()],
   },
 });
 ```
@@ -201,11 +214,11 @@ export default defineNuxtConfig({
 
 ```ts title="svelte.config.js"
 import { mdsvex } from "mdsvex";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default {
   extensions: [".svelte", ".svx", ".mdx"],
-  preprocess: mdsvex({ remarkPlugins: [...mdxSourcePlugins] }),
+  preprocess: mdsvex({ remarkPlugins: [...createMdxSourcePlugins()] }),
 };
 ```
 
@@ -217,7 +230,7 @@ See the dedicated [Integrate with Fumadocs](/docs/build/integrate-with-fumadocs)
 
 If your framework's MDX integration accepts a remark plugin list, leadtype works. Three pieces:
 
-1. Add `mdxSourcePlugins` to the remark list so `<include>` / `<ExtractedTypeTable>` resolve at build time.
+1. Add `createMdxSourcePlugins()` to the remark list so `<include>` / `<ExtractedTypeTable>` resolve at build time.
 2. Implement components against the [tag types from `leadtype/mdx`](/docs/reference/mdx) — intersect with your framework's child type.
 3. Optionally call `createDocsSource()` for navigation, search, and programmatic page loading.
 

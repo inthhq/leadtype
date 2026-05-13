@@ -24,7 +24,7 @@ export const source = await createDocsSource({
 });
 ```
 
-Wire `mdxSourcePlugins` into your bundler's remark stack, then call `source.loadPage(slug)` from your framework's page renderer. The "Wire into your framework" section below has minimal setups for each host.
+Wire `createMdxSourcePlugins()` into your bundler's remark stack, then call `source.loadPage(slug)` from your framework's page renderer. The "Wire into your framework" section below has minimal setups for each host.
 
 ## Install
 
@@ -36,16 +36,21 @@ Plus an MDX integration for your bundler (`@next/mdx`, `@astrojs/mdx`, `@mdx-js/
 
 ## Wire into your framework
 
-`mdxSourcePlugins` expands `<include>` partials and resolves `<ExtractedTypeTable>` at build time, while leaving every custom tag (`<Callout>`, `<Tabs>`, `<Steps>`, …) as JSX for your runtime components.
+`createMdxSourcePlugins()` expands `<include>` partials and resolves `<ExtractedTypeTable>` at build time, while leaving every custom tag (`<Callout>`, `<Tabs>`, `<Steps>`, …) as JSX for your runtime components. Set `typeTableBasePath` to the source root that contains referenced TypeScript files; use `path.resolve(process.cwd(), "docs")` only when those files intentionally live under your docs folder.
 
 ### Next App Router
 
 ```ts title="next.config.mjs"
 import createMDX from "@next/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
 
 export default createMDX({
-  options: { remarkPlugins: [...mdxSourcePlugins] },
+  options: {
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
+  },
 })({ pageExtensions: ["ts", "tsx", "mdx"] });
 ```
 
@@ -82,10 +87,10 @@ export async function generateStaticParams() {
 ```ts title="astro.config.mjs"
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default defineConfig({
-  integrations: [mdx({ remarkPlugins: [...mdxSourcePlugins] })],
+  integrations: [mdx({ remarkPlugins: [...createMdxSourcePlugins()] })],
 });
 ```
 
@@ -97,7 +102,7 @@ Use Astro's native content collection schema for typed frontmatter. Call `source
 import mdx from "@mdx-js/rollup";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 import remarkFrontmatter from "remark-frontmatter";
 import { defineConfig } from "vite";
 
@@ -106,7 +111,7 @@ export default defineConfig({
     {
       ...mdx({
         providerImportSource: "@mdx-js/react",
-        remarkPlugins: [remarkFrontmatter, ...mdxSourcePlugins],
+        remarkPlugins: [remarkFrontmatter, ...createMdxSourcePlugins()],
       }),
       enforce: "pre",
     },
@@ -189,11 +194,11 @@ Generate `docs-pages.json` at build time by calling `createDocsSource().listPage
 
 ```ts title="vite.config.ts"
 import mdx from "@mdx-js/rollup";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default {
   plugins: [
-    mdx({ remarkPlugins: [...mdxSourcePlugins] }),
+    mdx({ remarkPlugins: [...createMdxSourcePlugins()] }),
     // ...your framework plugin: viteReact / vue / solid / svelte
   ],
 };
@@ -202,11 +207,11 @@ export default {
 ### Nuxt
 
 ```ts title="nuxt.config.ts"
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default defineNuxtConfig({
   modules: ["@nuxtjs/mdc"],
-  mdc: { remarkPlugins: [...mdxSourcePlugins] },
+  mdc: { remarkPlugins: [...createMdxSourcePlugins()] },
 });
 ```
 
@@ -214,11 +219,11 @@ export default defineNuxtConfig({
 
 ```ts title="svelte.config.js"
 import { mdsvex } from "mdsvex";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default {
   extensions: [".svelte", ".svx", ".mdx"],
-  preprocess: mdsvex({ remarkPlugins: [...mdxSourcePlugins] }),
+  preprocess: mdsvex({ remarkPlugins: [...createMdxSourcePlugins()] }),
 };
 ```
 
@@ -226,7 +231,7 @@ export default {
 
 If your framework's MDX integration accepts a remark plugin list, leadtype works. Three pieces every time:
 
-1. Add `mdxSourcePlugins` to the remark list so `<include>` and `<ExtractedTypeTable>` resolve at build time.
+1. Add `createMdxSourcePlugins()` to the remark list so `<include>` and `<ExtractedTypeTable>` resolve at build time.
 2. Implement components against the [tag types from `leadtype/mdx`](/docs/reference/mdx).
 3. Call `createDocsSource()` if you want navigation, search, or programmatic page loading.
 
@@ -320,13 +325,13 @@ For provider-specific search (Vercel AI, TanStack, Cloudflare), feed the bundle 
 
 ## Troubleshooting
 
-- **`<include>` tags survive into the rendered output.** You forgot to add `mdxSourcePlugins` to your MDX compiler's remark plugin list.
-- **`<ExtractedTypeTable>` renders unresolved.** The source preset converts these to `<TypeTable>` only when `extractTypeFromFile` succeeds. Make sure `typescript` is installed in the docs app and `basePath` resolves to the project that contains the type.
+- **`<include>` tags survive into the rendered output.** You forgot to add `createMdxSourcePlugins()` to your MDX compiler's remark plugin list.
+- **`<ExtractedTypeTable>` renders unresolved.** The source preset converts these to `<TypeTable>` only when `extractTypeFromFile` succeeds. Make sure `typescript` is installed in the docs app and `typeTableBasePath` resolves to the project that contains the type.
 - **TOC links don't scroll.** Rendered heading IDs don't match. Wire `slugifyDocsHeading` into your heading components.
 - **Sidebar order doesn't match `llms.txt`.** Your app and the CLI are loading different `docs.config.ts` files. Centralize the config and import it in both.
 
 ## Reference
 
-- [`leadtype/mdx`](/docs/reference/mdx) — tag types, `mdxSourcePlugins`, include helpers
+- [`leadtype/mdx`](/docs/reference/mdx) — tag types, `createMdxSourcePlugins()`, include helpers
 - [`createDocsSource`](/docs/reference/source) — full API surface for the primitive
 - [`leadtype/fumadocs`](/docs/build/integrate-with-fumadocs) — fumadocs adapter recipe

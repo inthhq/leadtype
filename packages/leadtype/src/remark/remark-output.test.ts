@@ -8,6 +8,7 @@ import {
   remarkInclude,
   remarkTypeTableToMarkdown,
 } from "./index";
+import { resolveDefaultTypeTableBasePath } from "./plugins/type-table.remark";
 
 const tempDirs: string[] = [];
 
@@ -137,6 +138,18 @@ describe("remark markdown output", () => {
     } finally {
       process.chdir(previousCwd);
     }
+  });
+
+  it("uses the first docs segment when deriving the fallback type-table base path", () => {
+    expect(
+      resolveDefaultTypeTableBasePath("/repo/docs/reference/docs/page.mdx")
+    ).toBe("/repo");
+    expect(resolveDefaultTypeTableBasePath("docs/reference/page.mdx")).toBe(
+      process.cwd()
+    );
+    expect(resolveDefaultTypeTableBasePath("/repo/content/page.mdx")).toBe(
+      process.cwd()
+    );
   });
 
   it("converts card grids with interactive cards into markdown lists", async () => {

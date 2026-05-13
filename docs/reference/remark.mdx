@@ -131,7 +131,7 @@ Nested includes are supported. The plugin keeps the included file's directory as
 
 ### remarkTypeTableToMarkdown (with basePath)
 
-`<ExtractedTypeTable>` reads a TypeScript file at conversion time. When the file path is relative, the plugin needs a `basePath` to resolve from. Override the default plugin entry to pass options:
+`<ExtractedTypeTable>` reads a TypeScript file at conversion time. When the file path is relative, Leadtype defaults the base path to the source root inferred from the current MDX file. Override the plugin entry when your conversion script should resolve from a specific root or fail on missing types:
 
 ```ts
 import {
@@ -141,7 +141,10 @@ import {
 
 const remarkPlugins = [
   ...defaultRemarkPlugins.filter((p) => p !== remarkTypeTableToMarkdown),
-  [remarkTypeTableToMarkdown, { basePath: process.cwd() }],
+  [
+    remarkTypeTableToMarkdown,
+    { basePath: process.cwd(), strict: true },
+  ],
 ];
 ```
 

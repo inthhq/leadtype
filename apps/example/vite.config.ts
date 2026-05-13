@@ -1,14 +1,17 @@
+import { resolve } from "node:path";
 import mdx from "@mdx-js/rollup";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
 import type { Root } from "mdast";
 import { nitro } from "nitro/vite";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
+
+const typeTableBasePath = resolve(process.cwd(), "..", "..");
 
 function stripYamlFrontmatter() {
   return (tree: Root) => {
@@ -37,14 +40,14 @@ export default defineConfig({
       ...mdx({
         providerImportSource: "@mdx-js/react",
         remarkPlugins: [
-          // Frontmatter parsing first (mdxSourcePlugins expects bodies only).
+          // Frontmatter parsing first (Leadtype's source preset expects bodies only).
           remarkFrontmatter,
           stripYamlFrontmatter,
           remarkGfm,
           // Leadtype's MDX-source preset: expand <include>, resolve
           // <ExtractedTypeTable>, strip authoring `import`s. Keeps every
           // other custom tag as live JSX for the React components below.
-          ...mdxSourcePlugins,
+          ...createMdxSourcePlugins({ typeTableBasePath }),
         ],
       }),
       enforce: "pre",

@@ -9,7 +9,7 @@
  *   - Next App Router: import the source object, call `loadPage(slug)` from a
  *     server component, render `result.ast` with `@mdx-js/mdx`.
  *   - Vite + @mdx-js/rollup: import source `.mdx` directly through the bundler
- *     with `mdxSourcePlugins`; this primitive provides nav + search.
+ *     with `createMdxSourcePlugins()`; this primitive provides nav + search.
  *
  * The primitive does **no I/O on construction** beyond a directory scan for
  * `listPages()`. Page bodies are loaded on demand.
@@ -97,8 +97,8 @@ export type CreateDocsSourceConfig = {
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */
   mounts?: DocsPathMount[];
   /**
-   * Remark plugins to apply when loading pages. Defaults to `mdxSourcePlugins`
-   * (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
+   * Remark plugins to apply when loading pages. Defaults to Leadtype's source
+   * preset (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
    * Pass `[]` to skip transforms.
    */
   remarkPlugins?: PluggableList;
@@ -220,8 +220,11 @@ export async function createDocsSource(
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const contentParentDir = path.dirname(contentDir);
+  const defaultTypeTableBasePath =
+    contentParentDir === contentDir ? contentDir : contentParentDir;
   const typeTableBasePath = path.resolve(
-    config.typeTableBasePath ?? path.dirname(contentDir)
+    config.typeTableBasePath ?? defaultTypeTableBasePath
   );
   const remarkPlugins =
     config.remarkPlugins ??

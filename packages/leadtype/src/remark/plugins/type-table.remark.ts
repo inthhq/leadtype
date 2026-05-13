@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { normalize, resolve } from "node:path";
 import JSON5 from "json5";
 import type { RootContent, Table } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx";
@@ -189,9 +189,9 @@ export function resolveDefaultTypeTableBasePath(sourcePath?: string): string {
 
   const normalizedPath = sourcePath.replaceAll("\\", "/");
   const segments = normalizedPath.split("/");
-  const docsIndex = segments.lastIndexOf(DEFAULT_DOCS_DIR);
+  const docsIndex = segments.indexOf(DEFAULT_DOCS_DIR);
   if (docsIndex > 0) {
-    return segments.slice(0, docsIndex).join("/") || "/";
+    return normalize(segments.slice(0, docsIndex).join("/") || "/");
   }
 
   return process.cwd();

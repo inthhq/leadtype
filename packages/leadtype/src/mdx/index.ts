@@ -7,10 +7,10 @@
  *   - **Tag type contracts** for every custom MDX tag (`CalloutProps`,
  *     `TabsProps`, `TypeTableProps`, …). Implement components against these
  *     in your renderer.
- *   - **`mdxSourcePlugins`** — remark preset for compiling source MDX in a
- *     host bundler (Next, Vite, fumadocs, …). Expands includes, resolves
- *     `<ExtractedTypeTable>`, strips authoring `import`s; preserves every
- *     other custom tag as JSX.
+ *   - **`createMdxSourcePlugins()` / `mdxSourcePlugins`** — remark preset for
+ *     compiling source MDX in a host bundler (Next, Vite, fumadocs, …).
+ *     Expands includes, resolves `<ExtractedTypeTable>`, strips authoring
+ *     `import`s; preserves every other custom tag as JSX.
  *   - **`resolveInclude` / `parseIncludeSpecifier` / `extractMdxSection`** —
  *     low-level include-resolution helpers, framework-neutral.
  *

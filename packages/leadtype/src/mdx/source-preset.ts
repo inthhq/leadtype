@@ -54,4 +54,10 @@ export function createMdxSourcePlugins(
   ];
 }
 
+/**
+ * Back-compatible source preset with no explicit type-table base path. For
+ * projects whose source root is not the current working directory, prefer
+ * `createMdxSourcePlugins({ typeTableBasePath })` so `<ExtractedTypeTable>`
+ * paths resolve from the same root as `createDocsSource({ contentDir })`.
+ */
 export const mdxSourcePlugins: PluggableList = createMdxSourcePlugins();

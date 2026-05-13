@@ -28,10 +28,15 @@ export const leadtypeSource = fumaSource.leadtype;
 
 ```ts title="next.config.mjs"
 import createMDX from "@next/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
 
 export default createMDX({
-  options: { remarkPlugins: [...mdxSourcePlugins] },
+  options: {
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
+  },
 })({ pageExtensions: ["ts", "tsx", "mdx"] });
 ```
 
@@ -71,18 +76,21 @@ Leadtype's MDX-source preset expands `<include>`, resolves `<ExtractedTypeTable>
 
 ```ts title="next.config.mjs"
 import createMDX from "@next/mdx";
-import { mdxSourcePlugins } from "leadtype/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
 
 const withMDX = createMDX({
   options: {
-    remarkPlugins: [...mdxSourcePlugins],
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
   },
 });
 
 export default withMDX({ pageExtensions: ["ts", "tsx", "mdx"] });
 ```
 
-The same plugin list works with `@mdx-js/rollup`, fumadocs-mdx, and any other MDX compiler that accepts a remark plugin list.
+The same plugin list works with `@mdx-js/rollup`, fumadocs-mdx, and any other MDX compiler that accepts a remark plugin list. Set `typeTableBasePath` to the source root that contains files referenced by `<ExtractedTypeTable path="…">`.
 
 ## Implement the tag components
 
@@ -131,7 +139,7 @@ export default async function Page({
 }
 ```
 
-If you prefer fumadocs's built-in page resolution, call `source.getPage(slug)` and import the source `.mdx` directly through fumadocs-mdx as you normally would — the `mdxSourcePlugins` preset will resolve includes during MDX compilation.
+If you prefer fumadocs's built-in page resolution, call `source.getPage(slug)` and import the source `.mdx` directly through fumadocs-mdx as you normally would — the `createMdxSourcePlugins()` preset will resolve includes during MDX compilation.
 
 ## Add search
 

@@ -16,7 +16,7 @@ const contentDir = resolve(
  * fumadocs source backed by leadtype/fumadocs. Walks `.docs-src/c15t/docs`,
  * picks up both `.mdx` pages and the c15t-authored `meta.json` files, and
  * resolves `<include>` / `<ExtractedTypeTable>` at build time via
- * `mdxSourcePlugins` (wired in `next.config.mjs`).
+ * `createMdxSourcePlugins()` (wired in `next.config.mjs`).
  */
 const fumadocsSourceResult = await fumadocsSource({ contentDir });
 

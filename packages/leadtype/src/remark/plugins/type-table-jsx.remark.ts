@@ -166,7 +166,7 @@ export function remarkResolveTypeTableJsx(
             name,
             path,
           });
-          if (!(extracted && Object.keys(extracted).length > 0)) {
+          if (!extracted) {
             const message = createTypeTableExtractionFailureMessage({
               basePath: overrideBasePath,
               path,
