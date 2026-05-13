@@ -596,6 +596,15 @@
                   "children": []
                 },
                 {
+                  "id": "tanstack-start",
+                  "title": "TanStack Start",
+                  "level": 3,
+                  "urlPath": "/docs/build/use-the-source-primitive",
+                  "urlWithHash": "/docs/build/use-the-source-primitive#tanstack-start",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#tanstack-start",
+                  "children": []
+                },
+                {
                   "id": "vite-mdx-js-rollup-works-for-vue-solid-svelte-starters",
                   "title": "Vite + @mdx-js/rollup works for Vue, Solid, Svelte starters",
                   "level": 3,
@@ -2045,6 +2054,15 @@
                   "urlPath": "/docs/reference/source",
                   "urlWithHash": "/docs/reference/source#astro-content-collections",
                   "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#astro-content-collections",
+                  "children": []
+                },
+                {
+                  "id": "tanstack-start",
+                  "title": "TanStack Start",
+                  "level": 3,
+                  "urlPath": "/docs/reference/source",
+                  "urlWithHash": "/docs/reference/source#tanstack-start",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#tanstack-start",
                   "children": []
                 },
                 {

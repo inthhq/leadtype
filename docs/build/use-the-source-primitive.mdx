@@ -91,6 +91,75 @@ export default defineConfig({
 
 Use Astro's native content collection schema for typed frontmatter. Call `source.loadPage()` from leadtype only when you need programmatic include resolution, search, or navigation. See [Astro's content collections docs](https://docs.astro.build/en/guides/content-collections/) for the routing pattern.
 
+### TanStack Start
+
+```ts title="vite.config.ts"
+import mdx from "@mdx-js/rollup";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { mdxSourcePlugins } from "leadtype/mdx";
+import remarkFrontmatter from "remark-frontmatter";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [
+    {
+      ...mdx({
+        providerImportSource: "@mdx-js/react",
+        remarkPlugins: [remarkFrontmatter, ...mdxSourcePlugins],
+      }),
+      enforce: "pre",
+    },
+    tanstackStart(),
+    viteReact({ include: /\.(mdx|[jt]sx?)$/ }),
+  ],
+});
+```
+
+```tsx title="src/routes/docs/$.tsx"
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { type ComponentType, lazy, Suspense } from "react";
+import docsPages from "@/generated/docs-pages.json";
+
+const pagesBySlug = new Map(
+  (docsPages as { slug: string[]; globKey: string }[]).map((p) => [
+    p.slug.join("/"),
+    p,
+  ])
+);
+
+// import.meta.glob keys are POSIX paths; the build-time manifest writes
+// matching keys so each slug maps to its lazy-loaded MDX module.
+const mdxModules = import.meta.glob<{ default: ComponentType }>(
+  "../../../content/docs/**/*.mdx"
+);
+
+export const Route = createFileRoute("/docs/$")({
+  beforeLoad: ({ params }) => {
+    if (!pagesBySlug.get((params._splat ?? "").replace(/\/+$/, ""))) {
+      throw notFound();
+    }
+  },
+  component: DocsCatchAllRoute,
+});
+
+function DocsCatchAllRoute() {
+  const { _splat } = Route.useParams();
+  const page = pagesBySlug.get((_splat ?? "").replace(/\/+$/, ""));
+  if (!page) {
+    return null;
+  }
+  const Mdx = lazy(mdxModules[page.globKey]);
+  return (
+    <Suspense fallback={null}>
+      <Mdx />
+    </Suspense>
+  );
+}
+```
+
+Generate `docs-pages.json` at build time by calling `createDocsSource().listPages()` from a build script and writing each page's `slug`, `urlPath`, and `globKey` (path relative to the catch-all route, POSIX separators).
+
 ### Vite + `@mdx-js/rollup` (works for Vue, Solid, Svelte starters)
 
 ```ts title="vite.config.ts"

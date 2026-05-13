@@ -143,6 +143,33 @@ export default defineConfig({
 
 Use Astro's built-in content collection schema for typed frontmatter; use `createDocsSource()` only when you need leadtype's navigation, search index, or programmatic include resolution.
 
+### TanStack Start
+
+```ts title="vite.config.ts"
+import mdx from "@mdx-js/rollup";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { mdxSourcePlugins } from "leadtype/mdx";
+import remarkFrontmatter from "remark-frontmatter";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [
+    {
+      ...mdx({
+        providerImportSource: "@mdx-js/react",
+        remarkPlugins: [remarkFrontmatter, ...mdxSourcePlugins],
+      }),
+      enforce: "pre",
+    },
+    tanstackStart(),
+    viteReact({ include: /\.(mdx|[jt]sx?)$/ }),
+  ],
+});
+```
+
+Pair with a TanStack Router catch-all (`src/routes/docs/$.tsx`) that consumes a build-time manifest generated from `createDocsSource().listPages()`. See [Use the source primitive → TanStack Start](/docs/build/use-the-source-primitive#tanstack-start) for the catch-all snippet.
+
 ### Vite + `@mdx-js/rollup` (works for Vue, Solid, Svelte starters)
 
 ```ts title="vite.config.ts"
