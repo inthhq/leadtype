@@ -1,0 +1,37 @@
+{
+  "name": "fumadocs-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup:source": "bun run scripts/setup-source.ts",
+    "predev": "bun run setup:source",
+    "prebuild": "bun run setup:source",
+    "dev": "portless fumadocs -- next dev",
+    "build": "bun run --filter leadtype build && next build",
+    "start": "next start",
+    "check-types": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@next/mdx": "^16.2.6",
+    "@tailwindcss/postcss": "^4.3.0",
+    "fumadocs-core": "^15.0.0",
+    "fumadocs-ui": "^15.0.0",
+    "leadtype": "workspace:*",
+    "next": "^15.0.0",
+    "next-mdx-remote-client": "^2.1.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^25.6.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "typescript": "6.0.3"
+  }
+}

@@ -18,24 +18,7 @@ import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as SearchVercelRouteImport } from './routes/search/vercel'
 import { Route as SearchTanstackRouteImport } from './routes/search/tanstack'
 import { Route as SearchCloudflareRouteImport } from './routes/search/cloudflare'
-import { Route as DocsQuickstartRouteImport } from './routes/docs/quickstart'
-import { Route as DocsMethodologyRouteImport } from './routes/docs/methodology'
-import { Route as DocsHowItWorksRouteImport } from './routes/docs/how-it-works'
-import { Route as DocsReferenceSearchRouteImport } from './routes/docs/reference/search'
-import { Route as DocsReferenceRemarkRouteImport } from './routes/docs/reference/remark'
-import { Route as DocsReferenceLlmRouteImport } from './routes/docs/reference/llm'
-import { Route as DocsReferenceLintRouteImport } from './routes/docs/reference/lint'
-import { Route as DocsReferenceEvalsRouteImport } from './routes/docs/reference/evals'
-import { Route as DocsReferenceConvertRouteImport } from './routes/docs/reference/convert'
-import { Route as DocsReferenceCliRouteImport } from './routes/docs/reference/cli'
-import { Route as DocsPackageDocsBundleRouteImport } from './routes/docs/package-docs/bundle'
-import { Route as DocsBuildValidateInCiRouteImport } from './routes/docs/build/validate-in-ci'
-import { Route as DocsBuildRenderMdxAndTocRouteImport } from './routes/docs/build/render-mdx-and-toc'
-import { Route as DocsBuildOptimizeDocsForAgentsRouteImport } from './routes/docs/build/optimize-docs-for-agents'
-import { Route as DocsBuildConnectDocsSiteRouteImport } from './routes/docs/build/connect-docs-site'
-import { Route as DocsBuildAddSearchRouteImport } from './routes/docs/build/add-search'
-import { Route as DocsAuthoringFrontmatterRouteImport } from './routes/docs/authoring/frontmatter'
-import { Route as DocsAuthoringComponentsRouteImport } from './routes/docs/authoring/components'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as ApiDocsSearchRouteImport } from './routes/api/docs/search'
 import { Route as ApiDocsAskRouteImport } from './routes/api/docs/ask'
 import { Route as ApiDocsAskVercelRouteImport } from './routes/api/docs/ask/vercel'
@@ -87,98 +70,9 @@ const SearchCloudflareRoute = SearchCloudflareRouteImport.update({
   path: '/cloudflare',
   getParentRoute: () => SearchRoute,
 } as any)
-const DocsQuickstartRoute = DocsQuickstartRouteImport.update({
-  id: '/quickstart',
-  path: '/quickstart',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsMethodologyRoute = DocsMethodologyRouteImport.update({
-  id: '/methodology',
-  path: '/methodology',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsHowItWorksRoute = DocsHowItWorksRouteImport.update({
-  id: '/how-it-works',
-  path: '/how-it-works',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceSearchRoute = DocsReferenceSearchRouteImport.update({
-  id: '/reference/search',
-  path: '/reference/search',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceRemarkRoute = DocsReferenceRemarkRouteImport.update({
-  id: '/reference/remark',
-  path: '/reference/remark',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceLlmRoute = DocsReferenceLlmRouteImport.update({
-  id: '/reference/llm',
-  path: '/reference/llm',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceLintRoute = DocsReferenceLintRouteImport.update({
-  id: '/reference/lint',
-  path: '/reference/lint',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceEvalsRoute = DocsReferenceEvalsRouteImport.update({
-  id: '/reference/evals',
-  path: '/reference/evals',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceConvertRoute = DocsReferenceConvertRouteImport.update({
-  id: '/reference/convert',
-  path: '/reference/convert',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsReferenceCliRoute = DocsReferenceCliRouteImport.update({
-  id: '/reference/cli',
-  path: '/reference/cli',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsPackageDocsBundleRoute = DocsPackageDocsBundleRouteImport.update({
-  id: '/package-docs/bundle',
-  path: '/package-docs/bundle',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsBuildValidateInCiRoute = DocsBuildValidateInCiRouteImport.update({
-  id: '/build/validate-in-ci',
-  path: '/build/validate-in-ci',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsBuildRenderMdxAndTocRoute =
-  DocsBuildRenderMdxAndTocRouteImport.update({
-    id: '/build/render-mdx-and-toc',
-    path: '/build/render-mdx-and-toc',
-    getParentRoute: () => DocsRouteRoute,
-  } as any)
-const DocsBuildOptimizeDocsForAgentsRoute =
-  DocsBuildOptimizeDocsForAgentsRouteImport.update({
-    id: '/build/optimize-docs-for-agents',
-    path: '/build/optimize-docs-for-agents',
-    getParentRoute: () => DocsRouteRoute,
-  } as any)
-const DocsBuildConnectDocsSiteRoute =
-  DocsBuildConnectDocsSiteRouteImport.update({
-    id: '/build/connect-docs-site',
-    path: '/build/connect-docs-site',
-    getParentRoute: () => DocsRouteRoute,
-  } as any)
-const DocsBuildAddSearchRoute = DocsBuildAddSearchRouteImport.update({
-  id: '/build/add-search',
-  path: '/build/add-search',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
-const DocsAuthoringFrontmatterRoute =
-  DocsAuthoringFrontmatterRouteImport.update({
-    id: '/authoring/frontmatter',
-    path: '/authoring/frontmatter',
-    getParentRoute: () => DocsRouteRoute,
-  } as any)
-const DocsAuthoringComponentsRoute = DocsAuthoringComponentsRouteImport.update({
-  id: '/authoring/components',
-  path: '/authoring/components',
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => DocsRouteRoute,
 } as any)
 const ApiDocsSearchRoute = ApiDocsSearchRouteImport.update({
@@ -212,9 +106,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRouteWithChildren
-  '/docs/how-it-works': typeof DocsHowItWorksRoute
-  '/docs/methodology': typeof DocsMethodologyRoute
-  '/docs/quickstart': typeof DocsQuickstartRoute
+  '/docs/$': typeof DocsSplatRoute
   '/search/cloudflare': typeof SearchCloudflareRoute
   '/search/tanstack': typeof SearchTanstackRoute
   '/search/vercel': typeof SearchVercelRoute
@@ -222,21 +114,6 @@ export interface FileRoutesByFullPath {
   '/search/': typeof SearchIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
-  '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
-  '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
-  '/docs/build/add-search': typeof DocsBuildAddSearchRoute
-  '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
-  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
-  '/docs/build/render-mdx-and-toc': typeof DocsBuildRenderMdxAndTocRoute
-  '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
-  '/docs/package-docs/bundle': typeof DocsPackageDocsBundleRoute
-  '/docs/reference/cli': typeof DocsReferenceCliRoute
-  '/docs/reference/convert': typeof DocsReferenceConvertRoute
-  '/docs/reference/evals': typeof DocsReferenceEvalsRoute
-  '/docs/reference/lint': typeof DocsReferenceLintRoute
-  '/docs/reference/llm': typeof DocsReferenceLlmRoute
-  '/docs/reference/remark': typeof DocsReferenceRemarkRoute
-  '/docs/reference/search': typeof DocsReferenceSearchRoute
   '/api/docs/ask/cloudflare': typeof ApiDocsAskCloudflareRoute
   '/api/docs/ask/tanstack': typeof ApiDocsAskTanstackRoute
   '/api/docs/ask/vercel': typeof ApiDocsAskVercelRoute
@@ -244,9 +121,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/playground': typeof PlaygroundRoute
-  '/docs/how-it-works': typeof DocsHowItWorksRoute
-  '/docs/methodology': typeof DocsMethodologyRoute
-  '/docs/quickstart': typeof DocsQuickstartRoute
+  '/docs/$': typeof DocsSplatRoute
   '/search/cloudflare': typeof SearchCloudflareRoute
   '/search/tanstack': typeof SearchTanstackRoute
   '/search/vercel': typeof SearchVercelRoute
@@ -254,21 +129,6 @@ export interface FileRoutesByTo {
   '/search': typeof SearchIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
-  '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
-  '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
-  '/docs/build/add-search': typeof DocsBuildAddSearchRoute
-  '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
-  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
-  '/docs/build/render-mdx-and-toc': typeof DocsBuildRenderMdxAndTocRoute
-  '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
-  '/docs/package-docs/bundle': typeof DocsPackageDocsBundleRoute
-  '/docs/reference/cli': typeof DocsReferenceCliRoute
-  '/docs/reference/convert': typeof DocsReferenceConvertRoute
-  '/docs/reference/evals': typeof DocsReferenceEvalsRoute
-  '/docs/reference/lint': typeof DocsReferenceLintRoute
-  '/docs/reference/llm': typeof DocsReferenceLlmRoute
-  '/docs/reference/remark': typeof DocsReferenceRemarkRoute
-  '/docs/reference/search': typeof DocsReferenceSearchRoute
   '/api/docs/ask/cloudflare': typeof ApiDocsAskCloudflareRoute
   '/api/docs/ask/tanstack': typeof ApiDocsAskTanstackRoute
   '/api/docs/ask/vercel': typeof ApiDocsAskVercelRoute
@@ -279,9 +139,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRouteWithChildren
-  '/docs/how-it-works': typeof DocsHowItWorksRoute
-  '/docs/methodology': typeof DocsMethodologyRoute
-  '/docs/quickstart': typeof DocsQuickstartRoute
+  '/docs/$': typeof DocsSplatRoute
   '/search/cloudflare': typeof SearchCloudflareRoute
   '/search/tanstack': typeof SearchTanstackRoute
   '/search/vercel': typeof SearchVercelRoute
@@ -289,21 +147,6 @@ export interface FileRoutesById {
   '/search/': typeof SearchIndexRoute
   '/api/docs/ask': typeof ApiDocsAskRouteWithChildren
   '/api/docs/search': typeof ApiDocsSearchRoute
-  '/docs/authoring/components': typeof DocsAuthoringComponentsRoute
-  '/docs/authoring/frontmatter': typeof DocsAuthoringFrontmatterRoute
-  '/docs/build/add-search': typeof DocsBuildAddSearchRoute
-  '/docs/build/connect-docs-site': typeof DocsBuildConnectDocsSiteRoute
-  '/docs/build/optimize-docs-for-agents': typeof DocsBuildOptimizeDocsForAgentsRoute
-  '/docs/build/render-mdx-and-toc': typeof DocsBuildRenderMdxAndTocRoute
-  '/docs/build/validate-in-ci': typeof DocsBuildValidateInCiRoute
-  '/docs/package-docs/bundle': typeof DocsPackageDocsBundleRoute
-  '/docs/reference/cli': typeof DocsReferenceCliRoute
-  '/docs/reference/convert': typeof DocsReferenceConvertRoute
-  '/docs/reference/evals': typeof DocsReferenceEvalsRoute
-  '/docs/reference/lint': typeof DocsReferenceLintRoute
-  '/docs/reference/llm': typeof DocsReferenceLlmRoute
-  '/docs/reference/remark': typeof DocsReferenceRemarkRoute
-  '/docs/reference/search': typeof DocsReferenceSearchRoute
   '/api/docs/ask/cloudflare': typeof ApiDocsAskCloudflareRoute
   '/api/docs/ask/tanstack': typeof ApiDocsAskTanstackRoute
   '/api/docs/ask/vercel': typeof ApiDocsAskVercelRoute
@@ -315,9 +158,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/playground'
     | '/search'
-    | '/docs/how-it-works'
-    | '/docs/methodology'
-    | '/docs/quickstart'
+    | '/docs/$'
     | '/search/cloudflare'
     | '/search/tanstack'
     | '/search/vercel'
@@ -325,21 +166,6 @@ export interface FileRouteTypes {
     | '/search/'
     | '/api/docs/ask'
     | '/api/docs/search'
-    | '/docs/authoring/components'
-    | '/docs/authoring/frontmatter'
-    | '/docs/build/add-search'
-    | '/docs/build/connect-docs-site'
-    | '/docs/build/optimize-docs-for-agents'
-    | '/docs/build/render-mdx-and-toc'
-    | '/docs/build/validate-in-ci'
-    | '/docs/package-docs/bundle'
-    | '/docs/reference/cli'
-    | '/docs/reference/convert'
-    | '/docs/reference/evals'
-    | '/docs/reference/lint'
-    | '/docs/reference/llm'
-    | '/docs/reference/remark'
-    | '/docs/reference/search'
     | '/api/docs/ask/cloudflare'
     | '/api/docs/ask/tanstack'
     | '/api/docs/ask/vercel'
@@ -347,9 +173,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/playground'
-    | '/docs/how-it-works'
-    | '/docs/methodology'
-    | '/docs/quickstart'
+    | '/docs/$'
     | '/search/cloudflare'
     | '/search/tanstack'
     | '/search/vercel'
@@ -357,21 +181,6 @@ export interface FileRouteTypes {
     | '/search'
     | '/api/docs/ask'
     | '/api/docs/search'
-    | '/docs/authoring/components'
-    | '/docs/authoring/frontmatter'
-    | '/docs/build/add-search'
-    | '/docs/build/connect-docs-site'
-    | '/docs/build/optimize-docs-for-agents'
-    | '/docs/build/render-mdx-and-toc'
-    | '/docs/build/validate-in-ci'
-    | '/docs/package-docs/bundle'
-    | '/docs/reference/cli'
-    | '/docs/reference/convert'
-    | '/docs/reference/evals'
-    | '/docs/reference/lint'
-    | '/docs/reference/llm'
-    | '/docs/reference/remark'
-    | '/docs/reference/search'
     | '/api/docs/ask/cloudflare'
     | '/api/docs/ask/tanstack'
     | '/api/docs/ask/vercel'
@@ -381,9 +190,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/playground'
     | '/search'
-    | '/docs/how-it-works'
-    | '/docs/methodology'
-    | '/docs/quickstart'
+    | '/docs/$'
     | '/search/cloudflare'
     | '/search/tanstack'
     | '/search/vercel'
@@ -391,21 +198,6 @@ export interface FileRouteTypes {
     | '/search/'
     | '/api/docs/ask'
     | '/api/docs/search'
-    | '/docs/authoring/components'
-    | '/docs/authoring/frontmatter'
-    | '/docs/build/add-search'
-    | '/docs/build/connect-docs-site'
-    | '/docs/build/optimize-docs-for-agents'
-    | '/docs/build/render-mdx-and-toc'
-    | '/docs/build/validate-in-ci'
-    | '/docs/package-docs/bundle'
-    | '/docs/reference/cli'
-    | '/docs/reference/convert'
-    | '/docs/reference/evals'
-    | '/docs/reference/lint'
-    | '/docs/reference/llm'
-    | '/docs/reference/remark'
-    | '/docs/reference/search'
     | '/api/docs/ask/cloudflare'
     | '/api/docs/ask/tanstack'
     | '/api/docs/ask/vercel'
@@ -485,130 +277,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchCloudflareRouteImport
       parentRoute: typeof SearchRoute
     }
-    '/docs/quickstart': {
-      id: '/docs/quickstart'
-      path: '/quickstart'
-      fullPath: '/docs/quickstart'
-      preLoaderRoute: typeof DocsQuickstartRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/methodology': {
-      id: '/docs/methodology'
-      path: '/methodology'
-      fullPath: '/docs/methodology'
-      preLoaderRoute: typeof DocsMethodologyRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/how-it-works': {
-      id: '/docs/how-it-works'
-      path: '/how-it-works'
-      fullPath: '/docs/how-it-works'
-      preLoaderRoute: typeof DocsHowItWorksRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/search': {
-      id: '/docs/reference/search'
-      path: '/reference/search'
-      fullPath: '/docs/reference/search'
-      preLoaderRoute: typeof DocsReferenceSearchRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/remark': {
-      id: '/docs/reference/remark'
-      path: '/reference/remark'
-      fullPath: '/docs/reference/remark'
-      preLoaderRoute: typeof DocsReferenceRemarkRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/llm': {
-      id: '/docs/reference/llm'
-      path: '/reference/llm'
-      fullPath: '/docs/reference/llm'
-      preLoaderRoute: typeof DocsReferenceLlmRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/lint': {
-      id: '/docs/reference/lint'
-      path: '/reference/lint'
-      fullPath: '/docs/reference/lint'
-      preLoaderRoute: typeof DocsReferenceLintRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/evals': {
-      id: '/docs/reference/evals'
-      path: '/reference/evals'
-      fullPath: '/docs/reference/evals'
-      preLoaderRoute: typeof DocsReferenceEvalsRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/convert': {
-      id: '/docs/reference/convert'
-      path: '/reference/convert'
-      fullPath: '/docs/reference/convert'
-      preLoaderRoute: typeof DocsReferenceConvertRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/reference/cli': {
-      id: '/docs/reference/cli'
-      path: '/reference/cli'
-      fullPath: '/docs/reference/cli'
-      preLoaderRoute: typeof DocsReferenceCliRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/package-docs/bundle': {
-      id: '/docs/package-docs/bundle'
-      path: '/package-docs/bundle'
-      fullPath: '/docs/package-docs/bundle'
-      preLoaderRoute: typeof DocsPackageDocsBundleRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/build/validate-in-ci': {
-      id: '/docs/build/validate-in-ci'
-      path: '/build/validate-in-ci'
-      fullPath: '/docs/build/validate-in-ci'
-      preLoaderRoute: typeof DocsBuildValidateInCiRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/build/render-mdx-and-toc': {
-      id: '/docs/build/render-mdx-and-toc'
-      path: '/build/render-mdx-and-toc'
-      fullPath: '/docs/build/render-mdx-and-toc'
-      preLoaderRoute: typeof DocsBuildRenderMdxAndTocRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/build/optimize-docs-for-agents': {
-      id: '/docs/build/optimize-docs-for-agents'
-      path: '/build/optimize-docs-for-agents'
-      fullPath: '/docs/build/optimize-docs-for-agents'
-      preLoaderRoute: typeof DocsBuildOptimizeDocsForAgentsRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/build/connect-docs-site': {
-      id: '/docs/build/connect-docs-site'
-      path: '/build/connect-docs-site'
-      fullPath: '/docs/build/connect-docs-site'
-      preLoaderRoute: typeof DocsBuildConnectDocsSiteRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/build/add-search': {
-      id: '/docs/build/add-search'
-      path: '/build/add-search'
-      fullPath: '/docs/build/add-search'
-      preLoaderRoute: typeof DocsBuildAddSearchRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/authoring/frontmatter': {
-      id: '/docs/authoring/frontmatter'
-      path: '/authoring/frontmatter'
-      fullPath: '/docs/authoring/frontmatter'
-      preLoaderRoute: typeof DocsAuthoringFrontmatterRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
-    '/docs/authoring/components': {
-      id: '/docs/authoring/components'
-      path: '/authoring/components'
-      fullPath: '/docs/authoring/components'
-      preLoaderRoute: typeof DocsAuthoringComponentsRouteImport
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof DocsRouteRoute
     }
     '/api/docs/search': {
@@ -650,47 +323,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface DocsRouteRouteChildren {
-  DocsHowItWorksRoute: typeof DocsHowItWorksRoute
-  DocsMethodologyRoute: typeof DocsMethodologyRoute
-  DocsQuickstartRoute: typeof DocsQuickstartRoute
+  DocsSplatRoute: typeof DocsSplatRoute
   DocsIndexRoute: typeof DocsIndexRoute
-  DocsAuthoringComponentsRoute: typeof DocsAuthoringComponentsRoute
-  DocsAuthoringFrontmatterRoute: typeof DocsAuthoringFrontmatterRoute
-  DocsBuildAddSearchRoute: typeof DocsBuildAddSearchRoute
-  DocsBuildConnectDocsSiteRoute: typeof DocsBuildConnectDocsSiteRoute
-  DocsBuildOptimizeDocsForAgentsRoute: typeof DocsBuildOptimizeDocsForAgentsRoute
-  DocsBuildRenderMdxAndTocRoute: typeof DocsBuildRenderMdxAndTocRoute
-  DocsBuildValidateInCiRoute: typeof DocsBuildValidateInCiRoute
-  DocsPackageDocsBundleRoute: typeof DocsPackageDocsBundleRoute
-  DocsReferenceCliRoute: typeof DocsReferenceCliRoute
-  DocsReferenceConvertRoute: typeof DocsReferenceConvertRoute
-  DocsReferenceEvalsRoute: typeof DocsReferenceEvalsRoute
-  DocsReferenceLintRoute: typeof DocsReferenceLintRoute
-  DocsReferenceLlmRoute: typeof DocsReferenceLlmRoute
-  DocsReferenceRemarkRoute: typeof DocsReferenceRemarkRoute
-  DocsReferenceSearchRoute: typeof DocsReferenceSearchRoute
 }
 
 const DocsRouteRouteChildren: DocsRouteRouteChildren = {
-  DocsHowItWorksRoute: DocsHowItWorksRoute,
-  DocsMethodologyRoute: DocsMethodologyRoute,
-  DocsQuickstartRoute: DocsQuickstartRoute,
+  DocsSplatRoute: DocsSplatRoute,
   DocsIndexRoute: DocsIndexRoute,
-  DocsAuthoringComponentsRoute: DocsAuthoringComponentsRoute,
-  DocsAuthoringFrontmatterRoute: DocsAuthoringFrontmatterRoute,
-  DocsBuildAddSearchRoute: DocsBuildAddSearchRoute,
-  DocsBuildConnectDocsSiteRoute: DocsBuildConnectDocsSiteRoute,
-  DocsBuildOptimizeDocsForAgentsRoute: DocsBuildOptimizeDocsForAgentsRoute,
-  DocsBuildRenderMdxAndTocRoute: DocsBuildRenderMdxAndTocRoute,
-  DocsBuildValidateInCiRoute: DocsBuildValidateInCiRoute,
-  DocsPackageDocsBundleRoute: DocsPackageDocsBundleRoute,
-  DocsReferenceCliRoute: DocsReferenceCliRoute,
-  DocsReferenceConvertRoute: DocsReferenceConvertRoute,
-  DocsReferenceEvalsRoute: DocsReferenceEvalsRoute,
-  DocsReferenceLintRoute: DocsReferenceLintRoute,
-  DocsReferenceLlmRoute: DocsReferenceLlmRoute,
-  DocsReferenceRemarkRoute: DocsReferenceRemarkRoute,
-  DocsReferenceSearchRoute: DocsReferenceSearchRoute,
 }
 
 const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(

@@ -2,6 +2,7 @@
 title: "Optimize docs for agents"
 description: "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site."
 group: docs-site
+order: 50
 ---
 
 # Optimize docs for agents
@@ -206,7 +207,7 @@ Put that logic wherever your framework can intercept docs requests before its HT
 
 | Framework/runtime | Where it usually goes |
 | --- | --- |
-| TanStack Start / nitro | `server/middleware/agent-readability.ts` (h3). One middleware handles both the markdown response and the sitemap/robots regenerators — runs in dev, preview, and prod. See [`apps/example/server/middleware/agent-readability.ts`](https://github.com/inthhq/leadtype/blob/main/apps/example/server/middleware/agent-readability.ts) for the canonical reference. |
+| TanStack Start / nitro | `server/middleware/agent-readability.ts` (h3). One middleware handles both the markdown response and the sitemap/robots regenerators — runs in dev, preview, and prod. |
 | Nuxt | `server/middleware/agent-readability.ts` (h3) — same shape as the TanStack Start example. |
 | Next.js | `middleware.ts` (Edge) or a catch-all route handler before the docs page. |
 | Astro | An endpoint at `pages/docs/[...slug].md.ts` or `astro:middleware`. |

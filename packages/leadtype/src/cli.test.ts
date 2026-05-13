@@ -176,7 +176,7 @@ describe("leadtype CLI", () => {
     expect(capture.stderr).toContain("Generated docs pipeline output");
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(true);
     expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(true);
@@ -201,7 +201,7 @@ describe("leadtype CLI", () => {
       "utf8"
     );
     expect(docsSummary).toContain("Methodology");
-    expect(docsSummary).toContain("Connect a docs site");
+    expect(docsSummary).toContain("Build a docs site");
     expect(docsSummary).toContain("](/docs/methodology.md)");
 
     const llmsFull = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
@@ -809,7 +809,7 @@ Initial release.
     };
     expect(result.filters.include).toEqual(["build/**"]);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "add-search.md"))
@@ -831,7 +831,7 @@ Initial release.
         "--include",
         "build/**",
         "--exclude",
-        "build/connect-docs-site.mdx",
+        "build/build-a-docs-site.mdx",
       ],
       capture.io
     );
@@ -841,7 +841,7 @@ Initial release.
       existsSync(path.join(outDir, "docs", "build", "add-search.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(false);
   });
 
@@ -1040,7 +1040,7 @@ This page is valid, but the output path is not a directory.
     // .md files should still ship.
     expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "connect-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
   });
 

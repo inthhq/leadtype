@@ -1,6 +1,14 @@
 /**
- * Remark plugin to handle include/import MDX elements.
- * This replaces the circular re-export with an actual implementation.
+ * Remark plugin + standalone resolver for include/import MDX elements.
+ *
+ * Two public surfaces:
+ * - `remarkInclude(basePaths?)` — unified plugin that expands `<include>` /
+ *   `<import>` tags in an mdast tree (consumed by the agent flattening
+ *   pipeline and by the MDX-source preset).
+ * - `resolveInclude(specifier, options)` — framework-neutral resolver that
+ *   reads + classifies the target file. Consumers calling `createDocsSource()`
+ *   use this to load partials at request/build time without going through
+ *   remark.
  */
 
 import { existsSync } from "node:fs";
@@ -21,7 +29,7 @@ const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 const sharedProcessor = remark().use(remarkMdx).use(remarkGfm);
 
 // Simple frontmatter parser for our build pipeline
-function parseFrontmatter(content: string): { content: string } {
+function stripFrontmatterBlock(content: string): { content: string } {
   const match = content.match(FRONTMATTER_REGEX);
 
   if (!match || match[2] === undefined) {
@@ -48,7 +56,14 @@ function flattenNode(node: Record<string, unknown>): string {
   return "";
 }
 
-function parseSpecifier(specifier: string): {
+/**
+ * Split an include specifier into the file path and optional section anchor.
+ *
+ * @example
+ *   parseIncludeSpecifier("./shared/setup.mdx#install")
+ *   // → { file: "./shared/setup.mdx", section: "install" }
+ */
+export function parseIncludeSpecifier(specifier: string): {
   file: string;
   section?: string;
 } {
@@ -63,8 +78,13 @@ function parseSpecifier(specifier: string): {
   };
 }
 
-// Extract a specific <section id="..."> from a parsed MDX root
-function extractSection(root: Root, sectionId: string): Root | null {
+/**
+ * Extract a `<section id="...">` subtree from a parsed mdast Root. Returns
+ * a Root whose children are the section's children, or null if no matching
+ * section exists. Used by `resolveInclude` consumers that want to slice
+ * an included document down to one anchor.
+ */
+export function extractMdxSection(root: Root, sectionId: string): Root | null {
   for (const child of root.children as unknown as Record<string, unknown>[]) {
     const type = child.type as string | undefined;
     const name = (child as Record<string, unknown>).name as string | undefined;
@@ -273,7 +293,7 @@ function includeContentAsMarkdown(
     let parsed = chosenParser.parse(bodyContent.trim()) as Root;
 
     if (options.section) {
-      const extracted = extractSection(parsed, options.section);
+      const extracted = extractMdxSection(parsed, options.section);
       if (extracted) {
         parsed = extracted;
       } else {
@@ -299,30 +319,46 @@ function includeContentAsMarkdown(
   }
 }
 
-// Resolve file path with custom base paths
-function resolveIncludePath(
+export type ResolveIncludePathOptions = {
+  /** Directory of the document containing the include reference. */
+  fromDir: string;
+  /** Fallback base directories searched if the file isn't found relative to fromDir. */
+  basePaths?: string[];
+  /** Explicit override that pins resolution to this directory (from `baseDir=`). */
+  baseDir?: string;
+  /** When true, resolve relative to `process.cwd()` (from the `cwd` attribute). */
+  cwd?: boolean;
+};
+
+/**
+ * Resolve an include's file specifier to an absolute path.
+ *
+ * Resolution order:
+ *   1. `baseDir` override, if provided
+ *   2. `cwd` flag → resolve from `process.cwd()`
+ *   3. relative to `fromDir`
+ *   4. each entry in `basePaths`
+ *   5. fall back to first `basePaths` entry, else `fromDir`
+ */
+export function resolveIncludePath(
   file: string,
-  directory: string,
-  params: Record<string, string | null>,
-  basePaths: string[]
+  options: ResolveIncludePathOptions
 ): string {
-  const baseDir = params.baseDir;
+  const { fromDir, basePaths = [], baseDir, cwd } = options;
+
   if (baseDir) {
     return resolve(baseDir, file);
   }
 
-  // If 'cwd' attribute is set, use process.cwd()
-  if ("cwd" in params) {
+  if (cwd) {
     return resolve(process.cwd(), file);
   }
 
-  // Try relative to current directory first
-  const targetPath = resolve(directory, file);
+  const targetPath = resolve(fromDir, file);
   if (existsSync(targetPath)) {
     return targetPath;
   }
 
-  // Try provided base directories only (no heuristics)
   for (const basePath of basePaths) {
     const candidate = resolve(basePath, file);
     if (existsSync(candidate)) {
@@ -330,12 +366,86 @@ function resolveIncludePath(
     }
   }
 
-  // Fall back to first base path if available, otherwise directory
   if (basePaths.length > 0 && basePaths[0]) {
     return resolve(basePaths[0], file);
   }
 
-  return resolve(directory, file);
+  return resolve(fromDir, file);
+}
+
+export type ResolveIncludeOptions = {
+  /** Directory of the document containing the include reference. */
+  fromDir: string;
+  /** Fallback base directories searched if the specifier isn't found relative to fromDir. */
+  basePaths?: string[];
+  /** Explicit override that pins resolution to this directory (from `baseDir=`). */
+  baseDir?: string;
+  /** When true, resolve relative to `process.cwd()` (from the `cwd` attribute). */
+  cwd?: boolean;
+  /** Force code-block rendering with this language even for .md/.mdx files. */
+  lang?: string;
+};
+
+export type IncludeResolution =
+  | {
+      kind: "markdown";
+      /** File body with any leading frontmatter block removed. */
+      content: string;
+      /** Absolute path of the resolved file. */
+      resolvedPath: string;
+      /** Section anchor parsed from the specifier (`#anchor`), if any. */
+      section?: string;
+    }
+  | {
+      kind: "code";
+      content: string;
+      lang: string;
+      resolvedPath: string;
+    };
+
+/**
+ * Read the file referenced by an include specifier and classify it as either
+ * `markdown` (parse and splice as AST) or `code` (render as a code fence).
+ * Pure content resolution — does not touch any mdast.
+ *
+ * Consumers calling `createDocsSource()` use this directly. The `remarkInclude`
+ * plugin wraps this with AST mutation logic.
+ *
+ * @throws if the resolved file cannot be read.
+ */
+export async function resolveInclude(
+  specifier: string,
+  options: ResolveIncludeOptions
+): Promise<IncludeResolution> {
+  const { file, section } = parseIncludeSpecifier(specifier);
+  const resolvedPath = resolveIncludePath(file, {
+    fromDir: options.fromDir,
+    basePaths: options.basePaths,
+    baseDir: options.baseDir,
+    cwd: options.cwd,
+  });
+
+  const isMarkdownFile = file.endsWith(".md") || file.endsWith(".mdx");
+  const asCode = Boolean(options.lang) || !isMarkdownFile;
+
+  const raw = await readFile(resolvedPath, "utf8");
+
+  if (asCode) {
+    return {
+      kind: "code",
+      content: raw,
+      lang: options.lang ?? extname(file).slice(1),
+      resolvedPath,
+    };
+  }
+
+  const { content } = stripFrontmatterBlock(raw);
+  return {
+    kind: "markdown",
+    content,
+    resolvedPath,
+    ...(section ? { section } : {}),
+  };
 }
 
 // Check if node is an include node
@@ -352,7 +462,7 @@ function isIncludeNode(
   );
 }
 
-// Process a single include node
+// Process a single include node — thin AST adapter around resolveInclude.
 async function processIncludeNode(
   node: Record<string, unknown>,
   workingDir: string,
@@ -379,73 +489,29 @@ async function processIncludeNode(
     return;
   }
 
-  const { file: includeFile, section } = parseSpecifier(specifier);
+  const { file: includeFile } = parseIncludeSpecifier(specifier);
 
-  const targetPath = resolveIncludePath(
-    includeFile,
-    workingDir,
-    params,
-    basePaths
-  );
-
-  // Register dependency with host compiler (for hot reload / rebuilds)
-  const compiler = (
-    fileData as
-      | { _compiler?: { addDependency?: (p: string) => void } }
-      | undefined
-  )?._compiler;
-  compiler?.addDependency?.(targetPath);
-
-  const isCodeFile = !(
-    includeFile.endsWith(".md") || includeFile.endsWith(".mdx")
-  );
-  const asCode = Boolean(params.lang) || isCodeFile;
-
+  let resolution: IncludeResolution;
   try {
-    const content = await readFile(targetPath, "utf8");
-
-    if (asCode) {
-      const lang = params.lang ?? extname(includeFile).slice(1);
-
-      Object.assign(node, {
-        type: "code",
-        lang,
-        meta: params.meta,
-        value: content,
-        data: {},
-      } satisfies Code);
-      return;
-    }
-
-    // For markdown/MDX files, parse and include the content properly
-    const { content: bodyContent } = parseFrontmatter(content);
-
-    // Prefer host site's processor to preserve its plugins/transforms
-    const ext = includeFile.endsWith(".md") ? "md" : "mdx";
-    const hostProcessor = (fileData as Record<string, unknown> | undefined)
-      ?._processor as { getProcessor?: (kind: string) => unknown } | undefined;
-    const parser = hostProcessor?.getProcessor
-      ? hostProcessor.getProcessor(ext)
-      : sharedProcessor;
-
-    includeContentAsMarkdown(node, includeFile, bodyContent, {
-      baseDir: dirname(targetPath),
-      section,
-      parser: parser as ParserLike,
+    resolution = await resolveInclude(specifier, {
+      fromDir: workingDir,
+      basePaths,
+      baseDir: params.baseDir ?? undefined,
+      cwd: "cwd" in params,
+      lang: params.lang ?? undefined,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn({
       human: {
-        message: `failed to include ${targetPath}: ${errorMessage}`,
+        message: `failed to include ${includeFile}: ${errorMessage}`,
       },
       json: {
         event: "include.read_failed",
-        fields: { target: targetPath, reason: errorMessage },
+        fields: { target: includeFile, reason: errorMessage },
       },
     });
 
-    // Replace with error message
     Object.assign(node, {
       type: "paragraph",
       children: [
@@ -455,7 +521,41 @@ async function processIncludeNode(
         },
       ],
     });
+    return;
   }
+
+  // Register dependency with host compiler (for hot reload / rebuilds)
+  const compiler = (
+    fileData as
+      | { _compiler?: { addDependency?: (p: string) => void } }
+      | undefined
+  )?._compiler;
+  compiler?.addDependency?.(resolution.resolvedPath);
+
+  if (resolution.kind === "code") {
+    Object.assign(node, {
+      type: "code",
+      lang: resolution.lang,
+      meta: params.meta,
+      value: resolution.content,
+      data: {},
+    } satisfies Code);
+    return;
+  }
+
+  // Prefer host site's processor to preserve its plugins/transforms
+  const ext = resolution.resolvedPath.endsWith(".md") ? "md" : "mdx";
+  const hostProcessor = (fileData as Record<string, unknown> | undefined)
+    ?._processor as { getProcessor?: (kind: string) => unknown } | undefined;
+  const parser = hostProcessor?.getProcessor
+    ? hostProcessor.getProcessor(ext)
+    : sharedProcessor;
+
+  includeContentAsMarkdown(node, includeFile, resolution.content, {
+    baseDir: dirname(resolution.resolvedPath),
+    section: resolution.section,
+    parser: parser as ParserLike,
+  });
 }
 
 export function remarkInclude(

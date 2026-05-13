@@ -1,0 +1,197 @@
+---
+title: "createDocsSource"
+description: "Framework-neutral docs source primitive — navigation, page loader, search index, and include resolver."
+group: reference
+---
+
+# `createDocsSource()`
+
+`createDocsSource()` is the **framework-neutral** entry point for any consumer that wants to render leadtype-authored MDX in their own renderer. It composes leadtype's primitives (`resolveDocsNavigation`, `convertMdxFile`, `createDocsSearchIndex`, `resolveInclude`) into a single source object.
+
+```ts
+import { createDocsSource } from "leadtype";
+
+const source = await createDocsSource({
+  contentDir: "./content/docs",
+  baseUrl: "https://example.com",
+  groups: [
+    { slug: "get-started", title: "Get Started" },
+    { slug: "guides", title: "Guides" },
+  ],
+});
+
+const page = await source.loadPage("quickstart");
+const navigation = await source.getNavigation();
+const search = await source.buildSearchIndex();
+```
+
+For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/build/integrate-with-fumadocs) adapter that wraps this primitive.
+
+## Configuration
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `contentDir` | `string` | Required. Directory containing source `.md` / `.mdx` files. |
+| `baseUrl` | `string` | Used for absolute URLs in TOC and search index. |
+| `groups` | `DocsGroup[]` | Doc groups for navigation. Empty groups = all pages ungrouped. |
+| `mounts` | `DocsPathMount[]` | Multi-mount routing (advanced). |
+| `remarkPlugins` | `PluggableList` | Defaults to `mdxSourcePlugins`. Pass `[]` to skip transforms. |
+| `toc` | `DocsTableOfContentsOptions \| false` | TOC tuning; `false` skips TOC entirely. |
+| `searchIndex` | `CreateDocsSearchIndexOptions` | Search-index tuning. |
+
+`createDocsSource` does no I/O on construction beyond a directory scan for `listPages()` caching. Page bodies are loaded lazily.
+
+## Source methods
+
+### `getNavigation(): Promise<DocsNavigation>`
+
+Computes navigation from the configured groups + filesystem state. Identical shape to `resolveDocsNavigation` from `leadtype/llm`.
+
+### `listPages(): Promise<DocsPageMeta[]>`
+
+Enumerates every doc page under `contentDir`. Each entry includes:
+
+```ts
+type DocsPageMeta = {
+  slug: string[];          // ["guides", "setup"]
+  urlPath: string;         // "/docs/guides/setup"
+  relativePath: string;    // "guides/setup" (no extension)
+  extension: ".md" | ".mdx";
+  filePath: string;        // absolute path
+  title: string;
+  description: string;
+  groups: string[];
+};
+```
+
+Result is cached; subsequent calls don't re-walk the disk.
+
+### `loadPage(slug): Promise<DocsPage | null>`
+
+Loads a single page. Returns `null` if no slug matches. Accepts either an array or a slash-joined string.
+
+```ts
+const page = await source.loadPage("guides/setup");
+// or
+const page = await source.loadPage(["guides", "setup"]);
+```
+
+Returned object extends `DocsPageMeta` with:
+
+```ts
+{
+  frontmatter: Record<string, unknown>;
+  markdown: string;        // resolved, plugin-transformed markdown
+  ast: Root;               // mdast Root after the source preset — render this for live MDX
+  toc: DocsTableOfContentsItem[];
+}
+```
+
+### `buildSearchIndex(): Promise<DocsSearchBundle>`
+
+Resolves every page through `convertMdxFile` and builds a `DocsSearchIndex`. Document IDs match each page's `urlPath`.
+
+### `resolveInclude(specifier, options?): Promise<IncludeResolution>`
+
+Convenience wrapper around `resolveInclude` from `leadtype/mdx` with `fromDir` defaulted to `contentDir`. Useful for loading partials outside of the MDX compile path.
+
+## Choosing between `loadPage` and direct `.mdx` imports
+
+For most bundler-driven consumers (Next App Router, Vite, Astro), you'll **import source `.mdx` directly** and let the bundler's MDX pipeline compile it with `mdxSourcePlugins`. `loadPage()` is for cases where you need the resolved markdown body or AST programmatically:
+
+- Server-rendering through `next-mdx-remote` instead of bundler-native MDX
+- Streaming partials to an agent / LLM at runtime
+- Building a custom TOC or analyzing document structure
+
+## Framework integrations
+
+`createDocsSource()` is framework-neutral. Wire it into whatever you're already using:
+
+### Next App Router
+
+```ts title="next.config.mjs"
+import createMDX from "@next/mdx";
+import { mdxSourcePlugins } from "leadtype/mdx";
+
+export default createMDX({
+  options: { remarkPlugins: [...mdxSourcePlugins] },
+})({ pageExtensions: ["ts", "tsx", "mdx"] });
+```
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import { createDocsSource } from "leadtype";
+const source = await createDocsSource({ contentDir: "./content/docs" });
+
+export default async function Page({ params }) {
+  const { slug } = await params;
+  const page = await source.loadPage(slug ?? []);
+  // …
+}
+```
+
+### Astro Content Collections
+
+```ts title="astro.config.mjs"
+import { defineConfig } from "astro/config";
+import mdx from "@astrojs/mdx";
+import { mdxSourcePlugins } from "leadtype/mdx";
+
+export default defineConfig({
+  integrations: [mdx({ remarkPlugins: [...mdxSourcePlugins] })],
+});
+```
+
+Use Astro's built-in content collection schema for typed frontmatter; use `createDocsSource()` only when you need leadtype's navigation, search index, or programmatic include resolution.
+
+### Vite + `@mdx-js/rollup` (works for Vue, Solid, Svelte starters)
+
+```ts title="vite.config.ts"
+import mdx from "@mdx-js/rollup";
+import { mdxSourcePlugins } from "leadtype/mdx";
+
+export default {
+  plugins: [
+    mdx({ remarkPlugins: [...mdxSourcePlugins] }),
+    // ...your framework plugin: viteReact / vue / solid / svelte
+  ],
+};
+```
+
+### Nuxt
+
+```ts title="nuxt.config.ts"
+import { mdxSourcePlugins } from "leadtype/mdx";
+
+export default defineNuxtConfig({
+  modules: ["@nuxtjs/mdc"],
+  mdc: {
+    remarkPlugins: { ...mdxSourcePlugins },
+  },
+});
+```
+
+### SvelteKit + `mdsvex`
+
+```ts title="svelte.config.js"
+import { mdsvex } from "mdsvex";
+import { mdxSourcePlugins } from "leadtype/mdx";
+
+export default {
+  extensions: [".svelte", ".svx", ".mdx"],
+  preprocess: mdsvex({ remarkPlugins: [...mdxSourcePlugins] }),
+};
+```
+
+### Fumadocs
+
+See the dedicated [Integrate with Fumadocs](/docs/build/integrate-with-fumadocs) page — leadtype ships a first-party `leadtype/fumadocs` adapter.
+
+### Pattern for any other framework
+
+If your framework's MDX integration accepts a remark plugin list, leadtype works. Three pieces:
+
+1. Add `mdxSourcePlugins` to the remark list so `<include>` / `<ExtractedTypeTable>` resolve at build time.
+2. Implement components against the [tag types from `leadtype/mdx`](/docs/reference/mdx) — intersect with your framework's child type.
+3. Optionally call `createDocsSource()` for navigation, search, and programmatic page loading.
+
+No leadtype code runs in your client bundle unless you explicitly import a runtime helper. The source primitive is server-side / build-time.

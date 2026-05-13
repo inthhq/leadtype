@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import type { Root } from "mdast";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
@@ -59,7 +60,6 @@ const HEADING_REGEX = /^#\s+(.+)$/m;
 const YAML_QUOTE_REGEX = /["\\]/g;
 const TABLE_DIVIDER_REGEX = /^:?-{2,}:?$/;
 const MERMAID_FENCE_REGEX = /```mermaid\r?\n([\s\S]*?)\r?\n```/g;
-const HTML_BREAK_REGEX = /<br\s*\/?>/gi;
 const MDX_EXTENSION_REGEX = /\.mdx$/;
 const TITLE_CASE_REGEX = /\b\w/g;
 const NAME_SEPARATOR_REGEX = /[-_]+/g;
@@ -225,14 +225,11 @@ function compactMarkdownTables(markdown: string): string {
 }
 
 function compactMermaidBlocks(markdown: string): string {
-  return markdown.replace(MERMAID_FENCE_REGEX, (_block, body: string) => {
-    const compactBody = body
-      .split("\n")
-      .map((line) => line.replace(HTML_BREAK_REGEX, " - "))
-      .map((line) => line.replace(/,\s+-\s+/g, " - "))
-      .join("\n");
-    return `\`\`\`mermaid\n${compactBody}\n\`\`\``;
-  });
+  // No-op pass kept as a stable seam for future per-line normalization of
+  // mermaid bodies. The previous implementation replaced `<br/>` with ` - `
+  // for "readability", but `<br/>` is mermaid's own syntax for line breaks
+  // inside node labels — substituting it breaks any downstream renderer.
+  return markdown.replace(MERMAID_FENCE_REGEX, (block) => block);
 }
 
 export type MdxToMarkdownOptions = {
@@ -330,6 +327,82 @@ export type ConvertResult = {
   markdown: string;
   frontmatter: string;
 };
+
+export type ConvertMdxFileResult = {
+  /** mdast Root after every supplied plugin has run. Use this to render MDX live. */
+  ast: Root;
+  /** Resolved frontmatter block (no `---` fences) as it would appear on disk. */
+  frontmatter: string;
+  /** Parsed frontmatter as a plain object. */
+  data: Record<string, unknown>;
+  /** Serialized markdown body (post compact-tables/compact-mermaid). */
+  markdown: string;
+};
+
+/**
+ * Convert a single MDX file in memory and return the post-transform mdast
+ * AST alongside the parsed frontmatter and serialized markdown body.
+ *
+ * Useful when the caller wants to render MDX as live components (so they
+ * need the AST) but also wants the markdown form available (for search
+ * indexing, RSS, etc.) in a single pass.
+ *
+ * Frontmatter handling matches `convertMdxToMarkdown`: synthesized when
+ * absent, enriched from git when requested, placeholders resolved.
+ */
+export async function convertMdxFile(
+  sourcePath: string,
+  remarkPlugins: PluggableList = [],
+  enrichFromGitFlag = false
+): Promise<ConvertMdxFileResult> {
+  const raw = await readFile(sourcePath, "utf8");
+  const processor = createRemarkProcessor(remarkPlugins);
+  const frontmatterMatch = raw.match(FRONTMATTER_REGEX);
+  let frontmatter = "";
+  let content = raw;
+
+  if (frontmatterMatch) {
+    frontmatter = frontmatterMatch[1] ?? "";
+    content = frontmatterMatch[2] ?? "";
+  }
+
+  // Parse → run plugins → stringify, so we can keep the AST after transforms.
+  const parsed = processor.parse({ value: content, path: sourcePath }) as Root;
+  const transformed = (await processor.run(parsed, {
+    value: content,
+    path: sourcePath,
+  })) as Root;
+  const markdown = compactMermaidBlocks(
+    compactMarkdownTables(String(processor.stringify(transformed)))
+  );
+
+  let resolvedFrontmatter =
+    frontmatter.trim().length > 0
+      ? frontmatter
+      : synthesizeFrontmatter(sourcePath, markdown);
+
+  if (enrichFromGitFlag) {
+    const enrichment = await enrichFromGit(sourcePath);
+    resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
+  }
+
+  resolvedFrontmatter = resolveFrontmatterPlaceholders(
+    resolvedFrontmatter,
+    sourcePath
+  );
+
+  const parsedData =
+    resolvedFrontmatter.trim().length > 0
+      ? parseFrontmatter(`---\n${resolvedFrontmatter}\n---\n`).data
+      : {};
+
+  return {
+    ast: transformed,
+    frontmatter: resolvedFrontmatter,
+    data: parsedData,
+    markdown,
+  };
+}
 
 /**
  * Convert a single MDX file to markdown in memory. Returns the rendered

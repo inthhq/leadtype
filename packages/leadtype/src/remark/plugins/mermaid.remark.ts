@@ -11,12 +11,11 @@ import {
 // Precompiled regexes
 const ESCAPED_NL = /\\n/g; // "\\n" -> actual newline
 const CRLF = /\r\n/g; // CRLF -> LF
-const LEADING_BACKTICK_LINE = /^`\s*\n/; // a lone backtick then newline
-const TRAILING_BACKTICK_LINE = /\n\s*`$/; // newline then a lone backtick
+const LEADING_BACKTICK = /^`+/; // backticks at the very start (after trim)
+const TRAILING_BACKTICK = /`+$/; // backticks at the very end (after trim)
 const TRAILING_WHITESPACE = /[ \t]+$/; // trailing spaces/tabs on a line
 const LEADING_BLANK_LINES = /^\s*\n+/; // one or more blank lines at start
 const TRAILING_BLANK_LINES = /\n+\s*$/; // one or more blank lines at end
-const HTML_BREAK = /<br\s*\/?>/gi;
 
 function cleanMermaidSource(raw: string): string {
   // Step 1: Normalize CRLF to LF
@@ -25,14 +24,22 @@ function cleanMermaidSource(raw: string): string {
   // Step 2: Convert escaped newlines
   s = s.replace(ESCAPED_NL, "\n");
 
-  // Step 2.5: Convert HTML line breaks to plain text separators for readability
-  s = s.replace(HTML_BREAK, " / ");
+  // NOTE: `<br/>` is mermaid's own syntax for line breaks inside node labels.
+  // We intentionally leave it untouched — replacing it would break diagrams
+  // for any downstream mermaid renderer (agents that render mermaid get the
+  // correct multi-line labels; agents that don't render mermaid skip the
+  // code fence entirely).
 
-  // Step 3: Strip only outer blank lines (not leading spaces)
+  // Step 3: Strip outer blank lines (not leading spaces, which mermaid uses
+  // for hierarchy)
   s = s.replace(LEADING_BLANK_LINES, "").replace(TRAILING_BLANK_LINES, "");
 
-  // Step 4: Remove leading/trailing backtick guard lines
-  s = s.replace(LEADING_BACKTICK_LINE, "").replace(TRAILING_BACKTICK_LINE, "");
+  // Step 4: Strip the wrapping template-literal backticks. Author MDX usually
+  // writes `<Mermaid chart={`flowchart LR\n  ...\n  src --> app`} />` so the
+  // attribute value comes through with backticks inline with the first/last
+  // statement. The old regex required the backticks on their own lines and
+  // missed this common form.
+  s = s.replace(LEADING_BACKTICK, "").replace(TRAILING_BACKTICK, "");
 
   // Step 5: Split into lines, trim only trailing whitespace from each line, rejoin
   // (preserving leading indentation)

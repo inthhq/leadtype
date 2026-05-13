@@ -1,29 +1,16 @@
+import type {
+  CalloutTypeAlias,
+  CalloutVariant,
+  CalloutProps as LeadtypeCalloutProps,
+} from "leadtype/mdx";
 import type { HTMLAttributes, ReactNode } from "react";
 
-export type CalloutVariant =
-  | "info"
-  | "note"
-  | "tip"
-  | "warning"
-  | "success"
-  | "error"
-  | "canary"
-  | "deprecated"
-  | "experimental";
+export type { CalloutTypeAlias, CalloutVariant } from "leadtype/mdx";
 
-/**
- * Aliases accepted by the deprecated `type` prop. Mirrors `CalloutVariant`
- * but also accepts `"warn"` (Fumadocs-style) which maps to `"warning"`.
- */
-export type CalloutTypeAlias = CalloutVariant | "warn";
-
-export type CalloutProps = HTMLAttributes<HTMLElement> & {
-  variant?: CalloutVariant;
-  /** @deprecated Use `variant` instead. Kept for Fumadocs-authored MDX compatibility. */
-  type?: CalloutTypeAlias;
-  title?: string;
-  children?: ReactNode;
-};
+export type CalloutProps = Omit<LeadtypeCalloutProps, "children"> &
+  HTMLAttributes<HTMLElement> & {
+    children?: ReactNode;
+  };
 
 function normalizeVariant(
   variant: CalloutVariant | undefined,
