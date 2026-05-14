@@ -818,6 +818,13 @@ async function readMarkdownDocs(
   const localeCodes = new Set(
     localeRead.i18n?.locales.map((locale) => locale.code) ?? []
   );
+  if (localeRead.i18n && localeRead.locale) {
+    assertUnambiguousDefaultLocaleLayout(
+      relativePaths,
+      localeCodes,
+      localeRead.i18n.defaultLocale
+    );
+  }
   const selectedFiles: SelectedDocFile[] =
     localeRead.i18n && localeRead.locale
       ? selectLocalizedFiles(files, docsDir, {
@@ -836,13 +843,6 @@ async function readMarkdownDocs(
             outputRelativePath: stripDocsExtension(relativePath),
           };
         });
-  if (localeRead.i18n && localeRead.locale) {
-    assertUnambiguousDefaultLocaleLayout(
-      relativePaths,
-      localeCodes,
-      localeRead.i18n.defaultLocale
-    );
-  }
   const docs = await Promise.all(
     selectedFiles.map(async (file) => {
       const relativePath = normalizeDocsPath(

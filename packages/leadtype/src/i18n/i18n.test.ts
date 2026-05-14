@@ -95,6 +95,7 @@ describe("i18n helpers", () => {
   it("resolves and strips locale prefixes from docs URLs", () => {
     expect(resolveDocsLocale("/docs/quickstart", i18n)).toBe("en");
     expect(resolveDocsLocale("/docs/zh/quickstart", i18n)).toBe("zh");
+    expect(resolveDocsLocale("/blog/zh/quickstart", i18n)).toBeUndefined();
     expect(stripLocaleFromDocsPath("/docs/zh/quickstart", i18n)).toBe(
       "/docs/quickstart"
     );

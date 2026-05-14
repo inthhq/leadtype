@@ -257,8 +257,7 @@ function selectSourceFiles(
   files: string[],
   contentDir: string,
   i18n?: DocsI18nConfig,
-  locale?: LocaleCode,
-  includeFallback = true
+  locale?: LocaleCode
 ): SelectedSourceFile[] {
   const normalized = normalizeDocsI18nConfig(i18n);
   if (!normalized) {
@@ -329,9 +328,9 @@ function selectSourceFiles(
   for (const localeFiles of byLogicalPath.values()) {
     const direct = localeFiles.get(outputLocale);
     const fallback =
-      includeFallback && outputLocale !== normalized.defaultLocale
-        ? localeFiles.get(normalized.defaultLocale)
-        : undefined;
+      outputLocale === normalized.defaultLocale
+        ? undefined
+        : localeFiles.get(normalized.defaultLocale);
     const match = direct ?? fallback;
     if (match) {
       selected.push(match);
@@ -397,8 +396,7 @@ export async function createDocsSource(
       files,
       contentDir,
       config.i18n,
-      config.locale,
-      true
+      config.locale
     );
     const metas = await Promise.all(
       selectedFiles.map((file) =>

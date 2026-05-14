@@ -169,6 +169,13 @@ export function resolveDocsLocale(
 
   const prefixSegments = splitUrlPath(docsUrlPrefix);
   const pathnameSegments = splitUrlPath(pathname);
+  const isUnderDocsPrefix = prefixSegments.every(
+    (segment, index) => pathnameSegments[index] === segment
+  );
+  if (!isUnderDocsPrefix) {
+    return;
+  }
+
   const afterPrefix = pathnameSegments.slice(prefixSegments.length);
   const first = afterPrefix[0];
   const matched = normalized.locales.find((locale) => locale.code === first);
