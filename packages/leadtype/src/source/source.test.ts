@@ -271,6 +271,53 @@ describe("createDocsSource", () => {
     expect(documentIds).toEqual(["/docs/guides/setup", "/docs/quickstart"]);
   });
 
+  it("loads localized pages with default-locale navigation fallback", async () => {
+    await writeMdx(
+      path.join(contentDir, "quickstart.mdx"),
+      "---\ntitle: Quickstart\ngroup: get-started\n---\nEnglish body.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "setup.mdx"),
+      "---\ntitle: Setup\ngroup: get-started\n---\nEnglish setup.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "zh/quickstart.mdx"),
+      "---\ntitle: 快速开始\ngroup: get-started\n---\n中文正文。\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      i18n: {
+        defaultLocale: "en",
+        locales: ["en", "zh"],
+      },
+      locale: "zh",
+    });
+
+    const pages = await source.listPages();
+    expect(
+      pages.map((page) => ({
+        fallback: page.isFallback,
+        title: page.title,
+        urlPath: page.urlPath,
+      }))
+    ).toEqual([
+      { fallback: false, title: "快速开始", urlPath: "/docs/zh/quickstart" },
+      { fallback: true, title: "Setup", urlPath: "/docs/zh/setup" },
+    ]);
+
+    const fallback = await source.loadPage("zh/setup");
+    expect(fallback?.isFallback).toBe(true);
+    expect(fallback?.sourceLocale).toBe("en");
+    expect(fallback?.markdown).toContain("English setup");
+
+    const search = await source.buildSearchIndex();
+    expect(search.index.documents.map((entry) => entry[3])).toEqual([
+      "/docs/zh/quickstart",
+    ]);
+  });
+
   it("getNavigation routes pages into declared groups", async () => {
     await writeMdx(
       path.join(contentDir, "guides/setup.mdx"),

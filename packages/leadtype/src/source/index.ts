@@ -23,6 +23,14 @@ import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
 import { convertMdxFile } from "../convert";
 import {
+  type DocsI18nConfig,
+  type LocaleCode,
+  logicalPathFromLocaleRelativePath,
+  normalizeDocsI18nConfig,
+  outputRelativePathForLocale,
+  toLocalizedDocsUrlPath,
+} from "../i18n";
+import {
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
@@ -71,6 +79,10 @@ export type DocsPageMeta = {
   description: string;
   /** Group slugs declared in frontmatter. */
   groups: string[];
+  locale?: LocaleCode;
+  sourceLocale?: LocaleCode;
+  isFallback?: boolean;
+  logicalPath?: string;
 };
 
 export type DocsPage = DocsPageMeta & {
@@ -114,6 +126,9 @@ export type CreateDocsSourceConfig = {
   toc?: DocsTableOfContentsOptions | false;
   /** Search-index tuning. */
   searchIndex?: CreateDocsSearchIndexOptions;
+  /** Optional locale configuration. When present, `locale` selects the active docs language. */
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
 };
 
 export type DocsSource = {
@@ -182,31 +197,149 @@ function normalizeGroupValue(value: unknown): string[] {
 }
 
 async function readPageMeta(
-  filePath: string,
-  contentDir: string,
-  mounts?: DocsPathMount[]
+  selected: SelectedSourceFile,
+  mounts?: DocsPathMount[],
+  i18n?: DocsI18nConfig
 ): Promise<DocsPageMeta> {
+  const { contentDir, filePath } = selected;
   const relativePath = normalizeDocsPath(path.relative(contentDir, filePath));
   const raw = await readFile(filePath, "utf8");
   const parsed = parseFrontmatter(raw);
   const title =
     String(parsed.data.title ?? "").trim() ||
-    titleFromRelativePath(relativePath);
+    titleFromRelativePath(
+      `${selected.logicalPath}${path.extname(relativePath)}`
+    );
   const description = String(parsed.data.description ?? "").trim();
   const groups = normalizeGroupValue(parsed.data.group);
-  const slug = deriveSlug(relativePath);
-  const urlPath = toDocsUrlPath(relativePath, mounts);
+  const slug = deriveSlug(
+    `${selected.logicalPath}${path.extname(relativePath)}`
+  );
+  const urlPath =
+    i18n && selected.locale
+      ? toLocalizedDocsUrlPath(
+          `${selected.logicalPath}${path.extname(relativePath)}`,
+          selected.locale,
+          i18n,
+          mounts
+        )
+      : toDocsUrlPath(relativePath, mounts);
   const extension = filePath.endsWith(".mdx") ? ".mdx" : ".md";
   return {
     slug,
     urlPath,
-    relativePath: stripDocsExtension(relativePath),
+    relativePath: selected.outputRelativePath,
     extension,
     filePath,
     title,
     description,
     groups,
+    ...(selected.locale ? { locale: selected.locale } : {}),
+    ...(selected.sourceLocale ? { sourceLocale: selected.sourceLocale } : {}),
+    ...(selected.isFallback === undefined
+      ? {}
+      : { isFallback: selected.isFallback }),
+    ...(selected.logicalPath ? { logicalPath: selected.logicalPath } : {}),
   };
+}
+
+type SelectedSourceFile = {
+  contentDir: string;
+  filePath: string;
+  logicalPath: string;
+  outputRelativePath: string;
+  locale?: LocaleCode;
+  sourceLocale?: LocaleCode;
+  isFallback?: boolean;
+};
+
+function selectSourceFiles(
+  files: string[],
+  contentDir: string,
+  i18n?: DocsI18nConfig,
+  locale?: LocaleCode,
+  includeFallback = true
+): SelectedSourceFile[] {
+  const normalized = normalizeDocsI18nConfig(i18n);
+  if (!normalized) {
+    return files.map((filePath) => {
+      const relativePath = normalizeDocsPath(
+        path.relative(contentDir, filePath)
+      );
+      return {
+        contentDir,
+        filePath,
+        logicalPath: stripDocsExtension(relativePath),
+        outputRelativePath: stripDocsExtension(relativePath),
+      };
+    });
+  }
+
+  const outputLocale = locale ?? normalized.defaultLocale;
+  const knownLocale = normalized.locales.some(
+    (entry) => entry.code === outputLocale
+  );
+  if (!knownLocale) {
+    throw new Error(`Unknown locale "${outputLocale}" in i18n config.`);
+  }
+
+  const localeCodes = new Set(normalized.locales.map((entry) => entry.code));
+  const relativePaths = files.map((filePath) =>
+    normalizeDocsPath(path.relative(contentDir, filePath))
+  );
+  const hasRootDefault = relativePaths.some((relativePath) => {
+    const first = relativePath.split("/")[0] ?? "";
+    return !localeCodes.has(first);
+  });
+  const hasDefaultFolder = relativePaths.some((relativePath) =>
+    relativePath.startsWith(`${normalized.defaultLocale}/`)
+  );
+  if (hasRootDefault && hasDefaultFolder) {
+    throw new Error(
+      `Ambiguous i18n default-locale layout. Use either root docs files or docs/${normalized.defaultLocale}/ files for the default locale, not both.`
+    );
+  }
+
+  const byLogicalPath = new Map<string, Map<LocaleCode, SelectedSourceFile>>();
+  for (const filePath of files) {
+    const relativePath = normalizeDocsPath(path.relative(contentDir, filePath));
+    const { logicalPath, sourceLocale } = logicalPathFromLocaleRelativePath(
+      relativePath,
+      localeCodes
+    );
+    const resolvedSourceLocale = sourceLocale ?? normalized.defaultLocale;
+    const localeFiles = byLogicalPath.get(logicalPath) ?? new Map();
+    localeFiles.set(resolvedSourceLocale, {
+      contentDir,
+      filePath,
+      logicalPath,
+      outputRelativePath: outputRelativePathForLocale(
+        logicalPath,
+        outputLocale,
+        i18n
+      ),
+      locale: outputLocale,
+      sourceLocale: resolvedSourceLocale,
+      isFallback: resolvedSourceLocale !== outputLocale,
+    });
+    byLogicalPath.set(logicalPath, localeFiles);
+  }
+
+  const selected: SelectedSourceFile[] = [];
+  for (const localeFiles of byLogicalPath.values()) {
+    const direct = localeFiles.get(outputLocale);
+    const fallback =
+      includeFallback && outputLocale !== normalized.defaultLocale
+        ? localeFiles.get(normalized.defaultLocale)
+        : undefined;
+    const match = direct ?? fallback;
+    if (match) {
+      selected.push(match);
+    }
+  }
+  return selected.sort((left, right) =>
+    left.outputRelativePath.localeCompare(right.outputRelativePath)
+  );
 }
 
 export async function createDocsSource(
@@ -260,8 +393,17 @@ export async function createDocsSource(
       return cachedMetas;
     }
     const files = await listFiles();
+    const selectedFiles = selectSourceFiles(
+      files,
+      contentDir,
+      config.i18n,
+      config.locale,
+      true
+    );
     const metas = await Promise.all(
-      files.map((filePath) => readPageMeta(filePath, contentDir, config.mounts))
+      selectedFiles.map((file) =>
+        readPageMeta(file, config.mounts, config.i18n)
+      )
     );
     // Reject duplicate slugs / urlPaths. Without this guard, two files that
     // normalize to the same route (e.g. `guide.mdx` and `guide/index.mdx`, or
@@ -308,6 +450,8 @@ export async function createDocsSource(
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
       mounts: config.mounts,
+      i18n: config.i18n,
+      locale: config.locale,
       toc: tocOptions === false ? false : tocOptions,
     });
   }
@@ -322,7 +466,12 @@ export async function createDocsSource(
     const slug = Array.isArray(slugInput)
       ? slugInput
       : slugInput.split("/").filter(Boolean);
-    const meta = await findMetaForSlug(slug);
+    const normalizedI18n = normalizeDocsI18nConfig(config.i18n);
+    const localeCodes = new Set(
+      normalizedI18n?.locales.map((entry) => entry.code) ?? []
+    );
+    const logicalSlug = localeCodes.has(slug[0] ?? "") ? slug.slice(1) : slug;
+    const meta = await findMetaForSlug(logicalSlug);
     if (!meta) {
       return null;
     }
@@ -352,18 +501,26 @@ export async function createDocsSource(
   async function buildSearchIndex(): Promise<DocsSearchBundle> {
     const metas = await listMetas();
     const documents: DocsSearchDocument[] = await Promise.all(
-      metas.map(async (meta) => {
-        const result = await convertMdxFile(meta.filePath, remarkPlugins);
-        return {
-          id: meta.urlPath,
-          title: meta.title,
-          description: meta.description,
-          urlPath: meta.urlPath,
-          absoluteUrl: toAbsoluteUrl(meta.urlPath, baseUrl),
-          relativePath: meta.relativePath,
-          content: result.markdown,
-        };
-      })
+      metas
+        .filter((meta) => !meta.isFallback)
+        .map(async (meta) => {
+          const result = await convertMdxFile(meta.filePath, remarkPlugins);
+          return {
+            id: meta.urlPath,
+            title: meta.title,
+            description: meta.description,
+            urlPath: meta.urlPath,
+            absoluteUrl: toAbsoluteUrl(meta.urlPath, baseUrl),
+            relativePath: meta.relativePath,
+            ...(meta.locale ? { locale: meta.locale } : {}),
+            ...(meta.sourceLocale ? { sourceLocale: meta.sourceLocale } : {}),
+            ...(meta.isFallback === undefined
+              ? {}
+              : { isFallback: meta.isFallback }),
+            ...(meta.logicalPath ? { logicalPath: meta.logicalPath } : {}),
+            content: result.markdown,
+          };
+        })
     );
     const index: DocsSearchIndex = createDocsSearchIndex(
       documents,

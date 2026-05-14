@@ -8,6 +8,16 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+import {
+  type DocsI18nConfig,
+  type DocsI18nManifest,
+  type LocaleCode,
+  type LocalizedDocsMetadata,
+  logicalPathFromLocaleRelativePath,
+  normalizeDocsI18nConfig,
+  outputRelativePathForLocale,
+  toLocalizedDocsUrlPath,
+} from "../i18n";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
   type DocsPathMount,
@@ -61,11 +71,10 @@ function assertValidGroupSlug(slug: string, parentPath: string[]): string {
   }
   return slug;
 }
-const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const GENERATED_MARKDOWN_FILES = new Set([SITEMAP_MARKDOWN_FILE]);
 const SEPARATOR_PATTERN = /[-_]/;
 
-export type SourceDoc = {
+export type SourceDoc = LocalizedDocsMetadata & {
   title: string;
   description: string;
   urlPath: string;
@@ -138,6 +147,7 @@ export type DocsGroup = {
 export type DocsConfig = {
   product: ProductInfo;
   groups: DocsGroup[];
+  i18n?: DocsI18nConfig;
   /**
    * Optional base directory for ExtractedTypeTable / AutoTypeTable path
    * resolution during generation. Relative values are resolved from `--src`.
@@ -164,6 +174,8 @@ export type LlmsTxtConfig = {
   groups: DocsGroup[];
   /** Optional path-to-URL mounts for generated docs, e.g. changelog -> /changelog. */
   mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
 };
 
 export type LLMFullContextConfig = {
@@ -173,6 +185,8 @@ export type LLMFullContextConfig = {
   /** Group tree from `docs.config.ts`. Preserved for config validation. */
   groups: DocsGroup[];
   mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
 };
 
 export type AgentReadabilityConfig = {
@@ -181,6 +195,9 @@ export type AgentReadabilityConfig = {
   product: Pick<ProductInfo, "name" | "summary">;
   groups: DocsGroup[];
   mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  i18nManifest?: DocsI18nManifest;
 };
 
 export type AgentReadabilityResult = {
@@ -198,6 +215,9 @@ export type ResolveDocsNavigationConfig = {
   baseUrl?: string;
   groups: DocsGroup[];
   mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  includeFallback?: boolean;
   toc?: boolean | DocsTableOfContentsOptions;
   /**
    * Name of the docs subdirectory under `srcDir`. Defaults to `"docs"` for
@@ -212,6 +232,8 @@ export type ResolveDocsTableOfContentsConfig = {
   srcDir: string;
   baseUrl?: string;
   mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
   options?: DocsTableOfContentsOptions;
 };
 
@@ -544,11 +566,128 @@ async function collectFiles(
   return files.flat();
 }
 
+type LocaleReadOptions = {
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  includeFallback?: boolean;
+};
+
+function resolveLocaleReadOptions(options: LocaleReadOptions): {
+  i18n: ReturnType<typeof normalizeDocsI18nConfig>;
+  locale?: LocaleCode;
+  includeFallback: boolean;
+} {
+  const i18n = normalizeDocsI18nConfig(options.i18n);
+  if (!i18n) {
+    return { i18n, includeFallback: false };
+  }
+  const locale = options.locale ?? i18n.defaultLocale;
+  if (!i18n.locales.some((entry) => entry.code === locale)) {
+    throw new Error(`Unknown locale "${locale}" in i18n config.`);
+  }
+  return {
+    i18n,
+    locale,
+    includeFallback: options.includeFallback ?? i18n.fallback === "default",
+  };
+}
+
+function assertUnambiguousDefaultLocaleLayout(
+  relativePaths: string[],
+  localeCodes: Set<string>,
+  defaultLocale: string
+): void {
+  const hasRootDefault = relativePaths.some((relativePath) => {
+    const first = normalizeDocsPath(relativePath).split("/")[0] ?? "";
+    return !localeCodes.has(first);
+  });
+  const hasDefaultFolder = relativePaths.some((relativePath) =>
+    normalizeDocsPath(relativePath).startsWith(`${defaultLocale}/`)
+  );
+
+  if (hasRootDefault && hasDefaultFolder) {
+    throw new Error(
+      `Ambiguous i18n default-locale layout. Use either root docs files or docs/${defaultLocale}/ files for the default locale, not both.`
+    );
+  }
+}
+
+type SelectedDocFile = LocalizedDocsMetadata & {
+  filePath: string;
+  logicalPath: string;
+  outputRelativePath: string;
+  sourceLocale?: LocaleCode;
+};
+
+function selectLocalizedFiles(
+  files: string[],
+  docsDir: string,
+  options: {
+    defaultLocale: LocaleCode;
+    locale: LocaleCode;
+    localeCodes: Set<string>;
+    includeFallback: boolean;
+  }
+): SelectedDocFile[] {
+  const byLogicalPath = new Map<
+    string,
+    Map<LocaleCode, { filePath: string; sourceLocale: LocaleCode }>
+  >();
+
+  for (const filePath of files) {
+    const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
+    const { logicalPath, sourceLocale } = logicalPathFromLocaleRelativePath(
+      relativePath,
+      options.localeCodes
+    );
+    const resolvedSourceLocale = sourceLocale ?? options.defaultLocale;
+    const localeFiles = byLogicalPath.get(logicalPath) ?? new Map();
+    localeFiles.set(resolvedSourceLocale, {
+      filePath,
+      sourceLocale: resolvedSourceLocale,
+    });
+    byLogicalPath.set(logicalPath, localeFiles);
+  }
+
+  const selected: SelectedDocFile[] = [];
+  for (const [logicalPath, localeFiles] of byLogicalPath) {
+    const localized = localeFiles.get(options.locale);
+    const fallback =
+      options.includeFallback && options.locale !== options.defaultLocale
+        ? localeFiles.get(options.defaultLocale)
+        : undefined;
+    const match = localized ?? fallback;
+    if (!match) {
+      continue;
+    }
+    selected.push({
+      filePath: match.filePath,
+      locale: options.locale,
+      sourceLocale: match.sourceLocale,
+      isFallback: match.sourceLocale !== options.locale,
+      logicalPath,
+      outputRelativePath: outputRelativePathForLocale(
+        logicalPath,
+        options.locale,
+        {
+          defaultLocale: options.defaultLocale,
+          locales: Array.from(options.localeCodes),
+        }
+      ),
+    });
+  }
+
+  return selected.sort((left, right) =>
+    left.outputRelativePath.localeCompare(right.outputRelativePath)
+  );
+}
+
 async function readSourceDocs(
   srcDir: string,
   baseUrl: string,
   mounts?: DocsPathMount[],
-  docsDirName: string = DOCS_DIRNAME
+  docsDirName: string = DOCS_DIRNAME,
+  localeOptions: LocaleReadOptions = {}
 ): Promise<Map<string, SourceDocWithContent>> {
   const docsDir = path.join(srcDir, docsDirName);
   const docs = new Map<string, SourceDocWithContent>();
@@ -558,23 +697,67 @@ async function readSourceDocs(
   }
 
   const files = await collectFiles(docsDir, [".md", ".mdx"]);
+  const relativePaths = files.map((filePath) =>
+    normalizeDocsPath(path.relative(docsDir, filePath))
+  );
+  const localeRead = resolveLocaleReadOptions(localeOptions);
+  const localeCodes = new Set(
+    localeRead.i18n?.locales.map((locale) => locale.code) ?? []
+  );
+
+  if (localeRead.i18n && localeRead.locale) {
+    assertUnambiguousDefaultLocaleLayout(
+      relativePaths,
+      localeCodes,
+      localeRead.i18n.defaultLocale
+    );
+  }
+
+  const selectedFiles: SelectedDocFile[] =
+    localeRead.i18n && localeRead.locale
+      ? selectLocalizedFiles(files, docsDir, {
+          defaultLocale: localeRead.i18n.defaultLocale,
+          locale: localeRead.locale,
+          localeCodes,
+          includeFallback: localeRead.includeFallback,
+        })
+      : files.map((filePath) => {
+          const relativePath = normalizeDocsPath(
+            path.relative(docsDir, filePath)
+          );
+          return {
+            filePath,
+            logicalPath: stripDocsExtension(relativePath),
+            outputRelativePath: stripDocsExtension(relativePath),
+          };
+        });
 
   const entries = await Promise.all(
-    files.map(async (filePath) => {
-      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
-      const raw = await readFile(filePath, "utf-8");
+    selectedFiles.map(async (file) => {
+      const relativePath = normalizeDocsPath(
+        path.relative(docsDir, file.filePath)
+      );
+      const raw = await readFile(file.filePath, "utf-8");
       const parsed = parseFrontmatter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
         titleFromRelativePath(
-          relativePath,
+          `${file.logicalPath}${path.extname(relativePath)}`,
           path.extname(relativePath) as ".md" | ".mdx"
         ) ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
       );
-      const urlPath = toUrlPath(relativePath, mounts);
+      const urlPath =
+        localeRead.i18n && localeRead.locale
+          ? toLocalizedDocsUrlPath(
+              `${file.logicalPath}.mdx`,
+              localeRead.locale,
+              localeRead.i18n,
+              mounts
+            )
+          : toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
       const orderRaw = parsed.data.order;
       const order =
@@ -588,9 +771,15 @@ async function readSourceDocs(
           description,
           urlPath,
           absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-          relativePath: stripDocsExtension(relativePath),
+          relativePath: file.outputRelativePath,
           groups,
           ...(order === undefined ? {} : { order }),
+          ...(file.locale ? { locale: file.locale } : {}),
+          ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
+          ...(file.isFallback === undefined
+            ? {}
+            : { isFallback: file.isFallback }),
+          ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
           content: parsed.content,
         },
       };
@@ -613,7 +802,8 @@ async function readSourceDocs(
 async function readMarkdownDocs(
   outDir: string,
   baseUrl: string,
-  mounts?: DocsPathMount[]
+  mounts?: DocsPathMount[],
+  localeOptions: LocaleReadOptions = {}
 ): Promise<MarkdownDoc[]> {
   const docsDir = path.join(outDir, DOCS_DIRNAME);
   if (!existsSync(docsDir)) {
@@ -621,20 +811,62 @@ async function readMarkdownDocs(
   }
 
   const files = await collectFiles(docsDir, [".md"]);
+  const relativePaths = files.map((filePath) =>
+    normalizeDocsPath(path.relative(docsDir, filePath))
+  );
+  const localeRead = resolveLocaleReadOptions(localeOptions);
+  const localeCodes = new Set(
+    localeRead.i18n?.locales.map((locale) => locale.code) ?? []
+  );
+  const selectedFiles: SelectedDocFile[] =
+    localeRead.i18n && localeRead.locale
+      ? selectLocalizedFiles(files, docsDir, {
+          defaultLocale: localeRead.i18n.defaultLocale,
+          locale: localeRead.locale,
+          localeCodes,
+          includeFallback: localeRead.includeFallback,
+        })
+      : files.map((filePath) => {
+          const relativePath = normalizeDocsPath(
+            path.relative(docsDir, filePath)
+          );
+          return {
+            filePath,
+            logicalPath: stripDocsExtension(relativePath),
+            outputRelativePath: stripDocsExtension(relativePath),
+          };
+        });
+  if (localeRead.i18n && localeRead.locale) {
+    assertUnambiguousDefaultLocaleLayout(
+      relativePaths,
+      localeCodes,
+      localeRead.i18n.defaultLocale
+    );
+  }
   const docs = await Promise.all(
-    files.map(async (filePath) => {
-      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
-      const raw = await readFile(filePath, "utf-8");
-      const fileStat = await stat(filePath);
+    selectedFiles.map(async (file) => {
+      const relativePath = normalizeDocsPath(
+        path.relative(docsDir, file.filePath)
+      );
+      const raw = await readFile(file.filePath, "utf-8");
+      const fileStat = await stat(file.filePath);
       const parsed = parseFrontmatter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
-        titleFromRelativePath(relativePath, ".md") ||
+        titleFromRelativePath(`${file.logicalPath}.md`, ".md") ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
       );
-      const urlPath = toUrlPath(relativePath, mounts);
+      const urlPath =
+        localeRead.i18n && localeRead.locale
+          ? toLocalizedDocsUrlPath(
+              `${file.logicalPath}.md`,
+              localeRead.locale,
+              localeRead.i18n,
+              mounts
+            )
+          : toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
 
       return {
@@ -642,8 +874,14 @@ async function readMarkdownDocs(
         description,
         urlPath,
         absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-        relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
+        relativePath: file.outputRelativePath,
         groups,
+        ...(file.locale ? { locale: file.locale } : {}),
+        ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
+        ...(file.isFallback === undefined
+          ? {}
+          : { isFallback: file.isFallback }),
+        ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
         content: parsed.content.trim(),
         lastModified: readLastModified(parsed.data, fileStat.mtime),
       };
@@ -651,7 +889,13 @@ async function readMarkdownDocs(
   );
 
   return docs
-    .filter((doc) => !GENERATED_MARKDOWN_FILES.has(`${doc.relativePath}.md`))
+    .filter((doc) => {
+      const filename = path.basename(`${doc.relativePath}.md`);
+      return !(
+        GENERATED_MARKDOWN_FILES.has(`${doc.relativePath}.md`) ||
+        GENERATED_MARKDOWN_FILES.has(filename)
+      );
+    })
     .sort((left, right) => left.urlPath.localeCompare(right.urlPath));
 }
 
@@ -876,20 +1120,40 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   const srcDir = path.resolve(config.srcDir);
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl, config.mounts);
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    config.mounts,
+    DOCS_DIRNAME,
+    {
+      i18n: config.i18n,
+      locale,
+      includeFallback: false,
+    }
+  );
 
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
 
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
-  await writeFile(
-    path.join(outDir, "llms.txt"),
-    renderProductSummary(config.product, sourceDocs, config.mounts)
-  );
+  const isDefaultLocale = !i18n || locale === i18n.defaultLocale;
+  if (isDefaultLocale) {
+    await writeFile(
+      path.join(outDir, "llms.txt"),
+      renderProductSummary(config.product, sourceDocs, config.mounts)
+    );
+  }
 
   if (resolved.length > 0) {
+    const docsLlmsPath =
+      i18n && locale && locale !== i18n.defaultLocale
+        ? path.join(outDir, DOCS_DIRNAME, locale, "llms.txt")
+        : path.join(outDir, DOCS_DIRNAME, "llms.txt");
+    await mkdir(path.dirname(docsLlmsPath), { recursive: true });
     await writeFile(
-      path.join(outDir, DOCS_DIRNAME, "llms.txt"),
+      docsLlmsPath,
       renderDocsSummary(config.product, resolved, membership, config.mounts)
     );
   }
@@ -904,7 +1168,13 @@ export async function generateLLMFullContextFiles(
 ): Promise<void> {
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts);
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
+    i18n: config.i18n,
+    locale,
+    includeFallback: false,
+  });
 
   if (markdownDocs.length === 0) {
     throw new Error(
@@ -914,11 +1184,26 @@ export async function generateLLMFullContextFiles(
 
   resolveGroups(config.groups);
 
-  const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
-  await rm(llmsFullDir, { recursive: true, force: true });
-  await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
+  if (!i18n || locale === i18n.defaultLocale) {
+    const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
+    await rm(llmsFullDir, { recursive: true, force: true });
+    await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
+    await writeFile(
+      path.join(outDir, "llms-full.txt"),
+      renderFullContextDocument(config.product, markdownDocs)
+    );
+    return;
+  }
+
+  const localeFullPath = path.join(
+    outDir,
+    DOCS_DIRNAME,
+    locale ?? i18n.defaultLocale,
+    "llms-full.txt"
+  );
+  await mkdir(path.dirname(localeFullPath), { recursive: true });
   await writeFile(
-    path.join(outDir, "llms-full.txt"),
+    localeFullPath,
     renderFullContextDocument(config.product, markdownDocs)
   );
 }
@@ -942,6 +1227,10 @@ function toAgentReadabilityPage(
     relativePath: doc.relativePath,
     groups: [...doc.groups],
     lastModified: doc.lastModified,
+    ...(doc.locale ? { locale: doc.locale } : {}),
+    ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+    ...(doc.isFallback === undefined ? {} : { isFallback: doc.isFallback }),
+    ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
   };
 }
 
@@ -965,6 +1254,7 @@ function buildNavigationFromMarkdownDocs(
       urlPath: page.urlPath,
       slug,
     })),
+    locale: docs[0]?.locale,
   };
 }
 
@@ -978,9 +1268,22 @@ export async function generateAgentReadabilityArtifacts(
   config: AgentReadabilityConfig
 ): Promise<AgentReadabilityResult> {
   const outDir = path.resolve(config.outDir);
-  const docsDir = path.join(outDir, DOCS_DIRNAME);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts);
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const docsDir =
+    i18n && locale && locale !== i18n.defaultLocale
+      ? path.join(outDir, DOCS_DIRNAME, locale)
+      : path.join(outDir, DOCS_DIRNAME);
+  const docsUrlPrefix =
+    i18n && locale && locale !== i18n.defaultLocale
+      ? `/docs/${locale}`
+      : "/docs";
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
+    i18n: config.i18n,
+    locale,
+    includeFallback: false,
+  });
 
   if (markdownDocs.length === 0) {
     throw new Error(
@@ -998,12 +1301,14 @@ export async function generateAgentReadabilityArtifacts(
     generatedAt: new Date().toISOString(),
     baseUrl,
     product: config.product,
+    ...(locale ? { locale } : {}),
+    ...(config.i18nManifest ? { i18n: config.i18nManifest } : {}),
     pages,
     navigation,
     files: {
-      robotsTxt: `/docs/${ROBOTS_FILE}`,
-      sitemapMd: `/docs/${SITEMAP_MARKDOWN_FILE}`,
-      sitemapXml: `/docs/${SITEMAP_XML_FILE}`,
+      robotsTxt: `${docsUrlPrefix}/${ROBOTS_FILE}`,
+      sitemapMd: `${docsUrlPrefix}/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `${docsUrlPrefix}/${SITEMAP_XML_FILE}`,
     },
   };
 
@@ -1028,7 +1333,7 @@ export async function generateAgentReadabilityArtifacts(
     files.robotsTxt,
     renderRobotsTxt({
       baseUrl,
-      sitemapUrlPath: "/docs/sitemap.xml",
+      sitemapUrlPath: `${docsUrlPrefix}/sitemap.xml`,
     })
   );
   await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -1054,6 +1359,8 @@ export type AgentsMdConfig = {
    * Used for the relative-path prefix in every link. Default: `docs`.
    */
   docsSubdir?: string;
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
 };
 
 export type AgentsMdResult = {
@@ -1088,7 +1395,17 @@ export async function generateAgentsMd(
   // field, but AGENTS.md output never reads that field — relative paths only.
   // Pass through any configured fallback so SourceDoc objects are well-formed.
   const baseUrl = normalizeBaseUrl(undefined);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    undefined,
+    DOCS_DIRNAME,
+    {
+      i18n: config.i18n,
+      locale: config.locale,
+      includeFallback: false,
+    }
+  );
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
 
@@ -1176,6 +1493,10 @@ function pageView(
     description: doc.description,
     groups: [...doc.groups],
     toc: tocByUrlPath.get(doc.urlPath) ?? [],
+    ...(doc.locale ? { locale: doc.locale } : {}),
+    ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+    ...(doc.isFallback === undefined ? {} : { isFallback: doc.isFallback }),
+    ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
   };
 }
 
@@ -1212,7 +1533,12 @@ export async function resolveDocsNavigation(
     srcDir,
     baseUrl,
     config.mounts,
-    config.docsDirName
+    config.docsDirName,
+    {
+      i18n: config.i18n,
+      locale: config.locale,
+      includeFallback: config.includeFallback ?? true,
+    }
   );
   const resolved = resolveGroups(config.groups);
   const membership = buildGroupMembership([...sourceDocs.values()], resolved);
@@ -1237,6 +1563,8 @@ export async function resolveDocsNavigation(
       urlPath: page.urlPath,
       slug,
     })),
+    locale:
+      config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
   };
 }
 
@@ -1245,7 +1573,17 @@ export async function resolveDocsTableOfContents(
 ): Promise<DocsTableOfContentsPage[]> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl, config.mounts);
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    config.mounts,
+    DOCS_DIRNAME,
+    {
+      i18n: config.i18n,
+      locale: config.locale,
+      includeFallback: false,
+    }
+  );
 
   return [...sourceDocs.values()]
     .sort((left, right) => left.urlPath.localeCompare(right.urlPath))

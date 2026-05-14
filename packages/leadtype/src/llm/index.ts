@@ -1,4 +1,19 @@
 // Build-time exports.
+
+export {
+  type AlternateLocaleLink,
+  type DocsI18nConfig,
+  type DocsI18nManifest,
+  type DocsLocale,
+  getAlternateLocaleLinks,
+  type LocaleCode,
+  listDocsLocales,
+  normalizeDocsI18nConfig,
+  resolveDocsLocale,
+  stripLocaleFromDocsPath,
+  toLocalizedDocsUrlPath,
+  toLocalizedMarkdownUrlPath,
+} from "../i18n";
 export {
   type AgentReadabilityConfig,
   type AgentReadabilityResult,

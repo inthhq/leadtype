@@ -6,6 +6,7 @@
  * Cloudflare Workers, Hono, Astro, Nuxt, Vite middleware, etc.
  */
 
+import type { DocsI18nManifest, LocalizedDocsMetadata } from "../i18n";
 import {
   normalizeDocsPath,
   stripTrailingSlashes,
@@ -53,7 +54,7 @@ const XML_ESCAPE_PATTERN = /[<>&'"]/g;
 
 export type JsonLdValue = Record<string, unknown>;
 
-export type AgentReadabilityPage = {
+export type AgentReadabilityPage = LocalizedDocsMetadata & {
   title: string;
   description: string;
   urlPath: string;
@@ -80,7 +81,7 @@ export type DocsTableOfContentsOptions = {
   maxLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 };
 
-export type DocsNavigationPage = {
+export type DocsNavigationPage = LocalizedDocsMetadata & {
   urlPath: string;
   title: string;
   description: string;
@@ -103,6 +104,7 @@ export type DocsNavigation = {
   ungrouped: DocsNavigationPage[];
   /** Pages that named a group slug not present in the config. */
   unknown: { urlPath: string; slug: string }[];
+  locale?: string;
 };
 
 export type AgentReadabilityManifest = {
@@ -110,6 +112,8 @@ export type AgentReadabilityManifest = {
   generatedAt: string;
   baseUrl: string;
   product: { name: string; summary: string };
+  locale?: string;
+  i18n?: DocsI18nManifest;
   pages: AgentReadabilityPage[];
   navigation: DocsNavigation;
   files: {

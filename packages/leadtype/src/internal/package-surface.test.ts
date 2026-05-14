@@ -10,6 +10,7 @@ describe("package surface", () => {
       ".",
       "./mdx",
       "./fumadocs",
+      "./i18n",
       "./remark",
       "./convert",
       "./llm",

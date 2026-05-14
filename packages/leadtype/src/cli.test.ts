@@ -327,6 +327,97 @@ describe("leadtype CLI", () => {
     );
   });
 
+  it("generates locale-scoped i18n artifacts while keeping default URLs stable", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Localized Product",
+    summary: "Localized product summary.",
+  },
+  groups: [{ slug: "get-started", title: "Get Started" }],
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "zh"],
+  },
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "English quickstart."\ngroup: get-started',
+      "English body."
+    );
+    await writeMdxPage(
+      srcDir,
+      "setup.mdx",
+      'title: "Setup"\ndescription: "English setup."\ngroup: get-started',
+      "English setup."
+    );
+    await writeMdxPage(
+      srcDir,
+      "zh/quickstart.mdx",
+      'title: "快速开始"\ndescription: "中文快速开始。"\ngroup: get-started',
+      "中文正文。"
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      files: { i18nManifest?: string };
+    };
+    expect(result.files.i18nManifest).toBe(
+      path.join(outDir, "docs", "i18n-manifest.json")
+    );
+
+    const manifest = JSON.parse(
+      await readFile(path.join(outDir, "docs", "i18n-manifest.json"), "utf8")
+    ) as {
+      defaultLocale: string;
+      artifacts: Array<{ locale: string; searchIndex: string }>;
+    };
+    expect(manifest.defaultLocale).toBe("en");
+    expect(manifest.artifacts).toContainEqual(
+      expect.objectContaining({
+        locale: "zh",
+        searchIndex: "/docs/zh/search-index.json",
+      })
+    );
+
+    const defaultSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(defaultSummary).toContain("](/docs/quickstart.md)");
+
+    const zhSummary = await readFile(
+      path.join(outDir, "docs", "zh", "llms.txt"),
+      "utf8"
+    );
+    expect(zhSummary).toContain("快速开始");
+    expect(zhSummary).toContain("](/docs/zh/quickstart.md)");
+    expect(zhSummary).not.toContain("Setup");
+
+    const zhSearch = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "zh", "search-index.json"),
+        "utf8"
+      )
+    ) as { documents: [string, string, string, string][] };
+    expect(zhSearch.documents.map((entry) => entry[3])).toEqual([
+      "/docs/zh/quickstart",
+    ]);
+  });
+
   it("lets --name and --summary override docs config product fields", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

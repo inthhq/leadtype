@@ -205,6 +205,47 @@ describe("generateLlmsTxt", () => {
     expect(searchSection).toContain("Search Only");
     expect(selfHostSection).not.toContain("Search Only");
   });
+
+  it("renders locale-scoped llms summaries without fallback pages", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter:
+          "title: Quickstart\ndescription: English quickstart.\ngroup: get-started",
+      },
+      {
+        relativePath: "setup.mdx",
+        frontmatter:
+          "title: Setup\ndescription: English setup.\ngroup: get-started",
+      },
+      {
+        relativePath: "zh/quickstart.mdx",
+        frontmatter:
+          "title: 快速开始\ndescription: 中文快速开始。\ngroup: get-started",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+      locale: "zh",
+    });
+
+    const zhSummary = await readFile(
+      path.join(outDir, "docs", "zh", "llms.txt"),
+      "utf8"
+    );
+    expect(zhSummary).toContain("快速开始");
+    expect(zhSummary).toContain("](/docs/zh/quickstart.md)");
+    expect(zhSummary).not.toContain("Setup");
+  });
 });
 
 describe("generateLLMFullContextFiles", () => {
@@ -300,6 +341,47 @@ describe("generateLLMFullContextFiles", () => {
     );
     expect(llmsFull.match(/^# Rate Limiting$/gm)).toHaveLength(1);
     expect(llmsFull).toContain("Shared body.");
+  });
+
+  it("writes non-default locale full-context files under the locale docs path", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter:
+          "title: Quickstart\ndescription: English quickstart.\ngroup: get-started",
+        body: "# Quickstart\n\nEnglish body.\n",
+      },
+      {
+        relativePath: "setup.md",
+        frontmatter:
+          "title: Setup\ndescription: English setup.\ngroup: get-started",
+        body: "# Setup\n\nEnglish setup.\n",
+      },
+      {
+        relativePath: "zh/quickstart.md",
+        frontmatter:
+          "title: 快速开始\ndescription: 中文快速开始。\ngroup: get-started",
+        body: "# 快速开始\n\n中文正文。\n",
+      },
+    ]);
+
+    await generateLLMFullContextFiles({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype" },
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+      locale: "zh",
+    });
+
+    const llmsFull = await readFile(
+      path.join(projectDir, "docs", "zh", "llms-full.txt"),
+      "utf8"
+    );
+    expect(llmsFull).toContain("快速开始");
+    expect(llmsFull).toContain("https://leadtype.dev/docs/zh/quickstart");
+    expect(llmsFull).not.toContain("English setup");
   });
 
   it("clears stale docs-scoped full-context files", async () => {
