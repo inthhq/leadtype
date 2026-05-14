@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
+import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
   type DocsPathMount,
   normalizeDocsPath,
@@ -91,6 +92,7 @@ type GenerateResult = {
     docsRobotsTxt?: string;
     docsSitemapMd?: string;
     docsSitemapXml?: string;
+    i18nManifest?: string;
     docsLlmsTxt?: string;
     llmsFullTxt?: string;
     llmsTxt?: string;
@@ -141,6 +143,7 @@ type LoadedDocsConfig = {
 type ResolvedGenerateMetadata = {
   configPath?: string;
   groups: DocsGroup[];
+  i18n?: DocsConfig["i18n"];
   product: ProductInfo;
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -358,6 +361,9 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
   return {
     groups,
+    ...(value.i18n === undefined
+      ? {}
+      : { i18n: value.i18n as DocsConfig["i18n"] }),
     product,
     typeTableBasePath:
       typeof value.typeTableBasePath === "string"
@@ -482,6 +488,7 @@ async function resolveGenerateMetadata(
     return {
       configPath: loadedConfig.path,
       groups: loadedConfig.config.groups,
+      i18n: loadedConfig.config.i18n,
       product: applyProductOverrides(loadedConfig.config.product, args),
       typeTableBasePath: loadedConfig.config.typeTableBasePath
         ? path.resolve(srcDir, loadedConfig.config.typeTableBasePath)
@@ -707,6 +714,98 @@ async function copyMountedMarkdownMirrors(
   );
 }
 
+async function hasMarkdownFiles(dir: string): Promise<boolean> {
+  if (!existsSync(dir)) {
+    return false;
+  }
+  const files = await fg("**/*.md", {
+    absolute: false,
+    cwd: dir,
+    onlyFiles: true,
+  });
+  return files.length > 0;
+}
+
+async function copyDefaultLocaleMarkdownAliases(
+  outDir: string,
+  defaultLocale: string
+): Promise<void> {
+  const docsDir = path.join(outDir, DEFAULT_DOCS_DIR);
+  const defaultLocaleDir = path.join(docsDir, defaultLocale);
+  if (!(await hasMarkdownFiles(defaultLocaleDir))) {
+    return;
+  }
+
+  const rootMarkdownFiles = await fg("*.md", {
+    absolute: false,
+    cwd: docsDir,
+    onlyFiles: true,
+  });
+  if (rootMarkdownFiles.length > 0) {
+    throw new Error(
+      `Ambiguous i18n default-locale output. Use either root docs files or docs/${defaultLocale}/ files for the default locale, not both.`
+    );
+  }
+
+  const files = await fg("**/*.md", {
+    absolute: false,
+    cwd: defaultLocaleDir,
+    onlyFiles: true,
+  });
+  await Promise.all(
+    files.map(async (file) => {
+      const sourcePath = path.join(defaultLocaleDir, file);
+      const targetPath = path.join(docsDir, file);
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await cp(sourcePath, targetPath);
+    })
+  );
+  await rm(defaultLocaleDir, { force: true, recursive: true });
+}
+
+function buildI18nManifest(
+  config: DocsConfig["i18n"]
+): DocsI18nManifest | undefined {
+  const i18n = normalizeDocsI18nConfig(config);
+  if (!i18n) {
+    return;
+  }
+  return {
+    version: 1,
+    defaultLocale: i18n.defaultLocale,
+    locales: i18n.locales,
+    artifacts: i18n.locales.map((locale) => {
+      const isDefault = locale.code === i18n.defaultLocale;
+      const prefix = isDefault ? "/docs" : `/docs/${locale.code}`;
+      return {
+        locale: locale.code,
+        urlPrefix: prefix,
+        llmsTxt: `${prefix}/llms.txt`,
+        llmsFullTxt: isDefault ? "/llms-full.txt" : `${prefix}/llms-full.txt`,
+        searchIndex: `${prefix}/search-index.json`,
+        searchContent: `${prefix}/search-content.json`,
+        agentReadabilityManifest: `${prefix}/agent-readability.json`,
+        robotsTxt: `${prefix}/robots.txt`,
+        sitemapMd: `${prefix}/sitemap.md`,
+        sitemapXml: `${prefix}/sitemap.xml`,
+      };
+    }),
+  };
+}
+
+async function writeI18nManifest(
+  outDir: string,
+  manifest: DocsI18nManifest | undefined
+): Promise<string | undefined> {
+  if (!manifest) {
+    return;
+  }
+  const outputPath = path.join(outDir, DEFAULT_DOCS_DIR, "i18n-manifest.json");
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  return outputPath;
+}
+
 async function createSourceMirror(
   srcDir: string,
   sources: ResolvedDocsSource[],
@@ -832,17 +931,26 @@ export async function runGenerateCommand(
             ...metadata,
             groups: await inferGroups(sourceMirror.docsDir),
           };
+    const i18n = normalizeDocsI18nConfig(metadata.i18n);
+    const i18nManifest = buildI18nManifest(metadata.i18n);
 
-    const navigation = await resolveDocsNavigation({
-      srcDir: sourceMirror.srcDir,
-      groups,
-      mounts,
-    });
-    const firstUnknownGroup = navigation.unknown[0];
-    if (firstUnknownGroup) {
-      throw new Error(
-        `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`
-      );
+    const localesToValidate = i18n
+      ? i18n.locales.map((locale) => locale.code)
+      : [undefined];
+    for (const locale of localesToValidate) {
+      const navigation = await resolveDocsNavigation({
+        srcDir: sourceMirror.srcDir,
+        groups,
+        mounts,
+        i18n: metadata.i18n,
+        locale,
+      });
+      const firstUnknownGroup = navigation.unknown[0];
+      if (firstUnknownGroup) {
+        throw new Error(
+          `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`
+        );
+      }
     }
 
     await convertAllMdx({
@@ -864,6 +972,8 @@ export async function runGenerateCommand(
         outDir,
         product,
         groups,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
       });
       result = {
         docsDir,
@@ -878,7 +988,11 @@ export async function runGenerateCommand(
         srcDir,
       };
     } else {
+      if (i18n) {
+        await copyDefaultLocaleMarkdownAliases(outDir, i18n.defaultLocale);
+      }
       await copyMountedMarkdownMirrors(outDir, mounts);
+      const i18nManifestPath = await writeI18nManifest(outDir, i18nManifest);
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
@@ -886,6 +1000,8 @@ export async function runGenerateCommand(
         product,
         groups,
         mounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
       });
 
       await generateLLMFullContextFiles({
@@ -894,12 +1010,16 @@ export async function runGenerateCommand(
         product: { name: product.name },
         groups,
         mounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
       });
 
       const search = await generateDocsSearchFiles({
         outDir,
         baseUrl: args.baseUrl,
         mounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
       });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
@@ -907,7 +1027,54 @@ export async function runGenerateCommand(
         product,
         groups,
         mounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
+        i18nManifest,
       });
+
+      if (i18n) {
+        for (const locale of i18n.locales) {
+          if (locale.code === i18n.defaultLocale) {
+            continue;
+          }
+          await generateLlmsTxt({
+            srcDir: sourceMirror.srcDir,
+            outDir,
+            baseUrl: args.baseUrl,
+            product,
+            groups,
+            mounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+          });
+          await generateLLMFullContextFiles({
+            outDir,
+            baseUrl: args.baseUrl,
+            product: { name: product.name },
+            groups,
+            mounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+          });
+          await generateDocsSearchFiles({
+            outDir,
+            baseUrl: args.baseUrl,
+            mounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+          });
+          await generateAgentReadabilityArtifacts({
+            outDir,
+            baseUrl: args.baseUrl,
+            product,
+            groups,
+            mounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+            i18nManifest,
+          });
+        }
+      }
 
       result = {
         docsDir,
@@ -917,6 +1084,7 @@ export async function runGenerateCommand(
           docsRobotsTxt: agentReadability.files.robotsTxt,
           docsSitemapMd: agentReadability.files.sitemapMd,
           docsSitemapXml: agentReadability.files.sitemapXml,
+          i18nManifest: i18nManifestPath,
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
           llmsFullTxt: path.join(outDir, "llms-full.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),
