@@ -299,12 +299,23 @@ describe("createDocsSource", () => {
     expect(
       pages.map((page) => ({
         fallback: page.isFallback,
+        slug: page.slug.join("/"),
         title: page.title,
         urlPath: page.urlPath,
       }))
     ).toEqual([
-      { fallback: false, title: "快速开始", urlPath: "/docs/zh/quickstart" },
-      { fallback: true, title: "Setup", urlPath: "/docs/zh/setup" },
+      {
+        fallback: false,
+        slug: "zh/quickstart",
+        title: "快速开始",
+        urlPath: "/docs/zh/quickstart",
+      },
+      {
+        fallback: true,
+        slug: "zh/setup",
+        title: "Setup",
+        urlPath: "/docs/zh/setup",
+      },
     ]);
 
     const fallback = await source.loadPage("zh/setup");
@@ -312,10 +323,37 @@ describe("createDocsSource", () => {
     expect(fallback?.sourceLocale).toBe("en");
     expect(fallback?.markdown).toContain("English setup");
 
+    const logicalFallback = await source.loadPage("setup");
+    expect(logicalFallback?.urlPath).toBe("/docs/zh/setup");
+
     const search = await source.buildSearchIndex();
     expect(search.index.documents.map((entry) => entry[3])).toEqual([
       "/docs/zh/quickstart",
     ]);
+  });
+
+  it("rejects duplicate localized source files for the same locale and logical path", async () => {
+    await writeMdx(
+      path.join(contentDir, "quickstart.md"),
+      "---\ntitle: Quickstart\n---\nBody.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "quickstart.mdx"),
+      "---\ntitle: Quickstart duplicate\n---\nBody.\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      i18n: {
+        defaultLocale: "en",
+        locales: ["en", "zh"],
+      },
+      locale: "en",
+    });
+
+    await expect(source.listPages()).rejects.toThrow(
+      /Duplicate docs file for locale "en"/
+    );
   });
 
   it("getNavigation routes pages into declared groups", async () => {

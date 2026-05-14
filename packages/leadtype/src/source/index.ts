@@ -212,19 +212,17 @@ async function readPageMeta(
     );
   const description = String(parsed.data.description ?? "").trim();
   const groups = normalizeGroupValue(parsed.data.group);
-  const slug = deriveSlug(
-    `${selected.logicalPath}${path.extname(relativePath)}`
-  );
+  const extension = filePath.endsWith(".mdx") ? ".mdx" : ".md";
+  const slug = deriveSlug(`${selected.outputRelativePath}${extension}`);
   const urlPath =
     i18n && selected.locale
       ? toLocalizedDocsUrlPath(
-          `${selected.logicalPath}${path.extname(relativePath)}`,
+          `${selected.logicalPath}${extension}`,
           selected.locale,
           i18n,
           mounts
         )
       : toDocsUrlPath(relativePath, mounts);
-  const extension = filePath.endsWith(".mdx") ? ".mdx" : ".md";
   return {
     slug,
     urlPath,
@@ -308,15 +306,23 @@ function selectSourceFiles(
     );
     const resolvedSourceLocale = sourceLocale ?? normalized.defaultLocale;
     const localeFiles = byLogicalPath.get(logicalPath) ?? new Map();
+    const outputRelativePath = outputRelativePathForLocale(
+      logicalPath,
+      outputLocale,
+      i18n
+    );
+    const existing = localeFiles.get(resolvedSourceLocale);
+    if (existing) {
+      throw new Error(
+        `Duplicate docs file for locale "${resolvedSourceLocale}" at "${outputRelativePath}": "${existing.filePath}" conflicts with "${filePath}". Rename one or remove it.`
+      );
+    }
+
     localeFiles.set(resolvedSourceLocale, {
       contentDir,
       filePath,
       logicalPath,
-      outputRelativePath: outputRelativePathForLocale(
-        logicalPath,
-        outputLocale,
-        i18n
-      ),
+      outputRelativePath,
       locale: outputLocale,
       sourceLocale: resolvedSourceLocale,
       isFallback: resolvedSourceLocale !== outputLocale,
@@ -468,8 +474,19 @@ export async function createDocsSource(
     const localeCodes = new Set(
       normalizedI18n?.locales.map((entry) => entry.code) ?? []
     );
-    const logicalSlug = localeCodes.has(slug[0] ?? "") ? slug.slice(1) : slug;
-    const meta = await findMetaForSlug(logicalSlug);
+    const slugHasLocale = localeCodes.has(slug[0] ?? "");
+    let meta = await findMetaForSlug(slug);
+    if (!meta && slugHasLocale) {
+      meta = await findMetaForSlug(slug.slice(1));
+    }
+    if (
+      !meta &&
+      normalizedI18n &&
+      config.locale &&
+      config.locale !== normalizedI18n.defaultLocale
+    ) {
+      meta = await findMetaForSlug([config.locale, ...slug]);
+    }
     if (!meta) {
       return null;
     }

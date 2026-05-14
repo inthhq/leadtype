@@ -642,6 +642,13 @@ function selectLocalizedFiles(
     );
     const resolvedSourceLocale = sourceLocale ?? options.defaultLocale;
     const localeFiles = byLogicalPath.get(logicalPath) ?? new Map();
+    const existing = localeFiles.get(resolvedSourceLocale);
+    if (existing) {
+      throw new Error(
+        `Duplicate docs file for logical path "${logicalPath}" and locale "${resolvedSourceLocale}": "${existing.filePath}" conflicts with "${filePath}". Rename one or remove it.`
+      );
+    }
+
     localeFiles.set(resolvedSourceLocale, {
       filePath,
       sourceLocale: resolvedSourceLocale,

@@ -246,6 +246,33 @@ describe("generateLlmsTxt", () => {
     expect(zhSummary).toContain("](/docs/zh/quickstart.md)");
     expect(zhSummary).not.toContain("Setup");
   });
+
+  it("rejects duplicate localized source files for the same locale and logical path", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart",
+      },
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart duplicate",
+      },
+    ]);
+
+    await expect(
+      generateLlmsTxt({
+        srcDir: projectDir,
+        outDir,
+        baseUrl: "https://leadtype.dev",
+        product: { name: "Leadtype" },
+        i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+        locale: "en",
+      })
+    ).rejects.toThrow(/Duplicate docs file.*locale "en"/);
+  });
 });
 
 describe("generateLLMFullContextFiles", () => {
