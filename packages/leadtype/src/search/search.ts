@@ -1,3 +1,4 @@
+import type { LocalizedDocsMetadata } from "../i18n";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 
 const DEFAULT_MAX_CHUNK_CHARS = 1200;
@@ -40,6 +41,10 @@ const DOCUMENT_DESCRIPTION = 2;
 const DOCUMENT_URL_PATH = 3;
 const DOCUMENT_ABSOLUTE_URL = 4;
 const DOCUMENT_RELATIVE_PATH = 5;
+const DOCUMENT_LOCALE = 6;
+const DOCUMENT_SOURCE_LOCALE = 7;
+const DOCUMENT_IS_FALLBACK = 8;
+const DOCUMENT_LOGICAL_PATH = 9;
 const CHUNK_ID = 0;
 const CHUNK_DOCUMENT_INDEX = 1;
 const CHUNK_ANCHOR = 2;
@@ -99,7 +104,7 @@ const DEFAULT_SYNONYMS: Record<string, string[]> = {
   typescript: ["ts"],
 };
 
-export type DocsSearchDocument = {
+export type DocsSearchDocument = LocalizedDocsMetadata & {
   id?: string;
   title: string;
   description?: string;
@@ -109,7 +114,7 @@ export type DocsSearchDocument = {
   content: string;
 };
 
-export type DocsSearchDocumentRecord = {
+export type DocsSearchDocumentRecord = LocalizedDocsMetadata & {
   id: string;
   title: string;
   description: string;
@@ -118,7 +123,7 @@ export type DocsSearchDocumentRecord = {
   relativePath: string;
 };
 
-export type DocsSearchChunk = {
+export type DocsSearchChunk = LocalizedDocsMetadata & {
   id: string;
   documentId: string;
   title: string;
@@ -142,6 +147,10 @@ export type DocsSearchDocumentEntry = [
   urlPath: string,
   absoluteUrl: string,
   relativePath: string,
+  locale?: string,
+  sourceLocale?: string,
+  isFallback?: boolean,
+  logicalPath?: string,
 ];
 
 export type DocsSearchChunkEntry = [
@@ -198,7 +207,7 @@ export type SearchDocsOptions = ContentStoreOptions & {
   synonyms?: Record<string, string[]>;
 };
 
-export type DocsSearchResult = {
+export type DocsSearchResult = LocalizedDocsMetadata & {
   id: string;
   documentId: string;
   title: string;
@@ -738,7 +747,7 @@ function resolveContentStore(
 function documentRecordFromEntry(
   entry: DocsSearchDocumentEntry
 ): DocsSearchDocumentRecord {
-  return {
+  const record: DocsSearchDocumentRecord = {
     id: entry[DOCUMENT_ID],
     title: entry[DOCUMENT_TITLE],
     description: entry[DOCUMENT_DESCRIPTION],
@@ -746,6 +755,19 @@ function documentRecordFromEntry(
     absoluteUrl: entry[DOCUMENT_ABSOLUTE_URL],
     relativePath: entry[DOCUMENT_RELATIVE_PATH],
   };
+  if (entry[DOCUMENT_LOCALE]) {
+    record.locale = entry[DOCUMENT_LOCALE];
+  }
+  if (entry[DOCUMENT_SOURCE_LOCALE]) {
+    record.sourceLocale = entry[DOCUMENT_SOURCE_LOCALE];
+  }
+  if (entry[DOCUMENT_IS_FALLBACK] !== undefined) {
+    record.isFallback = entry[DOCUMENT_IS_FALLBACK];
+  }
+  if (entry[DOCUMENT_LOGICAL_PATH]) {
+    record.logicalPath = entry[DOCUMENT_LOGICAL_PATH];
+  }
+  return record;
 }
 
 function chunkFromEntry(
@@ -783,6 +805,16 @@ function chunkFromEntry(
     text,
     codeText: "",
     length: entry[CHUNK_LENGTH],
+    ...(documentRecord.locale ? { locale: documentRecord.locale } : {}),
+    ...(documentRecord.sourceLocale
+      ? { sourceLocale: documentRecord.sourceLocale }
+      : {}),
+    ...(documentRecord.isFallback === undefined
+      ? {}
+      : { isFallback: documentRecord.isFallback }),
+    ...(documentRecord.logicalPath
+      ? { logicalPath: documentRecord.logicalPath }
+      : {}),
   };
 }
 
@@ -815,14 +847,26 @@ export function createDocsSearchIndex(
   for (const [documentIndex, doc] of markdownDocs.entries()) {
     const documentId = doc.id ?? `doc-${documentIndex}`;
     const description = doc.description ?? "";
-    documents.push([
+    const entry: DocsSearchDocumentEntry = [
       documentId,
       doc.title,
       description,
       doc.urlPath,
       doc.absoluteUrl,
       doc.relativePath,
-    ]);
+    ];
+    if (
+      doc.locale ||
+      doc.sourceLocale ||
+      doc.isFallback !== undefined ||
+      doc.logicalPath
+    ) {
+      entry[DOCUMENT_LOCALE] = doc.locale;
+      entry[DOCUMENT_SOURCE_LOCALE] = doc.sourceLocale;
+      entry[DOCUMENT_IS_FALLBACK] = doc.isFallback;
+      entry[DOCUMENT_LOGICAL_PATH] = doc.logicalPath;
+    }
+    documents.push(entry);
 
     for (const block of collectSectionBlocks(doc.content)) {
       const bodyParts = splitWithOverlap(

@@ -8,6 +8,22 @@
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
 //   - `leadtype/search` — search index + per-host adapters
 //   - `leadtype/lint` — frontmatter / meta.json validation
+
+export {
+  type AlternateLocaleLink,
+  type DocsI18nConfig,
+  type DocsI18nManifest,
+  type DocsLocale,
+  type DocsLocaleArtifactPaths,
+  getAlternateLocaleLinks,
+  type LocaleCode,
+  listDocsLocales,
+  normalizeDocsI18nConfig,
+  resolveDocsLocale,
+  stripLocaleFromDocsPath,
+  toLocalizedDocsUrlPath,
+  toLocalizedMarkdownUrlPath,
+} from "./i18n";
 export {
   type AgentReadabilityConfig,
   type AgentReadabilityManifest,

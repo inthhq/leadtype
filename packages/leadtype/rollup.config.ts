@@ -7,6 +7,7 @@ const entries = {
   index: "src/index.ts",
   "mdx/index": "src/mdx/index.ts",
   "fumadocs/index": "src/fumadocs/index.ts",
+  "i18n/index": "src/i18n/index.ts",
   "remark/index": "src/remark/index.ts",
   "convert/index": "src/convert/index.ts",
   "llm/index": "src/llm/index.ts",

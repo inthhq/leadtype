@@ -271,6 +271,91 @@ describe("createDocsSource", () => {
     expect(documentIds).toEqual(["/docs/guides/setup", "/docs/quickstart"]);
   });
 
+  it("loads localized pages with default-locale navigation fallback", async () => {
+    await writeMdx(
+      path.join(contentDir, "quickstart.mdx"),
+      "---\ntitle: Quickstart\ngroup: get-started\n---\nEnglish body.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "setup.mdx"),
+      "---\ntitle: Setup\ngroup: get-started\n---\nEnglish setup.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "zh/quickstart.mdx"),
+      "---\ntitle: 快速开始\ngroup: get-started\n---\n中文正文。\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      i18n: {
+        defaultLocale: "en",
+        locales: ["en", "zh"],
+      },
+      locale: "zh",
+    });
+
+    const pages = await source.listPages();
+    expect(
+      pages.map((page) => ({
+        fallback: page.isFallback,
+        slug: page.slug.join("/"),
+        title: page.title,
+        urlPath: page.urlPath,
+      }))
+    ).toEqual([
+      {
+        fallback: false,
+        slug: "zh/quickstart",
+        title: "快速开始",
+        urlPath: "/docs/zh/quickstart",
+      },
+      {
+        fallback: true,
+        slug: "zh/setup",
+        title: "Setup",
+        urlPath: "/docs/zh/setup",
+      },
+    ]);
+
+    const fallback = await source.loadPage("zh/setup");
+    expect(fallback?.isFallback).toBe(true);
+    expect(fallback?.sourceLocale).toBe("en");
+    expect(fallback?.markdown).toContain("English setup");
+
+    const logicalFallback = await source.loadPage("setup");
+    expect(logicalFallback?.urlPath).toBe("/docs/zh/setup");
+
+    const search = await source.buildSearchIndex();
+    expect(search.index.documents.map((entry) => entry[3])).toEqual([
+      "/docs/zh/quickstart",
+    ]);
+  });
+
+  it("rejects duplicate localized source files for the same locale and logical path", async () => {
+    await writeMdx(
+      path.join(contentDir, "quickstart.md"),
+      "---\ntitle: Quickstart\n---\nBody.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "quickstart.mdx"),
+      "---\ntitle: Quickstart duplicate\n---\nBody.\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      i18n: {
+        defaultLocale: "en",
+        locales: ["en", "zh"],
+      },
+      locale: "en",
+    });
+
+    await expect(source.listPages()).rejects.toThrow(
+      /Duplicate docs file for locale "en"/
+    );
+  });
+
   it("getNavigation routes pages into declared groups", async () => {
     await writeMdx(
       path.join(contentDir, "guides/setup.mdx"),
