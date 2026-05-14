@@ -1,38 +1,3 @@
-/**
- * `leadtype/next` — server-only adapter for Next.js App Router.
- *
- * Thin wiring over leadtype's framework-neutral primitives so a Next docs app
- * can be a one-liner per file. No React imports — server entries only.
- *
- * ```ts title="app/docs/[[...slug]]/page.tsx"
- * import { createLoadPageData, createGenerateStaticParams } from "leadtype/next";
- * import { source } from "@/lib/source";
- *
- * const loadPageData = createLoadPageData({ source });
- *
- * export async function generateStaticParams() {
- *   return await createGenerateStaticParams({ source })();
- * }
- *
- * export default async function DocsPage({ params }: { params: Promise<{ slug?: string[] }> }) {
- *   const page = await loadPageData((await params).slug);
- *   if (!page) notFound();
- *   // render page.markdown with your MDX runtime
- * }
- * ```
- *
- * ```ts title="app/docs/[[...slug]]/route.ts"
- * import { createDocsRouteHandler } from "leadtype/next";
- * import manifest from "@/generated/agent-readability.json" assert { type: "json" };
- *
- * export const GET = createDocsRouteHandler({
- *   manifest: { ...manifest, version: 1 } as const,
- * });
- * ```
- *
- * Pair with `useLeadtypeSearch` from `leadtype/next/client` for in-app search.
- */
-
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type {
@@ -48,27 +13,56 @@ export type {
 } from "../llm/readability";
 export type { DocsPage, DocsSource } from "../source";
 
+/**
+ * Configuration for {@link createGenerateStaticParams}.
+ */
 export type CreateGenerateStaticParamsConfig = {
-  source: DocsSource;
-};
-
-export type CreateLoadPageDataConfig = {
-  source: DocsSource;
-};
-
-export type CreateDocsRouteHandlerConfig = {
-  /** Agent-readability manifest emitted by `leadtype generate`. */
-  manifest: AgentReadabilityManifest;
   /**
-   * Directory where the generate CLI wrote artifacts. Default: `./public`
-   * (resolved relative to `process.cwd()` at request time).
+   * Framework-neutral docs source used to enumerate all known pages.
+   */
+  source: DocsSource;
+};
+
+/**
+ * Configuration for {@link createLoadPageData}.
+ */
+export type CreateLoadPageDataConfig = {
+  /**
+   * Framework-neutral docs source used to resolve route slugs.
+   */
+  source: DocsSource;
+};
+
+/**
+ * Configuration for {@link createDocsRouteHandler}.
+ */
+export type CreateDocsRouteHandlerConfig = {
+  /**
+   * Agent Readability manifest emitted by `leadtype generate`.
+   */
+  manifest: AgentReadabilityManifest;
+
+  /**
+   * Directory where `leadtype generate` wrote public artifacts.
+   *
+   * @defaultValue `"./public"`
    */
   publicDir?: string;
-  /** Override Cache-Control. Pass `null` to omit. */
-  cacheControl?: string | null;
+
   /**
-   * Custom markdown reader. Defaults to reading `<publicDir>/<target.filePath>`
-   * with `node:fs`. Override to read from a CDN, KV, or in-memory map.
+   * Cache-Control header for markdown responses.
+   *
+   * Pass `null` to omit the header.
+   */
+  cacheControl?: string | null;
+
+  /**
+   * Custom markdown reader for a resolved generated markdown target.
+   *
+   * @remarks
+   * Defaults to reading `<publicDir>/<target.filePath>` with `node:fs`.
+   * Override this when serving from a CDN, KV store, in-memory map, or other
+   * non-filesystem artifact source.
    */
   readMarkdownFile?: (
     target: MarkdownMirrorTarget
@@ -79,7 +73,9 @@ export type CreateDocsRouteHandlerConfig = {
  * Build the function Next's App Router expects from `generateStaticParams`.
  *
  * @example
+ * ```ts
  * export const generateStaticParams = createGenerateStaticParams({ source });
+ * ```
  */
 export function createGenerateStaticParams(
   config: CreateGenerateStaticParamsConfig
@@ -92,7 +88,15 @@ export function createGenerateStaticParams(
 
 /**
  * Build a page-data loader for a Next server component or `generateMetadata`.
- * Returns `null` for unknown slugs so the caller can call `notFound()`.
+ *
+ * @returns A loader that returns `null` for unknown slugs so callers can use
+ * Next's `notFound()`.
+ *
+ * @example
+ * ```ts
+ * const loadPageData = createLoadPageData({ source });
+ * const page = await loadPageData(slug);
+ * ```
  */
 export function createLoadPageData(
   config: CreateLoadPageDataConfig
@@ -138,9 +142,20 @@ function createDefaultMarkdownReader(
  * pages and handles content negotiation (Accept: text/markdown, AI user
  * agents, explicit `.md` URLs).
  *
- * Place at `app/docs/[[...slug]]/route.ts` alongside the existing `page.tsx`.
- * The route handler returns markdown when appropriate and `null`-equivalent
- * (404) when not, letting Next fall through to the page render for HTML.
+ * @remarks
+ * Place the generated handler at `app/docs/[[...slug]]/route.ts` next to the
+ * matching `page.tsx`. It returns markdown when the request is agent-readable
+ * and a 404 response otherwise.
+ *
+ * @example
+ * ```ts
+ * import { createDocsRouteHandler } from "leadtype/next";
+ * import manifest from "@/generated/agent-readability.json" with { type: "json" };
+ *
+ * export const GET = createDocsRouteHandler({
+ *   manifest: { ...manifest, version: 1 } as const,
+ * });
+ * ```
  */
 export function createDocsRouteHandler(
   config: CreateDocsRouteHandlerConfig

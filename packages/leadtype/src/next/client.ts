@@ -1,34 +1,5 @@
 "use client";
 
-/**
- * `leadtype/next/client` — React hooks for client components.
- *
- * Lazy-loads the static `search-index.json` and `search-content.json`
- * artifacts emitted by `leadtype generate`, then runs `searchDocs()` per
- * keystroke. Edge-safe: only uses `fetch` and pure functions from
- * `leadtype/search`.
- *
- * ```tsx title="components/docs-search.tsx"
- * "use client";
- * import { useLeadtypeSearch } from "leadtype/next/client";
- *
- * export function DocsSearch() {
- *   const { query, search, results, status } = useLeadtypeSearch("docs");
- *   return (
- *     <>
- *       <input value={query} onChange={(e) => search(e.target.value)} />
- *       {status === "loading" ? "Loading…" : null}
- *       <ul>{results.map((r) => <li key={r.id}>{r.title}</li>)}</ul>
- *     </>
- *   );
- * }
- * ```
- *
- * The vanilla `createSearchClient` factory is exported for non-React usage
- * (worker, web component, plain script) and keeps the BM25 path
- * unit-testable without React.
- */
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   DocsSearchContentStore,
@@ -39,21 +10,53 @@ import { searchDocs } from "../search/search";
 
 export type { DocsSearchResult } from "../search/search";
 
+/**
+ * Options shared by the vanilla search client and React search hook.
+ */
 export type SearchClientOptions = {
-  /** Override the index URL. Default: `/${collection}/search-index.json`. */
+  /**
+   * URL for the generated search index JSON.
+   *
+   * @defaultValue `/${collection}/search-index.json`
+   */
   indexUrl?: string;
-  /** Override the content URL. Default: `/${collection}/search-content.json`. */
+
+  /**
+   * URL for the generated search content JSON.
+   *
+   * @defaultValue `/${collection}/search-content.json`
+   */
   contentUrl?: string;
-  /** Max results returned per query. */
+
+  /**
+   * Maximum number of search results returned per query.
+   */
   limit?: number;
-  /** Inject a fetch impl (Edge / SSR / tests). Defaults to globalThis.fetch. */
+
+  /**
+   * Fetch implementation used to load generated artifacts.
+   *
+   * @defaultValue `globalThis.fetch`
+   */
   fetch?: typeof fetch;
 };
 
+/**
+ * Framework-neutral search client over generated Leadtype search artifacts.
+ */
 export type SearchClient = {
-  /** Run a query. Loads artifacts on first call, caches them after. */
+  /**
+   * Run a search query.
+   *
+   * @remarks
+   * The first non-empty query loads the generated artifacts. Subsequent calls
+   * reuse the module-level artifact cache for the same index/content URLs.
+   */
   search(query: string): Promise<DocsSearchResult[]>;
-  /** Force-prefetch the artifacts. Optional; `search()` loads them lazily. */
+
+  /**
+   * Load generated search artifacts before the first query.
+   */
   preload(): Promise<void>;
 };
 
@@ -113,6 +116,15 @@ async function loadArtifacts(
  * Build a framework-free search client. Use directly from a worker, plain
  * script, or web component. Reused by `useLeadtypeSearch` so the BM25 path
  * has a single implementation.
+ *
+ * @param collection - Collection or URL prefix used for default artifact URLs.
+ * @param options - Search artifact URLs, result limit, and fetch override.
+ *
+ * @example
+ * ```ts
+ * const client = createSearchClient("docs");
+ * const results = await client.search("install");
+ * ```
  */
 export function createSearchClient(
   collection: string,
@@ -149,20 +161,41 @@ export function createSearchClient(
 }
 
 export type UseLeadtypeSearchOptions = SearchClientOptions & {
-  /** Debounce in ms applied between `search()` and the BM25 run. Default 120. */
+  /**
+   * Delay in milliseconds between `search()` calls and BM25 execution.
+   *
+   * @defaultValue `120`
+   */
   debounceMs?: number;
 };
 
+/**
+ * State returned by {@link useLeadtypeSearch}.
+ */
 export type UseLeadtypeSearchReturn = {
-  /** Current query string (mirrors what `search()` was last called with). */
+  /**
+   * Current query string.
+   */
   query: string;
-  /** Update the query. Debounced; cancels any in-flight result for stale calls. */
+
+  /**
+   * Update the query and schedule a debounced search.
+   */
   search(query: string): void;
-  /** Latest result list. Empty when the query is empty. */
+
+  /**
+   * Latest search results.
+   */
   results: DocsSearchResult[];
-  /** Lifecycle: `idle` before first call, then `loading` → `ready` or `error`. */
+
+  /**
+   * Search lifecycle state.
+   */
   status: "idle" | "loading" | "ready" | "error";
-  /** Most recent error, if any. */
+
+  /**
+   * Most recent loading or search error.
+   */
   error: Error | null;
 };
 
@@ -174,6 +207,26 @@ const DEFAULT_DEBOUNCE_MS = 120;
  * Lazy-loads the search artifacts on first non-empty query and caches them in
  * a module-level map so route changes and remounts don't refetch. Pass
  * `options.indexUrl` / `options.contentUrl` to override the default URLs.
+ *
+ * @param collection - Collection or URL prefix used for default artifact URLs.
+ * @param options - Search artifact URLs, result limit, fetch override, and debounce.
+ *
+ * @example
+ * ```tsx
+ * "use client";
+ * import { useLeadtypeSearch } from "leadtype/next/client";
+ *
+ * export function DocsSearch() {
+ *   const { query, search, results, status } = useLeadtypeSearch("docs");
+ *   return (
+ *     <>
+ *       <input value={query} onChange={(event) => search(event.target.value)} />
+ *       {status === "loading" ? "Loading..." : null}
+ *       <ul>{results.map((result) => <li key={result.id}>{result.title}</li>)}</ul>
+ *     </>
+ *   );
+ * }
+ * ```
  */
 export function useLeadtypeSearch(
   collection: string,
