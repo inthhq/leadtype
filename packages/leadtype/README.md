@@ -61,6 +61,11 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 | `leadtype/search/tanstack` | TanStack AI answer streaming. |
 | `leadtype/search/cloudflare` | Cloudflare AI Gateway / Workers AI adapter. |
 | `leadtype/lint` | `lintDocs` and the `leadtype lint` CLI. |
+| `leadtype/fumadocs` | Adapter mapping `createDocsSource()` to fumadocs's `Source` interface. |
+| `leadtype/next` | Next.js App Router server adapter — `createDocsRouteHandler`, `createGenerateStaticParams`, `createLoadPageData`. |
+| `leadtype/next/client` | Next.js client hook — `useLeadtypeSearch` and the framework-free `createSearchClient`. |
+
+Framework adapters are thin and ship **state and routing primitives only** — no rendered DOM. See the [architecture reference](https://leadtype.dev/docs/reference/architecture) for the boundary contract and how to add more frameworks (`leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`, `leadtype/search/vue`, and `leadtype/search/svelte` are tracked under [#41](https://github.com/inthhq/leadtype/issues/41) / [#45](https://github.com/inthhq/leadtype/issues/45)).
 
 The `leadtype` binary wraps `generate` and `lint`. Use the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.
 

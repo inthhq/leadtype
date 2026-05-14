@@ -7,6 +7,8 @@ const entries = {
   index: "src/index.ts",
   "mdx/index": "src/mdx/index.ts",
   "fumadocs/index": "src/fumadocs/index.ts",
+  "next/index": "src/next/index.ts",
+  "next/client": "src/next/client.ts",
   "remark/index": "src/remark/index.ts",
   "convert/index": "src/convert/index.ts",
   "llm/index": "src/llm/index.ts",

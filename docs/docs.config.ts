@@ -20,6 +20,7 @@ export default defineDocsConfig({
       { urlPath: "/docs/build/add-search" },
       { urlPath: "/docs/build/optimize-docs-for-agents" },
       { urlPath: "/docs/package-docs/bundle" },
+      { urlPath: "/docs/reference/architecture" },
     ],
     agentGuidance:
       "Open /docs/llms.txt to route the task, then use /llms-full.txt only when page-level markdown is not enough.",
