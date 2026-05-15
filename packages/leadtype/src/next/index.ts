@@ -143,9 +143,9 @@ function createDefaultMarkdownReader(
  * agents, explicit `.md` URLs).
  *
  * @remarks
- * Place the generated handler at `app/docs/[[...slug]]/route.ts` next to the
- * matching `page.tsx`. It returns markdown when the request is agent-readable
- * and a 404 response otherwise.
+ * Place the generated handler in a route segment that does not also define a
+ * `page.tsx`. It returns markdown when the request is agent-readable and a 404
+ * response otherwise.
  *
  * @example
  * ```ts
@@ -165,10 +165,7 @@ export function createDocsRouteHandler(
     config.readMarkdownFile ?? createDefaultMarkdownReader(publicDir);
   return async (request) => {
     const url = new URL(request.url);
-    const headers: Record<string, string> = {};
-    request.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
+    const headers = Object.fromEntries(request.headers);
     const response = await createAgentMarkdownResponse({
       urlPath: url.pathname,
       method: request.method,
