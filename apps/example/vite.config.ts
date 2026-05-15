@@ -32,6 +32,9 @@ export default defineConfig({
       allow: [searchForWorkspaceRoot(process.cwd())],
     },
   },
+  preview: {
+    allowedHosts: [".localhost"],
+  },
   plugins: [
     nitro({ serverDir: "./server" }),
     viteTsConfigPaths({

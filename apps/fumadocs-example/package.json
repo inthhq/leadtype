@@ -7,7 +7,7 @@
     "setup:source": "bun run scripts/setup-source.ts",
     "predev": "bun run setup:source",
     "prebuild": "bun run setup:source",
-    "dev": "portless fumadocs -- next dev",
+    "dev": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next dev",
     "build": "bun run --filter leadtype build && next build",
     "start": "next start",
     "check-types": "tsgo --noEmit"
