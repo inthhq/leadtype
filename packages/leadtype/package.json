@@ -111,6 +111,7 @@
   },
   "dependencies": {
     "@types/mdast": "4.0.4",
+    "hexbus": "^0.6.0",
     "json5": "2.2.3",
     "mdast-util-to-string": "4.0.0",
     "remark": "15.0.1",
