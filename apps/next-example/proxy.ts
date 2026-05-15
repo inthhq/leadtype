@@ -1,17 +1,14 @@
-import type { AgentReadabilityManifest } from "leadtype/llm/readability";
+import { normalizeAgentReadabilityManifest } from "leadtype/llm/readability";
 import { createDocsProxy } from "leadtype/next";
 import manifestJson from "./public/docs/agent-readability.json";
 
-const manifest = {
-  ...manifestJson,
-  version: 1,
-} as unknown as AgentReadabilityManifest;
+const manifest = normalizeAgentReadabilityManifest(manifestJson);
 
 export const proxy = createDocsProxy({ manifest });
 
 export const config = {
   matcher: [
-    "/docs/:path*",
+    "/docs/:path((?!.*\\.md$).*)",
     "/sitemap.xml",
     "/sitemap.md",
     "/robots.txt",

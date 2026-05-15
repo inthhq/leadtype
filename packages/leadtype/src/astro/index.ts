@@ -2,13 +2,10 @@ import {
   type AgentArtifactHandlerConfig,
   createAgentArtifactHandler,
   createLoadPage,
-  createPublicMarkdownReader,
-  joinUrlPath,
   type LoadPageConfig,
   listJoinedSlugs,
   type StaticSlugConfig,
 } from "../internal/framework";
-import { createAgentMarkdownResponse } from "../llm/readability";
 import type { DocsPage } from "../source";
 
 export type AstroStaticPath = {
@@ -58,24 +55,7 @@ export function createDocsEndpoint(
   config: AgentArtifactHandlerConfig
 ): (context: AstroEndpointContext) => Promise<Response> {
   const handler = createAgentArtifactHandler(config);
-  const readMarkdownFile =
-    config.readMarkdownFile ??
-    createPublicMarkdownReader(config.publicDir ?? "./public");
   return async (context) => {
-    if (context.params?.slug) {
-      const url = new URL(context.request.url);
-      const artifactBasePath = config.artifactBasePath ?? "/docs";
-      const response = await createAgentMarkdownResponse({
-        urlPath: joinUrlPath(artifactBasePath, `${context.params.slug}.md`),
-        method: context.request.method,
-        headers: {},
-        manifest: config.manifest,
-        readMarkdownFile,
-        requestOrigin: url.origin,
-        cacheControl: config.cacheControl,
-      });
-      return response ?? new Response(null, { status: 404 });
-    }
     const response = await handler(context.request);
     return response ?? new Response(null, { status: 404 });
   };

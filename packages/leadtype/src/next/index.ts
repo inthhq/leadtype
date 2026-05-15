@@ -181,13 +181,17 @@ export function createDocsProxy(
   return async (request) => {
     const url = new URL(request.url);
     const readMarkdownFile = async (target: MarkdownMirrorTarget) => {
-      const response = await fetch(
-        new URL(
-          joinUrlPath(config.publicPathPrefix ?? "/", target.filePath),
-          url
-        )
-      );
-      return response.ok ? await response.text() : null;
+      try {
+        const response = await fetch(
+          new URL(
+            joinUrlPath(config.publicPathPrefix ?? "/", target.filePath),
+            url
+          )
+        );
+        return response.ok ? await response.text() : null;
+      } catch {
+        return null;
+      }
     };
     const handler = createRequiredAgentArtifactHandler({
       manifest: config.manifest,

@@ -69,7 +69,7 @@ export function useLeadtypeSearch(
     });
   }, [collection, indexUrl, contentUrl, fetchImpl, limit]);
 
-  const latestQueryRef = useRef("");
+  const latestRequestIdRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -84,7 +84,7 @@ export function useLeadtypeSearch(
   const search = useCallback(
     (next: string) => {
       setQuery(next);
-      latestQueryRef.current = next;
+      const requestId = ++latestRequestIdRef.current;
       if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
       }
@@ -104,7 +104,7 @@ export function useLeadtypeSearch(
         client
           .search(trimmed)
           .then((nextResults) => {
-            if (latestQueryRef.current !== next) {
+            if (latestRequestIdRef.current !== requestId) {
               return;
             }
             setResults(nextResults);
@@ -112,7 +112,7 @@ export function useLeadtypeSearch(
             setError(null);
           })
           .catch((cause: unknown) => {
-            if (latestQueryRef.current !== next) {
+            if (latestRequestIdRef.current !== requestId) {
               return;
             }
             setResults([]);

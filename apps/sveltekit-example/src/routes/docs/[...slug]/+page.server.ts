@@ -1,13 +1,14 @@
 import { error } from "@sveltejs/kit";
 import { createEntries, createLoadPageData } from "leadtype/sveltekit";
 import { source } from "$lib/source";
+import type { PageServerLoad } from "./$types";
 
 export const entries = createEntries({ source });
 export const prerender = true;
 
 const loadPageData = createLoadPageData({ source });
 
-export async function load(event) {
+export const load: PageServerLoad = async (event) => {
   const page = await loadPageData(event);
   if (!page) {
     throw error(404, "Page not found");
@@ -21,4 +22,4 @@ export async function load(event) {
       markdown: page.markdown,
     },
   };
-}
+};

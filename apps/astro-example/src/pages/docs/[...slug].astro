@@ -27,7 +27,7 @@ if (!page) {
       <article>
         <section class="search">
           <input id="docs-search" aria-label="Search docs" placeholder="Search docs" />
-          <span id="docs-search-status">idle</span>
+          <span id="docs-search-status" role="status" aria-live="polite">idle</span>
           <ul id="docs-search-results"></ul>
         </section>
         <pre class="markdown">{page.markdown}</pre>
@@ -47,15 +47,19 @@ if (!page) {
           status.textContent = query.trim() ? "loading" : "idle";
           results.replaceChildren();
           if (!query.trim()) return;
-          const matches = await client.search(query);
-          status.textContent = "ready";
-          for (const result of matches) {
-            const item = document.createElement("li");
-            const link = document.createElement("a");
-            link.href = result.urlWithHash;
-            link.textContent = result.title;
-            item.append(link);
-            results.append(item);
+          try {
+            const matches = await client.search(query);
+            status.textContent = "ready";
+            for (const result of matches) {
+              const item = document.createElement("li");
+              const link = document.createElement("a");
+              link.href = result.urlWithHash;
+              link.textContent = result.title;
+              item.append(link);
+              results.append(item);
+            }
+          } catch {
+            status.textContent = "error";
           }
         });
       }

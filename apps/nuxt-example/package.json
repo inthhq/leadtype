@@ -11,7 +11,6 @@
     "check-types": "bun run --filter leadtype build && bun run docs:generate && nuxt typecheck"
   },
   "dependencies": {
-    "@nuxtjs/mdc": "^0.13.0",
     "leadtype": "workspace:*",
     "nuxt": "^4.0.0",
     "vue": "^3.5.0",

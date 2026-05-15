@@ -15,8 +15,8 @@ Leadtype stays framework-neutral at the core, then exposes thin adapters where a
 | Astro | `getStaticPaths()` | endpoint at `pages/docs/[...slug].md.ts` | `leadtype/search/client` | `apps/astro-example` |
 | SvelteKit | `+page.server.ts` + `+page.svelte` | `+server.ts` under a `.md` route | `leadtype/search/svelte` | `apps/sveltekit-example` |
 | Nuxt/Nitro | Vue page + Nitro API route | Nitro route or middleware | `leadtype/search/vue` | `apps/nuxt-example` |
-| TanStack Start | catch-all route + generated manifest | server route / Nitro middleware | `leadtype/search/react` | `apps/example` |
-| Fumadocs | `leadtype/fumadocs` source adapter | Next route/middleware pattern | React search helper | `apps/fumadocs-example` |
+| TanStack Start | catch-all route + generated manifest | server route / Nitro middleware | `leadtype/search/react` | Planned |
+| Fumadocs | `leadtype/fumadocs` source adapter | Next route/middleware pattern | React search helper | Planned |
 
 ## Shared build step
 
@@ -117,7 +117,7 @@ Fumadocs uses `leadtype/fumadocs` to map the source primitive into Fumadocs' `So
 
 ## Verification
 
-The dogfood apps are expected to build in CI:
+The implemented dogfood apps are expected to build in CI:
 
 ```bash
 bun --filter next-example build

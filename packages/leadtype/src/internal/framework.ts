@@ -203,9 +203,3 @@ export function createRequiredAgentArtifactHandler(
     return response ?? new Response(null, { status: 404 });
   };
 }
-
-export function normalizeManifest(
-  manifest: AgentReadabilityManifest
-): AgentReadabilityManifest {
-  return { ...manifest, version: 1 };
-}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-15T19:13:36.223Z",
+  "generatedAt": "2026-05-15T23:17:18.885Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -102,7 +102,7 @@
       "groups": [
         "docs-site"
       ],
-      "lastModified": "2026-05-15T19:13:36.074Z",
+      "lastModified": "2026-05-15T22:56:16.000Z",
       "logicalPath": "build/framework-matrix"
     },
     {
@@ -228,7 +228,7 @@
       "groups": [
         "get-started"
       ],
-      "lastModified": "2026-05-13T20:57:41.000Z",
+      "lastModified": "2026-05-15T22:56:16.000Z",
       "logicalPath": "quickstart"
     },
     {

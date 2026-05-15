@@ -12,7 +12,9 @@ export function SearchBox() {
         placeholder="Search docs"
         value={query}
       />
-      <span>{status}</span>
+      <span aria-live="polite" role="status">
+        {status}
+      </span>
       <ul>
         {results.map((result) => (
           <li key={result.id}>

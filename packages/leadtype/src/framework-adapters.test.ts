@@ -156,6 +156,13 @@ describe("framework adapter route helpers", () => {
     ).resolves.toContain("Hello.");
 
     await expect(
+      createDocsEndpoint({ manifest, readMarkdownFile })({
+        params: { slug: "sitemap" },
+        request: new Request("https://example.com/docs/sitemap.md"),
+      }).then((response) => response.text())
+    ).resolves.toContain("Structured documentation sitemap");
+
+    await expect(
       createSvelteKitServerHandler({ manifest, readMarkdownFile })({
         request,
       }).then((response) => response.text())
@@ -194,6 +201,23 @@ describe("framework adapter route helpers", () => {
           new Request("https://example.com/docs/quickstart.md")
         ).then((response) => response.text())
       ).resolves.toContain("Hello.");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("treats Next proxy markdown fetch failures as missing markdown", async () => {
+    const manifest = buildManifest();
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new TypeError("network failure");
+    }) as typeof fetch;
+    try {
+      await expect(
+        createDocsProxy({ manifest })(
+          new Request("https://example.com/docs/quickstart.md")
+        )
+      ).resolves.toMatchObject({ status: 200 });
     } finally {
       globalThis.fetch = originalFetch;
     }

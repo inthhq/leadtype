@@ -52,7 +52,7 @@ function headerValue(
   headers: Record<string, string | string[] | undefined> | undefined,
   name: string
 ): string | undefined {
-  const value = headers?.[name] ?? headers?.[name.toLowerCase()];
+  const value = headers?.[name];
   return Array.isArray(value) ? value[0] : value;
 }
 
@@ -62,8 +62,13 @@ function eventToRequest(event: NitroEventLike): Request {
   }
   const req = event.node?.req;
   const headers = req?.headers ?? {};
-  const host = headerValue(headers, "host") ?? "localhost";
-  const proto = headerValue(headers, "x-forwarded-proto") ?? "http";
+  const host =
+    headerValue(headers, "host")?.split(",")[0]?.trim() || "localhost";
+  const forwardedProto = headerValue(headers, "x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  const proto = forwardedProto === "https" ? "https" : "http";
   const url = new URL(event.path ?? req?.url ?? "/", `${proto}://${host}`);
   const requestHeaders = new Headers();
   for (const [key, value] of Object.entries(headers)) {
