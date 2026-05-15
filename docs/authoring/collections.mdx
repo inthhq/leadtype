@@ -1,0 +1,169 @@
+---
+title: "Collections"
+description: "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas."
+group: authoring
+---
+
+# Collections
+
+A **collection** is one content set in your docs site: a folder of MDX with a URL prefix, an optional frontmatter schema, and (optionally) a git repository it's cloned from. Use collections when one site needs to combine more than one content set — docs + changelog, multi-framework guides, separate-repo SDK references.
+
+If your project has a single docs folder, you don't need collections. Top-level `groups` in `docs.config.ts` still works and is the recommended shape for that case.
+
+## When to reach for this
+
+- You ship docs from more than one folder and want each at a distinct URL prefix (e.g. `/docs` and `/changelog`).
+- Your docs source lives in a different repo than your app (e.g. you publish docs for an SDK that's developed elsewhere).
+- You serve content for multiple frameworks under one namespace, each from its own repo (e.g. `/docs/react`, `/docs/swift`, `/docs/kotlin`).
+- Different content sets need different frontmatter schemas (a release-notes schema vs. the standard docs schema).
+
+## defineCollection
+
+A collection is declared inside `defineDocsConfig` and identified by its map key:
+
+```ts
+// leadtype.config.ts
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "My Product", summary: "..." },
+  collections: {
+    docs: defineCollection({ dir: "./docs", prefix: "/docs" }),
+  },
+});
+```
+
+Place this file at the project root (the cwd from which you run `leadtype`). Leadtype looks for `leadtype.config.{ts,js,mjs,cjs}` there before falling back to the legacy per-docs-dir `docs.config.*` lookup.
+
+### Fields
+
+| Field | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `dir` | `string` | required | Directory containing the MDX. For local collections, resolved from the config dir. For remote collections, resolved from the cloned repo root. |
+| `prefix` | `string` | `"/" + <key>` | URL prefix where this collection appears in generated artifacts. |
+| `repository` | `string` | — | `https://` or `git@` URL. Set this to make the collection remote — leadtype clones it on `leadtype sync`. Omit for local collections. |
+| `ref` | `string` | `"main"` | Branch, tag, or commit SHA to check out. SHAs are detected by pattern (7–40 hex chars) and use a full clone + `checkout`; everything else uses `clone --depth 1 --branch`. |
+| `cacheDir` | `string` | `.leadtype/sources/<repo-slug>@<ref>` | Where the clone lives on disk, relative to the config dir. Override this when you want a stable on-disk path for other tooling (e.g. type-table extraction). |
+| `include` | `string[]` | all `.mdx` files | Glob patterns relative to `dir`. When set, narrows which files the collection contributes. |
+| `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
+| `schema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
+| `groups` | `DocsGroup[]` | — | Per-collection navigation tree. Slugs must be globally unique across all collections. |
+
+## Local-only collections
+
+A collection without `repository` is purely local — `dir` is resolved from the config dir at generate time. No `leadtype sync` step is needed.
+
+```ts
+collections: {
+  docs: defineCollection({ dir: "./docs", prefix: "/docs" }),
+  changelog: defineCollection({ dir: "./changelog", prefix: "/changelog" }),
+}
+```
+
+## Remote collections
+
+Set `repository` (and optionally `ref`, `cacheDir`) to make the collection remote. `leadtype sync` clones the repo into `cacheDir`, `leadtype generate` then reads `cacheDir/<dir>`.
+
+Two collections that share a `(repository, ref)` pair share one underlying clone — the sync engine dedupes acquisition:
+
+```ts
+const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as const;
+
+export default defineDocsConfig({
+  product: { name: "c15t", summary: "..." },
+  collections: {
+    docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
+    changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
+  },
+});
+```
+
+This is exactly the shape used by `apps/c15t-example` in this repo.
+
+## Multi-repo: framework matrix
+
+The shape generalizes to one prefix per framework, each fed by a separate repo:
+
+```ts
+const c15t   = { repository: "https://github.com/c15t/c15t",   ref: "main" } as const;
+const swift  = { repository: "https://github.com/c15t/swift",  ref: "main" } as const;
+const kotlin = { repository: "https://github.com/c15t/kotlin", ref: "main" } as const;
+
+collections: {
+  docs:      defineCollection({ ...c15t,   dir: "docs",      prefix: "/docs" }),
+  changelog: defineCollection({ ...c15t,   dir: "changelog", prefix: "/changelog" }),
+  swift:     defineCollection({ ...swift,  dir: "docs",      prefix: "/docs/swift" }),
+  kotlin:    defineCollection({ ...kotlin, dir: "docs",      prefix: "/docs/kotlin" }),
+}
+```
+
+`leadtype sync` clones c15t, swift, and kotlin into their own `cacheDir`s, in parallel where the underlying git client allows.
+
+## Per-collection schemas
+
+`schema` lets a collection validate its frontmatter against something other than the default. Pass a Valibot `ObjectSchema`:
+
+```ts
+import * as v from "valibot";
+
+const changelogFrontmatter = v.object({
+  title: v.pipe(v.string(), v.minLength(1)),
+  version: v.string(),
+  date: v.string(),
+});
+
+collections: {
+  changelog: defineCollection({
+    dir: "./changelog",
+    prefix: "/changelog",
+    schema: changelogFrontmatter,
+  }),
+}
+```
+
+`leadtype lint` automatically discovers the project's `leadtype.config.ts`, iterates each collection, and runs lint with the right schema per collection. Violations are prefixed with `[collection:<key>]` so you can see which collection a file came from.
+
+## Per-collection groups
+
+Each collection may declare its own `groups` tree. Slugs must be globally unique (no two collections may both define a group called `guides`). At generate time, all collection groups are merged into a single nav tree:
+
+```ts
+collections: {
+  docs: defineCollection({
+    dir: "./docs",
+    prefix: "/docs",
+    groups: [
+      { slug: "tutorials", title: "Tutorials" },
+      { slug: "reference",  title: "Reference" },
+    ],
+  }),
+}
+```
+
+If a collection omits `groups`, leadtype falls back to discovering group slugs from frontmatter — same as it does for the legacy single-folder shape.
+
+## Filtering
+
+`include` and `exclude` are arrays of globs, resolved relative to the collection's `dir`. They run in addition to any CLI `--include` / `--exclude` flags.
+
+```ts
+collections: {
+  docs: defineCollection({
+    dir: "./docs",
+    prefix: "/docs",
+    exclude: ["drafts/**", "_internal/**"],
+  }),
+}
+```
+
+## Running it
+
+- `leadtype sync` — clone or refresh every remote collection (see [CLI reference](/docs/reference/cli) for `--refresh`, `--offline`, `--repo`).
+- `leadtype generate --sync` — sync missing caches and generate in one shot.
+- `leadtype generate` — generate against existing caches; errors out if a remote cache is missing or stale.
+
+## What you do *not* migrate
+
+If your project today uses top-level `groups` in `docs.config.ts` and a single docs folder, you don't need to switch. The legacy shape keeps working byte-for-byte. Collections are the right tool when you actually have multiple content sets to combine; otherwise you'd be adding ceremony for no benefit.
+
+Setting both top-level `groups` and `collections` in the same config is a load-time error, so the two paths stay clearly separated.

@@ -1181,4 +1181,397 @@ This page is valid, but the output path is not a directory.
     expect(code).toBe(1);
     expect(capture.stderr).toContain("docs directory not found");
   });
+
+  it("generates from leadtype.config.ts collections (local-only)", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    // Two local collections: `guide` at /docs and `changelog` at /changelog.
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\ndescription: "Guide intro."\n---\n\n# Intro\n\nBody.\n'
+    );
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "changelog", "v1.mdx"),
+      '---\ntitle: "v1"\ndescription: "First release."\n---\n\n# v1\n\nNotes.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Collections Product", summary: "Multi-collection demo." },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs" },
+    changelog: { dir: "./changelog", prefix: "/changelog" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "intro.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
+
+    const llmsTxt = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llmsTxt).toContain("# Collections Product");
+  });
+
+  it("rejects --docs-dir when leadtype.config.ts defines collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--docs-dir", "guide"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("cannot pass --docs-dir");
+    expect(capture.stderr).toContain("collections");
+  });
+
+  it("rejects --sync + --refresh together", async () => {
+    const capture = createCapture();
+    const code = await runCli(["generate", "--sync", "--refresh"], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("mutually exclusive");
+  });
+
+  it("rejects --sync + --offline together", async () => {
+    const capture = createCapture();
+    const code = await runCli(["generate", "--sync", "--offline"], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("mutually exclusive");
+  });
+
+  it("rejects a config that sets both groups and collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  groups: [{ slug: "g", title: "G" }],
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('sets both "groups" and "collections"');
+  });
+
+  it("leadtype sync errors when no leadtype.config.ts is present", async () => {
+    const srcDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(["sync", "--src", srcDir], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("no leadtype.config");
+  });
+
+  it("leadtype sync errors when the config has no collections", async () => {
+    const srcDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  groups: [{ slug: "g", title: "G" }],
+};`
+    );
+
+    const code = await runCli(["sync", "--src", srcDir], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("no `collections` to sync");
+  });
+
+  it("leadtype sync reports 'no remote sources' for local-only collections", async () => {
+    const srcDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(["sync", "--src", srcDir], capture.io);
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("No remote sources to sync");
+  });
+
+  it("collection.include narrows which MDX files ship", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "guide", "draft.mdx"),
+      '---\ntitle: "Draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", include: ["intro.mdx"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "intro.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "draft.md"))).toBe(false);
+  });
+
+  it("collection.exclude drops matching MDX while keeping the rest", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "guide", "draft.mdx"),
+      '---\ntitle: "Draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", exclude: ["draft.mdx"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "intro.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "draft.md"))).toBe(false);
+  });
+
+  it("per-collection filters don't bleed across collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "guide", "draft.mdx"),
+      '---\ntitle: "Draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "changelog", "draft.mdx"),
+      '---\ntitle: "Changelog draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", exclude: ["draft.mdx"] },
+    changelog: { dir: "./changelog", prefix: "/changelog" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(0);
+    // Guide's draft is excluded by its own filter.
+    expect(existsSync(path.join(outDir, "docs", "draft.md"))).toBe(false);
+    // Changelog's draft is NOT affected by the guide collection's exclude.
+    expect(existsSync(path.join(outDir, "changelog", "draft.md"))).toBe(true);
+  });
+
+  it("rejects collection.include that isn't an array of strings", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", include: "not-an-array" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain(
+      "include must be an array of glob strings"
+    );
+  });
+
+  it("treats `--sync --sync` as a single --sync, not a mutex violation", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync", "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+  });
+
+  it("rejects a collection repository that begins with `-`", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: { repository: "--upload-pack=evil", dir: "docs", prefix: "/docs" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('repository must not begin with "-"');
+  });
+
+  it("rejects a collection ref that begins with `-`", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: {
+      repository: "https://github.com/example/repo",
+      ref: "--foo",
+      dir: "docs",
+      prefix: "/docs",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('ref must not begin with "-"');
+  });
+
+  it("lint --src honors the explicit project root when looking for leadtype.config.ts", async () => {
+    const monorepoRoot = await createTempDir();
+    const packageRoot = path.join(monorepoRoot, "packages", "foo");
+    await mkdir(path.join(packageRoot, "guide"), { recursive: true });
+    await writeFile(
+      path.join(packageRoot, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(packageRoot, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const capture = createCapture();
+    const code = await runCli(["lint", "--src", packageRoot], capture.io);
+
+    expect(code).toBe(0);
+    // The collection banner proves we routed through the project config.
+    expect(capture.stderr).toContain("Linting collection [guide]");
+  });
 });

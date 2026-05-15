@@ -30,8 +30,11 @@ export {
   type AgentReadabilityPage,
   type AgentReadabilityResult,
   type CuratedLink,
+  type DocsCollection,
   type DocsConfig,
+  type DocsFrontmatterSchema,
   type DocsGroup,
+  defineCollection,
   defineDocsConfig,
   type ProductInfo,
 } from "./llm";

@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup:source": "bun run scripts/setup-source.ts",
-    "docs:generate": "bun run setup:source && bun run scripts/generate-artifacts.ts",
+    "docs:generate": "bun run scripts/generate-artifacts.ts",
     "dev": "bun run --filter leadtype build && bun run docs:generate && vite dev --host 0.0.0.0",
     "build": "bun run --filter leadtype build && bun run docs:generate && vite build",
     "preview": "vite preview --host 0.0.0.0",

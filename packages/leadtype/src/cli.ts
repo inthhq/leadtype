@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
+import { getSyncUsage, runSyncCommand } from "./cli/sync";
 import { logger, setLogStreams } from "./internal/logger";
 import { getLintUsage, runLintCommand } from "./lint/cli";
 
@@ -17,6 +18,7 @@ Usage:
 
 Commands:
   generate   Convert MDX, generate LLM files, and build search artifacts
+  sync       Clone or refresh remote sources declared by collections
   lint       Validate MDX frontmatter, meta.json, and docs links
   help       Show help
 
@@ -26,6 +28,9 @@ Run leadtype <command> --help for command-specific options.
 function commandUsage(command: string | undefined): string {
   if (command === "generate") {
     return getGenerateUsage();
+  }
+  if (command === "sync") {
+    return getSyncUsage();
   }
   if (command === "lint") {
     return getLintUsage();
@@ -52,6 +57,10 @@ export async function runCli(
 
   if (command === "generate") {
     return await runGenerateCommand(rest, io);
+  }
+
+  if (command === "sync") {
+    return await runSyncCommand(rest, io);
   }
 
   if (command === "lint") {

@@ -39,14 +39,14 @@ await generateLlmsTxt({
   outDir,
   baseUrl,
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  groups: docsConfig.groups ?? [],
 });
 
 await generateLLMFullContextFiles({
   outDir,
   baseUrl,
   product: { name: docsConfig.product.name },
-  groups: docsConfig.groups,
+  groups: docsConfig.groups ?? [],
 });
 
 const agentReadability = await generateAgentReadabilityArtifacts({
@@ -56,7 +56,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
     name: docsConfig.product.name,
     summary: docsConfig.product.summary,
   },
-  groups: docsConfig.groups,
+  groups: docsConfig.groups ?? [],
 });
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
@@ -65,7 +65,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
 const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,
-  groups: docsConfig.groups,
+  groups: docsConfig.groups ?? [],
 });
 
 if (navigation.unknown.length > 0) {
