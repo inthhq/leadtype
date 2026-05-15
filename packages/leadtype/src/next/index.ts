@@ -1,10 +1,13 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import {
+  type AgentArtifactHandlerConfig,
+  createPublicMarkdownReader,
+  createRequiredAgentArtifactHandler,
+  joinUrlPath,
+} from "../internal/framework";
 import type {
   AgentReadabilityManifest,
   MarkdownMirrorTarget,
 } from "../llm/readability";
-import { createAgentMarkdownResponse } from "../llm/readability";
 import type { DocsPage, DocsSource } from "../source";
 
 export type {
@@ -41,6 +44,13 @@ export type CreateDocsRouteHandlerConfig = {
    * Agent Readability manifest emitted by `leadtype generate`.
    */
   manifest: AgentReadabilityManifest;
+
+  /**
+   * Public route prefix where generated docs artifacts are mounted.
+   *
+   * @defaultValue `"/docs"`
+   */
+  artifactBasePath?: string;
 
   /**
    * Directory where `leadtype generate` wrote public artifacts.
@@ -104,39 +114,6 @@ export function createLoadPageData(
   return async (slug) => await config.source.loadPage(slug ?? []);
 }
 
-function isMissingFileError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return false;
-  }
-  const code = (error as { code?: unknown }).code;
-  return code === "ENOENT" || code === "ENOTDIR";
-}
-
-function createDefaultMarkdownReader(
-  publicDir: string
-): (target: MarkdownMirrorTarget) => Promise<string | null> {
-  const resolvedPublicDir = path.resolve(publicDir);
-  return async (target) => {
-    // `target.filePath` is derived from a path that has already been guarded
-    // against `..` segments by `resolveMarkdownMirrorTarget`. Resolve once
-    // more and reject anything that escapes `publicDir` — defense in depth in
-    // case a future caller passes a hand-built target.
-    const candidate = path.resolve(resolvedPublicDir, target.filePath);
-    const relative = path.relative(resolvedPublicDir, candidate);
-    if (relative.startsWith("..") || path.isAbsolute(relative)) {
-      return null;
-    }
-    try {
-      return await readFile(candidate, "utf8");
-    } catch (error) {
-      if (isMissingFileError(error)) {
-        return null;
-      }
-      throw error;
-    }
-  };
-}
-
 /**
  * Build a Next App Router route handler that serves raw markdown for docs
  * pages and handles content negotiation (Accept: text/markdown, AI user
@@ -162,19 +139,62 @@ export function createDocsRouteHandler(
 ): (request: Request) => Promise<Response> {
   const publicDir = config.publicDir ?? "./public";
   const readMarkdownFile =
-    config.readMarkdownFile ?? createDefaultMarkdownReader(publicDir);
+    config.readMarkdownFile ?? createPublicMarkdownReader(publicDir);
+  return createRequiredAgentArtifactHandler({
+    manifest: config.manifest,
+    artifactBasePath: config.artifactBasePath,
+    publicDir,
+    readMarkdownFile,
+    cacheControl: config.cacheControl,
+  });
+}
+
+export type CreateDocsProxyConfig = Pick<
+  AgentArtifactHandlerConfig,
+  "artifactBasePath" | "cacheControl" | "manifest"
+> & {
+  /**
+   * Public URL prefix used to fetch generated markdown files from Next's static
+   * asset serving inside Proxy.
+   *
+   * @defaultValue `"/"`
+   */
+  publicPathPrefix?: string;
+};
+
+/**
+ * Build a Next Proxy handler for apps that serve human docs and markdown
+ * mirrors from the same route tree.
+ *
+ * @remarks
+ * Proxy cannot read from the filesystem, so this helper fetches generated
+ * markdown from Next's static asset serving using the current request origin.
+ *
+ * @example
+ * ```ts
+ * export const proxy = createDocsProxy({ manifest });
+ * ```
+ */
+export function createDocsProxy(
+  config: CreateDocsProxyConfig
+): (request: Request) => Promise<Response> {
   return async (request) => {
     const url = new URL(request.url);
-    const headers = Object.fromEntries(request.headers);
-    const response = await createAgentMarkdownResponse({
-      urlPath: url.pathname,
-      method: request.method,
-      headers,
+    const readMarkdownFile = async (target: MarkdownMirrorTarget) => {
+      const response = await fetch(
+        new URL(
+          joinUrlPath(config.publicPathPrefix ?? "/", target.filePath),
+          url
+        )
+      );
+      return response.ok ? await response.text() : null;
+    };
+    const handler = createRequiredAgentArtifactHandler({
       manifest: config.manifest,
+      artifactBasePath: config.artifactBasePath,
       readMarkdownFile,
-      requestOrigin: url.origin,
       cacheControl: config.cacheControl,
     });
-    return response ?? new Response(null, { status: 404 });
+    return await handler(request);
   };
 }

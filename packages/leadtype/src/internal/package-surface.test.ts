@@ -9,7 +9,20 @@ const exportedPaths = Object.keys(packageJson.exports);
 
 // Adapter directories are allowed to import from their declared optional peer.
 // Everything else under `src/` must stay framework-neutral.
-const ADAPTER_DIRECTORIES = ["fumadocs/", "next/"] as const;
+const ADAPTER_DIRECTORIES = [
+  "astro/",
+  "fumadocs/",
+  "next/",
+  "nuxt/",
+  "sveltekit/",
+  "tanstack-start/",
+] as const;
+const FRAMEWORK_RUNTIME_DIRECTORIES = [
+  ...ADAPTER_DIRECTORIES,
+  "search/react.ts",
+  "search/vue.ts",
+  "search/svelte.ts",
+] as const;
 
 // Banned framework runtimes. Adapter directories may import their matching
 // peer (e.g. `next/`'s adapter may import from `react`); core code may not.
@@ -66,7 +79,9 @@ describe("package surface", () => {
       ".",
       "./mdx",
       "./fumadocs",
+      "./astro",
       "./i18n",
+      "./nuxt",
       "./next",
       "./next/client",
       "./remark",
@@ -74,12 +89,18 @@ describe("package surface", () => {
       "./llm",
       "./llm/readability",
       "./search",
+      "./search/client",
+      "./search/react",
+      "./search/vue",
+      "./search/svelte",
       "./search/node",
       "./search/ai",
       "./search/bash",
       "./search/vercel",
       "./search/tanstack",
       "./search/cloudflare",
+      "./sveltekit",
+      "./tanstack-start",
       "./lint",
     ] as const;
 
@@ -144,13 +165,21 @@ describe("core/adapter boundary", () => {
     return ADAPTER_DIRECTORIES.some((dir) => relativePath.startsWith(dir));
   }
 
+  function allowsFrameworkRuntimeImports(relativePath: string): boolean {
+    return FRAMEWORK_RUNTIME_DIRECTORIES.some((entry) =>
+      entry.endsWith("/")
+        ? relativePath.startsWith(entry)
+        : relativePath === entry
+    );
+  }
+
   it("does not let framework runtimes leak into core modules", async () => {
     const files = await listSourceFiles();
     const violations: Array<{ file: string; specifier: string }> = [];
 
     for (const file of files) {
       const relativePath = relative(file);
-      if (isAdapterFile(relativePath)) {
+      if (allowsFrameworkRuntimeImports(relativePath)) {
         continue;
       }
       const source = readFileSync(file, "utf8");
