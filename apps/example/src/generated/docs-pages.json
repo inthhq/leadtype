@@ -2,6 +2,21 @@
   {
     "slug": [
       "authoring",
+      "collections"
+    ],
+    "urlPath": "/docs/authoring/collections",
+    "title": "Collections",
+    "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
+    "relativePath": "authoring/collections",
+    "extension": ".mdx",
+    "groups": [
+      "authoring"
+    ],
+    "globKey": "../../../../../docs/authoring/collections.mdx"
+  },
+  {
+    "slug": [
+      "authoring",
       "components"
     ],
     "urlPath": "/docs/authoring/components",
@@ -58,6 +73,21 @@
       "docs-site"
     ],
     "globKey": "../../../../../docs/build/build-a-docs-site.mdx"
+  },
+  {
+    "slug": [
+      "build",
+      "framework-matrix"
+    ],
+    "urlPath": "/docs/build/framework-matrix",
+    "title": "Framework integration matrix",
+    "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
+    "relativePath": "build/framework-matrix",
+    "extension": ".mdx",
+    "groups": [
+      "docs-site"
+    ],
+    "globKey": "../../../../../docs/build/framework-matrix.mdx"
   },
   {
     "slug": [
@@ -206,11 +236,26 @@
   {
     "slug": [
       "reference",
+      "architecture"
+    ],
+    "urlPath": "/docs/reference/architecture",
+    "title": "Architecture",
+    "description": "The core / adapter boundary — what ships where, and the rules adapters must follow.",
+    "relativePath": "reference/architecture",
+    "extension": ".mdx",
+    "groups": [
+      "reference"
+    ],
+    "globKey": "../../../../../docs/reference/architecture.mdx"
+  },
+  {
+    "slug": [
+      "reference",
       "cli"
     ],
     "urlPath": "/docs/reference/cli",
     "title": "CLI",
-    "description": "leadtype generate and leadtype lint — flags, exit codes, and JSON output.",
+    "description": "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output.",
     "relativePath": "reference/cli",
     "extension": ".mdx",
     "groups": [
