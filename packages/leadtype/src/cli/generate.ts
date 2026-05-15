@@ -386,7 +386,12 @@ async function importConfigModule(configPath: string): Promise<unknown> {
         `loading TypeScript docs config at "${configPath}" requires the optional peer dependency \`jiti\`. Install it (\`bun add -D jiti\`) or use a .js/.mjs/.cjs config.`
       );
     }
-    const jiti = createJiti(import.meta.url, { moduleCache: false });
+    const jiti = createJiti(import.meta.url, {
+      alias: {
+        leadtype: path.resolve(import.meta.dirname, "../index.ts"),
+      },
+      moduleCache: false,
+    });
     return jiti.import(configPath, { default: true });
   }
 
