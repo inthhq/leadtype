@@ -1,0 +1,20 @@
+{
+  "name": "astro-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:generate": "leadtype generate --src ../../examples/shared-docs --out public --base-url http://localhost:4321 --json",
+    "dev": "bun run --filter leadtype build && bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "bun run --filter leadtype build && bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "check-types": "bun run --filter leadtype build && bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/mdx": "^4.0.0",
+    "astro": "^5.0.0",
+    "leadtype": "workspace:*",
+    "typescript": "6.0.3"
+  }
+}

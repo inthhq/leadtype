@@ -1,0 +1,64 @@
+---
+import { createGetStaticPaths, createLoadPageData } from "leadtype/astro";
+import { source } from "../../lib/source";
+
+export const getStaticPaths = createGetStaticPaths({ source });
+
+const loadPageData = createLoadPageData({ source });
+const page = await loadPageData(Astro.params.slug);
+
+if (!page) {
+  return Astro.redirect("/docs");
+}
+---
+
+<html lang="en">
+  <head>
+    <title>{page.title}</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="docs-layout">
+      <aside>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href={page.urlPath === "/docs" ? "/docs/index.md" : `${page.urlPath}.md`}>Markdown</a>
+      </aside>
+      <article>
+        <section class="search">
+          <input id="docs-search" aria-label="Search docs" placeholder="Search docs" />
+          <span id="docs-search-status">idle</span>
+          <ul id="docs-search-results"></ul>
+        </section>
+        <pre class="markdown">{page.markdown}</pre>
+      </article>
+    </main>
+    <script>
+      import { createSearchClient } from "leadtype/search/client";
+
+      const input = document.querySelector<HTMLInputElement>("#docs-search");
+      const status = document.querySelector("#docs-search-status");
+      const results = document.querySelector("#docs-search-results");
+      const client = createSearchClient("docs");
+
+      if (input && status && results) {
+        input.addEventListener("input", async () => {
+          const query = input.value;
+          status.textContent = query.trim() ? "loading" : "idle";
+          results.replaceChildren();
+          if (!query.trim()) return;
+          const matches = await client.search(query);
+          status.textContent = "ready";
+          for (const result of matches) {
+            const item = document.createElement("li");
+            const link = document.createElement("a");
+            link.href = result.urlWithHash;
+            link.textContent = result.title;
+            item.append(link);
+            results.append(item);
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

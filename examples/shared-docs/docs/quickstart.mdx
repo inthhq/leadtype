@@ -1,0 +1,24 @@
+---
+title: "Quickstart"
+description: "The smallest useful integration path for framework examples."
+group: guide
+order: 20
+---
+
+# Quickstart
+
+Each example app follows the same sequence:
+
+1. Point `createDocsSource()` at this shared `docs/` directory.
+2. Add `createMdxSourcePlugins()` to the framework's MDX compiler.
+3. Render a docs route from `source.loadPage()`.
+4. Generate static artifacts into `public/`.
+5. Use the framework-specific adapter to serve markdown responses.
+
+## Runtime split
+
+| Layer | Responsibility |
+| --- | --- |
+| Build | Convert MDX and write search/artifact JSON. |
+| Server | Load page data and answer markdown requests. |
+| Client | Query generated search JSON through a framework helper. |
