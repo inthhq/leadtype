@@ -166,6 +166,21 @@
   },
   {
     "slug": [
+      "changelog",
+      "nav-migration-prompts"
+    ],
+    "urlPath": "/docs/changelog/nav-migration-prompts",
+    "title": "Nav migration prompts",
+    "description": "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned nav.",
+    "relativePath": "changelog/nav-migration-prompts",
+    "extension": ".mdx",
+    "groups": [
+      "changelog"
+    ],
+    "globKey": "../../../../../docs/changelog/nav-migration-prompts.mdx"
+  },
+  {
+    "slug": [
       "how-it-works"
     ],
     "urlPath": "/docs/how-it-works",

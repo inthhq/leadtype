@@ -112,9 +112,10 @@ await convertAllMdx({
   remarkPlugins: defaultRemarkPlugins,
 });
 
-// Fail fast on unknown groups so a bad config can't ship.
+// Fail fast on unknown legacy groups or invalid nav refs so a bad config can't ship.
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
+  nav: docsConfig.nav,
   groups: docsConfig.groups,
 });
 if (navigation.unknown.length > 0) {
@@ -128,6 +129,7 @@ await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,
   product: docsConfig.product,
+  nav: docsConfig.nav,
   groups: docsConfig.groups,
 });
 ```

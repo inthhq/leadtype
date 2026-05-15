@@ -39,6 +39,7 @@ await generateLlmsTxt({
   outDir,
   baseUrl,
   product: docsConfig.product,
+  nav: docsConfig.nav,
   groups: docsConfig.groups ?? [],
 });
 
@@ -46,6 +47,7 @@ await generateLLMFullContextFiles({
   outDir,
   baseUrl,
   product: { name: docsConfig.product.name },
+  nav: docsConfig.nav,
   groups: docsConfig.groups ?? [],
 });
 
@@ -56,6 +58,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
     name: docsConfig.product.name,
     summary: docsConfig.product.summary,
   },
+  nav: docsConfig.nav,
   groups: docsConfig.groups ?? [],
 });
 
@@ -65,6 +68,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
 const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,
+  nav: docsConfig.nav,
   groups: docsConfig.groups ?? [],
 });
 

@@ -68,6 +68,78 @@ async function seedDocs(projectDir: string, files: SeedFile[]): Promise<void> {
 }
 
 describe("generateLlmsTxt", () => {
+  it("renders nested curated nav sections when nav is configured", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "ai-agents.mdx",
+        frontmatter: "title: AI Agents\ndescription: Agent setup.",
+      },
+      {
+        relativePath: "frameworks/next/quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+      {
+        relativePath: "frameworks/next/concepts/client-modes.mdx",
+        frontmatter:
+          "title: Client Modes\ndescription: Client modes.\norder: 20",
+      },
+      {
+        relativePath: "frameworks/next/concepts/initialization-flow.mdx",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Initialization.\norder: 10",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t", summary: "Consent platform." },
+      nav: [
+        {
+          title: "Frameworks",
+          children: [
+            {
+              title: "Next.js",
+              base: "frameworks/next",
+              children: [
+                {
+                  title: "Start",
+                  pages: ["quickstart", "/ai-agents"],
+                },
+                {
+                  title: "Concepts",
+                  pages: [
+                    "concepts/client-modes",
+                    { include: "concepts/*", sort: ["order", "path"] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("## Frameworks");
+    expect(docsSummary).toContain("### Next.js");
+    expect(docsSummary).toContain("#### Start");
+    expect(docsSummary).toContain("#### Concepts");
+    expect(docsSummary).toContain("](/docs/frameworks/next/quickstart.md)");
+    expect(docsSummary).toContain("](/docs/ai-agents.md)");
+    expect(docsSummary.indexOf("Client Modes")).toBeLessThan(
+      docsSummary.indexOf("Initialization Flow")
+    );
+    expect(docsSummary.match(/Client Modes/g)).toHaveLength(1);
+  });
+
   it("renders curated docs sections from the group tree and frontmatter", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");
@@ -1209,6 +1281,117 @@ describe("extractDocsTableOfContents", () => {
 });
 
 describe("resolveDocsNavigation", () => {
+  it("resolves curated nav with inherited base, includes, and root-relative refs", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "ai-agents.mdx",
+        frontmatter: "title: AI Agents\ndescription: Agent setup.",
+      },
+      {
+        relativePath: "frameworks/next/quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start.",
+      },
+      {
+        relativePath: "frameworks/next/concepts/client-modes.mdx",
+        frontmatter: "title: Client Modes\ndescription: Modes.\norder: 20",
+      },
+      {
+        relativePath: "frameworks/next/concepts/initialization-flow.mdx",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\norder: 10",
+      },
+      {
+        relativePath: "frameworks/next/concepts/glossary.mdx",
+        frontmatter: "title: Glossary\ndescription: Terms.",
+      },
+    ]);
+
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      baseUrl: "https://c15t.com",
+      nav: [
+        {
+          title: "Frameworks",
+          children: [
+            {
+              title: "Next.js",
+              base: "frameworks/next",
+              children: [
+                {
+                  title: "Start",
+                  pages: ["quickstart", "/ai-agents"],
+                },
+                {
+                  title: "Concepts",
+                  pages: [
+                    "concepts/client-modes",
+                    { include: "concepts/*", sort: ["order", "path"] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const next = nav.groups[0]?.children[0];
+    const start = next?.children[0];
+    const concepts = next?.children[1];
+
+    expect(nav.groups[0]?.slug).toBe("frameworks");
+    expect(next?.slug).toBe("next-js");
+    expect(start?.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/frameworks/next/quickstart",
+      "/docs/ai-agents",
+    ]);
+    expect(concepts?.pages.map((page) => page.title)).toEqual([
+      "Client Modes",
+      "Initialization Flow",
+      "Glossary",
+    ]);
+    expect(nav.ungrouped).toHaveLength(0);
+  });
+
+  it("fails when an explicit nav page does not exist", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart",
+      },
+    ]);
+
+    await expect(
+      resolveDocsNavigation({
+        srcDir: projectDir,
+        nav: [{ title: "Start", pages: ["missing"] }],
+      })
+    ).rejects.toThrow(/Nav page "missing"/);
+  });
+
+  it("reports unknown legacy groups while using curated nav", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ngroup: mystery",
+      },
+    ]);
+
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      nav: [{ title: "Start", pages: ["quickstart"] }],
+      groups: [{ slug: "known", title: "Known" }],
+    });
+
+    expect(nav.groups[0]?.pages[0]?.title).toBe("Quickstart");
+    expect(nav.unknown).toEqual([
+      { urlPath: "/docs/quickstart", slug: "mystery" },
+    ]);
+  });
+
   it("returns the group tree, attached pages, and unknown-group references", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [

@@ -33,6 +33,7 @@ import {
   toDocsUrlPath as toUrlPath,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
+import { logger } from "../internal/logger";
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
@@ -62,6 +63,8 @@ const FENCE_PATTERN = /^(`{3,}|~{3,})/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
+const NON_ALPHANUMERIC_PATTERN = /[^a-z0-9]+/gi;
+const NAV_INCLUDE_SORT_DEFAULT = ["order", "path"] as const;
 
 function assertValidGroupSlug(slug: string, parentPath: string[]): string {
   if (!SLUG_PATTERN.test(slug)) {
@@ -138,6 +141,31 @@ export type DocsGroup = {
   children?: DocsGroup[];
 };
 
+export type DocsNavSortKey = "order" | "path" | "title";
+
+export type DocsNavIncludeEntry = {
+  include: string;
+  exclude?: string | string[];
+  sort?: DocsNavSortKey[];
+  required?: boolean;
+};
+
+export type DocsNavPageEntry = string | DocsNavIncludeEntry;
+
+/**
+ * Author-facing curated navigation tree. `base` cascades to descendants, page
+ * strings are extensionless paths relative to the nearest base, and a leading
+ * slash escapes back to the collection root.
+ */
+export type DocsNavNode = {
+  title: string;
+  slug?: string;
+  description?: string;
+  base?: string;
+  pages?: DocsNavPageEntry[];
+  children?: DocsNavNode[];
+};
+
 /** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
 export type DocsFrontmatterSchema = v.ObjectSchema<
   v.ObjectEntries,
@@ -181,6 +209,8 @@ export type DocsCollection = {
   schema?: DocsFrontmatterSchema;
   /** Per-collection navigation tree. */
   groups?: DocsGroup[];
+  /** Per-collection curated docs UI and agent navigation tree. */
+  nav?: DocsNavNode[];
 };
 
 /**
@@ -199,6 +229,12 @@ export type DocsConfig = {
    * frontmatter (`group: <slug>` or `group: [a, b]`).
    */
   groups?: DocsGroup[];
+  /**
+   * Curated navigation for the single-collection shape. When present, this
+   * drives docs UI and agent-facing indexes; `groups` remains fallback
+   * taxonomy/navigation metadata.
+   */
+  nav?: DocsNavNode[];
   /**
    * Multi-source content sets, keyed by collection id. Each collection owns
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
@@ -236,7 +272,9 @@ export type LlmsTxtConfig = {
   baseUrl?: string;
   product: ProductInfo;
   /** Group tree from `docs.config.ts`. Used for `/docs/llms.txt` sections. */
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavNode[];
   /** Optional path-to-URL mounts for generated docs, e.g. changelog -> /changelog. */
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
@@ -248,7 +286,9 @@ export type LLMFullContextConfig = {
   baseUrl?: string;
   product: Pick<ProductInfo, "name">;
   /** Group tree from `docs.config.ts`. Preserved for config validation. */
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavNode[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -258,7 +298,9 @@ export type AgentReadabilityConfig = {
   outDir: string;
   baseUrl?: string;
   product: Pick<ProductInfo, "name" | "summary">;
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavNode[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -278,7 +320,9 @@ export type AgentReadabilityResult = {
 export type ResolveDocsNavigationConfig = {
   srcDir: string;
   baseUrl?: string;
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavNode[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -310,6 +354,8 @@ type ResolvedGroup = {
   segmentPath: string[];
   parent: ResolvedGroup | null;
   children: ResolvedGroup[];
+  base: string;
+  pageEntries: DocsNavPageEntry[];
 };
 
 function resolveGroups(
@@ -338,6 +384,8 @@ function resolveGroups(
       segmentPath,
       parent,
       children: [],
+      base: "",
+      pageEntries: [],
     };
     resolved.children = resolveGroups(
       group.children ?? [],
@@ -357,6 +405,75 @@ function flattenGroups(groups: ResolvedGroup[]): ResolvedGroup[] {
     }
   }
   return result;
+}
+
+function inferNavSlug(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(NON_ALPHANUMERIC_PATTERN, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeNavPath(input: string): string {
+  return stripDocsExtension(normalizeDocsPath(input).replace(/^\/+/, ""))
+    .replace(/\/index$/, "")
+    .replace(/^index$/, "");
+}
+
+function joinNavPath(base: string, input: string): string {
+  if (input.trim() === "") {
+    return normalizeNavPath(base);
+  }
+  if (input.startsWith("/")) {
+    return normalizeNavPath(input);
+  }
+  return normalizeNavPath(path.posix.join(base, input));
+}
+
+function resolveNavGroups(
+  nav: DocsNavNode[],
+  parentPath: string[] = [],
+  parent: ResolvedGroup | null = null,
+  inheritedBase = ""
+): ResolvedGroup[] {
+  const seen = new Set<string>();
+  return nav.map((node) => {
+    const inferredSlug = inferNavSlug(node.slug ?? node.title);
+    const slug = assertValidGroupSlug(inferredSlug, parentPath);
+    const slugKey = slug.toLowerCase();
+    if (seen.has(slugKey)) {
+      const scope = parentPath.join("/") || "root";
+      throw new Error(
+        `Duplicate nav slug "${slug}" under "${scope}". Nav slugs must be unique among siblings.`
+      );
+    }
+    seen.add(slugKey);
+
+    const base =
+      node.base === undefined
+        ? inheritedBase
+        : joinNavPath(inheritedBase, node.base);
+    const segmentPath = [...parentPath, slug];
+    const resolved: ResolvedGroup = {
+      slug,
+      slugKey,
+      title: node.title,
+      description: node.description,
+      segmentPath,
+      parent,
+      children: [],
+      base,
+      pageEntries: node.pages ?? [],
+    };
+    resolved.children = resolveNavGroups(
+      node.children ?? [],
+      segmentPath,
+      resolved,
+      base
+    );
+    return resolved;
+  });
 }
 
 function titleize(input: string): string {
@@ -569,7 +686,7 @@ export function extractDocsTableOfContents(
 }
 
 function pageToRenderedLink(
-  doc: SourceDoc,
+  doc: Pick<SourceDoc, "description" | "relativePath" | "title">,
   mounts?: DocsPathMount[]
 ): RenderedLink {
   const title =
@@ -940,6 +1057,11 @@ async function readMarkdownDocs(
             )
           : toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
+      const orderRaw = parsed.data.order;
+      const order =
+        typeof orderRaw === "number" && Number.isFinite(orderRaw)
+          ? orderRaw
+          : undefined;
 
       return {
         title,
@@ -948,6 +1070,7 @@ async function readMarkdownDocs(
         absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
         relativePath: file.outputRelativePath,
         groups,
+        ...(order === undefined ? {} : { order }),
         ...(file.locale ? { locale: file.locale } : {}),
         ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
         ...(file.isFallback === undefined
@@ -1028,6 +1151,146 @@ function buildGroupMembership(
   }
 
   return { byGroupSlug, ungrouped, unknown };
+}
+
+function isNavIncludeEntry(
+  entry: DocsNavPageEntry
+): entry is DocsNavIncludeEntry {
+  return typeof entry === "object" && entry !== null;
+}
+
+function createDocsByRelativePath(docs: SourceDoc[]): Map<string, SourceDoc> {
+  const byPath = new Map<string, SourceDoc>();
+  for (const doc of docs) {
+    const key = normalizeNavPath(doc.relativePath);
+    byPath.set(key, doc);
+    if (key === "") {
+      byPath.set("index", doc);
+    }
+    if (key.endsWith("/index")) {
+      byPath.set(key.slice(0, -"/index".length), doc);
+    }
+    if (key === "index") {
+      byPath.set("", doc);
+    }
+  }
+  return byPath;
+}
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const normalized = normalizeNavPath(pattern);
+  let source = "";
+  for (let index = 0; index < normalized.length; index++) {
+    const char = normalized[index];
+    const next = normalized[index + 1];
+    if (char === "*" && next === "*") {
+      const after = normalized[index + 2];
+      if (after === "/") {
+        source += "(?:[^/]+/)*";
+        index += 2;
+      } else {
+        source += ".*";
+        index += 1;
+      }
+    } else if (char === "*") {
+      source += "[^/]*";
+    } else {
+      source += escapeRegExp(char ?? "");
+    }
+  }
+  return new RegExp(`^${source}$`);
+}
+
+function compareNavDocs(
+  left: SourceDoc,
+  right: SourceDoc,
+  sort: readonly DocsNavSortKey[]
+): number {
+  for (const key of sort) {
+    if (key === "order") {
+      const leftOrder = left.order ?? Number.POSITIVE_INFINITY;
+      const rightOrder = right.order ?? Number.POSITIVE_INFINITY;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+    } else if (key === "title") {
+      const compared = left.title.localeCompare(right.title);
+      if (compared !== 0) {
+        return compared;
+      }
+    } else {
+      const compared = left.relativePath.localeCompare(right.relativePath);
+      if (compared !== 0) {
+        return compared;
+      }
+    }
+  }
+  return left.relativePath.localeCompare(right.relativePath);
+}
+
+function normalizeExcludePatterns(
+  exclude: string | string[] | undefined,
+  base: string
+) {
+  let patterns: string[] = [];
+  if (typeof exclude === "string") {
+    patterns = [exclude];
+  } else if (Array.isArray(exclude)) {
+    patterns = exclude;
+  }
+  return patterns.map((pattern) => globToRegExp(joinNavPath(base, pattern)));
+}
+
+function resolveNavEntryPages(
+  group: ResolvedGroup,
+  entry: DocsNavPageEntry,
+  docs: SourceDoc[],
+  docsByRelativePath: Map<string, SourceDoc>
+): SourceDoc[] {
+  if (!isNavIncludeEntry(entry)) {
+    const ref = joinNavPath(group.base, entry);
+    const doc = docsByRelativePath.get(ref);
+    if (!doc) {
+      throw new Error(
+        `Nav page "${entry}" under "${group.segmentPath.join("/")}" did not match a documentation page.`
+      );
+    }
+    return [doc];
+  }
+
+  const include = joinNavPath(group.base, entry.include);
+  const includePattern = globToRegExp(include);
+  const excludePatterns = normalizeExcludePatterns(entry.exclude, group.base);
+  const sort = entry.sort ?? NAV_INCLUDE_SORT_DEFAULT;
+  const matches = docs
+    .filter((doc) => {
+      const relativePath = normalizeNavPath(doc.relativePath);
+      return (
+        includePattern.test(relativePath) &&
+        !excludePatterns.some((pattern) => pattern.test(relativePath))
+      );
+    })
+    .sort((left, right) => compareNavDocs(left, right, sort));
+
+  if (matches.length === 0) {
+    const message = `Nav include "${entry.include}" under "${group.segmentPath.join("/")}" matched no documentation pages.`;
+    if (entry.required) {
+      throw new Error(message);
+    }
+    logger.warn({
+      human: { message },
+      json: {
+        event: "nav.include.empty",
+        fields: { include: entry.include, group: group.segmentPath.join("/") },
+      },
+    });
+  }
+
+  return matches;
 }
 
 /** Pages whose `group:` includes the slug of `target` or any descendant. */
@@ -1128,6 +1391,66 @@ Read the summary links first. If the page links are not enough, use \`/llms-full
 ${renderedSections.join("\n\n")}`;
 }
 
+function renderNavigationSummaryGroup(
+  group: DocsNavigationGroup,
+  mounts: DocsPathMount[] | undefined,
+  depth = 2
+): string[] {
+  const lines: string[] = [`${"#".repeat(depth)} ${group.title}`];
+  if (group.description) {
+    lines.push("", group.description);
+  }
+
+  if (group.pages.length > 0) {
+    lines.push(
+      "",
+      ...group.pages
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink)
+    );
+  }
+
+  for (const child of group.children) {
+    lines.push("", ...renderNavigationSummaryGroup(child, mounts, depth + 1));
+  }
+
+  return lines;
+}
+
+function renderDocsNavigationSummary(
+  product: ProductInfo,
+  navigation: DocsNavigation,
+  mounts?: DocsPathMount[]
+): string {
+  const renderedSections: string[] = [];
+  for (const group of navigation.groups) {
+    renderedSections.push(
+      renderNavigationSummaryGroup(group, mounts).join("\n")
+    );
+  }
+
+  if (navigation.ungrouped.length > 0) {
+    const lines = ["## Other"];
+    lines.push(
+      "",
+      ...navigation.ungrouped
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink)
+    );
+    renderedSections.push(lines.join("\n"));
+  }
+
+  return `# ${product.name} Documentation
+
+> Curated documentation map for developers and coding agents working with ${product.name}.
+
+## How To Use This File
+
+Read the summary links first. If the page links are not enough, use \`/llms-full.txt\` as the broad full-context fallback.
+
+${renderedSections.join("\n\n")}`;
+}
+
 const LEADING_H1_PATTERN = /^[ \t]*#[ \t]+\S/;
 
 // We prepend our own `# ${title}` per page; strip any leading H1 from the
@@ -1184,6 +1507,47 @@ ${content}`.trim();
   ].join("\n");
 }
 
+function flattenNavigationPagePaths(navigation: DocsNavigation): string[] {
+  const paths: string[] = [];
+  const visit = (group: DocsNavigationGroup) => {
+    for (const page of group.pages) {
+      paths.push(page.urlPath);
+    }
+    for (const child of group.children) {
+      visit(child);
+    }
+  };
+  for (const group of navigation.groups) {
+    visit(group);
+  }
+  for (const page of navigation.ungrouped) {
+    paths.push(page.urlPath);
+  }
+  return paths;
+}
+
+function orderMarkdownDocsByNavigation(
+  docs: MarkdownDoc[],
+  navigation: DocsNavigation
+): MarkdownDoc[] {
+  const byUrlPath = new Map(docs.map((doc) => [doc.urlPath, doc]));
+  const seen = new Set<string>();
+  const ordered: MarkdownDoc[] = [];
+  for (const urlPath of flattenNavigationPagePaths(navigation)) {
+    const doc = byUrlPath.get(urlPath);
+    if (doc && !seen.has(urlPath)) {
+      ordered.push(doc);
+      seen.add(urlPath);
+    }
+  }
+  for (const doc of docs) {
+    if (!seen.has(doc.urlPath)) {
+      ordered.push(doc);
+    }
+  }
+  return ordered;
+}
+
 /**
  * Generate `/llms.txt` (product summary) and `/docs/llms.txt` (curated docs
  * map) by reading frontmatter from .md/.mdx files under `{srcDir}/docs/`.
@@ -1206,8 +1570,14 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
     }
   );
 
-  const resolved = resolveGroups(config.groups);
-  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+  const sourceDocList = [...sourceDocs.values()];
+  const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolved = hasNav
+    ? resolveNavGroups(config.nav ?? [])
+    : resolveGroups(config.groups ?? []);
+  const membership = hasNav
+    ? undefined
+    : buildGroupMembership(sourceDocList, resolved);
 
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
   const isDefaultLocale = !i18n || locale === i18n.defaultLocale;
@@ -1224,10 +1594,23 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
         ? path.join(outDir, DOCS_DIRNAME, locale, "llms.txt")
         : path.join(outDir, DOCS_DIRNAME, "llms.txt");
     await mkdir(path.dirname(docsLlmsPath), { recursive: true });
-    await writeFile(
-      docsLlmsPath,
-      renderDocsSummary(config.product, resolved, membership, config.mounts)
-    );
+    const docsLlmsContent = hasNav
+      ? renderDocsNavigationSummary(
+          config.product,
+          buildNavigationFromNav(sourceDocList, resolved, new Map(), locale),
+          config.mounts
+        )
+      : renderDocsSummary(
+          config.product,
+          resolved,
+          membership ?? {
+            byGroupSlug: new Map(),
+            unknown: [],
+            ungrouped: [],
+          },
+          config.mounts
+        );
+    await writeFile(docsLlmsPath, docsLlmsContent);
   }
 }
 
@@ -1254,7 +1637,21 @@ export async function generateLLMFullContextFiles(
     );
   }
 
-  resolveGroups(config.groups);
+  let orderedMarkdownDocs = markdownDocs;
+  if (config.nav && config.nav.length > 0) {
+    const resolvedNav = resolveNavGroups(config.nav);
+    const navigation = buildNavigationFromMarkdownDocs(
+      markdownDocs,
+      resolvedNav,
+      "nav"
+    );
+    orderedMarkdownDocs = orderMarkdownDocsByNavigation(
+      markdownDocs,
+      navigation
+    );
+  } else {
+    resolveGroups(config.groups ?? []);
+  }
 
   if (!i18n || locale === i18n.defaultLocale) {
     const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
@@ -1262,7 +1659,7 @@ export async function generateLLMFullContextFiles(
     await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
     await writeFile(
       path.join(outDir, "llms-full.txt"),
-      renderFullContextDocument(config.product, markdownDocs)
+      renderFullContextDocument(config.product, orderedMarkdownDocs)
     );
     return;
   }
@@ -1276,7 +1673,7 @@ export async function generateLLMFullContextFiles(
   await mkdir(path.dirname(localeFullPath), { recursive: true });
   await writeFile(
     localeFullPath,
-    renderFullContextDocument(config.product, markdownDocs)
+    renderFullContextDocument(config.product, orderedMarkdownDocs)
   );
 }
 
@@ -1308,15 +1705,27 @@ function toAgentReadabilityPage(
 
 function buildNavigationFromMarkdownDocs(
   docs: MarkdownDoc[],
-  resolved: ResolvedGroup[]
+  resolved: ResolvedGroup[],
+  mode: "groups" | "nav" = "groups",
+  groupsForValidation?: DocsGroup[]
 ): DocsNavigation {
-  const membership = buildGroupMembership(docs, resolved);
   const tocByUrlPath = new Map(
     docs.map((doc) => [
       doc.urlPath,
       extractDocsTableOfContents(doc.content, doc),
     ])
   );
+  if (mode === "nav") {
+    return buildNavigationFromNav(
+      docs,
+      resolved,
+      tocByUrlPath,
+      docs[0]?.locale,
+      findUnknownGroups(docs, groupsForValidation)
+    );
+  }
+
+  const membership = buildGroupMembership(docs, resolved);
   return {
     groups: resolved.map((group) =>
       buildNavigationGroup(group, membership, tocByUrlPath)
@@ -1363,8 +1772,16 @@ export async function generateAgentReadabilityArtifacts(
     );
   }
 
-  const resolved = resolveGroups(config.groups);
-  const navigation = buildNavigationFromMarkdownDocs(markdownDocs, resolved);
+  const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolved = hasNav
+    ? resolveNavGroups(config.nav ?? [])
+    : resolveGroups(config.groups ?? []);
+  const navigation = buildNavigationFromMarkdownDocs(
+    markdownDocs,
+    resolved,
+    hasNav ? "nav" : "groups",
+    config.groups
+  );
   const pages = markdownDocs.map((doc) =>
     toAgentReadabilityPage(doc, baseUrl, config.mounts)
   );
@@ -1425,7 +1842,9 @@ export type AgentsMdConfig = {
   outDir: string;
   product: ProductInfo;
   /** Group tree from `docs.config.ts`. Drives section structure. */
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavNode[];
   /**
    * Subdirectory under `outDir` that holds the converted `.md` files.
    * Used for the relative-path prefix in every link. Default: `docs`.
@@ -1443,12 +1862,48 @@ function relativeDocLink(relativePath: string, docsSubdir: string): string {
   return `./${docsSubdir}/${relativePath}.md`;
 }
 
-function pageDescription(doc: SourceDoc, fallback?: string): string {
+function pageDescription(
+  doc: Pick<SourceDoc, "description" | "title">,
+  fallback?: string
+): string {
   return (
     normalizeDescription(doc.description) ||
     fallback ||
     `Reference page for ${doc.title.toLowerCase()}.`
   );
+}
+
+function renderAgentsNavigationGroup(
+  group: DocsNavigationGroup,
+  docsByUrlPath: Map<string, SourceDoc>,
+  docsSubdir: string,
+  depth = 2
+): string[] {
+  const lines: string[] = [`${"#".repeat(depth)} ${group.title}`];
+  if (group.description) {
+    lines.push("", group.description);
+  }
+  if (group.pages.length > 0) {
+    lines.push("");
+    for (const page of group.pages) {
+      const sourceDoc = docsByUrlPath.get(page.urlPath) ?? page;
+      lines.push(
+        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(sourceDoc)}`
+      );
+    }
+  }
+  for (const child of group.children) {
+    lines.push(
+      "",
+      ...renderAgentsNavigationGroup(
+        child,
+        docsByUrlPath,
+        docsSubdir,
+        depth + 1
+      )
+    );
+  }
+  return lines;
 }
 
 /**
@@ -1478,8 +1933,14 @@ export async function generateAgentsMd(
       includeFallback: false,
     }
   );
-  const resolved = resolveGroups(config.groups);
-  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+  const sourceDocList = [...sourceDocs.values()];
+  const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolved = hasNav
+    ? resolveNavGroups(config.nav ?? [])
+    : resolveGroups(config.groups ?? []);
+  const membership = hasNav
+    ? undefined
+    : buildGroupMembership(sourceDocList, resolved);
 
   const lines: string[] = [
     `# ${config.product.name}`,
@@ -1515,29 +1976,55 @@ export async function generateAgentsMd(
     lines.push("", "## Best Starting Points", "", ...renderedStarts);
   }
 
-  for (const group of resolved) {
-    const pages = pagesUnderGroup(group, membership);
-    if (pages.length === 0) {
-      continue;
-    }
-    lines.push("", `## ${group.title}`);
-    if (group.description) {
-      lines.push("", group.description);
-    }
-    lines.push("");
-    for (const page of pages) {
+  if (hasNav) {
+    const docsByUrlPath = new Map(
+      sourceDocList.map((doc) => [doc.urlPath, doc])
+    );
+    const navigation = buildNavigationFromNav(
+      sourceDocList,
+      resolved,
+      new Map(),
+      config.locale
+    );
+    for (const group of navigation.groups) {
       lines.push(
-        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        "",
+        ...renderAgentsNavigationGroup(group, docsByUrlPath, docsSubdir)
       );
     }
-  }
+    if (navigation.ungrouped.length > 0) {
+      lines.push("", "## Other", "");
+      for (const page of navigation.ungrouped) {
+        lines.push(
+          `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        );
+      }
+    }
+  } else if (membership) {
+    for (const group of resolved) {
+      const pages = pagesUnderGroup(group, membership);
+      if (pages.length === 0) {
+        continue;
+      }
+      lines.push("", `## ${group.title}`);
+      if (group.description) {
+        lines.push("", group.description);
+      }
+      lines.push("");
+      for (const page of pages) {
+        lines.push(
+          `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        );
+      }
+    }
 
-  if (membership.ungrouped.length > 0) {
-    lines.push("", "## Other", "");
-    for (const page of membership.ungrouped) {
-      lines.push(
-        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
-      );
+    if (membership.ungrouped.length > 0) {
+      lines.push("", "## Other", "");
+      for (const page of membership.ungrouped) {
+        lines.push(
+          `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        );
+      }
     }
   }
 
@@ -1561,6 +2048,7 @@ function pageView(
 ): DocsNavigationPage {
   return {
     urlPath: doc.urlPath,
+    relativePath: doc.relativePath,
     title: doc.title,
     description: doc.description,
     groups: [...doc.groups],
@@ -1590,10 +2078,90 @@ function buildNavigationGroup(
   };
 }
 
+function buildNavigationGroupFromNav(
+  group: ResolvedGroup,
+  docs: SourceDoc[],
+  docsByRelativePath: Map<string, SourceDoc>,
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
+  seenUrlPaths: Set<string>
+): DocsNavigationGroup {
+  const directPages: SourceDoc[] = [];
+  for (const entry of group.pageEntries) {
+    const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
+    for (const page of pages) {
+      if (seenUrlPaths.has(page.urlPath)) {
+        continue;
+      }
+      seenUrlPaths.add(page.urlPath);
+      directPages.push(page);
+    }
+  }
+
+  return {
+    slug: group.slug,
+    segmentPath: group.segmentPath,
+    title: group.title,
+    description: group.description,
+    pages: directPages.map((page) => pageView(page, tocByUrlPath)),
+    children: group.children.map((child) =>
+      buildNavigationGroupFromNav(
+        child,
+        docs,
+        docsByRelativePath,
+        tocByUrlPath,
+        seenUrlPaths
+      )
+    ),
+  };
+}
+
+function buildNavigationFromNav(
+  docs: SourceDoc[],
+  resolved: ResolvedGroup[],
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
+  locale?: string,
+  unknown: DocsNavigation["unknown"] = []
+): DocsNavigation {
+  const seenUrlPaths = new Set<string>();
+  const docsByRelativePath = createDocsByRelativePath(docs);
+  const groups = resolved.map((group) =>
+    buildNavigationGroupFromNav(
+      group,
+      docs,
+      docsByRelativePath,
+      tocByUrlPath,
+      seenUrlPaths
+    )
+  );
+  return {
+    groups,
+    ungrouped: docs
+      .filter((doc) => !seenUrlPaths.has(doc.urlPath))
+      .map((page) => pageView(page, tocByUrlPath)),
+    unknown,
+    ...(locale ? { locale } : {}),
+  };
+}
+
+function findUnknownGroups(
+  docs: SourceDoc[],
+  groups: DocsGroup[] | undefined
+): DocsNavigation["unknown"] {
+  if (!(groups && groups.length > 0)) {
+    return [];
+  }
+  const resolved = resolveGroups(groups);
+  const membership = buildGroupMembership(docs, resolved);
+  return membership.unknown.map(({ page, slug }) => ({
+    urlPath: page.urlPath,
+    slug,
+  }));
+}
+
 /**
  * Walk the docs source tree once and return a structured navigation manifest.
  * Build pipelines write this to disk (e.g. `src/generated/docs-nav.json`)
- * for the runtime sidebar to import — keeps the docs-config.ts as the single
+ * for the runtime docs shell to import — keeps the docs-config.ts as the single
  * source of truth without forcing the runtime to scan MDX itself.
  */
 export async function resolveDocsNavigation(
@@ -1612,10 +2180,9 @@ export async function resolveDocsNavigation(
       includeFallback: config.includeFallback ?? true,
     }
   );
-  const resolved = resolveGroups(config.groups);
-  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
   const tocOptions = resolveNavigationTocOptions(config.toc);
   const tocByUrlPath = new Map<string, DocsTableOfContentsItem[]>();
+  const docs = [...sourceDocs.values()];
 
   if (tocOptions !== false) {
     for (const page of sourceDocs.values()) {
@@ -1626,6 +2193,19 @@ export async function resolveDocsNavigation(
     }
   }
 
+  if (config.nav && config.nav.length > 0) {
+    const resolvedNav = resolveNavGroups(config.nav);
+    return buildNavigationFromNav(
+      docs,
+      resolvedNav,
+      tocByUrlPath,
+      config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
+      findUnknownGroups(docs, config.groups)
+    );
+  }
+
+  const resolved = resolveGroups(config.groups ?? []);
+  const membership = buildGroupMembership(docs, resolved);
   return {
     groups: resolved.map((group) =>
       buildNavigationGroup(group, membership, tocByUrlPath)

@@ -15,6 +15,7 @@ export default defineDocsConfig({
       { urlPath: "/docs" },
       { urlPath: "/docs/quickstart" },
       { urlPath: "/docs/how-it-works" },
+      { urlPath: "/docs/changelog/nav-migration-prompts" },
       { urlPath: "/docs/build/build-a-docs-site" },
       { urlPath: "/docs/build/use-the-source-primitive" },
       { urlPath: "/docs/build/framework-matrix" },
@@ -26,12 +27,62 @@ export default defineDocsConfig({
     agentGuidance:
       "Open /docs/llms.txt to route the task, then use /llms-full.txt only when page-level markdown is not enough.",
   },
+  nav: [
+    {
+      title: "Docs",
+      children: [
+        {
+          title: "Get Started",
+          pages: ["", "quickstart", "how-it-works", "methodology"],
+        },
+        {
+          title: "Authoring",
+          base: "authoring",
+          pages: ["frontmatter", "collections", "components"],
+        },
+        {
+          title: "Build a Docs Site",
+          base: "build",
+          pages: [
+            "build-a-docs-site",
+            "use-the-source-primitive",
+            "integrate-with-fumadocs",
+            "generate-static-artifacts",
+            "add-search",
+            "optimize-docs-for-agents",
+            "validate-in-ci",
+          ],
+        },
+        {
+          title: "Ship Package Docs",
+          base: "package-docs",
+          pages: ["bundle"],
+        },
+        {
+          title: "Reference",
+          base: "reference",
+          pages: [{ include: "*" }],
+        },
+      ],
+    },
+    {
+      title: "Changelog",
+      base: "changelog",
+      pages: ["nav-migration-prompts"],
+    },
+  ],
   groups: [
     {
       slug: "get-started",
       title: "Get Started",
       description:
         "What leadtype is, how it fits together, and the five-minute happy path.",
+    },
+    {
+      slug: "changelog",
+      title: "Changelog",
+      description:
+        "Migration notes, release guidance, and copyable prompts for applying Leadtype changes.",
     },
     {
       slug: "authoring",

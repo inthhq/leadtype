@@ -161,6 +161,7 @@ await generateLlmsTxt({
   outDir: "public",
   baseUrl: "https://docs.example.com",
   product: docsConfig.product,
+  nav: docsConfig.nav,
   groups: docsConfig.groups,
   mounts,
 });
@@ -169,6 +170,7 @@ await generateLLMFullContextFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
   product: { name: docsConfig.product.name },
+  nav: docsConfig.nav,
   groups: docsConfig.groups,
   mounts,
 });
@@ -183,6 +185,7 @@ await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://docs.example.com",
   product: docsConfig.product,
+  nav: docsConfig.nav,
   groups: docsConfig.groups,
   mounts,
 });
@@ -190,6 +193,7 @@ await generateAgentReadabilityArtifacts({
 const navigation = await resolveDocsNavigation({
   srcDir: sourceRoot,
   baseUrl: "https://docs.example.com",
+  nav: docsConfig.nav,
   groups: docsConfig.groups,
   mounts,
 });

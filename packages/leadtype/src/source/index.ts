@@ -41,6 +41,7 @@ import {
 import { parseFrontmatter } from "../internal/frontmatter";
 import type {
   DocsGroup,
+  DocsNavNode,
   DocsTableOfContentsItem,
   DocsTableOfContentsOptions,
 } from "../llm";
@@ -104,6 +105,8 @@ export type CreateDocsSourceConfig = {
    * computed but `groups` will be empty (all pages appear under `ungrouped`).
    */
   groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups`. */
+  nav?: DocsNavNode[];
   /** Base URL for absolute links (search index, TOC anchors). */
   baseUrl?: string;
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */
@@ -453,6 +456,7 @@ export async function createDocsSource(
       docsDirName: path.basename(contentDir),
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
+      nav: config.nav,
       mounts: config.mounts,
       i18n: config.i18n,
       locale: config.locale,

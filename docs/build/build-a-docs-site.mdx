@@ -72,12 +72,12 @@ export default defineDocsConfig({
     bullets: ["Framework integrations.", "Consent primitives.", "Audit-friendly docs."],
     bestStartingPoints: [{ urlPath: "/docs" }, { urlPath: "/docs/quickstart" }],
   },
-  groups: [
-    { slug: "get-started", title: "Get Started" },
-    { slug: "guides", title: "Guides" },
-    { slug: "reference", title: "Reference" },
+  nav: [
+    { title: "Get Started", pages: ["", "quickstart", "how-it-works"] },
+    { title: "Guides", pages: [{ include: "build/*" }] },
+    { title: "Reference", pages: [{ include: "reference/*" }] },
   ],
 });
 ```
 
-Pages declare `group:` in frontmatter; the config declares titles, order, and descriptions. See [Frontmatter](/docs/authoring/frontmatter) for the page-level schema.
+The config declares top-level docs areas, sidebar structure, and agent-map structure. Pages keep `title`, `description`, and optional taxonomy fields in frontmatter. See [Frontmatter](/docs/authoring/frontmatter) for the page-level schema.

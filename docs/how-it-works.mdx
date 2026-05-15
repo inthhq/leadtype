@@ -85,7 +85,7 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "Navigation manifest": {
       type: "docs-nav.json (build script)",
       description:
-        "Resolved group tree mapping pages to nav locations. Built by the resolveDocsNavigation() helper so your sidebar component and your llms.txt sections agree on structure.",
+        "Resolved nav tree mapping pages to top-level docs areas, sidebar sections, and agent-map locations. Built by the resolveDocsNavigation() helper so your docs shell and your llms.txt sections agree on structure.",
     },
   }}
 />
@@ -124,7 +124,7 @@ A few terms you will see throughout the docs.
     group: {
       type: "frontmatter field",
       description:
-        "A slug declaring which group a page belongs to. The same string drives the sidebar position, the llms.txt section, search metadata, and AGENTS.md grouping.",
+        "A slug declaring which legacy taxonomy group a page belongs to. Config nav now drives curated sidebar and agent-map structure; group remains useful for fallback navigation and search facets.",
     },
     leaf: {
       type: "noun",

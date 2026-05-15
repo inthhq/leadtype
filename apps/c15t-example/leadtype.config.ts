@@ -8,13 +8,77 @@ const c15t = {
   cacheDir: ".docs-src/c15t",
 } as const;
 
+const commonGuidePages = [
+  "script-loader",
+  "iframe-blocking",
+  "network-blocker",
+  "callbacks",
+  "internationalization",
+  "policy-packs",
+];
+
+const reactFrameworkNav = (title: string, base: string) => ({
+  title,
+  base,
+  children: [
+    { title: "Start", pages: ["quickstart", "optimization", "/ai-agents"] },
+    { title: "Concepts", pages: [{ include: "concepts/*" }] },
+    { title: "Guides", pages: [...commonGuidePages, { include: "*" }] },
+    { title: "Components", pages: [{ include: "components/*" }] },
+    { title: "Styling", pages: [{ include: "styling/*" }] },
+    { title: "Hooks", pages: [{ include: "hooks/**/*" }] },
+    { title: "IAB TCF", pages: [{ include: "iab/*" }] },
+  ],
+});
+
+const javascriptFrameworkNav = {
+  title: "JavaScript",
+  base: "frameworks/javascript",
+  children: [
+    { title: "Start", pages: ["quickstart", "optimization", "/ai-agents"] },
+    { title: "Concepts", pages: [{ include: "concepts/*" }] },
+    { title: "Guides", pages: commonGuidePages },
+    { title: "Store API", pages: [{ include: "api/*" }] },
+    { title: "Building Framework Libraries", pages: ["building-ui"] },
+    { title: "IAB TCF", pages: [{ include: "iab/*" }] },
+  ],
+};
+
 export default defineDocsConfig({
   product: {
     name: "c15t",
     summary: "Developer-first consent management for modern web apps.",
   },
   collections: {
-    docs: defineCollection({ ...c15t, dir: "docs", prefix: "/docs" }),
+    docs: defineCollection({
+      ...c15t,
+      dir: "docs",
+      prefix: "/docs",
+      nav: [
+        {
+          title: "Frontend",
+          children: [
+            reactFrameworkNav("Next.js", "frameworks/next"),
+            reactFrameworkNav("React", "frameworks/react"),
+            javascriptFrameworkNav,
+          ],
+        },
+        {
+          title: "Integrations",
+          base: "integrations",
+          pages: [{ include: "**/*" }],
+        },
+        {
+          title: "Self Host",
+          base: "self-host",
+          pages: [{ include: "**/*" }],
+        },
+        {
+          title: "Reference",
+          pages: [{ include: "cli/*" }, { include: "oss/*" }],
+        },
+      ],
+    }),
     changelog: defineCollection({
       ...c15t,
       dir: "changelog",

@@ -23,6 +23,7 @@ import type {
   DocsCollection,
   DocsConfig,
   DocsGroup,
+  DocsNavNode,
   ProductInfo,
 } from "../llm";
 import {
@@ -63,6 +64,7 @@ const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
 const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
+const NAV_SORT_VALUES = new Set(["order", "path", "title"]);
 
 type GenerateFormat = "json" | "text";
 
@@ -125,6 +127,7 @@ type GenerateResult = {
     searchIndex?: string;
   };
   groups: DocsGroup[];
+  nav?: DocsNavNode[];
   filters: GenerateFilters;
   mounts: DocsPathMount[];
   mode: "site" | "bundle";
@@ -169,6 +172,7 @@ type ResolvedGenerateMetadata = {
   configPath?: string;
   groups: DocsGroup[];
   i18n?: DocsConfig["i18n"];
+  nav?: DocsNavNode[];
   product: ProductInfo;
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -385,6 +389,70 @@ function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
   return value as DocsGroup[];
 }
 
+function validateDocsNav(value: unknown): DocsNavNode[] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    return;
+  }
+  for (const node of value) {
+    if (!isPlainRecord(node) || typeof node.title !== "string") {
+      return;
+    }
+    if (node.slug !== undefined && typeof node.slug !== "string") {
+      return;
+    }
+    if (
+      node.description !== undefined &&
+      typeof node.description !== "string"
+    ) {
+      return;
+    }
+    if (node.base !== undefined && typeof node.base !== "string") {
+      return;
+    }
+    if (node.pages !== undefined && !Array.isArray(node.pages)) {
+      return;
+    }
+    if (Array.isArray(node.pages)) {
+      for (const page of node.pages) {
+        if (typeof page === "string") {
+          continue;
+        }
+        if (!isPlainRecord(page) || typeof page.include !== "string") {
+          return;
+        }
+        if (
+          page.exclude !== undefined &&
+          !(typeof page.exclude === "string" || isStringArray(page.exclude))
+        ) {
+          return;
+        }
+        if (
+          page.sort !== undefined &&
+          !(
+            isStringArray(page.sort) &&
+            page.sort.every((sortKey) => NAV_SORT_VALUES.has(sortKey))
+          )
+        ) {
+          return;
+        }
+        if (page.required !== undefined && typeof page.required !== "boolean") {
+          return;
+        }
+      }
+    }
+    if (
+      node.children !== undefined &&
+      validateDocsNav(node.children) === undefined
+    ) {
+      return;
+    }
+  }
+  return value as DocsNavNode[];
+}
+
 function validateCollections(
   value: unknown,
   configPath: string
@@ -450,6 +518,11 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" groups must be an array of { slug, title } entries`
       );
     }
+    if (entry.nav !== undefined && validateDocsNav(entry.nav) === undefined) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" nav must be an array of navigation nodes`
+      );
+    }
     if (entry.include !== undefined && !isStringArray(entry.include)) {
       throw new Error(
         `docs config at "${configPath}": collection "${key}" include must be an array of glob strings`
@@ -482,19 +555,37 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
 
   const collections = validateCollections(value.collections, configPath);
   const hasGroups = value.groups !== undefined;
+  const hasNav = value.nav !== undefined;
 
   if (collections && hasGroups) {
     throw new Error(
       `docs config at "${configPath}" sets both "groups" and "collections". Move groups into the relevant collection(s) — top-level groups is for the single-collection shape only.`
     );
   }
+  if (collections && hasNav) {
+    throw new Error(
+      `docs config at "${configPath}" sets both "nav" and "collections". Move nav into the relevant collection(s) — top-level nav is for the single-collection shape only.`
+    );
+  }
 
   let groups: DocsGroup[] | undefined;
+  let nav: DocsNavNode[] | undefined;
   if (collections === undefined) {
     groups = validateDocsGroups(value.groups);
-    if (!groups) {
+    nav = validateDocsNav(value.nav);
+    if (!(groups || nav)) {
       throw new Error(
-        `docs config at "${configPath}" must export groups as an array of { slug, title } entries (or define collections)`
+        `docs config at "${configPath}" must export groups or nav as an array (or define collections)`
+      );
+    }
+    if (hasGroups && !groups) {
+      throw new Error(
+        `docs config at "${configPath}" must export groups as an array of { slug, title } entries`
+      );
+    }
+    if (hasNav && !nav) {
+      throw new Error(
+        `docs config at "${configPath}" must export nav as an array of navigation nodes`
       );
     }
   }
@@ -502,6 +593,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   return {
     ...(collections ? { collections } : {}),
     ...(groups ? { groups } : {}),
+    ...(nav ? { nav } : {}),
     ...(value.i18n === undefined
       ? {}
       : { i18n: value.i18n as DocsConfig["i18n"] }),
@@ -670,19 +762,100 @@ function mergeCollectionGroups(
   return merged;
 }
 
+function prefixCollectionNavPath(value: string, mountPath: string): string {
+  if (!(mountPath && value.startsWith("/"))) {
+    return value;
+  }
+  return `/${normalizeDocsPath(path.join(mountPath, value.replace(/^\/+/, "")))}`;
+}
+
+function prefixCollectionNavNode(
+  node: DocsNavNode,
+  mountPath: string,
+  isRoot = true
+): DocsNavNode {
+  if (!mountPath) {
+    return node;
+  }
+  const base =
+    isRoot || node.base?.startsWith("/")
+      ? normalizeDocsPath(
+          path.join(mountPath, node.base?.replace(/^\/+/, "") ?? "")
+        )
+      : node.base;
+  return {
+    ...node,
+    ...(base === undefined ? {} : { base }),
+    ...(node.pages
+      ? {
+          pages: node.pages.map((entry) =>
+            typeof entry === "string"
+              ? prefixCollectionNavPath(entry, mountPath)
+              : {
+                  ...entry,
+                  include: prefixCollectionNavPath(entry.include, mountPath),
+                  ...(entry.exclude === undefined
+                    ? {}
+                    : {
+                        exclude: Array.isArray(entry.exclude)
+                          ? entry.exclude.map((exclude) =>
+                              prefixCollectionNavPath(exclude, mountPath)
+                            )
+                          : prefixCollectionNavPath(entry.exclude, mountPath),
+                      }),
+                }
+          ),
+        }
+      : {}),
+    ...(node.children
+      ? {
+          children: node.children.map((child) =>
+            prefixCollectionNavNode(child, mountPath, false)
+          ),
+        }
+      : {}),
+  };
+}
+
+function mergeCollectionNav(
+  collections: Record<string, DocsCollection>,
+  sources: ResolvedDocsSource[]
+): DocsNavNode[] {
+  const nav: DocsNavNode[] = [];
+  const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
+  for (const [key, collection] of Object.entries(collections)) {
+    if (!collection.nav) {
+      continue;
+    }
+    const source = sourcesByKey.get(key);
+    for (const node of collection.nav) {
+      nav.push(prefixCollectionNavNode(node, source?.mountPath ?? ""));
+    }
+  }
+  return nav;
+}
+
 function resolveGenerateMetadata(
   srcDir: string,
   loaded: LoadedDocsConfig | null,
-  args: GenerateArgs
+  args: GenerateArgs,
+  docsSources: ResolvedDocsSource[]
 ): Promise<ResolvedGenerateMetadata> {
   if (loaded) {
     const collectionGroups = loaded.config.collections
       ? mergeCollectionGroups(loaded.config.collections)
       : undefined;
+    const collectionNav = loaded.config.collections
+      ? mergeCollectionNav(loaded.config.collections, docsSources)
+      : undefined;
     return Promise.resolve({
       configPath: loaded.path,
       groups: collectionGroups ?? loaded.config.groups ?? [],
       i18n: loaded.config.i18n,
+      nav:
+        collectionNav && collectionNav.length > 0
+          ? collectionNav
+          : loaded.config.nav,
       product: applyProductOverrides(loaded.config.product, args),
       typeTableBasePath: loaded.config.typeTableBasePath
         ? path.resolve(srcDir, loaded.config.typeTableBasePath)
@@ -1235,20 +1408,28 @@ export async function runGenerateCommand(
 
   let sourceMirror: SourceMirror | undefined;
   try {
-    const metadata = await resolveGenerateMetadata(srcDir, loadedConfig, args);
+    const metadata = await resolveGenerateMetadata(
+      srcDir,
+      loadedConfig,
+      args,
+      docsSources
+    );
     sourceMirror = await createSourceMirror(srcDir, docsSources, args);
     // Collections-mode configs may omit per-collection `groups` and lean on
     // the same frontmatter-discovery path used when no config is present.
     const needsGroupInference =
       !metadata.configPath ||
       Boolean(loadedConfig?.config.collections && metadata.groups.length === 0);
-    const { groups, product, typeTableBasePath, typeTableStrict } =
+    const { groups, nav, product, typeTableBasePath, typeTableStrict } =
       needsGroupInference
         ? {
             ...metadata,
             groups: await inferGroups(sourceMirror.docsDir),
           }
         : metadata;
+    const hasExplicitPathFilters =
+      args.include.length > 0 || args.exclude.length > 0;
+    const effectiveNav = hasExplicitPathFilters ? undefined : nav;
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
 
@@ -1259,6 +1440,7 @@ export async function runGenerateCommand(
       const navigation = await resolveDocsNavigation({
         srcDir: sourceMirror.srcDir,
         groups,
+        nav: effectiveNav,
         mounts,
         i18n: metadata.i18n,
         locale,
@@ -1290,6 +1472,7 @@ export async function runGenerateCommand(
         outDir,
         product,
         groups,
+        nav: effectiveNav,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
       });
@@ -1299,6 +1482,7 @@ export async function runGenerateCommand(
         files: { agentsMd: agents.outputPath },
         filters: sourceMirror.filters,
         groups,
+        ...(effectiveNav ? { nav: effectiveNav } : {}),
         mounts,
         mode: "bundle",
         outDir,
@@ -1317,6 +1501,7 @@ export async function runGenerateCommand(
         baseUrl: args.baseUrl,
         product,
         groups,
+        nav: effectiveNav,
         mounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
@@ -1327,6 +1512,7 @@ export async function runGenerateCommand(
         baseUrl: args.baseUrl,
         product: { name: product.name },
         groups,
+        nav: effectiveNav,
         mounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
@@ -1344,6 +1530,7 @@ export async function runGenerateCommand(
         baseUrl: args.baseUrl,
         product,
         groups,
+        nav: effectiveNav,
         mounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
@@ -1361,6 +1548,7 @@ export async function runGenerateCommand(
             baseUrl: args.baseUrl,
             product,
             groups,
+            nav: effectiveNav,
             mounts,
             i18n: metadata.i18n,
             locale: locale.code,
@@ -1370,6 +1558,7 @@ export async function runGenerateCommand(
             baseUrl: args.baseUrl,
             product: { name: product.name },
             groups,
+            nav: effectiveNav,
             mounts,
             i18n: metadata.i18n,
             locale: locale.code,
@@ -1386,6 +1575,7 @@ export async function runGenerateCommand(
             baseUrl: args.baseUrl,
             product,
             groups,
+            nav: effectiveNav,
             mounts,
             i18n: metadata.i18n,
             locale: locale.code,
@@ -1411,6 +1601,7 @@ export async function runGenerateCommand(
         },
         filters: sourceMirror.filters,
         groups,
+        ...(effectiveNav ? { nav: effectiveNav } : {}),
         mounts,
         mode: "site",
         outDir,

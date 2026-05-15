@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useRouterState } from "@tanstack/react-router";
-import { navigationRoutes } from "@/lib/docs";
+import { isNavigationRouteActive, navigationRoutes } from "@/lib/docs";
 import { cn } from "@/lib/utils";
 import { SearchBar } from "./search-bar";
 
@@ -77,19 +77,22 @@ export function SiteHeader() {
                 <span className="sr-only">View as Markdown</span>
               </a>
             )}
-            {navigationRoutes.map((route) => (
-              <Link
-                aria-current={pathname === route.to ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
-                  pathname === route.to && "bg-secondary text-foreground"
-                )}
-                key={route.to}
-                to={route.to}
-              >
-                {route.label}
-              </Link>
-            ))}
+            {navigationRoutes.map((route) => {
+              const isActive = isNavigationRouteActive(pathname, route);
+              return (
+                <Link
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+                    isActive && "bg-secondary text-foreground"
+                  )}
+                  key={route.to}
+                  to={route.to}
+                >
+                  {route.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </div>
