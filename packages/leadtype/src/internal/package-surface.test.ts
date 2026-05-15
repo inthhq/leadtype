@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { glob } from "tinyglobby";
 import { describe, expect, it } from "vitest";
 import packageJson from "../../package.json";
@@ -31,6 +32,7 @@ const FRAMEWORK_RUNTIME_IMPORTS = [
 
 const IMPORT_PATTERN =
   /(?:^|\n)\s*(?:import|export)(?:\s+type)?\s+(?:[^"']+from\s+)?["']([^"']+)["']/g;
+const MODULE_CALL_PATTERN = /\b(?:import|require)\(\s*["']([^"']+)["']\s*\)/g;
 
 function readSrc(relativePath: string): string {
   return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
@@ -38,9 +40,11 @@ function readSrc(relativePath: string): string {
 
 function extractImportSpecifiers(source: string): string[] {
   const specifiers: string[] = [];
-  for (const match of source.matchAll(IMPORT_PATTERN)) {
-    if (match[1]) {
-      specifiers.push(match[1]);
+  for (const pattern of [IMPORT_PATTERN, MODULE_CALL_PATTERN]) {
+    for (const match of source.matchAll(pattern)) {
+      if (match[1]) {
+        specifiers.push(match[1]);
+      }
     }
   }
   return specifiers;
@@ -121,7 +125,7 @@ describe("package surface", () => {
 
 describe("core/adapter boundary", () => {
   // Lazily resolved so the test files themselves can be skipped from the scan.
-  const srcRoot = new URL("../", import.meta.url).pathname;
+  const srcRoot = fileURLToPath(new URL("../", import.meta.url));
 
   async function listSourceFiles(): Promise<string[]> {
     const matches = await glob("**/*.ts", {
