@@ -40,6 +40,8 @@ Plus an MDX integration for your bundler (`@next/mdx`, `@astrojs/mdx`, `@mdx-js/
 
 ### Next App Router
 
+The `leadtype/next` adapter wraps the common Next wiring so the page, route handler, and search hook each become a one-line export. Use it as the recommended path; fall back to calling `createDocsSource()` directly only when you need behavior the adapter doesn't expose.
+
 ```ts title="next.config.mjs"
 import createMDX from "@next/mdx";
 import { createMdxSourcePlugins } from "leadtype/mdx";
@@ -57,14 +59,20 @@ export default createMDX({
 ```tsx title="app/docs/[[...slug]]/page.tsx"
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote-client/rsc";
+import {
+  createGenerateStaticParams,
+  createLoadPageData,
+} from "leadtype/next";
 import { source } from "@/lib/source";
 import { mdxComponents } from "@/lib/mdx-components";
+
+const loadPageData = createLoadPageData({ source });
+export const generateStaticParams = createGenerateStaticParams({ source });
 
 export default async function DocsPage({
   params,
 }: { params: Promise<{ slug?: string[] }> }) {
-  const { slug = [] } = await params;
-  const page = await source.loadPage(slug);
+  const page = await loadPageData((await params).slug);
   if (!page) notFound();
 
   return (
@@ -75,12 +83,20 @@ export default async function DocsPage({
     </article>
   );
 }
-
-export async function generateStaticParams() {
-  const pages = await source.listPages();
-  return pages.map((page) => ({ slug: page.slug }));
-}
 ```
+
+Add a sibling `route.ts` to serve raw markdown and content negotiation:
+
+```ts title="app/docs/[[...slug]]/route.ts"
+import { createDocsRouteHandler } from "leadtype/next";
+import manifest from "@/generated/agent-readability.json" with { type: "json" };
+
+export const GET = createDocsRouteHandler({
+  manifest: { ...manifest, version: 1 } as const,
+});
+```
+
+Pair with `useLeadtypeSearch` from `leadtype/next/client` when building a search input — see the [search recipe](/docs/build/add-search).
 
 ### Astro Content Collections
 
@@ -190,7 +206,31 @@ function DocsCatchAllRoute() {
 
 Generate `docs-pages.json` at build time by calling `createDocsSource().listPages()` from a build script and writing each page's `slug`, `urlPath`, and `globKey` (path relative to the catch-all route, POSIX separators).
 
-### Vite + `@mdx-js/rollup` (works for Vue, Solid, Svelte starters)
+There is no `leadtype/tanstack-start` export yet. The future adapter should wrap this same shape with TanStack Router route helpers, server functions, and React state helpers. TanStack AI answer streaming already lives separately under `leadtype/search/tanstack`.
+
+### Vue + Vite
+
+Use a Vue content or MDX plugin that exposes a unified/remark plugin list, then pass Leadtype's source preset into that plugin. Leadtype supplies the transforms, route/search data, and tag prop contracts; your Vue app owns rendering.
+
+```ts title="vite.config.ts"
+import vue from "@vitejs/plugin-vue";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import { defineConfig } from "vite";
+
+const leadtypeRemarkPlugins = createMdxSourcePlugins();
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    // Add `leadtypeRemarkPlugins` to your Vue MDX/content plugin's
+    // remark/unified plugin list.
+  ],
+});
+```
+
+For client search today, fetch `/docs/search-index.json` and `/docs/search-content.json`, then call `searchDocs()` from `leadtype/search`. A future `leadtype/search/vue` helper should expose the same behavior as a Vue composable.
+
+### Vite + `@mdx-js/rollup` (React, Preact, Solid, or custom JSX runtimes)
 
 ```ts title="vite.config.ts"
 import mdx from "@mdx-js/rollup";
@@ -204,6 +244,8 @@ export default {
 };
 ```
 
+> Nuxt, SvelteKit, Astro, TanStack Start, Vue, and Svelte recipes wire `createDocsSource()` manually today. Dedicated `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`, `leadtype/search/vue`, and `leadtype/search/svelte` adapters with native handler factories and state primitives are tracked under issue [#41](https://github.com/inthhq/leadtype/issues/41) and the search-helper follow-up [#45](https://github.com/inthhq/leadtype/issues/45).
+
 ### Nuxt
 
 ```ts title="nuxt.config.ts"
@@ -214,6 +256,8 @@ export default defineNuxtConfig({
   mdc: { remarkPlugins: [...createMdxSourcePlugins()] },
 });
 ```
+
+Use Nitro routes for generated markdown and Agent Readability artifacts. For search, load the generated JSON files from a Vue composable and pass them to `searchDocs()` from `leadtype/search`; a future `leadtype/nuxt` adapter should make that composable copy-paste small without owning UI.
 
 ### SvelteKit + `mdsvex`
 
@@ -226,6 +270,8 @@ export default {
   preprocess: mdsvex({ remarkPlugins: [...createMdxSourcePlugins()] }),
 };
 ```
+
+Use `+page.server.ts` to call `source.loadPage(slug)`, `entries()` to prerender known routes from `source.listPages()`, and `+server.ts` for markdown or JSON artifact responses. For search, load generated JSON into a store or rune and call `searchDocs()`; a future `leadtype/search/svelte` helper should keep that state primitive UI-free.
 
 ### Pattern for any other host
 

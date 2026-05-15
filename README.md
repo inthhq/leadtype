@@ -23,7 +23,7 @@ flowchart LR
   bundle_out --> offline_agents
 ```
 
-leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
+leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, Nuxt, SvelteKit, Vue, Svelte, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
 
 ## Choose your path
 
@@ -63,6 +63,7 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 - [Add search](https://leadtype.dev/docs/build/add-search)
 - [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
 - [CLI reference](https://leadtype.dev/docs/reference/cli)
+- [Architecture](https://leadtype.dev/docs/reference/architecture) — core package boundary and framework adapter rules
 - [Methodology](https://leadtype.dev/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
 
 ## Repo layout
