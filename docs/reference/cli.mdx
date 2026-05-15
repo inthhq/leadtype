@@ -173,7 +173,7 @@ leadtype sync [options]
 | `--repo <pat>` | — | Substring filter on the repository URL. Sources whose `repository` does not contain `<pat>` are skipped. |
 | `-h`, `--help` | — | Print usage. |
 
-Exit codes: `0` all targeted sources are ready, `1` sync failure (clone error, offline cache miss, `git` not installed), `2` no `leadtype.config.*` found or no `collections` to sync.
+Exit codes: `0` all targeted sources are ready, `1` sync failure (clone error, offline cache miss, `git` not installed), `2` configuration or usage error (no `leadtype.config.*` found, no `collections` to sync, unknown flag, mutually exclusive flags).
 
 ### Sync modes at a glance
 

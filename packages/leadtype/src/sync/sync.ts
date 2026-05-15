@@ -28,7 +28,13 @@ export type GitRunner = (
 
 export const SYNC_MANIFEST_FILE = ".leadtype-sync.json";
 
-const SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
+// Git allows abbreviating a commit SHA to 7+ hex characters; full SHAs are 40.
+const MIN_SHA_LENGTH = 7;
+const MAX_SHA_LENGTH = 40;
+const SHA_PATTERN = new RegExp(
+  `^[0-9a-f]{${MIN_SHA_LENGTH},${MAX_SHA_LENGTH}}$`,
+  "i"
+);
 const HTTPS_GIT_URL = /^https?:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/i;
 const SCP_LIKE_GIT_URL = /^(?:[\w.-]+@)?([^:]+):(.+?)(?:\.git)?$/;
 const SAFE_SLUG = /[^a-zA-Z0-9_.-]/g;
@@ -273,9 +279,14 @@ async function cloneRemote(
     await rm(source.cacheDir, { recursive: true, force: true });
   }
 
+  // The `--` end-of-options separator stops git from parsing the user-supplied
+  // `repository` URL as a flag (a malicious config like `--upload-pack=…`
+  // would otherwise be interpreted as a clone option). `source.ref` is already
+  // rejected at config-load time when it begins with `-`.
   if (isShaRef(source.ref)) {
     const cloneResult = await runGit(runner, [
       "clone",
+      "--",
       source.repository,
       source.cacheDir,
     ]);
@@ -295,6 +306,7 @@ async function cloneRemote(
       "1",
       "--branch",
       source.ref,
+      "--",
       source.repository,
       source.cacheDir,
     ]);
@@ -436,6 +448,9 @@ async function syncOne(
     syncedAt: new Date().toISOString(),
   });
 
-  const status: SyncStatus = hasCheckout ? "refreshed" : "fresh";
+  // "refreshed" means we fast-forwarded an existing checkout. A destructive
+  // re-clone (no prior checkout, or stale ref) is reported as "fresh" so
+  // callers can distinguish in-place updates from full re-acquisition.
+  const status: SyncStatus = refreshInPlace ? "refreshed" : "fresh";
   return { source, status, commit };
 }

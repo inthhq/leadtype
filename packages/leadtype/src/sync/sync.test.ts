@@ -333,6 +333,56 @@ describe("syncCollections", () => {
     expect(result.sources[0].commit).toBe("newsha2");
   });
 
+  it("reports `fresh` (not `refreshed`) when refresh re-clones after ref drift", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, { "docs/index.mdx": "stale\n" });
+    // Manifest pinned to an OLD ref; the live config now wants `main`.
+    await writeFile(
+      path.join(cacheDir, SYNC_MANIFEST_FILE),
+      `${JSON.stringify(
+        {
+          version: 1,
+          repository: "https://github.com/example/repo",
+          ref: "old-branch",
+          commit: "oldsha",
+          syncedAt: "2026-05-14T00:00:00.000Z",
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        const target = args.at(-1) as string;
+        await seedFakeCheckout(target, { "docs/index.mdx": "" });
+        return ok();
+      }
+      if (args[0] === "rev-parse") {
+        return ok("newsha\n");
+      }
+      return fail(`unexpected: ${args.join(" ")}`);
+    };
+
+    const result = await syncCollections({
+      mode: "refresh",
+      configDir,
+      collections: {
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+        },
+      },
+      runner,
+    });
+
+    expect(result.sources[0].status).toBe("fresh");
+  });
+
   it("offline errors when cache is missing", async () => {
     await expect(
       syncCollections({

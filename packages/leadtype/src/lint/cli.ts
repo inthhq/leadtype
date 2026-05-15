@@ -153,7 +153,10 @@ export async function runLintCommand(
 
   const resolvedSrcDir = resolve(args.srcDir);
 
-  const projectConfig = await loadLeadtypeConfig(process.cwd());
+  // Look for the project-level leadtype.config.* under the user's --src so a
+  // monorepo invocation like `leadtype lint --src packages/foo` lints that
+  // package's collections rather than the repo-root project.
+  const projectConfig = await loadLeadtypeConfig(resolvedSrcDir);
   const collections = projectConfig?.config.collections;
 
   let result: LintResult;

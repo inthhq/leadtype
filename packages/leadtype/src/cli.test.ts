@@ -1472,4 +1472,106 @@ This page is valid, but the output path is not a directory.
       "include must be an array of glob strings"
     );
   });
+
+  it("treats `--sync --sync` as a single --sync, not a mutex violation", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync", "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+  });
+
+  it("rejects a collection repository that begins with `-`", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: { repository: "--upload-pack=evil", dir: "docs", prefix: "/docs" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('repository must not begin with "-"');
+  });
+
+  it("rejects a collection ref that begins with `-`", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: {
+    guide: {
+      repository: "https://github.com/example/repo",
+      ref: "--foo",
+      dir: "docs",
+      prefix: "/docs",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('ref must not begin with "-"');
+  });
+
+  it("lint --src honors the explicit project root when looking for leadtype.config.ts", async () => {
+    const monorepoRoot = await createTempDir();
+    const packageRoot = path.join(monorepoRoot, "packages", "foo");
+    await mkdir(path.join(packageRoot, "guide"), { recursive: true });
+    await writeFile(
+      path.join(packageRoot, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(packageRoot, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", summary: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const capture = createCapture();
+    const code = await runCli(["lint", "--src", packageRoot], capture.io);
+
+    expect(code).toBe(0);
+    // The collection banner proves we routed through the project config.
+    expect(capture.stderr).toContain("Linting collection [guide]");
+  });
 });

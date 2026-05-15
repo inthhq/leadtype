@@ -7,7 +7,7 @@ export type SyncCliIo = {
   stdout: Pick<NodeJS.WriteStream, "write">;
 };
 
-type SyncCliArgs = {
+export type SyncCliArgs = {
   srcDir: string;
   mode: SyncMode;
   repoFilter?: string;

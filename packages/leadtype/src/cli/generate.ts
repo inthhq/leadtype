@@ -284,8 +284,11 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     }
   }
 
-  if (syncFlags.length > 1) {
-    throw new Error(`${syncFlags.join(" and ")} are mutually exclusive`);
+  const distinctSyncFlags = [...new Set(syncFlags)];
+  if (distinctSyncFlags.length > 1) {
+    throw new Error(
+      `${distinctSyncFlags.join(" and ")} are mutually exclusive`
+    );
   }
 
   return args;
@@ -414,9 +417,24 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" repository must be a string`
       );
     }
+    // Guard against args that would be parsed as git options when spawned
+    // (e.g. a `repository` like `--upload-pack=…` injecting flags).
+    if (
+      typeof entry.repository === "string" &&
+      entry.repository.startsWith("-")
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" repository must not begin with "-"`
+      );
+    }
     if (entry.ref !== undefined && typeof entry.ref !== "string") {
       throw new Error(
         `docs config at "${configPath}": collection "${key}" ref must be a string`
+      );
+    }
+    if (typeof entry.ref === "string" && entry.ref.startsWith("-")) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" ref must not begin with "-"`
       );
     }
     if (entry.prefix !== undefined && typeof entry.prefix !== "string") {
