@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "leadtype generate and leadtype lint — flags, exit codes, and JSON output."
+description: "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output."
 group: reference
 ---
 
@@ -10,7 +10,7 @@ group: reference
 leadtype <command> [options]
 ```
 
-Two commands: `generate` runs the full pipeline, `lint` validates content. Run `leadtype help <command>` for inline usage.
+Three commands: `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/authoring/collections), and `lint` validates content. Run `leadtype help <command>` for inline usage.
 
 ## generate
 
@@ -32,15 +32,22 @@ leadtype generate [options]
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
 | `--exclude <glob>` | none | Docs-root-relative glob to exclude. Applied after `--include`. |
 | `--enrich-git` | off | Add `lastModified` and `lastAuthor` to frontmatter from git history. |
+| `--sync` | off | Collections mode only. Clone any missing remote sources before generating; leave existing caches alone. Mutually exclusive with `--refresh` and `--offline`. |
+| `--refresh` | off | Collections mode only. Re-fetch and fast-forward every remote source's cache. Mutually exclusive with `--sync` and `--offline`. |
+| `--offline` | off | Collections mode only. Never touch the network; error if any remote cache is missing or its `ref` has drifted. Mutually exclusive with `--sync` and `--refresh`. |
 | `--format <fmt>` | `text` | `text` or `json`. JSON prints a single result object on stdout. |
 | `--json` | — | Alias for `--format json`. |
 | `-h`, `--help` | — | Print usage. |
 
-Exit codes: `0` success, `1` runtime error (docs dir missing, config load error, unknown group, conversion error), `2` CLI usage error.
+Exit codes: `0` success, `1` runtime error (docs dir missing, config load error, unknown group, conversion error, sync failure), `2` CLI usage error.
+
+When the project root has a `leadtype.config.{ts,js,mjs,cjs}` that declares `collections`, `--docs-dir` is rejected (collections fully describe their sources). The legacy `--docs-dir` shape stays available for projects without a collections config.
 
 ### Config loading
 
-`leadtype generate` automatically loads `docs.config.ts` from the docs folder (`<src>/<docs-dir>/docs.config.ts`). JavaScript config files also work: `docs.config.js`, `docs.config.mjs`, and `docs.config.cjs`.
+`leadtype generate` looks for a project-level `leadtype.config.{ts,js,mjs,cjs}` at the directory passed to `--src` (defaults to cwd). If that file exists and defines `collections`, the [collections pipeline](/docs/authoring/collections) runs.
+
+Otherwise — or as a fallback — leadtype loads `docs.config.{ts,js,mjs,cjs}` from each `--docs-dir` (`<src>/<docs-dir>/docs.config.ts`). This is the legacy single-folder shape and is unchanged.
 
 ```ts
 import { defineDocsConfig } from "leadtype";
@@ -149,6 +156,65 @@ await generateLlmsTxt({
 ```
 
 See [LLM files](/docs/reference/llm) for the rest of the script.
+
+## sync
+
+Clone or refresh the remote sources declared by [collections](/docs/authoring/collections) in a project-level `leadtype.config.{ts,js,mjs,cjs}`. Local-only collections are no-ops.
+
+```bash
+leadtype sync [options]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Project root containing `leadtype.config.{ts,js,mjs,cjs}`. |
+| `--refresh` | off | Re-fetch and fast-forward every cache. Without this, an existing cache that already matches the configured `(repository, ref)` is left alone. |
+| `--offline` | off | Never touch the network; error if any source is missing or its `ref` has drifted. Mutually exclusive with `--refresh`. |
+| `--repo <pat>` | — | Substring filter on the repository URL. Sources whose `repository` does not contain `<pat>` are skipped. |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` all targeted sources are ready, `1` sync failure (clone error, offline cache miss, `git` not installed), `2` no `leadtype.config.*` found or no `collections` to sync.
+
+### Sync modes at a glance
+
+| Mode | Trigger | Behavior |
+| --- | --- | --- |
+| `missing` | `leadtype generate` (no sync flag) | Error if any remote cache is missing or stale. Cheapest path; suits CI where you've already run `leadtype sync`. |
+| `auto` | `leadtype sync`, `leadtype generate --sync` | Clone missing caches; leave caches that already match the configured `(repository, ref)` alone. |
+| `refresh` | `leadtype sync --refresh`, `leadtype generate --refresh` | Clone missing caches; fast-forward (or re-clone on drift) the rest. |
+| `offline` | `leadtype sync --offline`, `leadtype generate --offline` | Never touch the network. Error if any cache is missing or stale. |
+
+### Cache layout
+
+Each remote collection's clone lives at `<cacheDir>` (default `.leadtype/sources/<repo-slug>@<ref>`, relative to the config dir). Override per collection with `cacheDir` when other tooling needs a stable on-disk path (the c15t example pins `cacheDir: ".docs-src/c15t"` so type-table extraction can find the repo at a known location).
+
+Inside each cacheDir, `leadtype sync` writes a `.leadtype-sync.json` manifest:
+
+```json
+{
+  "version": 1,
+  "repository": "https://github.com/c15t/c15t",
+  "ref": "main",
+  "commit": "abc1234…",
+  "syncedAt": "2026-05-15T04:52:39.287Z"
+}
+```
+
+`leadtype generate` reads this on subsequent runs to decide whether the cache is current. Manual `git pull` inside a cacheDir won't invalidate the manifest — run `leadtype sync --refresh` instead.
+
+### Sharing one clone across collections
+
+Two collections that point at the same `(repository, ref)` share a single clone. The sync engine dedupes by repo+ref before issuing any git operations, so this:
+
+```ts
+const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as const;
+collections: {
+  docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
+  changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
+}
+```
+
+…runs exactly one `git clone`, with both collections reading from `<cacheDir>/docs` and `<cacheDir>/changelog`.
 
 ## lint
 

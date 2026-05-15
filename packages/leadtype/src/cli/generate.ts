@@ -19,7 +19,12 @@ import {
   setLogStreams,
   setVerbose,
 } from "../internal/logger";
-import type { DocsConfig, DocsGroup, ProductInfo } from "../llm";
+import type {
+  DocsCollection,
+  DocsConfig,
+  DocsGroup,
+  ProductInfo,
+} from "../llm";
 import {
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
@@ -34,6 +39,11 @@ import {
 } from "../remark";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
+import {
+  resolveAllCollections,
+  type SyncMode,
+  syncCollections,
+} from "../sync/sync";
 
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
@@ -42,6 +52,12 @@ const DOCS_CONFIG_FILENAMES = [
   "docs.config.js",
   "docs.config.mjs",
   "docs.config.cjs",
+] as const;
+const LEADTYPE_CONFIG_FILENAMES = [
+  "leadtype.config.ts",
+  "leadtype.config.js",
+  "leadtype.config.mjs",
+  "leadtype.config.cjs",
 ] as const;
 const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
 const INFER_GROUPS_READ_BATCH_SIZE = 32;
@@ -63,6 +79,15 @@ export type GenerateArgs = {
   outDir: string;
   srcDir: string;
   summary?: string;
+  /**
+   * How to ensure remote sources are present before generating. Only used
+   * when the loaded config defines `collections`.
+   *   - `missing` (default): error if any cache is missing or ref-drifted.
+   *   - `auto` (`--sync`): clone missing caches; leave existing ones alone.
+   *   - `refresh` (`--refresh`): re-fetch and fast-forward every cache.
+   *   - `offline` (`--offline`): never touch the network; error on miss.
+   */
+  syncMode: SyncMode;
   verbose: boolean;
 };
 
@@ -135,7 +160,7 @@ function createGenerateRemarkPlugins({
   return plugins;
 }
 
-type LoadedDocsConfig = {
+export type LoadedDocsConfig = {
   config: DocsConfig;
   path: string;
 };
@@ -174,6 +199,9 @@ Options:
   --include <glob>   Include MDX paths matching this docs-root-relative glob
   --exclude <glob>   Exclude MDX paths matching this docs-root-relative glob
   --enrich-git       Add lastModified and lastAuthor from git history
+  --sync             Clone missing remote sources before generating (collections mode)
+  --refresh          Re-fetch and fast-forward every remote source (collections mode)
+  --offline          Fail if any remote source cache is missing or stale; never touch the network
   --format <fmt>     text | json (default: text)
   --json             Alias for --format json
   -v, --verbose      Print per-file progress events to stderr
@@ -203,8 +231,10 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     include: [],
     outDir: DEFAULT_OUT_DIR,
     srcDir: ".",
+    syncMode: "missing",
     verbose: false,
   };
+  const syncFlags: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -230,6 +260,15 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.enrichGit = true;
     } else if (arg === "--bundle") {
       args.bundle = true;
+    } else if (arg === "--sync") {
+      syncFlags.push(arg);
+      args.syncMode = "auto";
+    } else if (arg === "--refresh") {
+      syncFlags.push(arg);
+      args.syncMode = "refresh";
+    } else if (arg === "--offline") {
+      syncFlags.push(arg);
+      args.syncMode = "offline";
     } else if (arg === "--format") {
       const value = readValue(argv, ++i, "--format");
       if (!isGenerateFormat(value)) {
@@ -245,8 +284,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     }
   }
 
-  if (args.docsDirs.length === 0) {
-    args.docsDirs = [DEFAULT_DOCS_DIR];
+  if (syncFlags.length > 1) {
+    throw new Error(`${syncFlags.join(" and ")} are mutually exclusive`);
   }
 
   return args;
@@ -343,6 +382,75 @@ function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
   return value as DocsGroup[];
 }
 
+function validateCollections(
+  value: unknown,
+  configPath: string
+): Record<string, DocsCollection> | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}" must export "collections" as an object map`
+    );
+  }
+  const out: Record<string, DocsCollection> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (!isPlainRecord(entry)) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" must be an object`
+      );
+    }
+    if (typeof entry.dir !== "string" || entry.dir.length === 0) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" must set "dir" to a non-empty string`
+      );
+    }
+    if (
+      entry.repository !== undefined &&
+      typeof entry.repository !== "string"
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" repository must be a string`
+      );
+    }
+    if (entry.ref !== undefined && typeof entry.ref !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" ref must be a string`
+      );
+    }
+    if (entry.prefix !== undefined && typeof entry.prefix !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" prefix must be a string`
+      );
+    }
+    if (
+      entry.groups !== undefined &&
+      validateDocsGroups(entry.groups) === undefined
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" groups must be an array of { slug, title } entries`
+      );
+    }
+    if (entry.include !== undefined && !isStringArray(entry.include)) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" include must be an array of glob strings`
+      );
+    }
+    if (entry.exclude !== undefined && !isStringArray(entry.exclude)) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" exclude must be an array of glob strings`
+      );
+    }
+    out[key] = entry as DocsCollection;
+  }
+  return out;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
 function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -353,14 +461,29 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
       `docs config at "${configPath}" must export product.name and product.summary`
     );
   }
-  const groups = validateDocsGroups(value.groups);
-  if (!groups) {
+
+  const collections = validateCollections(value.collections, configPath);
+  const hasGroups = value.groups !== undefined;
+
+  if (collections && hasGroups) {
     throw new Error(
-      `docs config at "${configPath}" must export groups as an array of { slug, title } entries`
+      `docs config at "${configPath}" sets both "groups" and "collections". Move groups into the relevant collection(s) — top-level groups is for the single-collection shape only.`
     );
   }
+
+  let groups: DocsGroup[] | undefined;
+  if (collections === undefined) {
+    groups = validateDocsGroups(value.groups);
+    if (!groups) {
+      throw new Error(
+        `docs config at "${configPath}" must export groups as an array of { slug, title } entries (or define collections)`
+      );
+    }
+  }
+
   return {
-    groups,
+    ...(collections ? { collections } : {}),
+    ...(groups ? { groups } : {}),
     ...(value.i18n === undefined
       ? {}
       : { i18n: value.i18n as DocsConfig["i18n"] }),
@@ -397,11 +520,12 @@ async function importConfigModule(configPath: string): Promise<unknown> {
 }
 
 async function loadDocsConfigFromDir(
-  docsDir: string
+  dir: string,
+  filenames: readonly string[]
 ): Promise<LoadedDocsConfig | null> {
-  const configPath = DOCS_CONFIG_FILENAMES.map((filename) =>
-    path.join(docsDir, filename)
-  ).find((candidate) => existsSync(candidate));
+  const configPath = filenames
+    .map((filename) => path.join(dir, filename))
+    .find((candidate) => existsSync(candidate));
 
   if (!configPath) {
     return null;
@@ -421,11 +545,39 @@ async function loadDocsConfigFromDir(
   }
 }
 
-async function loadDocsConfig(
-  docsDirs: string[]
+/**
+ * Look for `leadtype.config.{ts,js,mjs,cjs}` in the given directory.
+ * Used by the sync CLI; for `generate`, prefer {@link loadDocsConfig}.
+ */
+export async function loadLeadtypeConfig(
+  cwd: string
 ): Promise<LoadedDocsConfig | null> {
-  for (const docsDir of docsDirs) {
-    const loaded = await loadDocsConfigFromDir(docsDir);
+  return loadDocsConfigFromDir(cwd, LEADTYPE_CONFIG_FILENAMES);
+}
+
+/**
+ * Locate and load the docs config. Lookup order:
+ *   1. `leadtype.config.{ts,js,mjs,cjs}` at `cwd` (project root).
+ *   2. `docs.config.{ts,js,mjs,cjs}` in each `docsDir` (legacy).
+ *
+ * The new `leadtype.config.*` filename is opt-in to project-level config;
+ * the per-docs-dir `docs.config.*` lookup stays the same as before.
+ */
+async function loadDocsConfig(opts: {
+  cwd?: string;
+  docsDirs: string[];
+}): Promise<LoadedDocsConfig | null> {
+  if (opts.cwd) {
+    const projectConfig = await loadDocsConfigFromDir(
+      opts.cwd,
+      LEADTYPE_CONFIG_FILENAMES
+    );
+    if (projectConfig) {
+      return projectConfig;
+    }
+  }
+  for (const docsDir of opts.docsDirs) {
+    const loaded = await loadDocsConfigFromDir(docsDir, DOCS_CONFIG_FILENAMES);
     if (loaded) {
       return loaded;
     }
@@ -478,29 +630,52 @@ function applyProductOverrides(
   };
 }
 
-async function resolveGenerateMetadata(
+function mergeCollectionGroups(
+  collections: Record<string, DocsCollection>
+): DocsGroup[] {
+  const merged: DocsGroup[] = [];
+  const seen = new Set<string>();
+  for (const collection of Object.values(collections)) {
+    if (!collection.groups) {
+      continue;
+    }
+    for (const group of collection.groups) {
+      if (seen.has(group.slug.toLowerCase())) {
+        throw new Error(
+          `Group slug "${group.slug}" appears in multiple collections; group slugs must be globally unique across the project.`
+        );
+      }
+      seen.add(group.slug.toLowerCase());
+      merged.push(group);
+    }
+  }
+  return merged;
+}
+
+function resolveGenerateMetadata(
   srcDir: string,
-  docsDirs: string[],
+  loaded: LoadedDocsConfig | null,
   args: GenerateArgs
 ): Promise<ResolvedGenerateMetadata> {
-  const loadedConfig = await loadDocsConfig(docsDirs);
-  if (loadedConfig) {
-    return {
-      configPath: loadedConfig.path,
-      groups: loadedConfig.config.groups,
-      i18n: loadedConfig.config.i18n,
-      product: applyProductOverrides(loadedConfig.config.product, args),
-      typeTableBasePath: loadedConfig.config.typeTableBasePath
-        ? path.resolve(srcDir, loadedConfig.config.typeTableBasePath)
+  if (loaded) {
+    const collectionGroups = loaded.config.collections
+      ? mergeCollectionGroups(loaded.config.collections)
+      : undefined;
+    return Promise.resolve({
+      configPath: loaded.path,
+      groups: collectionGroups ?? loaded.config.groups ?? [],
+      i18n: loaded.config.i18n,
+      product: applyProductOverrides(loaded.config.product, args),
+      typeTableBasePath: loaded.config.typeTableBasePath
+        ? path.resolve(srcDir, loaded.config.typeTableBasePath)
         : undefined,
-      typeTableStrict: loadedConfig.config.typeTableStrict,
-    };
+      typeTableStrict: loaded.config.typeTableStrict,
+    });
   }
-
-  return {
+  return readPackageProduct(srcDir, args).then((product) => ({
     groups: [],
-    product: await readPackageProduct(srcDir, args),
-  };
+    product,
+  }));
 }
 
 type ResolvedDocsSource = {
@@ -508,6 +683,12 @@ type ResolvedDocsSource = {
   input: string;
   mountPath: string;
   urlPrefix: string;
+  /**
+   * Per-source filters from a `DocsCollection.{include,exclude}`. Globs are
+   * interpreted relative to the source's `docsDir`. Combined with the global
+   * CLI `--include`/`--exclude` filters during staging.
+   */
+  filters?: GenerateFilters;
 };
 
 function normalizeDocsSourceInput(input: string): string {
@@ -575,6 +756,62 @@ function sourceMounts(sources: ResolvedDocsSource[]): DocsPathMount[] {
   }));
 }
 
+const DEFAULT_DOCS_URL_PREFIX = "/docs";
+const NESTED_DOCS_PREFIX = `${DEFAULT_DOCS_URL_PREFIX}/`;
+
+function pathPrefixForUrlPrefix(urlPrefix: string): string {
+  if (urlPrefix === DEFAULT_DOCS_URL_PREFIX) {
+    return "";
+  }
+  if (urlPrefix.startsWith(NESTED_DOCS_PREFIX)) {
+    return urlPrefix.slice(NESTED_DOCS_PREFIX.length);
+  }
+  return urlPrefix.replace(/^\/+/, "");
+}
+
+function resolveDocsSourcesFromCollections(
+  collections: Record<string, DocsCollection>,
+  configDir: string
+): ResolvedDocsSource[] {
+  const resolved = resolveAllCollections(collections, configDir);
+  const seenUrlPrefixes = new Set<string>();
+  const seenMounts = new Set<string>();
+  return resolved.map((entry) => {
+    if (entry.urlPrefix === "/") {
+      throw new Error(
+        `collection "${entry.key}" prefix must not be the site root.`
+      );
+    }
+    if (seenUrlPrefixes.has(entry.urlPrefix)) {
+      throw new Error(
+        `multiple collections share URL prefix "${entry.urlPrefix}".`
+      );
+    }
+    seenUrlPrefixes.add(entry.urlPrefix);
+    const mountPath = pathPrefixForUrlPrefix(entry.urlPrefix);
+    const mountKey = mountPath.toLowerCase();
+    if (mountPath && seenMounts.has(mountKey)) {
+      throw new Error(
+        `multiple collections resolve to the same staging mount "${mountPath}".`
+      );
+    }
+    seenMounts.add(mountKey);
+    const include = entry.collection.include ?? [];
+    const exclude = entry.collection.exclude ?? [];
+    const filters: GenerateFilters | undefined =
+      include.length > 0 || exclude.length > 0
+        ? { include, exclude }
+        : undefined;
+    return {
+      docsDir: entry.absoluteDir,
+      input: entry.key,
+      mountPath,
+      urlPrefix: entry.urlPrefix,
+      filters,
+    };
+  });
+}
+
 function joinDocsRelativePath(mountPath: string, relativePath: string): string {
   if (!mountPath) {
     return normalizeDocsPath(relativePath);
@@ -587,14 +824,26 @@ async function copySourceFiles(
   targetDocsDir: string,
   relativePaths?: string[]
 ): Promise<void> {
-  const files =
-    relativePaths ??
-    (await fg("**/*", {
+  let files: string[];
+  if (relativePaths) {
+    files = relativePaths;
+  } else {
+    const include =
+      source.filters && source.filters.include.length > 0
+        ? source.filters.include
+        : ["**/*"];
+    const exclude = source.filters?.exclude ?? [];
+    files = await fg(include, {
       absolute: false,
       cwd: source.docsDir,
       dot: true,
+      // Match the staging-level expansion semantics so bare-directory
+      // include entries don't silently fan out to `dir/**`.
+      expandDirectories: false,
+      ignore: exclude,
       onlyFiles: true,
-    }));
+    });
+  }
 
   await Promise.all(
     files.map(async (file) => {
@@ -889,11 +1138,57 @@ export async function runGenerateCommand(
   setLogStreams({ stderr: io.stderr });
 
   const srcDir = path.resolve(args.srcDir);
+
+  const reportFailure = (message: string): void => {
+    if (args.format === "json") {
+      logger.error({
+        human: { message },
+        json: {
+          event: "generate.fail",
+          fields: {
+            error: message,
+            filters: { exclude: args.exclude, include: args.include },
+          },
+        },
+      });
+    } else {
+      io.stderr.write(`leadtype generate: ${message}\n`);
+    }
+  };
+
+  let loadedConfig: LoadedDocsConfig | null;
   let docsSources: ResolvedDocsSource[];
   try {
-    docsSources = resolveDocsSources(srcDir, args.docsDirs);
+    loadedConfig = await loadLeadtypeConfig(srcDir);
+    if (loadedConfig?.config.collections) {
+      if (args.docsDirs.length > 0) {
+        throw new Error(
+          `cannot pass --docs-dir when ${loadedConfig.path} defines \`collections\`. Collections fully describe their sources.`
+        );
+      }
+      const configDir = path.dirname(loadedConfig.path);
+      await syncCollections({
+        mode: args.syncMode,
+        configDir,
+        collections: loadedConfig.config.collections,
+      });
+      docsSources = resolveDocsSourcesFromCollections(
+        loadedConfig.config.collections,
+        configDir
+      );
+    } else {
+      const docsDirsToResolve =
+        args.docsDirs.length > 0 ? args.docsDirs : [DEFAULT_DOCS_DIR];
+      docsSources = resolveDocsSources(srcDir, docsDirsToResolve);
+      if (!loadedConfig) {
+        loadedConfig = await loadDocsConfig({
+          docsDirs: docsSources.map((source) => source.docsDir),
+        });
+      }
+    }
   } catch (error) {
-    io.stderr.write(`${String(error)}\n`);
+    const message = error instanceof Error ? error.message : String(error);
+    reportFailure(message);
     return 1;
   }
   const docsDir =
@@ -922,15 +1217,20 @@ export async function runGenerateCommand(
 
   let sourceMirror: SourceMirror | undefined;
   try {
-    const metadata = await resolveGenerateMetadata(srcDir, docsDirs, args);
+    const metadata = await resolveGenerateMetadata(srcDir, loadedConfig, args);
     sourceMirror = await createSourceMirror(srcDir, docsSources, args);
+    // Collections-mode configs may omit per-collection `groups` and lean on
+    // the same frontmatter-discovery path used when no config is present.
+    const needsGroupInference =
+      !metadata.configPath ||
+      Boolean(loadedConfig?.config.collections && metadata.groups.length === 0);
     const { groups, product, typeTableBasePath, typeTableStrict } =
-      metadata.configPath
-        ? metadata
-        : {
+      needsGroupInference
+        ? {
             ...metadata,
             groups: await inferGroups(sourceMirror.docsDir),
-          };
+          }
+        : metadata;
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
 
@@ -1114,23 +1414,7 @@ export async function runGenerateCommand(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (args.format === "json") {
-      logger.error({
-        human: { message },
-        json: {
-          event: "generate.fail",
-          fields: {
-            error: message,
-            filters: {
-              exclude: args.exclude,
-              include: args.include,
-            },
-          },
-        },
-      });
-    } else {
-      io.stderr.write(`leadtype generate: ${message}\n`);
-    }
+    reportFailure(message);
     return 1;
   } finally {
     await sourceMirror?.cleanup();

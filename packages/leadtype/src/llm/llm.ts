@@ -8,6 +8,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+import type * as v from "valibot";
 import {
   type DocsI18nConfig,
   type DocsI18nManifest,
@@ -137,16 +138,72 @@ export type DocsGroup = {
   children?: DocsGroup[];
 };
 
+/** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
+export type DocsFrontmatterSchema = v.ObjectSchema<
+  v.ObjectEntries,
+  v.ErrorMessage<v.ObjectIssue> | undefined
+>;
+
+/**
+ * One content set in a multi-source docs site. A collection declares where its
+ * MDX comes from (local `dir`, or a remote git `repository` at `ref`), how it
+ * appears in URLs (`prefix`), and how its frontmatter is validated (`schema`).
+ * Multiple collections may share a repository — acquisition is deduped by
+ * `(repository, ref)`.
+ */
+export type DocsCollection = {
+  /** https or git@ URL. Omit for a local-only collection. */
+  repository?: string;
+  /** Branch, tag, or commit SHA. Defaults to `"main"` for remote sources. */
+  ref?: string;
+  /**
+   * Override the cache directory for the cloned repository. Defaults to
+   * `.leadtype/sources/<repo-slug>@<ref>` relative to the config dir.
+   * Ignored for local-only collections.
+   */
+  cacheDir?: string;
+  /**
+   * Directory containing the MDX. Relative to the repo root for remote
+   * collections, or relative to cwd for local-only collections.
+   */
+  dir: string;
+  /** Optional include globs. Defaults to all `.mdx` files in `dir`. */
+  include?: string[];
+  /** Optional exclude globs. */
+  exclude?: string[];
+  /** URL prefix. Defaults to `"/" + <collection-key>`. */
+  prefix?: string;
+  /**
+   * Per-collection frontmatter schema. Defaults to the standard leadtype
+   * frontmatter schema. Errors are reported as
+   * `[collection:<key>] <relPath>: ...`.
+   */
+  schema?: DocsFrontmatterSchema;
+  /** Per-collection navigation tree. */
+  groups?: DocsGroup[];
+};
+
 /**
  * Combined config for the `leadtype` docs-generation pipeline. Pass to
- * `defineDocsConfig` in a `docs.config.ts` file. Pages declare which group
- * they belong to via MDX frontmatter (`group: <slug>` or `group: [a, b]`),
- * so this config only describes the structure and metadata of groups, not
- * per-page membership.
+ * `defineDocsConfig` in a `leadtype.config.ts` or `docs.config.ts` file.
+ *
+ * A config either uses the single-collection shape (top-level `groups`) or
+ * the multi-collection shape (`collections` map). Setting both is rejected
+ * at config load.
  */
 export type DocsConfig = {
   product: ProductInfo;
-  groups: DocsGroup[];
+  /**
+   * Top-level navigation for the single-collection shape. Mutually exclusive
+   * with `collections`. Pages declare which group they belong to via MDX
+   * frontmatter (`group: <slug>` or `group: [a, b]`).
+   */
+  groups?: DocsGroup[];
+  /**
+   * Multi-source content sets, keyed by collection id. Each collection owns
+   * its own source acquisition, URL prefix, frontmatter schema, and nav.
+   */
+  collections?: Record<string, DocsCollection>;
   i18n?: DocsI18nConfig;
   /**
    * Optional base directory for ExtractedTypeTable / AutoTypeTable path
@@ -163,6 +220,14 @@ export type DocsConfig = {
  */
 export function defineDocsConfig(config: DocsConfig): DocsConfig {
   return config;
+}
+
+/**
+ * Identity helper for a single collection. Use with
+ * {@link defineDocsConfig}'s `collections` map.
+ */
+export function defineCollection(collection: DocsCollection): DocsCollection {
+  return collection;
 }
 
 export type LlmsTxtConfig = {

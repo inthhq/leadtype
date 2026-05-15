@@ -1,8 +1,16 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
+import { loadLeadtypeConfig } from "../cli/generate";
 import { setLogFormat, setVerbose } from "../internal/logger";
+import { resolveAllCollections } from "../sync/sync";
 import { type ReporterFormat, renderReport } from "./reporters";
-import { DEFAULT_IGNORE_GLOBS, type LintSeverity, lintDocs } from "./runner";
+import {
+  DEFAULT_IGNORE_GLOBS,
+  type LintResult,
+  type LintSeverity,
+  type LintViolation,
+  lintDocs,
+} from "./runner";
 
 const DEFAULT_IGNORE_GLOBS_TEXT = DEFAULT_IGNORE_GLOBS.join(", ");
 const STDOUT_FORMATS = new Set<ReporterFormat>(["github", "json"]);
@@ -144,16 +152,54 @@ export async function runLintCommand(
   }
 
   const resolvedSrcDir = resolve(args.srcDir);
-  const result = await lintDocs({
-    srcDir: resolvedSrcDir,
-    // Resolve changelog against the source root so `--changelog changelog`
-    // points inside the src tree, not inside the process cwd.
-    changelogDir: args.changelogDir
-      ? resolve(resolvedSrcDir, args.changelogDir)
-      : undefined,
-    ignore: args.ignore,
-    unknownFieldSeverity: args.unknownFieldSeverity,
-  });
+
+  const projectConfig = await loadLeadtypeConfig(process.cwd());
+  const collections = projectConfig?.config.collections;
+
+  let result: LintResult;
+  if (collections && Object.keys(collections).length > 0) {
+    const configDir = resolve(projectConfig.path, "..");
+    const resolved = resolveAllCollections(collections, configDir);
+    const combined: LintViolation[] = [];
+    let filesScanned = 0;
+    let errors = 0;
+    let warnings = 0;
+    for (const entry of resolved) {
+      io.stderr.write(
+        `Linting collection [${entry.key}] at ${entry.absoluteDir}\n`
+      );
+      const each = await lintDocs({
+        srcDir: entry.absoluteDir,
+        ignore: args.ignore,
+        unknownFieldSeverity: args.unknownFieldSeverity,
+        schemas: entry.collection.schema
+          ? { frontmatter: entry.collection.schema }
+          : undefined,
+      });
+      for (const violation of each.violations) {
+        combined.push({
+          ...violation,
+          message: `[collection:${entry.key}] ${violation.message}`,
+        });
+      }
+      filesScanned += each.summary.filesScanned;
+      errors += each.summary.errors;
+      warnings += each.summary.warnings;
+    }
+    result = {
+      violations: combined,
+      summary: { filesScanned, errors, warnings },
+    };
+  } else {
+    result = await lintDocs({
+      srcDir: resolvedSrcDir,
+      changelogDir: args.changelogDir
+        ? resolve(resolvedSrcDir, args.changelogDir)
+        : undefined,
+      ignore: args.ignore,
+      unknownFieldSeverity: args.unknownFieldSeverity,
+    });
+  }
 
   const output = renderReport(args.format, result);
   // Machine-readable formats go to stdout so they can be piped; the pretty

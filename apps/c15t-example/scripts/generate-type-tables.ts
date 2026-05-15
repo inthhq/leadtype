@@ -39,15 +39,10 @@ const packagesPathRegex = /^\.?\/?packages\//;
 const leadingCurrentDirectoryRegex = /^\.?\//;
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
-const defaultRepoRoot = join(scriptsRoot, "..", "..", "..");
-const defaultSourceRoot = join(defaultRepoRoot, ".docs-src", "c15t");
-const defaultOutFile = join(
-  defaultRepoRoot,
-  "apps",
-  "c15t-example",
-  "public",
-  "type-tables.json"
-);
+const appRoot = join(scriptsRoot, "..");
+// `leadtype sync` clones into `<appRoot>/.docs-src/c15t` (see leadtype.config.ts).
+const defaultSourceRoot = join(appRoot, ".docs-src", "c15t");
+const defaultOutFile = join(appRoot, "public", "type-tables.json");
 
 const typeTableKey = (path: string, name: string) => `${path}#${name}`;
 
