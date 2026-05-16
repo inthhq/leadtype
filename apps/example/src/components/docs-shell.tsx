@@ -2,7 +2,7 @@
 
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { docsSidebarSections, findDocsNavigationPage } from "@/lib/docs";
+import { findDocsNavigationPage, getDocsSidebarSections } from "@/lib/docs";
 import { cn } from "@/lib/utils";
 import { SiteFooter } from "./site-footer";
 import { SiteHeader } from "./site-header";
@@ -13,6 +13,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
     select: (state) => state.location.pathname,
   });
   const currentPage = findDocsNavigationPage(pathname);
+  const docsSidebarSections = getDocsSidebarSections(pathname);
   const tocItems = currentPage?.toc ?? [];
   const hasToc = tocItems.length > 0;
 

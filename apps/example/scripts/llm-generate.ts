@@ -39,14 +39,14 @@ await generateLlmsTxt({
   outDir,
   baseUrl,
   product: docsConfig.product,
-  groups: docsConfig.groups ?? [],
+  nav: docsConfig.nav,
 });
 
 await generateLLMFullContextFiles({
   outDir,
   baseUrl,
   product: { name: docsConfig.product.name },
-  groups: docsConfig.groups ?? [],
+  nav: docsConfig.nav,
 });
 
 const agentReadability = await generateAgentReadabilityArtifacts({
@@ -56,16 +56,16 @@ const agentReadability = await generateAgentReadabilityArtifacts({
     name: docsConfig.product.name,
     summary: docsConfig.product.summary,
   },
-  groups: docsConfig.groups ?? [],
+  nav: docsConfig.nav,
 });
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
 // the docs.config.ts as the single source of truth: the same call resolves
-// frontmatter membership for the LLM indexes AND for the in-app sidebar.
+// the LLM indexes and the in-app sidebar.
 const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,
-  groups: docsConfig.groups ?? [],
+  nav: docsConfig.nav,
 });
 
 if (navigation.unknown.length > 0) {

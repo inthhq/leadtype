@@ -1,12 +1,13 @@
 ---
 title: "Frontmatter"
-description: "Required fields, group semantics, and how authored MDX becomes a navigation tree."
-group: authoring
+description: "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree."
 ---
 
 # Frontmatter
 
-Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads three things from it: what the page is, where it lives in the nav, and how to lint it.
+Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads
+frontmatter for page metadata and linting; curated navigation lives in
+`docs.config.ts` `nav`.
 
 ## Minimum
 
@@ -14,17 +15,56 @@ Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads three 
 ---
 title: "Build a docs site"
 description: "Pick the right leadtype integration shape for your docs app."
-group: docs-site
 ---
 ```
 
 - `title` — required. Non-empty string. Renders as the page heading and as the entry text in `llms.txt` and the sidebar.
 - `description` — optional but recommended. Becomes the routing hint in `llms.txt`. If omitted, the converter synthesizes one from the body during conversion (see [convert behavior](/docs/reference/convert)).
-- `group` — optional. Slug of a group declared in `docs.config.ts`. Pages without a group are excluded from the nav and grouped indexes, but still appear in generated markdown and the root `llms-full.txt` fallback.
+- `group` — optional legacy taxonomy metadata. Use config-owned `nav` for curated page placement.
 
-## How groups become a nav tree
+## How nav becomes site navigation and the agent map
 
-Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple groups. Each group is declared once in `docs.config.ts`. `leadtype generate` loads that config automatically when it exists. The intersection produces the nav tree, the section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
+For curated docs sites, put the navigation structure in `docs.config.ts` with
+`nav`. Root nodes can become top-level tabs like Docs, Frontend, Integrations,
+or Changelog. The active root node's pages and children usually become the
+sidebar. The same resolved tree drives generated navigation, `llms.txt`,
+`AGENTS.md`, sitemap markdown, and Agent Readability metadata.
+
+```ts
+export default defineDocsConfig({
+  product: { name: "c15t", summary: "Developer-first consent management." },
+  nav: [
+    {
+      title: "Frontend",
+      children: [
+        {
+          title: "Next.js",
+          base: "frameworks/next",
+          children: [
+            { title: "Start", pages: ["quickstart", "optimization"] },
+            {
+              title: "Concepts",
+              pages: [
+                "concepts/client-modes",
+                { include: "concepts/*", sort: ["order", "path"] },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
+```
+
+`base` cascades to child nodes. Page strings are extensionless paths relative
+to the nearest `base`; a leading `/` starts from the docs root. Include entries
+append matching pages at that position and use `order` then path sorting by
+default.
+
+## Legacy groups
+
+Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple taxonomy groups. In projects that have not adopted `nav`, each group is declared once in `docs.config.ts`. `leadtype generate` loads that config automatically when it exists. The intersection produces the fallback nav tree, section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
 
 <Mermaid chart={`flowchart LR
   cfg["docs.config.ts<br/>groups: [authoring, docs-site, reference]"]
@@ -45,7 +85,7 @@ Each page may declare one or more group slugs with `group: <slug>` or `group: [a
 
 If a page declares a group slug that isn't in `docs.config.ts`, the build fails with `unknown group "<slug>"`. Same source of truth, no drift.
 
-If you do not have a `docs.config.ts`, the CLI infers groups from the `group:` values it finds. That fallback is enough for small docs sets, but use config when you need stable order, descriptions, or nested groups.
+If you do not have `nav`, the CLI falls back to the legacy group resolver and infers groups from the `group:` values it finds. That fallback is enough for small docs sets, but use config `nav` when you need stable top-level docs areas, sidebar order, descriptions, nested sections, or wildcard includes.
 
 ### Nested groups
 
@@ -100,12 +140,9 @@ See [Lint rules](/docs/reference/lint) for the full reference and how to extend 
 
 ## What this gives you
 
-Once frontmatter is consistent, the rest of the pipeline works without per-page configuration. The same `group:` value drives:
+Once frontmatter and config are consistent, Leadtype keeps human and agent
+surfaces aligned:
 
-- The sidebar position
-- The `llms.txt` section
-- Search metadata and AGENTS.md grouping
-- The search filtering UI (if you build one)
-- Cross-framework link checks in lint
-
-One field, one source of truth.
+- `nav` drives top-level docs areas, sidebar structure, `llms.txt`, `AGENTS.md`, sitemap markdown, and Agent Readability navigation.
+- `group` remains available for legacy navigation fallback, search facets, and broad taxonomy.
+- `order` remains available as fallback sorting for pages pulled in by `include`.

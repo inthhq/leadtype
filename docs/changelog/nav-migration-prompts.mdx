@@ -1,0 +1,168 @@
+---
+title: "Nav migration prompts"
+description: "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned nav."
+---
+
+# Nav migration prompts
+
+Leadtype now supports config-owned `nav` as the preferred way to describe
+top-level docs areas, sidebar structure, and agent-facing document maps. Use these prompts when you
+want a coding agent to migrate an existing docs site from frontmatter-only
+`group` navigation to the new `docs.config.ts` format.
+
+## What changed
+
+`group` is still valid, but it is no longer the best place to express a
+polished navigation. Treat it as taxonomy and compatibility metadata. Put
+intentional navigation in `nav`:
+
+```ts
+export default defineDocsConfig({
+  product: { name: "My Library", summary: "..." },
+  nav: [
+    {
+      title: "Docs",
+      children: [
+        {
+          title: "Guides",
+          base: "guides",
+          pages: ["quickstart", { include: "*", sort: ["order", "path"] }],
+        },
+      ],
+    },
+    {
+      title: "Changelog",
+      base: "changelog",
+      pages: [{ include: "*" }],
+    },
+  ],
+});
+```
+
+Use explicit page strings for pinned pages. Use `{ include }` entries for the
+rest of a folder. Keep `order` only when included pages need a stable fallback
+sort.
+
+## Library docs prompt
+
+<Prompt
+  title="Migrate library docs to config nav"
+  description="Use for API libraries, SDKs, packages, and CLIs."
+>
+  You are migrating this docs site to Leadtype's config-owned `nav` API.
+
+  Goal:
+  - Move curated navigation structure out of page frontmatter and into `docs.config.ts`.
+  - Keep frontmatter `group` only as taxonomy/compatibility metadata.
+  - Keep frontmatter `order` only where wildcard includes need fallback sorting.
+  - Preserve current URLs and generated markdown paths.
+
+  Inspect:
+  - `docs/docs.config.ts` or `leadtype.config.ts`
+  - all docs frontmatter fields named `group` and `order`
+  - current generated/sidebar ordering, if a generated `docs-nav.json` or app sidebar exists
+
+  Implement:
+  - Add a `nav` array to config.
+  - Use root nav nodes for top-level docs areas like Docs, API Reference, and Changelog when the site has top tabs.
+  - Use section titles that match the current reader-facing sidebar within each top-level docs area.
+  - Use `base` for repeated folder prefixes.
+  - Use explicit page strings for important entry points like `quickstart`, `installation`, `configuration`, and `cli`.
+  - Use `{ include: "folder/*", sort: ["order", "path"] }` for the rest of each folder.
+  - Keep `groups` defined when existing `group` frontmatter should continue to validate.
+  - Do not rename or move MDX files unless a broken URL requires it.
+
+  Prefer this shape:
+
+  ```ts
+  nav: [
+    {
+      title: "Get Started",
+      pages: ["", "quickstart", "installation"],
+    },
+    {
+      title: "Guides",
+      base: "guides",
+      pages: ["overview", { include: "*", sort: ["order", "path"] }],
+    },
+    {
+      title: "Reference",
+      base: "reference",
+      pages: ["cli", { include: "*", sort: ["order", "path"] }],
+    },
+  ]
+  ```
+
+  Validation:
+  - Run the docs generation/tests available in the repo.
+  - Confirm `llms.txt`, `AGENTS.md`, Agent Readability navigation, the top nav, and the human sidebar use the same structure.
+  - Confirm no explicit nav page points to a missing MDX file.
+  - Summarize any remaining pages that are only included by wildcard.
+</Prompt>
+
+## UI docs prompt
+
+<Prompt
+  title="Migrate UI docs to config nav"
+  description="Use for component libraries, design systems, and framework-specific docs."
+>
+  You are migrating a UI documentation site to Leadtype's config-owned `nav` API.
+
+  Goal:
+  - Model the docs IA as product navigation, not as a flat list of frontmatter groups.
+  - Keep framework/component/docs URLs stable.
+  - Use root `nav` nodes for top navbar areas such as Frontend, Integrations, Self Host, and Changelog.
+  - Use child sections for sidebar areas such as Components, Styling, Hooks, and Examples.
+  - Keep `group` as taxonomy/compatibility metadata only.
+
+  Inspect:
+  - existing top nav, sidebar UI code, or generated `docs-nav.json`
+  - folders such as `frameworks/*`, `components/*`, `styling/*`, `hooks/*`, `examples/*`, and `guides/*`
+  - frontmatter `order` values used to pin important pages
+
+  Implement:
+  - Add `nav` to `docs.config.ts` or to the relevant collection in `leadtype.config.ts`.
+  - Use `base` at framework or product-area nodes to avoid repeating long paths.
+  - Use explicit entries for primary flows like `quickstart`, `overview`, and `installation`.
+  - Use wildcard includes for expandable areas like component lists and hook lists.
+  - Use a leading `/` for shared pages that live outside the current base.
+
+  Prefer this shape:
+
+  ```ts
+  nav: [
+    {
+      title: "Frameworks",
+      children: [
+        {
+          title: "Next.js",
+          base: "frameworks/next",
+          children: [
+            { title: "Start", pages: ["quickstart", "optimization", "/ai-agents"] },
+            { title: "Concepts", pages: [{ include: "concepts/*" }] },
+            { title: "Components", pages: [{ include: "components/*" }] },
+            { title: "Styling", pages: [{ include: "styling/*" }] },
+            { title: "Hooks", pages: [{ include: "hooks/**/*" }] },
+          ],
+        },
+      ],
+    },
+  ]
+  ```
+
+  Validation:
+  - Run the docs generation/tests available in the repo.
+  - Check that framework switchers and shared pages still resolve correctly.
+  - Check that `llms.txt` renders useful nested headings for agents.
+  - Check that wildcard sections do not pull unrelated pages into component or guide groups.
+  - Report any pages that need explicit placement instead of wildcard placement.
+</Prompt>
+
+## Choosing explicit pages vs includes
+
+Use explicit page strings when order is part of the product experience:
+quickstarts, conceptual introductions, migration guides, and API overviews.
+
+Use includes when the list is inventory-like: component pages, hook pages,
+integration pages, and generated reference pages. Add `exclude` when a folder
+contains helper pages that should not appear in that section.

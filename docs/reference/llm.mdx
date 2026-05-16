@@ -1,7 +1,6 @@
 ---
 title: "LLM files"
 description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
-group: reference
 ---
 
 # LLM files
@@ -42,7 +41,7 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 | `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
 | `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
-Group metadata still drives `llms.txt` sections, navigation, search metadata, and `AGENTS.md`, but site mode no longer emits per-group full-context files by default. See [Evals](/docs/reference/evals) for the benchmark behind that default.
+Config `nav` drives `llms.txt` sections, navigation, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `nav`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/reference/evals) for the benchmark behind that default.
 
 ## ProductInfo
 
@@ -132,21 +131,21 @@ await generateLlmsTxt({
     name: "My Library",
     summary: "A library that does one thing well.",
   },
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
   product: { name: "My Library" },
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 
 await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 ```
 
@@ -172,21 +171,21 @@ await generateLlmsTxt({
   srcDir: ".",
   outDir: "public",
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   product: { name: docsConfig.product.name },
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 
 await generateAgentReadabilityArtifacts({
   outDir: "public",
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 ```
@@ -209,7 +208,6 @@ const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
-  groups: docsConfig.groups,
 });
 ```
 
@@ -380,7 +378,6 @@ await generateAgentsMd({
   srcDir: ".",
   outDir: "packages/my-package",
   product: docsConfig.product,
-  groups: docsConfig.groups,
 });
 ```
 
@@ -419,13 +416,13 @@ Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [
 
 ## resolveDocsNavigation
 
-Same group-resolution logic the LLM files use, but returns the navigation manifest as a plain object — useful for driving a sidebar UI:
+Same nav-resolution logic the LLM files use, but returns the navigation manifest as a plain object — useful for driving top nav tabs and sidebar UI:
 
 ```ts
 const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 
 if (navigation.unknown.length > 0) {
@@ -436,7 +433,7 @@ if (navigation.unknown.length > 0) {
 }
 ```
 
-Write the result to `src/generated/docs-nav.json` and import it from your sidebar component:
+Write the result to `src/generated/docs-nav.json` and import it from your docs shell:
 
 ```ts
 import { mkdir, writeFile } from "node:fs/promises";
@@ -448,7 +445,7 @@ await writeFile(
 );
 ```
 
-Now your sidebar can import a static manifest with the same group tree the LLM files use.
+Now your top nav and sidebar can import a static manifest with the same nav tree the LLM files use. A common pattern is to render root nav nodes as top-level tabs, then render the active root node's pages and children in the sidebar.
 
 ## Tables of contents
 
@@ -460,12 +457,12 @@ For the heading slug contract and renderer wiring, see [Use the source primitive
 const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   toc: { minLevel: 2, maxLevel: 4 },
 });
 ```
 
-If you only need TOC data and not the full group tree, call `resolveDocsTableOfContents`:
+If you only need TOC data and not the full nav tree, call `resolveDocsTableOfContents`:
 
 ```ts
 const pages = await resolveDocsTableOfContents({

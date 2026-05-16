@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "docs:generate": "bun run scripts/generate-artifacts.ts",
-    "dev": "bun run --filter leadtype build && bun run docs:generate && vite dev --host 0.0.0.0",
+    "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite dev",
     "build": "bun run --filter leadtype build && bun run docs:generate && vite build",
-    "preview": "vite preview --host 0.0.0.0",
+    "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite preview",
     "check-types": "tsgo --noEmit"
   },
   "dependencies": {

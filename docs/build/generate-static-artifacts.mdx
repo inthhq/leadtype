@@ -1,8 +1,6 @@
 ---
 title: "Generate static artifacts"
 description: "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk."
-group: docs-site
-order: 40
 ---
 
 # Generate static artifacts
@@ -161,7 +159,7 @@ await generateLlmsTxt({
   outDir: "public",
   baseUrl: "https://docs.example.com",
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 
@@ -169,7 +167,7 @@ await generateLLMFullContextFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
   product: { name: docsConfig.product.name },
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 
@@ -183,14 +181,14 @@ await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://docs.example.com",
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 
 const navigation = await resolveDocsNavigation({
   srcDir: sourceRoot,
   baseUrl: "https://docs.example.com",
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
   mounts,
 });
 ```

@@ -83,6 +83,7 @@ export type DocsTableOfContentsOptions = {
 
 export type DocsNavigationPage = LocalizedDocsMetadata & {
   urlPath: string;
+  relativePath: string;
   title: string;
   description: string;
   /** All group slugs the page declared (normalized). */

@@ -41,9 +41,13 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: [".localhost"],
     fs: {
       allow: [searchForWorkspaceRoot(process.cwd())],
     },
+  },
+  preview: {
+    allowedHosts: [".localhost"],
   },
   plugins: [
     viteTsConfigPaths({ projects: ["./tsconfig.json"] }),

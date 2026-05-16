@@ -2,10 +2,7 @@ import { execFileSync } from "node:child_process";
 import { defineConfig, devices } from "@playwright/test";
 
 const isCI = Boolean(process.env.CI);
-const HTTPS_PROTOCOL = "https://";
-const HTTP_PROTOCOL = "http://";
-const PORTLESS_HTTP_PORT = "1355";
-const DEFAULT_BASE_URL = "http://localhost:3000";
+const DEFAULT_BASE_URL = "https://example.localhost";
 
 function getExampleBaseUrl(): string {
   const configuredBaseUrl = process.env.PLAYWRIGHT_BASE_URL?.trim();
@@ -19,8 +16,8 @@ function getExampleBaseUrl(): string {
       encoding: "utf8",
       env: {
         ...process.env,
-        PORTLESS_HTTPS: "0",
-        PORTLESS_PORT: PORTLESS_HTTP_PORT,
+        PORTLESS_PORT: "443",
+        PORTLESS_HTTPS: "1",
       },
       maxBuffer: 10 * 1024 * 1024,
       timeout: 5000,
@@ -32,11 +29,7 @@ function getExampleBaseUrl(): string {
     return DEFAULT_BASE_URL;
   }
 
-  // Playwright drives the local Vite server over HTTP; portlessUrl can be HTTPS
-  // in the shell, which makes browser tests fail on local TLS.
-  return portlessUrl.startsWith(HTTPS_PROTOCOL)
-    ? `${HTTP_PROTOCOL}${portlessUrl.slice(HTTPS_PROTOCOL.length)}`
-    : portlessUrl;
+  return portlessUrl;
 }
 
 const exampleBaseUrl = getExampleBaseUrl();

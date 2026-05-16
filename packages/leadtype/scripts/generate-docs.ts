@@ -31,7 +31,7 @@ await convertAllMdx({
 // bad config can't ship.
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
@@ -53,7 +53,7 @@ const { outputPath } = await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 
 logger.info({

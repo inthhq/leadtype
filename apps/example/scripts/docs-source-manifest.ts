@@ -34,7 +34,7 @@ const manifestPath = join(generatedDir, "docs-pages.json");
 const source = await createDocsSource({
   contentDir,
   baseUrl: process.env.BASE_URL?.trim() || "https://leadtype.dev",
-  groups: docsConfig.groups,
+  nav: docsConfig.nav,
 });
 
 const pages = await source.listPages();
