@@ -316,7 +316,7 @@ const robots = createRobotsTxtResponse({
 
 Build JSON-LD, canonical links, markdown alternate links, and OpenGraph-style metadata for a docs page from the manifest.
 
-Use `createDocsJsonLd` when your framework wants a structured object. Use `stringifyJsonLd` for safe `<script type="application/ld+json">` contents. Use `createDocsHead` when your framework accepts a generic `{ meta, links }` shape.
+Reach for `createDocsJsonLd` when your framework wants a structured object, then pass it through `stringifyJsonLd` for safe `<script type="application/ld+json">` contents. `createDocsHead` remains the generic `{ meta, links }` helper for head APIs that accept descriptor arrays.
 
 ```ts
 import manifest from "../public/docs/agent-readability.json";

@@ -12,6 +12,8 @@ import type {
 } from "../llm/readability";
 import type { DocsPage, DocsSource } from "../source";
 
+const SUPPORTED_MANIFEST_VERSION = 1;
+
 export type {
   AgentReadabilityManifest,
   MarkdownMirrorTarget,
@@ -156,6 +158,14 @@ function pageDescription(
     page.description ||
     `${page.title} documentation for ${manifest.product.name}.`
   );
+}
+
+function assertManifestVersion(manifest: { version: number }): void {
+  if (manifest.version !== SUPPORTED_MANIFEST_VERSION) {
+    throw new Error(
+      `leadtype: agent-readability manifest version ${manifest.version} is not supported (expected ${SUPPORTED_MANIFEST_VERSION}). Regenerate the manifest with the matching leadtype version.`
+    );
+  }
 }
 
 async function resolveOverride<T>(
@@ -342,6 +352,7 @@ export function createGenerateMetadata(
   config: CreateGenerateMetadataConfig
 ): (props: NextGenerateMetadataRouteProps) => Promise<NextDocsMetadata> {
   return async (props) => {
+    assertManifestVersion(config.manifest);
     const params = await resolveRouteParams(props.params);
     const basePath = config.basePath ?? "/docs";
     const slug = readRouteSlug(params);

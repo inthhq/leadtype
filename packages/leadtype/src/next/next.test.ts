@@ -201,6 +201,20 @@ describe("createGenerateStaticParams / createLoadPageData", () => {
 });
 
 describe("createGenerateMetadata", () => {
+  it("throws on unsupported manifest version", async () => {
+    const manifest = {
+      ...buildManifest(),
+      version: 2,
+    } as unknown as AgentReadabilityManifest;
+    const generateMetadata = createGenerateMetadata({ manifest });
+
+    await expect(
+      generateMetadata({
+        params: Promise.resolve({ slug: ["getting-started"] }),
+      })
+    ).rejects.toThrow(/manifest version 2/);
+  });
+
   it("returns Next metadata for known docs pages", async () => {
     const generateMetadata = createGenerateMetadata({
       manifest: buildManifest(),
