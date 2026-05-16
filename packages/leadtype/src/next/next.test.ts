@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentReadabilityManifest } from "../llm/readability";
 import {
   createDocsRouteHandler,
+  createGenerateMetadata,
   createGenerateStaticParams,
   createLoadPageData,
 } from "./index";
@@ -196,5 +197,137 @@ describe("createGenerateStaticParams / createLoadPageData", () => {
     expect(await loadPageData(["z"])).toBeNull();
     // Falsy slug should also resolve to null (root catch-all without segments).
     expect(await loadPageData(undefined)).toBeNull();
+  });
+});
+
+describe("createGenerateMetadata", () => {
+  it("returns Next metadata for known docs pages", async () => {
+    const generateMetadata = createGenerateMetadata({
+      manifest: buildManifest(),
+    });
+
+    await expect(
+      generateMetadata({
+        params: Promise.resolve({ slug: ["getting-started"] }),
+      })
+    ).resolves.toEqual({
+      title: "Getting Started | Test",
+      description: "Getting Started documentation for Test.",
+      alternates: {
+        canonical: "https://example.com/docs/getting-started",
+        types: {
+          "text/markdown": "https://example.com/docs/getting-started.md",
+        },
+      },
+      openGraph: {
+        title: "Getting Started | Test",
+        description: "Getting Started documentation for Test.",
+        url: "https://example.com/docs/getting-started",
+        type: "article",
+      },
+    });
+  });
+
+  it("returns an empty metadata object for unknown docs pages", async () => {
+    const generateMetadata = createGenerateMetadata({
+      manifest: buildManifest(),
+    });
+
+    await expect(
+      generateMetadata({ params: Promise.resolve({ slug: ["missing"] }) })
+    ).resolves.toEqual({});
+  });
+
+  it("supports metadata and route overrides", async () => {
+    const generateMetadata = createGenerateMetadata({
+      manifest: buildManifest(),
+      resolveUrlPath: () => "/docs/getting-started",
+      title: ({ page }) => `${page.title} - Custom`,
+      description: "Custom description.",
+      openGraph: ({ page }) => ({
+        title: page.title,
+        description: page.description || "Custom description.",
+        url: page.absoluteUrl,
+        type: "article",
+        images: ["https://example.com/og.png"],
+      }),
+      metadata: {
+        alternates: {
+          types: {
+            "application/rss+xml": "https://example.com/docs/rss.xml",
+          },
+        },
+        openGraph: {
+          siteName: "Example Docs",
+        },
+        robots: { index: true, follow: true },
+      },
+    });
+
+    await expect(
+      generateMetadata({ params: Promise.resolve({ slug: ["anything"] }) })
+    ).resolves.toMatchObject({
+      title: "Getting Started - Custom",
+      description: "Custom description.",
+      alternates: {
+        canonical: "https://example.com/docs/getting-started",
+        types: {
+          "text/markdown": "https://example.com/docs/getting-started.md",
+          "application/rss+xml": "https://example.com/docs/rss.xml",
+        },
+      },
+      openGraph: {
+        title: "Getting Started",
+        images: ["https://example.com/og.png"],
+        siteName: "Example Docs",
+      },
+      robots: { index: true, follow: true },
+    });
+  });
+
+  it("cascades title and description overrides to OpenGraph defaults", async () => {
+    const generateMetadata = createGenerateMetadata({
+      manifest: buildManifest(),
+      title: "Custom title",
+      description: ({ page }) => `${page.title} custom description.`,
+    });
+
+    await expect(
+      generateMetadata({
+        params: Promise.resolve({ slug: ["getting-started"] }),
+      })
+    ).resolves.toMatchObject({
+      title: "Custom title",
+      description: "Getting Started custom description.",
+      openGraph: {
+        title: "Custom title",
+        description: "Getting Started custom description.",
+      },
+    });
+  });
+
+  it("lets explicit OpenGraph overrides win over cascaded metadata", async () => {
+    const generateMetadata = createGenerateMetadata({
+      manifest: buildManifest(),
+      title: "Custom title",
+      description: "Custom description.",
+      openGraph: {
+        title: "Social title",
+        description: "Social description.",
+      },
+    });
+
+    await expect(
+      generateMetadata({
+        params: Promise.resolve({ slug: ["getting-started"] }),
+      })
+    ).resolves.toMatchObject({
+      title: "Custom title",
+      description: "Custom description.",
+      openGraph: {
+        title: "Social title",
+        description: "Social description.",
+      },
+    });
   });
 });

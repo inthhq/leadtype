@@ -53,6 +53,7 @@ const SUPPORTED_MANIFEST_VERSION = 1;
 const XML_ESCAPE_PATTERN = /[<>&'"]/g;
 
 export type JsonLdValue = Record<string, unknown>;
+export type JsonLdType = string | readonly string[];
 
 export type AgentReadabilityPage = LocalizedDocsMetadata & {
   title: string;
@@ -221,11 +222,59 @@ export type DocsHead = {
   links: DocsHeadEntry[];
 };
 
+export type JsonLdOverrideContext = {
+  page: AgentReadabilityPage;
+  manifest: AgentReadabilityManifest;
+  jsonLd: JsonLdValue;
+};
+
+export type DocsJsonLdOverrides = Record<string, unknown> & {
+  /**
+   * Convenience alias for Schema.org `@type`. This avoids quoted property
+   * syntax in the common override path.
+   *
+   * @defaultValue `"TechArticle"`
+   */
+  type?: JsonLdType;
+  /**
+   * Override generated breadcrumbs, or pass `false` to remove generated
+   * breadcrumbs from the final JSON-LD object.
+   */
+  breadcrumb?: JsonLdValue | false;
+};
+
+export type DocsJsonLdOverrideInput =
+  | DocsJsonLdOverrides
+  | ((
+      context: JsonLdOverrideContext
+    ) => DocsJsonLdOverrides | null | undefined);
+
+export type DocsJsonLdTransform = (
+  context: JsonLdOverrideContext
+) => JsonLdValue;
+
+export type DocsJsonLdOptions = {
+  /** Merge static or per-page fields into the generated JSON-LD defaults. */
+  overrides?: DocsJsonLdOverrideInput;
+  /**
+   * Return the final JSON-LD object. Runs after generated defaults and
+   * overrides have been applied.
+   */
+  transform?: DocsJsonLdTransform;
+};
+
+export type CreateDocsJsonLdConfig = DocsJsonLdOptions & {
+  urlPath: string;
+  manifest: AgentReadabilityManifest;
+};
+
 export type CreateDocsHeadConfig = {
   urlPath: string;
   manifest: AgentReadabilityManifest;
   /** Key under which the JSON-LD payload is embedded in `meta`. Default: "script:ld+json" (TanStack Router). */
   jsonLdMetaKey?: string;
+  /** Optional JSON-LD overrides passed through to `createDocsJsonLd`. */
+  jsonLd?: DocsJsonLdOptions;
 };
 
 export type RenderSitemapMarkdownConfig = {
@@ -596,39 +645,103 @@ export function renderJsonLd(
   manifest: AgentReadabilityManifest
 ): JsonLdValue {
   assertManifestVersion(manifest);
+  const breadcrumb = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Docs",
+        item: `${manifest.baseUrl}/docs`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: page.title,
+        item: page.absoluteUrl,
+      },
+    ],
+  };
   return {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     headline: page.title,
+    name: page.title,
     description: jsonLdPageDescription(page, manifest),
     url: page.absoluteUrl,
+    mainEntityOfPage: page.absoluteUrl,
     dateModified: page.lastModified,
-    breadcrumb: {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Docs",
-          item: `${manifest.baseUrl}/docs`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: page.title,
-          item: page.absoluteUrl,
-        },
-      ],
+    ...(page.locale ? { inLanguage: page.locale } : {}),
+    isPartOf: {
+      "@type": "WebSite",
+      name: manifest.product.name,
+      url: manifest.baseUrl,
     },
+    breadcrumb,
   };
+}
+
+export function stringifyJsonLd(value: JsonLdValue): string {
+  return jsonScriptEscape(JSON.stringify(value));
 }
 
 export function renderJsonLdScript(
   page: AgentReadabilityPage,
   manifest: AgentReadabilityManifest
 ): string {
-  const json = jsonScriptEscape(JSON.stringify(renderJsonLd(page, manifest)));
+  const json = stringifyJsonLd(renderJsonLd(page, manifest));
   return `<script type="application/ld+json">${json}</script>`;
+}
+
+function applyJsonLdOverrides(
+  jsonLd: JsonLdValue,
+  overrides: DocsJsonLdOverrides
+): JsonLdValue {
+  const { breadcrumb, type, ...rest } = overrides;
+  const next: JsonLdValue = { ...jsonLd, ...rest };
+
+  if (type !== undefined) {
+    next["@type"] = type;
+  }
+  if (breadcrumb === false) {
+    const { breadcrumb: _breadcrumb, ...withoutBreadcrumb } = next;
+    return withoutBreadcrumb;
+  }
+  if (breadcrumb !== undefined) {
+    next.breadcrumb = breadcrumb;
+  }
+
+  return next;
+}
+
+export function createDocsJsonLd(
+  config: CreateDocsJsonLdConfig
+): JsonLdValue | null {
+  assertManifestVersion(config.manifest);
+  const page = config.manifest.pages.find(
+    (entry) => entry.urlPath === config.urlPath
+  );
+  if (!page) {
+    return null;
+  }
+
+  let jsonLd = renderJsonLd(page, config.manifest);
+  if (config.overrides) {
+    const context = { page, manifest: config.manifest, jsonLd };
+    const overrides =
+      typeof config.overrides === "function"
+        ? config.overrides(context)
+        : config.overrides;
+    if (overrides) {
+      jsonLd = applyJsonLdOverrides(jsonLd, overrides);
+    }
+  }
+
+  if (config.transform) {
+    return config.transform({ page, manifest: config.manifest, jsonLd });
+  }
+
+  return jsonLd;
 }
 
 /* ----------------------- markdown content negotiation ------------------ */
@@ -985,13 +1098,18 @@ export function createDocsHead(config: CreateDocsHeadConfig): DocsHead {
   const title = pageTitle(page, config.manifest);
   const description = pageDescription(page, config.manifest);
   const jsonLdKey = config.jsonLdMetaKey ?? DEFAULT_JSON_LD_META_KEY;
+  const jsonLd = createDocsJsonLd({
+    urlPath: config.urlPath,
+    manifest: config.manifest,
+    ...config.jsonLd,
+  });
   return {
     meta: [
       { title },
       { name: "description", content: description },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
-      { [jsonLdKey]: renderJsonLd(page, config.manifest) },
+      ...(jsonLd ? [{ [jsonLdKey]: jsonLd }] : []),
     ],
     links: [
       { rel: "canonical", href: page.absoluteUrl },
