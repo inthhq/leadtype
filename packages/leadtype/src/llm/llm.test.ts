@@ -15,6 +15,7 @@ import {
   acceptsMarkdownHeader,
   createAgentMarkdownResponse,
   createDocsHead,
+  createDocsJsonLd,
   createMarkdownResponseHeaders,
   createRobotsTxtResponse,
   createSitemapMarkdownResponse,
@@ -28,6 +29,7 @@ import {
   renderRobotsTxt,
   renderSitemapXml,
   resolveMarkdownMirrorTarget,
+  stringifyJsonLd,
 } from "./readability";
 
 const tempDirs: string[] = [];
@@ -728,14 +730,65 @@ describe("agent readability helpers", () => {
       "@context": "https://schema.org",
       "@type": "TechArticle",
       headline: "Quickstart <start>",
+      name: "Quickstart <start>",
       url: "https://example.com/docs/quickstart",
+      mainEntityOfPage: "https://example.com/docs/quickstart",
       dateModified: "2026-05-01T12:00:00.000Z",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "Leadtype",
+        url: "https://example.com",
+      },
     });
     expect(renderJsonLdScript(page, manifest)).toContain(
       '<script type="application/ld+json">'
     );
     expect(renderJsonLdScript(page, manifest)).toContain(
       "Quickstart \\u003cstart\\u003e"
+    );
+  });
+
+  it("creates JSON-LD by urlPath and supports safe overrides", () => {
+    const jsonLd = createDocsJsonLd({
+      urlPath: "/docs/quickstart",
+      manifest,
+      overrides: ({ page }) => ({
+        type: ["TechArticle", "APIReference"],
+        author: { "@type": "Organization", name: "Acme Docs" },
+        publisher: { "@type": "Organization", name: "Acme" },
+        image: "https://example.com/og/docs.png",
+        datePublished: "2026-04-01T00:00:00.000Z",
+        keywords: ["docs", "quickstart"],
+        articleSection: page.groups[0],
+        breadcrumb: false,
+      }),
+    });
+
+    expect(jsonLd).toMatchObject({
+      "@type": ["TechArticle", "APIReference"],
+      author: { "@type": "Organization", name: "Acme Docs" },
+      publisher: { "@type": "Organization", name: "Acme" },
+      image: "https://example.com/og/docs.png",
+      datePublished: "2026-04-01T00:00:00.000Z",
+      keywords: ["docs", "quickstart"],
+      articleSection: "get-started",
+    });
+    expect(jsonLd).not.toHaveProperty("breadcrumb");
+  });
+
+  it("returns null for unknown JSON-LD pages", () => {
+    expect(createDocsJsonLd({ urlPath: "/docs/nope", manifest })).toBeNull();
+  });
+
+  it("escapes JSON-LD script content", () => {
+    expect(
+      stringifyJsonLd({
+        "@context": "https://schema.org",
+        headline: "</script><script>x()</script>",
+        description: "A & B \u2028 C \u2029 D",
+      })
+    ).toBe(
+      '{"@context":"https://schema.org","headline":"\\u003c/script\\u003e\\u003cscript\\u003ex()\\u003c/script\\u003e","description":"A \\u0026 B \\u2028 C \\u2029 D"}'
     );
   });
 
@@ -1144,6 +1197,27 @@ describe("createDocsHead", () => {
     });
     expect(head.meta.find((m) => "ldJson" in m)).toBeDefined();
     expect(head.meta.find((m) => "script:ld+json" in m)).toBeUndefined();
+  });
+
+  it("passes JSON-LD overrides through the head helper", () => {
+    const head = createDocsHead({
+      urlPath: "/docs/quickstart",
+      manifest,
+      jsonLd: {
+        overrides: {
+          author: { "@type": "Person", name: "Docs Team" },
+          breadcrumb: false,
+        },
+      },
+    });
+    const jsonLdEntry = head.meta.find((m) => "script:ld+json" in m) as
+      | { "script:ld+json"?: Record<string, unknown> }
+      | undefined;
+
+    expect(jsonLdEntry?.["script:ld+json"]).toMatchObject({
+      author: { "@type": "Person", name: "Docs Team" },
+    });
+    expect(jsonLdEntry?.["script:ld+json"]).not.toHaveProperty("breadcrumb");
   });
 
   it("returns empty arrays for unknown urlPath", () => {

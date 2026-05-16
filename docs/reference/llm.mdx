@@ -238,6 +238,7 @@ import {
   acceptsMarkdownHeader,
   createAgentMarkdownResponse,
   createDocsHead,
+  createDocsJsonLd,
   createMarkdownResponseHeaders,
   createRobotsTxtResponse,
   createSitemapMarkdownResponse,
@@ -249,6 +250,7 @@ import {
   renderJsonLdScript,
   renderMissingMarkdown,
   resolveMarkdownMirrorTarget,
+  stringifyJsonLd,
 } from "leadtype/llm/readability";
 ```
 
@@ -308,13 +310,32 @@ const robots = createRobotsTxtResponse({
 
 `requestOrigin` is optional — when omitted, the helpers fall back to `manifest.baseUrl`.
 
-### createDocsHead
+### createDocsJsonLd / stringifyJsonLd / createDocsHead
 
-Build canonical/alternate/og/JSON-LD head metadata for a docs page from the manifest. Returns `{ meta, links }` in a framework-neutral shape (TanStack Router, Next.js Metadata, Astro, etc.).
+Build JSON-LD, canonical links, markdown alternate links, and OpenGraph-style metadata for a docs page from the manifest.
+
+Reach for `createDocsJsonLd` when your framework wants a structured object, then pass it through `stringifyJsonLd` for safe `<script type="application/ld+json">` contents. `createDocsHead` remains the generic `{ meta, links }` helper for head APIs that accept descriptor arrays.
 
 ```ts
 import manifest from "../public/docs/agent-readability.json";
-import { createDocsHead } from "leadtype/llm/readability";
+import {
+  createDocsHead,
+  createDocsJsonLd,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
+
+const jsonLd = createDocsJsonLd({
+  urlPath: "/docs/quickstart",
+  manifest,
+  overrides: {
+    author: { "@type": "Organization", name: "Acme Docs" },
+    publisher: { "@type": "Organization", name: "Acme" },
+    image: "https://example.com/og/docs.png",
+    keywords: ["docs", "quickstart"],
+  },
+});
+
+const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
 
 const head = createDocsHead({
   urlPath: "/docs/quickstart",
@@ -340,13 +361,29 @@ const head = createDocsHead({
 
 If the page is not in the manifest, both arrays are empty so the caller can fall back to its own metadata.
 
+The default JSON-LD uses `TechArticle` and includes title, description, canonical URL, last modified time, product website, and breadcrumbs. Override fields only when your site has better product-specific data such as authors, publisher, OpenGraph image, publish date, keywords, or a different Schema.org type.
+
+```ts
+createDocsJsonLd({
+  urlPath: "/docs/api",
+  manifest,
+  overrides: ({ page }) => ({
+    type: ["TechArticle", "APIReference"],
+    articleSection: page.groups[0],
+    breadcrumb: false,
+  }),
+});
+```
+
 ### Lower-level helpers
 
 For a step-by-step integration guide, see [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
 
 | Helper | Use it for |
 | --- | --- |
-| `renderJsonLd` | Return a Schema.org object for framework metadata APIs. |
+| `createDocsJsonLd` | Return page JSON-LD by `urlPath`, with per-site overrides. |
+| `stringifyJsonLd` | Escape JSON-LD for safe script contents. |
+| `renderJsonLd` | Return the default Schema.org object for a manifest page. |
 | `renderJsonLdScript` | Return an escaped `<script type="application/ld+json">` string. |
 | `createAgentMarkdownResponse` | Build a complete markdown `Response` for agent Accept headers, AI user agents, and direct `.md` URLs. |
 | `createSitemapXmlResponse` / `createSitemapMarkdownResponse` / `createRobotsTxtResponse` | Build sitemap/robots `Response`s rebased to the live origin. |
