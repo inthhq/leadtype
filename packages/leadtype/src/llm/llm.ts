@@ -1246,9 +1246,10 @@ function normalizeExcludePatterns(
 }
 
 /**
- * Resolve one curated nav page entry. String refs are strict and throw when the
- * referenced page is absent from docsByRelativePath; include entries are
- * permissive by default and only throw when entry.required is true.
+ * resolveNavEntryPages is intentionally asymmetric: entries that fail
+ * isNavIncludeEntry are string refs and throw when docsByRelativePath has no
+ * matching page, while entry.include globs only warn unless entry.required is
+ * true.
  */
 function resolveNavEntryPages(
   group: ResolvedGroup,

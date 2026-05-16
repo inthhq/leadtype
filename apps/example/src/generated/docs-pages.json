@@ -74,9 +74,7 @@
     "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
     "relativePath": "build/framework-matrix",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/framework-matrix.mdx"
   },
   {

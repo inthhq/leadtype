@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-16T00:15:30.652Z",
+  "generatedAt": "2026-05-16T00:30:26.630Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -16,7 +16,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
       "groups": [],
-      "lastModified": "2026-05-13T17:23:53.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "index"
     },
     {
@@ -28,7 +28,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/collections.md",
       "relativePath": "authoring/collections",
       "groups": [],
-      "lastModified": "2026-05-15T16:46:08.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "authoring/collections"
     },
     {
@@ -40,7 +40,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/components.md",
       "relativePath": "authoring/components",
       "groups": [],
-      "lastModified": "2026-05-13T17:23:53.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "authoring/components"
     },
     {
@@ -52,7 +52,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/frontmatter.md",
       "relativePath": "authoring/frontmatter",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "authoring/frontmatter"
     },
     {
@@ -64,7 +64,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/add-search.md",
       "relativePath": "build/add-search",
       "groups": [],
-      "lastModified": "2026-05-13T17:23:53.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/add-search"
     },
     {
@@ -76,8 +76,20 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site.md",
       "relativePath": "build/build-a-docs-site",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/build-a-docs-site"
+    },
+    {
+      "title": "Framework integration matrix",
+      "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
+      "urlPath": "/docs/build/framework-matrix",
+      "absoluteUrl": "https://leadtype.dev/docs/build/framework-matrix",
+      "markdownUrlPath": "/docs/build/framework-matrix.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/framework-matrix.md",
+      "relativePath": "build/framework-matrix",
+      "groups": [],
+      "lastModified": "2026-05-16T00:11:45.000Z",
+      "logicalPath": "build/framework-matrix"
     },
     {
       "title": "Generate static artifacts",
@@ -88,7 +100,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/generate-static-artifacts.md",
       "relativePath": "build/generate-static-artifacts",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/generate-static-artifacts"
     },
     {
@@ -100,7 +112,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/integrate-with-fumadocs.md",
       "relativePath": "build/integrate-with-fumadocs",
       "groups": [],
-      "lastModified": "2026-05-13T20:57:41.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/integrate-with-fumadocs"
     },
     {
@@ -112,7 +124,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents.md",
       "relativePath": "build/optimize-docs-for-agents",
       "groups": [],
-      "lastModified": "2026-05-13T17:23:53.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/optimize-docs-for-agents"
     },
     {
@@ -124,7 +136,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
       "groups": [],
-      "lastModified": "2026-05-15T01:13:35.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
     {
@@ -136,7 +148,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/validate-in-ci.md",
       "relativePath": "build/validate-in-ci",
       "groups": [],
-      "lastModified": "2026-05-13T17:23:53.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "build/validate-in-ci"
     },
     {
@@ -148,7 +160,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/changelog/nav-migration-prompts.md",
       "relativePath": "changelog/nav-migration-prompts",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "changelog/nav-migration-prompts"
     },
     {
@@ -160,7 +172,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/how-it-works.md",
       "relativePath": "how-it-works",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "how-it-works"
     },
     {
@@ -172,7 +184,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/methodology.md",
       "relativePath": "methodology",
       "groups": [],
-      "lastModified": "2026-05-15T01:13:35.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "methodology"
     },
     {
@@ -184,7 +196,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/package-docs/bundle.md",
       "relativePath": "package-docs/bundle",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "package-docs/bundle"
     },
     {
@@ -196,7 +208,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
       "groups": [],
-      "lastModified": "2026-05-13T20:57:41.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "quickstart"
     },
     {
@@ -208,7 +220,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/architecture.md",
       "relativePath": "reference/architecture",
       "groups": [],
-      "lastModified": "2026-05-15T01:13:35.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/architecture"
     },
     {
@@ -220,7 +232,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/cli.md",
       "relativePath": "reference/cli",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/cli"
     },
     {
@@ -232,7 +244,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/convert.md",
       "relativePath": "reference/convert",
       "groups": [],
-      "lastModified": "2026-05-12T02:59:25.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/convert"
     },
     {
@@ -244,7 +256,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/evals.md",
       "relativePath": "reference/evals",
       "groups": [],
-      "lastModified": "2026-05-13T17:23:53.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/evals"
     },
     {
@@ -256,7 +268,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/lint.md",
       "relativePath": "reference/lint",
       "groups": [],
-      "lastModified": "2026-05-09T22:38:26.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/lint"
     },
     {
@@ -268,7 +280,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/llm.md",
       "relativePath": "reference/llm",
       "groups": [],
-      "lastModified": "2026-05-15T23:27:07.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/llm"
     },
     {
@@ -280,7 +292,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/mdx.md",
       "relativePath": "reference/mdx",
       "groups": [],
-      "lastModified": "2026-05-13T20:57:41.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/mdx"
     },
     {
@@ -292,7 +304,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/remark.md",
       "relativePath": "reference/remark",
       "groups": [],
-      "lastModified": "2026-05-13T20:57:41.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/remark"
     },
     {
@@ -304,7 +316,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/search.md",
       "relativePath": "reference/search",
       "groups": [],
-      "lastModified": "2026-05-12T02:59:25.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/search"
     },
     {
@@ -316,7 +328,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/source.md",
       "relativePath": "reference/source",
       "groups": [],
-      "lastModified": "2026-05-13T20:57:41.000Z",
+      "lastModified": "2026-05-16T00:16:18.000Z",
       "logicalPath": "reference/source"
     }
   ],
@@ -2782,7 +2794,81 @@
         "children": []
       }
     ],
-    "ungrouped": [],
+    "ungrouped": [
+      {
+        "urlPath": "/docs/build/framework-matrix",
+        "relativePath": "build/framework-matrix",
+        "title": "Framework integration matrix",
+        "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
+        "groups": [],
+        "toc": [
+          {
+            "id": "shared-build-step",
+            "title": "Shared build step",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#shared-build-step",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#shared-build-step",
+            "children": []
+          },
+          {
+            "id": "next-js-app-router",
+            "title": "Next.js App Router",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#next-js-app-router",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#next-js-app-router",
+            "children": []
+          },
+          {
+            "id": "astro",
+            "title": "Astro",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#astro",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#astro",
+            "children": []
+          },
+          {
+            "id": "sveltekit",
+            "title": "SvelteKit",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#sveltekit",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#sveltekit",
+            "children": []
+          },
+          {
+            "id": "nuxt-nitro",
+            "title": "Nuxt/Nitro",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#nuxt-nitro",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#nuxt-nitro",
+            "children": []
+          },
+          {
+            "id": "tanstack-start-and-fumadocs",
+            "title": "TanStack Start and Fumadocs",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#tanstack-start-and-fumadocs",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#tanstack-start-and-fumadocs",
+            "children": []
+          },
+          {
+            "id": "verification",
+            "title": "Verification",
+            "level": 2,
+            "urlPath": "/docs/build/framework-matrix",
+            "urlWithHash": "/docs/build/framework-matrix#verification",
+            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#verification",
+            "children": []
+          }
+        ],
+        "logicalPath": "build/framework-matrix"
+      }
+    ],
     "unknown": []
   },
   "files": {

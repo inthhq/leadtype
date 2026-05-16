@@ -2460,6 +2460,80 @@
       "children": []
     }
   ],
-  "ungrouped": [],
+  "ungrouped": [
+    {
+      "urlPath": "/docs/build/framework-matrix",
+      "relativePath": "build/framework-matrix",
+      "title": "Framework integration matrix",
+      "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
+      "groups": [],
+      "toc": [
+        {
+          "id": "shared-build-step",
+          "title": "Shared build step",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#shared-build-step",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#shared-build-step",
+          "children": []
+        },
+        {
+          "id": "next-js-app-router",
+          "title": "Next.js App Router",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#next-js-app-router",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#next-js-app-router",
+          "children": []
+        },
+        {
+          "id": "astro",
+          "title": "Astro",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#astro",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#astro",
+          "children": []
+        },
+        {
+          "id": "sveltekit",
+          "title": "SvelteKit",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#sveltekit",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#sveltekit",
+          "children": []
+        },
+        {
+          "id": "nuxt-nitro",
+          "title": "Nuxt/Nitro",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#nuxt-nitro",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#nuxt-nitro",
+          "children": []
+        },
+        {
+          "id": "tanstack-start-and-fumadocs",
+          "title": "TanStack Start and Fumadocs",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#tanstack-start-and-fumadocs",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#tanstack-start-and-fumadocs",
+          "children": []
+        },
+        {
+          "id": "verification",
+          "title": "Verification",
+          "level": 2,
+          "urlPath": "/docs/build/framework-matrix",
+          "urlWithHash": "/docs/build/framework-matrix#verification",
+          "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#verification",
+          "children": []
+        }
+      ],
+      "logicalPath": "build/framework-matrix"
+    }
+  ],
   "unknown": []
 }
