@@ -241,6 +241,7 @@ describe("leadtype CLI", () => {
         searchIndex: string;
       };
       groups: Array<{ slug: string }>;
+      nav?: Array<{ title: string }>;
       outDir: string;
       search: { docs: number };
     };
@@ -253,7 +254,7 @@ describe("leadtype CLI", () => {
     );
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
     expect(result.files.docsLlmsFullTxt).toBeUndefined();
-    expect(result.groups.map((group) => group.slug)).toContain("docs-site");
+    expect(result.nav?.map((group) => group.title)).toContain("Docs");
     expect(result.search.docs).toBeGreaterThan(0);
   });
 

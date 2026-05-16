@@ -9,9 +9,7 @@
     "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
     "relativePath": "authoring/collections",
     "extension": ".mdx",
-    "groups": [
-      "authoring"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/authoring/collections.mdx"
   },
   {
@@ -24,9 +22,7 @@
     "description": "MDX components the pipeline knows how to flatten into agent-readable markdown.",
     "relativePath": "authoring/components",
     "extension": ".mdx",
-    "groups": [
-      "authoring"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/authoring/components.mdx"
   },
   {
@@ -36,12 +32,10 @@
     ],
     "urlPath": "/docs/authoring/frontmatter",
     "title": "Frontmatter",
-    "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
+    "description": "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree.",
     "relativePath": "authoring/frontmatter",
     "extension": ".mdx",
-    "groups": [
-      "authoring"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/authoring/frontmatter.mdx"
   },
   {
@@ -54,9 +48,7 @@
     "description": "Generate a static docs search index, query it at runtime, and optionally stream source-grounded answers.",
     "relativePath": "build/add-search",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/add-search.mdx"
   },
   {
@@ -69,9 +61,7 @@
     "description": "Pick the right leadtype integration shape for your docs app, and what each path gives you.",
     "relativePath": "build/build-a-docs-site",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/build-a-docs-site.mdx"
   },
   {
@@ -99,9 +89,7 @@
     "description": "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk.",
     "relativePath": "build/generate-static-artifacts",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/generate-static-artifacts.mdx"
   },
   {
@@ -114,9 +102,7 @@
     "description": "Wire leadtype's content layer into a fumadocs app for nav, search, and includes.",
     "relativePath": "build/integrate-with-fumadocs",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/integrate-with-fumadocs.mdx"
   },
   {
@@ -129,9 +115,7 @@
     "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
     "relativePath": "build/optimize-docs-for-agents",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/optimize-docs-for-agents.mdx"
   },
   {
@@ -144,9 +128,7 @@
     "description": "Wire createDocsSource into Next, Astro, Vite, Nuxt, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
     "relativePath": "build/use-the-source-primitive",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/use-the-source-primitive.mdx"
   },
   {
@@ -159,9 +141,7 @@
     "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
     "relativePath": "build/validate-in-ci",
     "extension": ".mdx",
-    "groups": [
-      "docs-site"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/build/validate-in-ci.mdx"
   },
   {
@@ -174,9 +154,7 @@
     "description": "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned nav.",
     "relativePath": "changelog/nav-migration-prompts",
     "extension": ".mdx",
-    "groups": [
-      "changelog"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/changelog/nav-migration-prompts.mdx"
   },
   {
@@ -188,9 +166,7 @@
     "description": "The mental model: one MDX source, a remark pipeline, two output modes, three audiences.",
     "relativePath": "how-it-works",
     "extension": ".mdx",
-    "groups": [
-      "get-started"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/how-it-works.mdx"
   },
   {
@@ -200,9 +176,7 @@
     "description": "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline.",
     "relativePath": "index",
     "extension": ".mdx",
-    "groups": [
-      "get-started"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/index.mdx"
   },
   {
@@ -214,9 +188,7 @@
     "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
     "relativePath": "methodology",
     "extension": ".mdx",
-    "groups": [
-      "get-started"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/methodology.mdx"
   },
   {
@@ -229,9 +201,7 @@
     "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
     "relativePath": "package-docs/bundle",
     "extension": ".mdx",
-    "groups": [
-      "package-docs"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/package-docs/bundle.mdx"
   },
   {
@@ -243,9 +213,7 @@
     "description": "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using.",
     "relativePath": "quickstart",
     "extension": ".mdx",
-    "groups": [
-      "get-started"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/quickstart.mdx"
   },
   {
@@ -258,9 +226,7 @@
     "description": "The core / adapter boundary — what ships where, and the rules adapters must follow.",
     "relativePath": "reference/architecture",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/architecture.mdx"
   },
   {
@@ -273,9 +239,7 @@
     "description": "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output.",
     "relativePath": "reference/cli",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/cli.mdx"
   },
   {
@@ -288,9 +252,7 @@
     "description": "MDX-to-markdown conversion APIs from leadtype/convert.",
     "relativePath": "reference/convert",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/convert.mdx"
   },
   {
@@ -303,9 +265,7 @@
     "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
     "relativePath": "reference/evals",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/evals.mdx"
   },
   {
@@ -318,9 +278,7 @@
     "description": "Schema, link, and navigation checks. CLI and library API.",
     "relativePath": "reference/lint",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/lint.mdx"
   },
   {
@@ -333,9 +291,7 @@
     "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
     "relativePath": "reference/llm",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/llm.mdx"
   },
   {
@@ -348,9 +304,7 @@
     "description": "Tag type contracts and the build-time source preset for consumers rendering MDX themselves.",
     "relativePath": "reference/mdx",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/mdx.mdx"
   },
   {
@@ -363,9 +317,7 @@
     "description": "The default plugin stack that flattens MDX components into markdown.",
     "relativePath": "reference/remark",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/remark.mdx"
   },
   {
@@ -378,9 +330,7 @@
     "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
     "relativePath": "reference/search",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/search.mdx"
   },
   {
@@ -393,9 +343,7 @@
     "description": "Framework-neutral docs source primitive — navigation, page loader, search index, and include resolver.",
     "relativePath": "reference/source",
     "extension": ".mdx",
-    "groups": [
-      "reference"
-    ],
+    "groups": [],
     "globKey": "../../../../../docs/reference/source.mdx"
   }
 ]

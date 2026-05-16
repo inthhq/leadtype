@@ -1,7 +1,6 @@
 ---
 title: "LLM files"
 description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
-group: reference
 ---
 
 # LLM files
@@ -133,7 +132,6 @@ await generateLlmsTxt({
     summary: "A library that does one thing well.",
   },
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
 });
 
 await generateLLMFullContextFiles({
@@ -141,7 +139,6 @@ await generateLLMFullContextFiles({
   baseUrl: "https://leadtype.dev",
   product: { name: "My Library" },
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
 });
 
 await generateAgentReadabilityArtifacts({
@@ -149,7 +146,6 @@ await generateAgentReadabilityArtifacts({
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
 });
 ```
 
@@ -176,7 +172,6 @@ await generateLlmsTxt({
   outDir: "public",
   product: docsConfig.product,
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
   mounts,
 });
 
@@ -184,7 +179,6 @@ await generateLLMFullContextFiles({
   outDir: "public",
   product: { name: docsConfig.product.name },
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
   mounts,
 });
 
@@ -192,7 +186,6 @@ await generateAgentReadabilityArtifacts({
   outDir: "public",
   product: docsConfig.product,
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
   mounts,
 });
 ```
@@ -215,7 +208,6 @@ const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
-  groups: docsConfig.groups,
 });
 ```
 
@@ -386,7 +378,6 @@ await generateAgentsMd({
   srcDir: ".",
   outDir: "packages/my-package",
   product: docsConfig.product,
-  groups: docsConfig.groups,
 });
 ```
 
@@ -432,7 +423,6 @@ const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
 });
 
 if (navigation.unknown.length > 0) {
@@ -468,7 +458,6 @@ const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
   toc: { minLevel: 2, maxLevel: 4 },
 });
 ```

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-15T23:50:33.361Z",
+  "generatedAt": "2026-05-16T00:15:30.652Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -15,9 +15,7 @@
       "markdownUrlPath": "/docs/index.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
-      "groups": [
-        "get-started"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T17:23:53.000Z",
       "logicalPath": "index"
     },
@@ -29,9 +27,7 @@
       "markdownUrlPath": "/docs/authoring/collections.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/collections.md",
       "relativePath": "authoring/collections",
-      "groups": [
-        "authoring"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T16:46:08.000Z",
       "logicalPath": "authoring/collections"
     },
@@ -43,23 +39,19 @@
       "markdownUrlPath": "/docs/authoring/components.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/components.md",
       "relativePath": "authoring/components",
-      "groups": [
-        "authoring"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T17:23:53.000Z",
       "logicalPath": "authoring/components"
     },
     {
       "title": "Frontmatter",
-      "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
+      "description": "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree.",
       "urlPath": "/docs/authoring/frontmatter",
       "absoluteUrl": "https://leadtype.dev/docs/authoring/frontmatter",
       "markdownUrlPath": "/docs/authoring/frontmatter.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/frontmatter.md",
       "relativePath": "authoring/frontmatter",
-      "groups": [
-        "authoring"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "authoring/frontmatter"
     },
@@ -71,9 +63,7 @@
       "markdownUrlPath": "/docs/build/add-search.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/add-search.md",
       "relativePath": "build/add-search",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T17:23:53.000Z",
       "logicalPath": "build/add-search"
     },
@@ -85,9 +75,7 @@
       "markdownUrlPath": "/docs/build/build-a-docs-site.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site.md",
       "relativePath": "build/build-a-docs-site",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "build/build-a-docs-site"
     },
@@ -99,9 +87,7 @@
       "markdownUrlPath": "/docs/build/generate-static-artifacts.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/generate-static-artifacts.md",
       "relativePath": "build/generate-static-artifacts",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "build/generate-static-artifacts"
     },
@@ -113,9 +99,7 @@
       "markdownUrlPath": "/docs/build/integrate-with-fumadocs.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/integrate-with-fumadocs.md",
       "relativePath": "build/integrate-with-fumadocs",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T20:57:41.000Z",
       "logicalPath": "build/integrate-with-fumadocs"
     },
@@ -127,9 +111,7 @@
       "markdownUrlPath": "/docs/build/optimize-docs-for-agents.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents.md",
       "relativePath": "build/optimize-docs-for-agents",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T17:23:53.000Z",
       "logicalPath": "build/optimize-docs-for-agents"
     },
@@ -141,9 +123,7 @@
       "markdownUrlPath": "/docs/build/use-the-source-primitive.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T01:13:35.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
@@ -155,9 +135,7 @@
       "markdownUrlPath": "/docs/build/validate-in-ci.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/validate-in-ci.md",
       "relativePath": "build/validate-in-ci",
-      "groups": [
-        "docs-site"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T17:23:53.000Z",
       "logicalPath": "build/validate-in-ci"
     },
@@ -169,9 +147,7 @@
       "markdownUrlPath": "/docs/changelog/nav-migration-prompts.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/changelog/nav-migration-prompts.md",
       "relativePath": "changelog/nav-migration-prompts",
-      "groups": [
-        "changelog"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "changelog/nav-migration-prompts"
     },
@@ -183,9 +159,7 @@
       "markdownUrlPath": "/docs/how-it-works.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/how-it-works.md",
       "relativePath": "how-it-works",
-      "groups": [
-        "get-started"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "how-it-works"
     },
@@ -197,9 +171,7 @@
       "markdownUrlPath": "/docs/methodology.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/methodology.md",
       "relativePath": "methodology",
-      "groups": [
-        "get-started"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T01:13:35.000Z",
       "logicalPath": "methodology"
     },
@@ -211,9 +183,7 @@
       "markdownUrlPath": "/docs/package-docs/bundle.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/package-docs/bundle.md",
       "relativePath": "package-docs/bundle",
-      "groups": [
-        "package-docs"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "package-docs/bundle"
     },
@@ -225,9 +195,7 @@
       "markdownUrlPath": "/docs/quickstart.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
-      "groups": [
-        "get-started"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T20:57:41.000Z",
       "logicalPath": "quickstart"
     },
@@ -239,9 +207,7 @@
       "markdownUrlPath": "/docs/reference/architecture.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/architecture.md",
       "relativePath": "reference/architecture",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T01:13:35.000Z",
       "logicalPath": "reference/architecture"
     },
@@ -253,9 +219,7 @@
       "markdownUrlPath": "/docs/reference/cli.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/cli.md",
       "relativePath": "reference/cli",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "reference/cli"
     },
@@ -267,9 +231,7 @@
       "markdownUrlPath": "/docs/reference/convert.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/convert.md",
       "relativePath": "reference/convert",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-12T02:59:25.000Z",
       "logicalPath": "reference/convert"
     },
@@ -281,9 +243,7 @@
       "markdownUrlPath": "/docs/reference/evals.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/evals.md",
       "relativePath": "reference/evals",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T17:23:53.000Z",
       "logicalPath": "reference/evals"
     },
@@ -295,9 +255,7 @@
       "markdownUrlPath": "/docs/reference/lint.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/lint.md",
       "relativePath": "reference/lint",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-09T22:38:26.000Z",
       "logicalPath": "reference/lint"
     },
@@ -309,9 +267,7 @@
       "markdownUrlPath": "/docs/reference/llm.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/llm.md",
       "relativePath": "reference/llm",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-15T23:27:07.000Z",
       "logicalPath": "reference/llm"
     },
@@ -323,9 +279,7 @@
       "markdownUrlPath": "/docs/reference/mdx.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/mdx.md",
       "relativePath": "reference/mdx",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T20:57:41.000Z",
       "logicalPath": "reference/mdx"
     },
@@ -337,9 +291,7 @@
       "markdownUrlPath": "/docs/reference/remark.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/remark.md",
       "relativePath": "reference/remark",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T20:57:41.000Z",
       "logicalPath": "reference/remark"
     },
@@ -351,9 +303,7 @@
       "markdownUrlPath": "/docs/reference/search.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/search.md",
       "relativePath": "reference/search",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-12T02:59:25.000Z",
       "logicalPath": "reference/search"
     },
@@ -365,9 +315,7 @@
       "markdownUrlPath": "/docs/reference/source.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/source.md",
       "relativePath": "reference/source",
-      "groups": [
-        "reference"
-      ],
+      "groups": [],
       "lastModified": "2026-05-13T20:57:41.000Z",
       "logicalPath": "reference/source"
     }
@@ -395,9 +343,7 @@
                 "relativePath": "index",
                 "title": "Leadtype",
                 "description": "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline.",
-                "groups": [
-                  "get-started"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "start-here",
@@ -434,9 +380,7 @@
                 "relativePath": "quickstart",
                 "title": "Quickstart",
                 "description": "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using.",
-                "groups": [
-                  "get-started"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "install",
@@ -500,9 +444,7 @@
                 "relativePath": "how-it-works",
                 "title": "How it works",
                 "description": "The mental model: one MDX source, a remark pipeline, two output modes, three audiences.",
-                "groups": [
-                  "get-started"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-pipeline",
@@ -575,9 +517,7 @@
                 "relativePath": "methodology",
                 "title": "Methodology",
                 "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
-                "groups": [
-                  "get-started"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-short-version",
@@ -633,10 +573,8 @@
                 "urlPath": "/docs/authoring/frontmatter",
                 "relativePath": "authoring/frontmatter",
                 "title": "Frontmatter",
-                "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
-                "groups": [
-                  "authoring"
-                ],
+                "description": "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree.",
+                "groups": [],
                 "toc": [
                   {
                     "id": "minimum",
@@ -710,9 +648,7 @@
                 "relativePath": "authoring/collections",
                 "title": "Collections",
                 "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
-                "groups": [
-                  "authoring"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "when-to-reach-for-this",
@@ -822,9 +758,7 @@
                 "relativePath": "authoring/components",
                 "title": "Components",
                 "description": "MDX components the pipeline knows how to flatten into agent-readable markdown.",
-                "groups": [
-                  "authoring"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "why-flatten-at-all",
@@ -1008,9 +942,7 @@
                 "relativePath": "build/build-a-docs-site",
                 "title": "Build a docs site",
                 "description": "Pick the right leadtype integration shape for your docs app, and what each path gives you.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "pick-your-path",
@@ -1065,9 +997,7 @@
                 "relativePath": "build/use-the-source-primitive",
                 "title": "Use the source primitive",
                 "description": "Wire createDocsSource into Next, Astro, Vite, Nuxt, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "tl-dr",
@@ -1231,9 +1161,7 @@
                 "relativePath": "build/integrate-with-fumadocs",
                 "title": "Integrate with Fumadocs",
                 "description": "Wire leadtype's content layer into a fumadocs app for nav, search, and includes.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "tl-dr",
@@ -1306,9 +1234,7 @@
                 "relativePath": "build/generate-static-artifacts",
                 "title": "Generate static artifacts",
                 "description": "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-flow",
@@ -1390,9 +1316,7 @@
                 "relativePath": "build/add-search",
                 "title": "Add search",
                 "description": "Generate a static docs search index, query it at runtime, and optionally stream source-grounded answers.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "generate-the-files",
@@ -1456,9 +1380,7 @@
                 "relativePath": "build/optimize-docs-for-agents",
                 "title": "Optimize docs for agents",
                 "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "what-good-looks-like",
@@ -1550,9 +1472,7 @@
                 "relativePath": "build/validate-in-ci",
                 "title": "Validate in CI",
                 "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
-                "groups": [
-                  "docs-site"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "what-it-catches",
@@ -1627,9 +1547,7 @@
                 "relativePath": "package-docs/bundle",
                 "title": "Bundle docs into a package",
                 "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
-                "groups": [
-                  "package-docs"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-flow",
@@ -1731,9 +1649,7 @@
                 "relativePath": "reference/architecture",
                 "title": "Architecture",
                 "description": "The core / adapter boundary — what ships where, and the rules adapters must follow.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-three-layers",
@@ -1844,9 +1760,7 @@
                 "relativePath": "reference/cli",
                 "title": "CLI",
                 "description": "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "generate",
@@ -1975,9 +1889,7 @@
                 "relativePath": "reference/convert",
                 "title": "Convert",
                 "description": "MDX-to-markdown conversion APIs from leadtype/convert.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "convertallmdx",
@@ -2032,9 +1944,7 @@
                 "relativePath": "reference/evals",
                 "title": "Evals",
                 "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "what-we-benchmark",
@@ -2089,9 +1999,7 @@
                 "relativePath": "reference/lint",
                 "title": "Lint rules",
                 "description": "Schema, link, and navigation checks. CLI and library API.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "rules",
@@ -2203,9 +2111,7 @@
                 "relativePath": "reference/llm",
                 "title": "LLM files",
                 "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "what-gets-generated",
@@ -2388,9 +2294,7 @@
                 "relativePath": "reference/mdx",
                 "title": "leadtype/mdx",
                 "description": "Tag type contracts and the build-time source preset for consumers rendering MDX themselves.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-mdx-source-preset",
@@ -2500,9 +2404,7 @@
                 "relativePath": "reference/remark",
                 "title": "Remark plugins",
                 "description": "The default plugin stack that flattens MDX components into markdown.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "the-default-stack",
@@ -2567,9 +2469,7 @@
                 "relativePath": "reference/search",
                 "title": "Search",
                 "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "vocabulary",
@@ -2660,9 +2560,7 @@
                 "relativePath": "reference/source",
                 "title": "createDocsSource",
                 "description": "Framework-neutral docs source primitive — navigation, page loader, search index, and include resolver.",
-                "groups": [
-                  "reference"
-                ],
+                "groups": [],
                 "toc": [
                   {
                     "id": "configuration",
@@ -2839,9 +2737,7 @@
             "relativePath": "changelog/nav-migration-prompts",
             "title": "Nav migration prompts",
             "description": "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned nav.",
-            "groups": [
-              "changelog"
-            ],
+            "groups": [],
             "toc": [
               {
                 "id": "what-changed",

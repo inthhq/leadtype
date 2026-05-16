@@ -71,42 +71,4 @@ export default defineDocsConfig({
       pages: ["nav-migration-prompts"],
     },
   ],
-  groups: [
-    {
-      slug: "get-started",
-      title: "Get Started",
-      description:
-        "What leadtype is, how it fits together, and the five-minute happy path.",
-    },
-    {
-      slug: "changelog",
-      title: "Changelog",
-      description:
-        "Migration notes, release guidance, and copyable prompts for applying Leadtype changes.",
-    },
-    {
-      slug: "authoring",
-      title: "Authoring",
-      description:
-        "The content contract: frontmatter, groups, and the MDX components the pipeline can flatten.",
-    },
-    {
-      slug: "docs-site",
-      title: "Build a Docs Site",
-      description:
-        "Generate hosted docs artifacts, wire them into an app, add search, and make pages agent-readable.",
-    },
-    {
-      slug: "package-docs",
-      title: "Ship Package Docs",
-      description:
-        "Bundle AGENTS.md and version-matched markdown docs inside an npm package.",
-    },
-    {
-      slug: "reference",
-      title: "Reference",
-      description:
-        "CLI flags, conversion APIs, remark plugins, LLM files, search, and lint rules.",
-    },
-  ],
 });

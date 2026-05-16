@@ -1,12 +1,13 @@
 ---
 title: "Frontmatter"
-description: "Required fields, group semantics, and how authored MDX becomes a navigation tree."
-group: authoring
+description: "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree."
 ---
 
 # Frontmatter
 
-Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads three things from it: what the page is, where it lives in the nav, and how to lint it.
+Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads
+frontmatter for page metadata and linting; curated navigation lives in
+`docs.config.ts` `nav`.
 
 ## Minimum
 
@@ -14,13 +15,12 @@ Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads three 
 ---
 title: "Build a docs site"
 description: "Pick the right leadtype integration shape for your docs app."
-group: docs-site
 ---
 ```
 
 - `title` — required. Non-empty string. Renders as the page heading and as the entry text in `llms.txt` and the sidebar.
 - `description` — optional but recommended. Becomes the routing hint in `llms.txt`. If omitted, the converter synthesizes one from the body during conversion (see [convert behavior](/docs/reference/convert)).
-- `group` — optional. Slug of a group declared in `docs.config.ts`. Pages without a group are excluded from the nav and grouped indexes, but still appear in generated markdown and the root `llms-full.txt` fallback.
+- `group` — optional legacy taxonomy metadata. Use config-owned `nav` for curated page placement.
 
 ## How nav becomes site navigation and the agent map
 

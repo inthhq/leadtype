@@ -21,9 +21,7 @@
               "relativePath": "index",
               "title": "Leadtype",
               "description": "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline.",
-              "groups": [
-                "get-started"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "start-here",
@@ -60,9 +58,7 @@
               "relativePath": "quickstart",
               "title": "Quickstart",
               "description": "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using.",
-              "groups": [
-                "get-started"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "install",
@@ -126,9 +122,7 @@
               "relativePath": "how-it-works",
               "title": "How it works",
               "description": "The mental model: one MDX source, a remark pipeline, two output modes, three audiences.",
-              "groups": [
-                "get-started"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-pipeline",
@@ -201,9 +195,7 @@
               "relativePath": "methodology",
               "title": "Methodology",
               "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
-              "groups": [
-                "get-started"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-short-version",
@@ -259,10 +251,8 @@
               "urlPath": "/docs/authoring/frontmatter",
               "relativePath": "authoring/frontmatter",
               "title": "Frontmatter",
-              "description": "Required fields, group semantics, and how authored MDX becomes a navigation tree.",
-              "groups": [
-                "authoring"
-              ],
+              "description": "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree.",
+              "groups": [],
               "toc": [
                 {
                   "id": "minimum",
@@ -336,9 +326,7 @@
               "relativePath": "authoring/collections",
               "title": "Collections",
               "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
-              "groups": [
-                "authoring"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "when-to-reach-for-this",
@@ -448,9 +436,7 @@
               "relativePath": "authoring/components",
               "title": "Components",
               "description": "MDX components the pipeline knows how to flatten into agent-readable markdown.",
-              "groups": [
-                "authoring"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "why-flatten-at-all",
@@ -634,9 +620,7 @@
               "relativePath": "build/build-a-docs-site",
               "title": "Build a docs site",
               "description": "Pick the right leadtype integration shape for your docs app, and what each path gives you.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "pick-your-path",
@@ -691,9 +675,7 @@
               "relativePath": "build/use-the-source-primitive",
               "title": "Use the source primitive",
               "description": "Wire createDocsSource into Next, Astro, Vite, Nuxt, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "tl-dr",
@@ -857,9 +839,7 @@
               "relativePath": "build/integrate-with-fumadocs",
               "title": "Integrate with Fumadocs",
               "description": "Wire leadtype's content layer into a fumadocs app for nav, search, and includes.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "tl-dr",
@@ -932,9 +912,7 @@
               "relativePath": "build/generate-static-artifacts",
               "title": "Generate static artifacts",
               "description": "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-flow",
@@ -1016,9 +994,7 @@
               "relativePath": "build/add-search",
               "title": "Add search",
               "description": "Generate a static docs search index, query it at runtime, and optionally stream source-grounded answers.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "generate-the-files",
@@ -1082,9 +1058,7 @@
               "relativePath": "build/optimize-docs-for-agents",
               "title": "Optimize docs for agents",
               "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "what-good-looks-like",
@@ -1176,9 +1150,7 @@
               "relativePath": "build/validate-in-ci",
               "title": "Validate in CI",
               "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
-              "groups": [
-                "docs-site"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "what-it-catches",
@@ -1253,9 +1225,7 @@
               "relativePath": "package-docs/bundle",
               "title": "Bundle docs into a package",
               "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
-              "groups": [
-                "package-docs"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-flow",
@@ -1357,9 +1327,7 @@
               "relativePath": "reference/architecture",
               "title": "Architecture",
               "description": "The core / adapter boundary — what ships where, and the rules adapters must follow.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-three-layers",
@@ -1470,9 +1438,7 @@
               "relativePath": "reference/cli",
               "title": "CLI",
               "description": "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "generate",
@@ -1601,9 +1567,7 @@
               "relativePath": "reference/convert",
               "title": "Convert",
               "description": "MDX-to-markdown conversion APIs from leadtype/convert.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "convertallmdx",
@@ -1658,9 +1622,7 @@
               "relativePath": "reference/evals",
               "title": "Evals",
               "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "what-we-benchmark",
@@ -1715,9 +1677,7 @@
               "relativePath": "reference/lint",
               "title": "Lint rules",
               "description": "Schema, link, and navigation checks. CLI and library API.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "rules",
@@ -1829,9 +1789,7 @@
               "relativePath": "reference/llm",
               "title": "LLM files",
               "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "what-gets-generated",
@@ -2014,9 +1972,7 @@
               "relativePath": "reference/mdx",
               "title": "leadtype/mdx",
               "description": "Tag type contracts and the build-time source preset for consumers rendering MDX themselves.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-mdx-source-preset",
@@ -2126,9 +2082,7 @@
               "relativePath": "reference/remark",
               "title": "Remark plugins",
               "description": "The default plugin stack that flattens MDX components into markdown.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "the-default-stack",
@@ -2193,9 +2147,7 @@
               "relativePath": "reference/search",
               "title": "Search",
               "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "vocabulary",
@@ -2286,9 +2238,7 @@
               "relativePath": "reference/source",
               "title": "createDocsSource",
               "description": "Framework-neutral docs source primitive — navigation, page loader, search index, and include resolver.",
-              "groups": [
-                "reference"
-              ],
+              "groups": [],
               "toc": [
                 {
                   "id": "configuration",
@@ -2465,9 +2415,7 @@
           "relativePath": "changelog/nav-migration-prompts",
           "title": "Nav migration prompts",
           "description": "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned nav.",
-          "groups": [
-            "changelog"
-          ],
+          "groups": [],
           "toc": [
             {
               "id": "what-changed",

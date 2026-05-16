@@ -1,7 +1,6 @@
 ---
 title: "Bundle docs into a package"
 description: "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files."
-group: package-docs
 ---
 
 # Bundle docs into a package
@@ -116,7 +115,6 @@ await convertAllMdx({
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
@@ -130,7 +128,6 @@ await generateAgentsMd({
   outDir: PACKAGE_ROOT,
   product: docsConfig.product,
   nav: docsConfig.nav,
-  groups: docsConfig.groups,
 });
 ```
 
