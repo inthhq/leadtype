@@ -15,21 +15,25 @@ const commonGuidePages = [
   "callbacks",
   "internationalization",
   "policy-packs",
-];
+] as const;
 
-const frameworkStartPages = ["quickstart", "optimization", "/ai-agents"];
+const frameworkStartPages = [
+  "quickstart",
+  "optimization",
+  "/ai-agents",
+] as const;
 
 const reactFrameworkNav = (title: string, base: string) => ({
   title,
   base,
   children: [
-    { title: "Start", pages: frameworkStartPages },
+    { title: "Start", pages: [...frameworkStartPages] },
     { title: "Concepts", pages: [{ include: "concepts/*" }] },
     {
       title: "Guides",
       pages: [
         ...commonGuidePages,
-        { include: "*", exclude: frameworkStartPages },
+        { include: "*", exclude: [...frameworkStartPages] },
       ],
     },
     { title: "Components", pages: [{ include: "components/*" }] },
@@ -43,9 +47,9 @@ const javascriptFrameworkNav = {
   title: "JavaScript",
   base: "frameworks/javascript",
   children: [
-    { title: "Start", pages: frameworkStartPages },
+    { title: "Start", pages: [...frameworkStartPages] },
     { title: "Concepts", pages: [{ include: "concepts/*" }] },
-    { title: "Guides", pages: commonGuidePages },
+    { title: "Guides", pages: [...commonGuidePages] },
     { title: "Store API", pages: [{ include: "api/*" }] },
     { title: "Building Framework Libraries", pages: ["building-ui"] },
     { title: "IAB TCF", pages: [{ include: "iab/*" }] },
