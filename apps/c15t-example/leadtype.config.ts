@@ -17,13 +17,21 @@ const commonGuidePages = [
   "policy-packs",
 ];
 
+const frameworkStartPages = ["quickstart", "optimization", "/ai-agents"];
+
 const reactFrameworkNav = (title: string, base: string) => ({
   title,
   base,
   children: [
-    { title: "Start", pages: ["quickstart", "optimization", "/ai-agents"] },
+    { title: "Start", pages: frameworkStartPages },
     { title: "Concepts", pages: [{ include: "concepts/*" }] },
-    { title: "Guides", pages: [...commonGuidePages, { include: "*" }] },
+    {
+      title: "Guides",
+      pages: [
+        ...commonGuidePages,
+        { include: "*", exclude: frameworkStartPages },
+      ],
+    },
     { title: "Components", pages: [{ include: "components/*" }] },
     { title: "Styling", pages: [{ include: "styling/*" }] },
     { title: "Hooks", pages: [{ include: "hooks/**/*" }] },
@@ -35,7 +43,7 @@ const javascriptFrameworkNav = {
   title: "JavaScript",
   base: "frameworks/javascript",
   children: [
-    { title: "Start", pages: ["quickstart", "optimization", "/ai-agents"] },
+    { title: "Start", pages: frameworkStartPages },
     { title: "Concepts", pages: [{ include: "concepts/*" }] },
     { title: "Guides", pages: commonGuidePages },
     { title: "Store API", pages: [{ include: "api/*" }] },
