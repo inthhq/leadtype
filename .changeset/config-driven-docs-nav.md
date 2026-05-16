@@ -1,5 +1,5 @@
 ---
-"leadtype": patch
+"leadtype": minor
 ---
 
 Add config-driven docs navigation with nested sections, explicit page placement,

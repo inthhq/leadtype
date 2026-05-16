@@ -1354,6 +1354,58 @@ describe("resolveDocsNavigation", () => {
     expect(nav.ungrouped).toHaveLength(0);
   });
 
+  it("keeps shared pages in every nav branch that references them", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "ai-agents.mdx",
+        frontmatter: "title: AI Agents\ndescription: Agent setup.",
+      },
+      {
+        relativePath: "frameworks/next/quickstart.mdx",
+        frontmatter: "title: Next Quickstart\ndescription: Start.",
+      },
+      {
+        relativePath: "frameworks/react/quickstart.mdx",
+        frontmatter: "title: React Quickstart\ndescription: Start.",
+      },
+    ]);
+
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      nav: [
+        {
+          title: "Frameworks",
+          children: [
+            {
+              title: "Next.js",
+              base: "frameworks/next",
+              pages: ["quickstart", "/ai-agents"],
+            },
+            {
+              title: "React",
+              base: "frameworks/react",
+              pages: ["quickstart", "/ai-agents"],
+            },
+          ],
+        },
+      ],
+    });
+
+    const next = nav.groups[0]?.children[0];
+    const react = nav.groups[0]?.children[1];
+
+    expect(next?.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/frameworks/next/quickstart",
+      "/docs/ai-agents",
+    ]);
+    expect(react?.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/frameworks/react/quickstart",
+      "/docs/ai-agents",
+    ]);
+    expect(nav.ungrouped).toHaveLength(0);
+  });
+
   it("fails when an explicit nav page does not exist", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [

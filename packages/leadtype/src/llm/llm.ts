@@ -1245,6 +1245,11 @@ function normalizeExcludePatterns(
   return patterns.map((pattern) => globToRegExp(joinNavPath(base, pattern)));
 }
 
+/**
+ * Resolve one curated nav page entry. String refs are strict and throw when the
+ * referenced page is absent from docsByRelativePath; include entries are
+ * permissive by default and only throw when entry.required is true.
+ */
 function resolveNavEntryPages(
   group: ResolvedGroup,
   entry: DocsNavPageEntry,
@@ -2083,16 +2088,18 @@ function buildNavigationGroupFromNav(
   docs: SourceDoc[],
   docsByRelativePath: Map<string, SourceDoc>,
   tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
-  seenUrlPaths: Set<string>
+  referencedUrlPaths: Set<string>
 ): DocsNavigationGroup {
   const directPages: SourceDoc[] = [];
+  const groupSeenUrlPaths = new Set<string>();
   for (const entry of group.pageEntries) {
     const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
     for (const page of pages) {
-      if (seenUrlPaths.has(page.urlPath)) {
+      if (groupSeenUrlPaths.has(page.urlPath)) {
         continue;
       }
-      seenUrlPaths.add(page.urlPath);
+      groupSeenUrlPaths.add(page.urlPath);
+      referencedUrlPaths.add(page.urlPath);
       directPages.push(page);
     }
   }
@@ -2109,7 +2116,7 @@ function buildNavigationGroupFromNav(
         docs,
         docsByRelativePath,
         tocByUrlPath,
-        seenUrlPaths
+        referencedUrlPaths
       )
     ),
   };
@@ -2122,7 +2129,7 @@ function buildNavigationFromNav(
   locale?: string,
   unknown: DocsNavigation["unknown"] = []
 ): DocsNavigation {
-  const seenUrlPaths = new Set<string>();
+  const referencedUrlPaths = new Set<string>();
   const docsByRelativePath = createDocsByRelativePath(docs);
   const groups = resolved.map((group) =>
     buildNavigationGroupFromNav(
@@ -2130,13 +2137,13 @@ function buildNavigationFromNav(
       docs,
       docsByRelativePath,
       tocByUrlPath,
-      seenUrlPaths
+      referencedUrlPaths
     )
   );
   return {
     groups,
     ungrouped: docs
-      .filter((doc) => !seenUrlPaths.has(doc.urlPath))
+      .filter((doc) => !referencedUrlPaths.has(doc.urlPath))
       .map((page) => pageView(page, tocByUrlPath)),
     unknown,
     ...(locale ? { locale } : {}),

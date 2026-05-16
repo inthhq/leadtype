@@ -99,7 +99,7 @@ export function isNavigationRouteActive(
   pathname: string,
   route: NavigationRoute
 ): boolean {
-  if (route.docsGroupKey) {
+  if (route.docsGroupKey !== undefined) {
     const activeGroup = findTopNavigationGroup(pathname);
     return activeGroup ? groupKey(activeGroup) === route.docsGroupKey : false;
   }
