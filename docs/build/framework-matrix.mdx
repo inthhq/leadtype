@@ -33,6 +33,8 @@ That writes `/llms.txt`, `/llms-full.txt`, `/docs/*.md`, search JSON, sitemap fi
 
 SvelteKit uses the same command shape with `--out static` because SvelteKit serves static assets from that directory. If your docs are mounted somewhere other than `/docs`, pass the matching path to the adapter's `basePath` or `artifactBasePath` option.
 
+For deployment paths across Vercel, Netlify, Cloudflare, framework static adapters, and plain Vite hosting, see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
+
 ## Next.js App Router
 
 Use `leadtype/next` for static params and page data:
@@ -49,6 +51,16 @@ export const generateStaticParams = createGenerateStaticParams({ source });
 ```
 
 Use `leadtype/search/react` in client search components.
+
+Use `createGenerateMetadata()` for App Router page metadata:
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import { createGenerateMetadata } from "leadtype/next";
+
+export const generateMetadata = createGenerateMetadata({ manifest });
+```
+
+Render JSON-LD from `createDocsJsonLd()` in the page body; the deployment recipe shows the route-aware snippet.
 
 Use `createDocsProxy()` when a Next Proxy owns markdown negotiation for the same route tree:
 

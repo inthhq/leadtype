@@ -18,6 +18,7 @@ export default defineDocsConfig({
       { urlPath: "/docs/build/build-a-docs-site" },
       { urlPath: "/docs/build/use-the-source-primitive" },
       { urlPath: "/docs/build/framework-matrix" },
+      { urlPath: "/docs/build/deploy-generated-artifacts" },
       { urlPath: "/docs/build/add-search" },
       { urlPath: "/docs/build/optimize-docs-for-agents" },
       { urlPath: "/docs/package-docs/bundle" },

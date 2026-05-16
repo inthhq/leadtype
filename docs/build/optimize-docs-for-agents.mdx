@@ -159,23 +159,28 @@ Keep the docs-scoped versions too (`/docs/sitemap.xml` etc.). Audits and agents 
 
 ## 3. Add JSON-LD to docs pages
 
-Use the manifest entry for the current page and render Schema.org JSON-LD into the HTML head:
+Use the manifest entry for the current page and render Schema.org JSON-LD into the HTML head. Defaults cover page identity, canonical URL, last modified time, product site, and breadcrumbs. Add overrides when your site has better author, publisher, image, keywords, or publish-date data.
 
 ```ts
 import agentManifest from "../public/docs/agent-readability.json";
-import { renderJsonLd, renderJsonLdScript } from "leadtype/llm/readability";
+import {
+  createDocsJsonLd,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
 
-const page = agentManifest.pages.find(
-  (entry) => entry.urlPath === "/docs/quickstart"
-);
+const jsonLd = createDocsJsonLd({
+  urlPath: "/docs/quickstart",
+  manifest: agentManifest,
+  overrides: {
+    publisher: { "@type": "Organization", name: "Example" },
+    image: "https://example.com/og/docs.png",
+  },
+});
 
-if (page) {
-  const jsonLd = renderJsonLd(page, agentManifest);
-  const script = renderJsonLdScript(page, agentManifest);
-}
+const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
 ```
 
-Use `renderJsonLd(page, manifest)` if your framework has a typed metadata API. Use `renderJsonLdScript(page, manifest)` if your framework expects an HTML string.
+Use `createDocsJsonLd()` if your framework has a typed metadata or head API. Use `stringifyJsonLd()` for safe script contents.
 
 Also add canonical and markdown alternate links:
 
