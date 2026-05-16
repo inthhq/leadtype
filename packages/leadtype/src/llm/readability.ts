@@ -123,6 +123,18 @@ export type AgentReadabilityManifest = {
   };
 };
 
+export function normalizeAgentReadabilityManifest(
+  manifest: unknown
+): AgentReadabilityManifest {
+  if (typeof manifest !== "object" || manifest === null) {
+    throw new Error("leadtype: agent-readability manifest must be an object.");
+  }
+  return {
+    ...manifest,
+    version: SUPPORTED_MANIFEST_VERSION,
+  } as AgentReadabilityManifest;
+}
+
 export type MarkdownMirrorTarget = {
   /** Canonical HTML route, e.g. `/docs/quickstart`. */
   urlPath: string;

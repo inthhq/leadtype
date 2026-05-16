@@ -73,6 +73,7 @@ export {
   type JsonLdValue,
   type MarkdownMirrorTarget,
   type MarkdownResponseHeadersConfig,
+  normalizeAgentReadabilityManifest,
   type RenderMissingMarkdownConfig,
   type RenderRobotsTxtConfig,
   type RenderSitemapMarkdownConfig,

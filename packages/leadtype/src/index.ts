@@ -36,6 +36,7 @@ export {
   type DocsGroup,
   defineCollection,
   defineDocsConfig,
+  normalizeAgentReadabilityManifest,
   type ProductInfo,
 } from "./llm";
 

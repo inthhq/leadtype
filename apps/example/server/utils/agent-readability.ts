@@ -1,9 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type {
-  AgentReadabilityManifest,
-  MarkdownMirrorTarget,
-} from "leadtype/llm/readability";
+import type { MarkdownMirrorTarget } from "leadtype/llm/readability";
+import { normalizeAgentReadabilityManifest } from "leadtype/llm/readability";
 import {
   getHeader,
   getRequestProtocol,
@@ -14,10 +12,8 @@ import manifestJson from "../../src/generated/agent-readability.json" with {
   type: "json",
 };
 
-export const agentReadabilityManifest = {
-  ...manifestJson,
-  version: 1,
-} as unknown as AgentReadabilityManifest;
+export const agentReadabilityManifest =
+  normalizeAgentReadabilityManifest(manifestJson);
 
 export function getRequestOrigin(event: H3Event): string | undefined {
   const forwardedHost = getHeader(event, "x-forwarded-host")

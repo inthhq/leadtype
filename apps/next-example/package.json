@@ -1,0 +1,29 @@
+{
+  "name": "next-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:generate": "leadtype generate --src ../../examples/shared-docs --out public --base-url http://localhost:3000 --json",
+    "dev": "bun run --filter leadtype build && bun run docs:generate && next dev --webpack",
+    "build": "bun run --filter leadtype build && bun run docs:generate && next build --webpack",
+    "start": "next start",
+    "check-types": "bun run --filter leadtype build && bun run docs:generate && tsgo --noEmit"
+  },
+  "dependencies": {
+    "@next/mdx": "^16.2.6",
+    "leadtype": "workspace:*",
+    "next": "^16.2.6",
+    "next-mdx-remote-client": "^2.1.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^25.6.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "typescript": "6.0.3"
+  }
+}

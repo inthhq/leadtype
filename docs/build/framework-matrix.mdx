@@ -1,0 +1,127 @@
+---
+title: "Framework integration matrix"
+description: "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs."
+group: docs-site
+order: 25
+---
+
+# Framework integration matrix
+
+Leadtype stays framework-neutral at the core, then exposes thin adapters where a framework has a native routing, prerender, or state convention. The adapters do not render UI components; your app owns markup, styling, and accessibility.
+
+| Framework | Human docs route | Agent markdown route | Search helper | Dogfood app |
+| --- | --- | --- | --- | --- |
+| Next.js App Router | `generateStaticParams()` + server component | middleware or `leadtype/next` route handler | `leadtype/search/react` | `apps/next-example` |
+| Astro | `getStaticPaths()` | endpoint at `pages/docs/[...slug].md.ts` | `leadtype/search/client` | `apps/astro-example` |
+| SvelteKit | `+page.server.ts` + `+page.svelte` | `+server.ts` under a `.md` route | `leadtype/search/svelte` | `apps/sveltekit-example` |
+| Nuxt/Nitro | Vue page + Nitro API route | Nitro route or middleware | `leadtype/search/vue` | `apps/nuxt-example` |
+| TanStack Start | catch-all route + generated manifest | server route / Nitro middleware | `leadtype/search/react` | Planned |
+| Fumadocs | `leadtype/fumadocs` source adapter | Next route/middleware pattern | React search helper | Planned |
+
+## Shared build step
+
+Every dogfood app generates the same site artifacts before the framework build:
+
+```bash
+leadtype generate \
+  --src ../../examples/shared-docs \
+  --out public \
+  --base-url http://localhost:3000
+```
+
+That writes `/llms.txt`, `/llms-full.txt`, `/docs/*.md`, search JSON, sitemap files, robots files, and `/docs/agent-readability.json`.
+
+SvelteKit uses the same command shape with `--out static` because SvelteKit serves static assets from that directory. If your docs are mounted somewhere other than `/docs`, pass the matching path to the adapter's `basePath` or `artifactBasePath` option.
+
+## Next.js App Router
+
+Use `leadtype/next` for static params and page data:
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import {
+  createGenerateStaticParams,
+  createLoadPageData,
+} from "leadtype/next";
+import { source } from "@/lib/source";
+
+const loadPageData = createLoadPageData({ source });
+export const generateStaticParams = createGenerateStaticParams({ source });
+```
+
+Use `leadtype/search/react` in client search components.
+
+Use `createDocsProxy()` when a Next Proxy owns markdown negotiation for the same route tree:
+
+```ts title="proxy.ts"
+import { createDocsProxy } from "leadtype/next";
+
+export const proxy = createDocsProxy({ manifest });
+```
+
+## Astro
+
+Use `leadtype/astro` to match Astro's `getStaticPaths()` shape and endpoint signature:
+
+```ts title="src/pages/docs/[...slug].astro"
+import { createGetStaticPaths, createLoadPageData } from "leadtype/astro";
+import { source } from "../../lib/source";
+
+export const getStaticPaths = createGetStaticPaths({ source });
+const page = await createLoadPageData({ source })(Astro.params.slug);
+```
+
+```ts title="src/pages/docs/[...slug].md.ts"
+import { createDocsEndpoint, createMarkdownStaticPaths } from "leadtype/astro";
+import { source } from "../../lib/source";
+
+export const getStaticPaths = createMarkdownStaticPaths({ source });
+export const GET = createDocsEndpoint({ manifest });
+```
+
+Astro does not need a fake hook. Use `leadtype/search/client` from a browser script or from any island framework.
+
+## SvelteKit
+
+Use `mdsvex` with the source preset, then keep page data in `+page.server.ts` and markdown responses in a `.md` endpoint:
+
+```ts title="src/routes/docs/[...slug]/+page.server.ts"
+import { createEntries, createLoadPageData } from "leadtype/sveltekit";
+import { source } from "$lib/source";
+
+export const entries = createEntries({ source });
+const loadPageData = createLoadPageData({ source });
+```
+
+Use `leadtype/search/svelte` for store-based client search.
+
+## Nuxt/Nitro
+
+Nuxt Content is a Nuxt CMS. Leadtype is the portable artifact pipeline: use it when the same source needs framework-agnostic markdown, search JSON, `llms.txt`, and package docs.
+
+Keep Leadtype source loading and adapter helpers in Nitro server files, not Vue client bundles:
+
+```ts title="server/api/docs.get.ts"
+import { createLoadPageData } from "leadtype/nuxt";
+
+const source = await getSource();
+const loadPageData = createLoadPageData({ source });
+```
+
+Use `leadtype/search/vue` for the client search composable.
+
+## TanStack Start and Fumadocs
+
+TanStack Start follows the same shape as the existing dogfood app: generate a route manifest, lazy-load MDX modules by slug, and use `leadtype/search/react` for search.
+
+Fumadocs uses `leadtype/fumadocs` to map the source primitive into Fumadocs' `Source` contract. Pair it with the same generated artifact serving used by the Next example.
+
+## Verification
+
+The implemented dogfood apps are expected to build in CI:
+
+```bash
+bun --filter next-example build
+bun --filter astro-example build
+bun --filter sveltekit-example build
+bun --filter nuxt-example build
+```

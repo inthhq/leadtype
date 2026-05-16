@@ -24,10 +24,23 @@ coverage
 .vercel
 
 # Build Outputs
+.astro/
 .next/
+.nuxt/
+.output/
+.svelte-kit/
 out/
 /build
 dist
+*.tsbuildinfo
+
+# Generated example docs
+apps/*/public/docs/
+apps/*/public/llms-full.txt
+apps/*/public/llms.txt
+apps/sveltekit-example/static/docs/
+apps/sveltekit-example/static/llms-full.txt
+apps/sveltekit-example/static/llms.txt
 
 
 # Debug
