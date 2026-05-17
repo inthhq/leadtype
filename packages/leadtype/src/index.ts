@@ -43,7 +43,6 @@ export {
   normalizeAgentReadabilityManifest,
   type ProductInfo,
 } from "./llm";
-
 export {
   type CreateDocsSourceConfig,
   createDocsSource,
@@ -51,3 +50,17 @@ export {
   type DocsPageMeta,
   type DocsSource,
 } from "./source";
+export {
+  type DocsAgentsMdArtifact,
+  type DocsAstPage,
+  type DocsFrontmatter,
+  type DocsFrontmatterPage,
+  type DocsLlmsFullArtifact,
+  type DocsLlmsTxtArtifact,
+  type DocsMarkdownPage,
+  type DocsRawPage,
+  type DocsSearchChunkInput,
+  type DocsTransformContext,
+  type DocsTransformer,
+  DocsTransformerError,
+} from "./transformers";

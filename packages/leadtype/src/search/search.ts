@@ -1,5 +1,11 @@
 import type { LocalizedDocsMetadata } from "../i18n";
 import { slugifyDocsHeading } from "../internal/docs-heading";
+import {
+  type DocsFrontmatter,
+  type DocsSearchChunkInput,
+  type DocsTransformerOptions,
+  runTransformersSync,
+} from "../transformers";
 
 const DEFAULT_MAX_CHUNK_CHARS = 1200;
 const DEFAULT_OVERLAP_CHARS = 160;
@@ -111,6 +117,7 @@ export type DocsSearchDocument = LocalizedDocsMetadata & {
   urlPath: string;
   absoluteUrl: string;
   relativePath: string;
+  frontmatter?: DocsFrontmatter;
   content: string;
 };
 
@@ -200,6 +207,7 @@ export type CreateDocsSearchIndexOptions = {
   generatedAt?: string;
   maxChunkChars?: number;
   overlapChars?: number;
+  transformers?: DocsTransformerOptions["transformers"];
 };
 
 export type SearchDocsOptions = ContentStoreOptions & {
@@ -844,7 +852,18 @@ export function createDocsSearchIndex(
   const mutableChunks: MutableChunk[] = [];
   const chunkTermCounts = new Map<number, MutableTermCounts>();
 
-  for (const [documentIndex, doc] of markdownDocs.entries()) {
+  const docs = runTransformersSync(
+    options.transformers,
+    "beforeSearchIndex",
+    markdownDocs,
+    { stage: "search" },
+    (transformer, value, context) =>
+      transformer.beforeSearchIndex?.(value, context) as
+        | DocsSearchDocument[]
+        | undefined
+  );
+
+  for (const [documentIndex, doc] of docs.entries()) {
     const documentId = doc.id ?? `doc-${documentIndex}`;
     const description = doc.description ?? "";
     const entry: DocsSearchDocumentEntry = [
@@ -893,23 +912,57 @@ export function createDocsSearchIndex(
           continue;
         }
 
+        const chunkInput: DocsSearchChunkInput = {
+          title: doc.title,
+          description,
+          urlPath: doc.urlPath,
+          absoluteUrl: doc.absoluteUrl,
+          relativePath: doc.relativePath,
+          anchor: slugifyDocsHeading(block.headingPath.at(-1) ?? ""),
+          headingPath: block.headingPath,
+          text: chunkText,
+          codeText,
+          length: tokenize(chunkText).length,
+          ...(doc.locale ? { locale: doc.locale } : {}),
+          ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+          ...(doc.isFallback === undefined
+            ? {}
+            : { isFallback: doc.isFallback }),
+          ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
+        };
+        const transformedChunk = runTransformersSync(
+          options.transformers,
+          "beforeSearchChunk",
+          chunkInput,
+          {
+            stage: "search",
+            relativePath: doc.relativePath,
+            urlPath: doc.urlPath,
+            locale: doc.locale,
+          },
+          (transformer, value, context) =>
+            transformer.beforeSearchChunk?.(value, context) as
+              | DocsSearchChunkInput
+              | undefined
+        );
+
         const chunkIndex = mutableChunks.length;
         const chunkId = `chunk-${chunkIndex}`;
-        const length = tokenize(chunkText).length;
-        const anchor = slugifyDocsHeading(block.headingPath.at(-1) ?? "");
+        const length = tokenize(transformedChunk.text).length;
+        const anchor = transformedChunk.anchor;
         mutableChunks.push({
           id: chunkId,
           documentIndex,
           anchor,
-          headingPath: block.headingPath,
-          text: chunkText,
+          headingPath: transformedChunk.headingPath,
+          text: transformedChunk.text,
           length,
         });
         chunkTermCounts.set(chunkIndex, {
           title: countTerms(doc.title),
-          heading: countTerms(block.headingPath.join(" ")),
-          body: countTerms([description, text].join(" ")),
-          code: countTerms(codeText),
+          heading: countTerms(transformedChunk.headingPath.join(" ")),
+          body: countTerms([description, transformedChunk.text].join(" ")),
+          code: countTerms(transformedChunk.codeText),
         });
       }
     }

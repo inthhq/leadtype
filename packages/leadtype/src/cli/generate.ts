@@ -22,6 +22,7 @@ import {
 import type {
   DocsCollection,
   DocsConfig,
+  DocsFrontmatterSchema,
   DocsGroup,
   DocsNavNode,
   ProductInfo,
@@ -45,6 +46,7 @@ import {
   type SyncMode,
   syncCollections,
 } from "../sync/sync";
+import type { DocsTransformer } from "../transformers";
 
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
@@ -170,10 +172,12 @@ export type LoadedDocsConfig = {
 
 type ResolvedGenerateMetadata = {
   configPath?: string;
+  frontmatterSchema?: DocsFrontmatterSchema;
   groups: DocsGroup[];
   i18n?: DocsConfig["i18n"];
   nav?: DocsNavNode[];
   product: ProductInfo;
+  transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
 };
@@ -850,6 +854,7 @@ function resolveGenerateMetadata(
       : undefined;
     return Promise.resolve({
       configPath: loaded.path,
+      frontmatterSchema: loaded.config.frontmatterSchema,
       groups: collectionGroups ?? loaded.config.groups ?? [],
       i18n: loaded.config.i18n,
       nav:
@@ -857,6 +862,7 @@ function resolveGenerateMetadata(
           ? collectionNav
           : loaded.config.nav,
       product: applyProductOverrides(loaded.config.product, args),
+      transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
         ? path.resolve(srcDir, loaded.config.typeTableBasePath)
         : undefined,
@@ -1415,11 +1421,18 @@ export async function runGenerateCommand(
       docsSources
     );
     sourceMirror = await createSourceMirror(srcDir, docsSources, args);
+    const hasExplicitPathFilters =
+      args.include.length > 0 || args.exclude.length > 0;
     // Collections-mode configs may omit per-collection `groups` and lean on
     // the same frontmatter-discovery path used when no config is present.
+    // Filtered single-folder runs also disable curated nav, so infer groups
+    // when the loaded config only provided `nav`.
     const needsGroupInference =
       !metadata.configPath ||
-      Boolean(loadedConfig?.config.collections && metadata.groups.length === 0);
+      Boolean(
+        loadedConfig?.config.collections && metadata.groups.length === 0
+      ) ||
+      (hasExplicitPathFilters && metadata.groups.length === 0);
     const { groups, nav, product, typeTableBasePath, typeTableStrict } =
       needsGroupInference
         ? {
@@ -1427,8 +1440,6 @@ export async function runGenerateCommand(
             groups: await inferGroups(sourceMirror.docsDir),
           }
         : metadata;
-    const hasExplicitPathFilters =
-      args.include.length > 0 || args.exclude.length > 0;
     const effectiveNav = hasExplicitPathFilters ? undefined : nav;
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
@@ -1463,6 +1474,8 @@ export async function runGenerateCommand(
       }),
       enrichFrontmatterFromGit: args.enrichGit,
       failOnError: typeTableStrict,
+      frontmatterSchema: metadata.frontmatterSchema,
+      transformers: metadata.transformers,
     });
 
     let result: GenerateResult;
@@ -1475,6 +1488,7 @@ export async function runGenerateCommand(
         nav: effectiveNav,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
       });
       result = {
         docsDir,
@@ -1505,6 +1519,7 @@ export async function runGenerateCommand(
         mounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
       });
 
       await generateLLMFullContextFiles({
@@ -1516,6 +1531,7 @@ export async function runGenerateCommand(
         mounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
       });
 
       const search = await generateDocsSearchFiles({
@@ -1524,6 +1540,7 @@ export async function runGenerateCommand(
         mounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
       });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
@@ -1535,6 +1552,7 @@ export async function runGenerateCommand(
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
         i18nManifest,
+        transformers: metadata.transformers,
       });
 
       if (i18n) {
@@ -1552,6 +1570,7 @@ export async function runGenerateCommand(
             mounts,
             i18n: metadata.i18n,
             locale: locale.code,
+            transformers: metadata.transformers,
           });
           await generateLLMFullContextFiles({
             outDir,
@@ -1562,6 +1581,7 @@ export async function runGenerateCommand(
             mounts,
             i18n: metadata.i18n,
             locale: locale.code,
+            transformers: metadata.transformers,
           });
           await generateDocsSearchFiles({
             outDir,
@@ -1569,6 +1589,7 @@ export async function runGenerateCommand(
             mounts,
             i18n: metadata.i18n,
             locale: locale.code,
+            transformers: metadata.transformers,
           });
           await generateAgentReadabilityArtifacts({
             outDir,
@@ -1580,6 +1601,7 @@ export async function runGenerateCommand(
             i18n: metadata.i18n,
             locale: locale.code,
             i18nManifest,
+            transformers: metadata.transformers,
           });
         }
       }

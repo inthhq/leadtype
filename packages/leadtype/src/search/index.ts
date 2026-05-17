@@ -1,4 +1,10 @@
 export {
+  type DocsSearchChunkInput,
+  type DocsTransformContext,
+  type DocsTransformer,
+  DocsTransformerError,
+} from "../transformers";
+export {
   type AnswerContextOptions,
   attachDocsSearchContent,
   type ClientIdentifierOptions,

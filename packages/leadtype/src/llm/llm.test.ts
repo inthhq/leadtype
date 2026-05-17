@@ -70,6 +70,43 @@ async function seedDocs(projectDir: string, files: SeedFile[]): Promise<void> {
 }
 
 describe("generateLlmsTxt", () => {
+  it("lets transformers customize llms.txt artifacts before write", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      product: { name: "Test", summary: "Testing." },
+      groups: [{ slug: "guides", title: "Guides" }],
+      transformers: [
+        {
+          name: "append-note",
+          beforeLlmsTxt(artifact) {
+            if (artifact.kind !== "root") {
+              return;
+            }
+            return {
+              ...artifact,
+              content: `${artifact.content}\nTransformer note.\n`,
+            };
+          },
+        },
+      ],
+    });
+
+    await expect(
+      readFile(path.join(outDir, "llms.txt"), "utf8")
+    ).resolves.toContain("Transformer note.");
+  });
+
   it("renders nested curated nav sections when nav is configured", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");
