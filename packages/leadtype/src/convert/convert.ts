@@ -19,6 +19,12 @@ import {
   stringifyFrontmatter,
 } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import {
+  type DocsFrontmatter,
+  type DocsTransformerOptions,
+  runTransformers,
+  validateFrontmatter,
+} from "../transformers";
 
 const execFileAsync = promisify(execFile);
 
@@ -232,6 +238,15 @@ function compactMermaidBlocks(markdown: string): string {
   return markdown;
 }
 
+function serializeTransformedAst(
+  processor: RemarkProcessor,
+  ast: Root
+): string {
+  return compactMermaidBlocks(
+    compactMarkdownTables(String(processor.stringify(ast)))
+  );
+}
+
 export type MdxToMarkdownOptions = {
   /** Source directory containing .mdx files */
   srcDir?: string;
@@ -254,6 +269,12 @@ export type MdxToMarkdownOptions = {
   concurrency?: number;
   /** Throw after batch conversion if any file fails. */
   failOnError?: boolean;
+  /** Build-time lifecycle hooks for frontmatter, AST, and markdown output. */
+  transformers?: DocsTransformerOptions["transformers"];
+  /** Optional schema used to validate resolved frontmatter before exposing it. */
+  frontmatterSchema?: DocsTransformerOptions["frontmatterSchema"];
+  /** Extra context passed to transformer hooks. */
+  transformContext?: DocsTransformerOptions["transformContext"];
 };
 
 type GitEnrichment = {
@@ -330,16 +351,168 @@ export type ConvertResult = {
   frontmatter: string;
 };
 
-export type ConvertMdxFileResult = {
+export type ConvertMdxFileResult<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
   /** mdast Root after every supplied plugin has run. Use this to render MDX live. */
   ast: Root;
   /** Resolved frontmatter block (no `---` fences) as it would appear on disk. */
   frontmatter: string;
   /** Parsed frontmatter as a plain object. */
-  data: Record<string, unknown>;
+  data: TFrontmatter;
   /** Serialized markdown body (post compact-tables/compact-mermaid). */
   markdown: string;
 };
+
+type PreparedMdxConversion<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
+  content: string;
+  frontmatter: string;
+  data: TFrontmatter;
+  ast: Root;
+  processor: RemarkProcessor;
+  shouldRewriteFrontmatter: boolean;
+};
+
+export type ResolvedMdxFrontmatterResult<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = Pick<
+  PreparedMdxConversion<TFrontmatter>,
+  "content" | "data" | "frontmatter"
+>;
+
+async function prepareMdxConversion<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
+  sourcePath: string,
+  remarkPlugins: PluggableList,
+  enrichFromGitFlag: boolean,
+  options: DocsTransformerOptions<TFrontmatter>
+): Promise<PreparedMdxConversion<TFrontmatter>> {
+  const rawInput = await readFile(sourcePath, "utf8");
+  const rawPage = await runTransformers(
+    options.transformers,
+    "beforeParse",
+    { filePath: sourcePath, raw: rawInput },
+    {
+      stage: "convert",
+      filePath: sourcePath,
+      ...options.transformContext,
+    },
+    (transformer, value, context) => transformer.beforeParse?.(value, context)
+  );
+  const raw = rawPage.raw;
+  const shouldRewriteFrontmatter = Boolean(
+    options.frontmatterSchema || (options.transformers?.length ?? 0) > 0
+  );
+  const processor = createRemarkProcessor(remarkPlugins);
+  const frontmatterMatch = raw.match(FRONTMATTER_REGEX);
+  let frontmatter = "";
+  let content = raw;
+
+  if (frontmatterMatch) {
+    frontmatter = frontmatterMatch[1] ?? "";
+    content = frontmatterMatch[2] ?? "";
+  }
+
+  const parsed = processor.parse({ value: content, path: sourcePath }) as Root;
+  let ast = (await processor.run(parsed, {
+    value: content,
+    path: sourcePath,
+  })) as Root;
+
+  let resolvedFrontmatter =
+    frontmatter.trim().length > 0
+      ? frontmatter
+      : synthesizeFrontmatter(
+          sourcePath,
+          serializeTransformedAst(processor, ast)
+        );
+
+  if (enrichFromGitFlag) {
+    const enrichment = await enrichFromGit(sourcePath);
+    resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
+  }
+
+  resolvedFrontmatter = resolveFrontmatterPlaceholders(
+    resolvedFrontmatter,
+    sourcePath
+  );
+
+  const initialParsedData =
+    resolvedFrontmatter.trim().length > 0
+      ? parseFrontmatter(`---\n${resolvedFrontmatter}\n---\n`).data
+      : {};
+  let parsedData = initialParsedData as TFrontmatter;
+
+  const frontmatterPage = await runTransformers(
+    options.transformers,
+    "afterFrontmatter",
+    {
+      filePath: sourcePath,
+      content,
+      frontmatter: resolvedFrontmatter,
+      data: parsedData,
+    },
+    {
+      stage: "convert",
+      filePath: sourcePath,
+      ...options.transformContext,
+    },
+    (transformer, value, context) =>
+      transformer.afterFrontmatter?.(value, context)
+  );
+  if (frontmatterPage.content !== content) {
+    content = frontmatterPage.content;
+    const reparsed = processor.parse({
+      value: content,
+      path: sourcePath,
+    }) as Root;
+    ast = (await processor.run(reparsed, {
+      value: content,
+      path: sourcePath,
+    })) as Root;
+  }
+  parsedData = validateFrontmatter(
+    options.frontmatterSchema,
+    frontmatterPage.data,
+    sourcePath
+  );
+  if (shouldRewriteFrontmatter) {
+    resolvedFrontmatter = stringifyFrontmatter(parsedData);
+  }
+
+  return {
+    content,
+    frontmatter: resolvedFrontmatter,
+    data: parsedData,
+    ast,
+    processor,
+    shouldRewriteFrontmatter,
+  };
+}
+
+export async function resolveMdxFrontmatter<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
+  sourcePath: string,
+  remarkPlugins: PluggableList = [],
+  enrichFromGitFlag = false,
+  options: DocsTransformerOptions<TFrontmatter> = {}
+): Promise<ResolvedMdxFrontmatterResult<TFrontmatter>> {
+  const prepared = await prepareMdxConversion(
+    sourcePath,
+    remarkPlugins,
+    enrichFromGitFlag,
+    options
+  );
+  return {
+    content: prepared.content,
+    frontmatter: prepared.frontmatter,
+    data: prepared.data,
+  };
+}
 
 /**
  * Convert a single MDX file in memory and return the post-transform mdast
@@ -352,57 +525,89 @@ export type ConvertMdxFileResult = {
  * Frontmatter handling matches `convertMdxToMarkdown`: synthesized when
  * absent, enriched from git when requested, placeholders resolved.
  */
-export async function convertMdxFile(
+export async function convertMdxFile<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
   sourcePath: string,
   remarkPlugins: PluggableList = [],
-  enrichFromGitFlag = false
-): Promise<ConvertMdxFileResult> {
-  const raw = await readFile(sourcePath, "utf8");
-  const processor = createRemarkProcessor(remarkPlugins);
-  const frontmatterMatch = raw.match(FRONTMATTER_REGEX);
-  let frontmatter = "";
-  let content = raw;
-
-  if (frontmatterMatch) {
-    frontmatter = frontmatterMatch[1] ?? "";
-    content = frontmatterMatch[2] ?? "";
-  }
-
-  // Parse → run plugins → stringify, so we can keep the AST after transforms.
-  const parsed = processor.parse({ value: content, path: sourcePath }) as Root;
-  const transformed = (await processor.run(parsed, {
-    value: content,
-    path: sourcePath,
-  })) as Root;
-  const markdown = compactMermaidBlocks(
-    compactMarkdownTables(String(processor.stringify(transformed)))
+  enrichFromGitFlag = false,
+  options: DocsTransformerOptions<TFrontmatter> = {}
+): Promise<ConvertMdxFileResult<TFrontmatter>> {
+  const prepared = await prepareMdxConversion(
+    sourcePath,
+    remarkPlugins,
+    enrichFromGitFlag,
+    options
   );
+  const { content, processor, shouldRewriteFrontmatter } = prepared;
+  let {
+    ast: transformed,
+    data: parsedData,
+    frontmatter: resolvedFrontmatter,
+  } = prepared;
 
-  let resolvedFrontmatter =
-    frontmatter.trim().length > 0
-      ? frontmatter
-      : synthesizeFrontmatter(sourcePath, markdown);
-
-  if (enrichFromGitFlag) {
-    const enrichment = await enrichFromGit(sourcePath);
-    resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
-  }
-
-  resolvedFrontmatter = resolveFrontmatterPlaceholders(
-    resolvedFrontmatter,
+  const astPage = await runTransformers(
+    options.transformers,
+    "afterMdxAst",
+    {
+      filePath: sourcePath,
+      content,
+      frontmatter: resolvedFrontmatter,
+      data: parsedData,
+      ast: transformed,
+    },
+    {
+      stage: "convert",
+      filePath: sourcePath,
+      ...options.transformContext,
+    },
+    (transformer, value, context) => transformer.afterMdxAst?.(value, context)
+  );
+  transformed = astPage.ast;
+  parsedData = validateFrontmatter(
+    options.frontmatterSchema,
+    astPage.data,
     sourcePath
   );
+  if (shouldRewriteFrontmatter) {
+    resolvedFrontmatter = stringifyFrontmatter(parsedData);
+  }
 
-  const parsedData =
-    resolvedFrontmatter.trim().length > 0
-      ? parseFrontmatter(`---\n${resolvedFrontmatter}\n---\n`).data
-      : {};
+  const markdown = serializeTransformedAst(processor, transformed);
+
+  const markdownPage = await runTransformers(
+    options.transformers,
+    "afterFlattenMarkdown",
+    {
+      filePath: sourcePath,
+      content,
+      frontmatter: resolvedFrontmatter,
+      data: parsedData,
+      ast: transformed,
+      markdown,
+    },
+    {
+      stage: "convert",
+      filePath: sourcePath,
+      ...options.transformContext,
+    },
+    (transformer, value, context) =>
+      transformer.afterFlattenMarkdown?.(value, context)
+  );
+  parsedData = validateFrontmatter(
+    options.frontmatterSchema,
+    markdownPage.data,
+    sourcePath
+  );
+  if (shouldRewriteFrontmatter) {
+    resolvedFrontmatter = stringifyFrontmatter(parsedData);
+  }
 
   return {
-    ast: transformed,
+    ast: markdownPage.ast,
     frontmatter: resolvedFrontmatter,
     data: parsedData,
-    markdown,
+    markdown: markdownPage.markdown,
   };
 }
 
@@ -413,49 +618,23 @@ export async function convertMdxFile(
 export async function convertMdxToMarkdown(
   sourcePath: string,
   remarkPlugins: PluggableList = [],
-  enrichFromGitFlag = false
+  enrichFromGitFlag = false,
+  options: DocsTransformerOptions = {}
 ): Promise<ConvertResult> {
-  const raw = await readFile(sourcePath, "utf8");
-  const processor = createRemarkProcessor(remarkPlugins);
-  const frontmatterMatch = raw.match(FRONTMATTER_REGEX);
-  let frontmatter = "";
-  let content = raw;
-
-  if (frontmatterMatch) {
-    frontmatter = frontmatterMatch[1] ?? "";
-    content = frontmatterMatch[2] ?? "";
-  }
-
-  const processed = await processor.process({
-    value: content,
-    path: sourcePath,
-  });
-
-  const markdown = compactMermaidBlocks(
-    compactMarkdownTables(String(processed))
-  );
-  let resolvedFrontmatter =
-    frontmatter.trim().length > 0
-      ? frontmatter
-      : synthesizeFrontmatter(sourcePath, markdown);
-
-  if (enrichFromGitFlag) {
-    const enrichment = await enrichFromGit(sourcePath);
-    resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
-  }
-
-  resolvedFrontmatter = resolveFrontmatterPlaceholders(
-    resolvedFrontmatter,
-    sourcePath
+  const result = await convertMdxFile(
+    sourcePath,
+    remarkPlugins,
+    enrichFromGitFlag,
+    options
   );
 
-  const withFrontmatter = resolvedFrontmatter
-    ? `---\n${resolvedFrontmatter}\n---\n${markdown}`
-    : markdown;
+  const withFrontmatter = result.frontmatter
+    ? `---\n${result.frontmatter}\n---\n${result.markdown}`
+    : result.markdown;
 
   return {
     markdown: withFrontmatter,
-    frontmatter: resolvedFrontmatter,
+    frontmatter: result.frontmatter,
   };
 }
 
@@ -491,6 +670,7 @@ async function processMdxFile(
   outDir: string,
   remarkPlugins: PluggableList,
   enrichFromGitFlag: boolean,
+  transformOptions: DocsTransformerOptions,
   writeToStdout = false
 ): Promise<boolean> {
   const resolvedPath = resolve(mdxFilePath);
@@ -508,7 +688,8 @@ async function processMdxFile(
     const { markdown } = await convertMdxToMarkdown(
       resolvedPath,
       remarkPlugins,
-      enrichFromGitFlag
+      enrichFromGitFlag,
+      transformOptions
     );
     const outputPath = deriveOutputPath(resolvedPath, srcDir, outDir);
 
@@ -570,6 +751,11 @@ export async function writeMdxFileAsMarkdown(
     outDir,
     remarkPlugins,
     config.enrichFrontmatterFromGit ?? false,
+    {
+      frontmatterSchema: config.frontmatterSchema,
+      transformers: config.transformers,
+      transformContext: config.transformContext,
+    },
     true
   );
 }
@@ -627,7 +813,15 @@ export async function convertAllMdx(
       const { markdown } = await convertMdxToMarkdown(
         mdxFilePath,
         remarkPlugins,
-        enrichFromGitFlag
+        enrichFromGitFlag,
+        {
+          frontmatterSchema: config.frontmatterSchema,
+          transformers: config.transformers,
+          transformContext: {
+            ...config.transformContext,
+            filePath: mdxFilePath,
+          },
+        }
       );
       const outputPath = deriveOutputPath(mdxFilePath, srcDir, outDir);
       await writeFile(outputPath, markdown);

@@ -133,6 +133,38 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(results[0]?.title).toBe("Tabs");
   });
 
+  it("lets transformers customize search documents and chunks", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      transformers: [
+        {
+          name: "search-metadata",
+          beforeSearchIndex(documents) {
+            return documents.map((doc) => ({
+              ...doc,
+              description:
+                doc.id === "quickstart"
+                  ? `${doc.description} sdk bootstrap`
+                  : doc.description,
+            }));
+          },
+          beforeSearchChunk(chunk) {
+            if (chunk.relativePath !== "guides/quickstart") {
+              return;
+            }
+            return {
+              ...chunk,
+              text: `${chunk.text}\n\napiArea: onboarding`,
+            };
+          },
+        },
+      ],
+    });
+
+    expect(searchDocs(index, "bootstrap")[0]?.documentId).toBe("quickstart");
+    expect(searchDocs(index, "onboarding")[0]?.documentId).toBe("quickstart");
+  });
+
   it("falls back to prefix and typo-tolerant matches", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

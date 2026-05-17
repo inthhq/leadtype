@@ -70,6 +70,43 @@ async function seedDocs(projectDir: string, files: SeedFile[]): Promise<void> {
 }
 
 describe("generateLlmsTxt", () => {
+  it("lets transformers customize llms.txt artifacts before write", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      product: { name: "Test", summary: "Testing." },
+      groups: [{ slug: "guides", title: "Guides" }],
+      transformers: [
+        {
+          name: "append-note",
+          beforeLlmsTxt(artifact) {
+            if (artifact.kind !== "root") {
+              return;
+            }
+            return {
+              ...artifact,
+              content: `${artifact.content}\nTransformer note.\n`,
+            };
+          },
+        },
+      ],
+    });
+
+    await expect(
+      readFile(path.join(outDir, "llms.txt"), "utf8")
+    ).resolves.toContain("Transformer note.");
+  });
+
   it("renders nested curated nav sections when nav is configured", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");
@@ -302,6 +339,7 @@ describe("generateLlmsTxt", () => {
       },
     ]);
 
+    const llmsTxtRelativePaths: string[] = [];
     await generateLlmsTxt({
       srcDir: projectDir,
       outDir,
@@ -310,6 +348,16 @@ describe("generateLlmsTxt", () => {
       groups: [{ slug: "get-started", title: "Get Started" }],
       i18n: { defaultLocale: "en", locales: ["en", "zh"] },
       locale: "zh",
+      transformers: [
+        {
+          name: "capture-paths",
+          beforeLlmsTxt(_artifact, context) {
+            if (context.relativePath) {
+              llmsTxtRelativePaths.push(context.relativePath);
+            }
+          },
+        },
+      ],
     });
 
     const zhSummary = await readFile(
@@ -319,6 +367,7 @@ describe("generateLlmsTxt", () => {
     expect(zhSummary).toContain("快速开始");
     expect(zhSummary).toContain("](/docs/zh/quickstart.md)");
     expect(zhSummary).not.toContain("Setup");
+    expect(llmsTxtRelativePaths).toContain("docs/zh/llms.txt");
   });
 
   it("rejects duplicate localized source files for the same locale and logical path", async () => {

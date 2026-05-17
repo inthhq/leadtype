@@ -39,6 +39,8 @@ For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/build/integr
 | `typeTableStrict` | `boolean` | Throw when a referenced type cannot be extracted instead of emitting a visible warning. |
 | `toc` | `DocsTableOfContentsOptions \| false` | TOC tuning; `false` skips TOC entirely. |
 | `searchIndex` | `CreateDocsSearchIndexOptions` | Search-index tuning. |
+| `frontmatterSchema` | `DocsFrontmatterSchema` | Validates and types custom frontmatter. |
+| `transformers` | `DocsTransformer[]` | Lifecycle hooks for frontmatter, markdown, and search processing. |
 
 `createDocsSource` does no I/O on construction beyond a directory scan for `listPages()` caching. Page bodies are loaded lazily.
 
@@ -62,6 +64,7 @@ type DocsPageMeta = {
   title: string;
   description: string;
   groups: string[];
+  frontmatter: Record<string, unknown>; // typed when frontmatterSchema is provided
 };
 ```
 

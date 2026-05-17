@@ -16,12 +16,11 @@
  */
 
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Root } from "mdast";
 import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
-import { convertMdxFile } from "../convert";
+import { convertMdxFile, resolveMdxFrontmatter } from "../convert/convert";
 import {
   type DocsI18nConfig,
   type LocaleCode,
@@ -38,7 +37,6 @@ import {
   toAbsoluteUrl,
   toDocsUrlPath,
 } from "../internal/docs-url";
-import { parseFrontmatter } from "../internal/frontmatter";
 import type {
   DocsGroup,
   DocsNavNode,
@@ -60,10 +58,13 @@ import {
   type DocsSearchDocument,
   type DocsSearchIndex,
 } from "../search/search";
+import type { DocsFrontmatter, DocsTransformerOptions } from "../transformers";
 
 const DOC_EXTENSIONS = [".md", ".mdx"] as const;
 
-export type DocsPageMeta = {
+export type DocsPageMeta<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
   /** Slug segments derived from the relative path (no extension, no `index`). */
   slug: string[];
   /** Canonical site URL path (e.g. `/docs/quickstart`). */
@@ -80,24 +81,29 @@ export type DocsPageMeta = {
   description: string;
   /** Group slugs declared in frontmatter. */
   groups: string[];
+  /** Parsed and transformed frontmatter for this page. */
+  frontmatter: TFrontmatter;
   locale?: LocaleCode;
   sourceLocale?: LocaleCode;
   isFallback?: boolean;
   logicalPath?: string;
 };
 
-export type DocsPage = DocsPageMeta & {
-  /** Parsed frontmatter as a plain object. */
-  frontmatter: Record<string, unknown>;
-  /** Serialized markdown after the configured remark plugins ran. */
-  markdown: string;
-  /** mdast Root after the configured plugins ran — render this for live MDX. */
-  ast: Root;
-  /** Table of contents derived from the document's headings. */
-  toc: DocsTableOfContentsItem[];
-};
+export type DocsPage<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
+  DocsPageMeta<TFrontmatter> & {
+    /** Parsed frontmatter as a plain object. */
+    frontmatter: TFrontmatter;
+    /** Serialized markdown after the configured remark plugins ran. */
+    markdown: string;
+    /** mdast Root after the configured plugins ran — render this for live MDX. */
+    ast: Root;
+    /** Table of contents derived from the document's headings. */
+    toc: DocsTableOfContentsItem[];
+  };
 
-export type CreateDocsSourceConfig = {
+export type CreateDocsSourceConfig<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
   /** Directory containing source `.md` / `.mdx` files (e.g. `"./content/docs"`). */
   contentDir: string;
   /**
@@ -129,35 +135,40 @@ export type CreateDocsSourceConfig = {
   toc?: DocsTableOfContentsOptions | false;
   /** Search-index tuning. */
   searchIndex?: CreateDocsSearchIndexOptions;
+  /** Optional custom frontmatter schema for page metadata and loaded pages. */
+  frontmatterSchema?: DocsTransformerOptions<TFrontmatter>["frontmatterSchema"];
+  /** Build-time lifecycle hooks for source, conversion, and search data. */
+  transformers?: DocsTransformerOptions<TFrontmatter>["transformers"];
   /** Optional locale configuration. When present, `locale` selects the active docs language. */
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
 };
 
-export type DocsSource = {
-  /** Absolute path to the resolved docs directory. */
-  contentDir: string;
-  /** Compute the docs navigation from configured groups + filesystem state. */
-  getNavigation(): Promise<DocsNavigation>;
-  /** Enumerate every doc page found under `contentDir`. */
-  listPages(): Promise<DocsPageMeta[]>;
-  /**
-   * Load a single page by slug. Accepts either an already-split slug array or
-   * a slash-joined string. Returns `null` if no matching file exists.
-   */
-  loadPage(slug: string | string[]): Promise<DocsPage | null>;
-  /** Build a search index from every page's resolved markdown. */
-  buildSearchIndex(): Promise<DocsSearchBundle>;
-  /**
-   * Resolve an `<include>` reference outside of a remark pass (e.g. when
-   * loading a partial for direct rendering). `fromPath` defaults to
-   * `contentDir`.
-   */
-  resolveInclude(
-    specifier: string,
-    options?: Partial<ResolveIncludeOptions>
-  ): Promise<IncludeResolution>;
-};
+export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
+  {
+    /** Absolute path to the resolved docs directory. */
+    contentDir: string;
+    /** Compute the docs navigation from configured groups + filesystem state. */
+    getNavigation(): Promise<DocsNavigation>;
+    /** Enumerate every doc page found under `contentDir`. */
+    listPages(): Promise<DocsPageMeta<TFrontmatter>[]>;
+    /**
+     * Load a single page by slug. Accepts either an already-split slug array or
+     * a slash-joined string. Returns `null` if no matching file exists.
+     */
+    loadPage(slug: string | string[]): Promise<DocsPage<TFrontmatter> | null>;
+    /** Build a search index from every page's resolved markdown. */
+    buildSearchIndex(): Promise<DocsSearchBundle>;
+    /**
+     * Resolve an `<include>` reference outside of a remark pass (e.g. when
+     * loading a partial for direct rendering). `fromPath` defaults to
+     * `contentDir`.
+     */
+    resolveInclude(
+      specifier: string,
+      options?: Partial<ResolveIncludeOptions>
+    ): Promise<IncludeResolution>;
+  };
 
 function isDocFile(filePath: string): boolean {
   return DOC_EXTENSIONS.some((ext) => filePath.endsWith(ext));
@@ -199,22 +210,35 @@ function normalizeGroupValue(value: unknown): string[] {
   return [];
 }
 
-async function readPageMeta(
+async function readPageMeta<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
   selected: SelectedSourceFile,
   mounts?: DocsPathMount[],
-  i18n?: DocsI18nConfig
-): Promise<DocsPageMeta> {
+  i18n?: DocsI18nConfig,
+  transformOptions: DocsTransformerOptions<TFrontmatter> = {}
+): Promise<DocsPageMeta<TFrontmatter>> {
   const { contentDir, filePath } = selected;
   const relativePath = normalizeDocsPath(path.relative(contentDir, filePath));
-  const raw = await readFile(filePath, "utf8");
-  const parsed = parseFrontmatter(raw);
+  const resolved = await resolveMdxFrontmatter(filePath, [], false, {
+    frontmatterSchema: transformOptions.frontmatterSchema,
+    transformers: transformOptions.transformers,
+    transformContext: {
+      stage: "source",
+      filePath,
+      relativePath: selected.outputRelativePath,
+      locale: selected.locale,
+      ...transformOptions.transformContext,
+    },
+  });
+  const frontmatter = resolved.data;
   const title =
-    String(parsed.data.title ?? "").trim() ||
+    String(frontmatter.title ?? "").trim() ||
     titleFromRelativePath(
       `${selected.logicalPath}${path.extname(relativePath)}`
     );
-  const description = String(parsed.data.description ?? "").trim();
-  const groups = normalizeGroupValue(parsed.data.group);
+  const description = String(frontmatter.description ?? "").trim();
+  const groups = normalizeGroupValue(frontmatter.group);
   const extension = filePath.endsWith(".mdx") ? ".mdx" : ".md";
   const slug = deriveSlug(`${selected.outputRelativePath}${extension}`);
   const urlPath =
@@ -235,6 +259,7 @@ async function readPageMeta(
     title,
     description,
     groups,
+    frontmatter,
     ...(selected.locale ? { locale: selected.locale } : {}),
     ...(selected.sourceLocale ? { sourceLocale: selected.sourceLocale } : {}),
     ...(selected.isFallback === undefined
@@ -350,9 +375,11 @@ function selectSourceFiles(
   );
 }
 
-export async function createDocsSource(
-  config: CreateDocsSourceConfig
-): Promise<DocsSource> {
+export async function createDocsSource<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
+  config: CreateDocsSourceConfig<TFrontmatter>
+): Promise<DocsSource<TFrontmatter>> {
   const contentDir = path.resolve(config.contentDir);
   if (!existsSync(contentDir)) {
     throw new Error(
@@ -377,9 +404,9 @@ export async function createDocsSource(
     config.toc === false ? false : (config.toc ?? {});
 
   let cachedFiles: string[] | null = null;
-  let cachedMetas: DocsPageMeta[] | null = null;
+  let cachedMetas: DocsPageMeta<TFrontmatter>[] | null = null;
   // Slug → meta lookup populated alongside cachedMetas so loadPage runs in O(1).
-  let cachedMetaBySlug: Map<string, DocsPageMeta> | null = null;
+  let cachedMetaBySlug: Map<string, DocsPageMeta<TFrontmatter>> | null = null;
 
   async function listFiles(): Promise<string[]> {
     if (cachedFiles) {
@@ -396,7 +423,7 @@ export async function createDocsSource(
     return cachedFiles;
   }
 
-  async function listMetas(): Promise<DocsPageMeta[]> {
+  async function listMetas(): Promise<DocsPageMeta<TFrontmatter>[]> {
     if (cachedMetas) {
       return cachedMetas;
     }
@@ -409,7 +436,10 @@ export async function createDocsSource(
     );
     const metas = await Promise.all(
       selectedFiles.map((file) =>
-        readPageMeta(file, config.mounts, config.i18n)
+        readPageMeta(file, config.mounts, config.i18n, {
+          frontmatterSchema: config.frontmatterSchema,
+          transformers: config.transformers,
+        })
       )
     );
     // Reject duplicate slugs / urlPaths. Without this guard, two files that
@@ -418,8 +448,8 @@ export async function createDocsSource(
     // the slug Map below, leaving consumers with an indeterminate page.
     // `resolveDocsNavigation` already errors on this; keep the source
     // primitive consistent.
-    const slugIndex = new Map<string, DocsPageMeta>();
-    const urlPathIndex = new Map<string, DocsPageMeta>();
+    const slugIndex = new Map<string, DocsPageMeta<TFrontmatter>>();
+    const urlPathIndex = new Map<string, DocsPageMeta<TFrontmatter>>();
     for (const meta of metas) {
       const slugKey = meta.slug.join("/");
       const existingSlug = slugIndex.get(slugKey);
@@ -443,7 +473,9 @@ export async function createDocsSource(
     return cachedMetas;
   }
 
-  async function findMetaForSlug(slug: string[]): Promise<DocsPageMeta | null> {
+  async function findMetaForSlug(
+    slug: string[]
+  ): Promise<DocsPageMeta<TFrontmatter> | null> {
     // Ensure the slug index is populated. `listMetas()` is cached after the
     // first call so subsequent loadPage() invocations are O(1).
     await listMetas();
@@ -464,13 +496,13 @@ export async function createDocsSource(
     });
   }
 
-  async function listPages(): Promise<DocsPageMeta[]> {
+  async function listPages(): Promise<DocsPageMeta<TFrontmatter>[]> {
     return await listMetas();
   }
 
   async function loadPage(
     slugInput: string | string[]
-  ): Promise<DocsPage | null> {
+  ): Promise<DocsPage<TFrontmatter> | null> {
     const slug = Array.isArray(slugInput)
       ? slugInput
       : slugInput.split("/").filter(Boolean);
@@ -495,7 +527,16 @@ export async function createDocsSource(
       return null;
     }
 
-    const result = await convertMdxFile(meta.filePath, remarkPlugins);
+    const result = await convertMdxFile(meta.filePath, remarkPlugins, false, {
+      frontmatterSchema: config.frontmatterSchema,
+      transformers: config.transformers,
+      transformContext: {
+        filePath: meta.filePath,
+        relativePath: meta.relativePath,
+        urlPath: meta.urlPath,
+        locale: meta.locale,
+      },
+    });
     const toc =
       tocOptions === false
         ? []
@@ -523,7 +564,21 @@ export async function createDocsSource(
       metas
         .filter((meta) => !meta.isFallback)
         .map(async (meta) => {
-          const result = await convertMdxFile(meta.filePath, remarkPlugins);
+          const result = await convertMdxFile(
+            meta.filePath,
+            remarkPlugins,
+            false,
+            {
+              frontmatterSchema: config.frontmatterSchema,
+              transformers: config.transformers,
+              transformContext: {
+                filePath: meta.filePath,
+                relativePath: meta.relativePath,
+                urlPath: meta.urlPath,
+                locale: meta.locale,
+              },
+            }
+          );
           return {
             id: meta.urlPath,
             title: meta.title,
@@ -537,14 +592,16 @@ export async function createDocsSource(
               ? {}
               : { isFallback: meta.isFallback }),
             ...(meta.logicalPath ? { logicalPath: meta.logicalPath } : {}),
+            frontmatter: result.data,
             content: result.markdown,
           };
         })
     );
-    const index: DocsSearchIndex = createDocsSearchIndex(
-      documents,
-      config.searchIndex
-    );
+    const index: DocsSearchIndex = createDocsSearchIndex(documents, {
+      ...config.searchIndex,
+      transformers:
+        config.transformers as DocsTransformerOptions["transformers"],
+    });
     return {
       index,
       content: index.content ?? {

@@ -8,6 +8,7 @@
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
 //   - `leadtype/search` — search index + per-host adapters
 //   - `leadtype/lint` — frontmatter / meta.json validation
+//   - `leadtype/transformers` — frontmatter schemas + lifecycle hook types
 
 export {
   type AlternateLocaleLink,
@@ -43,7 +44,6 @@ export {
   normalizeAgentReadabilityManifest,
   type ProductInfo,
 } from "./llm";
-
 export {
   type CreateDocsSourceConfig,
   createDocsSource,

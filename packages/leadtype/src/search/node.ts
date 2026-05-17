@@ -21,6 +21,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { DocsTransformerOptions } from "../transformers";
 import {
   type CreateDocsSearchIndexOptions,
   createDocsSearchIndex,
@@ -46,6 +47,7 @@ export type GenerateDocsSearchFilesConfig = {
   contentOutputFile?: string;
   embedContent?: boolean;
   indexOptions?: CreateDocsSearchIndexOptions;
+  transformers?: DocsTransformerOptions["transformers"];
 };
 
 export type GenerateDocsSearchFilesResult = {
@@ -135,6 +137,7 @@ async function readMarkdownDocs(
       urlPath,
       absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
       relativePath: file.outputRelativePath,
+      frontmatter: parsed.data,
       ...(file.locale ? { locale: file.locale } : {}),
       ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
       ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
@@ -304,7 +307,10 @@ export async function generateDocsSearchFiles(
     );
   }
 
-  const indexWithContent = createDocsSearchIndex(docs, config.indexOptions);
+  const indexWithContent = createDocsSearchIndex(docs, {
+    ...config.indexOptions,
+    transformers: config.transformers,
+  });
   const { content, ...indexWithoutContent } = indexWithContent;
   if (!content) {
     throw new Error("createDocsSearchIndex did not return a content store.");

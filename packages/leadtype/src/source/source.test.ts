@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDocsSource } from "./index";
 
@@ -73,6 +74,61 @@ describe("createDocsSource", () => {
     expect(page?.ast.type).toBe("root");
     expect(page?.markdown).toContain("## Install");
     expect(page?.toc.map((item) => item.title)).toEqual(["Install"]);
+  });
+
+  it("exposes custom transformed frontmatter on listPages and loadPage", async () => {
+    await writeMdx(
+      path.join(contentDir, "api/auth.mdx"),
+      "---\ntitle: Auth\n---\n\n## Login\n\nUse sessions.\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      frontmatterSchema: v.object({
+        title: v.string(),
+        apiArea: v.string(),
+      }),
+      transformers: [
+        {
+          name: "api-area",
+          afterFrontmatter(page) {
+            return {
+              ...page,
+              data: {
+                ...page.data,
+                apiArea: page.filePath.includes("/api/") ? "api" : "guides",
+              },
+            };
+          },
+        },
+      ],
+    });
+
+    const [meta] = await source.listPages();
+    const page = await source.loadPage("api/auth");
+
+    expect(meta?.frontmatter.apiArea).toBe("api");
+    expect(page?.frontmatter.apiArea).toBe("api");
+  });
+
+  it("validates synthesized frontmatter through custom source schemas", async () => {
+    await writeMdx(
+      path.join(contentDir, "untitled.mdx"),
+      "# Synthesized Title\n\nIntro paragraph.\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      frontmatterSchema: v.object({
+        title: v.string(),
+      }),
+    });
+
+    const [meta] = await source.listPages();
+    const page = await source.loadPage("untitled");
+
+    expect(meta?.frontmatter.title).toBe("Synthesized Title");
+    expect(page?.frontmatter.title).toBe("Synthesized Title");
   });
 
   it("loadPage accepts both string and string[] slug forms", async () => {

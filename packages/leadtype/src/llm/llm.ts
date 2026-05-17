@@ -8,7 +8,6 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import type * as v from "valibot";
 import {
   type DocsI18nConfig,
   type DocsI18nManifest,
@@ -34,6 +33,12 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import {
+  type DocsFrontmatterSchema,
+  type DocsLlmsTxtArtifact,
+  type DocsTransformer,
+  runTransformers,
+} from "../transformers";
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
@@ -167,10 +172,7 @@ export type DocsNavNode = {
 };
 
 /** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
-export type DocsFrontmatterSchema = v.ObjectSchema<
-  v.ObjectEntries,
-  v.ErrorMessage<v.ObjectIssue> | undefined
->;
+export type { DocsFrontmatterSchema } from "../transformers";
 
 /**
  * One content set in a multi-source docs site. A collection declares where its
@@ -221,8 +223,14 @@ export type DocsCollection = {
  * the multi-collection shape (`collections` map). Setting both is rejected
  * at config load.
  */
-export type DocsConfig = {
+export type DocsConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+> = {
   product: ProductInfo;
+  /** Site-wide custom frontmatter schema used by generation/source APIs. */
+  frontmatterSchema?: DocsFrontmatterSchema<TFrontmatter>;
+  /** Build-time lifecycle hooks for frontmatter, search, and agent artifacts. */
+  transformers?: DocsTransformer<TFrontmatter>[];
   /**
    * Top-level navigation for the single-collection shape. Mutually exclusive
    * with `collections`. Pages declare which group they belong to via MDX
@@ -254,7 +262,9 @@ export type DocsConfig = {
  * Identity helper that gives the config object full IDE autocomplete and
  * type-checks the docs structure at edit time.
  */
-export function defineDocsConfig(config: DocsConfig): DocsConfig {
+export function defineDocsConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+>(config: DocsConfig<TFrontmatter>): DocsConfig<TFrontmatter> {
   return config;
 }
 
@@ -279,6 +289,7 @@ export type LlmsTxtConfig = {
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
+  transformers?: DocsTransformer[];
 };
 
 export type LLMFullContextConfig = {
@@ -292,6 +303,7 @@ export type LLMFullContextConfig = {
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
+  transformers?: DocsTransformer[];
 };
 
 export type AgentReadabilityConfig = {
@@ -305,6 +317,7 @@ export type AgentReadabilityConfig = {
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   i18nManifest?: DocsI18nManifest;
+  transformers?: DocsTransformer[];
 };
 
 export type AgentReadabilityResult = {
@@ -1588,10 +1601,22 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
   const isDefaultLocale = !i18n || locale === i18n.defaultLocale;
   if (isDefaultLocale) {
-    await writeFile(
-      path.join(outDir, "llms.txt"),
-      renderProductSummary(config.product, sourceDocs, config.mounts)
+    const outputPath = path.join(outDir, "llms.txt");
+    const input: DocsLlmsTxtArtifact = {
+      content: renderProductSummary(config.product, sourceDocs, config.mounts),
+      outputPath,
+      kind: "root",
+      ...(locale ? { locale } : {}),
+    };
+    const artifact = await runTransformers(
+      config.transformers,
+      "beforeLlmsTxt",
+      input,
+      { stage: "llm", relativePath: "llms.txt", locale },
+      (transformer, value, context) =>
+        transformer.beforeLlmsTxt?.(value, context)
     );
+    await writeFile(outputPath, artifact.content);
   }
 
   if (resolved.length > 0) {
@@ -1616,7 +1641,25 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
           },
           config.mounts
         );
-    await writeFile(docsLlmsPath, docsLlmsContent);
+    const docsLlmsRelativePath =
+      i18n && locale && locale !== i18n.defaultLocale
+        ? `docs/${locale}/llms.txt`
+        : "docs/llms.txt";
+    const input: DocsLlmsTxtArtifact = {
+      content: docsLlmsContent,
+      outputPath: docsLlmsPath,
+      kind: "docs",
+      ...(locale ? { locale } : {}),
+    };
+    const artifact = await runTransformers(
+      config.transformers,
+      "beforeLlmsTxt",
+      input,
+      { stage: "llm", relativePath: docsLlmsRelativePath, locale },
+      (transformer, value, context) =>
+        transformer.beforeLlmsTxt?.(value, context)
+    );
+    await writeFile(docsLlmsPath, artifact.content);
   }
 }
 
@@ -1661,12 +1704,22 @@ export async function generateLLMFullContextFiles(
 
   if (!i18n || locale === i18n.defaultLocale) {
     const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
+    const outputPath = path.join(outDir, "llms-full.txt");
     await rm(llmsFullDir, { recursive: true, force: true });
     await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
-    await writeFile(
-      path.join(outDir, "llms-full.txt"),
-      renderFullContextDocument(config.product, orderedMarkdownDocs)
+    const artifact = await runTransformers(
+      config.transformers,
+      "beforeLlmsFull",
+      {
+        content: renderFullContextDocument(config.product, orderedMarkdownDocs),
+        outputPath,
+        ...(locale ? { locale } : {}),
+      },
+      { stage: "llm", relativePath: "llms-full.txt", locale },
+      (transformer, value, context) =>
+        transformer.beforeLlmsFull?.(value, context)
     );
+    await writeFile(outputPath, artifact.content);
     return;
   }
 
@@ -1677,10 +1730,19 @@ export async function generateLLMFullContextFiles(
     "llms-full.txt"
   );
   await mkdir(path.dirname(localeFullPath), { recursive: true });
-  await writeFile(
-    localeFullPath,
-    renderFullContextDocument(config.product, orderedMarkdownDocs)
+  const artifact = await runTransformers(
+    config.transformers,
+    "beforeLlmsFull",
+    {
+      content: renderFullContextDocument(config.product, orderedMarkdownDocs),
+      outputPath: localeFullPath,
+      ...(locale ? { locale } : {}),
+    },
+    { stage: "llm", relativePath: `docs/${locale}/llms-full.txt`, locale },
+    (transformer, value, context) =>
+      transformer.beforeLlmsFull?.(value, context)
   );
+  await writeFile(localeFullPath, artifact.content);
 }
 
 function toAgentReadabilityPage(
@@ -1858,6 +1920,7 @@ export type AgentsMdConfig = {
   docsSubdir?: string;
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
+  transformers?: DocsTransformer[];
 };
 
 export type AgentsMdResult = {
@@ -2042,7 +2105,20 @@ export async function generateAgentsMd(
   const content = `${lines.join("\n")}\n`;
   await mkdir(outDir, { recursive: true });
   const outputPath = path.join(outDir, "AGENTS.md");
-  await writeFile(outputPath, content);
+  const artifact = await runTransformers(
+    config.transformers,
+    "beforeAgentsMd",
+    {
+      content,
+      outputPath,
+      docsSubdir,
+      ...(config.locale ? { locale: config.locale } : {}),
+    },
+    { stage: "llm", relativePath: "AGENTS.md", locale: config.locale },
+    (transformer, value, context) =>
+      transformer.beforeAgentsMd?.(value, context)
+  );
+  await writeFile(outputPath, artifact.content);
   return { outputPath };
 }
 
