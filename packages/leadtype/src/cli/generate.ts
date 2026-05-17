@@ -598,6 +598,14 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(collections ? { collections } : {}),
     ...(groups ? { groups } : {}),
     ...(nav ? { nav } : {}),
+    ...(value.frontmatterSchema === undefined
+      ? {}
+      : {
+          frontmatterSchema: value.frontmatterSchema as DocsFrontmatterSchema,
+        }),
+    ...(value.transformers === undefined
+      ? {}
+      : { transformers: value.transformers as DocsTransformer[] }),
     ...(value.i18n === undefined
       ? {}
       : { i18n: value.i18n as DocsConfig["i18n"] }),

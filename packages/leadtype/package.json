@@ -57,6 +57,10 @@
       "types": "./dist/remark/index.d.ts",
       "import": "./dist/remark/index.js"
     },
+    "./transformers": {
+      "types": "./dist/transformers.d.ts",
+      "import": "./dist/transformers.js"
+    },
     "./convert": {
       "types": "./dist/convert/index.d.ts",
       "import": "./dist/convert/index.js"

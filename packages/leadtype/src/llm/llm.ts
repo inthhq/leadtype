@@ -1641,6 +1641,10 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
           },
           config.mounts
         );
+    const docsLlmsRelativePath =
+      i18n && locale && locale !== i18n.defaultLocale
+        ? `docs/${locale}/llms.txt`
+        : "docs/llms.txt";
     const input: DocsLlmsTxtArtifact = {
       content: docsLlmsContent,
       outputPath: docsLlmsPath,
@@ -1651,7 +1655,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
       config.transformers,
       "beforeLlmsTxt",
       input,
-      { stage: "llm", relativePath: "docs/llms.txt", locale },
+      { stage: "llm", relativePath: docsLlmsRelativePath, locale },
       (transformer, value, context) =>
         transformer.beforeLlmsTxt?.(value, context)
     );

@@ -339,6 +339,7 @@ describe("generateLlmsTxt", () => {
       },
     ]);
 
+    const llmsTxtRelativePaths: string[] = [];
     await generateLlmsTxt({
       srcDir: projectDir,
       outDir,
@@ -347,6 +348,16 @@ describe("generateLlmsTxt", () => {
       groups: [{ slug: "get-started", title: "Get Started" }],
       i18n: { defaultLocale: "en", locales: ["en", "zh"] },
       locale: "zh",
+      transformers: [
+        {
+          name: "capture-paths",
+          beforeLlmsTxt(_artifact, context) {
+            if (context.relativePath) {
+              llmsTxtRelativePaths.push(context.relativePath);
+            }
+          },
+        },
+      ],
     });
 
     const zhSummary = await readFile(
@@ -356,6 +367,7 @@ describe("generateLlmsTxt", () => {
     expect(zhSummary).toContain("快速开始");
     expect(zhSummary).toContain("](/docs/zh/quickstart.md)");
     expect(zhSummary).not.toContain("Setup");
+    expect(llmsTxtRelativePaths).toContain("docs/zh/llms.txt");
   });
 
   it("rejects duplicate localized source files for the same locale and logical path", async () => {

@@ -8,6 +8,7 @@
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
 //   - `leadtype/search` — search index + per-host adapters
 //   - `leadtype/lint` — frontmatter / meta.json validation
+//   - `leadtype/transformers` — frontmatter schemas + lifecycle hook types
 
 export {
   type AlternateLocaleLink,
@@ -50,17 +51,3 @@ export {
   type DocsPageMeta,
   type DocsSource,
 } from "./source";
-export {
-  type DocsAgentsMdArtifact,
-  type DocsAstPage,
-  type DocsFrontmatter,
-  type DocsFrontmatterPage,
-  type DocsLlmsFullArtifact,
-  type DocsLlmsTxtArtifact,
-  type DocsMarkdownPage,
-  type DocsRawPage,
-  type DocsSearchChunkInput,
-  type DocsTransformContext,
-  type DocsTransformer,
-  DocsTransformerError,
-} from "./transformers";

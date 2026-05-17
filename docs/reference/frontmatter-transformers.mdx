@@ -7,6 +7,8 @@ description: "Define typed custom frontmatter and lifecycle hooks for Leadtype p
 
 Custom frontmatter is first-class in Leadtype. Define a schema when your docs need product-specific fields, then use transformers to derive or normalize those fields as the pipeline runs.
 
+Transformer hook types live under `leadtype/transformers` when you want explicit annotations in shared config helpers.
+
 ```ts title="docs.config.ts"
 import { defineDocsConfig } from "leadtype";
 import * as v from "valibot";
@@ -27,12 +29,12 @@ export default defineDocsConfig({
   transformers: [
     {
       name: "api-area",
-      afterFrontmatter(page) {
+      afterFrontmatter(page, context) {
         return {
           ...page,
           data: {
             ...page.data,
-            apiArea: page.filePath.includes("/reference/")
+            apiArea: context.relativePath?.startsWith("reference/")
               ? "reference"
               : "guides",
           },

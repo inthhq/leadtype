@@ -111,6 +111,26 @@ describe("createDocsSource", () => {
     expect(page?.frontmatter.apiArea).toBe("api");
   });
 
+  it("validates synthesized frontmatter through custom source schemas", async () => {
+    await writeMdx(
+      path.join(contentDir, "untitled.mdx"),
+      "# Synthesized Title\n\nIntro paragraph.\n"
+    );
+
+    const source = await createDocsSource({
+      contentDir,
+      frontmatterSchema: v.object({
+        title: v.string(),
+      }),
+    });
+
+    const [meta] = await source.listPages();
+    const page = await source.loadPage("untitled");
+
+    expect(meta?.frontmatter.title).toBe("Synthesized Title");
+    expect(page?.frontmatter.title).toBe("Synthesized Title");
+  });
+
   it("loadPage accepts both string and string[] slug forms", async () => {
     await writeMdx(
       path.join(contentDir, "guides/setup.mdx"),

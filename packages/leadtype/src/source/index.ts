@@ -16,12 +16,11 @@
  */
 
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Root } from "mdast";
 import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
-import { convertMdxFile } from "../convert";
+import { convertMdxFile, resolveMdxFrontmatter } from "../convert/convert";
 import {
   type DocsI18nConfig,
   type LocaleCode,
@@ -38,7 +37,6 @@ import {
   toAbsoluteUrl,
   toDocsUrlPath,
 } from "../internal/docs-url";
-import { parseFrontmatter } from "../internal/frontmatter";
 import type {
   DocsGroup,
   DocsNavNode,
@@ -60,15 +58,9 @@ import {
   type DocsSearchDocument,
   type DocsSearchIndex,
 } from "../search/search";
-import {
-  type DocsFrontmatter,
-  type DocsTransformerOptions,
-  runTransformers,
-  validateFrontmatter,
-} from "../transformers";
+import type { DocsFrontmatter, DocsTransformerOptions } from "../transformers";
 
 const DOC_EXTENSIONS = [".md", ".mdx"] as const;
-const FRONTMATTER_BLOCK_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
 export type DocsPageMeta<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
@@ -228,46 +220,18 @@ async function readPageMeta<
 ): Promise<DocsPageMeta<TFrontmatter>> {
   const { contentDir, filePath } = selected;
   const relativePath = normalizeDocsPath(path.relative(contentDir, filePath));
-  const rawPage = await runTransformers(
-    transformOptions.transformers,
-    "beforeParse",
-    { filePath, raw: await readFile(filePath, "utf8") },
-    {
+  const resolved = await resolveMdxFrontmatter(filePath, [], false, {
+    frontmatterSchema: transformOptions.frontmatterSchema,
+    transformers: transformOptions.transformers,
+    transformContext: {
       stage: "source",
       filePath,
       relativePath: selected.outputRelativePath,
       locale: selected.locale,
       ...transformOptions.transformContext,
     },
-    (transformer, value, context) => transformer.beforeParse?.(value, context)
-  );
-  const raw = rawPage.raw;
-  const parsed = parseFrontmatter(raw);
-  const frontmatterBlock = raw.match(FRONTMATTER_BLOCK_PATTERN)?.[1] ?? "";
-  const frontmatterPage = await runTransformers(
-    transformOptions.transformers,
-    "afterFrontmatter",
-    {
-      filePath,
-      content: parsed.content,
-      frontmatter: frontmatterBlock,
-      data: parsed.data as TFrontmatter,
-    },
-    {
-      stage: "source",
-      filePath,
-      relativePath: selected.outputRelativePath,
-      locale: selected.locale,
-      ...transformOptions.transformContext,
-    },
-    (transformer, value, context) =>
-      transformer.afterFrontmatter?.(value, context)
-  );
-  const frontmatter = validateFrontmatter(
-    transformOptions.frontmatterSchema,
-    frontmatterPage.data,
-    filePath
-  );
+  });
+  const frontmatter = resolved.data;
   const title =
     String(frontmatter.title ?? "").trim() ||
     titleFromRelativePath(

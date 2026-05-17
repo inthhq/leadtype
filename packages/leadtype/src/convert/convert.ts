@@ -364,25 +364,32 @@ export type ConvertMdxFileResult<
   markdown: string;
 };
 
-/**
- * Convert a single MDX file in memory and return the post-transform mdast
- * AST alongside the parsed frontmatter and serialized markdown body.
- *
- * Useful when the caller wants to render MDX as live components (so they
- * need the AST) but also wants the markdown form available (for search
- * indexing, RSS, etc.) in a single pass.
- *
- * Frontmatter handling matches `convertMdxToMarkdown`: synthesized when
- * absent, enriched from git when requested, placeholders resolved.
- */
-export async function convertMdxFile<
+type PreparedMdxConversion<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
+  content: string;
+  frontmatter: string;
+  data: TFrontmatter;
+  ast: Root;
+  processor: RemarkProcessor;
+  shouldRewriteFrontmatter: boolean;
+};
+
+export type ResolvedMdxFrontmatterResult<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = Pick<
+  PreparedMdxConversion<TFrontmatter>,
+  "content" | "data" | "frontmatter"
+>;
+
+async function prepareMdxConversion<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
   sourcePath: string,
-  remarkPlugins: PluggableList = [],
-  enrichFromGitFlag = false,
-  options: DocsTransformerOptions<TFrontmatter> = {}
-): Promise<ConvertMdxFileResult<TFrontmatter>> {
+  remarkPlugins: PluggableList,
+  enrichFromGitFlag: boolean,
+  options: DocsTransformerOptions<TFrontmatter>
+): Promise<PreparedMdxConversion<TFrontmatter>> {
   const rawInput = await readFile(sourcePath, "utf8");
   const rawPage = await runTransformers(
     options.transformers,
@@ -409,9 +416,8 @@ export async function convertMdxFile<
     content = frontmatterMatch[2] ?? "";
   }
 
-  // Parse → run plugins → stringify, so we can keep the AST after transforms.
   const parsed = processor.parse({ value: content, path: sourcePath }) as Root;
-  let transformed = (await processor.run(parsed, {
+  let ast = (await processor.run(parsed, {
     value: content,
     path: sourcePath,
   })) as Root;
@@ -421,7 +427,7 @@ export async function convertMdxFile<
       ? frontmatter
       : synthesizeFrontmatter(
           sourcePath,
-          serializeTransformedAst(processor, transformed)
+          serializeTransformedAst(processor, ast)
         );
 
   if (enrichFromGitFlag) {
@@ -447,7 +453,7 @@ export async function convertMdxFile<
       filePath: sourcePath,
       content,
       frontmatter: resolvedFrontmatter,
-      data: parsedData as TFrontmatter,
+      data: parsedData,
     },
     {
       stage: "convert",
@@ -463,7 +469,7 @@ export async function convertMdxFile<
       value: content,
       path: sourcePath,
     }) as Root;
-    transformed = (await processor.run(reparsed, {
+    ast = (await processor.run(reparsed, {
       value: content,
       path: sourcePath,
     })) as Root;
@@ -476,6 +482,69 @@ export async function convertMdxFile<
   if (shouldRewriteFrontmatter) {
     resolvedFrontmatter = stringifyFrontmatter(parsedData);
   }
+
+  return {
+    content,
+    frontmatter: resolvedFrontmatter,
+    data: parsedData,
+    ast,
+    processor,
+    shouldRewriteFrontmatter,
+  };
+}
+
+export async function resolveMdxFrontmatter<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
+  sourcePath: string,
+  remarkPlugins: PluggableList = [],
+  enrichFromGitFlag = false,
+  options: DocsTransformerOptions<TFrontmatter> = {}
+): Promise<ResolvedMdxFrontmatterResult<TFrontmatter>> {
+  const prepared = await prepareMdxConversion(
+    sourcePath,
+    remarkPlugins,
+    enrichFromGitFlag,
+    options
+  );
+  return {
+    content: prepared.content,
+    frontmatter: prepared.frontmatter,
+    data: prepared.data,
+  };
+}
+
+/**
+ * Convert a single MDX file in memory and return the post-transform mdast
+ * AST alongside the parsed frontmatter and serialized markdown body.
+ *
+ * Useful when the caller wants to render MDX as live components (so they
+ * need the AST) but also wants the markdown form available (for search
+ * indexing, RSS, etc.) in a single pass.
+ *
+ * Frontmatter handling matches `convertMdxToMarkdown`: synthesized when
+ * absent, enriched from git when requested, placeholders resolved.
+ */
+export async function convertMdxFile<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
+  sourcePath: string,
+  remarkPlugins: PluggableList = [],
+  enrichFromGitFlag = false,
+  options: DocsTransformerOptions<TFrontmatter> = {}
+): Promise<ConvertMdxFileResult<TFrontmatter>> {
+  const prepared = await prepareMdxConversion(
+    sourcePath,
+    remarkPlugins,
+    enrichFromGitFlag,
+    options
+  );
+  const { content, processor, shouldRewriteFrontmatter } = prepared;
+  let {
+    ast: transformed,
+    data: parsedData,
+    frontmatter: resolvedFrontmatter,
+  } = prepared;
 
   const astPage = await runTransformers(
     options.transformers,

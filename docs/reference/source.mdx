@@ -40,7 +40,7 @@ For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/build/integr
 | `toc` | `DocsTableOfContentsOptions \| false` | TOC tuning; `false` skips TOC entirely. |
 | `searchIndex` | `CreateDocsSearchIndexOptions` | Search-index tuning. |
 | `frontmatterSchema` | `DocsFrontmatterSchema` | Validates and types custom frontmatter. |
-| `transformers` | `DocsTransformer[]` | Lifecycle hooks for frontmatter, markdown, search, and agent artifacts. |
+| `transformers` | `DocsTransformer[]` | Lifecycle hooks for frontmatter, markdown, and search processing. |
 
 `createDocsSource` does no I/O on construction beyond a directory scan for `listPages()` caching. Page bodies are loaded lazily.
 
