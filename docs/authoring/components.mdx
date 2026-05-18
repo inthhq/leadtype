@@ -9,7 +9,7 @@ Leadtype does not ship UI components. **Your docs app owns runtime rendering, st
 
 ## Why flatten at all?
 
-Interactive MDX components like `<Tabs>` or `<Callout>` render fine in a browser but do nothing for an agent reading raw text. *Flattening* converts each component into a portable markdown equivalent at conversion time:
+Interactive MDX components like `<Tabs>` or `<Callout>` render fine in a browser but do nothing for an agent reading raw text. *[Flattening](/docs/how-it-works#vocabulary)* converts each component into a portable markdown equivalent at conversion time:
 
 - A `<Callout>` becomes a blockquote.
 - A `<Tabs>` becomes a stack of bold headings, one per tab.

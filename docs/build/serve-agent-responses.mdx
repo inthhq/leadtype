@@ -1,0 +1,186 @@
+---
+title: "Serve agent responses"
+description: "Wire markdown responses, JSON-LD, sitemap, and robots into your framework using the generated agent-readability.json manifest."
+---
+
+# Serve agent responses
+
+Once [Optimize docs for agents](/docs/build/optimize-docs-for-agents) has written `agent-readability.json` and the rest of the discovery files, your app has to wire them into routing and HTML. This page covers the runtime side: one middleware for markdown content negotiation, JSON-LD in the docs page head, and the per-request sitemap/robots regenerators that make preview URLs advertise the right origin.
+
+For per-host deploy paths (Next on Vercel, TanStack Start, Nuxt on Cloudflare, etc.), see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
+
+## 1. Add one middleware
+
+Put the agent-readable routes before your HTML docs route. This Node/Bun example handles root discovery files, docs-scoped discovery files, direct `.md` URLs, and `Accept: text/markdown` requests in one place:
+
+```ts
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import manifestJson from "../public/docs/agent-readability.json" with {
+  type: "json",
+};
+import {
+  createAgentMarkdownResponse,
+  createRobotsTxtResponse,
+  createSitemapMarkdownResponse,
+  createSitemapXmlResponse,
+  type AgentReadabilityManifest,
+  type MarkdownMirrorTarget,
+} from "leadtype/llm/readability";
+
+const manifest = {
+  ...manifestJson,
+  version: 1,
+} as AgentReadabilityManifest;
+
+async function readMarkdownFile(
+  target: MarkdownMirrorTarget
+): Promise<string | null> {
+  try {
+    return await readFile(join(process.cwd(), "public", target.filePath), "utf8");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error.code === "ENOENT" || error.code === "ENOTDIR")
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function handleDocsRequest(
+  request: Request
+): Promise<Response | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return null;
+  }
+
+  const url = new URL(request.url);
+  const requestOrigin = url.origin;
+
+  switch (url.pathname) {
+    case "/sitemap.xml":
+    case "/docs/sitemap.xml":
+      return createSitemapXmlResponse({ manifest, requestOrigin });
+    case "/sitemap.md":
+    case "/docs/sitemap.md":
+      return createSitemapMarkdownResponse({ manifest, requestOrigin });
+    case "/robots.txt":
+      return createRobotsTxtResponse({ manifest, requestOrigin });
+    case "/docs/robots.txt":
+      return createRobotsTxtResponse({
+        manifest,
+        requestOrigin,
+        sitemapUrlPath: "/docs/sitemap.xml",
+      });
+    default:
+      return createAgentMarkdownResponse({
+        urlPath: url.pathname,
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+        manifest,
+        readMarkdownFile,
+        requestOrigin,
+      });
+  }
+}
+```
+
+If you also have marketing, blog, changelog, or product pages, pass them through the optional `pages` field — the regenerator merges them into the rebased output:
+
+```ts
+return createSitemapXmlResponse({
+  manifest,
+  requestOrigin,
+  pages: [...manifest.pages, ...marketingPages, ...blogPages],
+});
+```
+
+The other generated artifacts — `/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
+
+Keep the docs-scoped versions too (`/docs/sitemap.xml` etc.). Audits and agents may request both `/sitemap.xml` and `/docs/sitemap.xml`, especially when the audited URL is `/docs`.
+
+## 2. Add JSON-LD to docs pages
+
+Use the manifest entry for the current page and render Schema.org JSON-LD into the HTML head. Defaults cover page identity, canonical URL, last modified time, product site, and breadcrumbs. Add overrides when your site has better author, publisher, image, keywords, or publish-date data.
+
+```ts
+import agentManifest from "../public/docs/agent-readability.json";
+import {
+  createDocsJsonLd,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
+
+const jsonLd = createDocsJsonLd({
+  urlPath: "/docs/quickstart",
+  manifest: agentManifest,
+  overrides: {
+    publisher: { "@type": "Organization", name: "Example" },
+    image: "https://example.com/og/docs.png",
+  },
+});
+
+const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
+```
+
+Use `createDocsJsonLd()` if your framework has a typed metadata or head API. Use `stringifyJsonLd()` for safe script contents.
+
+Also add canonical and markdown alternate links:
+
+```html
+<link rel="canonical" href="https://leadtype.dev/docs/quickstart" />
+<link
+  rel="alternate"
+  type="text/markdown"
+  href="https://leadtype.dev/docs/quickstart.md"
+/>
+```
+
+The JSON-LD gives agents the page title, description, canonical URL, last modified date, and breadcrumbs without scraping your rendered layout.
+
+## 3. Return markdown to agents
+
+The middleware above uses `createAgentMarkdownResponse`. It returns a Web `Response` (or `null` when the path is not an agent-oriented markdown request) and handles:
+
+- `Accept: text/markdown` and `Accept: text/plain` content negotiation (q-values respected).
+- Known AI user-agent headers (GPTBot, ClaudeBot, Bingbot, AmazonBot, MetaExternalAgent, PerplexityBot, MistralBot, AppleBot, ByteSpider, YouBot, …).
+- Direct `.md` URLs such as `/docs/quickstart.md`.
+- `canonical_url` and `last_updated` frontmatter aliases injected automatically.
+- 200 markdown responses for missing docs pages, so agents do not discard the body.
+- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical"`, `Cache-Control: public, max-age=300, must-revalidate`.
+
+`readMarkdownFile` may be sync or async. In Node/Bun, read from disk. In Cloudflare, fetch from KV/R2 or an asset binding. In Vercel Edge, fetch from the deployment's static asset URL.
+
+Put that logic wherever your framework can intercept docs requests before its HTML route:
+
+| Framework/runtime | Where it usually goes |
+| --- | --- |
+| Next.js | `middleware.ts` (Edge) or a catch-all route handler before the docs page. |
+| TanStack Start / nitro | `server/middleware/agent-readability.ts` (h3). One middleware handles both the markdown response and the sitemap/robots regenerators — runs in dev, preview, and prod. |
+| Nuxt | `server/middleware/agent-readability.ts` (h3) — same shape as the TanStack Start example. |
+| Astro | An endpoint at `pages/docs/[...slug].md.ts` or `astro:middleware`. |
+| SvelteKit | `+server.ts` under a `.md` route or a hook before the HTML route. |
+| Cloudflare Workers/Pages | Worker `fetch` handler with KV/R2 asset binding for the markdown reader. |
+| Express/Hono/Fastify | Middleware before the docs HTML route. |
+
+> **Tip:** if you keep static `sitemap.xml` / `sitemap.md` / `robots.txt` files in your build output, your framework's static handler may serve them before your middleware can rebase URLs to the live origin. Either delete the static copies after the build (so the middleware always runs) or make sure your middleware is registered ahead of static-asset serving.
+
+Do not rewrite `llms.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt`, `llms-full.txt`, or `agent-readability.json` to page markdown. The helper leaves those artifact paths alone.
+
+### Why the sitemap and robots responses are regenerated, not static
+
+`sitemap.xml`'s `<loc>` requires absolute URLs, and `robots.txt`'s `Sitemap:` directive is conventionally absolute too. So those two files cannot be plain static assets if you want previews and staging to advertise the right origin. The middleware in step 1 already calls `createSitemapXmlResponse`, `createSitemapMarkdownResponse`, and `createRobotsTxtResponse` — each rebuilds from the manifest using the live `requestOrigin`, so preview, staging, and prod all advertise the right URLs without per-environment config.
+
+The other generated files (`/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
+
+### Cache-Control and CDN
+
+Every helper adds `Cache-Control: public, max-age=300, must-revalidate` by default. Pair it with the `Vary: Accept, User-Agent` header that `createAgentMarkdownResponse` sets when an AI user-agent is detected — your CDN must shard cache entries on those headers, or it will serve HTML to agents from a markdown-cached entry (or vice versa). Override the default with `cacheControl: "<directive>"`, or pass `cacheControl: null` to omit the header entirely (useful when your CDN sets caching out-of-band).
+
+## Where to next
+
+- [Optimize docs for agents](/docs/build/optimize-docs-for-agents) — the artifact-generation half of this story, with the verification checklist.
+- [Deploy generated artifacts](/docs/build/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities (Next on Vercel, TanStack Start, Nuxt on Cloudflare, Astro, SvelteKit).

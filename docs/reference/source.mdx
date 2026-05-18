@@ -101,7 +101,7 @@ Convenience wrapper around `resolveInclude` from `leadtype/mdx` with `fromDir` d
 
 ## Choosing between `loadPage` and direct `.mdx` imports
 
-For most bundler-driven consumers (Next App Router, Vite, Astro), you'll **import source `.mdx` directly** and let the bundler's MDX pipeline compile it with `createMdxSourcePlugins()`. `loadPage()` is for cases where you need the resolved markdown body or AST programmatically:
+For most bundler-driven consumers (Next App Router, TanStack Start, Nuxt, Astro, and SvelteKit), you'll **import source `.mdx` directly** and let the bundler's MDX pipeline compile it with `createMdxSourcePlugins()`. `loadPage()` is for cases where you need the resolved markdown body or AST programmatically:
 
 - Server-rendering through `next-mdx-remote` instead of bundler-native MDX
 - Streaming partials to an agent / LLM at runtime
@@ -138,20 +138,6 @@ export default async function Page({ params }) {
 }
 ```
 
-### Astro Content Collections
-
-```ts title="astro.config.mjs"
-import { defineConfig } from "astro/config";
-import mdx from "@astrojs/mdx";
-import { createMdxSourcePlugins } from "leadtype/mdx";
-
-export default defineConfig({
-  integrations: [mdx({ remarkPlugins: [...createMdxSourcePlugins()] })],
-});
-```
-
-Use Astro's built-in content collection schema for typed frontmatter; use `createDocsSource()` only when you need leadtype's navigation, search index, or programmatic include resolution.
-
 ### TanStack Start
 
 ```ts title="vite.config.ts"
@@ -185,20 +171,6 @@ export default defineConfig({
 
 Pair with a TanStack Router catch-all (`src/routes/docs/$.tsx`) that consumes a build-time manifest generated from `createDocsSource().listPages()`. See [Use the source primitive → TanStack Start](/docs/build/use-the-source-primitive#tanstack-start) for the catch-all snippet.
 
-### Vite + `@mdx-js/rollup` (works for Vue, Solid, Svelte starters)
-
-```ts title="vite.config.ts"
-import mdx from "@mdx-js/rollup";
-import { createMdxSourcePlugins } from "leadtype/mdx";
-
-export default {
-  plugins: [
-    mdx({ remarkPlugins: [...createMdxSourcePlugins()] }),
-    // ...your framework plugin: viteReact / vue / solid / svelte
-  ],
-};
-```
-
 ### Nuxt
 
 ```ts title="nuxt.config.ts"
@@ -211,6 +183,20 @@ export default defineNuxtConfig({
   },
 });
 ```
+
+### Astro Content Collections
+
+```ts title="astro.config.mjs"
+import { defineConfig } from "astro/config";
+import mdx from "@astrojs/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+
+export default defineConfig({
+  integrations: [mdx({ remarkPlugins: [...createMdxSourcePlugins()] })],
+});
+```
+
+Use Astro's built-in content collection schema for typed frontmatter; use `createDocsSource()` only when you need leadtype's navigation, search index, or programmatic include resolution.
 
 ### SvelteKit + `mdsvex`
 

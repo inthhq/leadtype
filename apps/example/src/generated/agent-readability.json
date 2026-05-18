@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-16T00:30:26.630Z",
+  "generatedAt": "2026-05-18T04:21:03.063Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -9,27 +9,15 @@
   "pages": [
     {
       "title": "Leadtype",
-      "description": "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline.",
+      "description": "Build agent-ready docs from MDX: rendered pages, llms.txt, markdown mirrors, search output, and package-bundled AGENTS.md from the same source.",
       "urlPath": "/docs",
       "absoluteUrl": "https://leadtype.dev/docs",
       "markdownUrlPath": "/docs/index.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "index"
-    },
-    {
-      "title": "Collections",
-      "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
-      "urlPath": "/docs/authoring/collections",
-      "absoluteUrl": "https://leadtype.dev/docs/authoring/collections",
-      "markdownUrlPath": "/docs/authoring/collections.md",
-      "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/collections.md",
-      "relativePath": "authoring/collections",
-      "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
-      "logicalPath": "authoring/collections"
     },
     {
       "title": "Components",
@@ -40,7 +28,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/components.md",
       "relativePath": "authoring/components",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "authoring/components"
     },
     {
@@ -52,7 +40,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/frontmatter.md",
       "relativePath": "authoring/frontmatter",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:52:44.000Z",
       "logicalPath": "authoring/frontmatter"
     },
     {
@@ -64,31 +52,43 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/add-search.md",
       "relativePath": "build/add-search",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "build/add-search"
     },
     {
-      "title": "Build a docs site",
-      "description": "Pick the right leadtype integration shape for your docs app, and what each path gives you.",
+      "title": "Build an agent-ready docs site",
+      "description": "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata.",
       "urlPath": "/docs/build/build-a-docs-site",
       "absoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site",
       "markdownUrlPath": "/docs/build/build-a-docs-site.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site.md",
       "relativePath": "build/build-a-docs-site",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/build-a-docs-site"
     },
     {
+      "title": "Deploy generated artifacts",
+      "description": "Serve Leadtype output on common framework and hosting combinations.",
+      "urlPath": "/docs/build/deploy-generated-artifacts",
+      "absoluteUrl": "https://leadtype.dev/docs/build/deploy-generated-artifacts",
+      "markdownUrlPath": "/docs/build/deploy-generated-artifacts.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/deploy-generated-artifacts.md",
+      "relativePath": "build/deploy-generated-artifacts",
+      "groups": [],
+      "lastModified": "2026-05-18T04:05:16.000Z",
+      "logicalPath": "build/deploy-generated-artifacts"
+    },
+    {
       "title": "Framework integration matrix",
-      "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
+      "description": "Use Leadtype with native-feeling recipes for Next, TanStack Start, Nuxt, Astro, SvelteKit, and Fumadocs.",
       "urlPath": "/docs/build/framework-matrix",
       "absoluteUrl": "https://leadtype.dev/docs/build/framework-matrix",
       "markdownUrlPath": "/docs/build/framework-matrix.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/framework-matrix.md",
       "relativePath": "build/framework-matrix",
       "groups": [],
-      "lastModified": "2026-05-16T00:11:45.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/framework-matrix"
     },
     {
@@ -100,7 +100,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/generate-static-artifacts.md",
       "relativePath": "build/generate-static-artifacts",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/generate-static-artifacts"
     },
     {
@@ -112,31 +112,43 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/integrate-with-fumadocs.md",
       "relativePath": "build/integrate-with-fumadocs",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "build/integrate-with-fumadocs"
     },
     {
       "title": "Optimize docs for agents",
-      "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
+      "description": "Generate llms.txt, markdown mirrors, JSON-LD inputs, sitemaps, robots.txt, and agent-readability.json from one CLI run.",
       "urlPath": "/docs/build/optimize-docs-for-agents",
       "absoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents",
       "markdownUrlPath": "/docs/build/optimize-docs-for-agents.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents.md",
       "relativePath": "build/optimize-docs-for-agents",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "build/optimize-docs-for-agents"
     },
     {
+      "title": "Serve agent responses",
+      "description": "Wire markdown responses, JSON-LD, sitemap, and robots into your framework using the generated agent-readability.json manifest.",
+      "urlPath": "/docs/build/serve-agent-responses",
+      "absoluteUrl": "https://leadtype.dev/docs/build/serve-agent-responses",
+      "markdownUrlPath": "/docs/build/serve-agent-responses.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/serve-agent-responses.md",
+      "relativePath": "build/serve-agent-responses",
+      "groups": [],
+      "lastModified": "2026-05-18T03:53:32.000Z",
+      "logicalPath": "build/serve-agent-responses"
+    },
+    {
       "title": "Use the source primitive",
-      "description": "Wire createDocsSource into Next, Astro, Vite, Nuxt, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
+      "description": "Wire createDocsSource into Next, TanStack Start, Nuxt, Astro, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
       "urlPath": "/docs/build/use-the-source-primitive",
       "absoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive",
       "markdownUrlPath": "/docs/build/use-the-source-primitive.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
     {
@@ -148,7 +160,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/validate-in-ci.md",
       "relativePath": "build/validate-in-ci",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "build/validate-in-ci"
     },
     {
@@ -160,7 +172,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/changelog/nav-migration-prompts.md",
       "relativePath": "changelog/nav-migration-prompts",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "changelog/nav-migration-prompts"
     },
     {
@@ -172,7 +184,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/how-it-works.md",
       "relativePath": "how-it-works",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "how-it-works"
     },
     {
@@ -184,7 +196,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/methodology.md",
       "relativePath": "methodology",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "methodology"
     },
     {
@@ -196,19 +208,19 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/package-docs/bundle.md",
       "relativePath": "package-docs/bundle",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "package-docs/bundle"
     },
     {
       "title": "Quickstart",
-      "description": "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using.",
+      "description": "Build an agent-ready docs site from one MDX page: render it, generate llms.txt and markdown mirrors, then verify the output.",
       "urlPath": "/docs/quickstart",
       "absoluteUrl": "https://leadtype.dev/docs/quickstart",
       "markdownUrlPath": "/docs/quickstart.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "quickstart"
     },
     {
@@ -220,7 +232,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/architecture.md",
       "relativePath": "reference/architecture",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "reference/architecture"
     },
     {
@@ -232,7 +244,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/cli.md",
       "relativePath": "reference/cli",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:52:44.000Z",
       "logicalPath": "reference/cli"
     },
     {
@@ -244,7 +256,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/convert.md",
       "relativePath": "reference/convert",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "reference/convert"
     },
     {
@@ -256,8 +268,20 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/evals.md",
       "relativePath": "reference/evals",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "reference/evals"
+    },
+    {
+      "title": "Frontmatter transformers",
+      "description": "Define typed custom frontmatter and lifecycle hooks for Leadtype pipeline data.",
+      "urlPath": "/docs/reference/frontmatter-transformers",
+      "absoluteUrl": "https://leadtype.dev/docs/reference/frontmatter-transformers",
+      "markdownUrlPath": "/docs/reference/frontmatter-transformers.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/frontmatter-transformers.md",
+      "relativePath": "reference/frontmatter-transformers",
+      "groups": [],
+      "lastModified": "2026-05-17T01:22:57.000Z",
+      "logicalPath": "reference/frontmatter-transformers"
     },
     {
       "title": "Lint rules",
@@ -268,7 +292,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/lint.md",
       "relativePath": "reference/lint",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "reference/lint"
     },
     {
@@ -280,7 +304,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/llm.md",
       "relativePath": "reference/llm",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T17:02:13.000Z",
       "logicalPath": "reference/llm"
     },
     {
@@ -292,7 +316,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/mdx.md",
       "relativePath": "reference/mdx",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "reference/mdx"
     },
     {
@@ -304,7 +328,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/remark.md",
       "relativePath": "reference/remark",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "reference/remark"
     },
     {
@@ -316,7 +340,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/search.md",
       "relativePath": "reference/search",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-16T01:20:02.000Z",
       "logicalPath": "reference/search"
     },
     {
@@ -328,8 +352,32 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/source.md",
       "relativePath": "reference/source",
       "groups": [],
-      "lastModified": "2026-05-16T00:16:18.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "reference/source"
+    },
+    {
+      "title": "Collections reference",
+      "description": "Detailed defineCollection behavior for multi-source docs: local folders, git repos, filters, schemas, and per-collection navigation.",
+      "urlPath": "/docs/sources/collections",
+      "absoluteUrl": "https://leadtype.dev/docs/sources/collections",
+      "markdownUrlPath": "/docs/sources/collections.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/collections.md",
+      "relativePath": "sources/collections",
+      "groups": [],
+      "lastModified": "2026-05-18T03:52:44.000Z",
+      "logicalPath": "sources/collections"
+    },
+    {
+      "title": "Configure docs sources",
+      "description": "Choose where Leadtype reads MDX from: one local docs folder, multiple mounted folders, or remote git collections pinned to a branch, tag, or commit.",
+      "urlPath": "/docs/sources/configure-sources",
+      "absoluteUrl": "https://leadtype.dev/docs/sources/configure-sources",
+      "markdownUrlPath": "/docs/sources/configure-sources.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/configure-sources.md",
+      "relativePath": "sources/configure-sources",
+      "groups": [],
+      "lastModified": "2026-05-18T04:05:16.000Z",
+      "logicalPath": "sources/configure-sources"
     }
   ],
   "navigation": {
@@ -343,27 +391,36 @@
         "pages": [],
         "children": [
           {
-            "slug": "get-started",
+            "slug": "start",
             "segmentPath": [
               "docs",
-              "get-started"
+              "start"
             ],
-            "title": "Get Started",
+            "title": "Start",
             "pages": [
               {
                 "urlPath": "/docs",
                 "relativePath": "index",
                 "title": "Leadtype",
-                "description": "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline.",
+                "description": "Build agent-ready docs from MDX: rendered pages, llms.txt, markdown mirrors, search output, and package-bundled AGENTS.md from the same source.",
                 "groups": [],
                 "toc": [
                   {
-                    "id": "start-here",
-                    "title": "Start here",
+                    "id": "pick-your-path",
+                    "title": "Pick your path",
                     "level": 2,
                     "urlPath": "/docs",
-                    "urlWithHash": "/docs#start-here",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs#start-here",
+                    "urlWithHash": "/docs#pick-your-path",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs#pick-your-path",
+                    "children": []
+                  },
+                  {
+                    "id": "key-terms",
+                    "title": "Key terms",
+                    "level": 2,
+                    "urlPath": "/docs",
+                    "urlWithHash": "/docs#key-terms",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs#key-terms",
                     "children": []
                   },
                   {
@@ -374,15 +431,6 @@
                     "urlWithHash": "/docs#what-leadtype-produces",
                     "absoluteUrlWithHash": "https://leadtype.dev/docs#what-leadtype-produces",
                     "children": []
-                  },
-                  {
-                    "id": "next",
-                    "title": "Next",
-                    "level": 2,
-                    "urlPath": "/docs",
-                    "urlWithHash": "/docs#next",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs#next",
-                    "children": []
                   }
                 ],
                 "logicalPath": "index"
@@ -391,7 +439,7 @@
                 "urlPath": "/docs/quickstart",
                 "relativePath": "quickstart",
                 "title": "Quickstart",
-                "description": "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using.",
+                "description": "Build an agent-ready docs site from one MDX page: render it, generate llms.txt and markdown mirrors, then verify the output.",
                 "groups": [],
                 "toc": [
                   {
@@ -404,48 +452,67 @@
                     "children": []
                   },
                   {
-                    "id": "author-one-page",
-                    "title": "Author one page",
+                    "id": "1-author-one-page",
+                    "title": "1. Author one page",
                     "level": 2,
                     "urlPath": "/docs/quickstart",
-                    "urlWithHash": "/docs/quickstart#author-one-page",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#author-one-page",
+                    "urlWithHash": "/docs/quickstart#1-author-one-page",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#1-author-one-page",
                     "children": []
                   },
                   {
-                    "id": "create-the-source",
-                    "title": "Create the source",
+                    "id": "2-create-the-source",
+                    "title": "2. Create the source",
                     "level": 2,
                     "urlPath": "/docs/quickstart",
-                    "urlWithHash": "/docs/quickstart#create-the-source",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#create-the-source",
+                    "urlWithHash": "/docs/quickstart#2-create-the-source",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#2-create-the-source",
                     "children": []
                   },
                   {
-                    "id": "plug-it-into-your-framework",
-                    "title": "Plug it into your framework",
+                    "id": "3-render-the-docs-route",
+                    "title": "3. Render the docs route",
                     "level": 2,
                     "urlPath": "/docs/quickstart",
-                    "urlWithHash": "/docs/quickstart#plug-it-into-your-framework",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#plug-it-into-your-framework",
+                    "urlWithHash": "/docs/quickstart#3-render-the-docs-route",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#3-render-the-docs-route",
+                    "children": [
+                      {
+                        "id": "pick-your-framework",
+                        "title": "Pick your framework",
+                        "level": 3,
+                        "urlPath": "/docs/quickstart",
+                        "urlWithHash": "/docs/quickstart#pick-your-framework",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#pick-your-framework",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "4-generate-agent-artifacts",
+                    "title": "4. Generate agent artifacts",
+                    "level": 2,
+                    "urlPath": "/docs/quickstart",
+                    "urlWithHash": "/docs/quickstart#4-generate-agent-artifacts",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#4-generate-agent-artifacts",
                     "children": []
                   },
                   {
-                    "id": "or-write-static-artifacts-to-disk",
-                    "title": "Or: write static artifacts to disk",
+                    "id": "5-verify-the-output",
+                    "title": "5. Verify the output",
                     "level": 2,
                     "urlPath": "/docs/quickstart",
-                    "urlWithHash": "/docs/quickstart#or-write-static-artifacts-to-disk",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#or-write-static-artifacts-to-disk",
+                    "urlWithHash": "/docs/quickstart#5-verify-the-output",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#5-verify-the-output",
                     "children": []
                   },
                   {
-                    "id": "next-steps",
-                    "title": "Next steps",
+                    "id": "common-next-steps",
+                    "title": "Common next steps",
                     "level": 2,
                     "urlPath": "/docs/quickstart",
-                    "urlWithHash": "/docs/quickstart#next-steps",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#next-steps",
+                    "urlWithHash": "/docs/quickstart#common-next-steps",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/quickstart#common-next-steps",
                     "children": []
                   }
                 ],
@@ -574,12 +641,1097 @@
             "children": []
           },
           {
-            "slug": "authoring",
+            "slug": "build-an-agent-ready-site",
             "segmentPath": [
               "docs",
-              "authoring"
+              "build-an-agent-ready-site"
             ],
-            "title": "Authoring",
+            "title": "Build an Agent-Ready Site",
+            "pages": [
+              {
+                "urlPath": "/docs/build/build-a-docs-site",
+                "relativePath": "build/build-a-docs-site",
+                "title": "Build an agent-ready docs site",
+                "description": "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "pick-your-path",
+                    "title": "Pick your path",
+                    "level": 2,
+                    "urlPath": "/docs/build/build-a-docs-site",
+                    "urlWithHash": "/docs/build/build-a-docs-site#pick-your-path",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#pick-your-path",
+                    "children": []
+                  },
+                  {
+                    "id": "source-primitive-the-common-path",
+                    "title": "Source primitive: the common path",
+                    "level": 2,
+                    "urlPath": "/docs/build/build-a-docs-site",
+                    "urlWithHash": "/docs/build/build-a-docs-site#source-primitive-the-common-path",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#source-primitive-the-common-path",
+                    "children": []
+                  },
+                  {
+                    "id": "static-artifacts-the-cli-path",
+                    "title": "Static artifacts: the CLI path",
+                    "level": 2,
+                    "urlPath": "/docs/build/build-a-docs-site",
+                    "urlWithHash": "/docs/build/build-a-docs-site#static-artifacts-the-cli-path",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#static-artifacts-the-cli-path",
+                    "children": []
+                  },
+                  {
+                    "id": "add-the-cross-cutting-features",
+                    "title": "Add the cross-cutting features",
+                    "level": 2,
+                    "urlPath": "/docs/build/build-a-docs-site",
+                    "urlWithHash": "/docs/build/build-a-docs-site#add-the-cross-cutting-features",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#add-the-cross-cutting-features",
+                    "children": []
+                  },
+                  {
+                    "id": "configure-product-and-navigation",
+                    "title": "Configure product and navigation",
+                    "level": 2,
+                    "urlPath": "/docs/build/build-a-docs-site",
+                    "urlWithHash": "/docs/build/build-a-docs-site#configure-product-and-navigation",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#configure-product-and-navigation",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/build-a-docs-site"
+              },
+              {
+                "urlPath": "/docs/build/use-the-source-primitive",
+                "relativePath": "build/use-the-source-primitive",
+                "title": "Use the source primitive",
+                "description": "Wire createDocsSource into Next, TanStack Start, Nuxt, Astro, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "tl-dr",
+                    "title": "TL;DR",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#tl-dr",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#tl-dr",
+                    "children": []
+                  },
+                  {
+                    "id": "install",
+                    "title": "Install",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#install",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#install",
+                    "children": []
+                  },
+                  {
+                    "id": "wire-into-your-framework",
+                    "title": "Wire into your framework",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#wire-into-your-framework",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#wire-into-your-framework",
+                    "children": [
+                      {
+                        "id": "next-app-router",
+                        "title": "Next App Router",
+                        "level": 3,
+                        "urlPath": "/docs/build/use-the-source-primitive",
+                        "urlWithHash": "/docs/build/use-the-source-primitive#next-app-router",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#next-app-router",
+                        "children": []
+                      },
+                      {
+                        "id": "tanstack-start",
+                        "title": "TanStack Start",
+                        "level": 3,
+                        "urlPath": "/docs/build/use-the-source-primitive",
+                        "urlWithHash": "/docs/build/use-the-source-primitive#tanstack-start",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#tanstack-start",
+                        "children": []
+                      },
+                      {
+                        "id": "nuxt",
+                        "title": "Nuxt",
+                        "level": 3,
+                        "urlPath": "/docs/build/use-the-source-primitive",
+                        "urlWithHash": "/docs/build/use-the-source-primitive#nuxt",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#nuxt",
+                        "children": []
+                      },
+                      {
+                        "id": "astro-content-collections",
+                        "title": "Astro Content Collections",
+                        "level": 3,
+                        "urlPath": "/docs/build/use-the-source-primitive",
+                        "urlWithHash": "/docs/build/use-the-source-primitive#astro-content-collections",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#astro-content-collections",
+                        "children": []
+                      },
+                      {
+                        "id": "sveltekit-mdsvex",
+                        "title": "SvelteKit + mdsvex",
+                        "level": 3,
+                        "urlPath": "/docs/build/use-the-source-primitive",
+                        "urlWithHash": "/docs/build/use-the-source-primitive#sveltekit-mdsvex",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#sveltekit-mdsvex",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "implement-the-tag-components",
+                    "title": "Implement the tag components",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#implement-the-tag-components",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#implement-the-tag-components",
+                    "children": []
+                  },
+                  {
+                    "id": "build-the-sidebar-from-navigation",
+                    "title": "Build the sidebar from navigation",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#build-the-sidebar-from-navigation",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#build-the-sidebar-from-navigation",
+                    "children": []
+                  },
+                  {
+                    "id": "match-heading-slugs",
+                    "title": "Match heading slugs",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#match-heading-slugs",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#match-heading-slugs",
+                    "children": []
+                  },
+                  {
+                    "id": "build-a-search-index",
+                    "title": "Build a search index",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#build-a-search-index",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#build-a-search-index",
+                    "children": []
+                  },
+                  {
+                    "id": "troubleshooting",
+                    "title": "Troubleshooting",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#troubleshooting",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#troubleshooting",
+                    "children": []
+                  },
+                  {
+                    "id": "reference",
+                    "title": "Reference",
+                    "level": 2,
+                    "urlPath": "/docs/build/use-the-source-primitive",
+                    "urlWithHash": "/docs/build/use-the-source-primitive#reference",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#reference",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/use-the-source-primitive"
+              },
+              {
+                "urlPath": "/docs/build/generate-static-artifacts",
+                "relativePath": "build/generate-static-artifacts",
+                "title": "Generate static artifacts",
+                "description": "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "the-flow",
+                    "title": "The flow",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#the-flow",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#the-flow",
+                    "children": []
+                  },
+                  {
+                    "id": "fetch-the-source-repo",
+                    "title": "Fetch the source repo",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#fetch-the-source-repo",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#fetch-the-source-repo",
+                    "children": []
+                  },
+                  {
+                    "id": "lint-before-generate",
+                    "title": "Lint before generate",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#lint-before-generate",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#lint-before-generate",
+                    "children": []
+                  },
+                  {
+                    "id": "generate",
+                    "title": "Generate",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#generate",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#generate",
+                    "children": []
+                  },
+                  {
+                    "id": "multi-source-mounting",
+                    "title": "Multi-source mounting",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#multi-source-mounting",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#multi-source-mounting",
+                    "children": []
+                  },
+                  {
+                    "id": "wire-it-into-the-build",
+                    "title": "Wire it into the build",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#wire-it-into-the-build",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#wire-it-into-the-build",
+                    "children": []
+                  },
+                  {
+                    "id": "use-library-apis-for-custom-pipelines",
+                    "title": "Use library APIs for custom pipelines",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#use-library-apis-for-custom-pipelines",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#use-library-apis-for-custom-pipelines",
+                    "children": []
+                  },
+                  {
+                    "id": "verify",
+                    "title": "Verify",
+                    "level": 2,
+                    "urlPath": "/docs/build/generate-static-artifacts",
+                    "urlWithHash": "/docs/build/generate-static-artifacts#verify",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#verify",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/generate-static-artifacts"
+              },
+              {
+                "urlPath": "/docs/build/optimize-docs-for-agents",
+                "relativePath": "build/optimize-docs-for-agents",
+                "title": "Optimize docs for agents",
+                "description": "Generate llms.txt, markdown mirrors, JSON-LD inputs, sitemaps, robots.txt, and agent-readability.json from one CLI run.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "what-good-looks-like",
+                    "title": "What good looks like",
+                    "level": 2,
+                    "urlPath": "/docs/build/optimize-docs-for-agents",
+                    "urlWithHash": "/docs/build/optimize-docs-for-agents#what-good-looks-like",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#what-good-looks-like",
+                    "children": []
+                  },
+                  {
+                    "id": "generate-the-artifacts",
+                    "title": "Generate the artifacts",
+                    "level": 2,
+                    "urlPath": "/docs/build/optimize-docs-for-agents",
+                    "urlWithHash": "/docs/build/optimize-docs-for-agents#generate-the-artifacts",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#generate-the-artifacts",
+                    "children": []
+                  },
+                  {
+                    "id": "verify-locally",
+                    "title": "Verify locally",
+                    "level": 2,
+                    "urlPath": "/docs/build/optimize-docs-for-agents",
+                    "urlWithHash": "/docs/build/optimize-docs-for-agents#verify-locally",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#verify-locally",
+                    "children": []
+                  },
+                  {
+                    "id": "minimal-checklist",
+                    "title": "Minimal checklist",
+                    "level": 2,
+                    "urlPath": "/docs/build/optimize-docs-for-agents",
+                    "urlWithHash": "/docs/build/optimize-docs-for-agents#minimal-checklist",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#minimal-checklist",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/optimize-docs-for-agents"
+              },
+              {
+                "urlPath": "/docs/build/serve-agent-responses",
+                "relativePath": "build/serve-agent-responses",
+                "title": "Serve agent responses",
+                "description": "Wire markdown responses, JSON-LD, sitemap, and robots into your framework using the generated agent-readability.json manifest.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "1-add-one-middleware",
+                    "title": "1. Add one middleware",
+                    "level": 2,
+                    "urlPath": "/docs/build/serve-agent-responses",
+                    "urlWithHash": "/docs/build/serve-agent-responses#1-add-one-middleware",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/serve-agent-responses#1-add-one-middleware",
+                    "children": []
+                  },
+                  {
+                    "id": "2-add-json-ld-to-docs-pages",
+                    "title": "2. Add JSON-LD to docs pages",
+                    "level": 2,
+                    "urlPath": "/docs/build/serve-agent-responses",
+                    "urlWithHash": "/docs/build/serve-agent-responses#2-add-json-ld-to-docs-pages",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/serve-agent-responses#2-add-json-ld-to-docs-pages",
+                    "children": []
+                  },
+                  {
+                    "id": "3-return-markdown-to-agents",
+                    "title": "3. Return markdown to agents",
+                    "level": 2,
+                    "urlPath": "/docs/build/serve-agent-responses",
+                    "urlWithHash": "/docs/build/serve-agent-responses#3-return-markdown-to-agents",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/serve-agent-responses#3-return-markdown-to-agents",
+                    "children": [
+                      {
+                        "id": "why-the-sitemap-and-robots-responses-are-regenerated-not-static",
+                        "title": "Why the sitemap and robots responses are regenerated, not static",
+                        "level": 3,
+                        "urlPath": "/docs/build/serve-agent-responses",
+                        "urlWithHash": "/docs/build/serve-agent-responses#why-the-sitemap-and-robots-responses-are-regenerated-not-static",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/serve-agent-responses#why-the-sitemap-and-robots-responses-are-regenerated-not-static",
+                        "children": []
+                      },
+                      {
+                        "id": "cache-control-and-cdn",
+                        "title": "Cache-Control and CDN",
+                        "level": 3,
+                        "urlPath": "/docs/build/serve-agent-responses",
+                        "urlWithHash": "/docs/build/serve-agent-responses#cache-control-and-cdn",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/serve-agent-responses#cache-control-and-cdn",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "where-to-next",
+                    "title": "Where to next",
+                    "level": 2,
+                    "urlPath": "/docs/build/serve-agent-responses",
+                    "urlWithHash": "/docs/build/serve-agent-responses#where-to-next",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/serve-agent-responses#where-to-next",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/serve-agent-responses"
+              },
+              {
+                "urlPath": "/docs/build/deploy-generated-artifacts",
+                "relativePath": "build/deploy-generated-artifacts",
+                "title": "Deploy generated artifacts",
+                "description": "Serve Leadtype output on common framework and hosting combinations.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "output-contract",
+                    "title": "Output contract",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#output-contract",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#output-contract",
+                    "children": []
+                  },
+                  {
+                    "id": "next-js-on-vercel",
+                    "title": "Next.js on Vercel",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#next-js-on-vercel",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#next-js-on-vercel",
+                    "children": []
+                  },
+                  {
+                    "id": "tanstack-start",
+                    "title": "TanStack Start",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#tanstack-start",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#tanstack-start",
+                    "children": []
+                  },
+                  {
+                    "id": "nuxt-on-vercel-netlify-or-cloudflare",
+                    "title": "Nuxt on Vercel, Netlify, or Cloudflare",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#nuxt-on-vercel-netlify-or-cloudflare",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#nuxt-on-vercel-netlify-or-cloudflare",
+                    "children": []
+                  },
+                  {
+                    "id": "astro-static-or-server",
+                    "title": "Astro static or server",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#astro-static-or-server",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#astro-static-or-server",
+                    "children": []
+                  },
+                  {
+                    "id": "sveltekit",
+                    "title": "SvelteKit",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#sveltekit",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#sveltekit",
+                    "children": []
+                  },
+                  {
+                    "id": "cloudflare-workers-and-pages",
+                    "title": "Cloudflare Workers and Pages",
+                    "level": 2,
+                    "urlPath": "/docs/build/deploy-generated-artifacts",
+                    "urlWithHash": "/docs/build/deploy-generated-artifacts#cloudflare-workers-and-pages",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/deploy-generated-artifacts#cloudflare-workers-and-pages",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/deploy-generated-artifacts"
+              },
+              {
+                "urlPath": "/docs/build/add-search",
+                "relativePath": "build/add-search",
+                "title": "Add search",
+                "description": "Generate a static docs search index, query it at runtime, and optionally stream source-grounded answers.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "generate-the-files",
+                    "title": "Generate the files",
+                    "level": 2,
+                    "urlPath": "/docs/build/add-search",
+                    "urlWithHash": "/docs/build/add-search#generate-the-files",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#generate-the-files",
+                    "children": []
+                  },
+                  {
+                    "id": "query-at-runtime",
+                    "title": "Query at runtime",
+                    "level": 2,
+                    "urlPath": "/docs/build/add-search",
+                    "urlWithHash": "/docs/build/add-search#query-at-runtime",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#query-at-runtime",
+                    "children": []
+                  },
+                  {
+                    "id": "add-vocabulary-aliases",
+                    "title": "Add vocabulary aliases",
+                    "level": 2,
+                    "urlPath": "/docs/build/add-search",
+                    "urlWithHash": "/docs/build/add-search#add-vocabulary-aliases",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#add-vocabulary-aliases",
+                    "children": []
+                  },
+                  {
+                    "id": "optional-ai-answers",
+                    "title": "Optional AI answers",
+                    "level": 2,
+                    "urlPath": "/docs/build/add-search",
+                    "urlWithHash": "/docs/build/add-search#optional-ai-answers",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#optional-ai-answers",
+                    "children": []
+                  },
+                  {
+                    "id": "guard-the-endpoint",
+                    "title": "Guard the endpoint",
+                    "level": 2,
+                    "urlPath": "/docs/build/add-search",
+                    "urlWithHash": "/docs/build/add-search#guard-the-endpoint",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#guard-the-endpoint",
+                    "children": []
+                  },
+                  {
+                    "id": "verify",
+                    "title": "Verify",
+                    "level": 2,
+                    "urlPath": "/docs/build/add-search",
+                    "urlWithHash": "/docs/build/add-search#verify",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#verify",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/add-search"
+              },
+              {
+                "urlPath": "/docs/build/validate-in-ci",
+                "relativePath": "build/validate-in-ci",
+                "title": "Validate in CI",
+                "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "what-it-catches",
+                    "title": "What it catches",
+                    "level": 2,
+                    "urlPath": "/docs/build/validate-in-ci",
+                    "urlWithHash": "/docs/build/validate-in-ci#what-it-catches",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#what-it-catches",
+                    "children": []
+                  },
+                  {
+                    "id": "github-actions",
+                    "title": "GitHub Actions",
+                    "level": 2,
+                    "urlPath": "/docs/build/validate-in-ci",
+                    "urlWithHash": "/docs/build/validate-in-ci#github-actions",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#github-actions",
+                    "children": []
+                  },
+                  {
+                    "id": "other-ci-providers",
+                    "title": "Other CI providers",
+                    "level": 2,
+                    "urlPath": "/docs/build/validate-in-ci",
+                    "urlWithHash": "/docs/build/validate-in-ci#other-ci-providers",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#other-ci-providers",
+                    "children": [
+                      {
+                        "id": "gitlab-ci",
+                        "title": "GitLab CI",
+                        "level": 3,
+                        "urlPath": "/docs/build/validate-in-ci",
+                        "urlWithHash": "/docs/build/validate-in-ci#gitlab-ci",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#gitlab-ci",
+                        "children": []
+                      },
+                      {
+                        "id": "circleci",
+                        "title": "CircleCI",
+                        "level": 3,
+                        "urlPath": "/docs/build/validate-in-ci",
+                        "urlWithHash": "/docs/build/validate-in-ci#circleci",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#circleci",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "local-pre-push-hook",
+                    "title": "Local pre-push hook",
+                    "level": 2,
+                    "urlPath": "/docs/build/validate-in-ci",
+                    "urlWithHash": "/docs/build/validate-in-ci#local-pre-push-hook",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#local-pre-push-hook",
+                    "children": []
+                  },
+                  {
+                    "id": "run-before-generate",
+                    "title": "Run before generate",
+                    "level": 2,
+                    "urlPath": "/docs/build/validate-in-ci",
+                    "urlWithHash": "/docs/build/validate-in-ci#run-before-generate",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#run-before-generate",
+                    "children": []
+                  },
+                  {
+                    "id": "what-to-fix-first",
+                    "title": "What to fix first",
+                    "level": 2,
+                    "urlPath": "/docs/build/validate-in-ci",
+                    "urlWithHash": "/docs/build/validate-in-ci#what-to-fix-first",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#what-to-fix-first",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/validate-in-ci"
+              },
+              {
+                "urlPath": "/docs/build/framework-matrix",
+                "relativePath": "build/framework-matrix",
+                "title": "Framework integration matrix",
+                "description": "Use Leadtype with native-feeling recipes for Next, TanStack Start, Nuxt, Astro, SvelteKit, and Fumadocs.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "shared-build-step",
+                    "title": "Shared build step",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#shared-build-step",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#shared-build-step",
+                    "children": []
+                  },
+                  {
+                    "id": "next-js-app-router",
+                    "title": "Next.js App Router",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#next-js-app-router",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#next-js-app-router",
+                    "children": []
+                  },
+                  {
+                    "id": "tanstack-start",
+                    "title": "TanStack Start",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#tanstack-start",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#tanstack-start",
+                    "children": []
+                  },
+                  {
+                    "id": "nuxt-nitro",
+                    "title": "Nuxt/Nitro",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#nuxt-nitro",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#nuxt-nitro",
+                    "children": []
+                  },
+                  {
+                    "id": "astro",
+                    "title": "Astro",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#astro",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#astro",
+                    "children": []
+                  },
+                  {
+                    "id": "sveltekit",
+                    "title": "SvelteKit",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#sveltekit",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#sveltekit",
+                    "children": []
+                  },
+                  {
+                    "id": "fumadocs",
+                    "title": "Fumadocs",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#fumadocs",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#fumadocs",
+                    "children": []
+                  },
+                  {
+                    "id": "verification",
+                    "title": "Verification",
+                    "level": 2,
+                    "urlPath": "/docs/build/framework-matrix",
+                    "urlWithHash": "/docs/build/framework-matrix#verification",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#verification",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/framework-matrix"
+              },
+              {
+                "urlPath": "/docs/build/integrate-with-fumadocs",
+                "relativePath": "build/integrate-with-fumadocs",
+                "title": "Integrate with Fumadocs",
+                "description": "Wire leadtype's content layer into a fumadocs app for nav, search, and includes.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "tl-dr",
+                    "title": "TL;DR",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#tl-dr",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#tl-dr",
+                    "children": []
+                  },
+                  {
+                    "id": "install",
+                    "title": "Install",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#install",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#install",
+                    "children": []
+                  },
+                  {
+                    "id": "wire-the-source",
+                    "title": "Wire the source",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#wire-the-source",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#wire-the-source",
+                    "children": []
+                  },
+                  {
+                    "id": "add-the-source-preset-to-your-mdx-compiler",
+                    "title": "Add the source preset to your MDX compiler",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#add-the-source-preset-to-your-mdx-compiler",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#add-the-source-preset-to-your-mdx-compiler",
+                    "children": []
+                  },
+                  {
+                    "id": "implement-the-tag-components",
+                    "title": "Implement the tag components",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#implement-the-tag-components",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#implement-the-tag-components",
+                    "children": []
+                  },
+                  {
+                    "id": "load-a-page-from-a-server-component",
+                    "title": "Load a page from a server component",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#load-a-page-from-a-server-component",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#load-a-page-from-a-server-component",
+                    "children": []
+                  },
+                  {
+                    "id": "add-search",
+                    "title": "Add search",
+                    "level": 2,
+                    "urlPath": "/docs/build/integrate-with-fumadocs",
+                    "urlWithHash": "/docs/build/integrate-with-fumadocs#add-search",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#add-search",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "build/integrate-with-fumadocs"
+              }
+            ],
+            "children": []
+          },
+          {
+            "slug": "docs-sources",
+            "segmentPath": [
+              "docs",
+              "docs-sources"
+            ],
+            "title": "Docs Sources",
+            "pages": [
+              {
+                "urlPath": "/docs/sources/configure-sources",
+                "relativePath": "sources/configure-sources",
+                "title": "Configure docs sources",
+                "description": "Choose where Leadtype reads MDX from: one local docs folder, multiple mounted folders, or remote git collections pinned to a branch, tag, or commit.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "pick-the-right-source-shape",
+                    "title": "Pick the right source shape",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#pick-the-right-source-shape",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#pick-the-right-source-shape",
+                    "children": []
+                  },
+                  {
+                    "id": "one-local-docs-folder",
+                    "title": "One local docs folder",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#one-local-docs-folder",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#one-local-docs-folder",
+                    "children": []
+                  },
+                  {
+                    "id": "multiple-local-folders",
+                    "title": "Multiple local folders",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#multiple-local-folders",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#multiple-local-folders",
+                    "children": []
+                  },
+                  {
+                    "id": "collections",
+                    "title": "Collections",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#collections",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#collections",
+                    "children": []
+                  },
+                  {
+                    "id": "remote-git-sources",
+                    "title": "Remote git sources",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#remote-git-sources",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#remote-git-sources",
+                    "children": []
+                  },
+                  {
+                    "id": "pinning-strategy",
+                    "title": "Pinning strategy",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#pinning-strategy",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#pinning-strategy",
+                    "children": []
+                  },
+                  {
+                    "id": "sync-modes",
+                    "title": "Sync modes",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#sync-modes",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#sync-modes",
+                    "children": []
+                  },
+                  {
+                    "id": "package-bundle-filters",
+                    "title": "Package bundle filters",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#package-bundle-filters",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#package-bundle-filters",
+                    "children": []
+                  },
+                  {
+                    "id": "what-to-read-next",
+                    "title": "What to read next",
+                    "level": 2,
+                    "urlPath": "/docs/sources/configure-sources",
+                    "urlWithHash": "/docs/sources/configure-sources#what-to-read-next",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/configure-sources#what-to-read-next",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "sources/configure-sources"
+              },
+              {
+                "urlPath": "/docs/sources/collections",
+                "relativePath": "sources/collections",
+                "title": "Collections reference",
+                "description": "Detailed defineCollection behavior for multi-source docs: local folders, git repos, filters, schemas, and per-collection navigation.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "when-to-reach-for-this",
+                    "title": "When to reach for this",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#when-to-reach-for-this",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#when-to-reach-for-this",
+                    "children": []
+                  },
+                  {
+                    "id": "definecollection",
+                    "title": "defineCollection",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#definecollection",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#definecollection",
+                    "children": [
+                      {
+                        "id": "fields",
+                        "title": "Fields",
+                        "level": 3,
+                        "urlPath": "/docs/sources/collections",
+                        "urlWithHash": "/docs/sources/collections#fields",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#fields",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "local-only-collections",
+                    "title": "Local-only collections",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#local-only-collections",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#local-only-collections",
+                    "children": []
+                  },
+                  {
+                    "id": "remote-collections",
+                    "title": "Remote collections",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#remote-collections",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#remote-collections",
+                    "children": []
+                  },
+                  {
+                    "id": "multi-repo-framework-matrix",
+                    "title": "Multi-repo: framework matrix",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#multi-repo-framework-matrix",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#multi-repo-framework-matrix",
+                    "children": []
+                  },
+                  {
+                    "id": "per-collection-schemas",
+                    "title": "Per-collection schemas",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#per-collection-schemas",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#per-collection-schemas",
+                    "children": []
+                  },
+                  {
+                    "id": "per-collection-nav",
+                    "title": "Per-collection nav",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#per-collection-nav",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#per-collection-nav",
+                    "children": []
+                  },
+                  {
+                    "id": "filtering",
+                    "title": "Filtering",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#filtering",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#filtering",
+                    "children": []
+                  },
+                  {
+                    "id": "running-it",
+                    "title": "Running it",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#running-it",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#running-it",
+                    "children": []
+                  },
+                  {
+                    "id": "what-you-do-not-migrate",
+                    "title": "What you do not migrate",
+                    "level": 2,
+                    "urlPath": "/docs/sources/collections",
+                    "urlWithHash": "/docs/sources/collections#what-you-do-not-migrate",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/sources/collections#what-you-do-not-migrate",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "sources/collections"
+              }
+            ],
+            "children": []
+          },
+          {
+            "slug": "package-docs-for-agents",
+            "segmentPath": [
+              "docs",
+              "package-docs-for-agents"
+            ],
+            "title": "Package Docs for Agents",
+            "pages": [
+              {
+                "urlPath": "/docs/package-docs/bundle",
+                "relativePath": "package-docs/bundle",
+                "title": "Bundle docs into a package",
+                "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "the-flow",
+                    "title": "The flow",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#the-flow",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#the-flow",
+                    "children": []
+                  },
+                  {
+                    "id": "why-agents-md-not-llms-txt",
+                    "title": "Why AGENTS.md, not llms.txt?",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#why-agents-md-not-llms-txt",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#why-agents-md-not-llms-txt",
+                    "children": []
+                  },
+                  {
+                    "id": "generate-into-the-package",
+                    "title": "Generate into the package",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#generate-into-the-package",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#generate-into-the-package",
+                    "children": []
+                  },
+                  {
+                    "id": "filter-to-package-specific-docs",
+                    "title": "Filter to package-specific docs",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#filter-to-package-specific-docs",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#filter-to-package-specific-docs",
+                    "children": []
+                  },
+                  {
+                    "id": "include-in-the-published-tarball",
+                    "title": "Include in the published tarball",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#include-in-the-published-tarball",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#include-in-the-published-tarball",
+                    "children": []
+                  },
+                  {
+                    "id": "verify-before-publishing",
+                    "title": "Verify before publishing",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#verify-before-publishing",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#verify-before-publishing",
+                    "children": []
+                  },
+                  {
+                    "id": "tell-consuming-projects-to-use-the-bundle",
+                    "title": "Tell consuming projects to use the bundle",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#tell-consuming-projects-to-use-the-bundle",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#tell-consuming-projects-to-use-the-bundle",
+                    "children": []
+                  },
+                  {
+                    "id": "when-to-use-this",
+                    "title": "When to use this",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#when-to-use-this",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#when-to-use-this",
+                    "children": []
+                  },
+                  {
+                    "id": "what-s-next",
+                    "title": "What's next",
+                    "level": 2,
+                    "urlPath": "/docs/package-docs/bundle",
+                    "urlWithHash": "/docs/package-docs/bundle#what-s-next",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#what-s-next",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "package-docs/bundle"
+              }
+            ],
+            "children": []
+          },
+          {
+            "slug": "author-content",
+            "segmentPath": [
+              "docs",
+              "author-content"
+            ],
+            "title": "Author Content",
             "pages": [
               {
                 "urlPath": "/docs/authoring/frontmatter",
@@ -654,116 +1806,6 @@
                   }
                 ],
                 "logicalPath": "authoring/frontmatter"
-              },
-              {
-                "urlPath": "/docs/authoring/collections",
-                "relativePath": "authoring/collections",
-                "title": "Collections",
-                "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "when-to-reach-for-this",
-                    "title": "When to reach for this",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#when-to-reach-for-this",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#when-to-reach-for-this",
-                    "children": []
-                  },
-                  {
-                    "id": "definecollection",
-                    "title": "defineCollection",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#definecollection",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#definecollection",
-                    "children": [
-                      {
-                        "id": "fields",
-                        "title": "Fields",
-                        "level": 3,
-                        "urlPath": "/docs/authoring/collections",
-                        "urlWithHash": "/docs/authoring/collections#fields",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#fields",
-                        "children": []
-                      }
-                    ]
-                  },
-                  {
-                    "id": "local-only-collections",
-                    "title": "Local-only collections",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#local-only-collections",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#local-only-collections",
-                    "children": []
-                  },
-                  {
-                    "id": "remote-collections",
-                    "title": "Remote collections",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#remote-collections",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#remote-collections",
-                    "children": []
-                  },
-                  {
-                    "id": "multi-repo-framework-matrix",
-                    "title": "Multi-repo: framework matrix",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#multi-repo-framework-matrix",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#multi-repo-framework-matrix",
-                    "children": []
-                  },
-                  {
-                    "id": "per-collection-schemas",
-                    "title": "Per-collection schemas",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#per-collection-schemas",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#per-collection-schemas",
-                    "children": []
-                  },
-                  {
-                    "id": "per-collection-groups",
-                    "title": "Per-collection groups",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#per-collection-groups",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#per-collection-groups",
-                    "children": []
-                  },
-                  {
-                    "id": "filtering",
-                    "title": "Filtering",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#filtering",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#filtering",
-                    "children": []
-                  },
-                  {
-                    "id": "running-it",
-                    "title": "Running it",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#running-it",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#running-it",
-                    "children": []
-                  },
-                  {
-                    "id": "what-you-do-not-migrate",
-                    "title": "What you do not migrate",
-                    "level": 2,
-                    "urlPath": "/docs/authoring/collections",
-                    "urlWithHash": "/docs/authoring/collections#what-you-do-not-migrate",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/authoring/collections#what-you-do-not-migrate",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "authoring/collections"
               },
               {
                 "urlPath": "/docs/authoring/components",
@@ -942,713 +1984,6 @@
             "children": []
           },
           {
-            "slug": "build-a-docs-site",
-            "segmentPath": [
-              "docs",
-              "build-a-docs-site"
-            ],
-            "title": "Build a Docs Site",
-            "pages": [
-              {
-                "urlPath": "/docs/build/build-a-docs-site",
-                "relativePath": "build/build-a-docs-site",
-                "title": "Build a docs site",
-                "description": "Pick the right leadtype integration shape for your docs app, and what each path gives you.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "pick-your-path",
-                    "title": "Pick your path",
-                    "level": 2,
-                    "urlPath": "/docs/build/build-a-docs-site",
-                    "urlWithHash": "/docs/build/build-a-docs-site#pick-your-path",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#pick-your-path",
-                    "children": []
-                  },
-                  {
-                    "id": "source-primitive-the-common-path",
-                    "title": "Source primitive: the common path",
-                    "level": 2,
-                    "urlPath": "/docs/build/build-a-docs-site",
-                    "urlWithHash": "/docs/build/build-a-docs-site#source-primitive-the-common-path",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#source-primitive-the-common-path",
-                    "children": []
-                  },
-                  {
-                    "id": "static-artifacts-the-cli-path",
-                    "title": "Static artifacts: the CLI path",
-                    "level": 2,
-                    "urlPath": "/docs/build/build-a-docs-site",
-                    "urlWithHash": "/docs/build/build-a-docs-site#static-artifacts-the-cli-path",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#static-artifacts-the-cli-path",
-                    "children": []
-                  },
-                  {
-                    "id": "add-the-cross-cutting-features",
-                    "title": "Add the cross-cutting features",
-                    "level": 2,
-                    "urlPath": "/docs/build/build-a-docs-site",
-                    "urlWithHash": "/docs/build/build-a-docs-site#add-the-cross-cutting-features",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#add-the-cross-cutting-features",
-                    "children": []
-                  },
-                  {
-                    "id": "configure-product-and-groups",
-                    "title": "Configure product and groups",
-                    "level": 2,
-                    "urlPath": "/docs/build/build-a-docs-site",
-                    "urlWithHash": "/docs/build/build-a-docs-site#configure-product-and-groups",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/build-a-docs-site#configure-product-and-groups",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/build-a-docs-site"
-              },
-              {
-                "urlPath": "/docs/build/use-the-source-primitive",
-                "relativePath": "build/use-the-source-primitive",
-                "title": "Use the source primitive",
-                "description": "Wire createDocsSource into Next, Astro, Vite, Nuxt, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "tl-dr",
-                    "title": "TL;DR",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#tl-dr",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#tl-dr",
-                    "children": []
-                  },
-                  {
-                    "id": "install",
-                    "title": "Install",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#install",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#install",
-                    "children": []
-                  },
-                  {
-                    "id": "wire-into-your-framework",
-                    "title": "Wire into your framework",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#wire-into-your-framework",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#wire-into-your-framework",
-                    "children": [
-                      {
-                        "id": "next-app-router",
-                        "title": "Next App Router",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#next-app-router",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#next-app-router",
-                        "children": []
-                      },
-                      {
-                        "id": "astro-content-collections",
-                        "title": "Astro Content Collections",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#astro-content-collections",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#astro-content-collections",
-                        "children": []
-                      },
-                      {
-                        "id": "tanstack-start",
-                        "title": "TanStack Start",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#tanstack-start",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#tanstack-start",
-                        "children": []
-                      },
-                      {
-                        "id": "vue-vite",
-                        "title": "Vue + Vite",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#vue-vite",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#vue-vite",
-                        "children": []
-                      },
-                      {
-                        "id": "vite-mdx-js-rollup-react-preact-solid-or-custom-jsx-runtimes",
-                        "title": "Vite + @mdx-js/rollup React, Preact, Solid, or custom JSX runtimes",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#vite-mdx-js-rollup-react-preact-solid-or-custom-jsx-runtimes",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#vite-mdx-js-rollup-react-preact-solid-or-custom-jsx-runtimes",
-                        "children": []
-                      },
-                      {
-                        "id": "nuxt",
-                        "title": "Nuxt",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#nuxt",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#nuxt",
-                        "children": []
-                      },
-                      {
-                        "id": "sveltekit-mdsvex",
-                        "title": "SvelteKit + mdsvex",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#sveltekit-mdsvex",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#sveltekit-mdsvex",
-                        "children": []
-                      },
-                      {
-                        "id": "pattern-for-any-other-host",
-                        "title": "Pattern for any other host",
-                        "level": 3,
-                        "urlPath": "/docs/build/use-the-source-primitive",
-                        "urlWithHash": "/docs/build/use-the-source-primitive#pattern-for-any-other-host",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#pattern-for-any-other-host",
-                        "children": []
-                      }
-                    ]
-                  },
-                  {
-                    "id": "implement-the-tag-components",
-                    "title": "Implement the tag components",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#implement-the-tag-components",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#implement-the-tag-components",
-                    "children": []
-                  },
-                  {
-                    "id": "build-the-sidebar-from-navigation",
-                    "title": "Build the sidebar from navigation",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#build-the-sidebar-from-navigation",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#build-the-sidebar-from-navigation",
-                    "children": []
-                  },
-                  {
-                    "id": "match-heading-slugs",
-                    "title": "Match heading slugs",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#match-heading-slugs",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#match-heading-slugs",
-                    "children": []
-                  },
-                  {
-                    "id": "build-a-search-index",
-                    "title": "Build a search index",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#build-a-search-index",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#build-a-search-index",
-                    "children": []
-                  },
-                  {
-                    "id": "troubleshooting",
-                    "title": "Troubleshooting",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#troubleshooting",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#troubleshooting",
-                    "children": []
-                  },
-                  {
-                    "id": "reference",
-                    "title": "Reference",
-                    "level": 2,
-                    "urlPath": "/docs/build/use-the-source-primitive",
-                    "urlWithHash": "/docs/build/use-the-source-primitive#reference",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/use-the-source-primitive#reference",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/use-the-source-primitive"
-              },
-              {
-                "urlPath": "/docs/build/integrate-with-fumadocs",
-                "relativePath": "build/integrate-with-fumadocs",
-                "title": "Integrate with Fumadocs",
-                "description": "Wire leadtype's content layer into a fumadocs app for nav, search, and includes.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "tl-dr",
-                    "title": "TL;DR",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#tl-dr",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#tl-dr",
-                    "children": []
-                  },
-                  {
-                    "id": "install",
-                    "title": "Install",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#install",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#install",
-                    "children": []
-                  },
-                  {
-                    "id": "wire-the-source",
-                    "title": "Wire the source",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#wire-the-source",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#wire-the-source",
-                    "children": []
-                  },
-                  {
-                    "id": "add-the-source-preset-to-your-mdx-compiler",
-                    "title": "Add the source preset to your MDX compiler",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#add-the-source-preset-to-your-mdx-compiler",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#add-the-source-preset-to-your-mdx-compiler",
-                    "children": []
-                  },
-                  {
-                    "id": "implement-the-tag-components",
-                    "title": "Implement the tag components",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#implement-the-tag-components",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#implement-the-tag-components",
-                    "children": []
-                  },
-                  {
-                    "id": "load-a-page-from-a-server-component",
-                    "title": "Load a page from a server component",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#load-a-page-from-a-server-component",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#load-a-page-from-a-server-component",
-                    "children": []
-                  },
-                  {
-                    "id": "add-search",
-                    "title": "Add search",
-                    "level": 2,
-                    "urlPath": "/docs/build/integrate-with-fumadocs",
-                    "urlWithHash": "/docs/build/integrate-with-fumadocs#add-search",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/integrate-with-fumadocs#add-search",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/integrate-with-fumadocs"
-              },
-              {
-                "urlPath": "/docs/build/generate-static-artifacts",
-                "relativePath": "build/generate-static-artifacts",
-                "title": "Generate static artifacts",
-                "description": "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "the-flow",
-                    "title": "The flow",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#the-flow",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#the-flow",
-                    "children": []
-                  },
-                  {
-                    "id": "fetch-the-source-repo",
-                    "title": "Fetch the source repo",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#fetch-the-source-repo",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#fetch-the-source-repo",
-                    "children": []
-                  },
-                  {
-                    "id": "lint-before-generate",
-                    "title": "Lint before generate",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#lint-before-generate",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#lint-before-generate",
-                    "children": []
-                  },
-                  {
-                    "id": "generate",
-                    "title": "Generate",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#generate",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#generate",
-                    "children": []
-                  },
-                  {
-                    "id": "multi-source-mounting",
-                    "title": "Multi-source mounting",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#multi-source-mounting",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#multi-source-mounting",
-                    "children": []
-                  },
-                  {
-                    "id": "wire-it-into-the-build",
-                    "title": "Wire it into the build",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#wire-it-into-the-build",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#wire-it-into-the-build",
-                    "children": []
-                  },
-                  {
-                    "id": "use-library-apis-for-custom-pipelines",
-                    "title": "Use library APIs for custom pipelines",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#use-library-apis-for-custom-pipelines",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#use-library-apis-for-custom-pipelines",
-                    "children": []
-                  },
-                  {
-                    "id": "verify",
-                    "title": "Verify",
-                    "level": 2,
-                    "urlPath": "/docs/build/generate-static-artifacts",
-                    "urlWithHash": "/docs/build/generate-static-artifacts#verify",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/generate-static-artifacts#verify",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/generate-static-artifacts"
-              },
-              {
-                "urlPath": "/docs/build/add-search",
-                "relativePath": "build/add-search",
-                "title": "Add search",
-                "description": "Generate a static docs search index, query it at runtime, and optionally stream source-grounded answers.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "generate-the-files",
-                    "title": "Generate the files",
-                    "level": 2,
-                    "urlPath": "/docs/build/add-search",
-                    "urlWithHash": "/docs/build/add-search#generate-the-files",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#generate-the-files",
-                    "children": []
-                  },
-                  {
-                    "id": "query-at-runtime",
-                    "title": "Query at runtime",
-                    "level": 2,
-                    "urlPath": "/docs/build/add-search",
-                    "urlWithHash": "/docs/build/add-search#query-at-runtime",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#query-at-runtime",
-                    "children": []
-                  },
-                  {
-                    "id": "add-vocabulary-aliases",
-                    "title": "Add vocabulary aliases",
-                    "level": 2,
-                    "urlPath": "/docs/build/add-search",
-                    "urlWithHash": "/docs/build/add-search#add-vocabulary-aliases",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#add-vocabulary-aliases",
-                    "children": []
-                  },
-                  {
-                    "id": "optional-ai-answers",
-                    "title": "Optional AI answers",
-                    "level": 2,
-                    "urlPath": "/docs/build/add-search",
-                    "urlWithHash": "/docs/build/add-search#optional-ai-answers",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#optional-ai-answers",
-                    "children": []
-                  },
-                  {
-                    "id": "guard-the-endpoint",
-                    "title": "Guard the endpoint",
-                    "level": 2,
-                    "urlPath": "/docs/build/add-search",
-                    "urlWithHash": "/docs/build/add-search#guard-the-endpoint",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#guard-the-endpoint",
-                    "children": []
-                  },
-                  {
-                    "id": "verify",
-                    "title": "Verify",
-                    "level": 2,
-                    "urlPath": "/docs/build/add-search",
-                    "urlWithHash": "/docs/build/add-search#verify",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/add-search#verify",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/add-search"
-              },
-              {
-                "urlPath": "/docs/build/optimize-docs-for-agents",
-                "relativePath": "build/optimize-docs-for-agents",
-                "title": "Optimize docs for agents",
-                "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "what-good-looks-like",
-                    "title": "What good looks like",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#what-good-looks-like",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#what-good-looks-like",
-                    "children": []
-                  },
-                  {
-                    "id": "1-generate-the-artifacts",
-                    "title": "1. Generate the artifacts",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#1-generate-the-artifacts",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#1-generate-the-artifacts",
-                    "children": []
-                  },
-                  {
-                    "id": "2-add-one-middleware",
-                    "title": "2. Add one middleware",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#2-add-one-middleware",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#2-add-one-middleware",
-                    "children": []
-                  },
-                  {
-                    "id": "3-add-json-ld-to-docs-pages",
-                    "title": "3. Add JSON-LD to docs pages",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#3-add-json-ld-to-docs-pages",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#3-add-json-ld-to-docs-pages",
-                    "children": []
-                  },
-                  {
-                    "id": "4-return-markdown-to-agents",
-                    "title": "4. Return markdown to agents",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#4-return-markdown-to-agents",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#4-return-markdown-to-agents",
-                    "children": [
-                      {
-                        "id": "why-the-sitemap-and-robots-responses-are-regenerated-not-static",
-                        "title": "Why the sitemap and robots responses are regenerated, not static",
-                        "level": 3,
-                        "urlPath": "/docs/build/optimize-docs-for-agents",
-                        "urlWithHash": "/docs/build/optimize-docs-for-agents#why-the-sitemap-and-robots-responses-are-regenerated-not-static",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#why-the-sitemap-and-robots-responses-are-regenerated-not-static",
-                        "children": []
-                      },
-                      {
-                        "id": "cache-control-and-cdn",
-                        "title": "Cache-Control and CDN",
-                        "level": 3,
-                        "urlPath": "/docs/build/optimize-docs-for-agents",
-                        "urlWithHash": "/docs/build/optimize-docs-for-agents#cache-control-and-cdn",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#cache-control-and-cdn",
-                        "children": []
-                      }
-                    ]
-                  },
-                  {
-                    "id": "5-verify-locally",
-                    "title": "5. Verify locally",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#5-verify-locally",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#5-verify-locally",
-                    "children": []
-                  },
-                  {
-                    "id": "minimal-checklist",
-                    "title": "Minimal checklist",
-                    "level": 2,
-                    "urlPath": "/docs/build/optimize-docs-for-agents",
-                    "urlWithHash": "/docs/build/optimize-docs-for-agents#minimal-checklist",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/optimize-docs-for-agents#minimal-checklist",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/optimize-docs-for-agents"
-              },
-              {
-                "urlPath": "/docs/build/validate-in-ci",
-                "relativePath": "build/validate-in-ci",
-                "title": "Validate in CI",
-                "description": "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "what-it-catches",
-                    "title": "What it catches",
-                    "level": 2,
-                    "urlPath": "/docs/build/validate-in-ci",
-                    "urlWithHash": "/docs/build/validate-in-ci#what-it-catches",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#what-it-catches",
-                    "children": []
-                  },
-                  {
-                    "id": "github-actions",
-                    "title": "GitHub Actions",
-                    "level": 2,
-                    "urlPath": "/docs/build/validate-in-ci",
-                    "urlWithHash": "/docs/build/validate-in-ci#github-actions",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#github-actions",
-                    "children": []
-                  },
-                  {
-                    "id": "other-ci-providers",
-                    "title": "Other CI providers",
-                    "level": 2,
-                    "urlPath": "/docs/build/validate-in-ci",
-                    "urlWithHash": "/docs/build/validate-in-ci#other-ci-providers",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#other-ci-providers",
-                    "children": []
-                  },
-                  {
-                    "id": "local-pre-push-hook",
-                    "title": "Local pre-push hook",
-                    "level": 2,
-                    "urlPath": "/docs/build/validate-in-ci",
-                    "urlWithHash": "/docs/build/validate-in-ci#local-pre-push-hook",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#local-pre-push-hook",
-                    "children": []
-                  },
-                  {
-                    "id": "run-before-generate",
-                    "title": "Run before generate",
-                    "level": 2,
-                    "urlPath": "/docs/build/validate-in-ci",
-                    "urlWithHash": "/docs/build/validate-in-ci#run-before-generate",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#run-before-generate",
-                    "children": []
-                  },
-                  {
-                    "id": "what-to-fix-first",
-                    "title": "What to fix first",
-                    "level": 2,
-                    "urlPath": "/docs/build/validate-in-ci",
-                    "urlWithHash": "/docs/build/validate-in-ci#what-to-fix-first",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/build/validate-in-ci#what-to-fix-first",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "build/validate-in-ci"
-              }
-            ],
-            "children": []
-          },
-          {
-            "slug": "ship-package-docs",
-            "segmentPath": [
-              "docs",
-              "ship-package-docs"
-            ],
-            "title": "Ship Package Docs",
-            "pages": [
-              {
-                "urlPath": "/docs/package-docs/bundle",
-                "relativePath": "package-docs/bundle",
-                "title": "Bundle docs into a package",
-                "description": "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "the-flow",
-                    "title": "The flow",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#the-flow",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#the-flow",
-                    "children": []
-                  },
-                  {
-                    "id": "why-agents-md-not-llms-txt",
-                    "title": "Why AGENTS.md, not llms.txt?",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#why-agents-md-not-llms-txt",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#why-agents-md-not-llms-txt",
-                    "children": []
-                  },
-                  {
-                    "id": "generate-into-the-package",
-                    "title": "Generate into the package",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#generate-into-the-package",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#generate-into-the-package",
-                    "children": []
-                  },
-                  {
-                    "id": "filter-to-package-specific-docs",
-                    "title": "Filter to package-specific docs",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#filter-to-package-specific-docs",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#filter-to-package-specific-docs",
-                    "children": []
-                  },
-                  {
-                    "id": "include-in-the-published-tarball",
-                    "title": "Include in the published tarball",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#include-in-the-published-tarball",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#include-in-the-published-tarball",
-                    "children": []
-                  },
-                  {
-                    "id": "verify-before-publishing",
-                    "title": "Verify before publishing",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#verify-before-publishing",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#verify-before-publishing",
-                    "children": []
-                  },
-                  {
-                    "id": "tell-consuming-projects-to-use-the-bundle",
-                    "title": "Tell consuming projects to use the bundle",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#tell-consuming-projects-to-use-the-bundle",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#tell-consuming-projects-to-use-the-bundle",
-                    "children": []
-                  },
-                  {
-                    "id": "when-to-use-this",
-                    "title": "When to use this",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#when-to-use-this",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#when-to-use-this",
-                    "children": []
-                  },
-                  {
-                    "id": "what-s-next",
-                    "title": "What's next",
-                    "level": 2,
-                    "urlPath": "/docs/package-docs/bundle",
-                    "urlWithHash": "/docs/package-docs/bundle#what-s-next",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/package-docs/bundle#what-s-next",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "package-docs/bundle"
-              }
-            ],
-            "children": []
-          },
-          {
             "slug": "reference",
             "segmentPath": [
               "docs",
@@ -1701,12 +2036,12 @@
                     ]
                   },
                   {
-                    "id": "planned-adapter-shapes",
-                    "title": "Planned adapter shapes",
+                    "id": "adapter-shapes",
+                    "title": "Adapter shapes",
                     "level": 2,
                     "urlPath": "/docs/reference/architecture",
-                    "urlWithHash": "/docs/reference/architecture#planned-adapter-shapes",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/architecture#planned-adapter-shapes",
+                    "urlWithHash": "/docs/reference/architecture#adapter-shapes",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/architecture#adapter-shapes",
                     "children": []
                   },
                   {
@@ -1897,6 +2232,345 @@
                 "logicalPath": "reference/cli"
               },
               {
+                "urlPath": "/docs/reference/source",
+                "relativePath": "reference/source",
+                "title": "createDocsSource",
+                "description": "Framework-neutral docs source primitive — navigation, page loader, search index, and include resolver.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "configuration",
+                    "title": "Configuration",
+                    "level": 2,
+                    "urlPath": "/docs/reference/source",
+                    "urlWithHash": "/docs/reference/source#configuration",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#configuration",
+                    "children": []
+                  },
+                  {
+                    "id": "source-methods",
+                    "title": "Source methods",
+                    "level": 2,
+                    "urlPath": "/docs/reference/source",
+                    "urlWithHash": "/docs/reference/source#source-methods",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#source-methods",
+                    "children": [
+                      {
+                        "id": "getnavigation-promise",
+                        "title": "getNavigation : Promise",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#getnavigation-promise",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#getnavigation-promise",
+                        "children": []
+                      },
+                      {
+                        "id": "listpages-promise",
+                        "title": "listPages : Promise",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#listpages-promise",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#listpages-promise",
+                        "children": []
+                      },
+                      {
+                        "id": "loadpage-slug-promise",
+                        "title": "loadPage slug : Promise",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#loadpage-slug-promise",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#loadpage-slug-promise",
+                        "children": []
+                      },
+                      {
+                        "id": "buildsearchindex-promise",
+                        "title": "buildSearchIndex : Promise",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#buildsearchindex-promise",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#buildsearchindex-promise",
+                        "children": []
+                      },
+                      {
+                        "id": "resolveinclude-specifier-options-promise",
+                        "title": "resolveInclude specifier, options? : Promise",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#resolveinclude-specifier-options-promise",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#resolveinclude-specifier-options-promise",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "choosing-between-loadpage-and-direct-mdx-imports",
+                    "title": "Choosing between loadPage and direct .mdx imports",
+                    "level": 2,
+                    "urlPath": "/docs/reference/source",
+                    "urlWithHash": "/docs/reference/source#choosing-between-loadpage-and-direct-mdx-imports",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#choosing-between-loadpage-and-direct-mdx-imports",
+                    "children": []
+                  },
+                  {
+                    "id": "framework-integrations",
+                    "title": "Framework integrations",
+                    "level": 2,
+                    "urlPath": "/docs/reference/source",
+                    "urlWithHash": "/docs/reference/source#framework-integrations",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#framework-integrations",
+                    "children": [
+                      {
+                        "id": "next-app-router",
+                        "title": "Next App Router",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#next-app-router",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#next-app-router",
+                        "children": []
+                      },
+                      {
+                        "id": "tanstack-start",
+                        "title": "TanStack Start",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#tanstack-start",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#tanstack-start",
+                        "children": []
+                      },
+                      {
+                        "id": "nuxt",
+                        "title": "Nuxt",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#nuxt",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#nuxt",
+                        "children": []
+                      },
+                      {
+                        "id": "astro-content-collections",
+                        "title": "Astro Content Collections",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#astro-content-collections",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#astro-content-collections",
+                        "children": []
+                      },
+                      {
+                        "id": "sveltekit-mdsvex",
+                        "title": "SvelteKit + mdsvex",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#sveltekit-mdsvex",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#sveltekit-mdsvex",
+                        "children": []
+                      },
+                      {
+                        "id": "fumadocs",
+                        "title": "Fumadocs",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#fumadocs",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#fumadocs",
+                        "children": []
+                      },
+                      {
+                        "id": "pattern-for-any-other-framework",
+                        "title": "Pattern for any other framework",
+                        "level": 3,
+                        "urlPath": "/docs/reference/source",
+                        "urlWithHash": "/docs/reference/source#pattern-for-any-other-framework",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#pattern-for-any-other-framework",
+                        "children": []
+                      }
+                    ]
+                  }
+                ],
+                "logicalPath": "reference/source"
+              },
+              {
+                "urlPath": "/docs/reference/llm",
+                "relativePath": "reference/llm",
+                "title": "LLM files",
+                "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "what-gets-generated",
+                    "title": "What gets generated",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#what-gets-generated",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#what-gets-generated",
+                    "children": []
+                  },
+                  {
+                    "id": "productinfo",
+                    "title": "ProductInfo",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#productinfo",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#productinfo",
+                    "children": []
+                  },
+                  {
+                    "id": "example-llms-txt",
+                    "title": "Example llms.txt",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#example-llms-txt",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#example-llms-txt",
+                    "children": []
+                  },
+                  {
+                    "id": "typical-sequence",
+                    "title": "Typical sequence",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#typical-sequence",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#typical-sequence",
+                    "children": []
+                  },
+                  {
+                    "id": "mounted-url-prefixes",
+                    "title": "Mounted URL prefixes",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#mounted-url-prefixes",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#mounted-url-prefixes",
+                    "children": []
+                  },
+                  {
+                    "id": "generateagentreadabilityartifacts",
+                    "title": "generateAgentReadabilityArtifacts",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#generateagentreadabilityartifacts",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#generateagentreadabilityartifacts",
+                    "children": []
+                  },
+                  {
+                    "id": "agent-readability-helpers",
+                    "title": "Agent readability helpers",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#agent-readability-helpers",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#agent-readability-helpers",
+                    "children": [
+                      {
+                        "id": "createagentmarkdownresponse",
+                        "title": "createAgentMarkdownResponse",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#createagentmarkdownresponse",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#createagentmarkdownresponse",
+                        "children": []
+                      },
+                      {
+                        "id": "createsitemapxmlresponse-createsitemapmarkdownresponse-createrobotstxtresponse",
+                        "title": "createSitemapXmlResponse / createSitemapMarkdownResponse / createRobotsTxtResponse",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#createsitemapxmlresponse-createsitemapmarkdownresponse-createrobotstxtresponse",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#createsitemapxmlresponse-createsitemapmarkdownresponse-createrobotstxtresponse",
+                        "children": []
+                      },
+                      {
+                        "id": "createdocsjsonld-stringifyjsonld-createdocshead",
+                        "title": "createDocsJsonLd / stringifyJsonLd / createDocsHead",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#createdocsjsonld-stringifyjsonld-createdocshead",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#createdocsjsonld-stringifyjsonld-createdocshead",
+                        "children": []
+                      },
+                      {
+                        "id": "lower-level-helpers",
+                        "title": "Lower-level helpers",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#lower-level-helpers",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#lower-level-helpers",
+                        "children": []
+                      },
+                      {
+                        "id": "cache-control-and-cdn",
+                        "title": "Cache-Control and CDN",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#cache-control-and-cdn",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#cache-control-and-cdn",
+                        "children": []
+                      },
+                      {
+                        "id": "manifest-version",
+                        "title": "Manifest version",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#manifest-version",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#manifest-version",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "generateagentsmd",
+                    "title": "generateAgentsMd",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#generateagentsmd",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#generateagentsmd",
+                    "children": [
+                      {
+                        "id": "example-output",
+                        "title": "Example output",
+                        "level": 3,
+                        "urlPath": "/docs/reference/llm",
+                        "urlWithHash": "/docs/reference/llm#example-output",
+                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#example-output",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "resolvedocsnavigation",
+                    "title": "resolveDocsNavigation",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#resolvedocsnavigation",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#resolvedocsnavigation",
+                    "children": []
+                  },
+                  {
+                    "id": "tables-of-contents",
+                    "title": "Tables of contents",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#tables-of-contents",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#tables-of-contents",
+                    "children": []
+                  },
+                  {
+                    "id": "group-design",
+                    "title": "Group design",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#group-design",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#group-design",
+                    "children": []
+                  },
+                  {
+                    "id": "base-url-precedence",
+                    "title": "Base URL precedence",
+                    "level": 2,
+                    "urlPath": "/docs/reference/llm",
+                    "urlWithHash": "/docs/reference/llm#base-url-precedence",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#base-url-precedence",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "reference/llm"
+              },
+              {
                 "urlPath": "/docs/reference/convert",
                 "relativePath": "reference/convert",
                 "title": "Convert",
@@ -1950,61 +2624,6 @@
                   }
                 ],
                 "logicalPath": "reference/convert"
-              },
-              {
-                "urlPath": "/docs/reference/evals",
-                "relativePath": "reference/evals",
-                "title": "Evals",
-                "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
-                "groups": [],
-                "toc": [
-                  {
-                    "id": "what-we-benchmark",
-                    "title": "What we benchmark",
-                    "level": 2,
-                    "urlPath": "/docs/reference/evals",
-                    "urlWithHash": "/docs/reference/evals#what-we-benchmark",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#what-we-benchmark",
-                    "children": []
-                  },
-                  {
-                    "id": "what-we-learned",
-                    "title": "What we learned",
-                    "level": 2,
-                    "urlPath": "/docs/reference/evals",
-                    "urlWithHash": "/docs/reference/evals#what-we-learned",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#what-we-learned",
-                    "children": []
-                  },
-                  {
-                    "id": "current-default",
-                    "title": "Current default",
-                    "level": 2,
-                    "urlPath": "/docs/reference/evals",
-                    "urlWithHash": "/docs/reference/evals#current-default",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#current-default",
-                    "children": []
-                  },
-                  {
-                    "id": "open-question",
-                    "title": "Open question",
-                    "level": 2,
-                    "urlPath": "/docs/reference/evals",
-                    "urlWithHash": "/docs/reference/evals#open-question",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#open-question",
-                    "children": []
-                  },
-                  {
-                    "id": "run-the-evals",
-                    "title": "Run the evals",
-                    "level": 2,
-                    "urlPath": "/docs/reference/evals",
-                    "urlWithHash": "/docs/reference/evals#run-the-evals",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#run-the-evals",
-                    "children": []
-                  }
-                ],
-                "logicalPath": "reference/evals"
               },
               {
                 "urlPath": "/docs/reference/lint",
@@ -2119,187 +2738,32 @@
                 "logicalPath": "reference/lint"
               },
               {
-                "urlPath": "/docs/reference/llm",
-                "relativePath": "reference/llm",
-                "title": "LLM files",
-                "description": "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading.",
+                "urlPath": "/docs/reference/frontmatter-transformers",
+                "relativePath": "reference/frontmatter-transformers",
+                "title": "Frontmatter transformers",
+                "description": "Define typed custom frontmatter and lifecycle hooks for Leadtype pipeline data.",
                 "groups": [],
                 "toc": [
                   {
-                    "id": "what-gets-generated",
-                    "title": "What gets generated",
+                    "id": "typed-source-data",
+                    "title": "Typed source data",
                     "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#what-gets-generated",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#what-gets-generated",
+                    "urlPath": "/docs/reference/frontmatter-transformers",
+                    "urlWithHash": "/docs/reference/frontmatter-transformers#typed-source-data",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/frontmatter-transformers#typed-source-data",
                     "children": []
                   },
                   {
-                    "id": "productinfo",
-                    "title": "ProductInfo",
+                    "id": "hook-order",
+                    "title": "Hook order",
                     "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#productinfo",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#productinfo",
-                    "children": []
-                  },
-                  {
-                    "id": "example-llms-txt",
-                    "title": "Example llms.txt",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#example-llms-txt",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#example-llms-txt",
-                    "children": []
-                  },
-                  {
-                    "id": "typical-sequence",
-                    "title": "Typical sequence",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#typical-sequence",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#typical-sequence",
-                    "children": []
-                  },
-                  {
-                    "id": "mounted-url-prefixes",
-                    "title": "Mounted URL prefixes",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#mounted-url-prefixes",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#mounted-url-prefixes",
-                    "children": []
-                  },
-                  {
-                    "id": "generateagentreadabilityartifacts",
-                    "title": "generateAgentReadabilityArtifacts",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#generateagentreadabilityartifacts",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#generateagentreadabilityartifacts",
-                    "children": []
-                  },
-                  {
-                    "id": "agent-readability-helpers",
-                    "title": "Agent readability helpers",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#agent-readability-helpers",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#agent-readability-helpers",
-                    "children": [
-                      {
-                        "id": "createagentmarkdownresponse",
-                        "title": "createAgentMarkdownResponse",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#createagentmarkdownresponse",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#createagentmarkdownresponse",
-                        "children": []
-                      },
-                      {
-                        "id": "createsitemapxmlresponse-createsitemapmarkdownresponse-createrobotstxtresponse",
-                        "title": "createSitemapXmlResponse / createSitemapMarkdownResponse / createRobotsTxtResponse",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#createsitemapxmlresponse-createsitemapmarkdownresponse-createrobotstxtresponse",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#createsitemapxmlresponse-createsitemapmarkdownresponse-createrobotstxtresponse",
-                        "children": []
-                      },
-                      {
-                        "id": "createdocshead",
-                        "title": "createDocsHead",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#createdocshead",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#createdocshead",
-                        "children": []
-                      },
-                      {
-                        "id": "lower-level-helpers",
-                        "title": "Lower-level helpers",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#lower-level-helpers",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#lower-level-helpers",
-                        "children": []
-                      },
-                      {
-                        "id": "cache-control-and-cdn",
-                        "title": "Cache-Control and CDN",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#cache-control-and-cdn",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#cache-control-and-cdn",
-                        "children": []
-                      },
-                      {
-                        "id": "manifest-version",
-                        "title": "Manifest version",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#manifest-version",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#manifest-version",
-                        "children": []
-                      }
-                    ]
-                  },
-                  {
-                    "id": "generateagentsmd",
-                    "title": "generateAgentsMd",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#generateagentsmd",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#generateagentsmd",
-                    "children": [
-                      {
-                        "id": "example-output",
-                        "title": "Example output",
-                        "level": 3,
-                        "urlPath": "/docs/reference/llm",
-                        "urlWithHash": "/docs/reference/llm#example-output",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#example-output",
-                        "children": []
-                      }
-                    ]
-                  },
-                  {
-                    "id": "resolvedocsnavigation",
-                    "title": "resolveDocsNavigation",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#resolvedocsnavigation",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#resolvedocsnavigation",
-                    "children": []
-                  },
-                  {
-                    "id": "tables-of-contents",
-                    "title": "Tables of contents",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#tables-of-contents",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#tables-of-contents",
-                    "children": []
-                  },
-                  {
-                    "id": "group-design",
-                    "title": "Group design",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#group-design",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#group-design",
-                    "children": []
-                  },
-                  {
-                    "id": "base-url-precedence",
-                    "title": "Base URL precedence",
-                    "level": 2,
-                    "urlPath": "/docs/reference/llm",
-                    "urlWithHash": "/docs/reference/llm#base-url-precedence",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/llm#base-url-precedence",
+                    "urlPath": "/docs/reference/frontmatter-transformers",
+                    "urlWithHash": "/docs/reference/frontmatter-transformers#hook-order",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/frontmatter-transformers#hook-order",
                     "children": []
                   }
                 ],
-                "logicalPath": "reference/llm"
+                "logicalPath": "reference/frontmatter-transformers"
               },
               {
                 "urlPath": "/docs/reference/mdx",
@@ -2568,169 +3032,59 @@
                 "logicalPath": "reference/search"
               },
               {
-                "urlPath": "/docs/reference/source",
-                "relativePath": "reference/source",
-                "title": "createDocsSource",
-                "description": "Framework-neutral docs source primitive — navigation, page loader, search index, and include resolver.",
+                "urlPath": "/docs/reference/evals",
+                "relativePath": "reference/evals",
+                "title": "Evals",
+                "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
                 "groups": [],
                 "toc": [
                   {
-                    "id": "configuration",
-                    "title": "Configuration",
+                    "id": "what-we-benchmark",
+                    "title": "What we benchmark",
                     "level": 2,
-                    "urlPath": "/docs/reference/source",
-                    "urlWithHash": "/docs/reference/source#configuration",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#configuration",
+                    "urlPath": "/docs/reference/evals",
+                    "urlWithHash": "/docs/reference/evals#what-we-benchmark",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#what-we-benchmark",
                     "children": []
                   },
                   {
-                    "id": "source-methods",
-                    "title": "Source methods",
+                    "id": "what-we-learned",
+                    "title": "What we learned",
                     "level": 2,
-                    "urlPath": "/docs/reference/source",
-                    "urlWithHash": "/docs/reference/source#source-methods",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#source-methods",
-                    "children": [
-                      {
-                        "id": "getnavigation-promise",
-                        "title": "getNavigation : Promise",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#getnavigation-promise",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#getnavigation-promise",
-                        "children": []
-                      },
-                      {
-                        "id": "listpages-promise",
-                        "title": "listPages : Promise",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#listpages-promise",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#listpages-promise",
-                        "children": []
-                      },
-                      {
-                        "id": "loadpage-slug-promise",
-                        "title": "loadPage slug : Promise",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#loadpage-slug-promise",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#loadpage-slug-promise",
-                        "children": []
-                      },
-                      {
-                        "id": "buildsearchindex-promise",
-                        "title": "buildSearchIndex : Promise",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#buildsearchindex-promise",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#buildsearchindex-promise",
-                        "children": []
-                      },
-                      {
-                        "id": "resolveinclude-specifier-options-promise",
-                        "title": "resolveInclude specifier, options? : Promise",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#resolveinclude-specifier-options-promise",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#resolveinclude-specifier-options-promise",
-                        "children": []
-                      }
-                    ]
-                  },
-                  {
-                    "id": "choosing-between-loadpage-and-direct-mdx-imports",
-                    "title": "Choosing between loadPage and direct .mdx imports",
-                    "level": 2,
-                    "urlPath": "/docs/reference/source",
-                    "urlWithHash": "/docs/reference/source#choosing-between-loadpage-and-direct-mdx-imports",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#choosing-between-loadpage-and-direct-mdx-imports",
+                    "urlPath": "/docs/reference/evals",
+                    "urlWithHash": "/docs/reference/evals#what-we-learned",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#what-we-learned",
                     "children": []
                   },
                   {
-                    "id": "framework-integrations",
-                    "title": "Framework integrations",
+                    "id": "current-default",
+                    "title": "Current default",
                     "level": 2,
-                    "urlPath": "/docs/reference/source",
-                    "urlWithHash": "/docs/reference/source#framework-integrations",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#framework-integrations",
-                    "children": [
-                      {
-                        "id": "next-app-router",
-                        "title": "Next App Router",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#next-app-router",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#next-app-router",
-                        "children": []
-                      },
-                      {
-                        "id": "astro-content-collections",
-                        "title": "Astro Content Collections",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#astro-content-collections",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#astro-content-collections",
-                        "children": []
-                      },
-                      {
-                        "id": "tanstack-start",
-                        "title": "TanStack Start",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#tanstack-start",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#tanstack-start",
-                        "children": []
-                      },
-                      {
-                        "id": "vite-mdx-js-rollup-works-for-vue-solid-svelte-starters",
-                        "title": "Vite + @mdx-js/rollup works for Vue, Solid, Svelte starters",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#vite-mdx-js-rollup-works-for-vue-solid-svelte-starters",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#vite-mdx-js-rollup-works-for-vue-solid-svelte-starters",
-                        "children": []
-                      },
-                      {
-                        "id": "nuxt",
-                        "title": "Nuxt",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#nuxt",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#nuxt",
-                        "children": []
-                      },
-                      {
-                        "id": "sveltekit-mdsvex",
-                        "title": "SvelteKit + mdsvex",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#sveltekit-mdsvex",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#sveltekit-mdsvex",
-                        "children": []
-                      },
-                      {
-                        "id": "fumadocs",
-                        "title": "Fumadocs",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#fumadocs",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#fumadocs",
-                        "children": []
-                      },
-                      {
-                        "id": "pattern-for-any-other-framework",
-                        "title": "Pattern for any other framework",
-                        "level": 3,
-                        "urlPath": "/docs/reference/source",
-                        "urlWithHash": "/docs/reference/source#pattern-for-any-other-framework",
-                        "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/source#pattern-for-any-other-framework",
-                        "children": []
-                      }
-                    ]
+                    "urlPath": "/docs/reference/evals",
+                    "urlWithHash": "/docs/reference/evals#current-default",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#current-default",
+                    "children": []
+                  },
+                  {
+                    "id": "open-question",
+                    "title": "Open question",
+                    "level": 2,
+                    "urlPath": "/docs/reference/evals",
+                    "urlWithHash": "/docs/reference/evals#open-question",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#open-question",
+                    "children": []
+                  },
+                  {
+                    "id": "run-the-evals",
+                    "title": "Run the evals",
+                    "level": 2,
+                    "urlPath": "/docs/reference/evals",
+                    "urlWithHash": "/docs/reference/evals#run-the-evals",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/evals#run-the-evals",
+                    "children": []
                   }
                 ],
-                "logicalPath": "reference/source"
+                "logicalPath": "reference/evals"
               }
             ],
             "children": []
@@ -2794,81 +3148,7 @@
         "children": []
       }
     ],
-    "ungrouped": [
-      {
-        "urlPath": "/docs/build/framework-matrix",
-        "relativePath": "build/framework-matrix",
-        "title": "Framework integration matrix",
-        "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
-        "groups": [],
-        "toc": [
-          {
-            "id": "shared-build-step",
-            "title": "Shared build step",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#shared-build-step",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#shared-build-step",
-            "children": []
-          },
-          {
-            "id": "next-js-app-router",
-            "title": "Next.js App Router",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#next-js-app-router",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#next-js-app-router",
-            "children": []
-          },
-          {
-            "id": "astro",
-            "title": "Astro",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#astro",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#astro",
-            "children": []
-          },
-          {
-            "id": "sveltekit",
-            "title": "SvelteKit",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#sveltekit",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#sveltekit",
-            "children": []
-          },
-          {
-            "id": "nuxt-nitro",
-            "title": "Nuxt/Nitro",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#nuxt-nitro",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#nuxt-nitro",
-            "children": []
-          },
-          {
-            "id": "tanstack-start-and-fumadocs",
-            "title": "TanStack Start and Fumadocs",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#tanstack-start-and-fumadocs",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#tanstack-start-and-fumadocs",
-            "children": []
-          },
-          {
-            "id": "verification",
-            "title": "Verification",
-            "level": 2,
-            "urlPath": "/docs/build/framework-matrix",
-            "urlWithHash": "/docs/build/framework-matrix#verification",
-            "absoluteUrlWithHash": "https://leadtype.dev/docs/build/framework-matrix#verification",
-            "children": []
-          }
-        ],
-        "logicalPath": "build/framework-matrix"
-      }
-    ],
+    "ungrouped": [],
     "unknown": []
   },
   "files": {

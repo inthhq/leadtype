@@ -40,11 +40,11 @@ The `leadtype/search/*` subpaths are scoped by **where the code runs** — Node,
 
 Framework adapters are thin. They wire the core primitives into the host's native conventions and declare their host package as an **optional peer dependency**. A consumer that doesn't use fumadocs never installs fumadocs-core; a consumer that doesn't use Next never installs React.
 
-## Planned adapter shapes
+## Adapter shapes
 
-The boundary applies to every framework, including adapters that are not exported yet:
+The boundary applies to every framework adapter and search helper:
 
-| Future subpath | Native host shape |
+| Subpath | Native host shape |
 | --- | --- |
 | `leadtype/nuxt` | Nitro route helpers, build-time source wiring, and Vue composables. |
 | `leadtype/sveltekit` | `+page.server.ts`, `+server.ts`, `entries()`, and Svelte stores/runes. |
@@ -53,9 +53,9 @@ The boundary applies to every framework, including adapters that are not exporte
 | `leadtype/search/vue` | Vue composables over generated `search-index.json` and `search-content.json`. |
 | `leadtype/search/svelte` | Svelte stores/runes over generated search artifacts. |
 
-These are future public surfaces, not hidden exports. Until they ship, use the recipes in [Use the source primitive](/docs/build/use-the-source-primitive), which wire the same core primitives into each framework directly.
+These are public surfaces, not UI kits. Use the recipes in [Use the source primitive](/docs/build/use-the-source-primitive) to wire the same core primitives into each framework.
 
-`leadtype/tanstack-start` is intentionally separate from `leadtype/search/tanstack`: the former would adapt docs routing and source data to TanStack Start, while the latter is the existing TanStack AI answer-streaming runtime.
+`leadtype/tanstack-start` is intentionally separate from `leadtype/search/tanstack`: the former adapts docs routing and source data to TanStack Start, while the latter is the TanStack AI answer-streaming runtime.
 
 ## Rules
 

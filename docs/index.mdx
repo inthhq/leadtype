@@ -1,13 +1,13 @@
 ---
 title: "Leadtype"
-description: "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline."
+description: "Build agent-ready docs from MDX: rendered pages, llms.txt, markdown mirrors, search output, and package-bundled AGENTS.md from the same source."
 ---
 
 # Leadtype
 
-Leadtype is a **docs pipeline**. You write MDX in one place. It produces the generated artifacts your docs need: markdown mirrors, `llms.txt`, root `llms-full.txt`, search JSON, Agent Readability metadata, and package-bundled `AGENTS.md` output.
+Leadtype is a **docs pipeline** for teams that want one MDX source to serve humans and agents. Write docs once, render them in your app, then generate the files agents need: markdown mirrors, `llms.txt`, root `llms-full.txt`, search JSON, [Agent Readability](/docs/how-it-works#vocabulary) metadata, and package-bundled `AGENTS.md` output.
 
-It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
+It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Nuxt, Astro, SvelteKit, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
 
 <Mermaid chart={`flowchart LR
   src["docs/*.mdx<br/>(your source)"]
@@ -28,34 +28,43 @@ It is not a docs website framework. Bring your own UI — Next.js, TanStack Star
   site_out --> search
   bundle_out --> offline_agents`} />
 
-## Start here
+## Pick your path
 
-**[Quickstart →](/docs/quickstart)** — three steps to a working source primitive, then plug it into your framework.
+You're building a docs **website** — [Quickstart](/docs/quickstart) — render MDX in your app and generate `llms.txt`, markdown mirrors, search, and discovery files for HTTP agents.
 
-Or skip ahead: [Build a docs site](/docs/build/build-a-docs-site) compares every integration path side-by-side.
+You're shipping docs inside an **npm package** — [Bundle docs into a package](/docs/package-docs/bundle) — generate an `AGENTS.md` plus per-topic markdown that ships in the tarball so coding agents read version-matched docs from `node_modules`.
+
+Just want the mental model first? — [How it works](/docs/how-it-works) — the pipeline, the two output modes, and every artifact named once.
+
+## Key terms
+
+These show up throughout the docs. The full glossary lives in [How it works → Vocabulary](/docs/how-it-works#vocabulary).
+
+- **Site mode** — the default `leadtype generate`. Writes website artifacts to `public/`: `llms.txt`, markdown mirrors, search index, sitemap, robots, Agent Readability files.
+- **Bundle mode** — `leadtype generate --bundle`. Writes `AGENTS.md` + relative `docs/*.md` into a package directory so coding agents can read them from `node_modules` after install.
+- **Agent Readability** — the structured discovery and attribution data (`agent-readability.json` + JSON-LD + sitemap + markdown alternate links) that lets agents fetch, identify, and cite docs without scraping HTML.
 
 ## What leadtype produces
 
 <Cards>
   <Card
-    title="A source primitive for your app"
-    description="createDocsSource() — framework-neutral page loader, navigation, TOC, includes. Wire it into Next, Astro, Vite, Fumadocs, Nuxt, SvelteKit."
+    title="Rendered docs from MDX"
+    description="createDocsSource() gives your app page loading, navigation, TOC, includes, and search input data without owning your UI."
     href="/docs/build/use-the-source-primitive"
   />
   <Card
-    title="llms.txt, sitemaps, agent metadata"
-    description="Static markdown mirrors, llms-full.txt fallback, search index, sitemap, agent-readability.json — all from one CLI run."
+    title="Hosted agent artifacts"
+    description="Generate llms.txt, markdown mirrors, llms-full.txt, search JSON, sitemap, robots, and agent-readability.json from one CLI run."
     href="/docs/build/optimize-docs-for-agents"
   />
   <Card
-    title="AGENTS.md for npm packages"
-    description="Bundle version-matched docs inside your npm tarball so coding agents find them at node_modules/<pkg>/AGENTS.md."
+    title="Why leadtype, not Fumadocs/Starlight/Mintlify"
+    description="Leadtype is a pipeline, not a website framework. Pair it with any UI, or with another docs framework when you want one portable pipeline for markdown, search, and agent outputs."
+    href="/docs/methodology"
+  />
+  <Card
+    title="Version-matched package docs"
+    description="Bundle AGENTS.md and markdown docs inside npm packages so coding agents can read node_modules/<pkg>/AGENTS.md."
     href="/docs/package-docs/bundle"
   />
 </Cards>
-
-## Next
-
-- New here? Read the **[Quickstart](/docs/quickstart)** — three steps to a working source.
-- Want the mental model first? Read **[How it works](/docs/how-it-works)** for the pipeline diagram and the names of every artifact it produces.
-- Comparing tools? See **[Methodology](/docs/methodology)** for how leadtype differs from Fumadocs, Starlight, and Mintlify.
