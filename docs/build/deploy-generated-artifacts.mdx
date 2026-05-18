@@ -1,13 +1,12 @@
 ---
 title: "Deploy generated artifacts"
 description: "Serve Leadtype output on common framework and hosting combinations."
-group: docs-site
 order: 45
 ---
 
 # Deploy generated artifacts
 
-Run `leadtype generate` before your framework build, then serve the output from the framework's public/static asset directory. Site mode writes web artifacts; `--bundle` writes package docs for npm tarballs and intentionally skips `llms.txt`, `llms-full.txt`, search JSON, sitemap, robots, and Agent Readability files.
+Run `leadtype generate` before your framework build, then serve the output from the framework's public/static asset directory. Site mode writes web artifacts; `--bundle` writes package docs for npm tarballs and intentionally skips `llms.txt`, `llms-full.txt`, search JSON, sitemap, robots, and [Agent Readability](/docs/how-it-works#vocabulary) files.
 
 ## Output contract
 
@@ -95,6 +94,37 @@ export default async function Page({
 }
 ```
 
+## TanStack Start
+
+Generate into `public` before the TanStack Start build. The example app uses the same artifact shape as the Next and Nuxt examples: static files for `/llms.txt`, `/llms-full.txt`, markdown mirrors, search JSON, and a server middleware for markdown negotiation plus sitemap/robots rebasing.
+
+Keep page loading in route code and artifact serving in server middleware:
+
+```ts title="server/middleware/agent-readability.ts"
+import manifestJson from "../public/docs/agent-readability.json" with {
+  type: "json",
+};
+import {
+  createAgentMarkdownResponse,
+  normalizeAgentReadabilityManifest,
+} from "leadtype/llm/readability";
+
+const manifest = normalizeAgentReadabilityManifest(manifestJson);
+
+export default eventHandler((event) =>
+  createAgentMarkdownResponse({
+    urlPath: getRequestURL(event).pathname,
+    method: event.method,
+    headers: getHeaders(event),
+    manifest,
+    readMarkdownFile,
+    requestOrigin: getRequestURL(event).origin,
+  })
+);
+```
+
+Use `leadtype/search/react` for client search and `leadtype/search/tanstack` only when you are streaming source-grounded answers through TanStack AI.
+
 ## Nuxt on Vercel, Netlify, or Cloudflare
 
 Generate into `public` before `nuxt build`. Nitro serves static assets from that directory across Vercel, Netlify, and Cloudflare presets.
@@ -150,43 +180,6 @@ useHead({
 
 Static hosting and server deployments differ only in sitemap/robots handling: static deploys publish the generated files as-is; server/edge deploys can rebase them per request.
 
-## SvelteKit
-
-With `adapter-static`, generate into `static` before `vite build` and prerender the docs routes. Direct files serve `/llms.txt`, `/llms-full.txt`, markdown mirrors, and search JSON.
-
-With `adapter-node` or `adapter-vercel`, generate into `static`, then use a `+server.ts` endpoint or hook before the HTML route for markdown negotiation and runtime sitemap/robots responses.
-
-```svelte title="src/routes/docs/[...slug]/+page.svelte"
-<script lang="ts">
-  import {
-    createDocsJsonLd,
-    normalizeAgentReadabilityManifest,
-    stringifyJsonLd,
-  } from "leadtype/llm/readability";
-  import manifestJson from "../../../../static/docs/agent-readability.json";
-
-  const { data } = $props();
-  const manifest = normalizeAgentReadabilityManifest(manifestJson);
-  const page = data.page;
-  const title = `${page.title} | ${manifest.product.name}`;
-  const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
-</script>
-
-<svelte:head>
-  <title>{title}</title>
-  <meta name="description" content={page.description} />
-  <meta property="og:title" content={title} />
-  <meta property="og:description" content={page.description} />
-  <link rel="canonical" href={page.absoluteUrl} />
-  <link rel="alternate" type="text/markdown" href={page.markdownAbsoluteUrl} />
-  {#if jsonLd}
-    <script type="application/ld+json">{stringifyJsonLd(jsonLd)}</script>
-  {/if}
-</svelte:head>
-```
-
-For `adapter-static`, verify direct `.md` URLs. For server adapters, also verify `Accept: text/markdown` on the HTML route.
-
 ## Astro static or server
 
 Generate into `public` before `astro build`. In static output, Astro publishes the generated files directly. In server output, keep the files static and add endpoints or middleware for content negotiation and runtime sitemap/robots rebasing.
@@ -224,23 +217,45 @@ const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
 
 Search JSON stays under `/docs/` in both modes.
 
+## SvelteKit
+
+With `adapter-static`, generate into `static` before `vite build` and prerender the docs routes. Direct files serve `/llms.txt`, `/llms-full.txt`, markdown mirrors, and search JSON.
+
+With `adapter-node` or `adapter-vercel`, generate into `static`, then use a `+server.ts` endpoint or hook before the HTML route for markdown negotiation and runtime sitemap/robots responses.
+
+```svelte title="src/routes/docs/[...slug]/+page.svelte"
+<script lang="ts">
+  import {
+    createDocsJsonLd,
+    normalizeAgentReadabilityManifest,
+    stringifyJsonLd,
+  } from "leadtype/llm/readability";
+  import manifestJson from "../../../../static/docs/agent-readability.json";
+
+  const { data } = $props();
+  const manifest = normalizeAgentReadabilityManifest(manifestJson);
+  const page = data.page;
+  const title = `${page.title} | ${manifest.product.name}`;
+  const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
+</script>
+
+<svelte:head>
+  <title>{title}</title>
+  <meta name="description" content={page.description} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={page.description} />
+  <link rel="canonical" href={page.absoluteUrl} />
+  <link rel="alternate" type="text/markdown" href={page.markdownAbsoluteUrl} />
+  {#if jsonLd}
+    <script type="application/ld+json">{stringifyJsonLd(jsonLd)}</script>
+  {/if}
+</svelte:head>
+```
+
+For `adapter-static`, verify direct `.md` URLs. For server adapters, also verify `Accept: text/markdown` on the HTML route.
+
 ## Cloudflare Workers and Pages
 
 For Cloudflare Pages with a static framework build, generate into the framework public directory and let Pages serve the files. For Workers or Pages Functions, read markdown mirrors from static assets, KV, or R2 and pass the text to `createAgentMarkdownResponse()`.
 
 Runtime sitemap and robots helpers are useful on Cloudflare because preview branches and custom domains can have different origins. Search JSON can remain a static asset unless your search endpoint runs fully server-side.
-
-## Plain Vite static hosting
-
-Generate into `public` before `vite build`:
-
-```json
-{
-  "scripts": {
-    "docs:generate": "leadtype generate --src . --out public --base-url https://example.com",
-    "build": "npm run docs:generate && vite build"
-  }
-}
-```
-
-Vite copies `public` to `dist`, so `/llms.txt`, `/llms-full.txt`, `/docs/*.md`, search JSON, and docs-scoped sitemap/robots files become CDN assets. There is no content negotiation without a server or edge worker; verify direct `.md` URLs instead. If the host supports edge middleware, add the same `createAgentMarkdownResponse()` flow used by server frameworks.

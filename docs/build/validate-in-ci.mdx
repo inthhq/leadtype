@@ -51,6 +51,40 @@ npx leadtype lint docs --format json --error-unknown > lint-report.json
 
 The JSON output includes per-file violations and summary counts. Pipe it into your provider's reporter, post a PR comment, or upload as an artifact.
 
+### GitLab CI
+
+```yaml title=".gitlab-ci.yml"
+lint-docs:
+  image: oven/bun:latest
+  rules:
+    - changes:
+        - "docs/**/*"
+        - "**/*.mdx"
+  script:
+    - bun install
+    - npx leadtype lint docs --format json --error-unknown --max-warnings 0 > lint-report.json
+  artifacts:
+    when: always
+    paths:
+      - lint-report.json
+```
+
+### CircleCI
+
+```yaml title=".circleci/config.yml"
+version: 2.1
+jobs:
+  lint-docs:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npx leadtype lint docs --format json --error-unknown --max-warnings 0 | tee lint-report.json
+      - store_artifacts:
+          path: lint-report.json
+```
+
 ## Local pre-push hook
 
 Catch issues before they reach CI by running lint in a husky pre-push hook:
