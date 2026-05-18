@@ -38,7 +38,7 @@ export default defineDocsConfig({
       },
       {
         urlPath: "/docs/build/build-a-docs-site",
-        title: "Build a docs site (router)",
+        title: "Build an agent-ready docs site",
         description:
           "Decide between the source primitive and the static artifact CLI for your hosted docs site.",
       },
@@ -137,6 +137,7 @@ export default defineDocsConfig({
             "llm",
             "convert",
             "lint",
+            "frontmatter-transformers",
             "mdx",
             "remark",
             "search",

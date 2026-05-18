@@ -28,7 +28,18 @@ export default defineDocsConfig({
   product: {
     name: "My product",
     summary: "Developer tools for modern apps.",
-    bestStartingPoints: [{ urlPath: "/docs" }, { urlPath: "/docs/quickstart" }],
+    bestStartingPoints: [
+      {
+        urlPath: "/docs",
+        title: "Overview",
+        description: "Start page for the docs site.",
+      },
+      {
+        urlPath: "/docs/quickstart",
+        title: "Quickstart",
+        description: "First steps for setting up My product.",
+      },
+    ],
   },
   nav: [
     { title: "Start", pages: ["", "quickstart"] },

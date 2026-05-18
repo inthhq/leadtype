@@ -1654,12 +1654,12 @@
                   ]
                 },
                 {
-                  "id": "planned-adapter-shapes",
-                  "title": "Planned adapter shapes",
+                  "id": "adapter-shapes",
+                  "title": "Adapter shapes",
                   "level": 2,
                   "urlPath": "/docs/reference/architecture",
-                  "urlWithHash": "/docs/reference/architecture#planned-adapter-shapes",
-                  "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/architecture#planned-adapter-shapes",
+                  "urlWithHash": "/docs/reference/architecture#adapter-shapes",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/architecture#adapter-shapes",
                   "children": []
                 },
                 {
@@ -2354,6 +2354,34 @@
                 }
               ],
               "logicalPath": "reference/lint"
+            },
+            {
+              "urlPath": "/docs/reference/frontmatter-transformers",
+              "relativePath": "reference/frontmatter-transformers",
+              "title": "Frontmatter transformers",
+              "description": "Define typed custom frontmatter and lifecycle hooks for Leadtype pipeline data.",
+              "groups": [],
+              "toc": [
+                {
+                  "id": "typed-source-data",
+                  "title": "Typed source data",
+                  "level": 2,
+                  "urlPath": "/docs/reference/frontmatter-transformers",
+                  "urlWithHash": "/docs/reference/frontmatter-transformers#typed-source-data",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/frontmatter-transformers#typed-source-data",
+                  "children": []
+                },
+                {
+                  "id": "hook-order",
+                  "title": "Hook order",
+                  "level": 2,
+                  "urlPath": "/docs/reference/frontmatter-transformers",
+                  "urlWithHash": "/docs/reference/frontmatter-transformers#hook-order",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/frontmatter-transformers#hook-order",
+                  "children": []
+                }
+              ],
+              "logicalPath": "reference/frontmatter-transformers"
             },
             {
               "urlPath": "/docs/reference/mdx",

@@ -188,7 +188,7 @@ function DocsCatchAllRoute() {
 
 Generate `docs-pages.json` at build time by calling `createDocsSource().listPages()` from a build script and writing each page's `slug`, `urlPath`, and `globKey` (path relative to the catch-all route, POSIX separators).
 
-There is no `leadtype/tanstack-start` export yet. The future adapter should wrap this same shape with TanStack Router route helpers, server functions, and React state helpers. TanStack AI answer streaming already lives separately under `leadtype/search/tanstack`.
+Use `createLoadPageData` from `leadtype/tanstack-start` when you want adapter helpers for TanStack Router route params and page data. TanStack AI answer streaming lives separately under `leadtype/search/tanstack`.
 
 ### Nuxt
 
@@ -201,7 +201,7 @@ export default defineNuxtConfig({
 });
 ```
 
-Use Nitro routes for generated markdown and Agent Readability artifacts. For search, load the generated JSON files from a Vue composable and pass them to `searchDocs()` from `leadtype/search`; a future `leadtype/nuxt` adapter should make that composable copy-paste small without owning UI.
+Use `createLoadPageData` and the Nitro route handlers from `leadtype/nuxt` for page data, generated markdown, and Agent Readability artifacts. For search, use `leadtype/search/vue` with the generated JSON files.
 
 ### Astro Content Collections
 
@@ -229,9 +229,9 @@ export default {
 };
 ```
 
-Use `+page.server.ts` to call `source.loadPage(slug)`, `entries()` to prerender known routes from `source.listPages()`, and `+server.ts` for markdown or JSON artifact responses. For search, load generated JSON into a store or rune and call `searchDocs()`; a future `leadtype/search/svelte` helper should keep that state primitive UI-free.
+Use `createLoadPageData`, `createEntries`, and `createDocsServerHandler` from `leadtype/sveltekit` for page data, prerender entries, and markdown or JSON artifact responses. For search, use `leadtype/search/svelte` with the generated JSON files.
 
-> TanStack Start, Nuxt, Astro, and SvelteKit recipes wire `createDocsSource()` manually today. Dedicated `leadtype/tanstack-start`, `leadtype/nuxt`, `leadtype/astro`, and `leadtype/sveltekit` adapters with native handler factories and state primitives are tracked under issue [#41](https://github.com/inthhq/leadtype/issues/41) and the search-helper follow-up [#45](https://github.com/inthhq/leadtype/issues/45).
+> TanStack Start, Nuxt, Astro, and SvelteKit expose adapter helpers for native route data and handler shapes. The open follow-up work is to keep expanding those helpers without adding rendered UI components.
 
 ## Implement the tag components
 

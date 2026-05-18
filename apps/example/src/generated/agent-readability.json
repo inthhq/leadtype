@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-17T18:54:44.751Z",
+  "generatedAt": "2026-05-18T04:04:33.699Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -16,7 +16,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "index"
     },
     {
@@ -28,7 +28,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/components.md",
       "relativePath": "authoring/components",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "authoring/components"
     },
     {
@@ -40,7 +40,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/frontmatter.md",
       "relativePath": "authoring/frontmatter",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:52:44.000Z",
       "logicalPath": "authoring/frontmatter"
     },
     {
@@ -64,7 +64,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site.md",
       "relativePath": "build/build-a-docs-site",
       "groups": [],
-      "lastModified": "2026-05-16T17:02:13.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/build-a-docs-site"
     },
     {
@@ -76,7 +76,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/deploy-generated-artifacts.md",
       "relativePath": "build/deploy-generated-artifacts",
       "groups": [],
-      "lastModified": "2026-05-16T17:02:13.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "build/deploy-generated-artifacts"
     },
     {
@@ -88,7 +88,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/framework-matrix.md",
       "relativePath": "build/framework-matrix",
       "groups": [],
-      "lastModified": "2026-05-16T17:02:13.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/framework-matrix"
     },
     {
@@ -100,7 +100,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/generate-static-artifacts.md",
       "relativePath": "build/generate-static-artifacts",
       "groups": [],
-      "lastModified": "2026-05-16T17:02:13.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/generate-static-artifacts"
     },
     {
@@ -124,7 +124,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents.md",
       "relativePath": "build/optimize-docs-for-agents",
       "groups": [],
-      "lastModified": "2026-05-16T17:02:13.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "build/optimize-docs-for-agents"
     },
     {
@@ -136,7 +136,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/serve-agent-responses.md",
       "relativePath": "build/serve-agent-responses",
       "groups": [],
-      "lastModified": "2026-05-17T18:54:44.554Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "build/serve-agent-responses"
     },
     {
@@ -148,7 +148,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
     {
@@ -160,7 +160,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/validate-in-ci.md",
       "relativePath": "build/validate-in-ci",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "build/validate-in-ci"
     },
     {
@@ -184,7 +184,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/how-it-works.md",
       "relativePath": "how-it-works",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "how-it-works"
     },
     {
@@ -196,7 +196,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/methodology.md",
       "relativePath": "methodology",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "methodology"
     },
     {
@@ -220,7 +220,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "quickstart"
     },
     {
@@ -232,7 +232,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/architecture.md",
       "relativePath": "reference/architecture",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-17T01:22:57.000Z",
       "logicalPath": "reference/architecture"
     },
     {
@@ -244,7 +244,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/cli.md",
       "relativePath": "reference/cli",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:52:44.000Z",
       "logicalPath": "reference/cli"
     },
     {
@@ -268,8 +268,20 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/evals.md",
       "relativePath": "reference/evals",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:32.000Z",
       "logicalPath": "reference/evals"
+    },
+    {
+      "title": "Frontmatter transformers",
+      "description": "Define typed custom frontmatter and lifecycle hooks for Leadtype pipeline data.",
+      "urlPath": "/docs/reference/frontmatter-transformers",
+      "absoluteUrl": "https://leadtype.dev/docs/reference/frontmatter-transformers",
+      "markdownUrlPath": "/docs/reference/frontmatter-transformers.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/frontmatter-transformers.md",
+      "relativePath": "reference/frontmatter-transformers",
+      "groups": [],
+      "lastModified": "2026-05-17T01:22:57.000Z",
+      "logicalPath": "reference/frontmatter-transformers"
     },
     {
       "title": "Lint rules",
@@ -304,7 +316,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/mdx.md",
       "relativePath": "reference/mdx",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "reference/mdx"
     },
     {
@@ -340,7 +352,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/source.md",
       "relativePath": "reference/source",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-18T03:53:12.000Z",
       "logicalPath": "reference/source"
     },
     {
@@ -352,7 +364,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/collections.md",
       "relativePath": "sources/collections",
       "groups": [],
-      "lastModified": "2026-05-17T18:54:44.633Z",
+      "lastModified": "2026-05-18T03:52:44.000Z",
       "logicalPath": "sources/collections"
     },
     {
@@ -364,7 +376,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/configure-sources.md",
       "relativePath": "sources/configure-sources",
       "groups": [],
-      "lastModified": "2026-05-17T18:54:44.633Z",
+      "lastModified": "2026-05-18T03:52:44.000Z",
       "logicalPath": "sources/configure-sources"
     }
   ],
@@ -2024,12 +2036,12 @@
                     ]
                   },
                   {
-                    "id": "planned-adapter-shapes",
-                    "title": "Planned adapter shapes",
+                    "id": "adapter-shapes",
+                    "title": "Adapter shapes",
                     "level": 2,
                     "urlPath": "/docs/reference/architecture",
-                    "urlWithHash": "/docs/reference/architecture#planned-adapter-shapes",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/architecture#planned-adapter-shapes",
+                    "urlWithHash": "/docs/reference/architecture#adapter-shapes",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/architecture#adapter-shapes",
                     "children": []
                   },
                   {
@@ -2724,6 +2736,34 @@
                   }
                 ],
                 "logicalPath": "reference/lint"
+              },
+              {
+                "urlPath": "/docs/reference/frontmatter-transformers",
+                "relativePath": "reference/frontmatter-transformers",
+                "title": "Frontmatter transformers",
+                "description": "Define typed custom frontmatter and lifecycle hooks for Leadtype pipeline data.",
+                "groups": [],
+                "toc": [
+                  {
+                    "id": "typed-source-data",
+                    "title": "Typed source data",
+                    "level": 2,
+                    "urlPath": "/docs/reference/frontmatter-transformers",
+                    "urlWithHash": "/docs/reference/frontmatter-transformers#typed-source-data",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/frontmatter-transformers#typed-source-data",
+                    "children": []
+                  },
+                  {
+                    "id": "hook-order",
+                    "title": "Hook order",
+                    "level": 2,
+                    "urlPath": "/docs/reference/frontmatter-transformers",
+                    "urlWithHash": "/docs/reference/frontmatter-transformers#hook-order",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/reference/frontmatter-transformers#hook-order",
+                    "children": []
+                  }
+                ],
+                "logicalPath": "reference/frontmatter-transformers"
               },
               {
                 "urlPath": "/docs/reference/mdx",

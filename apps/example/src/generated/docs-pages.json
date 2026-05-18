@@ -282,6 +282,19 @@
   {
     "slug": [
       "reference",
+      "frontmatter-transformers"
+    ],
+    "urlPath": "/docs/reference/frontmatter-transformers",
+    "title": "Frontmatter transformers",
+    "description": "Define typed custom frontmatter and lifecycle hooks for Leadtype pipeline data.",
+    "relativePath": "reference/frontmatter-transformers",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/reference/frontmatter-transformers.mdx"
+  },
+  {
+    "slug": [
+      "reference",
       "lint"
     ],
     "urlPath": "/docs/reference/lint",

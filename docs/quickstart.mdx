@@ -39,7 +39,13 @@ export default defineDocsConfig({
   product: {
     name: "My library",
     summary: "What it does in one sentence.",
-    bestStartingPoints: [{ urlPath: "/docs" }],
+    bestStartingPoints: [
+      {
+        urlPath: "/docs",
+        title: "Start here",
+        description: "Overview and first steps for using My library.",
+      },
+    ],
   },
   nav: [{ title: "Start", pages: [""] }],
 });
@@ -129,7 +135,7 @@ The UI is yours. Leadtype provides page loading, navigation, markdown output, ta
   <Card
     title="SvelteKit"
     description="mdsvex preprocessor + createMdxSourcePlugins()."
-    href="/docs/build/use-the-source-primitive#sveltekit--mdsvex"
+    href="/docs/build/use-the-source-primitive#sveltekit-mdsvex"
   />
   <Card
     title="Fumadocs"

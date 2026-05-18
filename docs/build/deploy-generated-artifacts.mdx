@@ -101,6 +101,7 @@ Generate into `public` before the TanStack Start build. The example app uses the
 Keep page loading in route code and artifact serving in server middleware:
 
 ```ts title="server/middleware/agent-readability.ts"
+import { eventHandler, getHeaders, getRequestURL } from "h3";
 import manifestJson from "../public/docs/agent-readability.json" with {
   type: "json",
 };
