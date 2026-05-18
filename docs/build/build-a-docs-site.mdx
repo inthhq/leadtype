@@ -1,11 +1,11 @@
 ---
-title: "Build a docs site"
-description: "Pick the right leadtype integration shape for your docs app, and what each path gives you."
+title: "Build an agent-ready docs site"
+description: "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata."
 ---
 
-# Build a docs site
+# Build an agent-ready docs site
 
-Leadtype offers two integration shapes for a docs site. Pick the one that fits how your app is built — both produce the same content, just at different layers of your stack.
+Leadtype offers two integration shapes for hosted docs. Most sites use both: the [source primitive](/docs/how-it-works#vocabulary) renders human-facing pages, and the CLI writes the agent-facing files during the build.
 
 ## Pick your path
 
@@ -13,17 +13,17 @@ Leadtype offers two integration shapes for a docs site. Pick the one that fits h
   src["source MDX<br/>docs/*.mdx + meta.json"]
   primitive["createDocsSource()<br/>(leadtype/mdx + leadtype/fumadocs)"]
   cli["leadtype generate<br/>(CLI)"]
-  app["docs app<br/>(Next, Astro, Vite, Fumadocs)"]
+  app["docs app<br/>(Next, TanStack Start, Nuxt, Astro, SvelteKit)"]
   artifacts["public/<br/>llms.txt · docs/*.md<br/>search-index · sitemap"]
   src --> primitive --> app
   src --> cli --> artifacts --> app`} />
 
 | Path | When to choose | What you wire |
 | --- | --- | --- |
-| **Source primitive** | Most cases. You're building a Next, Vite, Astro, or Fumadocs app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
+| **Source primitive** | Most cases. You're building a Next, TanStack Start, Nuxt, Astro, or SvelteKit app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
 | **Static artifacts** | Your runtime needs flat files on disk (CDN-only deploy, static export, agent-only consumption, multi-app sharing). | `leadtype generate` CLI in your build script |
 
-The two paths are not mutually exclusive — you can use the source primitive for your UI and still run `leadtype generate` for the `llms.txt` and agent-readability artifacts.
+Use the source primitive for your UI and still run `leadtype generate` for `llms.txt`, markdown mirrors, search JSON, sitemap, robots, and Agent Readability metadata.
 
 ## Source primitive: the common path
 
@@ -52,31 +52,12 @@ If your runtime needs files on disk — for a CDN-only deploy, a static export, 
 
 Whichever path you pick, the same follow-on guides apply:
 
+- [Configure docs sources](/docs/sources/configure-sources) — local folders, mounted folders, and remote git collections
 - [Add search](/docs/build/add-search) — local search index + optional source-grounded answers
 - [Optimize docs for agents](/docs/build/optimize-docs-for-agents) — markdown responses, llms.txt, discovery files
 - [Deploy generated artifacts](/docs/build/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities
 - [Validate in CI](/docs/build/validate-in-ci) — lint frontmatter, meta.json, internal links
 
-## Configure product and groups
+## Configure product and navigation
 
-Both paths read the same `docs/docs.config.ts`. Source repos own this file so groups and product metadata version with the docs:
-
-```ts
-import { defineDocsConfig } from "leadtype";
-
-export default defineDocsConfig({
-  product: {
-    name: "c15t",
-    summary: "Consent infrastructure for modern web apps.",
-    bullets: ["Framework integrations.", "Consent primitives.", "Audit-friendly docs."],
-    bestStartingPoints: [{ urlPath: "/docs" }, { urlPath: "/docs/quickstart" }],
-  },
-  nav: [
-    { title: "Get Started", pages: ["", "quickstart", "how-it-works"] },
-    { title: "Guides", pages: [{ include: "build/*" }] },
-    { title: "Reference", pages: [{ include: "reference/*" }] },
-  ],
-});
-```
-
-The config declares top-level docs areas, sidebar structure, and agent-map structure. Pages keep `title`, `description`, and optional taxonomy fields in frontmatter. See [Frontmatter](/docs/authoring/frontmatter) for the page-level schema.
+Both paths read the same `docs/docs.config.ts`. Source repos own this file so product metadata, sidebar order, and agent indexes version with the docs. See [Frontmatter](/docs/authoring/frontmatter) for the page-level schema, and [Configure docs sources](/docs/sources/configure-sources) for the full config shape, including multi-folder and remote source setups.

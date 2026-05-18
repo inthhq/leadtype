@@ -1,6 +1,6 @@
 ---
 title: "Framework integration matrix"
-description: "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs."
+description: "Use Leadtype with native-feeling recipes for Next, TanStack Start, Nuxt, Astro, SvelteKit, and Fumadocs."
 ---
 
 # Framework integration matrix
@@ -10,10 +10,10 @@ Leadtype stays framework-neutral at the core, then exposes thin adapters where a
 | Framework | Human docs route | Agent markdown route | Search helper | Dogfood app |
 | --- | --- | --- | --- | --- |
 | Next.js App Router | `generateStaticParams()` + server component | middleware or `leadtype/next` route handler | `leadtype/search/react` | `apps/next-example` |
+| TanStack Start | catch-all route + generated manifest | server route / Nitro middleware | `leadtype/search/react` | `apps/example` |
+| Nuxt/Nitro | Vue page + Nitro API route | Nitro route or middleware | `leadtype/search/vue` | `apps/nuxt-example` |
 | Astro | `getStaticPaths()` | endpoint at `pages/docs/[...slug].md.ts` | `leadtype/search/client` | `apps/astro-example` |
 | SvelteKit | `+page.server.ts` + `+page.svelte` | `+server.ts` under a `.md` route | `leadtype/search/svelte` | `apps/sveltekit-example` |
-| Nuxt/Nitro | Vue page + Nitro API route | Nitro route or middleware | `leadtype/search/vue` | `apps/nuxt-example` |
-| TanStack Start | catch-all route + generated manifest | server route / Nitro middleware | `leadtype/search/react` | Planned |
 | Fumadocs | `leadtype/fumadocs` source adapter | Next route/middleware pattern | React search helper | Planned |
 
 ## Shared build step
@@ -31,7 +31,7 @@ That writes `/llms.txt`, `/llms-full.txt`, `/docs/*.md`, search JSON, sitemap fi
 
 SvelteKit uses the same command shape with `--out static` because SvelteKit serves static assets from that directory. If your docs are mounted somewhere other than `/docs`, pass the matching path to the adapter's `basePath` or `artifactBasePath` option.
 
-For deployment paths across Vercel, Netlify, Cloudflare, framework static adapters, and plain Vite hosting, see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
+For deployment paths across Vercel, Netlify, Cloudflare, and framework static adapters, see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
 
 ## Next.js App Router
 
@@ -67,6 +67,25 @@ import { createDocsProxy } from "leadtype/next";
 
 export const proxy = createDocsProxy({ manifest });
 ```
+
+## TanStack Start
+
+TanStack Start follows the same shape as the existing dogfood app: generate a route manifest, lazy-load MDX modules by slug, and use `leadtype/search/react` for search.
+
+## Nuxt/Nitro
+
+Nuxt Content is a Nuxt CMS. Leadtype is the portable artifact pipeline: use it when the same source needs framework-agnostic markdown, search JSON, `llms.txt`, and package docs.
+
+Keep Leadtype source loading and adapter helpers in Nitro server files, not Vue client bundles:
+
+```ts title="server/api/docs.get.ts"
+import { createLoadPageData } from "leadtype/nuxt";
+
+const source = await getSource();
+const loadPageData = createLoadPageData({ source });
+```
+
+Use `leadtype/search/vue` for the client search composable.
 
 ## Astro
 
@@ -104,24 +123,7 @@ const loadPageData = createLoadPageData({ source });
 
 Use `leadtype/search/svelte` for store-based client search.
 
-## Nuxt/Nitro
-
-Nuxt Content is a Nuxt CMS. Leadtype is the portable artifact pipeline: use it when the same source needs framework-agnostic markdown, search JSON, `llms.txt`, and package docs.
-
-Keep Leadtype source loading and adapter helpers in Nitro server files, not Vue client bundles:
-
-```ts title="server/api/docs.get.ts"
-import { createLoadPageData } from "leadtype/nuxt";
-
-const source = await getSource();
-const loadPageData = createLoadPageData({ source });
-```
-
-Use `leadtype/search/vue` for the client search composable.
-
-## TanStack Start and Fumadocs
-
-TanStack Start follows the same shape as the existing dogfood app: generate a route manifest, lazy-load MDX modules by slug, and use `leadtype/search/react` for search.
+## Fumadocs
 
 Fumadocs uses `leadtype/fumadocs` to map the source primitive into Fumadocs' `Source` contract. Pair it with the same generated artifact serving used by the Next example.
 
@@ -131,7 +133,8 @@ The implemented dogfood apps are expected to build in CI:
 
 ```bash
 bun --filter next-example build
+bun --filter example build
+bun --filter nuxt-example build
 bun --filter astro-example build
 bun --filter sveltekit-example build
-bun --filter nuxt-example build
 ```

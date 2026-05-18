@@ -1,19 +1,23 @@
 ---
 title: "Quickstart"
-description: "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using."
+description: "Build an agent-ready docs site from one MDX page: render it, generate llms.txt and markdown mirrors, then verify the output."
 ---
 
 # Quickstart
 
-Three steps to a working source primitive. Then plug it into your framework — Next, Fumadocs, Astro, Vite + Vue/Solid/Svelte, Nuxt, SvelteKit — using one of the recipes below.
+<Callout title="Shipping docs inside an npm package?" variant="info">
+  This quickstart covers **site mode** (docs website). For npm-bundled docs, follow [Bundle docs into a package](/docs/package-docs/bundle) instead.
+</Callout>
+
+This is the GA happy path: one MDX source, one docs route, and one generated artifact set for agents. Steps 1, 2, 4, and 5 are framework-neutral; step 3 (rendering) is shown in Next App Router as a concrete example. For TanStack Start, Nuxt, Astro, SvelteKit, or Fumadocs, follow the same `createDocsSource()` call and swap in the per-framework recipe at the end of step 3.
 
 ## Install
 
 <CommandTabs command="leadtype" mode="install" />
 
-## Author one page
+## 1. Author one page
 
-```mdx title="content/docs/index.mdx"
+```mdx title="docs/index.mdx"
 ---
 title: "My library"
 description: "What it does in one sentence."
@@ -24,15 +28,32 @@ description: "What it does in one sentence."
 Welcome.
 ```
 
-Every page needs a `title`. Add `group:` when the page should appear in generated navigation and `llms.txt` sections. See [Frontmatter](/docs/authoring/frontmatter) for the full content contract.
+Every page needs a `title`. Add `description` so generated `llms.txt`, search results, and bundled `AGENTS.md` can route readers without guessing from the body.
 
-## Create the source
+Add a small config next to the docs source:
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My library",
+    summary: "What it does in one sentence.",
+    bestStartingPoints: [{ urlPath: "/docs" }],
+  },
+  nav: [{ title: "Start", pages: [""] }],
+});
+```
+
+`nav` is the shared source of truth for the sidebar, `llms.txt`, `AGENTS.md`, sitemap markdown, and [Agent Readability](/docs/how-it-works#vocabulary) metadata.
+
+## 2. Create the source
 
 ```ts title="lib/source.ts"
 import { createDocsSource } from "leadtype";
 
 export const source = await createDocsSource({
-  contentDir: "./content/docs",
+  contentDir: "./docs",
   baseUrl: "https://example.com",
 });
 ```
@@ -45,9 +66,44 @@ That's the framework-neutral primitive. You can now call:
 - `source.buildSearchIndex()` — static search bundle
 - `source.resolveInclude(specifier)` — standalone include resolver
 
-## Plug it into your framework
+## 3. Render the docs route
 
-Pick the recipe that matches your stack. Each one shows the wiring on top of the same `createDocsSource()` you just set up.
+Step 3 is the only step that varies by framework — here's what it looks like in Next App Router. The same `createDocsSource()` from step 2 powers every framework; pick yours below the code block to see the equivalent wiring.
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote-client/rsc";
+import { source } from "@/lib/source";
+import { mdxComponents } from "@/lib/mdx-components";
+
+export async function generateStaticParams() {
+  const pages = await source.listPages();
+  return pages.map((page) => ({ slug: page.slug }));
+}
+
+export default async function DocsPage({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const page = await source.loadPage((await params).slug ?? []);
+  if (!page) {
+    notFound();
+  }
+
+  return (
+    <article>
+      <h1>{page.title}</h1>
+      {page.description ? <p>{page.description}</p> : null}
+      <MDXRemote components={mdxComponents} source={page.markdown} />
+    </article>
+  );
+}
+```
+
+The UI is yours. Leadtype provides page loading, navigation, markdown output, table of contents data, include resolution, and search input data.
+
+### Pick your framework
 
 <Cards>
   <Card
@@ -56,24 +112,9 @@ Pick the recipe that matches your stack. Each one shows the wiring on top of the
     href="/docs/build/use-the-source-primitive#next-app-router"
   />
   <Card
-    title="Fumadocs"
-    description="First-party leadtype/fumadocs adapter — Source interface + meta.json."
-    href="/docs/build/integrate-with-fumadocs"
-  />
-  <Card
     title="TanStack Start"
     description="@mdx-js/rollup + viteReact + TanStack Router catch-all."
     href="/docs/build/use-the-source-primitive#tanstack-start"
-  />
-  <Card
-    title="Astro Content Collections"
-    description="@astrojs/mdx + createMdxSourcePlugins(). Compose with Astro's native content schema."
-    href="/docs/build/use-the-source-primitive#astro-content-collections"
-  />
-  <Card
-    title="Vite + Vue / Solid / Svelte"
-    description="@mdx-js/rollup wiring that works for every Vite-based starter."
-    href="/docs/build/use-the-source-primitive#vite-mdx-js-rollup-works-for-vue-solid-svelte-starters"
   />
   <Card
     title="Nuxt"
@@ -81,29 +122,73 @@ Pick the recipe that matches your stack. Each one shows the wiring on top of the
     href="/docs/build/use-the-source-primitive#nuxt"
   />
   <Card
+    title="Astro Content Collections"
+    description="@astrojs/mdx + createMdxSourcePlugins(). Compose with Astro's native content schema."
+    href="/docs/build/use-the-source-primitive#astro-content-collections"
+  />
+  <Card
     title="SvelteKit"
     description="mdsvex preprocessor + createMdxSourcePlugins()."
-    href="/docs/build/use-the-source-primitive#sveltekit-mdsvex"
+    href="/docs/build/use-the-source-primitive#sveltekit--mdsvex"
+  />
+  <Card
+    title="Fumadocs"
+    description="First-party leadtype/fumadocs adapter — Source interface + meta.json."
+    href="/docs/build/integrate-with-fumadocs"
   />
 </Cards>
 
-## Or: write static artifacts to disk
+## 4. Generate agent artifacts
 
-Some pipelines need flat files — CDN-only deploys, static exports, agent-only services, multiple sibling apps sharing one corpus. Use the CLI:
+Run the site-mode CLI before your app build:
 
-```sh
-npx leadtype generate --src . --out public --base-url https://example.com
+```bash
+npx leadtype generate \
+  --src . \
+  --out public \
+  --base-url https://example.com
 ```
 
-That writes `llms.txt`, `llms-full.txt`, `docs/*.md`, search index, sitemap, and `agent-readability.json` to disk. See [Generate static artifacts](/docs/build/generate-static-artifacts) for the full flow.
+That writes the hosted files agents need:
 
-## Next steps
+<FileTree root="public">
+  <File name="llms.txt" />
+  <File name="llms-full.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+    <File name="llms.txt" />
+    <File name="search-index.json" />
+    <File name="search-content.json" />
+    <File name="sitemap.xml" />
+    <File name="sitemap.md" />
+    <File name="robots.txt" />
+    <File name="agent-readability.json" />
+  </Folder>
+</FileTree>
 
-| Goal | Page |
+Keep this command in your build script so browser docs, markdown mirrors, search, and agent discovery files stay in sync.
+
+## 5. Verify the output
+
+Before publishing, check the files that prove the pipeline worked:
+
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com --json
+test -s public/llms.txt
+test -s public/docs/index.md
+test -s public/docs/search-index.json
+test -s public/docs/agent-readability.json
+```
+
+Then add runtime handling for markdown responses, sitemap/robots regeneration, and JSON-LD with [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
+
+## Common next steps
+
+| Goal | Go to |
 | --- | --- |
-| Compare every integration shape side-by-side | [Framework integration matrix](/docs/build/framework-matrix) |
-| Implement custom MDX tags (Callout, Tabs, Steps, …) | [`leadtype/mdx`](/docs/reference/mdx) |
-| Add search | [Add search](/docs/build/add-search) |
-| Validate frontmatter and links in CI | [Validate in CI](/docs/build/validate-in-ci) |
+| Compare every hosted-site integration shape | [Build a docs site](/docs/build/build-a-docs-site) |
 | Serve markdown, sitemaps, robots, and JSON-LD for agents | [Optimize docs for agents](/docs/build/optimize-docs-for-agents) |
-| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
+| Add local search or source-grounded answers | [Add search](/docs/build/add-search) |
+| Combine local folders, mounted folders, or remote git repos | [Configure docs sources](/docs/sources/configure-sources) |
+| Publish version-matched docs inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
+| Validate frontmatter, links, and nav in CI | [Validate in CI](/docs/build/validate-in-ci) |
