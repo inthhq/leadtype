@@ -1,5 +1,52 @@
 # leadtype
 
+## 0.2.0
+
+### Minor Changes
+
+- 8b84f60: Add `collections` config and `leadtype sync` for declarative multi-source docs (closes #42, #44).
+
+  - New `defineCollection({ repository?, ref?, cacheDir?, dir, prefix?, schema?, groups?, include?, exclude? })` helper, and `collections?: Record<string, DocsCollection>` on `DocsConfig`. Local-only collections omit `repository`; remote collections clone the repo at `ref` into `cacheDir` (default `.leadtype/sources/<repo-slug>@<ref>`). Multiple collections sharing a `(repository, ref)` pair share one clone.
+  - New `leadtype sync` command: `--refresh` re-fetches and fast-forwards, `--offline` errors on cache miss, `--repo <pat>` filters by repository URL substring. State tracked in `<cacheDir>/.leadtype-sync.json`.
+  - `leadtype generate` learns `--sync`, `--refresh`, `--offline` (mutually exclusive). Default behavior errors clearly when a remote cache is missing, naming the affected collection(s).
+  - New project-level config: `leadtype.config.{ts,js,mjs,cjs}` looked up in cwd before the legacy per-docs-dir `docs.config.*` path. Setting both top-level `groups` and `collections` is rejected at load.
+  - `leadtype lint` discovers `leadtype.config.ts` automatically and runs lint per collection, applying each collection's `schema` if set. Violations are prefixed with `[collection:<key>]`.
+  - `git`-not-installed surfaces as an actionable message instead of a raw `ENOENT`.
+
+  Legacy projects (single docs folder, top-level `groups` in `docs.config.ts`, `--docs-dir` flags) are unchanged — the legacy code path is byte-identical to before.
+
+  Known limitation: `leadtype sync` has no built-in timeout; a long network stall will hang the process. Track via `Ctrl-C` for now; a configurable per-operation timeout is planned.
+
+- aca9e8f: Add config-driven docs navigation with nested sections, explicit page placement,
+  wildcard includes, and root-relative page references.
+
+  `defineDocsConfig()` and `defineCollection()` now accept `nav`, which is used by
+  `resolveDocsNavigation()`, `llms.txt`, full-context generation, Agent
+  Readability, `AGENTS.md`, source navigation, and CLI generation. Frontmatter
+  `group` remains supported as taxonomy, validation metadata, and fallback
+  navigation for projects that have not adopted `nav`.
+
+  This also updates the example docs site and c15t example to dogfood root nav
+  nodes as top-level docs areas, with the active root node's pages and children
+  rendered as sidebar sections.
+
+- e923e9f: Add `leadtype/next` framework adapter and formalize the core/adapter boundary.
+
+  `leadtype/next` exposes three server-only helpers for Next.js App Router: `createGenerateStaticParams(...)`, `createLoadPageData(...)`, and `createDocsRouteHandler(...)`. The route handler wraps `createAgentMarkdownResponse` so a docs app can serve raw markdown, handle `Accept: text/markdown` negotiation, and detect AI user agents from a one-line `route.ts`. The companion `leadtype/next/client` subpath exports a `useLeadtypeSearch` React hook plus a framework-free `createSearchClient` factory that lazy-loads `search-index.json` / `search-content.json` and runs BM25 per keystroke.
+
+  `react` is now an optional peer dependency for `leadtype/next/client`. Server-only consumers never pull in React.
+
+  Documents the core/adapter boundary in a new `docs/reference/architecture` page: leadtype core has zero framework runtime deps, adapters live at flat `leadtype/<framework>` subpaths, and **no leadtype package — core or adapter — ever ships rendered DOM**. State primitives (hooks, composables, stores, handler factories) are allowed; `<SearchBox>`-style components are not. The docs also name the planned native adapter shapes for Nuxt, SvelteKit, Astro, TanStack Start, Vue search, and Svelte search without exporting those APIs yet. The boundary is now enforced by tests in `packages/leadtype/src/internal/package-surface.test.ts` that scan import graphs and fail if framework runtimes leak into core or one adapter imports from another.
+
+### Patch Changes
+
+- c7fcbf6: Add first-class docs i18n support with locale-aware generation, localized source loading, per-locale search/LLM/readability artifacts, and a new `leadtype/i18n` helper surface. Locale-scoped search generation now uses URL-path document ids to align generated indexes with the source API.
+- 844a94d: Default `<ExtractedTypeTable>` and `<AutoTypeTable>` path resolution to the Leadtype source root instead of `process.cwd()/docs`.
+
+  This fixes generated docs for source roots such as `.c15t` or `.leadtype`, where `path="./packages/..."` should resolve against the configured source root. Source-MDX consumers can now pass `typeTableBasePath` / `typeTableStrict` through `createDocsSource()` or use `createMdxSourcePlugins()` for bundler-level configuration. Failed type extraction now emits a visible warning by default and can fail generation in strict mode.
+
+  This changes the bare `mdxSourcePlugins` default for bundler consumers: when Leadtype can see the source MDX file path, it derives the base path from the first `docs` path segment instead of always using `process.cwd()/docs`. Projects that intentionally keep referenced TypeScript files under their docs folder should switch to `createMdxSourcePlugins({ typeTableBasePath: path.resolve(process.cwd(), "docs") })`.
+
 ## 0.1.2
 
 ### Patch Changes
