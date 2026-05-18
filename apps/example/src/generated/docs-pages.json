@@ -2,19 +2,6 @@
   {
     "slug": [
       "authoring",
-      "collections"
-    ],
-    "urlPath": "/docs/authoring/collections",
-    "title": "Collections",
-    "description": "Declare multi-source docs sets with defineCollection — local folders, git repos, and per-collection schemas.",
-    "relativePath": "authoring/collections",
-    "extension": ".mdx",
-    "groups": [],
-    "globKey": "../../../../../docs/authoring/collections.mdx"
-  },
-  {
-    "slug": [
-      "authoring",
       "components"
     ],
     "urlPath": "/docs/authoring/components",
@@ -57,8 +44,8 @@
       "build-a-docs-site"
     ],
     "urlPath": "/docs/build/build-a-docs-site",
-    "title": "Build a docs site",
-    "description": "Pick the right leadtype integration shape for your docs app, and what each path gives you.",
+    "title": "Build an agent-ready docs site",
+    "description": "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata.",
     "relativePath": "build/build-a-docs-site",
     "extension": ".mdx",
     "groups": [],
@@ -67,11 +54,24 @@
   {
     "slug": [
       "build",
+      "deploy-generated-artifacts"
+    ],
+    "urlPath": "/docs/build/deploy-generated-artifacts",
+    "title": "Deploy generated artifacts",
+    "description": "Serve Leadtype output on common framework and hosting combinations.",
+    "relativePath": "build/deploy-generated-artifacts",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/build/deploy-generated-artifacts.mdx"
+  },
+  {
+    "slug": [
+      "build",
       "framework-matrix"
     ],
     "urlPath": "/docs/build/framework-matrix",
     "title": "Framework integration matrix",
-    "description": "Use Leadtype with native-feeling recipes for Next, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.",
+    "description": "Use Leadtype with native-feeling recipes for Next, TanStack Start, Nuxt, Astro, SvelteKit, and Fumadocs.",
     "relativePath": "build/framework-matrix",
     "extension": ".mdx",
     "groups": [],
@@ -110,7 +110,7 @@
     ],
     "urlPath": "/docs/build/optimize-docs-for-agents",
     "title": "Optimize docs for agents",
-    "description": "Set up llms.txt, markdown mirrors, JSON-LD, sitemaps, robots.txt, and audit checks for an agent-readable docs site.",
+    "description": "Generate llms.txt, markdown mirrors, JSON-LD inputs, sitemaps, robots.txt, and agent-readability.json from one CLI run.",
     "relativePath": "build/optimize-docs-for-agents",
     "extension": ".mdx",
     "groups": [],
@@ -119,11 +119,24 @@
   {
     "slug": [
       "build",
+      "serve-agent-responses"
+    ],
+    "urlPath": "/docs/build/serve-agent-responses",
+    "title": "Serve agent responses",
+    "description": "Wire markdown responses, JSON-LD, sitemap, and robots into your framework using the generated agent-readability.json manifest.",
+    "relativePath": "build/serve-agent-responses",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/build/serve-agent-responses.mdx"
+  },
+  {
+    "slug": [
+      "build",
       "use-the-source-primitive"
     ],
     "urlPath": "/docs/build/use-the-source-primitive",
     "title": "Use the source primitive",
-    "description": "Wire createDocsSource into Next, Astro, Vite, Nuxt, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
+    "description": "Wire createDocsSource into Next, TanStack Start, Nuxt, Astro, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes.",
     "relativePath": "build/use-the-source-primitive",
     "extension": ".mdx",
     "groups": [],
@@ -171,7 +184,7 @@
     "slug": [],
     "urlPath": "/docs",
     "title": "Leadtype",
-    "description": "One MDX source. Hosted docs artifacts, package-bundled AGENTS.md, and search output from the same pipeline.",
+    "description": "Build agent-ready docs from MDX: rendered pages, llms.txt, markdown mirrors, search output, and package-bundled AGENTS.md from the same source.",
     "relativePath": "index",
     "extension": ".mdx",
     "groups": [],
@@ -208,7 +221,7 @@
     ],
     "urlPath": "/docs/quickstart",
     "title": "Quickstart",
-    "description": "Install leadtype, author your first MDX page, and create a source. Then plug it into whatever framework you're using.",
+    "description": "Build an agent-ready docs site from one MDX page: render it, generate llms.txt and markdown mirrors, then verify the output.",
     "relativePath": "quickstart",
     "extension": ".mdx",
     "groups": [],
@@ -343,5 +356,31 @@
     "extension": ".mdx",
     "groups": [],
     "globKey": "../../../../../docs/reference/source.mdx"
+  },
+  {
+    "slug": [
+      "sources",
+      "collections"
+    ],
+    "urlPath": "/docs/sources/collections",
+    "title": "Collections reference",
+    "description": "Detailed defineCollection behavior for multi-source docs: local folders, git repos, filters, schemas, and per-collection navigation.",
+    "relativePath": "sources/collections",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/sources/collections.mdx"
+  },
+  {
+    "slug": [
+      "sources",
+      "configure-sources"
+    ],
+    "urlPath": "/docs/sources/configure-sources",
+    "title": "Configure docs sources",
+    "description": "Choose where Leadtype reads MDX from: one local docs folder, multiple mounted folders, or remote git collections pinned to a branch, tag, or commit.",
+    "relativePath": "sources/configure-sources",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/sources/configure-sources.mdx"
   }
 ]
