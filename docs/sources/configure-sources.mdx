@@ -1,0 +1,203 @@
+---
+title: "Configure docs sources"
+description: "Choose where Leadtype reads MDX from: one local docs folder, multiple mounted folders, or remote git collections pinned to a branch, tag, or commit."
+---
+
+# Configure docs sources
+
+Leadtype can read from one local docs folder, multiple local folders, or remote git repositories. Start with the simplest shape that matches your docs ownership model, then move to collections when each source needs its own URL prefix, git checkout, filters, or schema.
+
+## Pick the right source shape
+
+| Shape | Use when | Configure with |
+| --- | --- | --- |
+| One docs folder | Docs live beside the app or package that publishes them. | `docs/docs.config.ts` + `leadtype generate --src .` |
+| Multiple local folders | Related content lives in sibling folders, such as `docs/` and `changelog/`. | Repeated `--docs-dir` flags |
+| Collections | Sources need separate prefixes, filters, schemas, or remote git acquisition. | Project-level `leadtype.config.ts` |
+
+Use one docs folder for the GA happy path. Use collections when the docs site is a hub for content owned by more than one repo, package, framework, or release stream.
+
+## One local docs folder
+
+Put MDX under `docs/` and product/nav metadata in `docs/docs.config.ts`:
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My product",
+    summary: "Developer tools for modern apps.",
+    bestStartingPoints: [{ urlPath: "/docs" }, { urlPath: "/docs/quickstart" }],
+  },
+  nav: [
+    { title: "Start", pages: ["", "quickstart"] },
+    { title: "Guides", pages: [{ include: "guides/*" }] },
+    { title: "Reference", pages: [{ include: "reference/*" }] },
+  ],
+});
+```
+
+Then generate:
+
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com
+```
+
+This reads `./docs`, writes website artifacts to `public`, and exposes pages under `/docs`.
+
+## Multiple local folders
+
+Repeat `--docs-dir` when a single source repo keeps agent-readable content outside the main docs folder:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --docs-dir docs \
+  --docs-dir changelog \
+  --out public \
+  --base-url https://example.com
+```
+
+The first folder becomes the generated docs root. Additional folders are nested under their folder name, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1`.
+
+Mount a folder at its own public URL prefix when it should not appear under `/docs`:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --docs-dir docs \
+  --docs-dir changelog=/changelog \
+  --out public \
+  --base-url https://example.com
+```
+
+Leadtype still keeps an internal generated copy for search and agent helpers, but canonical links, sitemap entries, and agent metadata point to `/changelog/v1`.
+
+## Collections
+
+Use collections when each source needs explicit ownership. Collections live in a project-level `leadtype.config.ts` at the directory passed to `--src`.
+
+```ts title="leadtype.config.ts"
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My product",
+    summary: "Developer tools for modern apps.",
+  },
+  collections: {
+    docs: defineCollection({
+      dir: "./docs",
+      prefix: "/docs",
+      nav: [{ title: "Start", pages: ["", "quickstart"] }],
+    }),
+    changelog: defineCollection({
+      dir: "./changelog",
+      prefix: "/changelog",
+      include: ["*.mdx"],
+    }),
+  },
+});
+```
+
+Run the same site-mode generate command:
+
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com
+```
+
+When `leadtype.config.ts` defines `collections`, the collection map fully describes the sources. Do not combine collections with `--docs-dir`.
+
+## Remote git sources
+
+Set `repository` to make a collection remote. Pin `ref` to the version you want: a branch for moving docs, a tag for release docs, or a commit SHA for fully reproducible output.
+
+```ts title="leadtype.config.ts"
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+const sdkDocs = {
+  repository: "https://github.com/acme/sdk",
+  ref: "v2.4.0",
+  cacheDir: ".docs-src/sdk",
+} as const;
+
+export default defineDocsConfig({
+  product: {
+    name: "Acme",
+    summary: "Docs for Acme SDKs and platform APIs.",
+  },
+  collections: {
+    platform: defineCollection({
+      dir: "./docs",
+      prefix: "/docs",
+    }),
+    sdk: defineCollection({
+      ...sdkDocs,
+      dir: "docs",
+      prefix: "/docs/sdk",
+      include: ["quickstart.mdx", "guides/**", "reference/**"],
+      exclude: ["**/internal/**"],
+    }),
+  },
+});
+```
+
+Sync the remote source before generating:
+
+```bash
+npx leadtype sync --src .
+npx leadtype generate --src . --out public --base-url https://example.com
+```
+
+Or clone missing caches and generate in one command:
+
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com --sync
+```
+
+## Pinning strategy
+
+| `ref` value | Best for | Sync behavior |
+| --- | --- | --- |
+| Branch, such as `main` | Preview docs that should move with the source repo. | Shallow clone or fetch that branch. Use `--refresh` when you want latest commits. |
+| Tag, such as `v2.4.0` | Release docs that should match a published version. | Clone that tag. Update the config to move releases. |
+| Commit SHA | Fully reproducible builds and audits. | Checkout that exact commit. Use a 7-40 character SHA. |
+
+For CI, use tags or commit SHAs when the generated docs must be reproducible. Use branches for preview environments or docs hubs that intentionally track the latest upstream content.
+
+## Sync modes
+
+| Command | Network behavior | Use when |
+| --- | --- | --- |
+| `leadtype sync` | Clones missing remote caches only. | Local setup and CI steps before generate. |
+| `leadtype sync --refresh` | Re-fetches and fast-forwards existing caches. | You track a branch and want new upstream commits. |
+| `leadtype generate` | Does not clone. Fails if a remote cache is missing or stale. | CI already ran `leadtype sync`. |
+| `leadtype generate --sync` | Clones missing caches before generation. | You want one command for setup and generate. |
+| `leadtype generate --offline` | Never touches the network. | Hermetic or air-gapped builds. |
+
+Each synced repo gets a `.leadtype-sync.json` manifest in its cache directory. Leadtype reads that manifest during generate so stale or missing remote sources fail loudly instead of silently producing docs from the wrong revision.
+
+## Package bundle filters
+
+For npm package docs, use `--bundle` and filter to the docs that belong to that package:
+
+```bash
+npx leadtype generate \
+  --bundle \
+  --src . \
+  --out packages/react \
+  --include "frameworks/react/**" \
+  --include "shared/**" \
+  --exclude "**/internal/**"
+```
+
+Bundle mode writes `AGENTS.md` and `docs/*.md` into the package. See [Bundle docs into a package](/docs/package-docs/bundle) for the full publish flow.
+
+## What to read next
+
+<Cards>
+  <Card title="Build a docs site" description="Choose the source primitive or static artifact path." href="/docs/build/build-a-docs-site" />
+  <Card title="Generate static artifacts" description="Run the site-mode CLI in a build pipeline." href="/docs/build/generate-static-artifacts" />
+  <Card title="CLI reference" description="Every generate, sync, and lint flag." href="/docs/reference/cli" />
+</Cards>
