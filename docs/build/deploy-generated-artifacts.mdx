@@ -101,6 +101,8 @@ Generate into `public` before the TanStack Start build. The example app uses the
 Keep page loading in route code and artifact serving in server middleware:
 
 ```ts title="server/middleware/agent-readability.ts"
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { eventHandler, getHeaders, getRequestURL } from "h3";
 import manifestJson from "../public/docs/agent-readability.json" with {
   type: "json",
@@ -108,9 +110,28 @@ import manifestJson from "../public/docs/agent-readability.json" with {
 import {
   createAgentMarkdownResponse,
   normalizeAgentReadabilityManifest,
+  type MarkdownMirrorTarget,
 } from "leadtype/llm/readability";
 
 const manifest = normalizeAgentReadabilityManifest(manifestJson);
+
+async function readMarkdownFile(
+  target: MarkdownMirrorTarget
+): Promise<string | null> {
+  try {
+    return await readFile(join(process.cwd(), "public", target.filePath), "utf8");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error.code === "ENOENT" || error.code === "ENOTDIR")
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
 
 export default eventHandler((event) =>
   createAgentMarkdownResponse({

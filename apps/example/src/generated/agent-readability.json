@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-18T04:04:33.699Z",
+  "generatedAt": "2026-05-18T04:21:03.063Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -76,7 +76,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/deploy-generated-artifacts.md",
       "relativePath": "build/deploy-generated-artifacts",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:32.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "build/deploy-generated-artifacts"
     },
     {
@@ -148,7 +148,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
     {
@@ -220,7 +220,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "quickstart"
     },
     {
@@ -232,7 +232,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/architecture.md",
       "relativePath": "reference/architecture",
       "groups": [],
-      "lastModified": "2026-05-17T01:22:57.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "reference/architecture"
     },
     {
@@ -376,7 +376,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/configure-sources.md",
       "relativePath": "sources/configure-sources",
       "groups": [],
-      "lastModified": "2026-05-18T03:52:44.000Z",
+      "lastModified": "2026-05-18T04:05:16.000Z",
       "logicalPath": "sources/configure-sources"
     }
   ],
