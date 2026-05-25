@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-haiku-4-5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The answer explains llms.txt is a website convention with absolute URLs requiring a base URL (wrong inside a tarball), explains AGENTS.md works offline in node_modules with version-locked docs, and states --bundle skips llms.txt and llms-full.txt plus search indices. It doesn't mention sitemap/robots, but the rubric only requires llms.txt and llms-full.txt at minimum. The response doesn't explicitly emphasize 'relative links' for AGENTS.md but does convey the offline/disk-based equivalent.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 26843,
+  "outputTokens": 299,
+  "durationMs": 36013,
+  "steps": 15,
+  "errors": []
+}

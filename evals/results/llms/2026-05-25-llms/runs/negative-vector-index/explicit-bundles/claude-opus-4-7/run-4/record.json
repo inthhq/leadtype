@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local lexical BM25 index with no database, and explains embeddings are opt-in later additions triggered by vocabulary mismatch or large corpus size. All three required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 4655,
+  "outputTokens": 250,
+  "durationMs": 23850,
+  "steps": 5,
+  "errors": []
+}

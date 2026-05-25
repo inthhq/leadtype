@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object describing generated artifacts and names the required output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also includes searchIndex, searchContent, sitemap, and robots fields as bonus. However, it invents some field names like 'agentReadabilityJson' (rubric says 'agentReadabilityManifest'), 'sitemapMd', and uses 'sitemapXml' instead of generic sitemap — minor inventions. It also omits the --bundle mode and doesn't mention mode/source/output dirs/product/groups, but those aren't required.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2594,
+  "outputTokens": 257,
+  "durationMs": 19068,
+  "steps": 5,
+  "errors": []
+}

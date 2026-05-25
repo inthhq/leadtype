@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`, `leadtype/llm`) and names the relevant APIs including `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd`. It explicitly steers away from the Search docs. It also correctly describes `/llms-full.txt` as a fallback used when smaller/page-level topic files are insufficient, rather than as the default.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 5269,
+  "outputTokens": 305,
+  "durationMs": 40949,
+  "steps": 6,
+  "errors": []
+}

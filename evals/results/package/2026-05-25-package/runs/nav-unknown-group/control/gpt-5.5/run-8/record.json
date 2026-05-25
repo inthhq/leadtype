@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 82,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response identifies nav as the curated driver of sidebar and agent-facing navigation, correctly describes group as legacy/fallback taxonomy metadata, and states that unknown group slugs cause build failure with an error and non-zero exit. The nuance about validation being tied to a `groups` config (rather than `nav`) is a slight deviation from the rubric's framing but doesn't contradict the required points. Mentions of llms.txt/AGENTS.md specifically are somewhat light but the agent-facing maps/indexes are covered generally.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 58339,
+  "outputTokens": 65,
+  "durationMs": 62111,
+  "steps": 12,
+  "errors": []
+}

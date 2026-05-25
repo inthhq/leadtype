@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping (required point 1 met). It clearly states `/llms-full.txt` is a single monolithic file with all pages concatenated and not split by group (required point 2 met). It names multiple valid optional fields including `deprecated`, `icon`, `experimental`, `canary`, `new`, `draft`, `tags`, `full`, `lastModified`, `lastAuthor` (required point 3 met). Minor concern: `deprecatedReason` and `availableIn` may be invented, but the response includes plenty of valid fields alongside them.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3420,
+  "outputTokens": 430,
+  "durationMs": 31566,
+  "steps": 4,
+  "errors": []
+}

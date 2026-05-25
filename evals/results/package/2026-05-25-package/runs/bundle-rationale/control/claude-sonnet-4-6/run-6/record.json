@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains llms.txt is an HTTP/website convention requiring absolute URLs and a live origin (and notes agents don't look for it in node_modules); it explains AGENTS.md is filesystem-first, works offline, and is version-matched; and it lists --bundle as skipping llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability artifacts.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 28147,
+  "outputTokens": 467,
+  "durationMs": 43780,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`) and mentions `generateLLMFullContextFiles` as the right place for agent-facing output APIs, and does not route the user to the Search UI. It also correctly explains that `/llms-full.txt` is a fallback used when page-level links are insufficient, not the default. Both required rubric points are satisfied, though the response slightly muddies things by listing Search as part of the Reference section.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 4396,
+  "outputTokens": 167,
+  "durationMs": 25151,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 98,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response names the helper exactly as `isAgentReadabilityArtifactPath` and accurately describes it as covering the artifact paths to skip: llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json. All required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3812,
+  "outputTokens": 281,
+  "durationMs": 20267,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that `--json` prints a JSON object to stdout describing the generation run, and names the required output-path fields (`llmsTxt`, `docsLlmsTxt`, `llmsFullTxt`). It also mentions search index, sitemap, robots, and bundle mode behavior. However, it invents some field names not in the rubric (e.g., `agentReadabilityJson` instead of `agentReadabilityManifest`, `sitemapMd`), and misses top-level fields like mode/source/output dirs/product/groups and the `files` map structure. Still satisfies the required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 5088,
+  "outputTokens": 256,
+  "durationMs": 24859,
+  "steps": 4,
+  "errors": []
+}

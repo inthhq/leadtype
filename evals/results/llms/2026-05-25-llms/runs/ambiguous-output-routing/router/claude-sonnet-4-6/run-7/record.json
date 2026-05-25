@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (leadtype/llm) with the right API names including generateLLMFullContextFiles, and does not route the user to Search APIs. It explicitly explains that /llms-full.txt is a fallback to use when topic/page-level files are insufficient, matching the rubric. Minor omission: generateAgentReadabilityArtifacts is not mentioned (lists isAgentReadabilityArtifactPath instead), but this is not strictly required.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 4211,
+  "outputTokens": 516,
+  "durationMs": 39488,
+  "steps": 7,
+  "errors": []
+}

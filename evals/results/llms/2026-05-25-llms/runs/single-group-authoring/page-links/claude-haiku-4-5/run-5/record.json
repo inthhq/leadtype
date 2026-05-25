@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains group organizes navigation, llms.txt sections, search metadata, and AGENTS.md; it characterizes /llms-full.txt as monolithic and not split by group; and it names multiple valid optional frontmatter fields (deprecated, experimental, canary, new, draft, tags, full, icon, lastModified, lastAuthor). The primary highlighted field 'description' isn't on the rubric's list, but 'deprecated' is valid and many other valid fields are listed.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3110,
+  "outputTokens": 230,
+  "durationMs": 16794,
+  "steps": 4,
+  "errors": []
+}

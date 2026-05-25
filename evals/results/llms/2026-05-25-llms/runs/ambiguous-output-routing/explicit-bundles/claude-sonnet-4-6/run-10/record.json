@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) with the agent-facing APIs including `generateLLMFullContextFiles`, and explicitly contrasts this with the Search docs as a separate concern. It also correctly frames `/llms-full.txt` as a fallback for when scoped/page-level bundles are insufficient, quoting the 'smallest bundle' principle. Both required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 4305,
+  "outputTokens": 413,
+  "durationMs": 44021,
+  "steps": 5,
+  "errors": []
+}

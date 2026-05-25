@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response uses the required mount syntax `--docs-dir changelog=/changelog`, repeated alongside `--docs-dir docs`. It correctly states the canonical URL is under `/changelog/...` (e.g., `https://example.com/changelog/v1`), and clearly describes both the internal staged copy at `public/docs/changelog/v1.md` (for search) and the public mirror at `public/changelog/v1.md`. Minor deviation: the canonical URL is given without the `.md` suffix, but this is a reasonable interpretation and the rubric's example is illustrative.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 38412,
+  "outputTokens": 575,
+  "durationMs": 85910,
+  "steps": 15,
+  "errors": []
+}

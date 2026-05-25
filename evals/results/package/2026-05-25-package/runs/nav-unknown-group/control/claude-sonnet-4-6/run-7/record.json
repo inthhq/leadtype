@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 15,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The agent's response directly contradicts the rubric on the critical point about unknown group slugs. The rubric states the build must FAIL with an 'unknown group' error, but the agent explicitly claims 'There is no error and no build failure' and describes it as a 'silent demotion, not a fatal error.' This matches the rubric's 'Incorrect if' clause ('Says an unknown group is silently ignored, dropped, or only warned'). While the agent correctly identifies nav as the curated driver and group as legacy/fallback taxonomy, the failure on the required build-failure point makes this incorrect.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 18,
+  "inputTokens": 50100,
+  "outputTokens": 816,
+  "durationMs": 108547,
+  "steps": 12,
+  "errors": []
+}

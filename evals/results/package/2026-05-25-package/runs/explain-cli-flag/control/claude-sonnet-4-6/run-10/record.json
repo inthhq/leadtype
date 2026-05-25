@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The ANSWER.md names both required fields (`lastModified` and `lastAuthor`), states they are added to frontmatter, and attributes the values to git history (via `git log`). All required rubric points are satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 30638,
+  "outputTokens": 313,
+  "durationMs": 32165,
+  "steps": 5,
+  "errors": []
+}

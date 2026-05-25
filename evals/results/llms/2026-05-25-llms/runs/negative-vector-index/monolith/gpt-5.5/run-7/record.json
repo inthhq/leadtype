@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local BM25 lexical index without a database, and explains embeddings are added later only when vocabulary mismatches occur or corpus grows large. All three required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2097,
+  "outputTokens": 6,
+  "durationMs": 10527,
+  "steps": 4,
+  "errors": []
+}

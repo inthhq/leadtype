@@ -1,50 +1,83 @@
 ---
 title: "Evals"
-description: "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults."
+description: "How Leadtype measures whether bundling agent docs actually helps coding agents — and how the llms.txt defaults were chosen."
 ---
 
 # Evals
 
-Read this if you want to know how the default `llms.txt` + `llms-full.txt` shape was chosen, or if you're proposing a change to the agent-facing artifact set. The eval results below set the defaults documented elsewhere.
+Leadtype treats agent-facing docs as **behavior**, not just files on disk. The repo ships two eval harnesses (under `evals/`) that run real coding agents against generated artifacts and grade them with an independent LLM judge.
 
-Leadtype treats agent-facing docs as behavior, not just files on disk. The repo includes eval harnesses that run real models against generated artifacts and check both the final answer and which context files the agent actually read.
+Read this if you want the evidence behind two claims: that **bundling docs into a package measurably helps coding agents**, and that the default `llms.txt` + `llms-full.txt` shape is the one that routes agents most reliably.
 
-## What we benchmark
+## How the harness works
 
-| Benchmark | Files under test | What it checks |
-| --- | --- | --- |
-| Package docs | `AGENTS.md` + `docs/*.md` | Installs a packed leadtype tarball into a sandbox project and checks whether coding agents discover `node_modules/leadtype/AGENTS.md`, read the right markdown topic, and complete the task. |
-| Hosted docs | `llms.txt` + markdown mirrors + `llms-full.txt` variants | Simulates a hosted docs web root as local files. Agents start at `/llms.txt`, then choose page-level markdown, root `llms-full.txt`, or experimental grouped/router formats depending on the variant under test. |
+Each eval is one **cell** — a fixture (task) × arm × model — run 10 times. A run:
 
-The hosted-docs benchmark uses the same corpus for every variant:
-quickstart, how-it-works, frontmatter, components, build-a-docs-site,
-source configuration, package-docs bundle, CLI, LLM bundles, and Search. Those
-pages are split across the GA docs journey: Start, Build an Agent-Ready Site,
-Docs Sources, Package Docs for Agents, Author Content, and Reference.
+1. Spins up an isolated temp project and `npm install`s a packed `leadtype` tarball, so `node_modules/leadtype/` looks like a real install.
+2. Lets the agent work with a small set of path-scoped tools (`read`, `write`, `list`, `glob`, `grep`, and a narrow `npm`). No shell, no network beyond the model call.
+3. Sends the agent's answer (and any files it wrote) to an **LLM judge** (`claude-opus-4-7`), which grades it against a per-fixture rubric and returns pass/fail + a 0–100 score. The judge is the headline metric; "did the agent read our files" is tracked separately as supporting evidence.
 
-| Variant | Root `/llms.txt` pattern | Full-context content pattern |
-| --- | --- | --- |
-| Page-level `.md` links | Lists every page-level `/docs/*.md` link grouped by section. | No full-context file is part of the intended path. |
-| Explicit group bundle links | Links directly to `/docs/llms-full/<group>.txt` files. | Each group bundle contains only the pages in that group. |
-| Root `llms-full.txt` monolith | Links to one root `/llms-full.txt`. | Root `llms-full.txt` contains every generated markdown page flattened into one file. |
-| Root `llms-full.txt` router | Links to root `/llms-full.txt`. | Root `llms-full.txt` is only a router: it links to `/docs/llms-full/<group>.txt`; each group bundle contains that group's pages. |
-| Section `llms.txt` indexes | Links to `/docs/<group>/llms.txt` section indexes. | Each section index links page-level markdown first, plus an optional `/docs/llms-full/<group>.txt` group bundle. |
+Pass rates are reported with a **Wilson 95% confidence interval**, and every run's transcript, judge verdict, and produced files are archived under `evals/results/` for inspection. The numbers below are from the `2026-05-25` run: **4 models × 10 runs per cell**, judged by Opus.
 
-## What we learned
+## Does bundling docs help? (package benchmark)
 
-In the hosted-docs benchmark, monolithic `/llms-full.txt` was the only tested format that passed all six fixtures on both Claude Opus 4.7 and GPT-5.5.
+The package benchmark answers the core question directly with an A/B test:
 
-| Variant | Claude&nbsp;Opus&nbsp;4.7 | GPT&#8209;5.5 | Readout |
+- **Treatment** — the installed `leadtype` ships its bundled `AGENTS.md` + `docs/*.md`.
+- **Control** — those files are stripped from the installed package (along with `dist/*.map` source maps, which would otherwise leak the original commented source). The compiled JS — including the CLI's `--help` text — and the `.d.ts` types stay. This is an honest "a package that simply didn't bundle agent docs" baseline, **not** "an agent with no information."
+
+Across six tasks, bundling docs lifts task success on **every** model, and the gain is largest on the smaller, cheaper models that most agents actually run on:
+
+| Model | With bundled docs | Without (control) | Lift |
 | --- | --- | --- | --- |
-| Root `llms-full.txt` monolith | 6/6 | 6/6 | Most reliable tested fallback. |
-| Page-level `.md` links | 4/6 | 5/6 | Cheap and natural, but not always enough for synthesis tasks. |
-| Root `llms-full.txt` router | 5/6 | 4/6 | Promising, but model-dependent. |
-| Section `llms.txt` indexes | 4/6 | 5/6 | Promising, but adds more public artifacts. |
-| Explicit group bundle links | 2/6 | 4/6 | Agents often answered correctly without following the intended bundle links. |
+| `claude-haiku-4-5` | 100% | 75% | **+25 pts** |
+| `claude-sonnet-4-6` | 100% | 85% | **+15 pts** |
+| `gpt-5.5` | 98% | 88% | **+10 pts** |
+| `claude-opus-4-7` | 100% | 95% | **+5 pts** |
 
-The stricter context-selection check matters: a model can answer correctly from `/llms.txt` summaries or prior knowledge, but that does not prove a proposed artifact shape made it choose the right context. A full pass means the model answered correctly *and* followed the intended context path for that variant.
+(Pooled over all fixtures, n = 60 runs per cell. `claude-opus-4-7` is also the judge, so read its row with that caveat.)
 
-## Current default
+### Where the lift comes from
+
+The per-fixture breakdown is more interesting than the average. Bundled docs matter most for **non-obvious behavior the compiled package can't self-document**, and they prevent the most dangerous failure mode: **confident wrong answers**.
+
+- **`nav-unknown-group`** — "what happens if a page declares a `group` the config doesn't know?" Without docs, agents confidently assert the *wrong* answer (control passed just **10–20%** on Sonnet/Haiku); with docs, **100%**. This single behavioral gotcha drives most of the lift.
+- **`search-when-embeddings`** — the specific thresholds for adding embeddings live only in prose; GPT‑5.5 control passed **50%**, treatment **100%**.
+- **`custom-generate-script`** / **`bundle-rationale`** — Haiku gained +30 / +20; stronger models inferred these from types and conventions.
+
+And, importantly, two fixtures show **~0 lift on every model**: `explain-cli-flag` and `mounted-changelog-urls`. Their answers are baked into the CLI's `--help` output, so a capable agent recovers them without docs. We keep these in the suite on purpose — they show the benchmark isn't cherry-picked, and they pin down where bundling docs *doesn't* pay off (flag-lookup questions a self-documenting CLI already answers).
+
+**Takeaway for library authors:** bundling docs is cheapest and most valuable as insurance against agents confidently guessing wrong about your library's non-obvious behavior — and the payoff is largest for the smaller models a lot of coding agents run on. It adds little for facts your CLI already self-documents.
+
+## Which llms.txt shape routes agents best? (hosted-docs benchmark)
+
+The hosted-docs benchmark simulates a hosted docs web root as local files. Agents start at `/llms.txt` and follow links; a "pass" means the judge marked the answer correct, and **context match** means the agent actually read the context path the variant intends (not just answered from `/llms.txt` summaries or prior knowledge). A shape only earns trust when both are high.
+
+The same corpus is tested against five artifact shapes:
+
+| Variant | Root `/llms.txt` pattern |
+| --- | --- |
+| Page-level `.md` links | Lists every page-level `/docs/*.md` link grouped by section. |
+| Explicit group bundles | Links each `/docs/llms-full/<group>.txt` topic bundle directly. |
+| Root `llms-full.txt` monolith | Links one root `/llms-full.txt` containing every page flattened. |
+| Root `llms-full.txt` router | Links a root `/llms-full.txt` that itself routes to per-group bundles. |
+| Section `llms.txt` indexes | Links `/docs/<group>/llms.txt` section indexes. |
+
+### What we found
+
+Across 1,200 runs, **pass rate saturates** — every shape scores 95–100%, because the corpus is small and capable models often answer correctly from the `/llms.txt` summaries alone. So pass rate doesn't discriminate; **context match does**. Ranges below are across all four models:
+
+| Variant | Pass | Context match | Avg wrong-group reads |
+| --- | --- | --- | --- |
+| Page-level `.md` links | 100% | **82–100%** | 0.00 |
+| Root `llms-full.txt` monolith | 95–100% | **77–100%** | 0.00 |
+| Section `llms.txt` indexes | 98–100% | **75–88%** | 0.00–0.12 |
+| Explicit group bundles | 97–100% | **8–35%** | 0.62–1.77 |
+| Root `llms-full.txt` router | 98–100% | **7–40%** | 0.65–1.37 |
+
+`page-links` and `monolith` are the only shapes agents reliably *use as intended* — high context match on every model, no stray reads. `section-indexes` is close behind but adds more public artifacts. `explicit-bundles` and `router` look fine on pass rate but **agents don't follow their intended path**: context match collapses to 7–40% and they read the wrong group bundle ~0.6–1.8 times per run. The extra structure doesn't earn its keep — models either answer from the `/llms.txt` summary or grab whatever bundle looks closest.
+
+## Current defaults
 
 Leadtype keeps the public website artifact set small:
 
@@ -55,18 +88,17 @@ public/
 └── docs/*.md
 ```
 
-`/llms.txt` routes agents to page-level markdown first. `/llms-full.txt` is the broad all-docs fallback when page links are not enough. Groups still organize navigation, `llms.txt` sections, search metadata, and `AGENTS.md`; they are not published as per-group full-context files by default.
+`/llms.txt` routes agents to page-level markdown first; `/llms-full.txt` is the broad all-docs fallback when page links aren't enough. Groups still organize navigation, `llms.txt` sections, search metadata, and `AGENTS.md`; they aren't published as per-group full-context files by default.
 
-## Open question
-
-The current benchmark uses a small docs corpus. Larger projects may suffer from a monolithic `llms-full.txt` because of token cost or truncation. Keep grouped and section-index variants in the eval harness so larger-corpus benchmarks can revisit that tradeoff before adding more default public artifacts.
+For packages, `leadtype generate --bundle` ships `AGENTS.md` + `docs/*.md` inside the tarball — the package benchmark above is the evidence that this is worth doing.
 
 ## Run the evals
 
-The detailed harness docs live in the repository's `evals/README.md`.
-
 ```bash
 cd evals
-bun run evals
-bun run evals:llms -- --model gpt-5.5
+bun install && bun run pack-leadtype
+bun run evals:full       # package benchmark, 4 models × 10 runs
+bun run evals:llms:full  # hosted-docs benchmark, 4 models × 10 runs
 ```
+
+The detailed harness docs live in `evals/README.md`.

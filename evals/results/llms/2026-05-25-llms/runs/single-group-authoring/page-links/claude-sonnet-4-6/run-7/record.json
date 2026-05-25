@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, llms.txt sections, search metadata, and AGENTS.md grouping. It correctly characterizes `/llms-full.txt` as a monolithic, all-docs concatenated file that is not split by group. It names multiple valid optional frontmatter fields including `deprecated`, `icon`, `experimental`, `canary`, `new`, `draft`, `tags`, `full`, `lastModified`, and `lastAuthor`. The `description` field is not in the rubric's list but the other fields more than satisfy the two-field requirement.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4099,
+  "outputTokens": 392,
+  "durationMs": 37891,
+  "steps": 5,
+  "errors": []
+}

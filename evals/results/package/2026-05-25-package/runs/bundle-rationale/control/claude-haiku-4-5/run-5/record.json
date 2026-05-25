@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains llms.txt uses absolute URLs and is for hosted websites (unsuitable for tarball), explains AGENTS.md uses relative paths and works offline/version-matched, and correctly states --bundle skips llms.txt, llms-full.txt, search index, sitemap, and robots.txt.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 10450,
+  "outputTokens": 216,
+  "durationMs": 22380,
+  "steps": 10,
+  "errors": []
+}

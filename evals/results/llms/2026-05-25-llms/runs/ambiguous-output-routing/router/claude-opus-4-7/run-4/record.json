@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "variant": "router",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM reference area (`/docs/reference/llm.md`) with the agent-facing output APIs including `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd`, and explicitly directs the user away from the Search docs. It also explains `/llms-full.txt` as a fallback/router rather than the primary path, used when topic files are insufficient or span multiple topics. Both required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 4736,
+  "outputTokens": 299,
+  "durationMs": 33201,
+  "steps": 5,
+  "errors": []
+}

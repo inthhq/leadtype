@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": false,
+  "score": 45,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response identifies the Reference/LLM files area which partially aligns with the rubric, and correctly characterizes /llms-full.txt as a fallback for when page-level routing is insufficient. However, it fails to name the specific generator APIs (generateLlmsTxt, generateLLMFullContextFiles, generateAgentReadabilityArtifacts, generateAgentsMd) that the rubric requires. Additionally, it muddies the answer by including 'Search artifacts' as part of the agent-facing APIs, which conflicts with the rubric's requirement to not route the user toward Search.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 4087,
+  "outputTokens": 236,
+  "durationMs": 21654,
+  "steps": 8,
+  "errors": []
+}

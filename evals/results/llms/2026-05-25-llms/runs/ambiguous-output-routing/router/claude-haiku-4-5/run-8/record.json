@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "router",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (/docs/reference/llm.md) and names generateLLMFullContextFiles and related APIs, explicitly noting this is 'not search UI'. It also correctly frames /llms-full.txt as a fallback used when topic-specific routing/page-level links are insufficient, rather than as the primary path. Both required points are met, though the fallback explanation is framed slightly more around 'routing failure' than 'page-level llms.txt markdown links not enough', it still conveys the fallback nature correctly.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 13,
+  "inputTokens": 4820,
+  "outputTokens": 236,
+  "durationMs": 30177,
+  "steps": 14,
+  "errors": []
+}

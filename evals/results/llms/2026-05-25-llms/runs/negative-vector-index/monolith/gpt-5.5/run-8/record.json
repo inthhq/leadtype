@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No to the hosted DB-backed vector index question, identifies the default as a static local BM25 lexical index that is database-free, and explains embeddings are added later when vocabulary mismatch occurs or corpus grows. It doesn't explicitly state embeddings layer on top rather than replace the lexical index, but this is not strictly required.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2093,
+  "outputTokens": 13,
+  "durationMs": 9519,
+  "steps": 4,
+  "errors": []
+}

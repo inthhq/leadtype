@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (/docs/reference/llm.md) with the relevant APIs including generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd as the right place. It explicitly contrasts this with the Search docs, saying that is NOT what the user wants. It also correctly describes /llms-full.txt as a fallback/router used when smaller topic files don't suffice (i.e., when page-level links are insufficient), not as the primary path. Both required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 5043,
+  "outputTokens": 301,
+  "durationMs": 33856,
+  "steps": 6,
+  "errors": []
+}

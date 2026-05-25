@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that `--json` prints a JSON object describing generated artifacts and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt), plus additional ones like searchIndex, searchContent, sitemap, robots. However, it uses `agentReadabilityJson` instead of `agentReadabilityManifest`, and invents `sitemapMd` which isn't in the rubric's listed fields. It also omits the `--bundle` mode shape. Required points are satisfied but minor invented/misnamed fields slightly weaken it.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3472,
+  "outputTokens": 151,
+  "durationMs": 8947,
+  "steps": 4,
+  "errors": []
+}

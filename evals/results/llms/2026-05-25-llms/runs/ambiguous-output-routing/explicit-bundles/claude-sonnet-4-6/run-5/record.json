@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with generateLLMFullContextFiles and related APIs) as the right place for agent-facing output APIs and explicitly steers away from the Search reference. It also describes /llms-full.txt as a fallback used when scoped/page-level bundles are insufficient. It doesn't explicitly mention generateAgentReadabilityArtifacts and frames the fallback condition slightly differently (multi-section vs. page-level links insufficient), but the core required points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 4,
+  "toolCalls": 7,
+  "inputTokens": 5149,
+  "outputTokens": 446,
+  "durationMs": 39522,
+  "steps": 5,
+  "errors": []
+}

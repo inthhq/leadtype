@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "All three required points are satisfied: nav is identified as the curated driver of sidebar, llms.txt, AGENTS.md grouping, and sitemap; group is described as legacy/optional, useful for fallback navigation and search facets/taxonomy; and unknown group slugs are stated to cause a hard build failure with an 'unknown group \"<slug>\"' error, by design to prevent silent drift.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 23814,
+  "outputTokens": 535,
+  "durationMs": 48464,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "All three required points are satisfied: (1) identifies nav in docs.config.ts as the curated driver of sidebar, llms.txt, and AGENTS.md; (2) identifies group as legacy/optional, useful as fallback navigation when nav is absent and preserved for downstream taxonomy/tooling; (3) clearly states an unknown group slug causes a hard build failure with the 'unknown group' error message, not a silent skip or warning.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 68764,
+  "outputTokens": 782,
+  "durationMs": 80412,
+  "steps": 11,
+  "errors": []
+}

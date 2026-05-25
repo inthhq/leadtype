@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script correctly imports the library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) from the documented leadtype paths, passes product/nav from docs.config.ts, and crucially runs convertAllMdx FIRST before the full-context and search generators. The ordering requirement is satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 21149,
+  "outputTokens": 481,
+  "durationMs": 80408,
+  "steps": 16,
+  "errors": []
+}

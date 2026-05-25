@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response answers No, identifies the default as a static local lexical BM25 index with no database, and explains embeddings are added later upon vocabulary mismatch or large corpus growth. All three required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2641,
+  "outputTokens": 159,
+  "durationMs": 15928,
+  "steps": 4,
+  "errors": []
+}

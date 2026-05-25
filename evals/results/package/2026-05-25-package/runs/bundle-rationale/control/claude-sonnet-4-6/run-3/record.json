@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website/HTTP convention fetched at a URL (and not discoverable in node_modules), explains AGENTS.md is the filesystem convention with predictable on-disk paths working offline and version-matched, and lists --bundle skipping llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability. Minor nit: it doesn't explicitly emphasize 'relative links' in AGENTS.md, but it conveys the equivalent offline/filesystem semantics.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 29572,
+  "outputTokens": 484,
+  "durationMs": 56958,
+  "steps": 10,
+  "errors": []
+}

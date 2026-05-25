@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object containing paths of generated artifacts, and it names the required output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt), plus search index, sitemap, and robots. It does mention an 'agentReadabilityJson' field (vs the rubric's 'agentReadabilityManifest') and 'sitemapMd' which may be invented, and it does not mention the --bundle mode shape. Still, the required points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3494,
+  "outputTokens": 302,
+  "durationMs": 25111,
+  "steps": 5,
+  "errors": []
+}

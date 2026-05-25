@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first (writing to public/docs), then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles — satisfying the critical ordering requirement. It imports product and nav from docs.config.ts and passes them to the generators. Minor concern: it invents `generateAgentReadabilityArtifacts` and imports `defaultRemarkPlugins`/`remarkInclude` which may not exist, but these are auxiliary and don't violate the required rubric points.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 32,
+  "inputTokens": 55130,
+  "outputTokens": 832,
+  "durationMs": 113432,
+  "steps": 19,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generation paths and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions additional fields like searchIndex, searchContent, sitemap, robots. Some field names (agentReadabilityJson, sitemapXml, sitemapMd) may not exactly match the rubric's shape (agentReadabilityManifest), and it doesn't mention the mode/product/groups fields or --bundle behavior, but the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1752,
+  "outputTokens": 6,
+  "durationMs": 11764,
+  "steps": 6,
+  "errors": []
+}

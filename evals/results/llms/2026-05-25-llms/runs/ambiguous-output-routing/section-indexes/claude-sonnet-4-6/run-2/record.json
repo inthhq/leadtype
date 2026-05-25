@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (leadtype/llm reference) with the specific APIs including generateLLMFullContextFiles, and explicitly directs the user away from the Search docs. It also correctly characterizes /llms-full.txt as a fallback used when page-level links are insufficient, matching the rubric's escalation framing.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 10,
+  "inputTokens": 4821,
+  "outputTokens": 503,
+  "durationMs": 42747,
+  "steps": 7,
+  "errors": []
+}

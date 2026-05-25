@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 3,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object to stdout describing generation artifacts, and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt), plus searchIndex, searchContent, sitemap, and robots. However, it invents some field names not in the rubric's shape (agentReadabilityJson instead of agentReadabilityManifest, sitemapXml, sitemapMd, robotsTxt) and doesn't fully describe the --bundle JSON shape with agentsMd. The required points are satisfied, but the invented/renamed fields are a concern though not severe enough to fail since the rubric's 'incorrect if' is about inventing fields — these are partially close approximations.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 5391,
+  "outputTokens": 266,
+  "durationMs": 24988,
+  "steps": 4,
+  "errors": []
+}

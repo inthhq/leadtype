@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response covers all three required points: it explains llms.txt is a website/HTTP convention with URL-oriented links unsuitable for tarballs, explains AGENTS.md works via relative links offline and version-matched, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots. It could more explicitly state 'absolute URLs' but the URL-oriented/hosted framing conveys this adequately.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 39109,
+  "outputTokens": 41,
+  "durationMs": 30209,
+  "steps": 10,
+  "errors": []
+}

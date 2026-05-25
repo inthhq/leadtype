@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`leadtype/llm`) as the agent-facing output APIs and names `generateLLMFullContextFiles` and related functions. It does not route to Search UI. It explains `/llms-full.txt` as a fallback for when smaller topic files are insufficient, aligning with the rubric. Slight weakness: the framing of 'fallback' is somewhat tied to topic-file routing rather than explicitly 'when page-level llms.txt markdown links are not enough,' but the intent matches.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3785,
+  "outputTokens": 196,
+  "durationMs": 18709,
+  "steps": 7,
+  "errors": []
+}

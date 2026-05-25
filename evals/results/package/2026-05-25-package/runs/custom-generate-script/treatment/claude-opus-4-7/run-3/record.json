@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script imports and calls all required library APIs: convertAllMdx from leadtype/convert, generateLlmsTxt and generateLLMFullContextFiles from leadtype/llm, and generateDocsSearchFiles from leadtype/search/node. Conversion runs first, before the full-context and search generators, satisfying the critical ordering check. It imports product and nav from docs.config.ts and passes them to the generators.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 25478,
+  "outputTokens": 600,
+  "durationMs": 73654,
+  "steps": 9,
+  "errors": []
+}

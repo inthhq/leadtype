@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 15,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The agent correctly identifies that `nav` is the curated driver and `group` is legacy/secondary useful for fallback and search facets. However, it explicitly and repeatedly contradicts the rubric on the third required point: it claims unknown group slugs do NOT cause a build failure and are only soft diagnostics, whereas the ground truth states the build fails with an 'unknown group' error. This is exactly the 'Incorrect if' condition.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 45862,
+  "outputTokens": 610,
+  "durationMs": 83436,
+  "steps": 11,
+  "errors": []
+}

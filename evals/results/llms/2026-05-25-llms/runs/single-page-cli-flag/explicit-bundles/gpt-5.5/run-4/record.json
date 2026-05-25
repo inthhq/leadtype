@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing the generation run with paths to generated artifacts, and names the required output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also covers bonus fields like searchIndex, searchContent, sitemap, and robots. However, it uses 'agentReadabilityJson' and 'sitemapMd' which may not match the exact field names (rubric mentions 'agentReadabilityManifest'), and it doesn't mention the --bundle mode or fields like mode, source/output dirs, product, groups.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 2138,
+  "outputTokens": 6,
+  "durationMs": 19289,
+  "steps": 6,
+  "errors": []
+}

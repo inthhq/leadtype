@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 62,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static, edge-safe BM25 lexical index with no database, and correctly states the lexical index should be kept with embeddings as a complementary layer rather than replacement. However, the rubric specifically requires naming TWO conditions: (a) vocabulary/intent mismatch AND (b) corpus growing past tens of thousands of chunks. The response covers vocabulary mismatch well but does not mention the corpus-size/scale condition (tens of thousands of chunks, cold-start memory), so a required rubric point is missed.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 23268,
+  "outputTokens": 125,
+  "durationMs": 44848,
+  "steps": 9,
+  "errors": []
+}

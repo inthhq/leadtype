@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it identifies `nav` in docs.config.ts as the curated driver of sidebar, llms.txt, AGENTS.md, etc.; it identifies `group` as legacy/optional with fallback navigation and search facets/taxonomy uses; and it clearly states the build fails with `unknown group \"<slug>\"` rather than being silently ignored.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 29283,
+  "outputTokens": 572,
+  "durationMs": 66124,
+  "steps": 8,
+  "errors": []
+}

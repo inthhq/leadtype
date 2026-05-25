@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`leadtype/llm` / `/docs/reference/llm.md`) and names `generateLLMFullContextFiles` and related functions as the agent-facing output APIs, explicitly distinguishing them from the search docs. It also describes `/llms-full.txt` as a fallback rather than the default. The fallback rationale focuses on cross-bundle/whole-corpus needs rather than explicitly 'when page-level llms.txt markdown links are not enough,' but the spirit of fallback-when-insufficient is preserved.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 4823,
+  "outputTokens": 347,
+  "durationMs": 29069,
+  "steps": 5,
+  "errors": []
+}

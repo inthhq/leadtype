@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains that `group` organizes navigation, llms.txt sections, AGENTS.md grouping, and search metadata; it explicitly characterizes `/llms-full.txt` as monolithic and not split by group; and it names multiple valid optional frontmatter fields (deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor, icon). The mention of `description` and `deprecatedReason` are not on the rubric's list but `deprecated` clearly is, and many other valid fields are listed.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 5545,
+  "outputTokens": 437,
+  "durationMs": 31520,
+  "steps": 5,
+  "errors": []
+}

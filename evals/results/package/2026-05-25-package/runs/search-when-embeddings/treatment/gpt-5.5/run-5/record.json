@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies leadtype's default as a static, database-free, BM25/lexical index (no hosted vector DB needed). It specifies both required conditions for embeddings: vocabulary mismatch and corpus growth beyond tens of thousands of chunks. It clearly states the lexical index should be kept and embeddings layered on top, not as a replacement.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 9117,
+  "outputTokens": 113,
+  "durationMs": 24210,
+  "steps": 6,
+  "errors": []
+}

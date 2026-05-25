@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver for sidebar, AGENTS.md, and llms.txt, and correctly identifies `group` as legacy/optional taxonomy still useful for metadata. However, it directly contradicts the rubric on the critical third required point: the rubric states an unknown `group` slug causes the build to FAIL with an 'unknown group' error, but the agent explicitly and repeatedly claims the behavior is 'non-fatal in all cases' and that 'The build does not throw'. This is the exact failure mode the rubric flags as 'Incorrect if'.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 47060,
+  "outputTokens": 729,
+  "durationMs": 85801,
+  "steps": 12,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains group organizes navigation, llms.txt sections, and AGENTS.md grouping; characterizes /llms-full.txt as a monolithic all-docs file that is not sharded by group; and names multiple valid optional fields (deprecated, icon, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). The 'description' field is not in the rubric's list but 'deprecated' and others are valid, so the two-field requirement is met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3725,
+  "outputTokens": 343,
+  "durationMs": 33169,
+  "steps": 5,
+  "errors": []
+}

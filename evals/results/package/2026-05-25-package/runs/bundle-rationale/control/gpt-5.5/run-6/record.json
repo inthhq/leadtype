@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it identifies llms.txt as a website/HTTP discovery artifact with hosted URLs (wrong for tarballs), explains AGENTS.md works offline at the package root with relative links to version-matched docs, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 54168,
+  "outputTokens": 41,
+  "durationMs": 49455,
+  "steps": 13,
+  "errors": []
+}

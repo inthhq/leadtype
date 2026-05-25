@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "gpt-5.5",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script imports library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) rather than shelling out to the CLI. It calls convertAllMdx first, then the LLM and search generators that read from public/docs, satisfying the critical ordering requirement. It passes product and nav from docs.config.ts into the generators. Minor uncertainty around some imported helpers (remarkInclude, remarkTypeTableToMarkdown) being real exports, but the required rubric points are all met.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 26,
+  "inputTokens": 40577,
+  "outputTokens": 284,
+  "durationMs": 93318,
+  "steps": 13,
+  "errors": []
+}

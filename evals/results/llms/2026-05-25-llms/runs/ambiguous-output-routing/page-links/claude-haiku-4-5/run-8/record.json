@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM reference area (/docs/reference/llm.md) with the right API names including generateLLMFullContextFiles, and does not route the user to Search docs. It also correctly characterizes /llms-full.txt as a fallback used when page-level llms.txt links/navigation are insufficient, satisfying both required rubric points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3663,
+  "outputTokens": 198,
+  "durationMs": 20309,
+  "steps": 8,
+  "errors": []
+}

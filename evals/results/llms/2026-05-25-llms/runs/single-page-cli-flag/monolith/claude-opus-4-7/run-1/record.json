@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing the generation run and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions search index, sitemap, robots, and bundle mode. However, it invents/renames some fields not in the rubric's shape (e.g., `agentReadabilityJson` instead of `agentReadabilityManifest`, and `sitemapMd`), which slightly weakens accuracy but doesn't violate the required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 5290,
+  "outputTokens": 373,
+  "durationMs": 28100,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response identifies nav as the curated driver of sidebar/navigation, llms.txt, and AGENTS.md grouping. It identifies group as legacy/fallback taxonomy useful for migration, filtering, and fallback navigation. It clearly states that an unknown group slug causes build-time failure with an 'unknown group' error rather than silent skipping. All three required points are satisfied.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 55285,
+  "outputTokens": 35,
+  "durationMs": 34961,
+  "steps": 11,
+  "errors": []
+}

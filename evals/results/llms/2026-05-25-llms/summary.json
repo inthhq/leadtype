@@ -1,0 +1,2072 @@
+{
+  "benchmark": "llms",
+  "runId": "2026-05-25-llms",
+  "generatedAt": "2026-05-25T19:40:33.706Z",
+  "judgeModels": [
+    "claude-opus-4-7"
+  ],
+  "models": [
+    "claude-haiku-4-5",
+    "claude-opus-4-7",
+    "claude-sonnet-4-6",
+    "gpt-5.5"
+  ],
+  "fixtures": [
+    "ambiguous-output-routing",
+    "cross-group-agent-flows",
+    "exact-symbol-readability",
+    "negative-vector-index",
+    "single-group-authoring",
+    "single-page-cli-flag"
+  ],
+  "arms": [
+    "explicit-bundles",
+    "monolith",
+    "page-links",
+    "router",
+    "section-indexes"
+  ],
+  "totalRuns": 1200,
+  "cells": [
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-haiku-4-5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 8,
+      "rate": 0.8,
+      "ci95": [
+        0.49015684672072335,
+        0.9433190520193067
+      ],
+      "meanScore": 79,
+      "contextMatchRate": 0.4,
+      "avgWrongGroupReads": 0.7,
+      "avgTokens": 4710.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-haiku-4-5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 7,
+      "rate": 0.7,
+      "ci95": [
+        0.39677321997956516,
+        0.892210712513788
+      ],
+      "meanScore": 74.7,
+      "contextMatchRate": 0.8,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4904.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-haiku-4-5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 86.3,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4297.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-haiku-4-5",
+      "arm": "router",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 79.2,
+      "contextMatchRate": 0.5,
+      "avgWrongGroupReads": 0.6,
+      "avgTokens": 4437.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-haiku-4-5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 85.5,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4232.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-opus-4-7",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 87.9,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 5470.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-opus-4-7",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.4,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5009.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-opus-4-7",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4961.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-opus-4-7",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 90.6,
+      "contextMatchRate": 0.4,
+      "avgWrongGroupReads": 0.6,
+      "avgTokens": 5491.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-opus-4-7",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5884.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-sonnet-4-6",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 89.5,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 2.1,
+      "avgTokens": 4881,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-sonnet-4-6",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5531.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-sonnet-4-6",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3573.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-sonnet-4-6",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 89.4,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.6,
+      "avgTokens": 4560.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "claude-sonnet-4-6",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.5,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4771.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "gpt-5.5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.2,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.3,
+      "avgTokens": 3655,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "gpt-5.5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.8,
+      "contextMatchRate": 0.9,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3364.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "gpt-5.5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2718.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "gpt-5.5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 90.7,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.2,
+      "avgTokens": 3114.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "gpt-5.5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.5,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3637.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-haiku-4-5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.6,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.2,
+      "avgTokens": 4381.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-haiku-4-5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.1,
+      "contextMatchRate": 0.6,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4811.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-haiku-4-5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.9,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4028.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-haiku-4-5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.1,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.3,
+      "avgTokens": 4101.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-haiku-4-5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.8,
+      "contextMatchRate": 0.2,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3834.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-opus-4-7",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.1,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 5380.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-opus-4-7",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.9,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 6287.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-opus-4-7",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95,
+      "contextMatchRate": 0.2,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5614.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-opus-4-7",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.3,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.2,
+      "avgTokens": 5878.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-opus-4-7",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.7,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5804.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-sonnet-4-6",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.2,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 2.7,
+      "avgTokens": 5732.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-sonnet-4-6",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5316.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-sonnet-4-6",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.9,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4907.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-sonnet-4-6",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.2,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 2.1,
+      "avgTokens": 5581.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "claude-sonnet-4-6",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 6219.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "gpt-5.5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.8,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.3,
+      "avgTokens": 3665.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "gpt-5.5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2762.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "gpt-5.5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2556.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "gpt-5.5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.1,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.6,
+      "avgTokens": 3241.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "gpt-5.5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.6,
+      "contextMatchRate": 0.3,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4165.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-haiku-4-5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.3,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0.2,
+      "avgTokens": 4328.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-haiku-4-5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97,
+      "contextMatchRate": 0.2,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3697.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-haiku-4-5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2847,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-haiku-4-5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96.9,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0.7,
+      "avgTokens": 4158.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-haiku-4-5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96.7,
+      "contextMatchRate": 0.6,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3514.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-opus-4-7",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 5446.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-opus-4-7",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.4,
+      "contextMatchRate": 0.7,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4935.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-opus-4-7",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96.4,
+      "contextMatchRate": 0.7,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4271.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-opus-4-7",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 5431.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-opus-4-7",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96.9,
+      "contextMatchRate": 0.1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 6197.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-sonnet-4-6",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.6,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 3271.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-sonnet-4-6",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4009.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-sonnet-4-6",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.2,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2976.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-sonnet-4-6",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.6,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 3382.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "claude-sonnet-4-6",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.3,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3381.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "gpt-5.5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.3,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0.4,
+      "avgTokens": 2532.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "gpt-5.5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.9,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2124,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "gpt-5.5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.7,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2069.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "gpt-5.5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.9,
+      "contextMatchRate": 0.1,
+      "avgWrongGroupReads": 0.5,
+      "avgTokens": 2755.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "gpt-5.5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2824.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-haiku-4-5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.3,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.5,
+      "avgTokens": 3737.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-haiku-4-5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.2,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3567.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-haiku-4-5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.9,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2566.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-haiku-4-5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.5,
+      "contextMatchRate": 0.2,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 3583.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-haiku-4-5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.5,
+      "contextMatchRate": 0.7,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3185.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-opus-4-7",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93,
+      "contextMatchRate": 0.1,
+      "avgWrongGroupReads": 0.7,
+      "avgTokens": 4387.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-opus-4-7",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5004.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-opus-4-7",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3516.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-opus-4-7",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93,
+      "contextMatchRate": 0.6,
+      "avgWrongGroupReads": 0.2,
+      "avgTokens": 4249.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-opus-4-7",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.9,
+      "contextMatchRate": 0.7,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3745.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-sonnet-4-6",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.1,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.8,
+      "avgTokens": 3620.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-sonnet-4-6",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.3,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3634.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-sonnet-4-6",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2832.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-sonnet-4-6",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.6,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.1,
+      "avgTokens": 3455.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "claude-sonnet-4-6",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3030.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "gpt-5.5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.6,
+      "contextMatchRate": 0.5,
+      "avgWrongGroupReads": 0.6,
+      "avgTokens": 2136.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "gpt-5.5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.3,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2115.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "gpt-5.5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.5,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 1242.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "gpt-5.5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.6,
+      "contextMatchRate": 0.3,
+      "avgWrongGroupReads": 0.7,
+      "avgTokens": 2227.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "gpt-5.5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 1836.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-haiku-4-5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.9,
+      "contextMatchRate": 0.3,
+      "avgWrongGroupReads": 1,
+      "avgTokens": 4250.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-haiku-4-5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4168.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-haiku-4-5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 90.9,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3733.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-haiku-4-5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.2,
+      "contextMatchRate": 0.7,
+      "avgWrongGroupReads": 0.3,
+      "avgTokens": 3636,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-haiku-4-5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.3,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4724.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-opus-4-7",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 86,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4921.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-opus-4-7",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.9,
+      "contextMatchRate": 0.9,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5741.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-opus-4-7",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 93.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4783.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-opus-4-7",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.2,
+      "contextMatchRate": 0.1,
+      "avgWrongGroupReads": 0.9,
+      "avgTokens": 5431.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-opus-4-7",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5969.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-sonnet-4-6",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.9,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 2.5,
+      "avgTokens": 5427.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-sonnet-4-6",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.7,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5128,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-sonnet-4-6",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 90.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4219.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-sonnet-4-6",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.8,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.8,
+      "avgTokens": 5166.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "claude-sonnet-4-6",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.9,
+      "contextMatchRate": 0.3,
+      "avgWrongGroupReads": 0.7,
+      "avgTokens": 5067.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "gpt-5.5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.2,
+      "contextMatchRate": 0.1,
+      "avgWrongGroupReads": 1.6,
+      "avgTokens": 3030.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "gpt-5.5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2865.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "gpt-5.5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 91.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2184.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "gpt-5.5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.2,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 1.5,
+      "avgTokens": 3278.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "gpt-5.5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 92.5,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3534.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-haiku-4-5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 75.3,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3156.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-haiku-4-5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 78.2,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3587.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-haiku-4-5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 76.2,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2584.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-haiku-4-5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 76.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3301.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-haiku-4-5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2634.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-opus-4-7",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4368.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-opus-4-7",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 78.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5574,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-opus-4-7",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3801.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-opus-4-7",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 79.5,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4997.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-opus-4-7",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 78.2,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4068.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-sonnet-4-6",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 76.8,
+      "contextMatchRate": 0.5,
+      "avgWrongGroupReads": 0.5,
+      "avgTokens": 3537.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-sonnet-4-6",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 76.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3846.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-sonnet-4-6",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 76.6,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2829.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-sonnet-4-6",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.4,
+      "contextMatchRate": 0.4,
+      "avgWrongGroupReads": 0.6,
+      "avgTokens": 3698.6,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "claude-sonnet-4-6",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2832.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "gpt-5.5",
+      "arm": "explicit-bundles",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 78,
+      "contextMatchRate": 0.8,
+      "avgWrongGroupReads": 0.2,
+      "avgTokens": 1849.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "gpt-5.5",
+      "arm": "monolith",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.1,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2351,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "gpt-5.5",
+      "arm": "page-links",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 1634.8,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "gpt-5.5",
+      "arm": "router",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.4,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 1953.4,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "gpt-5.5",
+      "arm": "section-indexes",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 77.8,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 1958.4,
+      "judgeErrors": 0
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that `--json` prints a JSON object listing generated artifact paths and names the required keys (`llmsTxt`, `docsLlmsTxt`, `llmsFullTxt`). It also lists bonus fields like search index, sitemap, robots. However, it does not mention the top-level `files` map structure, mode/source/output dirs/product/groups, or the `--bundle` shape. Some field names like `agentReadabilityJson`, `sitemapXml`, `sitemapMd` may not exactly match the rubric's `agentReadabilityManifest`, but the required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2085,
+  "outputTokens": 6,
+  "durationMs": 8512,
+  "steps": 4,
+  "errors": []
+}

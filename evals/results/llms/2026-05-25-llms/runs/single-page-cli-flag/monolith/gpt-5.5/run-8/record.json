@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object describing the generation run and names the key output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt), satisfying both required points. It also mentions search index, sitemap, and robots as bonus. However, it invents some field names (agentReadabilityJson instead of agentReadabilityManifest, sitemapMd) and misses the --bundle mode shape, slightly weakening the answer.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2266,
+  "outputTokens": 6,
+  "durationMs": 10089,
+  "steps": 4,
+  "errors": []
+}

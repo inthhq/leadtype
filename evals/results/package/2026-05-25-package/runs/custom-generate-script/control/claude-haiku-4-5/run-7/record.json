@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-haiku-4-5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script correctly orders conversion before the other generators and calls convertAllMdx, generateLlmsTxt, and generateLLMFullContextFiles, passing product/nav from docs.config.ts. However, the rubric specifically requires generating the search index via the search-node API (e.g. `generateDocsSearchFiles` from `leadtype/search/node`). Instead, the script invents `generateAgentReadabilityArtifacts` imported from `leadtype`, which is not the documented API. This falls under the 'Incorrect if: Invents API names that aren't part of leadtype' clause.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 16266,
+  "outputTokens": 528,
+  "durationMs": 31680,
+  "steps": 11,
+  "errors": []
+}

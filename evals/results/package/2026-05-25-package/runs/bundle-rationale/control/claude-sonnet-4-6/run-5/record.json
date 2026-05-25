@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains llms.txt is a web/HTTP convention served at a URL root (and that no standard tells agents to look for it in node_modules), explains AGENTS.md works on-disk with version-matched offline docs at a predictable path, and lists that --bundle skips llms.txt, llms-full.txt, and search-index.json. It doesn't explicitly mention 'absolute URLs' in llms.txt or 'relative' links in AGENTS.md, but conveys the equivalent meaning (URL-based vs filesystem-based, no network needed).",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 6827,
+  "outputTokens": 276,
+  "durationMs": 31750,
+  "steps": 5,
+  "errors": []
+}

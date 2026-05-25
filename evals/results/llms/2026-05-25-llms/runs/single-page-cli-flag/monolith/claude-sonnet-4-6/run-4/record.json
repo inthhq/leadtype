@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object listing paths of generated artifacts (a single structured result). It names the required path fields llmsTxt, docsLlmsTxt, and llmsFullTxt, plus mentions search index, sitemap, robots. However, it uses 'agentReadabilityJson' rather than 'agentReadabilityManifest' and adds 'sitemapMd' which may not exist, and omits the --bundle mode and top-level fields like mode/source/output/product/groups. Still meets all required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3535,
+  "outputTokens": 315,
+  "durationMs": 17531,
+  "steps": 4,
+  "errors": []
+}

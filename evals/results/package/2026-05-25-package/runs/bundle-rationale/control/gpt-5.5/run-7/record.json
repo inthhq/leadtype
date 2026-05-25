@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it identifies llms.txt as a website/HTTP convention with URL-based links unsuitable for offline package docs, explains AGENTS.md uses relative paths for version-matched offline access from node_modules, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots. Minor weakness: it says 'URL-based links' rather than explicitly 'absolute URLs', but the meaning is clearly conveyed.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 30822,
+  "outputTokens": 58,
+  "durationMs": 36148,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 62,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static BM25 lexical index (no database) and correctly states that the lexical index should be kept with embeddings as complementary/hybrid. However, it misses one of the two specific conditions from the rubric: corpus size growing past tens of thousands of chunks / cold-start memory. It covers the vocabulary mismatch condition well but does not mention the large-corpus scale condition, so not all required points are satisfied.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 23699,
+  "outputTokens": 113,
+  "durationMs": 60633,
+  "steps": 16,
+  "errors": []
+}

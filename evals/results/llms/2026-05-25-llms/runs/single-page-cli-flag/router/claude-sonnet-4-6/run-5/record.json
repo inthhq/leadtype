@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object with paths of generated artifacts, and names the required fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions searchIndex, searchContent, sitemap, and robots as bonus fields. However, it invents some field names like 'agentReadabilityJson' (rubric says 'agentReadabilityManifest'), 'sitemapMd' is not in the rubric, and it doesn't mention the --bundle mode with agentsMd. The invented fields are a minor concern but the core required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3193,
+  "outputTokens": 276,
+  "durationMs": 21957,
+  "steps": 6,
+  "errors": []
+}

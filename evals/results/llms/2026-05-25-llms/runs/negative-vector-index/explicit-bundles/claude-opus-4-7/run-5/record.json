@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers 'No' to the hosted database-backed vector index question, identifies the default as a static local lexical BM25 index with no database, and explains embeddings are an opt-in later addition for vocabulary mismatch or large corpus scenarios. All three required rubric points are satisfied. Minor omission: doesn't explicitly state embeddings layer on top rather than replace the lexical index, but doesn't claim otherwise either.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3893,
+  "outputTokens": 214,
+  "durationMs": 24388,
+  "steps": 4,
+  "errors": []
+}

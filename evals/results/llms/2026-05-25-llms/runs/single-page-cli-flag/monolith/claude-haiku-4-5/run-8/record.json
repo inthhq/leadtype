@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that `leadtype generate --json` prints a JSON object describing generated artifacts, and names the required output-path fields including `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. It also mentions additional fields like search index, sitemap, robots, and an agent readability manifest. However, it invents some field names (e.g., `agentReadabilityJson`, `sitemapMd`, `sitemapXml`, `robotsTxt`) that may not exactly match the actual result shape, and it omits the `--bundle` mode shape, but these are not disqualifying per the rubric's required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3472,
+  "outputTokens": 123,
+  "durationMs": 7246,
+  "steps": 4,
+  "errors": []
+}

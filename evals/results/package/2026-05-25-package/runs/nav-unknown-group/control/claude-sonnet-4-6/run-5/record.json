@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explicitly contradicts the rubric on the key build-failure point. The rubric requires stating that an unknown group slug causes the build to FAIL with an 'unknown group' error. The agent instead states 'No hard error is thrown; the build completes' and that unknown slugs are merely collected as data/diagnostics — which the rubric explicitly marks as Incorrect. The nav-vs-group relationship is described reasonably well, but the failure on the required build-failure point makes this incorrect.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 17,
+  "inputTokens": 46214,
+  "outputTokens": 664,
+  "durationMs": 89287,
+  "steps": 11,
+  "errors": []
+}

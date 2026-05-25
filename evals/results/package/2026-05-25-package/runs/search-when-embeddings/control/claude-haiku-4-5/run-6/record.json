@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: (1) clearly states the default is a static, edge-safe BM25 lexical index with no database; (2) gives specific conditions for embeddings including vocabulary/intent mismatch (e.g., 'make my app fast' → optimization), though it frames the scale condition as 'multilingual/narrative' rather than the rubric's 'tens of thousands of chunks' threshold; (3) clearly states BM25 should be kept as primary with embeddings as a complementary hybrid layer, not a replacement. Minor deduction for not explicitly citing the corpus-size threshold from the rubric, but the vocabulary-mismatch condition and complementary nature are well covered.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 22946,
+  "outputTokens": 338,
+  "durationMs": 45923,
+  "steps": 15,
+  "errors": []
+}

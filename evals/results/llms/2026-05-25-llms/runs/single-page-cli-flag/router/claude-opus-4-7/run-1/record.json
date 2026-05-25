@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object with paths to generated artifacts (satisfying the single JSON result object requirement) and names the required keys llmsTxt, docsLlmsTxt, and llmsFullTxt. It also covers bonus fields like searchIndex, searchContent, sitemap, and robots. However, it uses 'agentReadabilityJson' instead of 'agentReadabilityManifest' and adds 'sitemapMd' which may be invented, and it does not mention the --bundle mode shape with agentsMd. Minor invented/misnamed fields slightly lower the score but the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4677,
+  "outputTokens": 341,
+  "durationMs": 31390,
+  "steps": 6,
+  "errors": []
+}

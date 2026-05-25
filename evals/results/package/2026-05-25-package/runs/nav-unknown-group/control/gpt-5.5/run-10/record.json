@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "gpt-5.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver and group as legacy/fallback taxonomy. However, on the third required point, the agent hedges significantly: it says the build fails only 'when you also configure groups as the legacy/fallback taxonomy' — framing unknown-group validation as conditional rather than the by-design build-failure behavior the rubric requires. This caveat weakens the unambiguous 'build fails on unknown group slug' claim the rubric demands.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 54887,
+  "outputTokens": 91,
+  "durationMs": 41465,
+  "steps": 12,
+  "errors": []
+}

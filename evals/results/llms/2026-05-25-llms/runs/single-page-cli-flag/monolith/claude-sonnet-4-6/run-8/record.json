@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object with paths for every generated artifact, and names llmsTxt, docsLlmsTxt, llmsFullTxt, searchIndex, searchContent, etc. — meeting both required rubric points. It loses some points for inventing field names not in the actual shape (`agentReadabilityJson` instead of `agentReadabilityManifest`, `sitemapMd`) and omitting the --bundle mode (`agentsMd`) and the `mode`/`product`/`groups` top-level fields.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3496,
+  "outputTokens": 339,
+  "durationMs": 19083,
+  "steps": 4,
+  "errors": []
+}

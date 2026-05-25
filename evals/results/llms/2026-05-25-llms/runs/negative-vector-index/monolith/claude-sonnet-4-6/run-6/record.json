@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local lexical BM25 index without a database, and explains embeddings are added later for vocabulary mismatch or large corpus. It doesn't explicitly state that embeddings layer on top rather than replace lexical, but it does call it an 'optional upgrade' which is acceptable, and no required point is violated.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3461,
+  "outputTokens": 182,
+  "durationMs": 16288,
+  "steps": 4,
+  "errors": []
+}

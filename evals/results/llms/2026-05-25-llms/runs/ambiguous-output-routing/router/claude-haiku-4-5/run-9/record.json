@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (reference/llm.md, naming generateLLMFullContextFiles, generateLlmsTxt, generateAgentsMd) and does not route the user to the Search UI/APIs. It also describes /llms-full.txt as a fallback when topic-specific routing isn't enough. However, it muddles the fallback story slightly by saying to 'read the full-context router first (/llms-full.txt), then choose the smallest topic file,' which inverts the rubric's framing that llms-full.txt is the broad fallback when page-level links are insufficient — though it does ultimately convey the fallback role.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 4417,
+  "outputTokens": 181,
+  "durationMs": 26904,
+  "steps": 10,
+  "errors": []
+}

@@ -4,34 +4,43 @@ Measure whether real coding agents (Claude, GPT) discover and use leadtype's bun
 
 ## What this answers
 
-- **Discovery rate** — does the agent open `node_modules/leadtype/AGENTS.md` before guessing?
-- **Pass rate** — can it complete leadtype-related tasks correctly?
-- **Treatment vs control delta** — pass rate WITH bundled docs minus WITHOUT. The bundled docs' value, in numbers.
-- **Per-topic hit rate** — which `.md` files actually get read.
+- **Pass rate** — can the agent complete leadtype-related tasks correctly? Correctness is graded by an **independent LLM judge** against a per-fixture `RUBRIC.md`, not by keyword matching. This is the headline metric.
+- **Treatment vs control delta** — judged pass rate WITH bundled docs minus WITHOUT. The bundled docs' value, in points, reported with a **Wilson 95% confidence interval** so small-sample noise is visible.
+- **Bundle usage (mechanism)** — did the agent actually read the bundle (`AGENTS.md` or any `docs/*.md`) in treatment? A supporting metric, not the pass gate.
+
+> Headline correctness is the judge's verdict. The "did it read our files" checks are reported as supporting evidence, never as the pass condition — so treatment and control are graded on the same footing (in control the bundle is gone, so a read-gate would be meaningless).
 
 ## How it works
 
-For each fixture × mode (treatment | control), the harness:
+For each fixture × mode (treatment | control) × model × run, the harness:
 
-1. Creates a tempdir, copies the fixture's starter files in.
+1. Creates a tempdir, copies the fixture's starter files in (`PROMPT.md`, `EVAL.ts`, and `RUBRIC.md` are held back — they belong to the harness, and leaking `RUBRIC.md` would hand the agent the answer key).
 2. Runs `npm install <leadtype-tarball>` so `node_modules/leadtype/` looks like a real install.
-3. In **control** mode, deletes `AGENTS.md` and `docs/` from the installed package — the agent has to fall back to its training data.
-4. Runs `generateText` from the AI SDK with a small set of path-scoped tools: `read`, `write`, `list`, `glob`, `grep`, plus a narrow `npm` tool (allowlist: `pack`, `install` only).
-5. Records every tool call into a transcript JSON.
-6. Spawns vitest against the fixture's `EVAL.ts`, which asserts on the transcript (e.g., "did the agent read `node_modules/leadtype/AGENTS.md`?").
+3. In **control** mode, deletes `AGENTS.md` and `docs/` from the installed package — the agent has to fall back to its training data (the compiled `dist/` still ships, exactly as a real published package would).
+4. Runs `generateText` from the AI SDK with a small set of path-scoped tools: `read`, `write`, `list`, `glob`, `grep`, plus a narrow `npm` tool (allowlist: `pack`, `install` only). Tool output is size-capped so one minified bundle can't blow the context window.
+5. Records every tool call into a transcript, then sends the agent's answer (and any files it produced) to the **LLM judge**, which grades it against the fixture's `RUBRIC.md` and returns `{ correct, score, reasoning }`.
+6. Writes `transcript.json`, `judge.json`, and a flat `record.json` per run under `results/`, then aggregates all records into `summary.json` + `report.md` (pass rates, Wilson CIs, treatment/control deltas).
 
 No shell, no Docker, no escape vector — every tool call resolves paths relative to the tempdir at the JS level (`resolveScoped` in `lib/tools.ts`). The agent literally cannot see anything outside the tempdir.
+
+### The judge
+
+`lib/judge.ts` calls a strong model (default `claude-opus-4-7`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
 
 ## Setup
 
 ```bash
+# From the repo root: put AI_GATEWAY_API_KEY in the repo-root .env.
+# One Vercel AI Gateway key brokers Anthropic, OpenAI, and Google.
+# The eval scripts load it with `bun --env-file=../.env`.
+echo "AI_GATEWAY_API_KEY=..." >> .env
+
 cd evals
-cp .env.example .env
-# Fill in AI_GATEWAY_API_KEY. Models route through Vercel AI Gateway —
-# one key handles Anthropic, OpenAI, Google, etc.
 bun install
 
-# Pack leadtype as a tarball that the harness installs into each sandbox.
+# Build leadtype and pack it as a tarball the harness installs into each
+# sandbox. `pack-leadtype` runs the build first, so AGENTS.md + docs/ are
+# actually in the tarball (without the build the package ships empty).
 bun run pack-leadtype
 ```
 
@@ -41,17 +50,32 @@ bun run pack-leadtype
 # Smoke test — one fixture, treatment mode, 1 run, default model.
 bun run evals -- --fixture wire-content-negotiation --mode treatment
 
-# Full matrix on the default model (claude-haiku-4-5).
+# Default model (claude-haiku-4-5), all fixtures, both modes, 1 run each.
 bun run evals
 
-# Flagship Anthropic model.
-bun run evals -- --model claude-opus-4-7
+# The published matrix: 4 models × 10 runs, judged by opus.
+# (= `--models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-7,gpt-5.5 --runs 10`)
+bun run evals:full -- --label 2026-05-25
 
-# Flagship OpenAI model (needs OPENAI_API_KEY).
-bun run evals -- --model gpt-5.5
+# Pick your own grid.
+bun run evals -- --models claude-opus-4-7,gpt-5.5 --runs 5 --judge gpt-5.5
+```
 
-# Stack repetitions.
-bun run evals -- --runs 3
+Every run writes to `results/package/<label>/` (label defaults to a timestamp). Re-aggregate an existing run folder without re-running the models:
+
+```bash
+bun run aggregate results/package/2026-05-25
+```
+
+`results/` is gitignored by default (the harness writes a folder per local run), so publish a run explicitly with `git add -f results/<benchmark>/<label>`. `summary.json`, `report.md`, and per-run `record.json` are committed loose. The bulky per-run `transcript.json` + `judge.json` + produced `files/` are bundled into `transcripts.tgz` to keep the repo light — regenerate the loose copies with `tar xzf transcripts.tgz`. To re-bundle after a fresh run:
+
+```bash
+cd results/<benchmark>/<label>
+find runs \( -name transcript.json -o -name judge.json -o -name ANSWER.md \) -print > /tmp/arc
+find runs -type d -name files -print >> /tmp/arc
+tar czf transcripts.tgz -T /tmp/arc && tar tzf transcripts.tgz >/dev/null \
+  && { find runs \( -name transcript.json -o -name judge.json -o -name ANSWER.md \) -delete; \
+       find runs -type d -name files -exec rm -rf {} +; }
 ```
 
 ## Topic-scoped `llms-full` benchmark
@@ -65,9 +89,14 @@ bun run evals:llms -- --fixture single-page-cli-flag
 # One fixture on the router-first variant.
 bun run evals:llms -- --fixture exact-symbol-readability --variant router
 
-# Full llms matrix.
+# Default model, all fixtures × all variants, 1 run each.
 bun run evals:llms
+
+# The published matrix: 4 models × 10 runs.
+bun run evals:llms:full -- --label 2026-05-25
 ```
+
+Here a "pass" still means the judge marked the answer correct, but the report also tracks **context match** — whether the agent read the context path the variant intends, rather than answering from `/llms.txt` summaries or prior knowledge. A variant only earns trust when both pass rate and context match are high.
 
 The variants are:
 
@@ -85,60 +114,60 @@ The `router` variant is intentionally distinct from `monolith`: it evaluates a b
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--fixture <name>` | (all) | Run only one fixture from `evals/<name>/`. |
-| `--mode <m>` | both | `treatment` or `control`. |
-| `--model <id>` | `claude-haiku-4-5` | Any `@ai-sdk/anthropic` or `@ai-sdk/openai` model id. Strings starting with `gpt-` route to OpenAI; everything else to Anthropic. |
-| `--runs <n>` | `1` | Repetitions per (fixture × mode). |
+| `--fixture <name>` | (all) | Run only one fixture. |
+| `--mode <m>` | both | `treatment` or `control`. Package benchmark only. |
+| `--variant <name>` | all | One llms.txt shape. llms benchmark only. |
+| `--models <a,b,c>` | `claude-haiku-4-5` | Comma-separated candidate model ids. `gpt-*` → OpenAI, `gemini*` → Google, else Anthropic. |
+| `--model <id>` | — | Alias for a single `--models` entry. |
+| `--judge <id>` | `claude-opus-4-7` | Model that grades answers against each `RUBRIC.md`. |
+| `--runs <n>` | `1` | Repetitions per cell (fixture × mode/variant × model). |
+| `--label <name>` | timestamp | Results folder name under `results/<benchmark>/`. |
 
 ## Layout
 
 ```
 evals/
 ├── lib/
-│   ├── tools.ts             # path-scoped AI SDK tools (read/write/list/glob/grep/npm)
-│   ├── tools.test.ts        # path-escape unit tests
+│   ├── tools.ts             # path-scoped AI SDK tools (read/write/list/glob/grep/npm), output-capped
 │   ├── sandbox.ts           # package-eval tempdir lifecycle, npm install, control strip
 │   ├── llms-sandbox.ts      # llms-eval tempdir lifecycle, web-root materialization
 │   ├── llms-variants.ts     # five llms.txt/llms-full.txt artifact shapes under test
 │   ├── llms-metrics.ts      # transcript → selection/context-match decisions
-│   ├── llms-metrics.test.ts # unit tests for the metrics + variant materializer
-│   ├── llms-eval.ts         # vitest helper used by every llms fixture's EVAL.ts
-│   └── transcript.ts        # transcript types + writer/reader
+│   ├── judge.ts             # LLM judge: grade an answer against a RUBRIC.md
+│   ├── stats.ts             # Wilson confidence intervals + aggregation
+│   ├── record.ts            # per-run record schema (one row of evidence)
+│   ├── aggregate.ts         # records → summary.json + report.md (also a CLI)
+│   ├── models.ts            # model-id namespacing + --models parsing
+│   ├── transcript.ts        # transcript types + writer/reader
+│   └── *.test.ts            # unit tests for tools + metrics
 ├── evals/                   # package-docs benchmark fixtures
-│   ├── wire-content-negotiation/  (PROMPT.md, EVAL.ts, vite.config.ts, package.json)
-│   ├── validate-in-ci/            (PROMPT.md, EVAL.ts, package.json)
-│   ├── explain-cli-flag/          (PROMPT.md, EVAL.ts, package.json)
-│   └── bundle-own-docs/           (PROMPT.md, EVAL.ts, package.json)
+│   └── <fixture>/           (PROMPT.md, RUBRIC.md, package.json, …)
 ├── llms/                    # hosted-docs (llms.txt) benchmark fixtures
-│   ├── single-page-cli-flag/      (PROMPT.md, EVAL.ts, expected.json)
-│   ├── single-group-authoring/    (PROMPT.md, EVAL.ts, expected.json)
-│   ├── cross-group-agent-flows/   (PROMPT.md, EVAL.ts, expected.json)
-│   ├── exact-symbol-readability/  (PROMPT.md, EVAL.ts, expected.json)
-│   ├── ambiguous-output-routing/  (PROMPT.md, EVAL.ts, expected.json)
-│   └── negative-vector-index/     (PROMPT.md, EVAL.ts, expected.json)
-├── vitest.config.ts         # globs lib/**/*.test.ts and **/EVAL.ts under both benchmarks
+│   └── <fixture>/           (PROMPT.md, RUBRIC.md, expected.json)
+├── results/                 # committed run output: <benchmark>/<label>/
+│   └── <label>/
+│       ├── summary.json     # per-cell aggregates + CIs + deltas
+│       ├── report.md        # human-readable tables
+│       ├── transcripts.tgz  # full transcript.json + judge.json + produced files/ per run
+│       └── runs/<fixture>/<arm>/<model>/run-<i>/record.json  # flat per-run evidence (kept loose)
 ├── run-eval.ts              # entry — package-docs benchmark
 └── run-llms-eval.ts         # entry — hosted-docs (llms.txt) benchmark
 ```
 
-Each fixture's `PROMPT.md` is the task description. `EVAL.ts` reads the transcript via `readTranscript()` and asserts on `transcript.toolCalls` (e.g. did `read` tool open AGENTS.md?) plus the final state of files the agent wrote.
+Each fixture's `PROMPT.md` is the task; `RUBRIC.md` is the ground-truth grading criteria the judge uses (never copied into the sandbox). `expected.json` (llms only) defines the intended context path for the context-match metric.
 
 ## Interpreting results
 
-The summary table:
+Open `results/<benchmark>/<label>/report.md`. The package report leads with per-model treatment vs control:
 
-```
-fixture                          treatment   control   delta   discovered AGENTS.md (treatment)
-wire-content-negotiation         3/3         0/3       +100%   3/3
-validate-in-ci                   3/3         2/3       +33%    3/3
-explain-cli-flag                 3/3         0/3       +100%   3/3
-bundle-own-docs                  2/3         0/3       +67%    3/3
-```
+| Model | Treatment | Control | Delta |
+| --- | --- | --- | --- |
+| `claude-opus-4-7` | 88% [74–95%] (35/40) | 45% [31–60%] (18/40) | +43% |
 
-A small delta on a fixture means the bundled docs aren't pulling their weight there — either the task is solvable from training data, or our docs page on that topic isn't earning agent visits. A 0/N treatment column means the AGENTS.md flow itself is broken (or the assertion is too strict).
+Brackets are the Wilson 95% interval; `(passes/n)` is the raw count. A **large positive delta** is the bundled docs earning their place. A **small delta** means the task is recoverable without docs — often because the compiled CLI self-documents the flag, or the model already knew it. A **wide interval** means you need more `--runs`. The per-fixture table adds bundle-usage (did the agent read the bundle in treatment) and the judge's mean score.
 
 ## Tests
 
 ```bash
-bun test lib   # unit tests for resolveScoped + read/write tools
+bun test lib   # unit tests for resolveScoped, tool output caps, and llms metrics
 ```

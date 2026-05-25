@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files docs area (with generateLLMFullContextFiles and related APIs) as the right place and does not route to Search. It also describes /llms-full.txt as a fallback/comprehensive option rather than the default. The framing of 'when page-level links are insufficient' is a bit weaker — it talks about needing complete context rather than explicitly framing it as when page-level llms.txt markdown links aren't enough — but the fallback nature is conveyed.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3634,
+  "outputTokens": 189,
+  "durationMs": 11399,
+  "steps": 4,
+  "errors": []
+}

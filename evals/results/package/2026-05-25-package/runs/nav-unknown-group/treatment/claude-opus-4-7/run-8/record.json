@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth driving sidebar, llms.txt, AGENTS.md, and other surfaces. It correctly describes group as legacy/optional taxonomy useful for fallback navigation and search facets. It clearly states the build fails with 'unknown group \"<slug>\"' error rather than silently dropping or warning.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 11713,
+  "outputTokens": 392,
+  "durationMs": 38951,
+  "steps": 5,
+  "errors": []
+}

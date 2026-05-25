@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "variant": "router",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it doesn't clearly describe the broader result object structure (mode, source/output dirs, product, groups, files map) and invents some field names like `agentReadabilityJson`, `sitemapXml`, `sitemapMd` instead of the rubric's `agentReadabilityManifest`. It also omits the --bundle shape. The required points are met but accuracy of some named fields is questionable.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1782,
+  "outputTokens": 6,
+  "durationMs": 11890,
+  "steps": 6,
+  "errors": []
+}

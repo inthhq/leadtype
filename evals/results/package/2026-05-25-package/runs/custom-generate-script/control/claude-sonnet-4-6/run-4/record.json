@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script correctly imports library APIs (convertAllMdx from leadtype/convert, generateLlmsTxt and generateLLMFullContextFiles from leadtype/llm, generateDocsSearchFiles from leadtype/search/node), and orders them properly: conversion runs first (Step 1), followed by the llms.txt, full-context, and search generators that depend on the converted output. product and nav from docs.config.ts are passed into the generators. No CLI shell-out is used.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 33,
+  "inputTokens": 48992,
+  "outputTokens": 998,
+  "durationMs": 129446,
+  "steps": 22,
+  "errors": []
+}

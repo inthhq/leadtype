@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, llms.txt sections, search metadata, and AGENTS.md grouping, and names multiple valid optional frontmatter fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). However, it explicitly claims that Leadtype emits per-group full-context bundles at `/docs/llms-full/<group>.txt`, which contradicts the rubric's 'Incorrect if' clause stating that claiming `/llms-full.txt` is sharded/generated per-group is wrong. While it does correctly describe the root `/llms-full.txt` as monolithic, the per-group sharding claim violates the rubric.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4141,
+  "outputTokens": 329,
+  "durationMs": 28367,
+  "steps": 4,
+  "errors": []
+}

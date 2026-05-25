@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it identifies the default as static BM25 lexical search with no database, gives specific conditions for embeddings (vocabulary mismatch and scale limits, plus cross-lingual and measured quality gaps), and explicitly states BM25 should be kept for exact matches as a complementary hybrid approach rather than replaced.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 59550,
+  "outputTokens": 126,
+  "durationMs": 77067,
+  "steps": 19,
+  "errors": []
+}

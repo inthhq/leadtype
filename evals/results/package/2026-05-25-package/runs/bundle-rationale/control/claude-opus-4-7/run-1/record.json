@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The answer correctly explains llms.txt as a website/HTTP convention requiring an origin/URL, and contrasts it with AGENTS.md as the on-disk, version-matched, offline entry point. It correctly states that --bundle skips llms.txt, llms-full.txt, and search-index.json. It doesn't explicitly mention 'absolute URLs' in AGENTS.md links being 'relative', but it conveys the offline/on-disk semantics equivalently, and covers all required rubric points.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 5773,
+  "outputTokens": 296,
+  "durationMs": 31513,
+  "steps": 5,
+  "errors": []
+}

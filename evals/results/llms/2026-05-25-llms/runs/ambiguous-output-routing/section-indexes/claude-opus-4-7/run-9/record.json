@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`, `leadtype/llm`) with the right function names including `generateLLMFullContextFiles`, and explicitly steers away from the Search docs. It correctly describes `/llms-full.txt` as the broad/last-resort fallback used when page-level links/markdown are insufficient, matching the rubric's required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 6458,
+  "outputTokens": 309,
+  "durationMs": 36427,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (leadtype/llm reference page) as the place for agent-facing output APIs and explicitly names generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd. It also explicitly tells the user to skip the Search page. It frames /llms-full.txt as a fallback used when scoped bundles don't fit, satisfying the 'insufficient page-level' fallback requirement (though it frames it more as a cross-bundle fallback than specifically page-level links insufficiency). Both required rubric points are met.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 5261,
+  "outputTokens": 346,
+  "durationMs": 36910,
+  "steps": 5,
+  "errors": []
+}

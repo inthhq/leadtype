@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in the correct order. It imports product and nav from docs.config.ts and passes them to the generators. Uses library APIs from leadtype/convert, leadtype/llm, and leadtype/search/node rather than the CLI. Some auxiliary imports (defaultRemarkPlugins, remarkInclude) may be speculative but the core required APIs and ordering are correct.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 33253,
+  "outputTokens": 668,
+  "durationMs": 74301,
+  "steps": 12,
+  "errors": []
+}

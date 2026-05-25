@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as static lexical BM25 with no database, gives specific conditions for adding embeddings (vocabulary/semantic gap, large corpus where synonym tuning doesn't scale), and clearly states BM25 should be kept alongside embeddings as complementary (hybrid retrieval) for exact matches. The corpus-size condition is framed slightly differently (heterogeneity/vocabulary scaling rather than 'tens of thousands of chunks'), but it still captures the spirit of the rubric's large-corpus criterion.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 25,
+  "inputTokens": 31388,
+  "outputTokens": 669,
+  "durationMs": 106439,
+  "steps": 17,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it identifies the default as a static lexical BM25 index with no database, specifies the two conditions for adding embeddings (vocabulary mismatch and corpus >tens of thousands of chunks), and explicitly states the lexical index should be kept with embeddings as complementary. Minor quibble: the rubric uses 'and/or' for the conditions while the response says 'both must be true,' but this is a small interpretation difference that doesn't undermine the core message.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 7667,
+  "outputTokens": 293,
+  "durationMs": 17295,
+  "steps": 5,
+  "errors": []
+}

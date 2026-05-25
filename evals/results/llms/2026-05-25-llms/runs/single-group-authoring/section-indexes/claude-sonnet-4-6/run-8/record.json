@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains group organizes navigation, llms.txt sections, search metadata, and AGENTS.md grouping; it characterizes /llms-full.txt as a monolithic all-docs flattened file that is not split per group; and it names multiple valid optional frontmatter fields (draft, lastModified, lastAuthor, plus icon, deprecated, experimental, canary, new, tags, full).",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 4773,
+  "outputTokens": 419,
+  "durationMs": 38296,
+  "steps": 7,
+  "errors": []
+}

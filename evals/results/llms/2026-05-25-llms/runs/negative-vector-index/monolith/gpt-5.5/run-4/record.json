@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "monolith",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response answers No, identifies the default as a static local lexical BM25 index with no database, and notes embeddings are added later for vocabulary mismatch or large corpus. It doesn't explicitly state embeddings layer on top rather than replace, but the rubric's required points are all satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2120,
+  "outputTokens": 6,
+  "durationMs": 15048,
+  "steps": 4,
+  "errors": []
+}

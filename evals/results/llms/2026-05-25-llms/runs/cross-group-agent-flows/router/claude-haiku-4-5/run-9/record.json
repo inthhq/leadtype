@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies hosted flow starting from /llms.txt over HTTP, bundle flow starting from AGENTS.md in node_modules, and explicitly lists the website artifacts skipped in bundle mode (llms.txt, llms-full.txt, search, sitemap, robots, agent-readability). All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3354,
+  "outputTokens": 239,
+  "durationMs": 14465,
+  "steps": 5,
+  "errors": []
+}

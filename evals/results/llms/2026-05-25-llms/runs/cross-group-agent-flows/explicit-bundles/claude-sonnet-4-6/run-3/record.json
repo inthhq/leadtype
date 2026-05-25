@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it correctly identifies the hosted flow as starting from `/llms.txt` over HTTP, the bundle flow as starting from `AGENTS.md` in the package, and explicitly lists the website artifacts that bundle mode skips (llms.txt, llms-full.txt, search index, sitemap, robots, agent-readability). It does not swap entry points or claim bundle mode emits llms.txt/llms-full.txt.",
+  "contextMatched": false,
+  "wrongGroupReads": 3,
+  "toolCalls": 7,
+  "inputTokens": 5379,
+  "outputTokens": 499,
+  "durationMs": 37245,
+  "steps": 5,
+  "errors": []
+}

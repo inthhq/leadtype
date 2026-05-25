@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (leadtype/llm reference) as the right place for agent-facing output APIs, naming generateLlmsTxt, generateLLMFullContextFiles, and generateAgentsMd. It correctly explains /llms-full.txt as a fallback to use only when page-level links are insufficient, and does not route the user to the Search UI/APIs as the answer.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 4045,
+  "outputTokens": 210,
+  "durationMs": 26080,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object reporting generated artifact paths, and names the key fields llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying both required points. However, it invents some field names (agentReadabilityJson instead of agentReadabilityManifest, sitemapXml/sitemapMd instead of a single sitemap field) and doesn't mention the bundle mode or the overall result shape (mode, source/output dirs, product, groups, files map).",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1726,
+  "outputTokens": 6,
+  "durationMs": 12255,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object describing generated artifacts and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it invents/misnames some fields like 'agentReadabilityJson' (should be 'agentReadabilityManifest') and 'sitemapXml'/'sitemapMd' (rubric just says 'sitemap'). It also doesn't mention that the output is a single object describing mode, source/output dirs, product, groups, or the --bundle shape. The minor fabricated field names slightly hurt the score but the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1721,
+  "outputTokens": 6,
+  "durationMs": 15523,
+  "steps": 5,
+  "errors": []
+}

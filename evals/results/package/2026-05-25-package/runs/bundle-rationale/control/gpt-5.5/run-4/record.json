@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains llms.txt is a hosted/HTTP convention with absolute URLs (wrong for tarballs), explains AGENTS.md uses relative paths and works offline at the package root, and lists --bundle skipping llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 47295,
+  "outputTokens": 43,
+  "durationMs": 58674,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response covers all required rubric points: it explains group's role in navigation, llms.txt sections, and AGENTS.md grouping; characterizes /llms-full.txt as monolithic and not split per group; and lists many valid optional fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). Minor concern: it invents a couple of fields (deprecatedReason, availableIn) but still provides many valid ones, so the requirement of at least two valid optional fields is clearly satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3411,
+  "outputTokens": 191,
+  "durationMs": 15428,
+  "steps": 5,
+  "errors": []
+}

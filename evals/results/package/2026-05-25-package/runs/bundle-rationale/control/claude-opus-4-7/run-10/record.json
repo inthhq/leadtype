@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it explains llms.txt as a website convention with absolute URLs that don't resolve from node_modules; it explains AGENTS.md uses relative on-disk paths for offline, version-matched docs; and it lists the skipped website artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots.txt with clear reasoning.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 33134,
+  "outputTokens": 530,
+  "durationMs": 47713,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains llms.txt is a hosted/website convention assuming URL space and HTTP clients at /llms.txt (not node_modules), explains AGENTS.md uses relative links to version-matched offline docs, and lists --bundle skipping llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files. Could be slightly more explicit about 'absolute URLs' but the URL-space framing covers it.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 30129,
+  "outputTokens": 37,
+  "durationMs": 31617,
+  "steps": 8,
+  "errors": []
+}

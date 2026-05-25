@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The agent correctly identifies `nav` as the curated/authoritative driver of sidebar, AGENTS.md, and llms.txt, and correctly describes `group` as legacy/optional and useful for search/taxonomy and fallback. However, the response explicitly contradicts the rubric on the third required point: it claims unknown group slugs cause a silent demotion with no build error ('The build never throws... soft, non-fatal'), whereas the ground truth says the build must fail with an 'unknown group' error. This is exactly the 'Incorrect if' condition.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 45296,
+  "outputTokens": 530,
+  "durationMs": 73726,
+  "steps": 9,
+  "errors": []
+}

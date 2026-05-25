@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "All three required points are satisfied: the response explains llms.txt uses absolute URLs and is designed for HTTP/website serving (wrong for a tarball), explains AGENTS.md uses relative paths and works offline at node_modules/<pkg>/, and states that --bundle skips llms.txt and llms-full.txt (plus search-index.json). It doesn't mention sitemap/robots, but those only 'strengthen' the answer per the rubric and aren't required.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 11708,
+  "outputTokens": 263,
+  "durationMs": 22717,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains llms.txt is a website/HTTP convention with hosted URLs not suitable for node_modules, explains AGENTS.md is filesystem-first/version-matched/offline-readable, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 29150,
+  "outputTokens": 456,
+  "durationMs": 48060,
+  "steps": 8,
+  "errors": []
+}

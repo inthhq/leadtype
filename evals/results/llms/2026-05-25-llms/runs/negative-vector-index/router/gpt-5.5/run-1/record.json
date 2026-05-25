@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "gpt-5.5",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local/edge-safe lexical BM25 index with no database, and explains embeddings are added later for vocabulary mismatch or large corpus. It doesn't explicitly state that embeddings layer on top of (rather than replace) the lexical index, but this isn't strictly required by the rubric's required points.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3357,
+  "outputTokens": 13,
+  "durationMs": 12978,
+  "steps": 5,
+  "errors": []
+}

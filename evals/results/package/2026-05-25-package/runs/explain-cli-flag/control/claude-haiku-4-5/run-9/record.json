@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The answer names both required frontmatter fields (`lastModified` and `lastAuthor`), states they are added to frontmatter, and attributes the values to git history (via `git log -1`). All required rubric points are satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 25464,
+  "outputTokens": 194,
+  "durationMs": 20567,
+  "steps": 11,
+  "errors": []
+}

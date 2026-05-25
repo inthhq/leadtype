@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it identifies the default as a static lexical BM25 index with no database; it specifies the conditions warranting embeddings (vocabulary mismatch and large corpus, though the size threshold is described as 'hundreds-to-thousands' rather than 'tens of thousands' — slightly different but still captures the large-corpus condition); and it clearly states that BM25/lexical should be kept as part of a hybrid retriever, with embeddings layered on top rather than replacing it.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 15,
+  "inputTokens": 24673,
+  "outputTokens": 617,
+  "durationMs": 105010,
+  "steps": 16,
+  "errors": []
+}

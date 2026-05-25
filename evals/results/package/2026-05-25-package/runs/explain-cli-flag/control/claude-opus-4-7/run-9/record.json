@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The ANSWER.md names both required frontmatter fields (lastModified and lastAuthor), states they are merged into YAML frontmatter, and clearly attributes the values to git history (git log of the file). All required rubric points are satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 38365,
+  "outputTokens": 461,
+  "durationMs": 41206,
+  "steps": 7,
+  "errors": []
+}

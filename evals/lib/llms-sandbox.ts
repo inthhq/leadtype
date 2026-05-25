@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { type LlmsVariant, materializeLlmsVariant } from "./llms-variants";
 
-const ROOT_FIXTURE_FILES = new Set(["PROMPT.md", "EVAL.ts", "expected.json"]);
+const ROOT_FIXTURE_FILES = new Set([
+  "PROMPT.md",
+  "EVAL.ts",
+  "expected.json",
+  "RUBRIC.md",
+]);
 
 export type LlmsSandboxHandle = {
   tempDir: string;

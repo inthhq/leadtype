@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing the generation run and names the required output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it invents some field names not in the rubric's result shape (agentReadabilityJson instead of agentReadabilityManifest, sitemapMd, sitemapXml, robotsTxt vs the rubric's sitemap/robots phrasing) and omits the --bundle mode and the higher-level fields (mode, product, groups, source/output dirs). The invented field names are a concern but the core required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2021,
+  "outputTokens": 13,
+  "durationMs": 13482,
+  "steps": 5,
+  "errors": []
+}

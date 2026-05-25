@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object to stdout describing the generation run and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions bonus fields like searchIndex, searchContent, sitemap, robots. However, it invents some field names not in the rubric's answer pattern (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', 'sitemapMd') and does not mention the --bundle shape. The required points are met despite some minor field-name inaccuracies.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3977,
+  "outputTokens": 288,
+  "durationMs": 20449,
+  "steps": 4,
+  "errors": []
+}

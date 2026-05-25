@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains llms.txt as a website/URL-based convention requiring a host, contrasts it with AGENTS.md as a filesystem convention with offline, version-matched docs at the package root, and lists --bundle skipping llms.txt, llms-full.txt, and search-index.json with proper rationale. All three required rubric points are satisfied. Minor note: the answer doesn't explicitly say AGENTS.md uses 'relative' links, but it conveys the equivalent (filesystem, offline, walks AGENTS.md → docs/*.md directly).",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 8452,
+  "outputTokens": 381,
+  "durationMs": 42123,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "gpt-5.5",
+  "runIndex": 3,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping; it characterizes `/llms-full.txt` as a single monolithic all-docs file not sharded by group; and it lists multiple valid optional frontmatter fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor).",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2352,
+  "outputTokens": 6,
+  "durationMs": 17134,
+  "steps": 5,
+  "errors": []
+}

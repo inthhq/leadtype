@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static, edge-safe BM25 lexical index with no database. It covers vocabulary/semantic mismatch as a condition for adding embeddings, and emphasizes keeping BM25 as a hybrid/fallback complement rather than replacement. It doesn't explicitly mention the 'tens of thousands of chunks' corpus-size threshold, but does mention operational cost justification; this is a partial gap on the second condition but the vocabulary mismatch condition is clearly stated.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 43676,
+  "outputTokens": 64,
+  "durationMs": 78868,
+  "steps": 14,
+  "errors": []
+}

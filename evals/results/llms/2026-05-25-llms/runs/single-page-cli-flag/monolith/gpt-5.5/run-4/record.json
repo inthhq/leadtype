@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generation output, and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also lists bonus fields like search index, sitemap, robots. However, it doesn't wrap fields under a 'files' map, omits the bundle mode behavior, and invents some field names (agentReadabilityJson instead of agentReadabilityManifest, sitemapMd) which slightly weakens accuracy but doesn't violate required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2362,
+  "outputTokens": 6,
+  "durationMs": 17298,
+  "steps": 5,
+  "errors": []
+}

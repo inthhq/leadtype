@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script correctly orders conversion first (convertAllMdx) before the LLM and search generators, satisfying the critical ordering check. It calls all required APIs: convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, and imports product/nav from docs.config.ts and passes them into the generators. Minor concerns: some optional parameters (remarkInclude, enrichFrontmatterFromGit) may be invented, but the core required APIs and ordering are correct.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 25725,
+  "outputTokens": 665,
+  "durationMs": 53922,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it explains llms.txt is an HTTP/website convention requiring a live base URL (and notes tooling doesn't scan node_modules for it), explains AGENTS.md works offline at the package root and is version-matched, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability. The mention of absolute URLs is slightly implicit (via 'live base URL' and 'links point at an external site') but adequately conveyed.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 28072,
+  "outputTokens": 424,
+  "durationMs": 44250,
+  "steps": 7,
+  "errors": []
+}

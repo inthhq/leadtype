@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files / leadtype/llm reference area as the right place for agent-facing output APIs, naming generateLlmsTxt, generateLLMFullContextFiles, and generateAgentsMd. It explicitly steers away from the Search docs. It correctly describes /llms-full.txt as a fallback used when targeted llms.txt routing/page-level links are insufficient, satisfying both required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 2548,
+  "outputTokens": 13,
+  "durationMs": 19503,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "router",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response clearly explains that `group` organizes navigation, `llms.txt` sections, search metadata, and `AGENTS.md` grouping. It correctly characterizes `/llms-full.txt` as a single monolithic all-docs file that is not split per group. It names multiple valid optional fields including `draft`, `deprecated`, `icon`, `experimental`, `canary`, `new`, `tags`, `full`, `lastModified`, and `lastAuthor`, satisfying the two-field minimum.",
+  "contextMatched": false,
+  "wrongGroupReads": 3,
+  "toolCalls": 8,
+  "inputTokens": 5616,
+  "outputTokens": 445,
+  "durationMs": 48587,
+  "steps": 7,
+  "errors": []
+}

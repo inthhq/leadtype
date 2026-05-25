@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (leadtype/llm) as the right docs area, names generateLLMFullContextFiles and the other relevant APIs, and explicitly directs the user away from the Search reference. It also correctly frames /llms-full.txt as a fallback to be used when page-level llms.txt links are insufficient, with page-level fetches as the default.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3151,
+  "outputTokens": 368,
+  "durationMs": 26716,
+  "steps": 4,
+  "errors": []
+}

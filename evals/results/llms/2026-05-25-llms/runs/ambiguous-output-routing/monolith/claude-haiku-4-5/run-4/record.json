@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "monolith",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (/docs/reference/llm.md) with the right API names like generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd, and does not route the user to Search UI/APIs. It describes /llms-full.txt as a fallback for when task-specific full context is needed across all pages, though the phrasing 'when page-level links are insufficient' could have been more explicit. Both required rubric points are met.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 14,
+  "inputTokens": 4108,
+  "outputTokens": 198,
+  "durationMs": 24239,
+  "steps": 11,
+  "errors": []
+}

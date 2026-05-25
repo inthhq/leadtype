@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files area (leadtype/llm reference) and names the relevant APIs including generateLLMFullContextFiles and generateAgentsMd. It explicitly steers away from the Search docs. It describes /llms-full.txt as a fallback for when narrower context is insufficient, matching the rubric's 'broad all-docs fallback when page-level links are not enough' requirement.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 8,
+  "inputTokens": 3932,
+  "outputTokens": 6,
+  "durationMs": 33262,
+  "steps": 7,
+  "errors": []
+}

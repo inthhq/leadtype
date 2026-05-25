@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it clearly states the default is a static, edge-safe lexical BM25 index with no database; it gives specific conditions for adding embeddings (vocabulary mismatch, cross-lingual, large corpus with measured recall ceiling); and it explicitly states the lexical index should be kept with embeddings layered on as hybrid/complementary, not as a replacement.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 31095,
+  "outputTokens": 664,
+  "durationMs": 103104,
+  "steps": 15,
+  "errors": []
+}

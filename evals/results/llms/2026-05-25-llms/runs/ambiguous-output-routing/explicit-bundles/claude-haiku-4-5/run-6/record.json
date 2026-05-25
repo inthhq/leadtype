@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (specifically /docs/reference/llm.md) and names generateLLMFullContextFiles and the other relevant APIs, not the search UI. It also correctly describes /llms-full.txt as a fallback used when page-level links/individual files are insufficient. The framing of the fallback condition is slightly different from the rubric's exact 'page-level links not enough' phrasing but conveys the same meaning.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 8,
+  "inputTokens": 4552,
+  "outputTokens": 237,
+  "durationMs": 18881,
+  "steps": 8,
+  "errors": []
+}

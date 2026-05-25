@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: (1) clearly states the default is a static, edge-safe lexical index using BM25 with no database; (2) gives the specific conditions for adding embeddings — vocabulary/intent mismatch and corpus growth past tens of thousands of chunks; (3) explicitly states the lexical index must be kept and embeddings are complementary/hybrid, not a replacement.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 10119,
+  "outputTokens": 472,
+  "durationMs": 55186,
+  "steps": 5,
+  "errors": []
+}

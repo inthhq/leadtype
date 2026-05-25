@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response covers all three required points: it explains group organizes navigation, llms.txt sections, and AGENTS.md grouping; it characterizes /llms-full.txt as the monolithic all-docs fallback not split by group; and it lists many valid optional fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). However, it also invents some per-section bundle paths (/docs/llms-full/authoring.txt) which contradicts the rubric note that site mode no longer emits per-group full-context files — though it correctly states /llms-full.txt itself is not sharded.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4390,
+  "outputTokens": 407,
+  "durationMs": 36085,
+  "steps": 6,
+  "errors": []
+}

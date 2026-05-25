@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains group organizes navigation, llms.txt sections, and AGENTS.md grouping; correctly characterizes /llms-full.txt as the monolithic, all-docs fallback that is not split by group; and lists multiple valid optional fields (deprecated, experimental, icon, canary, new, draft, tags, full, lastModified, lastAuthor). The claim about per-group bundles at /docs/llms-full/<group>.txt is somewhat orthogonal but doesn't contradict the rubric's key point that /llms-full.txt itself is monolithic.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4129,
+  "outputTokens": 302,
+  "durationMs": 26362,
+  "steps": 4,
+  "errors": []
+}

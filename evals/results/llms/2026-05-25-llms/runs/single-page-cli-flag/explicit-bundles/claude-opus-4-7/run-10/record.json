@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts, and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt), plus mentions sitemap, robots, searchIndex, and searchContent. However, it invents some field names not in the rubric's shape (agentReadabilityJson instead of agentReadabilityManifest, sitemapXml/sitemapMd as separate keys, robotsTxt) and omits the --bundle mode shape with agentsMd. It also doesn't mention the mode/source/output/product/groups fields. Still, the required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4244,
+  "outputTokens": 229,
+  "durationMs": 23367,
+  "steps": 4,
+  "errors": []
+}

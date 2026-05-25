@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 75,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object with paths to generated artifacts and names the required fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions searchIndex, searchContent, sitemap, and robots which strengthens the answer. However, it invents some field names like 'agentReadabilityJson' and 'sitemapMd' (should be agentReadabilityManifest), and doesn't mention the mode/source/output/product/groups context or the --bundle shape. The invented field names are a minor concern but the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2533,
+  "outputTokens": 135,
+  "durationMs": 9505,
+  "steps": 5,
+  "errors": []
+}

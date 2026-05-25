@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website/HTTP convention served at /llms.txt (not in node_modules), notes AGENTS.md uses relative links and is offline/version-matched, and lists the skipped website artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and readability manifest. Could be slightly more explicit about absolute URLs in llms.txt links, but the HTTP-served framing covers the rubric intent.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 26443,
+  "outputTokens": 58,
+  "durationMs": 61834,
+  "steps": 10,
+  "errors": []
+}

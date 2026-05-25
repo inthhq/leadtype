@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (`/docs/reference/llm.md`, `leadtype/llm`) as the right area, naming `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd`. It explicitly excludes the Search docs as not the right place. It correctly describes `/llms-full.txt` as a fallback used when page-level markdown links are insufficient for the task, with the default path being `/llms.txt` + linked pages.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 4781,
+  "outputTokens": 309,
+  "durationMs": 42430,
+  "steps": 10,
+  "errors": []
+}

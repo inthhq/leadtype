@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script imports the correct library APIs (convertAllMdx from leadtype/convert, generateLlmsTxt and generateLLMFullContextFiles from leadtype/llm, generateDocsSearchFiles from leadtype/search/node), runs conversion first before the downstream generators, and passes product/nav from docs.config.ts. Ordering is correct, satisfying the critical check. Minor uncertainty around exact option names but the required rubric points are all met.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 28594,
+  "outputTokens": 602,
+  "durationMs": 127172,
+  "steps": 7,
+  "errors": []
+}

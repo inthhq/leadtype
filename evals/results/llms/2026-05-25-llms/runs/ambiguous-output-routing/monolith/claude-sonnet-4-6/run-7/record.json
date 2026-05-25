@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (llm.md) with the right function names (generateLlmsTxt, generateLLMFullContextFiles, generateAgentsMd) as the agent-facing output APIs area, and explicitly steers away from the Search docs. It also correctly frames /llms-full.txt as a fallback used when per-page links are insufficient, satisfying both required rubric points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 4829,
+  "outputTokens": 516,
+  "durationMs": 55504,
+  "steps": 6,
+  "errors": []
+}

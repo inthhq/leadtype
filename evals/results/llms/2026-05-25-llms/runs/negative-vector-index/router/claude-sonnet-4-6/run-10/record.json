@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response answers 'No' to the hosted DB-backed vector index question, correctly identifies the default as a static local lexical BM25 index with no database, and explains embeddings are added later in two specific scenarios (vocabulary mismatch or large corpus growth). All three required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3223,
+  "outputTokens": 188,
+  "durationMs": 21252,
+  "steps": 5,
+  "errors": []
+}

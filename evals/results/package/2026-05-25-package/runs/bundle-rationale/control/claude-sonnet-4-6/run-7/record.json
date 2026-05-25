@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website/HTTP convention with public URLs unsuitable for node_modules, explains AGENTS.md is a filesystem convention that works offline and version-matched, and clearly lists that --bundle skips llms.txt, llms-full.txt, plus search/sitemap/robots artifacts. No incorrect claims are present.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 29510,
+  "outputTokens": 522,
+  "durationMs": 57884,
+  "steps": 10,
+  "errors": []
+}

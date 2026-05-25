@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing the generation run and names the key fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions searchIndex, searchContent, sitemap, and robots. However, it invents/renames some fields like 'agentReadabilityJson' (rubric says 'agentReadabilityManifest'), 'sitemapMd', and doesn't mention the --bundle mode. Still, the required rubric points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3065,
+  "outputTokens": 111,
+  "durationMs": 12905,
+  "steps": 5,
+  "errors": []
+}

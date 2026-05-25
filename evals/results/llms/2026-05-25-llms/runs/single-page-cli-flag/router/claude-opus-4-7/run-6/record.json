@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "router",
+  "passed": true,
+  "score": 82,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a single JSON object on stdout describing the generation artifacts, and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions additional bonus fields like searchIndex, searchContent, sitemap, and robots. However, it slightly misnames the manifest field as 'agentReadabilityJson' instead of 'agentReadabilityManifest', and does not mention the --bundle mode shape, but these are not required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4628,
+  "outputTokens": 267,
+  "durationMs": 28760,
+  "steps": 6,
+  "errors": []
+}

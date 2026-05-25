@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM reference area (specifically /docs/reference/llm.md) and names the agent-facing APIs including generateLlmsTxt, generateLLMFullContextFiles, and generateAgentsMd, without routing the user to Search docs. It also correctly characterizes /llms-full.txt as a fallback to use when topic-specific/page-level references are insufficient, aligning with the rubric. Minor omission: doesn't mention generateAgentReadabilityArtifacts, but the required points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 8,
+  "inputTokens": 4693,
+  "outputTokens": 214,
+  "durationMs": 24617,
+  "steps": 9,
+  "errors": []
+}

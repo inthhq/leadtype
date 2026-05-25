@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing the generated artifacts and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt), plus searchIndex, searchContent, sitemap, robots. It misses mentioning the top-level metadata (mode, source/output dirs, product, groups) and the --bundle shape, and uses 'agentReadabilityJson' instead of 'agentReadabilityManifest', but the required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3163,
+  "outputTokens": 121,
+  "durationMs": 10324,
+  "steps": 6,
+  "errors": []
+}

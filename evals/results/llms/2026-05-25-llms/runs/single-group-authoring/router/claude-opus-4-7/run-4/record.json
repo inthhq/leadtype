@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "variant": "router",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains that `group` organizes navigation, llms.txt sections, AGENTS.md grouping, and search metadata; it characterizes /llms-full.txt as a monolithic, ungrouped fallback that is not split by group; and it lists many valid optional frontmatter fields (deprecated, experimental, canary, new, draft, icon, tags, full, lastModified, lastAuthor). Minor concerns: it invents a few fields not on the rubric list (deprecatedReason, availableIn, description as 'optional'), but the rubric only forbids the response if it lists fewer than two valid fields or invents fields — since well over two valid fields are correctly named, this is acceptable.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 4806,
+  "outputTokens": 355,
+  "durationMs": 37834,
+  "steps": 6,
+  "errors": []
+}

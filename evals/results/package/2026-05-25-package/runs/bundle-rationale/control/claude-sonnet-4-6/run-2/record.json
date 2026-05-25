@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains llms.txt is a website/HTTP convention with hosted URLs that has no meaning in a tarball, explains AGENTS.md works offline as a filesystem convention version-matched to the installed code, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability. The answer is well-grounded in the package's own documentation.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 28383,
+  "outputTokens": 493,
+  "durationMs": 47305,
+  "steps": 7,
+  "errors": []
+}

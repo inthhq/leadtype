@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files area (leadtype/llm reference) and names generateLLMFullContextFiles and related APIs, not the Search UI. It correctly describes /llms-full.txt as a fallback used when page-level links are insufficient, matching the rubric's required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3578,
+  "outputTokens": 187,
+  "durationMs": 16534,
+  "steps": 6,
+  "errors": []
+}

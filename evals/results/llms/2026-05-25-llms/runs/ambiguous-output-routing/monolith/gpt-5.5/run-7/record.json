@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`, `leadtype/llm`) as the right place and names the relevant APIs including `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd`. It explicitly tells the user NOT to use the Search docs. It also correctly describes `/llms-full.txt` as a fallback to use when the routed `/llms.txt` links and individual markdown pages are insufficient, matching the rubric's required framing.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3156,
+  "outputTokens": 6,
+  "durationMs": 20465,
+  "steps": 6,
+  "errors": []
+}

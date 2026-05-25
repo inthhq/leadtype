@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it identifies the default as a static BM25 lexical index with no database/vector DB; it gives specific conditions for adding embeddings including large corpus (>10K chunks) and vocabulary/conceptual mismatch; and it explicitly states the lexical index should be kept as complementary, not replaced. Some added conditions (frequent updates, multi-language) go beyond the rubric but don't contradict it.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 22,
+  "inputTokens": 23968,
+  "outputTokens": 318,
+  "durationMs": 43266,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains llms.txt is a website/HTTP convention with absolute URLs that no agent looks for in node_modules; it explains AGENTS.md uses relative links and works offline/version-matched; and it correctly lists llms.txt and llms-full.txt (plus search index, sitemap, robots, agent-readability) as artifacts --bundle skips.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 11912,
+  "outputTokens": 465,
+  "durationMs": 36324,
+  "steps": 6,
+  "errors": []
+}

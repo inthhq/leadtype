@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 35,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of sidebar/AGENTS.md/llms.txt and correctly describes group as legacy taxonomy/fallback with search/facet uses. However, the rubric REQUIRES stating that an unknown group slug causes the build to FAIL with an 'unknown group' error. The agent explicitly claims the opposite — that it is 'reported, not thrown' and 'will not break the build' — which matches the rubric's 'Incorrect if' condition (says unknown group is silently ignored/only surfaced).",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 48083,
+  "outputTokens": 661,
+  "durationMs": 88627,
+  "steps": 15,
+  "errors": []
+}

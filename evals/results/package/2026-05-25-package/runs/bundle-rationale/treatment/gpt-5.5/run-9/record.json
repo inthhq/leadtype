@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website convention with URL-based discovery, explains AGENTS.md uses relative links and works offline/version-matched inside node_modules, and lists --bundle skipping llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files. Minor: doesn't explicitly say 'absolute URLs' but conveys the equivalent via 'URL-based discovery' and 'HTTP URLs'.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 23432,
+  "outputTokens": 43,
+  "durationMs": 21207,
+  "steps": 7,
+  "errors": []
+}

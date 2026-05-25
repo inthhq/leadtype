@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The agent's answer directly contradicts the rubric's ground truth on the critical second question. The rubric requires stating that an unknown group slug causes the build to FAIL with an 'unknown group' error. The agent explicitly claims the opposite — that there is 'no hard error and no build-breaking warning' and the page is 'silently demoted' — which the rubric lists as an automatic 'Incorrect if' condition. Question 1 is mostly addressed correctly, but the failure on Question 2 is disqualifying.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 43478,
+  "outputTokens": 658,
+  "durationMs": 85718,
+  "steps": 10,
+  "errors": []
+}

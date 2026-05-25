@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No to the hosted DB-backed vector index question, identifies the default as a static local lexical index using BM25, and explains embeddings are added later for vocabulary mismatch or large corpora. All three required rubric points are satisfied. Minor omission: doesn't explicitly state embeddings layer on top rather than replace the lexical index, but doesn't contradict it either.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 3049,
+  "outputTokens": 196,
+  "durationMs": 14458,
+  "steps": 4,
+  "errors": []
+}

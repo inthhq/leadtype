@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "gpt-5.5",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response answers No, identifies the default as a static local lexical BM25 index with no database, and explains embeddings are added later when vocabulary mismatches occur or the corpus grows large. All three required rubric points are satisfied. It doesn't explicitly state embeddings layer on top rather than replace, but this isn't strictly required.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1956,
+  "outputTokens": 6,
+  "durationMs": 9720,
+  "steps": 4,
+  "errors": []
+}

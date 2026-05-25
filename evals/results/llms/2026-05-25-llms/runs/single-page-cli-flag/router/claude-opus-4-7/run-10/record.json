@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": true,
+  "score": 80,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a single JSON object to stdout describing the generation run, and names the required output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions search index, sitemap, and robots as bonus fields. However, it uses 'agentReadabilityJson' and 'sitemapMd' which may not match the exact rubric field 'agentReadabilityManifest', and it omits the --bundle mode shape. Still, the required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4495,
+  "outputTokens": 379,
+  "durationMs": 29999,
+  "steps": 6,
+  "errors": []
+}

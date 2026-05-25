@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response names the helper exactly as `isAgentReadabilityArtifactPath` and correctly describes it as preventing rewrite of artifact paths. It covers all the required paths: llms.txt, llms-full.txt, sitemap, robots.txt, search JSON files, and agent-readability.json manifest.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 4510,
+  "outputTokens": 159,
+  "durationMs": 16852,
+  "steps": 10,
+  "errors": []
+}

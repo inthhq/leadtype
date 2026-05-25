@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 3,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing the generation run, and names the required fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions search index, sitemap, and robots as bonus. However, it invents/renames some fields (`agentReadabilityJson` instead of `agentReadabilityManifest`, and `sitemapXml`/`sitemapMd` rather than a single sitemap field), and omits the --bundle shape and the `files` map structure. Required points are met, so it passes but with deductions for invented field names.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1469,
+  "outputTokens": 13,
+  "durationMs": 11653,
+  "steps": 5,
+  "errors": []
+}

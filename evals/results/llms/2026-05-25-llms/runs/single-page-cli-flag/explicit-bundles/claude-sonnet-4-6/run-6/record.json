@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object containing generated file paths (satisfies the single JSON result object requirement) and names the key output-path fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions search index, sitemap, and robots fields as bonus. However, it uses 'agentReadabilityJson' and 'sitemapMd' which may be invented field names (rubric specifies 'agentReadabilityManifest'), and it omits the --bundle mode shape and the mode/source/output/product/groups top-level fields.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3103,
+  "outputTokens": 334,
+  "durationMs": 30639,
+  "steps": 5,
+  "errors": []
+}

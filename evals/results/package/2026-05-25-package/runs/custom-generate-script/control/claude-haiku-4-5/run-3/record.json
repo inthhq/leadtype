@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script imports library APIs (not the CLI), calls conversion first via convertMdxFile to write public/docs/*.md, then runs generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles afterward — satisfying the critical ordering requirement. It passes product and nav from docs.config.ts into the generators. Minor concerns: uses convertMdxFile per-file rather than the documented convertAllMdx, and invents some option shapes (e.g., result.frontmatter/markdown, generateAgentReadabilityArtifacts), but the rubric's required points are all met.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 23452,
+  "outputTokens": 584,
+  "durationMs": 101637,
+  "steps": 17,
+  "errors": []
+}

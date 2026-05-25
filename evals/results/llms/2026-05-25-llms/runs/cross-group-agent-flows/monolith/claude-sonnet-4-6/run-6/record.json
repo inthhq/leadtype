@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies all required points: hosted flow starts at /llms.txt over HTTP, bundle flow starts at AGENTS.md in the installed package (node_modules/<pkg>/AGENTS.md), and --bundle mode skips website artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files. The answer is comprehensive with side-by-side comparison and additional context.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4935,
+  "outputTokens": 414,
+  "durationMs": 42175,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": true,
+  "score": 80,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with the right API names including generateLLMFullContextFiles, generateLlmsTxt, generateAgentsMd) and does not route the user to the Search UI. It describes /llms-full.txt as a fallback for when more complete context is needed. However, it does not explicitly frame the fallback condition as 'when page-level llms.txt markdown links are insufficient' — it gives related but looser reasons (complete context, no routing, exploration), which partially captures the rubric's intent.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 4534,
+  "outputTokens": 207,
+  "durationMs": 23736,
+  "steps": 10,
+  "errors": []
+}

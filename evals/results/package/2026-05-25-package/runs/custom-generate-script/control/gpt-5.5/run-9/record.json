@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLLMFullContextFiles, generateDocsSearchFiles, and generateLlmsTxt — satisfying the critical ordering requirement. All required APIs are imported from leadtype's library (not CLI), and product/nav are passed to generators. Minor concern: generateLlmsTxt runs last rather than alongside the others, but this still satisfies the rubric's required ordering (conversion before index/search generators).",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 34751,
+  "outputTokens": 694,
+  "durationMs": 94201,
+  "steps": 17,
+  "errors": []
+}

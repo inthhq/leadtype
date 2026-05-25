@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static, edge-safe lexical BM25 index with no database. It states embeddings should be complementary and the BM25 index must be kept for exact matches. It covers both vocabulary mismatch and scale conditions (though scale is framed slightly differently as 'corpus large enough that BM25 misses semantically related terms' rather than the specific 'tens of thousands of chunks' threshold). The added requirement of cross-lingual retrieval and 'all three simultaneously' is more restrictive than the rubric but doesn't contradict it. Overall the required points are satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 30891,
+  "outputTokens": 746,
+  "durationMs": 102516,
+  "steps": 15,
+  "errors": []
+}

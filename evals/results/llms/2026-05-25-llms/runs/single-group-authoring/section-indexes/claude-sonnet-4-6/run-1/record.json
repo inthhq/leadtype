@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response covers all three required points: it explains group organizes navigation, llms.txt sections, and AGENTS.md grouping; it characterizes /llms-full.txt as the monolithic all-docs file that is not split by group; and it names multiple valid optional frontmatter fields (lastModified, deprecated, icon, experimental, canary, new, draft, tags, full, lastAuthor). Minor concerns: it invents some unverified details like per-section bundles at /docs/llms-full/authoring.txt and 'deprecatedReason', but these don't violate the rubric's incorrect criteria.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 8,
+  "inputTokens": 4255,
+  "outputTokens": 417,
+  "durationMs": 32218,
+  "steps": 6,
+  "errors": []
+}

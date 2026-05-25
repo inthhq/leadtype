@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing the generated artifacts and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt), along with search index, sitemap, robots, etc. However, it doesn't clearly emphasize 'single result object on stdout' with mode/product/groups context, omits the --bundle shape, and invents some field names like 'agentReadabilityJson', 'sitemapXml', 'sitemapMd' rather than the rubric's 'agentReadabilityManifest'. Still, the required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3492,
+  "outputTokens": 97,
+  "durationMs": 7820,
+  "steps": 4,
+  "errors": []
+}

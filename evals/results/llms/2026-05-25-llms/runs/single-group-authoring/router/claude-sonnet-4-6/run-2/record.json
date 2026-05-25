@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping; it characterizes /llms-full.txt as a monolithic all-docs file not split by group; and it names multiple valid optional fields (draft, icon, deprecated, experimental, canary, new, tags, full, lastModified, lastAuthor). Minor issue: `description` is not in the rubric's list and the mention of per-group files like `/docs/llms-full/authoring.txt` slightly contradicts the ground truth that site mode no longer emits per-group full-context files, but the main claim about /llms-full.txt being monolithic is correct.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 3951,
+  "outputTokens": 378,
+  "durationMs": 31348,
+  "steps": 6,
+  "errors": []
+}

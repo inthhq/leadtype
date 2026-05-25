@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static/local lexical BM25 index with no database, and explains embeddings are opt-in additions for vocabulary mismatch or large corpus growth. All three required rubric points are satisfied. It slightly under-emphasizes that the lexical index is retained even when embeddings are added, but doesn't contradict it.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3323,
+  "outputTokens": 239,
+  "durationMs": 19551,
+  "steps": 4,
+  "errors": []
+}

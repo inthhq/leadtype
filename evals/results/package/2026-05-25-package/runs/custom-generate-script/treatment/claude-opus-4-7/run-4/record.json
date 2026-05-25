@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in that order — matching the required ordering. It imports product and nav from docs.config.ts and passes them into the generators. Uses library APIs, not the CLI. Minor concerns: search generator doesn't receive product/nav and adds some plausibly-invented plugin imports (remarkInclude, defaultRemarkPlugins), but the required generator names and ordering are correct.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 20,
+  "inputTokens": 29379,
+  "outputTokens": 520,
+  "durationMs": 73773,
+  "steps": 12,
+  "errors": []
+}

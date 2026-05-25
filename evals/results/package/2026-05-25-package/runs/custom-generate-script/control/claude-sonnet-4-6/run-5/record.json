@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script correctly imports library APIs (no CLI), calls convertAllMdx first to write public/docs/*.md, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in that order. It passes product and nav from docs.config.ts into the generators. Ordering requirement (conversion before full-context/search) is satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 26374,
+  "outputTokens": 771,
+  "durationMs": 90415,
+  "steps": 18,
+  "errors": []
+}

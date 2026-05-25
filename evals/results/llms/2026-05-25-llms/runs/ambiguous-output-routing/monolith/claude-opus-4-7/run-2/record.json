@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`, `leadtype/llm`) with the right generator names including `generateLLMFullContextFiles`, and explicitly directs the user away from the Search docs. It also correctly characterizes `/llms-full.txt` as a fallback for when routed page-level context is insufficient, matching the rubric.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5064,
+  "outputTokens": 288,
+  "durationMs": 48292,
+  "steps": 8,
+  "errors": []
+}

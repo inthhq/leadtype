@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "router",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object describing generated artifacts (machine-readable manifest, not log output) and names llmsTxt, docsLlmsTxt, and llmsFullTxt along with searchIndex, searchContent, sitemap, and robots. However, it invents/renames some fields: 'agentReadabilityJson' instead of 'agentReadabilityManifest', and 'sitemapXml'/'sitemapMd' which may not match the actual shape. It also misses the --bundle mode and doesn't explicitly mention the top-level fields like mode/product/groups, but these are bonuses. Required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3230,
+  "outputTokens": 292,
+  "durationMs": 24009,
+  "steps": 6,
+  "errors": []
+}

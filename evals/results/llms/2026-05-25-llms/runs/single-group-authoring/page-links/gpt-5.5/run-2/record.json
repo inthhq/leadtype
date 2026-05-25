@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains group organizes navigation, llms.txt sections, and AGENTS.md grouping; characterizes /llms-full.txt as a single monolithic all-docs file that is not sharded by group; and names many valid optional frontmatter fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). Some extra fields like deprecatedReason and availableIn may not be in the canonical schema, but the rubric only penalizes for fewer than two valid fields, which is not the case here.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2356,
+  "outputTokens": 13,
+  "durationMs": 15179,
+  "steps": 5,
+  "errors": []
+}

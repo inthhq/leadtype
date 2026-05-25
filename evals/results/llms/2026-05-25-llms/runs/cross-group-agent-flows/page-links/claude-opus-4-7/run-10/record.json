@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies hosted flow starting at /llms.txt over HTTP, bundle flow starting at AGENTS.md in the package, and lists the skipped website artifacts (llms.txt, llms-full.txt, search, sitemap, robots, agent-readability). All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 5269,
+  "outputTokens": 345,
+  "durationMs": 37420,
+  "steps": 4,
+  "errors": []
+}

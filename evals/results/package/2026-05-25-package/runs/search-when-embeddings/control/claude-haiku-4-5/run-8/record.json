@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it correctly identifies the default as a static, edge-safe BM25 lexical index with no database; it gives the specific vocabulary-mismatch condition (with the exact 'make it faster' → performance example) and mentions large corpus scale (though it cites 100K+ rather than tens of thousands, which is in the same ballpark); and it explicitly states BM25 should be kept as the primary retrieval layer with embeddings as a complementary re-ranking layer, not a replacement.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 23042,
+  "outputTokens": 411,
+  "durationMs": 43859,
+  "steps": 13,
+  "errors": []
+}

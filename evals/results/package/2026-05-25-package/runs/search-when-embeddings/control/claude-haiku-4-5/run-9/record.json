@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as static BM25 lexical search with no database (edge-safe, static JSON). It states embeddings should only be added under specific conditions including vocabulary/intent mismatch, and explicitly says to keep the BM25 index as complementary (exact matching, offline, etc.). The corpus-size condition (tens of thousands of chunks) from the rubric isn't explicitly mentioned, but vocabulary mismatch and complementary retention are clearly covered, satisfying the required points.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 21224,
+  "outputTokens": 389,
+  "durationMs": 46042,
+  "steps": 17,
+  "errors": []
+}

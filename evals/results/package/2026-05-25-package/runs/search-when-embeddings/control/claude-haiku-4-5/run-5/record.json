@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it identifies BM25 as the default static lexical index with no database, gives specific conditions for adding embeddings (vocabulary/intent mismatch like 'make it faster' → 'performance', and very large corpus ~10k+), and explicitly states BM25 must be kept with embeddings as complementary re-ranker, not replacement. Minor deductions for framing the corpus threshold slightly differently (pages vs chunks) and adding an A/B testing condition not in the rubric, but the core requirements are clearly met.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 18,
+  "inputTokens": 25691,
+  "outputTokens": 411,
+  "durationMs": 44665,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) with the agent-facing APIs including `generateLLMFullContextFiles`, and does not route to Search. It also correctly describes `/llms-full.txt` as a fallback used when the modular page-level `llms.txt` approach is insufficient. Minor: omits `generateAgentReadabilityArtifacts`, but both required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3582,
+  "outputTokens": 248,
+  "durationMs": 14955,
+  "steps": 6,
+  "errors": []
+}

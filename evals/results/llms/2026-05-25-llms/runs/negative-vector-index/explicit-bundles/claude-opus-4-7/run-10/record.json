@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers 'No' to the default hosted database-backed vector index question. It clearly states the default is a static local lexical BM25 index with no database. It also explains embeddings are an opt-in addition triggered by vocabulary mismatch or corpus scale. All three required points are satisfied. Minor: doesn't explicitly state embeddings layer on top rather than replace the lexical index, but does call them an 'enhancement layered on top'.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 4447,
+  "outputTokens": 205,
+  "durationMs": 19942,
+  "steps": 5,
+  "errors": []
+}

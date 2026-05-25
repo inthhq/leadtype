@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, llms.txt sections, search metadata, and AGENTS.md grouping (matches rubric). It correctly characterizes /llms-full.txt as a single monolithic flattened file not split by group. It lists multiple valid optional frontmatter fields including `icon`, `deprecated`, `experimental`, `canary`, `new`, `draft`, `tags`, `full`, `lastModified`, and `lastAuthor`.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 5259,
+  "outputTokens": 265,
+  "durationMs": 26645,
+  "steps": 4,
+  "errors": []
+}

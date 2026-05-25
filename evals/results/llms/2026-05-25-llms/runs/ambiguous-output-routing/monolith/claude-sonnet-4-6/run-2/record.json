@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "monolith",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files reference area (/docs/reference/llm.md) and names generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd as the agent-facing output APIs. It explicitly steers away from the search docs area. It also correctly describes /llms-full.txt as a fallback/escape hatch used when page-level link-following is insufficient, rather than the default path.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 12,
+  "inputTokens": 5226,
+  "outputTokens": 416,
+  "durationMs": 59341,
+  "steps": 7,
+  "errors": []
+}

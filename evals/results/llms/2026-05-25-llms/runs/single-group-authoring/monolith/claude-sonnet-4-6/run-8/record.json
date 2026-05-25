@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` controls navigation, `llms.txt` sections, search metadata, and `AGENTS.md` grouping. It clearly characterizes `/llms-full.txt` as a single, flat monolithic file not sharded by group. It names multiple valid optional frontmatter fields (draft, lastModified, lastAuthor, plus icon, deprecated, experimental, canary, new, tags, full).",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4726,
+  "outputTokens": 372,
+  "durationMs": 40324,
+  "steps": 5,
+  "errors": []
+}

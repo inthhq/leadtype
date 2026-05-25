@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response names the exact helper `isAgentReadabilityArtifactPath` and accurately describes it as guarding artifact paths from being rewritten as missing markdown pages. It lists all the relevant paths: llms.txt, llms-full.txt, sitemap, robots.txt, search JSON, and agent-readability.json.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 4639,
+  "outputTokens": 219,
+  "durationMs": 25272,
+  "steps": 5,
+  "errors": []
+}

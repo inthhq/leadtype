@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with `generateLLMFullContextFiles`, `generateLlmsTxt`, `generateAgentsMd`) as the right place and explicitly distinguishes it from the Search docs. It also correctly describes `/llms-full.txt` as a monolithic fallback to use when page-level links are insufficient, not the default path. Both required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3768,
+  "outputTokens": 397,
+  "durationMs": 35828,
+  "steps": 5,
+  "errors": []
+}

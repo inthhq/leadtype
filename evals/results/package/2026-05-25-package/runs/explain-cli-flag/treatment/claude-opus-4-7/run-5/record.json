@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it names both frontmatter fields (`lastModified` and `lastAuthor`), states they are added to the page's YAML frontmatter, and attributes the values to git history (via `git log`). The answer is written to ANSWER.md as required.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 16330,
+  "outputTokens": 359,
+  "durationMs": 33216,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (leadtype/llm) with the specific API names including generateLLMFullContextFiles, generateLlmsTxt, generateAgentsMd, and explicitly distinguishes it from the Search docs (which it notes is the search UI/retrieval, not what's wanted). It correctly frames /llms-full.txt as a fallback to use when scoped/page-level options are insufficient, following the 'smallest bundle that matches' principle. Both required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 4,
+  "toolCalls": 7,
+  "inputTokens": 5043,
+  "outputTokens": 452,
+  "durationMs": 40415,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local lexical index using BM25 (no database), and explains embeddings are opt-in additions when vocabulary mismatches occur or the corpus grows large. All three required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2440,
+  "outputTokens": 150,
+  "durationMs": 9225,
+  "steps": 4,
+  "errors": []
+}

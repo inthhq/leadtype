@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with the right API names like generateLLMFullContextFiles, generateLlmsTxt, generateAgentsMd) as the right place, and explicitly steers away from the Search docs. It also correctly characterizes /llms-full.txt as a fallback used when smaller bundles/page-level links are insufficient, not the default. Minor omission of generateAgentReadabilityArtifacts but the rubric uses 'e.g.' so this is acceptable.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 2605,
+  "outputTokens": 13,
+  "durationMs": 26096,
+  "steps": 7,
+  "errors": []
+}

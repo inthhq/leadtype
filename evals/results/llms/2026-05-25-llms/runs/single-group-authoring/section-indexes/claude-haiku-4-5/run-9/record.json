@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping (required #1 met). It characterizes `/llms-full.txt` as monolithic all-docs flattened and explicitly states it is not split by group (required #2 met). It lists many valid optional frontmatter fields including icon, deprecated, experimental, new, draft, tags, full, lastModified, lastAuthor, canary (required #3 met, far exceeding two).",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3826,
+  "outputTokens": 268,
+  "durationMs": 19111,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (specifically /docs/reference/llm.md) with the right API names including generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd. It explicitly steers away from the search docs. It also correctly characterizes /llms-full.txt as a fallback used when smaller/page-level bundles are insufficient, not as the default. Minor deviation: the rubric mentions page-level llms.txt markdown links being insufficient, while the response frames the fallback condition around per-area bundles being insufficient — close enough in spirit and still treats it as a fallback.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 5072,
+  "outputTokens": 394,
+  "durationMs": 31241,
+  "steps": 5,
+  "errors": []
+}

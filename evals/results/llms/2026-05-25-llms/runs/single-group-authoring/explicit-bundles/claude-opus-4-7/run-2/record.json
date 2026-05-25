@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required points: it explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping; characterizes `/llms-full.txt` as a single monolithic all-docs bundle that is not split by group; and names multiple valid optional frontmatter fields including `icon`, `deprecated`, `experimental`, `canary`, `new`, `draft`, `tags`, `full`, `lastModified`, and `lastAuthor`. Minor concern: it invents some fields like `deprecatedReason` and `availableIn` not in the rubric list, but it also names many valid ones, so the requirement of two valid optional fields is clearly met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 5893,
+  "outputTokens": 398,
+  "durationMs": 37780,
+  "steps": 5,
+  "errors": []
+}

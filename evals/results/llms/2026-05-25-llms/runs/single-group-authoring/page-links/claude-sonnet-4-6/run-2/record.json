@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping; it correctly characterizes /llms-full.txt as a single monolithic all-docs file that is not split per group; and it names valid optional frontmatter fields including `deprecated`, `lastModified`, and `lastAuthor`. The invented `deprecatedReason` field is a minor issue but the core `deprecated` field is valid, and two other valid fields are included.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3427,
+  "outputTokens": 328,
+  "durationMs": 30619,
+  "steps": 4,
+  "errors": []
+}

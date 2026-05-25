@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 15,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response contradicts the rubric on the critical build-time behavior point. It explicitly claims unknown group slugs are 'tracked, not rejected,' that 'the build succeeds,' and that 'leadtype does not error or fail the build.' The rubric requires stating the build fails with an 'unknown group' error. This is an explicit 'Incorrect if' condition. While the answer roughly identifies nav as the curated driver and group as legacy/fallback taxonomy, the wrong build behavior makes it incorrect.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 39757,
+  "outputTokens": 375,
+  "durationMs": 38508,
+  "steps": 10,
+  "errors": []
+}

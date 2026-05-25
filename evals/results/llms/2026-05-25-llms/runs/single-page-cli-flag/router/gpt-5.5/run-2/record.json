@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object reporting paths of generated artifacts, and names the required answer-pattern keys (llmsTxt, docsLlmsTxt, llmsFullTxt). It includes searchIndex, searchContent, robots, and sitemap. However, it invents some field names (sitemapXml, sitemapMd, agentReadabilityJson instead of agentReadabilityManifest) and omits the mode/source/output/product/groups structure and the --bundle shape. The invented field names are a minor concern per the 'incorrect if' clause, but the core required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1796,
+  "outputTokens": 13,
+  "durationMs": 14296,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response names both required frontmatter fields (lastModified and lastAuthor), identifies them as frontmatter fields added to MDX files, and correctly attributes their values to git history (via git log). All required rubric points are satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 26946,
+  "outputTokens": 216,
+  "durationMs": 14451,
+  "steps": 7,
+  "errors": []
+}

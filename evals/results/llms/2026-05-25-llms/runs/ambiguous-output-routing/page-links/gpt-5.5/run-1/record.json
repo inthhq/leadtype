@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files docs area (Reference → LLM files, /docs/reference/llm.md) as the right place for agent-facing output APIs and explicitly steers away from the Search docs. It also correctly describes /llms-full.txt as a monolithic fallback used when page-level links are insufficient. Minor: it doesn't enumerate all four function names from the rubric, but it covers the area and the fallback semantics correctly.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1936,
+  "outputTokens": 6,
+  "durationMs": 16000,
+  "steps": 4,
+  "errors": []
+}

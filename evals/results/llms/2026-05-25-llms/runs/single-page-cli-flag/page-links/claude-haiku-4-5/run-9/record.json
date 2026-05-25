@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object containing paths to generated artifacts and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt) along with searchIndex, searchContent, sitemap, robots. It misses the --bundle mode shape and uses 'agentReadabilityJson' instead of 'agentReadabilityManifest' and invents 'sitemapMd', which are minor inaccuracies but don't violate required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2459,
+  "outputTokens": 80,
+  "durationMs": 13908,
+  "steps": 4,
+  "errors": []
+}

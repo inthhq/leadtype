@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, `llms.txt` sections, search metadata, and `AGENTS.md` grouping. It clearly characterizes `/llms-full.txt` as a monolithic, group-agnostic concatenation that is not split by group. It names multiple valid optional frontmatter fields including `lastModified`, `lastAuthor`, `icon`, `deprecated`, `experimental`, etc. The use of `description` as a primary example is slightly off (it's not in the rubric's listed optional fields), but the response also explicitly highlights `lastModified`/`lastAuthor`, satisfying the two-fields requirement.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 8,
+  "inputTokens": 4711,
+  "outputTokens": 404,
+  "durationMs": 40390,
+  "steps": 5,
+  "errors": []
+}

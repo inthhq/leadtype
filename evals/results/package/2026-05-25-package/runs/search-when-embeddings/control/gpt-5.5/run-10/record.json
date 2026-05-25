@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static, edge-safe BM25 lexical index with no database. It states that lexical/BM25 must be kept even with embeddings (hybrid retrieval, not replacement). It covers the vocabulary mismatch condition explicitly and addresses large corpus, though it doesn't specifically mention the 'tens of thousands of chunks' threshold — instead generalizing to 'large or heterogeneous corpus.' This is close enough to satisfy the required condition about corpus size, though less specific than the rubric's ground truth.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 40908,
+  "outputTokens": 138,
+  "durationMs": 57479,
+  "steps": 12,
+  "errors": []
+}

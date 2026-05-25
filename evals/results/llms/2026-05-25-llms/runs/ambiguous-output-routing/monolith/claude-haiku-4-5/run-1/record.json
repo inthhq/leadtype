@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "monolith",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) with the relevant APIs including `generateLLMFullContextFiles`, and does not route to Search UI. It also correctly explains that `/llms-full.txt` is a fallback used when page-level links/group routing are insufficient, with the recommendation to start at `/llms.txt` and follow markdown links first.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 17,
+  "inputTokens": 6311,
+  "outputTokens": 226,
+  "durationMs": 26428,
+  "steps": 12,
+  "errors": []
+}

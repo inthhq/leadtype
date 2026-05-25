@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area with `generateLLMFullContextFiles` and related APIs as the right place, and explicitly steers away from the Search docs. It also correctly describes `/llms-full.txt` as a fallback rather than the default path, used when smaller bundles/page-level links are insufficient. Both required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 5276,
+  "outputTokens": 388,
+  "durationMs": 35665,
+  "steps": 6,
+  "errors": []
+}

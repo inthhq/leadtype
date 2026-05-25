@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it identifies the default as a static, edge-safe lexical BM25 index with no database; it gives the specific conditions for adding embeddings (vocabulary/intent mismatch and corpus growing past tens of thousands of chunks); and it explicitly states the lexical index should be kept as embeddings are complementary, not a replacement.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 7307,
+  "outputTokens": 87,
+  "durationMs": 23568,
+  "steps": 6,
+  "errors": []
+}

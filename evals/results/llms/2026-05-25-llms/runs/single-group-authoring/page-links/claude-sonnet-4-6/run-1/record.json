@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, llms.txt sections, search metadata, and AGENTS.md grouping. It clearly characterizes /llms-full.txt as a monolithic, all-docs file not split by group. It names multiple optional fields including valid ones like `deprecated`, `icon`, `experimental`, `canary`, `new`, `draft`, `tags`, `full`, `lastModified`, `lastAuthor`. The `description` and `deprecatedReason` examples are slightly outside the rubric's listed fields, but `deprecated` itself is valid, and other valid fields are also listed, satisfying the two-field requirement.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 4533,
+  "outputTokens": 422,
+  "durationMs": 51415,
+  "steps": 5,
+  "errors": []
+}

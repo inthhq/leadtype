@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a single JSON object to stdout describing generated artifacts, satisfying the first required point. It names llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying the second required point. It also mentions search index, sitemap, robots, and manifest fields. However, it invents/renames some fields (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', 'sitemapXml'/'sitemapMd' which aren't in the rubric shape) and omits the --bundle mode shape, which slightly weakens accuracy but doesn't violate required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3657,
+  "outputTokens": 275,
+  "durationMs": 23087,
+  "steps": 5,
+  "errors": []
+}

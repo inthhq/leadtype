@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it explains llms.txt is a website/HTTP convention with URL-based fetching (wrong for tarballs), explains AGENTS.md uses relative links for offline, version-matched use inside node_modules, and states --bundle skips llms.txt, llms-full.txt, plus search index, sitemap, robots, and agent-readability files.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 24962,
+  "outputTokens": 43,
+  "durationMs": 29817,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies BM25 as the default lexical search with a static client-side index (no database). It states embeddings are only warranted for vocabulary/intent mismatches and at scale, and explicitly says to keep BM25 as the primary retrieval layer with embeddings as supplementary. The scale threshold given (1000+ pages) is lower than the rubric's 'tens of thousands of chunks' but still captures the spirit of the corpus-size condition.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 18,
+  "inputTokens": 23767,
+  "outputTokens": 332,
+  "durationMs": 33280,
+  "steps": 12,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object containing file paths of generated artifacts, and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt), plus search index, sitemap, and robots. It does miss the --bundle mode shape and uses 'agentReadabilityJson' instead of 'agentReadabilityManifest', and doesn't mention mode/source/output/product/groups fields, but these are bonus or contextual. The required points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3517,
+  "outputTokens": 244,
+  "durationMs": 22009,
+  "steps": 6,
+  "errors": []
+}

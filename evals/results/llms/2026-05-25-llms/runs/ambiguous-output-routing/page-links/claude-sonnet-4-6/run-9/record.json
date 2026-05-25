@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 9,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files area (`/docs/reference/llm.md`) and names `generateLLMFullContextFiles` along with the other agent-facing output APIs, explicitly distinguishing them from the Search docs. It correctly describes `/llms-full.txt` as a fallback to be used when per-page links are insufficient (e.g., can't follow individual links, need full corpus). Both required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3481,
+  "outputTokens": 414,
+  "durationMs": 30352,
+  "steps": 4,
+  "errors": []
+}

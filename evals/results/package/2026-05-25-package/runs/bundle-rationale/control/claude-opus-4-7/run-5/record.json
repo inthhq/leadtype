@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it explains llms.txt is a website convention with absolute URLs that don't resolve in a tarball, explains AGENTS.md uses relative paths and works offline/version-matched at the package root, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots. The answer is well-grounded and accurate.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 34742,
+  "outputTokens": 426,
+  "durationMs": 49092,
+  "steps": 8,
+  "errors": []
+}

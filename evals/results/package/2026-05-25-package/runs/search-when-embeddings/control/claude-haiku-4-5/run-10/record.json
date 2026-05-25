@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies BM25 as the default static, edge-safe lexical index requiring no database. It covers the vocabulary/intent mismatch condition (paraphrases like 'make requests faster' vs 'performance tuning') and large corpus condition (though stated as 1000+ pages rather than tens of thousands of chunks — close enough in spirit). It clearly states the lexical index should be kept as fallback with hybrid search, making embeddings complementary rather than a replacement. The corpus size threshold is somewhat off from the rubric's 'tens of thousands of chunks' but the overall conditions are specific and correct.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 29647,
+  "outputTokens": 440,
+  "durationMs": 59590,
+  "steps": 19,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script correctly calls convertAllMdx first, then generateLlmsTxt and generateLLMFullContextFiles in the right order, passing product and nav from docs.config.ts. However, it does NOT use the required search-node API (generateDocsSearchFiles from leadtype/search/node) to generate the static search index. Instead it invents/uses generateAgentReadabilityArtifacts from leadtype/llm, which produces manifest/robots/sitemap files — not the required search index. This fails the required search index point and likely invents an API name.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 26474,
+  "outputTokens": 593,
+  "durationMs": 54170,
+  "steps": 16,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website/HTTP discovery convention requiring a base URL (wrong inside node_modules), explains AGENTS.md works on-disk with relative docs/*.md links and is version-matched, and correctly states --bundle skips llms.txt, llms-full.txt, and search-index.json. Sitemap/robots aren't mentioned but those were strengtheners, not required.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 5658,
+  "outputTokens": 333,
+  "durationMs": 35640,
+  "steps": 5,
+  "errors": []
+}

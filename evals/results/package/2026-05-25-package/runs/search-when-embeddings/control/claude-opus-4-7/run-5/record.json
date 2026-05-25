@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The ANSWER.md satisfies all three required points: (1) clearly states the default is a static, edge-safe BM25 lexical index with no DB; (2) gives specific conditions for adding embeddings — measured vocabulary mismatch and large/conceptual corpus, not generic 'better search'; (3) explicitly says embeddings should be a secondary signal layered on top, keeping BM25 as primary retriever for exact matches via hybrid scoring. The rubric's 'tens of thousands of chunks' threshold is only loosely covered ('large or conceptual enough to benefit'), but the spirit is captured.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 25992,
+  "outputTokens": 771,
+  "durationMs": 106003,
+  "steps": 14,
+  "errors": []
+}

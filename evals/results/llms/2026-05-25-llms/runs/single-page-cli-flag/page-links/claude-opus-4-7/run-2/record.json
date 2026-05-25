@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifact paths, and names the required fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions searchIndex, searchContent, sitemap, and robots as bonus. However, it invents some field names like `agentReadabilityJson`, `sitemapMd`, `sitemapXml`, `robotsTxt` (the rubric uses `agentReadabilityManifest`), and doesn't mention the --bundle/agentsMd shape, but these aren't required.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3537,
+  "outputTokens": 290,
+  "durationMs": 18526,
+  "steps": 4,
+  "errors": []
+}

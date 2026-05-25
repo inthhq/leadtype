@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (/docs/reference/llm.md) and names the agent-facing output APIs including generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd. It explicitly steers away from the Search reference. It correctly describes /llms-full.txt as a fallback, used when scoped/page-level options are insufficient, rather than as the default path.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 5406,
+  "outputTokens": 360,
+  "durationMs": 37413,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object containing paths for generated artifacts (single result object on stdout). It names the required fields llmsTxt, docsLlmsTxt, and llmsFullTxt, as well as searchIndex, searchContent, sitemap, and robots. However, it invents/renames some fields: 'agentReadabilityJson' instead of 'agentReadabilityManifest', and 'sitemapMd' which isn't in the rubric's listed fields. It also misses describing the --bundle mode shape. Still, the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3858,
+  "outputTokens": 262,
+  "durationMs": 22154,
+  "steps": 5,
+  "errors": []
+}

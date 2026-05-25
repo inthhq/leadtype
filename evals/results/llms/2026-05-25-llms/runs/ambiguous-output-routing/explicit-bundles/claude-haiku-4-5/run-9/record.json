@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files / leadtype/llm area and names generateLLMFullContextFiles, satisfying the first required point. However, on the fallback criterion, it does not clearly state that /llms-full.txt is used when page-level llms.txt markdown links are insufficient; instead it lists generic reasons (single-request, offline, network issues). It also weakens the answer by mentioning Search APIs as potentially relevant, which dilutes the 'not the Search UI' guidance.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 8,
+  "inputTokens": 4353,
+  "outputTokens": 245,
+  "durationMs": 24503,
+  "steps": 9,
+  "errors": []
+}

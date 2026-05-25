@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, llms.txt sections, search metadata, and AGENTS.md grouping (not decoration). It correctly characterizes /llms-full.txt as a single monolithic all-docs file that is not sharded per group. It lists many valid optional frontmatter fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor), well exceeding the two-field minimum. Minor concern: a couple of invented-sounding fields like `deprecatedReason` and `availableIn` are included, but the required valid fields are clearly present.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 2553,
+  "outputTokens": 6,
+  "durationMs": 15501,
+  "steps": 5,
+  "errors": []
+}

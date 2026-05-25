@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object with paths for generated artifacts and correctly names llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions search index, sitemap, and robots files. However, it invents some field names like 'agentReadabilityJson', 'sitemapXml', 'sitemapMd' instead of the actual 'agentReadabilityManifest', and omits the mode/source/output dirs/product/groups structure and the --bundle shape. The invented field names are a concern per the 'incorrect if' clause, but the required points are technically met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2490,
+  "outputTokens": 229,
+  "durationMs": 8054,
+  "steps": 4,
+  "errors": []
+}

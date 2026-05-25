@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 98,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response names the helper exactly as `isAgentReadabilityArtifactPath` and describes that it covers the artifact paths to skip, including llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json. All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3224,
+  "outputTokens": 13,
+  "durationMs": 9914,
+  "steps": 5,
+  "errors": []
+}

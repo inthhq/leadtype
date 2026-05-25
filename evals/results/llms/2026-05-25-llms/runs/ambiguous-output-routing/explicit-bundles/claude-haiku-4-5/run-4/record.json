@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (`leadtype/llm`) and names the right APIs including `generateLLMFullContextFiles`, satisfying the first required point. However, it fails the second required point: it does not clearly frame `/llms-full.txt` as a fallback used when page-level `llms.txt` markdown links are insufficient. Instead, it describes it as a comprehensive bundle option, which leans toward presenting it as a primary/default path rather than a fallback — close to the 'Incorrect if' condition.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 11,
+  "inputTokens": 5095,
+  "outputTokens": 230,
+  "durationMs": 24177,
+  "steps": 11,
+  "errors": []
+}

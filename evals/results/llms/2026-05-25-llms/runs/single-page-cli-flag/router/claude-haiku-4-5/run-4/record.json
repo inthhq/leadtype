@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object and names the required fields (llmsTxt, docsLlmsTxt, llmsFullTxt) along with search index, sitemap, robots, and manifest. However, it invents some field names (agentReadabilityJson instead of agentReadabilityManifest, sitemapXml/sitemapMd/robotsTxt) and misses mentioning the mode/source/output dirs/product/groups structure and the --bundle variant. Still, the required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3181,
+  "outputTokens": 151,
+  "durationMs": 12410,
+  "steps": 6,
+  "errors": []
+}

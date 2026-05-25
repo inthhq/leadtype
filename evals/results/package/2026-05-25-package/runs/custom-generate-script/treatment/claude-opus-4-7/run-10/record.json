@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles — preserving the required ordering. It imports product and nav from docs.config.ts and passes them into the llms generators. All required APIs are imported from leadtype library paths (not the CLI). Minor concern: nav isn't passed to the search generator, but the rubric only requires product/nav to be passed into the generators generally, which is satisfied.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 24994,
+  "outputTokens": 610,
+  "durationMs": 42640,
+  "steps": 6,
+  "errors": []
+}

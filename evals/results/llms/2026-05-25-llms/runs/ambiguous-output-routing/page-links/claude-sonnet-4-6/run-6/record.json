@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (leadtype/llm) and names generateLLMFullContextFiles, explicitly steering away from the Search docs. It also correctly describes /llms-full.txt as a fallback used when page-level links from /llms.txt are insufficient, matching both required rubric points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2988,
+  "outputTokens": 356,
+  "durationMs": 22591,
+  "steps": 4,
+  "errors": []
+}

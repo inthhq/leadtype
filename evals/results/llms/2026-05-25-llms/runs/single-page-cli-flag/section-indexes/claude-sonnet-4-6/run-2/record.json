@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a structured JSON object describing generated artifacts, satisfying the first required point. It names llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying the second required point. It also mentions search index, sitemap, robots, and a manifest-like field for bonus. It misses the --bundle shape and uses 'agentReadabilityJson' instead of 'agentReadabilityManifest', but these are minor and don't violate required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2532,
+  "outputTokens": 267,
+  "durationMs": 20163,
+  "steps": 5,
+  "errors": []
+}

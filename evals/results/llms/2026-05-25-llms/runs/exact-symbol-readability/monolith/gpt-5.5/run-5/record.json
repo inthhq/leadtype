@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "variant": "monolith",
+  "passed": true,
+  "score": 98,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly names the helper `isAgentReadabilityArtifactPath` and accurately describes its coverage of the artifact paths including llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON files, and agent-readability.json.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2083,
+  "outputTokens": 6,
+  "durationMs": 8162,
+  "steps": 4,
+  "errors": []
+}

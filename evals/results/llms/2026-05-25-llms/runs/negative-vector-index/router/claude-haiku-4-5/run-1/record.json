@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No to the hosted database-backed vector index question, identifies the default as a static local BM25 lexical index built at build time with no database, and explains embeddings are added later for vocabulary mismatch or large corpus growth. It slightly under-emphasizes that lexical is kept for exact matches when embeddings are added, but this isn't a required rubric point.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3233,
+  "outputTokens": 122,
+  "durationMs": 10498,
+  "steps": 5,
+  "errors": []
+}

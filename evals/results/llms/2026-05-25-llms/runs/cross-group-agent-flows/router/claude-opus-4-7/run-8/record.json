@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "variant": "router",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the hosted flow entry point as /llms.txt over HTTP, the bundle flow entry point as AGENTS.md in node_modules, and clearly lists the website artifacts skipped in bundle mode including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability. All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 5819,
+  "outputTokens": 394,
+  "durationMs": 37680,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`) and names `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd` as the agent-facing output APIs, explicitly steering away from the Search docs. It also correctly describes `/llms-full.txt` as a fallback used when page-level link traversal is insufficient, matching the rubric's requirements.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5046,
+  "outputTokens": 320,
+  "durationMs": 46828,
+  "steps": 9,
+  "errors": []
+}

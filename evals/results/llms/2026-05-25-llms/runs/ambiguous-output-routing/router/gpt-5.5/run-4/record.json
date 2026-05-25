@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "router",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (under Reference) as the right place for agent-facing output APIs, naming generateLlmsTxt, generateLLMFullContextFiles, and generateAgentsMd. It explicitly steers away from the Search docs. It also correctly describes /llms-full.txt as a broad fallback used when smaller topics are insufficient. Missing generateAgentReadabilityArtifacts (mentions isAgentReadabilityArtifactPath instead) is a minor gap but both required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 8,
+  "inputTokens": 3266,
+  "outputTokens": 13,
+  "durationMs": 31855,
+  "steps": 8,
+  "errors": []
+}

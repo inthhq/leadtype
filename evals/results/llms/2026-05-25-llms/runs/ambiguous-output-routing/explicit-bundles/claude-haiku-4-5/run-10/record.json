@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with generateLlmsTxt, generateLLMFullContextFiles, generateAgentsMd) as the right place for agent-facing output APIs and does not route the user to the Search UI. It describes /llms-full.txt as a fallback for when complete context is needed. However, the framing of 'when page-level llms.txt markdown links are insufficient' is somewhat implicit rather than explicit, though it does say 'when the agent cannot follow group-organized sections' which is in the same spirit. Overall both required points are met.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 14,
+  "inputTokens": 7236,
+  "outputTokens": 212,
+  "durationMs": 33596,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response uses the correct mount syntax `--docs-dir changelog=/changelog` alongside `--docs-dir docs`, states the canonical URL is under `/changelog/...` (not `/docs/changelog/...`), and mentions both the internal copy at `public/docs/changelog/v1.md` and the public mirror at `public/changelog/v1.md`. Minor deviation: the canonical URL is given as `/changelog/v1` rather than `/changelog/v1.md`, but the rubric's required points are all satisfied.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 15,
+  "inputTokens": 33035,
+  "outputTokens": 68,
+  "durationMs": 64814,
+  "steps": 16,
+  "errors": []
+}

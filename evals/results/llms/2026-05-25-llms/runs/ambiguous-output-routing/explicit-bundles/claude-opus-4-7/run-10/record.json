@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (/docs/reference/llm.md) with the proper API names including generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd, and explicitly steers away from the Search docs. It correctly describes /llms-full.txt as a fallback used when smaller/page-level bundles are insufficient, satisfying both required rubric points.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 5191,
+  "outputTokens": 335,
+  "durationMs": 34460,
+  "steps": 5,
+  "errors": []
+}

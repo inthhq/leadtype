@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`) with the right API names including `generateLLMFullContextFiles`, and correctly describes `/llms-full.txt` as a fallback used when topic-specific files don't suffice. It does mention Search as one of three reference areas but does not route the user there as the answer — it presents LLM files as the relevant area for the bundle generation APIs. Both required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3887,
+  "outputTokens": 163,
+  "durationMs": 16165,
+  "steps": 6,
+  "errors": []
+}

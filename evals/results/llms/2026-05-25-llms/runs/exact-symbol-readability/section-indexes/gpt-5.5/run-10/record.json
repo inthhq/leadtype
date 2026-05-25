@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "gpt-5.5",
+  "runIndex": 10,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly names the helper `isAgentReadabilityArtifactPath` exactly and describes its purpose as identifying artifact paths to serve rather than rewrite as missing markdown. It lists all the required artifacts: llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 2689,
+  "outputTokens": 6,
+  "durationMs": 16233,
+  "steps": 8,
+  "errors": []
+}

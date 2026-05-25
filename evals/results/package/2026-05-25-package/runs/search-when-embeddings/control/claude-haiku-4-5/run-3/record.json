@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static BM25 lexical index with no database, and correctly states the BM25 index should be kept as a complementary/hybrid layer rather than replaced. However, it fails the specificity requirement for when embeddings are warranted: the rubric requires (a) vocabulary/intent mismatch (e.g., 'make it faster' → 'performance' page) and (b) corpus growth past tens of thousands of chunks. The response gives generic conditions like 'semantic search matters', 'vague queries', 'latency tolerance', and '100s of pages' — the corpus size threshold is off by orders of magnitude and the vocabulary-mismatch condition is only loosely implied rather than specifically stated.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 30,
+  "inputTokens": 19031,
+  "outputTokens": 427,
+  "durationMs": 48158,
+  "steps": 18,
+  "errors": []
+}

@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
-import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gateway, generateText, stepCountIs } from "ai";
+import { aggregateRun } from "./lib/aggregate";
+import { DEFAULT_JUDGE_MODEL, judgeAnswer } from "./lib/judge";
 import { loadLlmsExpected, selectionMatchesVariant } from "./lib/llms-metrics";
 import { createLlmsSandbox } from "./lib/llms-sandbox";
 import {
@@ -12,14 +13,12 @@ import {
   type LlmsVariant,
   parseLlmsVariant,
 } from "./lib/llms-variants";
+import { namespaceModelId, parseModelList, providerFor } from "./lib/models";
+import { runPool } from "./lib/pool";
+import type { RunRecord } from "./lib/record";
+import { withRetry } from "./lib/retry";
 import { scopedTools } from "./lib/tools";
-import {
-  type Provider,
-  type ToolCall,
-  type Transcript,
-  transcriptPathFor,
-  writeTranscript,
-} from "./lib/transcript";
+import type { ToolCall, Transcript } from "./lib/transcript";
 
 const evalsRoot = fileURLToPath(new URL(".", import.meta.url));
 const fixturesRoot = path.join(evalsRoot, "llms");
@@ -31,6 +30,7 @@ The docs site's web root is represented by files in the current project root. Tr
 Start at /llms.txt. Use only the docs files you read from this web-root representation. Write your final answer to ANSWER.md.`;
 
 const STEP_LIMIT = 40;
+const DEFAULT_MODEL = "claude-haiku-4-5";
 const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
 const MODEL_TIMEOUT_MS =
   process.env.LLMS_EVAL_MODEL_TIMEOUT_MS === undefined
@@ -39,26 +39,15 @@ const MODEL_TIMEOUT_MS =
         process.env.LLMS_EVAL_MODEL_TIMEOUT_MS,
         "LLMS_EVAL_MODEL_TIMEOUT_MS"
       );
-const VITEST_TIMEOUT_MS = 60_000;
 
 type CliArgs = {
   fixture?: string;
   variant?: LlmsVariant;
-  model: string;
+  models: string[];
+  judge: string;
   runs: number;
-};
-
-type RunResult = {
-  fixture: string;
-  variant: LlmsVariant;
-  passed: boolean;
-  contextMatched: boolean;
-  wrongGroupReads: number;
-  durationMs: number;
-  toolCalls: number;
-  inputTokens: number;
-  outputTokens: number;
-  evalOutput: string;
+  label?: string;
+  concurrency: number;
 };
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
@@ -68,8 +57,7 @@ function parsePositiveInt(value: string | undefined, flag: string): number {
   if (!/^[1-9]\d*$/.test(value)) {
     throw new Error(`${flag} must be a positive integer, got ${value}`);
   }
-  const parsed = Number(value);
-  return parsed;
+  return Number(value);
 }
 
 function parseRequiredFlagValue(
@@ -82,8 +70,14 @@ function parseRequiredFlagValue(
   return value;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: a flat CLI flag switch is clearer left inline than split apart
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { model: "claude-haiku-4-5", runs: 1 };
+  const args: CliArgs = {
+    models: [DEFAULT_MODEL],
+    judge: DEFAULT_JUDGE_MODEL,
+    runs: 1,
+    concurrency: 1,
+  };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i];
@@ -94,10 +88,16 @@ function parseArgs(argv: string[]): CliArgs {
       args.variant = parseLlmsVariant(
         parseRequiredFlagValue(argv[i++], "--variant")
       );
-    } else if (a === "--model") {
-      args.model = parseRequiredFlagValue(argv[i++], "--model");
+    } else if (a === "--model" || a === "--models") {
+      args.models = parseModelList(parseRequiredFlagValue(argv[i++], a));
+    } else if (a === "--judge") {
+      args.judge = parseRequiredFlagValue(argv[i++], "--judge");
     } else if (a === "--runs") {
       args.runs = parsePositiveInt(argv[i++], "--runs");
+    } else if (a === "--concurrency") {
+      args.concurrency = parsePositiveInt(argv[i++], "--concurrency");
+    } else if (a === "--label") {
+      args.label = parseRequiredFlagValue(argv[i++], "--label");
     } else if (a === "--help" || a === "-h") {
       printUsage();
       process.exit(0);
@@ -112,11 +112,14 @@ function printUsage(): void {
   process.stdout.write(`Usage: bun run run-llms-eval.ts [options]
 
 Options:
-  --fixture <name>    Run only one fixture (default: all)
+  --fixture <name>   Run only one fixture (default: all)
   --variant <name>   Run one variant: ${LLMS_VARIANTS.join("|")} (default: all)
-  --model <id>       Model id, e.g. claude-haiku-4-5, claude-opus-4-7,
-                     gpt-5.5 (default: claude-haiku-4-5)
-  --runs <n>         Repetitions per (fixture x variant) combo (default: 1)
+  --models <a,b,c>   Comma-separated candidate model ids (default: ${DEFAULT_MODEL})
+  --model <id>       Alias for a single --models entry
+  --judge <id>       Judge model id (default: ${DEFAULT_JUDGE_MODEL})
+  --runs <n>         Repetitions per (fixture × variant × model) (default: 1)
+  --concurrency <n>  Number of runs in flight at once (default: 1)
+  --label <name>     Results folder name under results/llms/ (default: timestamp)
   -h, --help         Show this help
 `);
 }
@@ -132,305 +135,189 @@ function discoverFixtures(): string[] {
     .sort();
 }
 
-function namespaceModelId(modelId: string): string {
-  if (modelId.includes("/")) {
-    return modelId;
-  }
-  if (modelId.startsWith("gpt-")) {
-    return `openai/${modelId}`;
-  }
-  return `anthropic/${modelId}`;
-}
-
-function getModel(modelId: string): {
-  provider: Provider;
-  model: ReturnType<typeof gateway>;
-} {
-  const namespaced = namespaceModelId(modelId);
-  const provider: Provider = namespaced.startsWith("openai/")
-    ? "openai"
-    : "anthropic";
-  return { provider, model: gateway(namespaced) };
-}
-
 async function runOne(options: {
   fixture: string;
   variant: LlmsVariant;
   modelId: string;
+  judge: string;
   runIndex: number;
   totalRuns: number;
-}): Promise<RunResult> {
-  const { fixture, variant, modelId, runIndex, totalRuns } = options;
+  runDir: string;
+  promptText: string;
+  rubricText: string;
+}): Promise<RunRecord> {
+  const {
+    fixture,
+    variant,
+    modelId,
+    judge,
+    runIndex,
+    totalRuns,
+    runDir,
+    promptText,
+    rubricText,
+  } = options;
   const fixtureDir = path.join(fixturesRoot, fixture);
-  const promptText = await readFile(
-    path.join(fixtureDir, "PROMPT.md"),
-    "utf-8"
-  );
 
   process.stdout.write(
-    `* ${fixture} / ${variant} [${runIndex}/${totalRuns}] (${modelId})\n`
+    `▶ ${fixture} / ${variant} / ${modelId} [${runIndex}/${totalRuns}]\n`
   );
 
   const sandbox = await createLlmsSandbox({ fixtureDir, variant });
+  const start = Date.now();
+  const transcriptCalls: ToolCall[] = [];
+  const filesModified = new Set<string>();
+  // Docs-reading task: drop the npm tool so the model doesn't waste steps.
+  const { npm: _omit, ...tools } = scopedTools({
+    tempDir: sandbox.tempDir,
+    transcript: transcriptCalls,
+    filesModified,
+  });
+
+  const provider = providerFor(modelId);
+  const errors: string[] = [];
+  let finalText = "";
+  let steps = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
   try {
-    const start = Date.now();
-    const transcriptCalls: ToolCall[] = [];
-    const filesModified = new Set<string>();
-    // The llms eval is a docs-reading task: the model should not invoke `npm`.
-    // Omit it from the toolset so the model does not waste steps exploring it.
-    const { npm: _omit, ...tools } = scopedTools({
-      tempDir: sandbox.tempDir,
-      transcript: transcriptCalls,
-      filesModified,
-    });
-
-    const { provider, model } = getModel(modelId);
-    const errors: string[] = [];
-    let finalText = "";
-    let steps = 0;
-    let inputTokens = 0;
-    let outputTokens = 0;
-
-    try {
-      const result = await generateText({
-        model,
+    const result = await withRetry(() =>
+      generateText({
+        model: gateway(namespaceModelId(modelId)),
         system: SYSTEM_PROMPT,
         prompt: promptText,
         tools,
         stopWhen: stepCountIs(STEP_LIMIT),
         timeout: MODEL_TIMEOUT_MS,
-      });
-      finalText = result.text ?? "";
-      steps = result.steps?.length ?? 0;
-      inputTokens = result.usage?.inputTokens ?? 0;
-      outputTokens = result.usage?.outputTokens ?? 0;
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
-    }
-
-    const durationMs = Date.now() - start;
-    const transcript: Transcript = {
-      fixture,
-      benchmark: "llms",
-      mode: "treatment",
-      variant,
-      agent: { provider, model: modelId },
-      toolCalls: transcriptCalls,
-      filesModified: [...filesModified].sort(),
-      finalText,
-      durationMs,
-      steps,
-      errors,
-      tokens: { input: inputTokens, output: outputTokens },
-    };
-    await writeTranscript(sandbox.tempDir, transcript);
-
-    const expected = loadLlmsExpected(fixtureDir);
-    const selection = selectionMatchesVariant(transcript, expected);
-    const evalResult = await runVitest(fixture, sandbox.tempDir);
-    const passed = evalResult.passed;
-
-    process.stdout.write(
-      `  ${passed ? "ok" : "fail"} ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls · context ${selection.passed ? "ok" : "miss"} · ${inputTokens}in/${outputTokens}out\n`
+      })
     );
-    if (errors.length > 0) {
-      for (const error of errors) {
-        process.stdout.write(`    ! ${error}\n`);
-      }
-    }
-    if (!passed) {
-      const tailLines = evalResult.output.split("\n").slice(-25).join("\n");
-      process.stdout.write(`${tailLines}\n`);
-    }
-
-    await archiveTranscript({
-      fixture,
-      variant,
-      runIndex,
-      tempDir: sandbox.tempDir,
-      transcript,
-    });
-
-    return {
-      fixture,
-      variant,
-      passed,
-      contextMatched: selection.passed,
-      wrongGroupReads: selection.wrongGroupReads.length,
-      durationMs,
-      toolCalls: transcriptCalls.length,
-      inputTokens,
-      outputTokens,
-      evalOutput: evalResult.output,
-    };
-  } finally {
-    await sandbox.cleanup();
+    finalText = result.text ?? "";
+    steps = result.steps?.length ?? 0;
+    inputTokens = result.usage?.inputTokens ?? 0;
+    outputTokens = result.usage?.outputTokens ?? 0;
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : String(err));
   }
+
+  const durationMs = Date.now() - start;
+  const transcript: Transcript = {
+    fixture,
+    benchmark: "llms",
+    mode: "treatment",
+    variant,
+    agent: { provider, model: modelId },
+    toolCalls: transcriptCalls,
+    filesModified: [...filesModified].sort(),
+    finalText,
+    durationMs,
+    steps,
+    errors,
+    tokens: { input: inputTokens, output: outputTokens },
+  };
+
+  const expected = loadLlmsExpected(fixtureDir);
+  const selection = selectionMatchesVariant(transcript, expected);
+
+  let answerContent = "";
+  try {
+    answerContent = await readFile(
+      path.join(sandbox.tempDir, "ANSWER.md"),
+      "utf-8"
+    );
+  } catch {
+    answerContent = finalText;
+  }
+  const verdict = await judgeAnswer({
+    task: promptText,
+    rubric: rubricText,
+    answer: answerContent || finalText,
+    judgeModel: judge,
+  });
+
+  const record: RunRecord = {
+    benchmark: "llms",
+    fixture,
+    model: modelId,
+    runIndex,
+    variant,
+    passed: verdict.correct,
+    score: verdict.score,
+    judgeModel: verdict.judgeModel,
+    judgeReasoning: verdict.reasoning,
+    judgeError: verdict.error,
+    contextMatched: selection.passed,
+    wrongGroupReads: selection.wrongGroupReads.length,
+    toolCalls: transcriptCalls.length,
+    inputTokens,
+    outputTokens,
+    durationMs,
+    steps,
+    errors,
+  };
+
+  await archiveRun({
+    runDir,
+    fixture,
+    variant,
+    modelId,
+    runIndex,
+    tempDir: sandbox.tempDir,
+    transcript,
+    verdict,
+    record,
+    answerContent,
+  });
+  await sandbox.cleanup();
+
+  process.stdout.write(
+    `  ${verdict.correct ? "✓" : "✗"} score ${verdict.score} · context ${selection.passed ? "ok" : "miss"} · ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls${verdict.error ? " · JUDGE ERROR" : ""}\n`
+  );
+  for (const e of errors) {
+    process.stdout.write(`    ! ${e}\n`);
+  }
+  return record;
 }
 
-async function archiveTranscript(opts: {
+async function archiveRun(opts: {
+  runDir: string;
   fixture: string;
   variant: LlmsVariant;
+  modelId: string;
   runIndex: number;
   tempDir: string;
   transcript: Transcript;
+  verdict: Awaited<ReturnType<typeof judgeAnswer>>;
+  record: RunRecord;
+  answerContent: string;
 }): Promise<void> {
-  const { fixture, variant, runIndex, tempDir, transcript } = opts;
-  const ts = new Date().toISOString().replace(/[.:]/g, "-");
   const dir = path.join(
-    evalsRoot,
-    "results",
-    "llms",
-    fixture,
-    variant,
-    `${ts}-run${runIndex}`
+    opts.runDir,
+    "runs",
+    opts.fixture,
+    opts.variant,
+    sanitizeSegment(opts.modelId),
+    `run-${opts.runIndex}`
   );
   await mkdir(dir, { recursive: true });
   await writeFile(
     path.join(dir, "transcript.json"),
-    `${JSON.stringify(transcript, null, 2)}\n`
+    `${JSON.stringify(opts.transcript, null, 2)}\n`
   );
-  for (const rel of transcript.filesModified) {
-    try {
-      const safeRel = toSafeArchivePath(rel);
-      if (!safeRel) {
-        continue;
-      }
-      const content = await readFile(path.join(tempDir, safeRel), "utf-8");
-      const filesDir = path.join(dir, "files");
-      const dest = path.join(filesDir, safeRel);
-      const relativeDest = path.relative(filesDir, dest);
-      if (relativeDest.startsWith("..") || path.isAbsolute(relativeDest)) {
-        continue;
-      }
-      await mkdir(path.dirname(dest), { recursive: true });
-      await writeFile(dest, content);
-    } catch {
-      // Best effort archive for files that still exist.
-    }
-  }
-}
-
-function toSafeArchivePath(rel: string): string | undefined {
-  if (path.isAbsolute(rel)) {
-    return;
-  }
-  const normalized = path.normalize(rel);
-  if (
-    normalized === "." ||
-    normalized.startsWith("..") ||
-    path.isAbsolute(normalized) ||
-    normalized.split(path.sep).includes("..")
-  ) {
-    return;
-  }
-  return normalized;
-}
-
-async function runVitest(
-  fixture: string,
-  tempDir: string
-): Promise<{ passed: boolean; output: string }> {
-  const evalFile = path.join(fixturesRoot, fixture, "EVAL.ts");
-  return await new Promise((resolveSpawn) => {
-    let settled = false;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const settle = (result: { passed: boolean; output: string }) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-      resolveSpawn(result);
-    };
-
-    let proc: ReturnType<typeof spawn>;
-    try {
-      proc = spawn("bun", ["x", "vitest", "run", evalFile], {
-        cwd: evalsRoot,
-        env: {
-          ...process.env,
-          TRANSCRIPT_PATH: transcriptPathFor(tempDir),
-        },
-      });
-    } catch (err) {
-      settle({
-        passed: false,
-        output: `failed to spawn vitest: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      return;
-    }
-
-    let output = "";
-    timeout = setTimeout(() => {
-      proc.kill("SIGKILL");
-      settle({
-        passed: false,
-        output: `${output}\ntimeout after ${VITEST_TIMEOUT_MS}ms`,
-      });
-    }, VITEST_TIMEOUT_MS);
-    proc.stdout?.on("data", (b) => {
-      output += b.toString();
-    });
-    proc.stderr?.on("data", (b) => {
-      output += b.toString();
-    });
-    proc.on("error", (err) => {
-      settle({
-        passed: false,
-        output: `${output}\nspawn error: ${err.message}`,
-      });
-    });
-    proc.on("close", (code) => {
-      settle({ passed: code === 0, output });
-    });
-  });
-}
-
-function summarize(results: RunResult[]): void {
-  process.stdout.write("\n== llms-full Variant Summary ==\n");
-  process.stdout.write(
-    "fixture                         variant             pass       context    wrong grp   avg calls   avg tokens\n"
+  await writeFile(
+    path.join(dir, "judge.json"),
+    `${JSON.stringify(opts.verdict, null, 2)}\n`
   );
-  const keys = [
-    ...new Set(results.map((result) => `${result.fixture}\0${result.variant}`)),
-  ].sort();
-
-  for (const key of keys) {
-    const [fixture, variant] = key.split("\0") as [string, LlmsVariant];
-    const rows = results.filter(
-      (result) => result.fixture === fixture && result.variant === variant
-    );
-    const passed = rows.filter((row) => row.passed).length;
-    const contextMatched = rows.filter((row) => row.contextMatched).length;
-    const wrongGroups = rows.reduce(
-      (total, row) => total + row.wrongGroupReads,
-      0
-    );
-    const avgCalls = average(rows.map((row) => row.toolCalls));
-    const avgTokens = average(
-      rows.map((row) => row.inputTokens + row.outputTokens)
-    );
-
-    process.stdout.write(
-      `${fixture.padEnd(32)}${variant.padEnd(20)}${`${passed}/${rows.length}`.padEnd(11)}${`${contextMatched}/${rows.length}`.padEnd(11)}${String(wrongGroups).padEnd(12)}${avgCalls.toFixed(1).padEnd(12)}${avgTokens.toFixed(0)}\n`
-    );
-  }
-
-  const totalRuns = results.length;
-  const passed = results.filter((result) => result.passed).length;
-  process.stdout.write(
-    `\nOverall: ${passed}/${totalRuns} passed (${((passed / totalRuns) * 100).toFixed(0)}%)\n`
+  await writeFile(
+    path.join(dir, "record.json"),
+    `${JSON.stringify(opts.record, null, 2)}\n`
   );
+  if (opts.answerContent) {
+    await writeFile(path.join(dir, "ANSWER.md"), opts.answerContent);
+  }
 }
 
-function average(values: number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-  return values.reduce((total, value) => total + value, 0) / values.length;
+function sanitizeSegment(value: string): string {
+  return value.replace(/[^\w.-]+/g, "_");
 }
 
 async function main(): Promise<void> {
@@ -451,23 +338,69 @@ async function main(): Promise<void> {
     ? [args.variant]
     : LLMS_VARIANTS.map(parseLlmsVariant);
 
-  const results: RunResult[] = [];
+  const runId = args.label ?? new Date().toISOString().replace(/[.:]/g, "-");
+  const runDir = path.join(evalsRoot, "results", "llms", runId);
+  await mkdir(runDir, { recursive: true });
+
+  const total =
+    fixtures.length * variants.length * args.models.length * args.runs;
+  process.stdout.write(
+    `Hosted-docs benchmark: ${fixtures.length} fixtures × ${variants.length} variants × ${args.models.length} models × ${args.runs} runs = ${total} agent runs\nJudge: ${args.judge} · concurrency: ${args.concurrency}\nResults: ${runDir}\n\n`
+  );
+
+  const fixtureText = new Map<string, { prompt: string; rubric: string }>();
+  for (const fixture of fixtures) {
+    const dir = path.join(fixturesRoot, fixture);
+    fixtureText.set(fixture, {
+      prompt: await readFile(path.join(dir, "PROMPT.md"), "utf-8"),
+      rubric: await readFile(path.join(dir, "RUBRIC.md"), "utf-8"),
+    });
+  }
+
+  type Task = {
+    fixture: string;
+    variant: LlmsVariant;
+    modelId: string;
+    runIndex: number;
+  };
+  const tasks: Task[] = [];
   for (const fixture of fixtures) {
     for (const variant of variants) {
-      for (let i = 1; i <= args.runs; i++) {
-        const result = await runOne({
-          fixture,
-          variant,
-          modelId: args.model,
-          runIndex: i,
-          totalRuns: args.runs,
-        });
-        results.push(result);
+      for (const modelId of args.models) {
+        for (let i = 1; i <= args.runs; i++) {
+          tasks.push({ fixture, variant, modelId, runIndex: i });
+        }
       }
     }
   }
-  summarize(results);
-  process.exit(results.every((result) => result.passed) ? 0 : 1);
+
+  let completed = 0;
+  await runPool(tasks, args.concurrency, async (task) => {
+    const texts = fixtureText.get(task.fixture);
+    if (!texts) {
+      return;
+    }
+    await runOne({
+      fixture: task.fixture,
+      variant: task.variant,
+      modelId: task.modelId,
+      judge: args.judge,
+      runIndex: task.runIndex,
+      totalRuns: args.runs,
+      runDir,
+      promptText: texts.prompt,
+      rubricText: texts.rubric,
+    });
+    completed++;
+    if (completed % 25 === 0 || completed === tasks.length) {
+      process.stdout.write(`  …${completed}/${tasks.length} runs done\n`);
+    }
+  });
+
+  const summary = await aggregateRun(runDir);
+  process.stdout.write(
+    `\n══ Done ══\n${summary.totalRuns} runs · report: ${path.join(runDir, "report.md")}\n`
+  );
 }
 
 main().catch((err) => {

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`leadtype/llm`) and names `generateLLMFullContextFiles` as the agent-facing output API, avoiding the Search UI. It also correctly characterizes `/llms-full.txt` as a fallback used when page-level links are not enough. Both required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2737,
+  "outputTokens": 128,
+  "durationMs": 13870,
+  "steps": 5,
+  "errors": []
+}

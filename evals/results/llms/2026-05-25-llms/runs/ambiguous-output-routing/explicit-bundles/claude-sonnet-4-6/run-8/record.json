@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`) and names `generateLLMFullContextFiles` and related APIs as the right place, and explicitly notes the Search reference is NOT what's needed. It also explains `/llms-full.txt` as a fallback bundle to use when smaller/page-level bundles aren't sufficient. It misses mentioning `generateAgentReadabilityArtifacts` by that exact name (uses `isAgentReadabilityArtifactPath` instead), but the rubric only requires pointing to the LLM files area, which is satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3657,
+  "outputTokens": 486,
+  "durationMs": 30483,
+  "steps": 5,
+  "errors": []
+}

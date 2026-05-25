@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) with the relevant functions including `generateLLMFullContextFiles`, and explicitly distinguishes it from the Search docs. It also correctly describes `/llms-full.txt` as a fallback used when per-page links are insufficient. Both required rubric points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 5137,
+  "outputTokens": 501,
+  "durationMs": 78619,
+  "steps": 6,
+  "errors": []
+}

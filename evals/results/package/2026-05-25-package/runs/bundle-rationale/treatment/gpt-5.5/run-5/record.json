@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it explains llms.txt is a website/HTTP convention with URL-based links that agents don't look for in node_modules, explains AGENTS.md uses relative links and works offline/version-matched, and lists the skipped website artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 16252,
+  "outputTokens": 43,
+  "durationMs": 20238,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response names the helper exactly as `isAgentReadabilityArtifactPath` and correctly describes its coverage including llms.txt, llms-full.txt, sitemap, robots.txt, search JSON, and agent-readability.json, matching the rubric requirements.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2954,
+  "outputTokens": 205,
+  "durationMs": 21309,
+  "steps": 7,
+  "errors": []
+}

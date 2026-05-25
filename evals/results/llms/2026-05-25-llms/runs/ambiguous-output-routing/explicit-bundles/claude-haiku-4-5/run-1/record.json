@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`leadtype/llm`) with the right API names including `generateLLMFullContextFiles`, and does not route to Search UI. It explains `/llms-full.txt` as a fallback used when smaller/page-level bundles are insufficient, consistent with the rubric. Slightly less explicit about 'page-level llms.txt markdown links' specifically, but the fallback framing is clearly preserved.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 4147,
+  "outputTokens": 195,
+  "durationMs": 24847,
+  "steps": 10,
+  "errors": []
+}

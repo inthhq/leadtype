@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (leadtype/llm) as the right docs area, naming generateLlmsTxt, generateLLMFullContextFiles, and generateAgentsMd, and explicitly excludes the Search docs as out of scope. It also clearly describes /llms-full.txt as a fallback to be used when smaller/topic-level files are insufficient, not as the default path. Both required points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 3,
+  "toolCalls": 7,
+  "inputTokens": 4716,
+  "outputTokens": 460,
+  "durationMs": 57634,
+  "steps": 7,
+  "errors": []
+}

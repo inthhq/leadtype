@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response answers No, identifies the default as a static local lexical BM25 index with no database, and explains embeddings are added later when vocabulary mismatches occur or the corpus grows large. All three required rubric points are satisfied. It doesn't explicitly state that lexical is kept for exact matches when embeddings are added, but that wasn't a required point.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2448,
+  "outputTokens": 149,
+  "durationMs": 20456,
+  "steps": 5,
+  "errors": []
+}

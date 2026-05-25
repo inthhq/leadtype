@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it clearly states leadtype's default is a static lexical BM25 index with no database/embeddings, gives specific conditions for adding embeddings (semantic/vocabulary mismatch and operational considerations), and explicitly states the BM25 index should be kept as complementary via hybrid retrieval. It slightly underweights the 'large corpus / tens of thousands of chunks' condition (mentioning operational cost instead), but the vocabulary mismatch condition is well covered, and overall the answer aligns with the ground truth.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 30004,
+  "outputTokens": 688,
+  "durationMs": 90767,
+  "steps": 14,
+  "errors": []
+}

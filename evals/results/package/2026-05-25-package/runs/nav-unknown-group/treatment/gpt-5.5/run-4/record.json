@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth driving sidebar, llms.txt, AGENTS.md, and sitemap. It correctly characterizes group as legacy/optional, useful for fallback navigation and taxonomy/search facets. It correctly states unknown group slugs cause the build to fail with an 'unknown group' error, not a silent skip or warning.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 73643,
+  "outputTokens": 35,
+  "durationMs": 39166,
+  "steps": 8,
+  "errors": []
+}

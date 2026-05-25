@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies llms.txt as a hosted-site/HTTP convention with URL-based links unsuitable for tarballs, explains AGENTS.md uses relative links and works offline/version-matched inside node_modules, and lists the skipped website artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots. All required rubric points are satisfied.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 28771,
+  "outputTokens": 52,
+  "durationMs": 37154,
+  "steps": 9,
+  "errors": []
+}

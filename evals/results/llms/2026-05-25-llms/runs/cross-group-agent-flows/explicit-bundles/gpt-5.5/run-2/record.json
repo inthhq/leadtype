@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 97,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the hosted flow entry point as /llms.txt (HTTP) and the bundle flow entry point as AGENTS.md in the npm package. It clearly states that --bundle mode skips llms.txt, llms-full.txt, search JSON, sitemap, robots.txt, and agent-readability.json. All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 6,
+  "inputTokens": 2981,
+  "outputTokens": 13,
+  "durationMs": 20674,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "variant": "monolith",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also mentions search index, sitemap, robots, which is bonus. However, it invents/misnames a field 'agentReadabilityJson' (rubric says 'agentReadabilityManifest') and adds 'sitemapMd' which isn't in the rubric, and omits the --bundle mode. The required points are met, but minor invented fields lower the score.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3455,
+  "outputTokens": 110,
+  "durationMs": 7185,
+  "steps": 4,
+  "errors": []
+}

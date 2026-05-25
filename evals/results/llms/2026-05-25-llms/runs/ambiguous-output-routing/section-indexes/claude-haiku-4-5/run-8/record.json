@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response mentions the LLM files page and correctly explains that /llms-full.txt is a fallback used when page links are not enough. However, it muddies the answer by also recommending the Search page and the CLI page as primary, and lists searchIndex/searchContent among agent-facing outputs. The rubric requires NOT routing the user to Search docs/APIs, but the response explicitly includes Search as part of the answer area. It also fails to clearly identify the LLM files / leadtype/llm area as THE right place over Search.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5120,
+  "outputTokens": 178,
+  "durationMs": 31687,
+  "steps": 12,
+  "errors": []
+}

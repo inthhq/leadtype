@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it identifies nav as the curated driver of sidebar/navigation, llms.txt, and AGENTS.md grouping; it identifies group as legacy/optional taxonomy useful for fallback compatibility and search facets; and it clearly states that an unknown group slug causes the build to fail with an 'unknown group <slug>' error (exit code 1), not a silent skip or warning.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 26445,
+  "outputTokens": 391,
+  "durationMs": 37786,
+  "steps": 9,
+  "errors": []
+}

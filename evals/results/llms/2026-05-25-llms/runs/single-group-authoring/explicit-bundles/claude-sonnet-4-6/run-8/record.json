@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` controls navigation (sidebar), `llms.txt` sections, search metadata, and `AGENTS.md` grouping. It clearly characterizes `/llms-full.txt` as monolithic and not split per group. It names multiple valid optional frontmatter fields (draft, deprecated, icon, experimental, canary, new, tags, full, lastModified, lastAuthor). All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 3,
+  "toolCalls": 8,
+  "inputTokens": 5377,
+  "outputTokens": 358,
+  "durationMs": 42161,
+  "steps": 5,
+  "errors": []
+}

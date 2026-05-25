@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (docs/reference/llm.md, leadtype/llm area) with the right APIs including generateLLMFullContextFiles, and explicitly steers away from the search docs. It correctly describes /llms-full.txt as a fallback used when the curated link-following navigation is insufficient for the task, matching the rubric's requirement.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 10,
+  "inputTokens": 4401,
+  "outputTokens": 261,
+  "durationMs": 35647,
+  "steps": 8,
+  "errors": []
+}

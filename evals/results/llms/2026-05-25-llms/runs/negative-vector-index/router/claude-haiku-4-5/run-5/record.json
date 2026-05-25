@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local lexical BM25 index that is edge-safe and database-free, and explains embeddings are added later when vocabulary mismatches occur or the corpus grows large. It slightly misses explicitly stating that the lexical index is kept even when embeddings are added (they layer rather than replace), but this is not a required rubric point.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3468,
+  "outputTokens": 127,
+  "durationMs": 11403,
+  "steps": 6,
+  "errors": []
+}

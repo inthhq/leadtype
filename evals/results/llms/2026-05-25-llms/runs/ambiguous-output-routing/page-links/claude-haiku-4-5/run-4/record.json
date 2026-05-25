@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`, `leadtype/llm`) and names the required APIs including `generateLLMFullContextFiles`, and does not route the user to Search. It also frames `/llms-full.txt` as a fallback for when grouped/page-level navigation is insufficient. The framing of 'page-level links are insufficient' is described more as 'when groups are unavailable/not sufficient' which is close but slightly less explicit about page-level llms.txt links specifically; still satisfies the rubric intent.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 4476,
+  "outputTokens": 195,
+  "durationMs": 18686,
+  "steps": 8,
+  "errors": []
+}

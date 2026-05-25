@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 80,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`) and names the key APIs including `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd`, avoiding the Search UI. It also explains `/llms-full.txt` as a fallback for when page-level/group navigation is insufficient. The framing of the fallback condition is slightly less precise than the rubric's 'page-level llms.txt markdown links are not enough,' but it conveys the same idea (used when group-routed/page navigation is insufficient).",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5200,
+  "outputTokens": 281,
+  "durationMs": 35401,
+  "steps": 12,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it explains llms.txt is a website/HTTP convention with absolute URLs and a hosted origin (wrong for tarballs), explains AGENTS.md works offline on the filesystem and is version-matched to installed code, and states --bundle skips llms.txt and llms-full.txt (plus search-index.json). It does not mention sitemap/robots, but those are strengtheners, not required.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 5720,
+  "outputTokens": 379,
+  "durationMs": 29651,
+  "steps": 5,
+  "errors": []
+}

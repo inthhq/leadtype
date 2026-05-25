@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt), plus searchIndex, searchContent. However, it invents some field names not in the rubric's shape (agentReadabilityJson instead of agentReadabilityManifest, sitemapXml/sitemapMd instead of sitemap, robotsTxt instead of robots), and misses the --bundle mode shape. The core required points are met but some invented field names slightly weaken accuracy.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2501,
+  "outputTokens": 95,
+  "durationMs": 9711,
+  "steps": 5,
+  "errors": []
+}

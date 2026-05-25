@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it correctly identifies the default as a static BM25 lexical index with no database/embeddings, gives specific conditions for adding embeddings (vocabulary/paraphrase mismatch and large corpus thresholds), and clearly states BM25 should be kept as a complementary first tier rather than replaced. The added requirements (observability, operational cost) are extra but don't contradict the rubric.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 25,
+  "inputTokens": 30361,
+  "outputTokens": 634,
+  "durationMs": 108452,
+  "steps": 17,
+  "errors": []
+}

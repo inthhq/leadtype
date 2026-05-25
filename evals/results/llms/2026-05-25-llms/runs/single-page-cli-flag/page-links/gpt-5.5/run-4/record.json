@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object reporting generated artifact paths and names the required keys llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions bonus fields like searchIndex, searchContent, sitemap, and robots. However, it introduces some field names that don't match the rubric exactly (agentReadabilityJson instead of agentReadabilityManifest, sitemapXml/sitemapMd instead of a single sitemap key), and doesn't mention the --bundle mode shape or top-level fields like mode/product/groups.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1496,
+  "outputTokens": 6,
+  "durationMs": 10996,
+  "steps": 5,
+  "errors": []
+}

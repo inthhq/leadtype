@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it names both frontmatter fields (`lastModified` and `lastAuthor`), states they are added to frontmatter, and attributes their values to git history (via `git log`).",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 34258,
+  "outputTokens": 44,
+  "durationMs": 31531,
+  "steps": 9,
+  "errors": []
+}

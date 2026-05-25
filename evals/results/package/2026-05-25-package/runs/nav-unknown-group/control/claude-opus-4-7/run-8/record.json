@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required rubric points: it identifies `nav` as the curated driver of sidebar, llms.txt, and AGENTS.md; it explains `group` as legacy/optional taxonomy useful as fallback navigation and for search/taxonomy facets; and it clearly states the build fails hard with an 'unknown group' error (exit code 1, no artifacts written), not a silent skip or warning.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 47668,
+  "outputTokens": 666,
+  "durationMs": 80503,
+  "steps": 11,
+  "errors": []
+}

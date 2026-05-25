@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM docs area (`/docs/reference/llm.md`) rather than the Search UI, satisfying the first required point. However, it fails the second required point: it does not clearly explain that `/llms-full.txt` is a fallback used *when page-level `llms.txt` markdown links are insufficient*. Instead it describes it as useful for 'comprehensive context' and 'full task-specific context', which frames it more as a general-purpose option than as a fallback triggered by insufficiency of page-level links.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 3836,
+  "outputTokens": 156,
+  "durationMs": 18278,
+  "steps": 7,
+  "errors": []
+}

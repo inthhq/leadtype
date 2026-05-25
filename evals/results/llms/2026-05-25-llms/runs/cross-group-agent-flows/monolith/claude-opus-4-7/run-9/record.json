@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "All required points are satisfied: hosted flow starts at /llms.txt over HTTP with page-level markdown links and fallback to llms-full.txt; bundle flow starts at AGENTS.md with relative ./docs/*.md links; and bundle mode is explicitly stated to skip website-only artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 5794,
+  "outputTokens": 433,
+  "durationMs": 32224,
+  "steps": 4,
+  "errors": []
+}

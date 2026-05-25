@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the Reference / LLM files area as the right place for agent-facing output APIs and does not route the user to the Search UI. It also correctly frames `/llms-full.txt` as a fallback used when more targeted bundles are insufficient. However, it doesn't explicitly tie the fallback to 'page-level llms.txt markdown links being insufficient' (instead framing it relative to group bundles), and it doesn't name the specific APIs like `generateLLMFullContextFiles`. Still, the required rubric points are substantively satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3263,
+  "outputTokens": 248,
+  "durationMs": 15983,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in the correct order. It imports product and nav from docs.config.ts and threads them into the LLM generators. All required APIs are imported from leadtype's library (not the CLI). Minor uncertainty about exact API surface (e.g., remarkInclude/defaultRemarkPlugins from leadtype/remark, srcDir on generateLlmsTxt) but the rubric's required points are satisfied.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 31616,
+  "outputTokens": 572,
+  "durationMs": 65671,
+  "steps": 11,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "monolith",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping. It clearly characterizes `/llms-full.txt` as a single monolithic file not split by group. It names multiple valid optional fields including `draft`, `icon`, `deprecated`, `experimental`, `canary`, `new`, `tags`, `full`, `lastModified`, and `lastAuthor`. The `description` field isn't in the rubric's list but `draft` and others are, satisfying the two-field requirement.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4830,
+  "outputTokens": 394,
+  "durationMs": 35345,
+  "steps": 5,
+  "errors": []
+}

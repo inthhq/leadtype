@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts and names the required keys llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions search index, sitemap, and robots as bonus details. However, it invents some field names not matching the rubric (e.g., 'agentReadabilityJson', 'sitemapXml', 'sitemapMd' instead of 'agentReadabilityManifest'), and doesn't mention --bundle mode. The invented field names are a minor concern but the core required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1625,
+  "outputTokens": 13,
+  "durationMs": 12406,
+  "steps": 6,
+  "errors": []
+}

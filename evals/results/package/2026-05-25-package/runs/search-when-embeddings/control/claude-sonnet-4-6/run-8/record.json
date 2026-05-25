@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static, edge-safe lexical BM25 index with no database. It states embeddings are warranted only for vocabulary mismatch (with measured evidence) and mentions large corpus scale as a cost/latency consideration. It clearly states the BM25 index should be kept as the precision anchor with hybrid retrieval. The 'tens of thousands of chunks' threshold is not stated as precisely as the rubric, but the large-corpus condition is covered.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 30067,
+  "outputTokens": 605,
+  "durationMs": 106523,
+  "steps": 18,
+  "errors": []
+}

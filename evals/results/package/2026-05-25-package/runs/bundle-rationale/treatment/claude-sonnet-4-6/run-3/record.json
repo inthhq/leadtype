@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website/HTTP convention with absolute URLs that no agent looks for in node_modules; it explains AGENTS.md works offline with relative links and is version-matched; and it states --bundle skips llms.txt, llms-full.txt, and the search index. Sitemap and robots are not mentioned but the rubric notes those merely 'strengthen' the answer and are not strictly required.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 5,
+  "inputTokens": 9498,
+  "outputTokens": 376,
+  "durationMs": 27308,
+  "steps": 4,
+  "errors": []
+}

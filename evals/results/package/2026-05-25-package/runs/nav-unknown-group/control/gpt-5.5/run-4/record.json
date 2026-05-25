@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth driving sidebar, llms.txt, and AGENTS.md, and correctly describes group as legacy/fallback taxonomy. However, on the third required point, the agent hedges significantly: it says unknown group slugs only fail when there is a `groups` taxonomy to validate against, and explicitly states that in pure curated-nav setups 'there is no group taxonomy to validate against.' The rubric states unambiguously that an unknown group slug causes the build to fail by design — the agent's conditional framing undermines this requirement.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 63809,
+  "outputTokens": 72,
+  "durationMs": 50207,
+  "steps": 11,
+  "errors": []
+}

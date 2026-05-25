@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts and names the key fields llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying both required points. It also mentions search index, sitemap, and robots, which are bonus. However, it invents/misnames some fields (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', 'sitemapMd') and omits the --bundle mode shape, and doesn't mention mode/source/output dirs/product/groups.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3209,
+  "outputTokens": 174,
+  "durationMs": 14513,
+  "steps": 6,
+  "errors": []
+}

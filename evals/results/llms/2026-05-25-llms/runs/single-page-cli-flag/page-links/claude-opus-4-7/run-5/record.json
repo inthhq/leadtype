@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a single JSON object describing the generation run with paths to generated artifacts, and names llmsTxt, docsLlmsTxt, and llmsFullTxt as required. It also mentions searchIndex, searchContent, sitemap, and robots as bonus fields. However, it invents some field names like 'agentReadabilityJson' (vs 'agentReadabilityManifest'), 'sitemapXml', 'sitemapMd', and 'robotsTxt' which may not match the actual schema, and omits the --bundle mode shape. The required points are met despite some field-name inaccuracies.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3469,
+  "outputTokens": 295,
+  "durationMs": 20560,
+  "steps": 4,
+  "errors": []
+}

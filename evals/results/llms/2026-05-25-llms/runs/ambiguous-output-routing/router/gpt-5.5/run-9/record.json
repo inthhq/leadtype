@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (referencing generateLLMFullContextFiles and related APIs) as the right place and explicitly tells the user not to use the Search docs. It also describes /llms-full.txt as a fallback used when smaller task-specific files are insufficient, satisfying both required rubric points.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 2637,
+  "outputTokens": 6,
+  "durationMs": 25766,
+  "steps": 6,
+  "errors": []
+}

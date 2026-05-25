@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with generateLLMFullContextFiles, generateLlmsTxt, generateAgentsMd) as the right place for agent-facing output APIs and explicitly notes the Search reference is not needed. It also correctly frames /llms-full.txt as a fallback used when targeted/per-page bundles are insufficient, citing the 'smallest full-context bundle' rule. Both required points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 4,
+  "toolCalls": 7,
+  "inputTokens": 5155,
+  "outputTokens": 485,
+  "durationMs": 43324,
+  "steps": 5,
+  "errors": []
+}

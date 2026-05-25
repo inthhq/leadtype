@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it names both frontmatter fields (`lastModified` and `lastAuthor`), states they are added to YAML frontmatter, and attributes the values to git history (via `git log`). The explanation is specific and accurate.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 38165,
+  "outputTokens": 304,
+  "durationMs": 31443,
+  "steps": 7,
+  "errors": []
+}

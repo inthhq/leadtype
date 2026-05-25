@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The agent correctly identified that `nav` is the curated driver of sidebar/agent map and that `group` is legacy/optional with fallback uses. However, it gets Question 2 completely wrong: it claims unknown group slugs do NOT cause a build failure and are silently collected into an `unknown` array, when the rubric explicitly states the build FAILS with an 'unknown group' error. This is the exact failure mode listed under 'Incorrect if'.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 36497,
+  "outputTokens": 432,
+  "durationMs": 41879,
+  "steps": 14,
+  "errors": []
+}

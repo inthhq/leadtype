@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a hosted/HTTP discovery file unsuitable for node_modules, explains AGENTS.md works offline with relative ./docs/ paths and is version-matched, and lists --bundle's skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 29041,
+  "outputTokens": 51,
+  "durationMs": 34083,
+  "steps": 7,
+  "errors": []
+}

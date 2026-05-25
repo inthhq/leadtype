@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The answer names both required fields (lastModified and lastAuthor), states they are added to frontmatter, and attributes the values to git history (most recent commit's author date and name).",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 27947,
+  "outputTokens": 38,
+  "durationMs": 23370,
+  "steps": 7,
+  "errors": []
+}

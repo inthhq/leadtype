@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-haiku-4-5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response addresses the offline/version-matched nature of AGENTS.md and correctly states that --bundle skips llms.txt and llms-full.txt. However, it fails to explicitly explain that llms.txt uses absolute URLs (the key technical reason it's wrong inside a tarball) — it only vaguely mentions 'URL-based discovery' and 'directory traversal'. It also doesn't explicitly state that AGENTS.md uses relative links, only that it works offline. These are required rubric points about the absolute vs. relative URL distinction.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 30619,
+  "outputTokens": 246,
+  "durationMs": 30651,
+  "steps": 12,
+  "errors": []
+}

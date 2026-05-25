@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with generateLLMFullContextFiles and other named APIs) as the right place and explicitly tells the user not to use the Search docs. It also correctly frames /llms-full.txt as a fallback used when page-level routing/links are insufficient, satisfying both required rubric points.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 5258,
+  "outputTokens": 314,
+  "durationMs": 42775,
+  "steps": 6,
+  "errors": []
+}

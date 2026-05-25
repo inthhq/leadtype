@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files documentation area (`leadtype/llm`) with the right API names including `generateLLMFullContextFiles`, and does not route to Search UI. It also correctly frames `/llms-full.txt` as a fallback for when grouped/page-level routing is insufficient. Minor: the rubric specifically emphasizes 'page-level llms.txt markdown links' insufficiency, while the response frames it as group-level routing, but the overall fallback concept is preserved.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3675,
+  "outputTokens": 242,
+  "durationMs": 16020,
+  "steps": 4,
+  "errors": []
+}

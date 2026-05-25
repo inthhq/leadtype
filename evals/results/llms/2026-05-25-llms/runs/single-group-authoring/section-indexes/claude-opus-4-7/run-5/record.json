@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains that `group` drives navigation, llms.txt sections, and AGENTS.md grouping; it characterizes `/llms-full.txt` as the monolithic all-docs flattened file that is not split by group; and it names multiple valid optional fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). It does invent some per-section bundling claims (e.g., `/docs/llms-full/<group>.txt`) that may not be accurate, but the key required claim about `/llms-full.txt` being monolithic is correct.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4240,
+  "outputTokens": 336,
+  "durationMs": 31637,
+  "steps": 6,
+  "errors": []
+}

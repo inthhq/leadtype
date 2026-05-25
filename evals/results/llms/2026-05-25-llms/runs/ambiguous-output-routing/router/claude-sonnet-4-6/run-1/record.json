@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (Reference → LLM files / `leadtype/llm`) as the right place and names `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd`. It does not route the user to Search APIs. It also explains `/llms-full.txt` as a fallback used when smaller/page-level files are insufficient, satisfying both required rubric points. Minor deviation: it frames `/llms-full.txt` as a 'router' of topic files rather than strictly the broad all-docs fallback for when page-level llms.txt links aren't enough, but the fallback framing is still clearly preserved.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 6,
+  "inputTokens": 4417,
+  "outputTokens": 437,
+  "durationMs": 39718,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of navigation/agent maps and `group` as a legacy/fallback field. However, it explicitly and incorrectly states that unknown `group` slugs are silently accepted and do NOT fail the build — the rubric requires stating that the build FAILS with an 'unknown group' error. This directly matches the 'Incorrect if' criterion ('Says an unknown group is silently ignored, dropped, or only warned').",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 19215,
+  "outputTokens": 338,
+  "durationMs": 34652,
+  "steps": 10,
+  "errors": []
+}

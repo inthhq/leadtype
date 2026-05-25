@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (Reference → LLM files, `/docs/reference/llm.md`) as the right place for agent-facing output APIs, names `generateLLMFullContextFiles` and related APIs, and explicitly excludes the Search docs as out of scope. It also correctly describes `/llms-full.txt` as a fallback to use when targeted bundles/page-level navigation are insufficient, satisfying both required rubric points.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 4207,
+  "outputTokens": 468,
+  "durationMs": 34850,
+  "steps": 5,
+  "errors": []
+}

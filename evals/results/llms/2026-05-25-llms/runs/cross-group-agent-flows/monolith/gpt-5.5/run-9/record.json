@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the hosted flow starting at /llms.txt with llms-full.txt fallback, the npm bundle flow starting at AGENTS.md with relative ./docs/*.md links, and explicitly lists the website artifacts skipped by bundle mode (llms.txt, llms-full.txt, search index, sitemap, robots, agent-readability). All required rubric points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3006,
+  "outputTokens": 6,
+  "durationMs": 22114,
+  "steps": 4,
+  "errors": []
+}

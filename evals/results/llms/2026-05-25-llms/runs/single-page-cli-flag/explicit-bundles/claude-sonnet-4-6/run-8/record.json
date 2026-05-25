@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 72,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifacts and names the required fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions search index, sitemap, and robots as bonus content. However, it invents field names like 'agentReadabilityJson', 'sitemapMd' (rubric specifies 'agentReadabilityManifest'), and omits the --bundle mode shape. The core required points are satisfied despite some inaccurate field naming.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3431,
+  "outputTokens": 281,
+  "durationMs": 24603,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response answers 'No' to the database-backed vector index question, correctly identifies the default as a static local lexical BM25 index that is edge-safe with no database, and explains embeddings are added later only on vocabulary mismatch or large corpus growth. It does not explicitly state that embeddings layer on top rather than replace lexical, but it does not claim they replace it either, so all required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 2660,
+  "outputTokens": 120,
+  "durationMs": 15909,
+  "steps": 6,
+  "errors": []
+}

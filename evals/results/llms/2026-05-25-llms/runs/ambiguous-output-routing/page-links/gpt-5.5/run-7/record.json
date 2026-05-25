@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 7,
+  "variant": "page-links",
+  "passed": true,
+  "score": 94,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files / leadtype/llm area and names generateLLMFullContextFiles among other relevant APIs. It explicitly rejects the Search docs as the wrong place. It also correctly describes /llms-full.txt as a fallback used when page-level llms.txt markdown links are insufficient.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 2465,
+  "outputTokens": 13,
+  "durationMs": 19988,
+  "steps": 6,
+  "errors": []
+}

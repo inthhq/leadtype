@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "claude-opus-4-7",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly answers No, identifies the default as a static local lexical BM25 index with no database, and explains embeddings are an opt-in addition triggered by vocabulary mismatch or corpus growth. It could more explicitly state that embeddings layer on top rather than replace the lexical index, but it does say 'layered on top of the default lexical index,' satisfying that nuance.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 4111,
+  "outputTokens": 221,
+  "durationMs": 24177,
+  "steps": 7,
+  "errors": []
+}

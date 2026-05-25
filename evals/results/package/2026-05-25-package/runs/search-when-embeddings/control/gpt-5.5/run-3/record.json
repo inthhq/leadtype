@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "gpt-5.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 62,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the default as a static BM25 lexical index with no database, and correctly states the lexical index should be kept (embeddings complementary, not replacement). However, the specific conditions for adding embeddings are weakened: while it covers vocabulary/semantic mismatch adequately, it does not specify the corpus size threshold (≈ tens of thousands of chunks) that the rubric requires — instead it gives a vague 'too large' along with unrelated reasons like frequent updates and per-user access control. This misses the specific scale condition required by the rubric.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 18875,
+  "outputTokens": 45,
+  "durationMs": 36179,
+  "steps": 7,
+  "errors": []
+}

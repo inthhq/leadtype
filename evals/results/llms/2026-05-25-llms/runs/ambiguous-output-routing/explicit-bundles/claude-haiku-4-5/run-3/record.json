@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 80,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) and names `generateLLMFullContextFiles` and related APIs as the right place, avoiding the Search UI. It describes `/llms-full.txt` as a fallback used when the modular `/llms.txt` structure with page-level links is insufficient. It could be more explicit about 'page-level links being not enough' but the fallback framing is preserved.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3856,
+  "outputTokens": 224,
+  "durationMs": 16189,
+  "steps": 7,
+  "errors": []
+}

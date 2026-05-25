@@ -5,10 +5,13 @@
   "description": "Agent discoverability evals for leadtype's bundled docs (AGENTS.md vs no-bundle control). Custom harness on the Vercel AI SDK.",
   "type": "module",
   "scripts": {
-    "evals": "bun run run-eval.ts",
-    "evals:llms": "bun run run-llms-eval.ts",
+    "evals": "bun --env-file=../.env run run-eval.ts",
+    "evals:llms": "bun --env-file=../.env run run-llms-eval.ts",
+    "evals:full": "bun --env-file=../.env run run-eval.ts --models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-7,gpt-5.5 --runs 10 --concurrency 6",
+    "evals:llms:full": "bun --env-file=../.env run run-llms-eval.ts --models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-7,gpt-5.5 --runs 10 --concurrency 6",
+    "aggregate": "bun --env-file=../.env run lib/aggregate.ts",
     "test": "vitest run lib",
-    "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && npm pack --pack-destination ../../evals/.tarballs"
+    "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && bun run build && npm pack --pack-destination ../../evals/.tarballs"
   },
   "devDependencies": {
     "ai": "^6.0.168",

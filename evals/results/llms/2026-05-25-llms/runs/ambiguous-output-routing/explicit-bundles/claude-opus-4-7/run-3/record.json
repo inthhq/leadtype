@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files reference area and names generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd as the agent-facing output APIs, and explicitly distinguishes Search as a separate concern (not routing the user there). It also describes /llms-full.txt as a fallback used when scoped bundles are insufficient, satisfying both required points. The fallback framing focuses on scoped bundles rather than page-level llms.txt links specifically, but the core 'fallback when narrower options are insufficient' meaning is preserved.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 4953,
+  "outputTokens": 363,
+  "durationMs": 32562,
+  "steps": 5,
+  "errors": []
+}

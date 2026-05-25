@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The rubric requires stating that an unknown `group` slug causes the build to FAIL with an 'unknown group' error. The agent explicitly claims the opposite: 'An unknown slug in a page's `group:` frontmatter does not throw — the build completes' and that the page is silently demoted to 'Other'. This directly matches the 'Incorrect if' criterion ('Says an unknown group is silently ignored, dropped, or only warned'). While the agent correctly identifies `nav` as the curated driver and `group` as legacy/taxonomy fallback, the third required point is violated.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 17,
+  "inputTokens": 44913,
+  "outputTokens": 818,
+  "durationMs": 90738,
+  "steps": 10,
+  "errors": []
+}

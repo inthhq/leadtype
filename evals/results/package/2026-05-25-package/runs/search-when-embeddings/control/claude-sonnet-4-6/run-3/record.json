@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it correctly identifies the default as static, client-side BM25 with no database or embeddings; it specifies the conditions for adding embeddings (vocabulary/semantic gap and large/diverse corpus); and it clearly states BM25 must be kept as primary retrieval with embeddings layered on top for hybrid reranking. The 'tens of thousands of chunks' threshold isn't named specifically, but the corpus-size condition is captured adequately.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 26032,
+  "outputTokens": 692,
+  "durationMs": 93386,
+  "steps": 15,
+  "errors": []
+}

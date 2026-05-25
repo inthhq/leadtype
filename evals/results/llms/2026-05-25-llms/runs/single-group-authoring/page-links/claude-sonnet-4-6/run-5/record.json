@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "variant": "page-links",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains that `group` organizes navigation, llms.txt sections, AGENTS.md grouping, and search metadata; it characterizes `/llms-full.txt` as a monolithic, flat, all-pages bundle that is not sharded by group; and it names multiple valid optional frontmatter fields (draft, icon, deprecated, experimental, canary, new, tags, full, lastModified, lastAuthor). Minor issue: `description` and `deprecatedReason`/`availableIn` are not in the rubric's list, but the response also includes several valid ones, satisfying the 'at least two' requirement.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3650,
+  "outputTokens": 388,
+  "durationMs": 43303,
+  "steps": 5,
+  "errors": []
+}

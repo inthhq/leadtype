@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 4,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object describing the generated artifacts and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt), plus additional fields like searchIndex, searchContent, robots, and sitemap. However, it invents some fields (`agentReadabilityJson` instead of `agentReadabilityManifest`, and `sitemapMd` which isn't in the rubric), and doesn't mention the --bundle mode shape. Still, the required points are satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2522,
+  "outputTokens": 85,
+  "durationMs": 9303,
+  "steps": 5,
+  "errors": []
+}

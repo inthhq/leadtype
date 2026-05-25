@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 6,
+  "variant": "router",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly points to the LLM files area (/docs/reference/llm.md) as the right destination for agent-facing output APIs and explicitly notes this is not the Search docs. It correctly describes /llms-full.txt as a fallback used when more complete context is needed, rather than as the primary path. However, it doesn't explicitly name the key API functions (generateLLMFullContextFiles, generateLlmsTxt, etc.) and the 'page-level links insufficient' framing is somewhat indirect, though the overall fallback positioning is accurate.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3449,
+  "outputTokens": 206,
+  "durationMs": 15632,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object containing paths of generated artifacts, and names the key fields llmsTxt, docsLlmsTxt, and llmsFullTxt. It also includes the search index, sitemap, and robots bonus fields. However, it invents/renames some fields (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', 'sitemapXml'/'sitemapMd' instead of just sitemap) and doesn't mention the bundle mode or other top-level fields like mode/product/groups. Still, the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1810,
+  "outputTokens": 6,
+  "durationMs": 15400,
+  "steps": 6,
+  "errors": []
+}

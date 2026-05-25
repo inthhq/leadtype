@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-opus-4-7",
+  "runIndex": 7,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 82,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (`/docs/reference/llm.md`) and names `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd` as the agent-facing output APIs, and explicitly steers away from the Search reference. It also correctly characterizes `/llms-full.txt` as a fallback (not primary), used when smaller/topic bundles don't suffice. The framing leans on topic-scoped bundles rather than the rubric's exact 'page-level llms.txt markdown links' phrasing, but the fallback semantics are preserved.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 5085,
+  "outputTokens": 353,
+  "durationMs": 32009,
+  "steps": 5,
+  "errors": []
+}

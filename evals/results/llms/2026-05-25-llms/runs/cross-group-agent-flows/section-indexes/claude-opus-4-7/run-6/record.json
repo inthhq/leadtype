@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "claude-opus-4-7",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the hosted flow starting at /llms.txt over HTTP, the bundle flow starting at AGENTS.md in the installed package, and explicitly lists the website artifacts that bundle mode skips (llms.txt, llms-full.txt, search, sitemap, robots, agent-readability). All required rubric points are satisfied. Minor deviation: the response says hosted flow follows section-level llms.txt indexes rather than page-level .md links with llms-full.txt fallback, but this doesn't violate any required point or incorrect criterion.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 5361,
+  "outputTokens": 415,
+  "durationMs": 36878,
+  "steps": 6,
+  "errors": []
+}

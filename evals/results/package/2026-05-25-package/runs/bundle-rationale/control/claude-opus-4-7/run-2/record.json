@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a website/HTTP convention served from an origin (no origin in node_modules), explains AGENTS.md works on-disk with sibling/relative docs/*.md links and is version-matched, and states --bundle skips llms.txt, llms-full.txt, and search-index.json. Minor: doesn't mention sitemap/robots, but those only 'strengthen' the answer per the rubric.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 5554,
+  "outputTokens": 356,
+  "durationMs": 31855,
+  "steps": 5,
+  "errors": []
+}

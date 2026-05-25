@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) and names `generateLLMFullContextFiles`, `generateLlmsTxt`, and `generateAgentsMd` as the agent-facing output APIs. It explicitly excludes the Search docs as out of scope. It describes `/llms-full.txt` as a fallback to use when smaller/per-section bundles are insufficient, matching the rubric's 'page-level links not enough' criterion. Minor: the rubric phrases the fallback condition as page-level `llms.txt` markdown links being insufficient, while the response frames it as per-section bundles being insufficient — close in spirit but not identical phrasing.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 3618,
+  "outputTokens": 425,
+  "durationMs": 30702,
+  "steps": 4,
+  "errors": []
+}

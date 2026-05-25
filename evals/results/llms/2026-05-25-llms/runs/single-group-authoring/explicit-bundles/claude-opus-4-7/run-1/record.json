@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 82,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response covers all three required points: it explains group organizes navigation, llms.txt sections, and AGENTS.md grouping; it characterizes /llms-full.txt as the monolithic all-docs fallback that is not split by group; and it names multiple valid optional fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). However, it introduces some likely-invented fields (deprecatedReason, availableIn) and claims per-group llms-full bundles exist by default, which contradicts the rubric note that site mode no longer emits per-group full-context files by default. Still, the core required claims are correctly stated.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3890,
+  "outputTokens": 276,
+  "durationMs": 23384,
+  "steps": 4,
+  "errors": []
+}

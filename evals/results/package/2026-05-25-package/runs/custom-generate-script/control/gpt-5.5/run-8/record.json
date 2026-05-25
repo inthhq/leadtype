@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script imports library APIs (not the CLI), calls convertAllMdx first to write public/docs/*.md, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in that order. It passes product and nav from docs.config.ts into the generators. Ordering is correct: conversion precedes the full-context and search generators.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 28,
+  "inputTokens": 45303,
+  "outputTokens": 1202,
+  "durationMs": 103732,
+  "steps": 17,
+  "errors": []
+}

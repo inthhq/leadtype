@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "claude-haiku-4-5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The agent correctly identifies `nav` as the curated driver and `group` as legacy/fallback taxonomy (points 1 and 2 satisfied). However, it explicitly states the build does NOT fail for unknown group slugs, claiming graceful degradation with manifest tracking and optional lint warnings. This directly contradicts the rubric's ground truth that the build fails with an 'unknown group' error, and triggers the 'Incorrect if' clause about silently ignored/warned behavior.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 23045,
+  "outputTokens": 325,
+  "durationMs": 36797,
+  "steps": 14,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it identifies the default as a static, client/edge-safe BM25 lexical index with no database; it gives specific conditions for adding embeddings (semantic/vocabulary mismatch queries that BM25 can't close, and large corpus scale); and it explicitly states to keep the BM25 lexical index as a hybrid retriever rather than replacing it, citing exact-term/API-name strengths. The corpus-scale condition is somewhat less concrete than the rubric's 'tens of thousands of chunks' threshold, but the substance is present.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 27707,
+  "outputTokens": 503,
+  "durationMs": 103805,
+  "steps": 15,
+  "errors": []
+}

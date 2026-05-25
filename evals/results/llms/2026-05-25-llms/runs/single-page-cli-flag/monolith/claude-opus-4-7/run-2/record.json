@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-opus-4-7",
+  "runIndex": 2,
+  "variant": "monolith",
+  "passed": true,
+  "score": 86,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a single JSON object describing generated artifacts, and names the required path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). It also covers bonus content: searchIndex, searchContent, sitemap, robots, and bundle-mode behavior. Minor concern: it uses `agentReadabilityJson` instead of the rubric's `agentReadabilityManifest`, and adds `sitemapMd` which may or may not exist, but these don't violate required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 5352,
+  "outputTokens": 364,
+  "durationMs": 24985,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-opus-4-7",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script imports library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) rather than shelling out to CLI, calls them in the correct order with conversion first, and passes product/nav from docs.config.ts into the generators. Minor concerns: an extra `leadtype/remark` import for remarkInclude/defaultRemarkPlugins may not exist as documented, but the core required ordering and API usage is correct.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 24887,
+  "outputTokens": 556,
+  "durationMs": 43277,
+  "steps": 6,
+  "errors": []
+}

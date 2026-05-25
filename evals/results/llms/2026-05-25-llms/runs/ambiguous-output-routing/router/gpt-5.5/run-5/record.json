@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with `generateLLMFullContextFiles`, `generateLlmsTxt`, `generateAgentsMd`) as the right place and explicitly warns against using the Search docs. It also correctly describes `/llms-full.txt` as a fallback used when smaller routed files are insufficient, not as the default. Minor omission: doesn't mention `generateAgentReadabilityArtifacts` by name, but both required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 4388,
+  "outputTokens": 13,
+  "durationMs": 34105,
+  "steps": 8,
+  "errors": []
+}

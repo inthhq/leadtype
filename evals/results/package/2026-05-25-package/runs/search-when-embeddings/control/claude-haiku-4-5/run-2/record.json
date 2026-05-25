@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 82,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it states the default is a static, edge-safe lexical BM25 index with no database; it identifies vocabulary/intent mismatch as a condition for embeddings; and it clearly states BM25 must be kept (hybrid, not replacement). However, it misses the specific 'corpus growth past tens of thousands of chunks / cold-start memory' condition called out in the rubric, instead substituting multi-language matching and generic 'BM25 insufficient' framing. Still, the vocabulary-mismatch condition is specific enough to meet the required bar.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 17273,
+  "outputTokens": 412,
+  "durationMs": 51173,
+  "steps": 15,
+  "errors": []
+}

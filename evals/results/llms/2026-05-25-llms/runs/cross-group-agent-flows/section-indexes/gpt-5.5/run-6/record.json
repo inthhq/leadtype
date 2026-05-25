@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "gpt-5.5",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the hosted flow starting from /llms.txt (HTTP) and the bundle flow starting from AGENTS.md in the installed package. It also correctly states that bundle mode skips website artifacts including llms.txt, llms-full.txt, search, sitemap, robots, and agent-readability files. All required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 2645,
+  "outputTokens": 13,
+  "durationMs": 25597,
+  "steps": 5,
+  "errors": []
+}

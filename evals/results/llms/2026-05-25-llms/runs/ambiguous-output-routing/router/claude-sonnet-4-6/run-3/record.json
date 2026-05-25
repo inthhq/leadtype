@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (leadtype/llm) as the right docs area, naming generateLlmsTxt, generateLLMFullContextFiles, and generateAgentsMd. It does not route the user to Search UI/APIs. It correctly describes /llms-full.txt as a fallback used when smaller/topic-specific files are insufficient, satisfying both required rubric points.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 6,
+  "inputTokens": 4170,
+  "outputTokens": 389,
+  "durationMs": 43928,
+  "steps": 7,
+  "errors": []
+}

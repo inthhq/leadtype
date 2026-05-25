@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (Reference → LLM files, /docs/reference/llm.md) and names generateLLMFullContextFiles, generateLlmsTxt, and generateAgentsMd as the agent-facing output APIs. It explicitly distinguishes this from Search docs. It also describes /llms-full.txt as a fallback used when topic-level files/page links are insufficient. Minor omission: doesn't mention generateAgentReadabilityArtifacts (lists isAgentReadabilityArtifactPath instead), but the required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 4309,
+  "outputTokens": 445,
+  "durationMs": 38191,
+  "steps": 6,
+  "errors": []
+}

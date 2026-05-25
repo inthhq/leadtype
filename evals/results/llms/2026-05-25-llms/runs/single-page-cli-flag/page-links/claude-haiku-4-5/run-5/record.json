@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 5,
+  "variant": "page-links",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifact paths, and names llmsTxt, docsLlmsTxt, and llmsFullTxt — satisfying both required points. It also mentions sitemap, robots, search index, and an agent readability field as bonus. Some field names are slightly off (e.g., `agentReadabilityJson` and `sitemapMd` instead of `agentReadabilityManifest`), and it omits the `--bundle` mode shape, but the required rubric points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2408,
+  "outputTokens": 131,
+  "durationMs": 6768,
+  "steps": 4,
+  "errors": []
+}

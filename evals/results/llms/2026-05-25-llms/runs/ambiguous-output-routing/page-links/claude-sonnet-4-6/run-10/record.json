@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (/docs/reference/llm.md) with the relevant APIs including generateLLMFullContextFiles, and explicitly contrasts it with the Search docs which it correctly excludes. It also correctly describes /llms-full.txt as a fallback used when page-level links are insufficient. Missing generateAgentReadabilityArtifacts from the list, but the rubric only requires pointing to the area, which is satisfied.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3078,
+  "outputTokens": 323,
+  "durationMs": 22481,
+  "steps": 4,
+  "errors": []
+}

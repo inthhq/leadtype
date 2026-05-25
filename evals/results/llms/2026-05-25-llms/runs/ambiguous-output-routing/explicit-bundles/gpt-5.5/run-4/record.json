@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files area (leadtype/llm reference) with the right API names including generateLLMFullContextFiles, and explicitly steers the user away from the Search docs. It also correctly describes /llms-full.txt as a fallback used when smaller bundles/page-level links are insufficient, not as the default.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 9,
+  "inputTokens": 3668,
+  "outputTokens": 13,
+  "durationMs": 31653,
+  "steps": 8,
+  "errors": []
+}

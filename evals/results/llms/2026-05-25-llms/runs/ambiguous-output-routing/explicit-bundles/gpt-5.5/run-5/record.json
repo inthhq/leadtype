@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly directs to the LLM files reference area (leadtype/llm) and names generateLLMFullContextFiles and related APIs, explicitly warning against using the Search docs. It also correctly frames /llms-full.txt as the broad fallback used when narrower maps/pages aren't enough. Minor omission: doesn't mention generateAgentReadabilityArtifacts by that exact name (uses isAgentReadabilityArtifactPath instead), but all required rubric points are satisfied.",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 8,
+  "inputTokens": 2950,
+  "outputTokens": 6,
+  "durationMs": 22777,
+  "steps": 6,
+  "errors": []
+}

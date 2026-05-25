@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-haiku-4-5",
+  "runIndex": 7,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (with the specific API names like generateLLMFullContextFiles, generateLlmsTxt, generateAgentsMd) as the agent-facing output APIs and does not route to the Search UI. It also correctly describes /llms-full.txt as a fallback used when the smaller /llms.txt map is insufficient. Minor: it doesn't use the exact 'leadtype/llm' path string, and inclusion of CLI/search index in the artifact list is slightly tangential, but the core required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 10,
+  "inputTokens": 4490,
+  "outputTokens": 203,
+  "durationMs": 25057,
+  "steps": 11,
+  "errors": []
+}

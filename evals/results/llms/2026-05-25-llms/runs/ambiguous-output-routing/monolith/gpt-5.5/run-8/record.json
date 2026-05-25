@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "gpt-5.5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (/docs/reference/llm.md) and lists generateLLMFullContextFiles among the agent-facing output APIs. It explicitly tells the user not to use the Search docs. It also correctly frames /llms-full.txt as a fallback used when the routing map/page-level links are not enough, satisfying both required rubric points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2563,
+  "outputTokens": 6,
+  "durationMs": 15208,
+  "steps": 4,
+  "errors": []
+}

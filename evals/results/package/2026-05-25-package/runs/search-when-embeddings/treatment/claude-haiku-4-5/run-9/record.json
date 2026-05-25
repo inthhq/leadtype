@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 92,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it identifies the default as a static BM25 lexical index with no database, specifies the two conditions for warranting embeddings (vocabulary mismatch and corpus exceeding tens of thousands of chunks), and clearly states the lexical index must be kept with embeddings layered on as complementary, not a replacement.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 9974,
+  "outputTokens": 322,
+  "durationMs": 20745,
+  "steps": 6,
+  "errors": []
+}

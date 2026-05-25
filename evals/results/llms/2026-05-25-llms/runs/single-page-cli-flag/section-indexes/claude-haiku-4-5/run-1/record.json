@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "claude-haiku-4-5",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states that --json prints a JSON object with paths for generated artifacts, and names the required keys llmsTxt, docsLlmsTxt, and llmsFullTxt. It also mentions search index, sitemap, robots, satisfying bonus criteria. However, it describes individual top-level fields rather than a 'files' map, uses slightly invented field names like 'agentReadabilityJson', 'sitemapMd', and doesn't mention the --bundle/agentsMd shape or mode/source/output/product/groups fields. Still, the required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2520,
+  "outputTokens": 124,
+  "durationMs": 9135,
+  "steps": 5,
+  "errors": []
+}

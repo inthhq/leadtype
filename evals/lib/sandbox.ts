@@ -4,6 +4,7 @@ import { cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { glob } from "tinyglobby";
 import type { Mode } from "./transcript";
 
 const evalsRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -47,7 +48,11 @@ export async function createSandbox(options: {
       recursive: true,
       filter: (src) => {
         const base = path.basename(src);
-        return base !== "PROMPT.md" && base !== "EVAL.ts";
+        // PROMPT/EVAL/RUBRIC belong to the harness; never expose RUBRIC.md to
+        // the agent or it could read the graded answer straight out of the cwd.
+        return (
+          base !== "PROMPT.md" && base !== "EVAL.ts" && base !== "RUBRIC.md"
+        );
       },
     });
   } catch (err) {
@@ -62,13 +67,17 @@ export async function createSandbox(options: {
   await npmInstall(tempDir, tarball);
 
   if (mode === "control") {
-    await rm(path.join(tempDir, "node_modules", "leadtype", "AGENTS.md"), {
-      force: true,
-    });
-    await rm(path.join(tempDir, "node_modules", "leadtype", "docs"), {
-      force: true,
-      recursive: true,
-    });
+    const pkgRoot = path.join(tempDir, "node_modules", "leadtype");
+    await rm(path.join(pkgRoot, "AGENTS.md"), { force: true });
+    await rm(path.join(pkgRoot, "docs"), { force: true, recursive: true });
+    // Source maps embed the full original TypeScript source and comments — a
+    // back door to the same prose that lives in the bundled docs. A package
+    // that simply doesn't ship agent docs wouldn't hand the agent its
+    // commented source either, so strip them to keep "control" honest. The
+    // compiled JS (with --help strings) and .d.ts types stay: those are real
+    // package contents an agent legitimately has.
+    const maps = await glob("dist/**/*.map", { cwd: pkgRoot, absolute: true });
+    await Promise.all(maps.map((mapFile) => rm(mapFile, { force: true })));
   }
 
   return {

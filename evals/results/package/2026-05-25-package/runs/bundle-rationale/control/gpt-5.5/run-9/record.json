@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all three required points: it explains llms.txt is a web/HTTP discovery artifact assuming hosted origin/URL paths (though it could more explicitly state 'absolute URLs'), explains AGENTS.md uses relative filesystem links and works offline at node_modules/<pkg>/, and lists the skipped artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 32568,
+  "outputTokens": 45,
+  "durationMs": 36810,
+  "steps": 10,
+  "errors": []
+}

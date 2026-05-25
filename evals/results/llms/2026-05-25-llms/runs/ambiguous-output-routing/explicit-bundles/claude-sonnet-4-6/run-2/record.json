@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "claude-sonnet-4-6",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (`/docs/reference/llm.md`) with the `generateLLMFullContextFiles` and related APIs as the right place, and explicitly steers away from the Search docs. It also correctly describes `/llms-full.txt` as a fallback used when scoped/page-level resources are insufficient. Both required rubric points are satisfied, though the fallback framing emphasizes 'scoped bundles' more than 'page-level llms.txt markdown links' specifically.",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 6,
+  "inputTokens": 4357,
+  "outputTokens": 525,
+  "durationMs": 38746,
+  "steps": 5,
+  "errors": []
+}

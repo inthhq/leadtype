@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "gpt-5.5",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 88,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The answer covers all three required points: it identifies llms.txt as a website/HTTP convention with URL-oriented links that agents won't discover in node_modules, explains AGENTS.md uses relative links and works offline/version-matched, and lists that --bundle skips llms.txt, llms-full.txt, and search artifacts. It doesn't explicitly mention sitemap/robots but those are bonus, not required.",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 41988,
+  "outputTokens": 54,
+  "durationMs": 38935,
+  "steps": 7,
+  "errors": []
+}

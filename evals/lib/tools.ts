@@ -7,6 +7,18 @@ import { z } from "zod";
 import type { ToolCall } from "./transcript";
 
 const RESULT_SUMMARY_LIMIT = 200;
+// Cap what a single `read` returns to the model. Real coding agents truncate
+// large file reads (e.g. 2000 lines); without a cap, one minified bundle in
+// `dist/` can blow the context window and turn a knowledge miss into a tooling
+// crash — which would corrupt the treatment-vs-control comparison.
+const READ_CHAR_LIMIT = 60_000;
+
+function capRead(content: string): string {
+  if (content.length <= READ_CHAR_LIMIT) {
+    return content;
+  }
+  return `${content.slice(0, READ_CHAR_LIMIT)}\n…[truncated ${content.length - READ_CHAR_LIMIT} chars — file is larger than the read limit; use grep to find what you need]`;
+}
 
 /**
  * Resolve an agent-supplied path inside the eval tempdir, rejecting any
@@ -74,6 +86,16 @@ const NPM_ARG_PATTERN = /^-/;
 
 const GREP_HIT_LIMIT = 200;
 const TRUNCATION_NOTICE = `…(truncated at ${GREP_HIT_LIMIT} hits)`;
+// A matched line in a minified bundle or `.map` file can be hundreds of KB on
+// one line. Truncate each hit (ripgrep does the same with -M) so grepping
+// `dist/` can't blow the context window.
+const GREP_LINE_CHAR_LIMIT = 300;
+
+function capGrepLine(line: string): string {
+  return line.length > GREP_LINE_CHAR_LIMIT
+    ? `${line.slice(0, GREP_LINE_CHAR_LIMIT)}…[long line truncated]`
+    : line;
+}
 
 async function grepInScope(opts: {
   tempDir: string;
@@ -101,10 +123,10 @@ async function grepInScope(opts: {
       hits,
     });
     if (truncated) {
-      return hits.join("\n");
+      return capRead(hits.join("\n"));
     }
   }
-  return hits.length === 0 ? "(no matches)" : hits.join("\n");
+  return hits.length === 0 ? "(no matches)" : capRead(hits.join("\n"));
 }
 
 async function collectFileHits(opts: {
@@ -127,7 +149,7 @@ async function collectFileHits(opts: {
   const lines = content.split("\n");
   for (let i = 0; i < lines.length; i++) {
     if (regex.test(lines[i] ?? "")) {
-      hits.push(`${rel}:${i + 1}: ${lines[i]}`);
+      hits.push(`${rel}:${i + 1}: ${capGrepLine(lines[i] ?? "")}`);
       if (hits.length >= GREP_HIT_LIMIT) {
         hits.push(TRUNCATION_NOTICE);
         return true;
@@ -153,7 +175,7 @@ export function scopedTools(ctx: ToolCtx) {
           { path: requestedPath },
           async () => {
             const target = resolveScoped(tempDir, requestedPath);
-            return await readFile(target, "utf-8");
+            return capRead(await readFile(target, "utf-8"));
           },
           summarize
         ),
@@ -203,12 +225,14 @@ export function scopedTools(ctx: ToolCtx) {
           async () => {
             const target = resolveScoped(tempDir, requestedPath);
             const entries = await readdir(target, { withFileTypes: true });
-            return entries
-              .map(
-                (e) =>
-                  `${e.isDirectory() ? "dir " : "file"}  ${e.name}${e.isDirectory() ? "/" : ""}`
-              )
-              .join("\n");
+            return capRead(
+              entries
+                .map(
+                  (e) =>
+                    `${e.isDirectory() ? "dir " : "file"}  ${e.name}${e.isDirectory() ? "/" : ""}`
+                )
+                .join("\n")
+            );
           },
           summarize
         ),
@@ -239,7 +263,7 @@ export function scopedTools(ctx: ToolCtx) {
               // bare directory name doesn't silently expand to `dir/**`.
               expandDirectories: false,
             });
-            return matches.join("\n");
+            return capRead(matches.join("\n"));
           },
           summarize
         ),

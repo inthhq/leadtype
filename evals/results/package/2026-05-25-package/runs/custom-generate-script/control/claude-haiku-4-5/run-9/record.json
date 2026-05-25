@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "claude-haiku-4-5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The script calls convertAllMdx first (correct ordering), then generateLlmsTxt and generateLLMFullContextFiles from leadtype/llm, and passes product/nav from docs.config.ts. However, the rubric explicitly requires the search index to be generated via the search-node API (e.g., `generateDocsSearchFiles` from `leadtype/search/node`). The script instead uses `source.buildSearchIndex()` from a generic `createDocsSource`, which is not the documented search-node API and may be an invented API. This misses a required point.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 35,
+  "inputTokens": 29201,
+  "outputTokens": 700,
+  "durationMs": 86675,
+  "steps": 30,
+  "errors": []
+}

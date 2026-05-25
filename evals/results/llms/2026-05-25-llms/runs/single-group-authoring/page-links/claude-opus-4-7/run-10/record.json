@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "claude-opus-4-7",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response satisfies all required rubric points: it explains that `group` controls navigation (sidebar), `llms.txt` sections, search metadata, and AGENTS.md grouping; it clearly characterizes `/llms-full.txt` as a monolithic all-docs file not split by group; and it names well more than two valid optional fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). Minor invented-sounding fields like `deprecatedReason` and `availableIn` are included but don't undermine the required points.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 4386,
+  "outputTokens": 295,
+  "durationMs": 30381,
+  "steps": 5,
+  "errors": []
+}

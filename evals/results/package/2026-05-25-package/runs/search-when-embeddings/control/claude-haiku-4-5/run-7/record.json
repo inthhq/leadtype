@@ -1,0 +1,20 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "claude-haiku-4-5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response correctly identifies BM25 static lexical index as the default (no DB needed) and correctly states the lexical index should be kept with embeddings as complementary/hybrid. However, the specific conditions for adding embeddings don't quite match the rubric: the rubric requires (a) vocabulary/intent mismatch between user queries and docs, and (b) corpus growing past tens of thousands of chunks with cold-start memory issues. The response captures (a) reasonably well (semantic distance, query/keyword mismatch examples) but misses (b) entirely — it never mentions corpus size or scale as a trigger, instead substituting generic criteria like '>15-20% miss rate' and 'answer generation at scale.'",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 50630,
+  "outputTokens": 449,
+  "durationMs": 67339,
+  "steps": 23,
+  "errors": []
+}

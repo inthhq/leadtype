@@ -1,0 +1,19 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "gpt-5.5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": true,
+  "score": 78,
+  "judgeModel": "claude-opus-4-7",
+  "judgeReasoning": "The response states it prints a JSON object describing what was generated, satisfying the first required point. It names llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying the second required point. However, it misses some context (single result object, mode/source/output dirs/product/groups, files map structure) and invents some field names like `agentReadabilityJson`, `sitemapXml`, `sitemapMd` that may not match the actual shape (rubric mentions `agentReadabilityManifest`). Still, the core required points are met.",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2119,
+  "outputTokens": 13,
+  "durationMs": 16439,
+  "steps": 7,
+  "errors": []
+}
