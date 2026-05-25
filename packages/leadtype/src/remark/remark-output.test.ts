@@ -242,9 +242,9 @@ describe("remark markdown output", () => {
       path.join("docs", "frameworks", "next", "quickstart.mdx"),
       `---
 title: Quickstart
-availableIn:
-  - framework: next
-    url: /docs/frameworks/{framework}/quickstart
+variants:
+  - value: next
+    href: /docs/frameworks/{framework}/quickstart
 ---
 Body
 `
@@ -252,7 +252,7 @@ Body
 
     const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
-    expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");
+    expect(result.markdown).toContain("href: /docs/frameworks/next/quickstart");
   });
 
   it("keeps accordion content in markdown output", async () => {

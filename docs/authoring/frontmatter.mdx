@@ -1,6 +1,14 @@
 ---
 title: "Frontmatter"
 description: "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree."
+status: updated
+related:
+  - title: "Lint rules"
+    href: "/docs/reference/lint"
+    description: "See how Leadtype validates the default frontmatter schema."
+  - title: "Frontmatter transformers"
+    href: "/docs/reference/frontmatter-transformers"
+    description: "Derive release-channel or product-specific metadata at build time."
 ---
 
 # Frontmatter
@@ -111,19 +119,25 @@ The default lint schema also accepts:
 <TypeTable
   properties={{
     icon: { type: "string", description: "Icon name resolved by your sidebar component." },
-    deprecated: { type: "boolean", description: "Marks the page as deprecated in nav and search." },
-    deprecatedReason: { type: "string", description: "Short message paired with deprecated." },
-    experimental: { type: "boolean", description: "Marks the page as experimental." },
-    canary: { type: "boolean", description: "Hides from stable channels." },
-    new: { type: "boolean", description: "Highlights the page as recently added." },
-    draft: { type: "boolean", description: "Excludes from generation entirely." },
+    status: { type: "\"new\" | \"updated\" | \"experimental\"", description: "Editorial page badge. Release channels belong in config or transformers." },
+    deprecated: { type: "string", description: "Deprecation message, such as \"Use /docs/new-page instead.\"." },
     tags: { type: "string[]", description: "Free-form tags for search facets." },
-    availableIn: { type: "Array<{ framework, url?, title? }>", description: "Cross-framework availability map for TopicSwitcher pages." },
+    variants: { type: "Array<{ value, label?, href, description? }>", description: "Same-topic equivalents across frameworks, SDKs, runtimes, or platforms." },
+    related: { type: "Array<{ title, href, description? }>", description: "See-also links for adjacent pages." },
     full: { type: "boolean", description: "Layout hint for docs UIs that support full-width pages." },
   }}
 />
 
 `lastModified` and `lastAuthor` are filled in automatically when you pass `--enrich-git` to the CLI. Don't author them by hand.
+
+Use `status` only for the page's editorial state. Canary, RC, preview, and
+stable are release-channel concerns; model them with build config, deployment
+environment, or [frontmatter transformers](/docs/reference/frontmatter-transformers)
+so the same source file can move from preview to stable without stale metadata.
+
+Use collection `include` and `exclude` patterns for drafts or private pages.
+The default page schema does not include `draft` because authors expect that
+field to affect generated markdown, search, `llms.txt`, and AGENTS.md.
 
 ## Lint rules
 

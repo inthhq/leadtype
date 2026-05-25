@@ -107,7 +107,7 @@ Each MDX page has YAML frontmatter. title is required. description is optional b
 
 The group value drives the sidebar position, the llms.txt section, search metadata, and AGENTS.md grouping. Pages can belong to multiple groups with group: [a, b]. The root /llms-full.txt fallback contains all generated markdown pages and is not split by group. If a page declares an unknown group, the build fails.
 
-Optional fields include icon, deprecated, deprecatedReason, experimental, canary, new, draft, tags, availableIn, full, lastModified, and lastAuthor. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
+Optional fields include icon, status, deprecated, tags, variants, related, full, lastModified, and lastAuthor. status is editorial page metadata: new, updated, or experimental. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
   },
   {
     path: "docs/authoring/components.md",
