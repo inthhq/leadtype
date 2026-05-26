@@ -3,7 +3,12 @@ import { z } from "zod";
 import { namespaceModelId } from "./models";
 import { withRetry } from "./retry";
 
-const DEFAULT_JUDGE_MODEL = "claude-opus-4-7";
+// Neutral judge: outside the candidate set (no Claude/GPT family), so it has
+// no self-preference for any model under test. gemini-3-pro (not the flatter,
+// more lenient gemini-3.5-flash) — strong enough to discriminate borderline
+// answers while staying neutral. Cross-validated: it agrees with flash on
+// direction and corrects the same-family bias an Opus judge showed.
+const DEFAULT_JUDGE_MODEL = "gemini-3-pro";
 const MAX_ARTIFACT_CHARS = 8000;
 const MAX_ANSWER_CHARS = 16_000;
 

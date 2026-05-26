@@ -67,7 +67,7 @@ Every run writes to `results/package/<label>/` (label defaults to a timestamp). 
 bun run aggregate results/package/2026-05-25
 ```
 
-`results/` is gitignored by default (the harness writes a folder per local run), so publish a run explicitly with `git add -f results/<benchmark>/<label>`. `summary.json`, `report.md`, and per-run `record.json` are committed loose. The bulky per-run `transcript.json` + `judge.json` + produced `files/` are bundled into `transcripts.tgz` to keep the repo light — regenerate the loose copies with `tar xzf transcripts.tgz`. To re-bundle after a fresh run:
+`results/` is gitignored by default (the harness writes a folder per local run), so publish a run explicitly with `git add -f results/<benchmark>/<label>`. `summary.json`, `report.md`, and per-run `record.json` are committed loose. `record.json` holds the **canonical verdict** (the `2026-05-25` run is graded by `gemini-3-pro`); the `judge.json` inside `transcripts.tgz` is the original first-pass (Opus) verdict, kept as a historical cross-judge artifact. The bulky per-run `transcript.json` + `judge.json` + produced `files/` are bundled into `transcripts.tgz` to keep the repo light — regenerate the loose copies with `tar xzf transcripts.tgz`. To re-bundle after a fresh run:
 
 ```bash
 cd results/<benchmark>/<label>

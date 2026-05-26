@@ -15,9 +15,9 @@ Each eval is one **cell** — a fixture (task) × arm × model — run 10 times.
 
 1. Spins up an isolated temp project and `npm install`s a packed `leadtype` tarball, so `node_modules/leadtype/` looks like a real install.
 2. Lets the agent work with a small set of path-scoped tools (`read`, `write`, `list`, `glob`, `grep`, and a narrow `npm`). No shell, no network beyond the model call.
-3. Sends the agent's answer (and any files it wrote) to an **LLM judge** (`claude-opus-4-7`), which grades it against a per-fixture rubric and returns pass/fail + a 0–100 score. The judge is the headline metric; "did the agent read our files" is tracked separately as supporting evidence.
+3. Sends the agent's answer (and any files it wrote) to an **LLM judge**, which grades it against a per-fixture rubric and returns pass/fail + a 0–100 score. We judge with **`gemini-3-pro`** — a neutral model *outside* the candidate set, so it has no same-family preference for any model under test. The judge is the headline metric; "did the agent read our files" is tracked separately as supporting evidence.
 
-Pass rates are reported with a **Wilson 95% confidence interval**, and every run's transcript, judge verdict, and produced files are archived under `evals/results/` for inspection. The numbers below are from the `2026-05-25` run: **4 models × 10 runs per cell**, judged by Opus.
+Pass rates are reported with a **Wilson 95% confidence interval**, and every run's transcript, judge verdict, and produced files are archived under `evals/results/` for inspection. The numbers below are from the `2026-05-25` run: **4 models × 10 runs per cell**, judged by `gemini-3-pro` and [cross-validated against three judges](#judge-choice-matters).
 
 ## Does bundling docs help? (package benchmark)
 
@@ -26,28 +26,38 @@ The package benchmark answers the core question directly with an A/B test:
 - **Treatment** — the installed `leadtype` ships its bundled `AGENTS.md` + `docs/*.md`.
 - **Control** — those files are stripped from the installed package (along with `dist/*.map` source maps, which would otherwise leak the original commented source). The compiled JS — including the CLI's `--help` text — and the `.d.ts` types stay. This is an honest "a package that simply didn't bundle agent docs" baseline, **not** "an agent with no information."
 
-Across six tasks, bundling docs lifts task success on **every** model, and the gain is largest on the smaller, cheaper models that most agents actually run on:
+Across six tasks, bundling docs lifts task success — most for the smaller, cheaper models that most agents actually run on, and marginally for frontier models that recover more from the package alone:
 
 | Model | With bundled docs | Without (control) | Lift |
 | --- | --- | --- | --- |
-| `claude-haiku-4-5` | 100% | 75% | **+25 pts** |
+| `claude-haiku-4-5` | 98% | 80% | **+18 pts** |
 | `claude-sonnet-4-6` | 100% | 85% | **+15 pts** |
-| `gpt-5.5` | 98% | 88% | **+10 pts** |
 | `claude-opus-4-7` | 100% | 95% | **+5 pts** |
+| `gpt-5.5` | 98% | 100% | **~0** |
 
-(Pooled over all fixtures, n = 60 runs per cell. `claude-opus-4-7` is also the judge, so read its row with that caveat.)
+(Pooled over all fixtures, n = 60 runs per cell, judged by neutral `gemini-3-pro`.)
 
 ### Where the lift comes from
 
-The per-fixture breakdown is more interesting than the average. Bundled docs matter most for **non-obvious behavior the compiled package can't self-document**, and they prevent the most dangerous failure mode: **confident wrong answers**.
+The per-fixture breakdown is more telling than the average: almost all of the lift comes from **one** fixture — a behavioral gotcha the compiled package can't self-document — and the mechanism is that docs prevent **confident wrong answers**.
 
-- **`nav-unknown-group`** — "what happens if a page declares a `group` the config doesn't know?" Without docs, agents confidently assert the *wrong* answer (control passed just **10–20%** on Sonnet/Haiku); with docs, **100%**. This single behavioral gotcha drives most of the lift.
-- **`search-when-embeddings`** — the specific thresholds for adding embeddings live only in prose; GPT‑5.5 control passed **50%**, treatment **100%**.
-- **`custom-generate-script`** / **`bundle-rationale`** — Haiku gained +30 / +20; stronger models inferred these from types and conventions.
+- **`nav-unknown-group`** — "what happens if a page declares a `group` the config doesn't know?" Without docs, agents don't say "I don't know" — they confidently assert the *wrong* answer: control passed just **20% (Haiku), 10% (Sonnet), 70% (even Opus)**; with docs, **100%**. This single gotcha drives nearly all of the aggregate lift.
+- **`custom-generate-script`** (+20 Haiku) and **`bundle-rationale`** (+10 Haiku) — smaller models benefit on integration/config; stronger models infer these from types and conventions.
+- **`explain-cli-flag`, `mounted-changelog-urls`, `search-when-embeddings`** — **~0 lift on every model**. Their answers are recoverable from the CLI's `--help`, the `.d.ts` types, or the README. We keep them on purpose: they show the benchmark isn't cherry-picked and pin down where bundling docs *doesn't* pay off.
 
-And, importantly, two fixtures show **~0 lift on every model**: `explain-cli-flag` and `mounted-changelog-urls`. Their answers are baked into the CLI's `--help` output, so a capable agent recovers them without docs. We keep these in the suite on purpose — they show the benchmark isn't cherry-picked, and they pin down where bundling docs *doesn't* pay off (flag-lookup questions a self-documenting CLI already answers).
+**Takeaway for library authors:** bundle docs as insurance against agents confidently guessing wrong about your library's non-obvious behavior — the payoff is largest for smaller models and for genuinely non-obvious semantics. It adds little for facts your CLI, types, or README already expose. (Our fixtures didn't surface a docs-gap for GPT‑5.5 at all — it cleared all six from the package alone; exposing one for a frontier model likely needs more obscure API surface.)
 
-**Takeaway for library authors:** bundling docs is cheapest and most valuable as insurance against agents confidently guessing wrong about your library's non-obvious behavior — and the payoff is largest for the smaller models a lot of coding agents run on. It adds little for facts your CLI already self-documents.
+### Judge choice matters
+
+LLM judges can favor their own model family, so we re-graded all 1,680 saved answers (no agents re-run) with three judges. The neutral judges agree; an Opus judge was the outlier:
+
+| Lift by judge | Haiku | Sonnet | Opus | GPT‑5.5 |
+| --- | --- | --- | --- | --- |
+| `claude-opus-4-7` | +25 | +15 | +5 | **+10** |
+| `gemini-3.5-flash` (neutral) | +18 | +15 | +5 | **~0** |
+| `gemini-3-pro` (neutral, canonical) | +18 | +15 | +5 | **−2** |
+
+The Opus judge scored Claude answers higher across the board and strict-failed GPT's borderline *no-docs* answers that both Gemini judges accepted — manufacturing a "+10 GPT needs docs" that the neutral judges don't see. We grade with `gemini-3-pro` for exactly this reason. Use `bun run rejudge <runDir> --judge <model>` to reproduce.
 
 ## Which llms.txt shape routes agents best? (hosted-docs benchmark)
 

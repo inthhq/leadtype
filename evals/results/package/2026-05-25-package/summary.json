@@ -1,9 +1,9 @@
 {
   "benchmark": "package",
   "runId": "2026-05-25-package",
-  "generatedAt": "2026-05-25T17:50:23.292Z",
+  "generatedAt": "2026-05-26T12:30:47.536Z",
   "judgeModels": [
-    "claude-opus-4-7"
+    "gemini-3-pro"
   ],
   "models": [
     "claude-haiku-4-5",
@@ -30,13 +30,13 @@
       "model": "claude-haiku-4-5",
       "arm": "control",
       "n": 10,
-      "passes": 8,
-      "rate": 0.8,
+      "passes": 9,
+      "rate": 0.9,
       "ci95": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.5958436145024278,
+        0.9821242504842788
       ],
-      "meanScore": 84.5,
+      "meanScore": 96.5,
       "discoveryRate": 0.3,
       "avgTokens": 17091.8,
       "judgeErrors": 0
@@ -52,7 +52,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 15484.7,
       "judgeErrors": 0
@@ -68,7 +68,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91.3,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 14783.9,
       "judgeErrors": 0
@@ -84,7 +84,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 93.5,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 10121.8,
       "judgeErrors": 0
@@ -100,7 +100,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 93.4,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 24760.9,
       "judgeErrors": 0
@@ -116,7 +116,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 15209.6,
       "judgeErrors": 0
@@ -132,7 +132,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91.1,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 34093.7,
       "judgeErrors": 0
@@ -148,7 +148,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 92.1,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 28034.2,
       "judgeErrors": 0
@@ -164,7 +164,7 @@
         0.39677321997956516,
         0.892210712513788
       ],
-      "meanScore": 80.7,
+      "meanScore": 89.5,
       "discoveryRate": 0.2,
       "avgTokens": 26016.5,
       "judgeErrors": 0
@@ -174,16 +174,16 @@
       "model": "claude-haiku-4-5",
       "arm": "treatment",
       "n": 10,
-      "passes": 10,
-      "rate": 1,
+      "passes": 9,
+      "rate": 0.9,
       "ci95": [
-        0.7224598312333834,
-        1
+        0.5958436145024278,
+        0.9821242504842788
       ],
-      "meanScore": 91,
+      "meanScore": 90,
       "discoveryRate": 0.8,
       "avgTokens": 26425.2,
-      "judgeErrors": 0
+      "judgeErrors": 1
     },
     {
       "fixture": "custom-generate-script",
@@ -196,7 +196,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 92.7,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 35138,
       "judgeErrors": 0
@@ -212,7 +212,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91.8,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 27634.9,
       "judgeErrors": 0
@@ -228,7 +228,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 93.8,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 42340.7,
       "judgeErrors": 0
@@ -244,7 +244,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.4,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 38269.9,
       "judgeErrors": 0
@@ -260,7 +260,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 90.6,
+      "meanScore": 100,
       "discoveryRate": 0.1,
       "avgTokens": 39976.2,
       "judgeErrors": 0
@@ -276,7 +276,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91.4,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 40706.6,
       "judgeErrors": 0
@@ -292,7 +292,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.1,
+      "meanScore": 100,
       "discoveryRate": 0.1,
       "avgTokens": 28072.9,
       "judgeErrors": 0
@@ -308,7 +308,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 96,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 10115.9,
       "judgeErrors": 0
@@ -324,7 +324,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 97,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 38867.9,
       "judgeErrors": 0
@@ -340,7 +340,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 95,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 25587.2,
       "judgeErrors": 0
@@ -356,7 +356,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 96.1,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 31925.9,
       "judgeErrors": 0
@@ -372,7 +372,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 95.6,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 20777.6,
       "judgeErrors": 0
@@ -388,7 +388,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.1,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 27760.5,
       "judgeErrors": 0
@@ -404,7 +404,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.1,
+      "meanScore": 100,
       "discoveryRate": 0.9,
       "avgTokens": 18772.9,
       "judgeErrors": 0
@@ -420,7 +420,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 90.8,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 52142.2,
       "judgeErrors": 0
@@ -436,7 +436,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.1,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 16894.1,
       "judgeErrors": 0
@@ -452,7 +452,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 93,
+      "meanScore": 100,
       "discoveryRate": 0.7,
       "avgTokens": 36514.8,
       "judgeErrors": 0
@@ -468,7 +468,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 96.1,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 14489.4,
       "judgeErrors": 0
@@ -484,7 +484,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.7,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 48616.6,
       "judgeErrors": 0
@@ -500,7 +500,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 18356,
       "judgeErrors": 0
@@ -516,7 +516,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 89.6,
+      "meanScore": 100,
       "discoveryRate": 0.2,
       "avgTokens": 45803.7,
       "judgeErrors": 0
@@ -532,7 +532,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.2,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 37882.9,
       "judgeErrors": 0
@@ -548,7 +548,7 @@
         0.05668094798069326,
         0.5098431532792767
       ],
-      "meanScore": 37.4,
+      "meanScore": 66.7,
       "discoveryRate": 0.1,
       "avgTokens": 36637.7,
       "judgeErrors": 0
@@ -564,7 +564,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 91.9,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 23240.5,
       "judgeErrors": 0
@@ -580,7 +580,7 @@
         0.39677321997956516,
         0.892210712513788
       ],
-      "meanScore": 74.7,
+      "meanScore": 89.2,
       "discoveryRate": 0.9,
       "avgTokens": 57011.7,
       "judgeErrors": 0
@@ -596,7 +596,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 95.1,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 12510.3,
       "judgeErrors": 0
@@ -612,7 +612,7 @@
         0.01787574951572113,
         0.4041563854975721
       ],
-      "meanScore": 28.5,
+      "meanScore": 66.3,
       "discoveryRate": 0.6,
       "avgTokens": 49403.4,
       "judgeErrors": 0
@@ -628,7 +628,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.2,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 22991,
       "judgeErrors": 0
@@ -638,13 +638,13 @@
       "model": "gpt-5.5",
       "arm": "control",
       "n": 10,
-      "passes": 8,
-      "rate": 0.8,
+      "passes": 10,
+      "rate": 1,
       "ci95": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.7224598312333834,
+        1
       ],
-      "meanScore": 80.2,
+      "meanScore": 100,
       "discoveryRate": 0.5,
       "avgTokens": 57506.6,
       "judgeErrors": 0
@@ -660,7 +660,7 @@
         0.5958436145024278,
         0.9821242504842788
       ],
-      "meanScore": 80.9,
+      "meanScore": 90,
       "discoveryRate": 1,
       "avgTokens": 64659.1,
       "judgeErrors": 0
@@ -670,13 +670,13 @@
       "model": "claude-haiku-4-5",
       "arm": "control",
       "n": 10,
-      "passes": 8,
-      "rate": 0.8,
+      "passes": 10,
+      "rate": 1,
       "ci95": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.7224598312333834,
+        1
       ],
-      "meanScore": 79.3,
+      "meanScore": 99.5,
       "discoveryRate": 0.6,
       "avgTokens": 26114.6,
       "judgeErrors": 0
@@ -692,7 +692,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.4,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 9872.9,
       "judgeErrors": 0
@@ -708,7 +708,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 93,
+      "meanScore": 100,
       "discoveryRate": 0.3,
       "avgTokens": 25106.1,
       "judgeErrors": 0
@@ -724,7 +724,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 96.2,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 12324.4,
       "judgeErrors": 0
@@ -740,7 +740,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 90.5,
+      "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 29343.9,
       "judgeErrors": 0
@@ -756,7 +756,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 96.1,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 10811.1,
       "judgeErrors": 0
@@ -766,13 +766,13 @@
       "model": "gpt-5.5",
       "arm": "control",
       "n": 10,
-      "passes": 5,
-      "rate": 0.5,
+      "passes": 10,
+      "rate": 1,
       "ci95": [
-        0.23658959361548731,
-        0.7634104063845126
+        0.7224598312333834,
+        1
       ],
-      "meanScore": 74.6,
+      "meanScore": 100,
       "discoveryRate": 0.2,
       "avgTokens": 35090.4,
       "judgeErrors": 0
@@ -788,7 +788,7 @@
         0.7224598312333834,
         1
       ],
-      "meanScore": 94.5,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 14142.5,
       "judgeErrors": 0
@@ -799,15 +799,15 @@
       "fixture": "bundle-rationale",
       "model": "claude-haiku-4-5",
       "treatmentRate": 1,
-      "controlRate": 0.8,
-      "delta": 0.19999999999999996,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
       "treatmentCi": [
         0.7224598312333834,
         1
       ],
       "controlCi": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.5958436145024278,
+        0.9821242504842788
       ]
     },
     {
@@ -858,12 +858,12 @@
     {
       "fixture": "custom-generate-script",
       "model": "claude-haiku-4-5",
-      "treatmentRate": 1,
+      "treatmentRate": 0.9,
       "controlRate": 0.7,
-      "delta": 0.30000000000000004,
+      "delta": 0.20000000000000007,
       "treatmentCi": [
-        0.7224598312333834,
-        1
+        0.5958436145024278,
+        0.9821242504842788
       ],
       "controlCi": [
         0.39677321997956516,
@@ -1084,30 +1084,30 @@
       "fixture": "nav-unknown-group",
       "model": "gpt-5.5",
       "treatmentRate": 0.9,
-      "controlRate": 0.8,
-      "delta": 0.09999999999999998,
+      "controlRate": 1,
+      "delta": -0.09999999999999998,
       "treatmentCi": [
         0.5958436145024278,
         0.9821242504842788
       ],
       "controlCi": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.7224598312333834,
+        1
       ]
     },
     {
       "fixture": "search-when-embeddings",
       "model": "claude-haiku-4-5",
       "treatmentRate": 1,
-      "controlRate": 0.8,
-      "delta": 0.19999999999999996,
+      "controlRate": 1,
+      "delta": 0,
       "treatmentCi": [
         0.7224598312333834,
         1
       ],
       "controlCi": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.7224598312333834,
+        1
       ]
     },
     {
@@ -1144,15 +1144,15 @@
       "fixture": "search-when-embeddings",
       "model": "gpt-5.5",
       "treatmentRate": 1,
-      "controlRate": 0.5,
-      "delta": 0.5,
+      "controlRate": 1,
+      "delta": 0,
       "treatmentCi": [
         0.7224598312333834,
         1
       ],
       "controlCi": [
-        0.23658959361548731,
-        0.7634104063845126
+        0.7224598312333834,
+        1
       ]
     }
   ]

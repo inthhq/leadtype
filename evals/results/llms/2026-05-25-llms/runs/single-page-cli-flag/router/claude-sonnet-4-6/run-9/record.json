@@ -4,10 +4,10 @@
   "model": "claude-sonnet-4-6",
   "runIndex": 9,
   "variant": "router",
-  "passed": true,
-  "score": 78,
-  "judgeModel": "claude-opus-4-7",
-  "judgeReasoning": "The response states that --json prints a JSON object describing generated artifact paths and names the required keys (llmsTxt, docsLlmsTxt, llmsFullTxt), plus mentions searchIndex, searchContent, sitemap, and robots. However, it invents/renames some fields: `agentReadabilityJson` instead of `agentReadabilityManifest`, and `sitemapXml`/`sitemapMd` which aren't in the rubric's listed shape. It also doesn't mention the top-level structure (mode, source/output dirs, product, groups, files map) or the --bundle shape. Still, the required points are satisfied.",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "gemini-3-pro",
+  "judgeReasoning": "judge call failed — counted as a miss",
   "contextMatched": false,
   "wrongGroupReads": 1,
   "toolCalls": 6,
@@ -15,5 +15,6 @@
   "outputTokens": 308,
   "durationMs": 23351,
   "steps": 6,
-  "errors": []
+  "errors": [],
+  "judgeError": "Internal Server Error"
 }

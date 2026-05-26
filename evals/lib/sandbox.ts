@@ -30,11 +30,54 @@ export type SandboxHandle = {
   cleanup: () => Promise<void>;
 };
 
+// Every package sandbox needs the same installed `node_modules/leadtype` (the
+// fixtures declare no other deps). Installing it 480× dominates wall-clock, so
+// install once into a template and copy-on-write clone it per sandbox.
+// Memoized as a promise so concurrent callers share a single install.
+let templatePromise: Promise<string> | undefined;
+
+function prepareTemplate(): Promise<string> {
+  if (!templatePromise) {
+    templatePromise = (async () => {
+      const tarball = findLeadtypeTarball();
+      const dir = await mkdtemp(path.join(tmpdir(), "leadtype-template-"));
+      await npmInstall(dir, tarball);
+      return dir;
+    })();
+  }
+  return templatePromise;
+}
+
+function cloneNodeModules(templateDir: string, tempDir: string): Promise<void> {
+  const src = path.join(templateDir, "node_modules");
+  const dest = path.join(tempDir, "node_modules");
+  // macOS APFS clonefile (`-c`) is a near-instant copy-on-write; elsewhere fall
+  // back to a plain recursive copy. Either way, deletes in the clone (control
+  // mode) don't touch the template.
+  const args =
+    process.platform === "darwin" ? ["-cR", src, dest] : ["-R", src, dest];
+  return new Promise<void>((resolveCp, rejectCp) => {
+    const proc = spawn("cp", args);
+    let stderr = "";
+    proc.stderr.on("data", (b) => {
+      stderr += b.toString();
+    });
+    proc.on("error", rejectCp);
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolveCp();
+      } else {
+        rejectCp(new Error(`cp node_modules exited ${code}\n${stderr}`));
+      }
+    });
+  });
+}
+
 /**
- * Create a tempdir, copy the fixture's starter files in (PROMPT.md and
- * EVAL.ts are excluded — they belong to the harness, not the agent's
- * project), `npm install` the leadtype tarball, and (in control mode)
- * strip the bundled docs the agent would otherwise discover.
+ * Create a tempdir, copy the fixture's starter files in (PROMPT/EVAL/RUBRIC are
+ * excluded — they belong to the harness, and RUBRIC.md would leak the answer),
+ * provision `node_modules/leadtype`, and (in control mode) strip the bundled
+ * docs the agent would otherwise discover.
  */
 export async function createSandbox(options: {
   fixtureDir: string;
@@ -48,8 +91,6 @@ export async function createSandbox(options: {
       recursive: true,
       filter: (src) => {
         const base = path.basename(src);
-        // PROMPT/EVAL/RUBRIC belong to the harness; never expose RUBRIC.md to
-        // the agent or it could read the graded answer straight out of the cwd.
         return (
           base !== "PROMPT.md" && base !== "EVAL.ts" && base !== "RUBRIC.md"
         );
@@ -63,8 +104,14 @@ export async function createSandbox(options: {
     );
   }
 
-  const tarball = findLeadtypeTarball();
-  await npmInstall(tempDir, tarball);
+  // Clone the prepared install; fall back to a direct install if cloning fails
+  // (e.g. clonefile unsupported on the volume).
+  try {
+    const templateDir = await prepareTemplate();
+    await cloneNodeModules(templateDir, tempDir);
+  } catch {
+    await npmInstall(tempDir, findLeadtypeTarball());
+  }
 
   if (mode === "control") {
     const pkgRoot = path.join(tempDir, "node_modules", "leadtype");
