@@ -201,7 +201,7 @@ describe("leadtype CLI", () => {
       "utf8"
     );
     expect(docsSummary).toContain("Methodology");
-    expect(docsSummary).toContain("Build a docs site");
+    expect(docsSummary).toContain("Build an agent-ready docs site");
     expect(docsSummary).toContain("](/docs/methodology.md)");
 
     const llmsFull = await readFile(path.join(outDir, "llms-full.txt"), "utf8");

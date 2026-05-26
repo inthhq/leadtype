@@ -5,6 +5,8 @@ description: "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt out
 
 # Evals
 
+Read this if you want to know how the default `llms.txt` + `llms-full.txt` shape was chosen, or if you're proposing a change to the agent-facing artifact set. The eval results below set the defaults documented elsewhere.
+
 Leadtype treats agent-facing docs as behavior, not just files on disk. The repo includes eval harnesses that run real models against generated artifacts and check both the final answer and which context files the agent actually read.
 
 ## What we benchmark
@@ -14,10 +16,11 @@ Leadtype treats agent-facing docs as behavior, not just files on disk. The repo 
 | Package docs | `AGENTS.md` + `docs/*.md` | Installs a packed leadtype tarball into a sandbox project and checks whether coding agents discover `node_modules/leadtype/AGENTS.md`, read the right markdown topic, and complete the task. |
 | Hosted docs | `llms.txt` + markdown mirrors + `llms-full.txt` variants | Simulates a hosted docs web root as local files. Agents start at `/llms.txt`, then choose page-level markdown, root `llms-full.txt`, or experimental grouped/router formats depending on the variant under test. |
 
-The hosted-docs benchmark uses the same nine-page corpus for every variant:
+The hosted-docs benchmark uses the same corpus for every variant:
 quickstart, how-it-works, frontmatter, components, build-a-docs-site,
-package-docs bundle, CLI, LLM bundles, and Search. Those pages are split across
-five sections: Get Started, Authoring, Build, Ship Package Docs, and Reference.
+source configuration, package-docs bundle, CLI, LLM bundles, and Search. Those
+pages are split across the GA docs journey: Start, Build an Agent-Ready Site,
+Docs Sources, Package Docs for Agents, Author Content, and Reference.
 
 | Variant | Root `/llms.txt` pattern | Full-context content pattern |
 | --- | --- | --- |

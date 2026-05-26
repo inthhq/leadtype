@@ -9,7 +9,7 @@ description: "leadtype generate, leadtype sync, and leadtype lint — flags, exi
 leadtype <command> [options]
 ```
 
-Three commands: `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/authoring/collections), and `lint` validates content. Run `leadtype help <command>` for inline usage.
+Three commands: `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), and `lint` validates content. Run `leadtype help <command>` for inline usage.
 
 ## generate
 
@@ -44,7 +44,7 @@ When the project root has a `leadtype.config.{ts,js,mjs,cjs}` that declares `col
 
 ### Config loading
 
-`leadtype generate` looks for a project-level `leadtype.config.{ts,js,mjs,cjs}` at the directory passed to `--src` (defaults to cwd). If that file exists and defines `collections`, the [collections pipeline](/docs/authoring/collections) runs.
+`leadtype generate` looks for a project-level `leadtype.config.{ts,js,mjs,cjs}` at the directory passed to `--src` (defaults to cwd). If that file exists and defines `collections`, the [collections pipeline](/docs/sources/configure-sources) runs.
 
 Otherwise — or as a fallback — leadtype loads `docs.config.{ts,js,mjs,cjs}` from each `--docs-dir` (`<src>/<docs-dir>/docs.config.ts`). This is the legacy single-folder shape and is unchanged.
 
@@ -158,7 +158,7 @@ See [LLM files](/docs/reference/llm) for the rest of the script.
 
 ## sync
 
-Clone or refresh the remote sources declared by [collections](/docs/authoring/collections) in a project-level `leadtype.config.{ts,js,mjs,cjs}`. Local-only collections are no-ops.
+Clone or refresh the remote sources declared by [collections](/docs/sources/configure-sources) in a project-level `leadtype.config.{ts,js,mjs,cjs}`. Local-only collections are no-ops.
 
 ```bash
 leadtype sync [options]

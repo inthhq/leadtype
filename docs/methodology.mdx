@@ -23,7 +23,7 @@ Choose a website framework when the main job is publishing a polished docs UI qu
 - The **MDX tag contract** — typed prop shapes for `<Callout>`, `<Tabs>`, `<Steps>`, `<TypeTable>`, and the rest of the custom tags (see [`leadtype/mdx`](/docs/reference/mdx)).
 - A **build-time source preset** that expands `<include>` partials, resolves `<ExtractedTypeTable>`, and strips authoring `import`s — without flattening live components.
 - A **framework-neutral source primitive** (`createDocsSource`) exposing navigation, page loading, search index building, and include resolution.
-- **Framework adapters and recipes** — thin, optional packages or copyable recipes that wire the source primitive into native host conventions: Next App Router, Fumadocs, Nuxt/Nitro, SvelteKit, Astro, TanStack Start, Vue, and Svelte. Adapters export **state and routing primitives only** — hooks, composables, stores, route-handler factories, static-param helpers, pure data helpers — never rendered DOM.
+- **Framework adapters and recipes** — thin, optional packages or copyable recipes that wire the source primitive into native host conventions: Next App Router, TanStack Start, Nuxt/Nitro, Astro, SvelteKit, Fumadocs, Vue, and Svelte. Adapters export **state and routing primitives only** — hooks, composables, stores, route-handler factories, static-param helpers, pure data helpers — never rendered DOM.
 - The agent / LLM pipeline: MDX-to-markdown conversion, `llms.txt`, root `llms-full.txt` fallback context, markdown mirrors, sitemap, and AGENTS.md bundles.
 - A static, edge-safe **search index** plus optional source-grounded answer streaming.
 - **Lint rules** for frontmatter, navigation metadata, and internal links.
@@ -34,7 +34,7 @@ Choose a website framework when the main job is publishing a polished docs UI qu
 - **Rendered DOM, ever.** No leadtype package — core or adapter — ships `<SearchBox>`, `<DocsLayout>`, `<Callout>`, `<Sidebar>`, or any component that emits markup. This is permanent, not a "for now." Consumers implement components against the tag contract from [`leadtype/mdx`](/docs/reference/mdx); leadtype supplies the data, types, and wiring. The one-line test for any new adapter: *does it return data, state, or a function, or does it return JSX?* If JSX, it doesn't ship.
 - Visual UI, theming, CSS, design tokens, or component styling.
 - Routing, hosting, deployment, or analytics.
-- The MDX compiler — leadtype produces the source preset; your bundler (Next App Router, Vite, fumadocs-mdx, Astro) does the compile.
+- The MDX compiler — leadtype produces the source preset; your bundler (Next App Router, TanStack Start, Nuxt, Astro, SvelteKit, or fumadocs-mdx) does the compile.
 
 ## When the combination shines
 
