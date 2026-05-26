@@ -466,4 +466,35 @@ Body
       ])
     );
   });
+
+  it("rejects empty deprecated messages", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+deprecated: ""
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "deprecated",
+          kind: "frontmatter",
+          message: "deprecated: must not be empty",
+          rule: "schema",
+        }),
+      ])
+    );
+  });
 });

@@ -135,6 +135,10 @@ stable are release-channel concerns; model them with build config, deployment
 environment, or [frontmatter transformers](/docs/reference/frontmatter-transformers)
 so the same source file can move from preview to stable without stale metadata.
 
+Use `deprecated` only when you have a message to show. Empty strings fail lint
+because they usually mean a migration from the old boolean form was left
+unfinished.
+
 Use collection `include` and `exclude` patterns for drafts or private pages.
 The default page schema does not include `draft` because authors expect that
 field to affect generated markdown, search, `llms.txt`, and AGENTS.md.
