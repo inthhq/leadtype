@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-18T04:21:03.063Z",
+  "generatedAt": "2026-05-26T21:09:35.645Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -16,7 +16,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "index"
     },
     {
@@ -28,7 +28,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/components.md",
       "relativePath": "authoring/components",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "authoring/components"
     },
     {
@@ -40,7 +40,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/authoring/frontmatter.md",
       "relativePath": "authoring/frontmatter",
       "groups": [],
-      "lastModified": "2026-05-18T03:52:44.000Z",
+      "lastModified": "2026-05-26T21:09:05.000Z",
       "logicalPath": "authoring/frontmatter"
     },
     {
@@ -64,7 +64,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site.md",
       "relativePath": "build/build-a-docs-site",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/build-a-docs-site"
     },
     {
@@ -76,7 +76,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/deploy-generated-artifacts.md",
       "relativePath": "build/deploy-generated-artifacts",
       "groups": [],
-      "lastModified": "2026-05-18T04:05:16.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/deploy-generated-artifacts"
     },
     {
@@ -88,7 +88,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/framework-matrix.md",
       "relativePath": "build/framework-matrix",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/framework-matrix"
     },
     {
@@ -100,7 +100,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/generate-static-artifacts.md",
       "relativePath": "build/generate-static-artifacts",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/generate-static-artifacts"
     },
     {
@@ -124,7 +124,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents.md",
       "relativePath": "build/optimize-docs-for-agents",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:32.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/optimize-docs-for-agents"
     },
     {
@@ -136,7 +136,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/serve-agent-responses.md",
       "relativePath": "build/serve-agent-responses",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:32.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/serve-agent-responses"
     },
     {
@@ -148,7 +148,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
       "groups": [],
-      "lastModified": "2026-05-18T04:05:16.000Z",
+      "lastModified": "2026-05-26T21:09:05.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
     {
@@ -160,7 +160,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/validate-in-ci.md",
       "relativePath": "build/validate-in-ci",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:32.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "build/validate-in-ci"
     },
     {
@@ -184,7 +184,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/how-it-works.md",
       "relativePath": "how-it-works",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "how-it-works"
     },
     {
@@ -196,7 +196,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/methodology.md",
       "relativePath": "methodology",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "methodology"
     },
     {
@@ -220,7 +220,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
       "groups": [],
-      "lastModified": "2026-05-18T04:05:16.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "quickstart"
     },
     {
@@ -232,7 +232,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/architecture.md",
       "relativePath": "reference/architecture",
       "groups": [],
-      "lastModified": "2026-05-18T04:05:16.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "reference/architecture"
     },
     {
@@ -244,7 +244,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/cli.md",
       "relativePath": "reference/cli",
       "groups": [],
-      "lastModified": "2026-05-18T03:52:44.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "reference/cli"
     },
     {
@@ -268,7 +268,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/evals.md",
       "relativePath": "reference/evals",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:32.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "reference/evals"
     },
     {
@@ -280,7 +280,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/frontmatter-transformers.md",
       "relativePath": "reference/frontmatter-transformers",
       "groups": [],
-      "lastModified": "2026-05-17T01:22:57.000Z",
+      "lastModified": "2026-05-25T14:12:10.000Z",
       "logicalPath": "reference/frontmatter-transformers"
     },
     {
@@ -292,7 +292,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/lint.md",
       "relativePath": "reference/lint",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-25T14:12:10.000Z",
       "logicalPath": "reference/lint"
     },
     {
@@ -316,7 +316,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/mdx.md",
       "relativePath": "reference/mdx",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "reference/mdx"
     },
     {
@@ -352,7 +352,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/source.md",
       "relativePath": "reference/source",
       "groups": [],
-      "lastModified": "2026-05-18T03:53:12.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "reference/source"
     },
     {
@@ -364,7 +364,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/collections.md",
       "relativePath": "sources/collections",
       "groups": [],
-      "lastModified": "2026-05-18T03:52:44.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "sources/collections"
     },
     {
@@ -376,7 +376,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/sources/configure-sources.md",
       "relativePath": "sources/configure-sources",
       "groups": [],
-      "lastModified": "2026-05-18T04:05:16.000Z",
+      "lastModified": "2026-05-18T07:16:29.000Z",
       "logicalPath": "sources/configure-sources"
     }
   ],

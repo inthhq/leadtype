@@ -91,9 +91,9 @@ Body
       path.join("docs", "frameworks", "next", "concepts", "overview.mdx"),
       `---
 title: Overview
-availableIn:
-  - framework: next
-    url: /docs/frameworks/{framework}/concepts/policy-packs
+variants:
+  - value: next
+    href: /docs/frameworks/{framework}/concepts/policy-packs
 ---
 <import src="../../../shared/concepts/common.mdx" />
 `
@@ -129,9 +129,9 @@ Body
       path.join("docs", "guides", "overview.mdx"),
       `---
 title: Overview
-availableIn:
-  - framework: next
-    url: /docs/frameworks/{framework}/concepts/policy-packs
+variants:
+  - value: next
+    href: /docs/frameworks/{framework}/concepts/policy-packs
 ---
 [DevTools](/docs/frameworks/next/dev-tools)
 `
@@ -348,6 +348,151 @@ title: Overview
           file: "guides/overview.mdx",
           kind: "content",
           rule: "unresolved-placeholder",
+        }),
+      ])
+    );
+  });
+});
+
+describe("lintDocs default frontmatter schema", () => {
+  it("accepts editorial status, string deprecation, variants, and related links", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+description: Start here.
+icon: book-open
+status: updated
+deprecated: Use /docs/guides/start instead.
+tags: [guides]
+group: get-started
+order: 10
+variants:
+  - value: next
+    label: Next.js
+    href: /docs/guides/overview
+    description: Next.js version.
+related:
+  - title: Start guide
+    href: /docs/guides/overview
+    description: Read this next.
+full: true
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.summary.errors).toBe(0);
+  });
+
+  it("rejects release-channel page status and old lifecycle aliases", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+status: canary
+deprecated: true
+deprecatedReason: Use /docs/guides/start instead.
+experimental: true
+canary: true
+new: true
+draft: true
+availableIn:
+  - framework: next
+    url: /docs/frameworks/{framework}/overview
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "status",
+          kind: "frontmatter",
+          rule: "schema",
+        }),
+        expect.objectContaining({
+          field: "deprecated",
+          kind: "frontmatter",
+          rule: "schema",
+        }),
+        expect.objectContaining({
+          field: "deprecatedReason",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "experimental",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "canary",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "new",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "draft",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "availableIn",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+      ])
+    );
+  });
+
+  it("rejects empty deprecated messages", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+deprecated: ""
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "deprecated",
+          kind: "frontmatter",
+          message: "deprecated: must not be empty",
+          rule: "schema",
         }),
       ])
     );
