@@ -132,6 +132,19 @@
   {
     "slug": [
       "build",
+      "sync-docs-across-repos"
+    ],
+    "urlPath": "/docs/build/sync-docs-across-repos",
+    "title": "Sync docs across repositories",
+    "description": "Keep a separate docs UI repository pinned to a reviewed package-docs source revision.",
+    "relativePath": "build/sync-docs-across-repos",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/build/sync-docs-across-repos.mdx"
+  },
+  {
+    "slug": [
+      "build",
       "use-the-source-primitive"
     ],
     "urlPath": "/docs/build/use-the-source-primitive",

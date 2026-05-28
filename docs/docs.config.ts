@@ -103,6 +103,7 @@ export default defineDocsConfig({
             "build-a-docs-site",
             "use-the-source-primitive",
             "generate-static-artifacts",
+            "sync-docs-across-repos",
             "optimize-docs-for-agents",
             "serve-agent-responses",
             "deploy-generated-artifacts",
