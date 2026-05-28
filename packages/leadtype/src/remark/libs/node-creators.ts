@@ -1,5 +1,6 @@
 import type {
   BlockContent,
+  Blockquote,
   DefinitionContent,
   Heading,
   Link,
@@ -162,5 +163,17 @@ export function createUnorderedList(items: ListItem[], spread = true): List {
     ordered: false,
     spread,
     children: items,
+  };
+}
+
+/**
+ * Create a blockquote node from block-level children
+ */
+export function createBlockquote(
+  children: (BlockContent | DefinitionContent)[]
+): Blockquote {
+  return {
+    type: "blockquote",
+    children: children as Blockquote["children"],
   };
 }

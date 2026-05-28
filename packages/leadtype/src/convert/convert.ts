@@ -19,6 +19,7 @@ import {
   stringifyFrontmatter,
 } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import { sortRemarkPluginsByPhase } from "../internal/remark-phase";
 import {
   type DocsFrontmatter,
   type DocsTransformerOptions,
@@ -102,7 +103,10 @@ function createRemarkProcessor(
       tablePipeAlign: false,
     } as Record<string, unknown>);
 
-  for (const plugin of additionalPlugins) {
+  // Schedule plugins by phase (resolve → custom → flatten → post) so a custom
+  // flattener appended to `defaultRemarkPlugins` still runs in the right slot.
+  // Cache identity stays keyed on the original array (stable across calls).
+  for (const plugin of sortRemarkPluginsByPhase(additionalPlugins)) {
     if (Array.isArray(plugin)) {
       const [factory, ...args] = plugin as [Pluggable, ...unknown[]];
       // biome-ignore lint/suspicious/noExplicitAny: unified's .use() overloads are too narrow for dynamic plugin arrays

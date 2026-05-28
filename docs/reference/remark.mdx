@@ -65,7 +65,69 @@ import {
 
 Imports must go before placeholder resolution, because some placeholders read from imported modules. Placeholder resolution must go before component flatteners, because flatteners assume URLs are final strings, not template literals. The component flatteners run last so each one sees a clean tree.
 
-Don't reorder casually. If you need a custom plugin to run before a flattener (for example, to transform a custom component into one of the contracted names), insert it after `remarkResolveDocPlaceholders` and before the flattener you want to feed.
+Don't reorder casually. If you need a custom plugin to run before a flattener (for example, to transform a custom component into one of the contracted names), insert it after `remarkResolveDocPlaceholders` and before the flattener you want to feed. For most custom components, reach for `defineComponentFlattener` (below) instead of hand-ordering a raw plugin.
+
+## Custom component flatteners
+
+When a component isn't in the [naming contract](/docs/authoring/components#the-naming-contract), `defineComponentFlattener` lets you describe how it flattens without writing a remark plugin by hand:
+
+```ts
+// flatteners.ts
+import { defineComponentFlattener } from "leadtype/remark";
+
+export const hint = defineComponentFlattener({
+  name: "Hint",
+  props: { title: "string" },
+  toMarkdown: ({ props, content, b }) =>
+    b.blockquote([`**${props.title ?? "Hint"}** ${content}`]),
+});
+```
+
+### Wiring it in
+
+Most projects generate with the `leadtype generate` CLI, so register flatteners on the config — they apply to every generated `.md` and the `llms` artifacts:
+
+```ts
+// leadtype.config.ts
+import { defineDocsConfig } from "leadtype";
+import { hint } from "./flatteners";
+
+export default defineDocsConfig({
+  product: { name: "…", summary: "…" },
+  flatteners: [hint],
+});
+```
+
+`flatteners` is also valid on each entry of `collections` (merged with the top-level list). If you drive conversion programmatically instead, pass the same plugin to `createDocsSource`/`convertAllMdx` via `remarkPlugins: [...defaultRemarkPlugins, hint]`.
+
+### Scheduling
+
+A flattener runs in a dedicated **custom** phase: after includes and placeholder resolution, before the built-in flatteners. Order in the array doesn't matter — leadtype reorders by phase. So a `<Steps>` wrapping your `<Hint>` and a `<Hint>` wrapping a `<Callout>` both flatten correctly.
+
+### Props
+
+`props` is a declarative coercion map. Each value is `"string"`, `"number"`, `"boolean"`, or `"string[]"`; the matching `props` object is typed and coerced for you. Bare attributes (`<Hint open />`) resolve to `true`. Anything more exotic — drop to the raw `node` (always present on the context). Omit `props` entirely to get every attribute as a raw string.
+
+### Children
+
+Children arrive already flattened, two ways:
+
+- `content` — a markdown **string** (built-in components inside already resolved). Use this for the common inline case.
+- `childNodes` — the same children as **mdast nodes**. Use this when you need to preserve block structure, e.g. a component wrapping a table.
+
+> **Rule of thumb:** use `content` unless you need to keep a table or nested list intact, then compose `childNodes`.
+
+### Output
+
+`toMarkdown` may return a markdown **string** (parsed into nodes), a single mdast node, an array of nodes, or `null` to remove the component. The `b` builder namespace (`b.blockquote`, `b.table`, `b.heading`, `b.link`, `b.list`, …) produces nodes without importing mdast types; block builders accept either strings or nodes, so `b.blockquote([content])` and `b.blockquote(childNodes)` both work.
+
+If `toMarkdown` throws, the error is logged with the file path and the raw component is left in place rather than failing the build.
+
+### Escape hatch
+
+`defineComponentFlattener` is built on the same toolkit the built-in flatteners use, all exported from `leadtype/remark`: `createJsxComponentProcessor`, the node creators (`createBlockquote`, `createTable`, …), `getAttributeValue`, `parseItemsArray`, `extractNodeText`, `processContentNode`, and `hasName`. Use these directly when you want full control over the mdast.
+
+> Custom components nested inside **other custom** components only auto-resolve when the outer flattener is listed after the inner one — the child sub-pipeline runs the built-in flatteners, not sibling customs. Built-in ↔ custom nesting works in either direction.
 
 ## Optional plugins
 

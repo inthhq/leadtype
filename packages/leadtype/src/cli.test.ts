@@ -328,6 +328,58 @@ describe("leadtype CLI", () => {
     );
   });
 
+  it("applies config flatteners to custom components during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    // Temp dirs have no node_modules, so import the flattener factory by
+    // absolute source path; the `Symbol.for` phase tag works across module
+    // instances, so scheduling is unaffected.
+    const remarkEntry = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "remark",
+      "index.ts"
+    );
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `import { defineComponentFlattener } from ${JSON.stringify(remarkEntry)};
+
+export default {
+  product: { name: "Flattener Product", summary: "Custom flatteners." },
+  groups: [{ slug: "guide", title: "Guide" }],
+  flatteners: [
+    defineComponentFlattener({
+      name: "Regulation",
+      props: { region: "string" },
+      toMarkdown: ({ props, content, b }) =>
+        b.blockquote(["**" + props.region + "** " + content]),
+    }),
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "compliance.mdx",
+      'title: "Compliance"\ndescription: "Rules."\ngroup: guide',
+      '<Regulation region="GDPR">Store consent first.</Regulation>'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "compliance.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("**GDPR** Store consent first.");
+    expect(markdown).not.toContain("<Regulation");
+  });
+
   it("generates locale-scoped i18n artifacts while keeping default URLs stable", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
