@@ -37,6 +37,7 @@ export {
   generateLLMFullContextFiles,
   generateLlmsTxt,
   type LLMFullContextConfig,
+  type LlmsBlock,
   type LlmsTxtConfig,
   type MarkdownDoc,
   type ProductInfo,

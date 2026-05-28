@@ -41,6 +41,7 @@ export {
   type DocsNavSortKey,
   defineCollection,
   defineDocsConfig,
+  type LlmsBlock,
   normalizeAgentReadabilityManifest,
   type ProductInfo,
 } from "./llm";

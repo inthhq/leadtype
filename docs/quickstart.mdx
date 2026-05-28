@@ -39,11 +39,19 @@ export default defineDocsConfig({
   product: {
     name: "My library",
     summary: "What it does in one sentence.",
-    bestStartingPoints: [
+    // `blocks` is the body of llms.txt, in order. Use markdown blocks for
+    // prose/highlights and links blocks for curated entry points.
+    blocks: [
       {
-        urlPath: "/docs",
-        title: "Start here",
-        description: "Overview and first steps for using My library.",
+        type: "links",
+        heading: "Best Starting Points",
+        links: [
+          {
+            urlPath: "/docs",
+            title: "Start here",
+            description: "Overview and first steps for using My library.",
+          },
+        ],
       },
     ],
   },

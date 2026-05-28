@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   extractDocsTableOfContents,
   generateAgentReadabilityArtifacts,
+  generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
   resolveDocsNavigation,
@@ -395,6 +396,138 @@ describe("generateLlmsTxt", () => {
         locale: "en",
       })
     ).rejects.toThrow(/Duplicate docs file.*locale "en"/);
+  });
+
+  it("synthesizes legacy product fields into the default block sequence", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://c15t.com",
+      product: {
+        name: "c15t",
+        summary: "Consent platform.",
+        bullets: ["Add consent banners."],
+        bestStartingPoints: [{ urlPath: "/docs/quickstart" }],
+        agentGuidance: "Start with the quickstart.",
+      },
+      groups: [],
+    });
+
+    const rootSummary = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(rootSummary).toContain("## Product Summary");
+    expect(rootSummary).toContain("- Add consent banners.");
+    // Order is preserved: summary → starting points → agent guidance.
+    expect(rootSummary.indexOf("## Product Summary")).toBeLessThan(
+      rootSummary.indexOf("## Best Starting Points")
+    );
+    expect(rootSummary.indexOf("## Best Starting Points")).toBeLessThan(
+      rootSummary.indexOf("## Agent Guidance")
+    );
+  });
+
+  it("renders ordered content blocks with custom headings", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://c15t.com",
+      product: {
+        name: "c15t",
+        summary: "Consent platform.",
+        blocks: [
+          {
+            type: "markdown",
+            heading: "Overview",
+            body: "- Consent done right.",
+          },
+          {
+            type: "markdown",
+            heading: "Popularity",
+            body: "2.3k stars. Hosted by [Inth](https://inth.com).",
+          },
+          {
+            type: "links",
+            heading: "Best Starting Points",
+            links: [{ urlPath: "/docs/quickstart" }],
+          },
+        ],
+      },
+      groups: [],
+    });
+
+    const rootSummary = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(rootSummary).toContain("## Overview");
+    expect(rootSummary).not.toContain("## Product Summary");
+    expect(rootSummary).toContain("Hosted by [Inth](https://inth.com).");
+    // A links block resolves the page title and a markdown URL path.
+    expect(rootSummary).toContain("Quickstart");
+    expect(rootSummary).toContain("](/docs/quickstart.md)");
+    // Block array order is preserved in the output.
+    expect(rootSummary.indexOf("## Popularity")).toBeLessThan(
+      rootSummary.indexOf("## Best Starting Points")
+    );
+  });
+});
+
+describe("generateAgentsMd", () => {
+  it("renders author-curated blocks in the offline bundle", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter:
+          "title: Quickstart\ndescription: Start here.\ngroup: guides",
+      },
+    ]);
+
+    await generateAgentsMd({
+      srcDir: projectDir,
+      outDir,
+      product: {
+        name: "c15t",
+        summary: "Consent platform.",
+        blocks: [
+          {
+            type: "markdown",
+            heading: "Overview",
+            body: "- Consent done right.",
+          },
+          {
+            type: "links",
+            heading: "Best Starting Points",
+            links: [{ urlPath: "/docs/quickstart" }],
+          },
+        ],
+      },
+      groups: [{ slug: "guides", title: "Guides" }],
+    });
+
+    const agents = await readFile(path.join(outDir, "AGENTS.md"), "utf8");
+    expect(agents).toContain("## Overview");
+    expect(agents).toContain("- Consent done right.");
+    // Link blocks use relative filesystem paths inside the bundle.
+    expect(agents).toContain("](./docs/quickstart.md)");
   });
 });
 
