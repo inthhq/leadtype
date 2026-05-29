@@ -111,7 +111,7 @@ export default defineDocsConfig({
       {
         type: "markdown",
         heading: "Agent Guidance",
-        body: "Open /docs/llms.txt to route the task, then use /llms-full.txt only when page-level markdown is not enough.",
+        body: "Start from the Best Starting Points above. On the website, /docs/llms.txt routes by task and /llms-full.txt carries full page context; the bundled AGENTS.md lists the same topics as relative links.",
       },
     ],
   },

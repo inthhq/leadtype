@@ -87,7 +87,7 @@ product: {
 }
 ```
 
-Each block becomes an `## heading` section in array order. Use `markdown` blocks for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` blocks for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → Content blocks](/docs/reference/llm#content-blocks).
+Blocks render in array order. A `links` block and a `markdown` block with a `heading` each become an `## heading` section; a `markdown` block without a `heading` renders its body inline, with no heading. Use `markdown` blocks for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` blocks for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → Content blocks](/docs/reference/llm#content-blocks).
 
 ## Verify locally
 

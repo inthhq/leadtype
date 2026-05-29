@@ -94,7 +94,7 @@ export default defineDocsConfig({
       {
         type: "markdown",
         heading: "Agent Guidance",
-        body: "Start with the framework-specific quickstart for the target app. Use /docs/llms.txt for routing and /llms-full.txt when page-level context is not enough.",
+        body: "Start with the framework-specific quickstart for your target app. On the website, /docs/llms.txt routes by task and /llms-full.txt carries full page context; the bundled AGENTS.md lists the same topics as relative links.",
       },
     ],
   },

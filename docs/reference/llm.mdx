@@ -61,7 +61,7 @@ Every generator that writes a top-level index file (`generateLlmsTxt`, `generate
     },
     blocks: {
       type: "LlmsBlock[]",
-      description: "Ordered content blocks rendered after the blockquote — array order is file order. Fully describes the body of llms.txt and AGENTS.md. See 'Content blocks' below.",
+      description: "Ordered content blocks rendered after the blockquote — array order is file order. This is the full body of llms.txt; in AGENTS.md the same blocks render as the product-content section, with generateAgentsMd adding the offline preamble and navigation around them. See 'Content blocks' below.",
     },
   }}
 />
