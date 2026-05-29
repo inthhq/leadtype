@@ -541,6 +541,97 @@
               "logicalPath": "build/generate-static-artifacts"
             },
             {
+              "urlPath": "/docs/build/sync-docs-across-repos",
+              "relativePath": "build/sync-docs-across-repos",
+              "title": "Sync docs across repositories",
+              "description": "Keep a separate docs UI repository pinned to a reviewed package-docs source revision.",
+              "groups": [],
+              "toc": [
+                {
+                  "id": "recommended-flow",
+                  "title": "Recommended flow",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#recommended-flow",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#recommended-flow",
+                  "children": []
+                },
+                {
+                  "id": "configure-the-remote-collection",
+                  "title": "Configure the remote collection",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#configure-the-remote-collection",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#configure-the-remote-collection",
+                  "children": []
+                },
+                {
+                  "id": "optional-automation-open-the-pin-pr",
+                  "title": "Optional automation: open the pin PR",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#optional-automation-open-the-pin-pr",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#optional-automation-open-the-pin-pr",
+                  "children": []
+                },
+                {
+                  "id": "source-repo-release-workflow",
+                  "title": "Source repo release workflow",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#source-repo-release-workflow",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#source-repo-release-workflow",
+                  "children": []
+                },
+                {
+                  "id": "docs-repo-pr-workflow",
+                  "title": "Docs repo PR workflow",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#docs-repo-pr-workflow",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#docs-repo-pr-workflow",
+                  "children": []
+                },
+                {
+                  "id": "deployment-options",
+                  "title": "Deployment options",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#deployment-options",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#deployment-options",
+                  "children": []
+                },
+                {
+                  "id": "preview-builds",
+                  "title": "Preview builds",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#preview-builds",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#preview-builds",
+                  "children": []
+                },
+                {
+                  "id": "agent-prompt",
+                  "title": "Agent prompt",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#agent-prompt",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#agent-prompt",
+                  "children": []
+                },
+                {
+                  "id": "what-to-read-next",
+                  "title": "What to read next",
+                  "level": 2,
+                  "urlPath": "/docs/build/sync-docs-across-repos",
+                  "urlWithHash": "/docs/build/sync-docs-across-repos#what-to-read-next",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/build/sync-docs-across-repos#what-to-read-next",
+                  "children": []
+                }
+              ],
+              "logicalPath": "build/sync-docs-across-repos"
+            },
+            {
               "urlPath": "/docs/build/optimize-docs-for-agents",
               "relativePath": "build/optimize-docs-for-agents",
               "title": "Optimize docs for agents",
