@@ -354,7 +354,7 @@ export default {
       name: "Regulation",
       props: { region: "string" },
       toMarkdown: ({ props, content, b }) =>
-        b.blockquote(["**" + props.region + "** " + content]),
+        b.blockquote([\`**\${props.region}** \${content}\`]),
     }),
   ],
 };`

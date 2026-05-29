@@ -131,6 +131,11 @@ function coerceValue(raw: string | null, kind: PropKind): unknown {
     case "string":
       return raw;
     case "number": {
+      // `Number("")` is `0`, but an empty attribute means "not set" — treat it
+      // as undefined alongside non-numeric values.
+      if (raw === "") {
+        return;
+      }
       const parsed = Number(raw);
       return Number.isNaN(parsed) ? undefined : parsed;
     }

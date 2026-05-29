@@ -121,7 +121,12 @@ export const b: Builders = {
   }),
   em: (content) => ({ type: "emphasis", children: toInlineChildren(content) }),
   code: (value) => createInlineCode(value) as InlineCode,
-  codeBlock: (value, lang) => ({ type: "code", lang: lang ?? null, value }),
+  codeBlock: (value, lang) => ({
+    type: "code",
+    lang: lang ?? null,
+    meta: null,
+    value,
+  }),
   paragraph: (content) => ({
     type: "paragraph",
     children: toInlineChildren(content),

@@ -58,7 +58,9 @@ export function tagPhase<T>(plugin: T, phase: RemarkPhase): T {
 export function getPhase(entry: Pluggable): RemarkPhase {
   const fn = Array.isArray(entry) ? entry[0] : entry;
   const phase = (fn as Taggable | undefined)?.[REMARK_PHASE];
-  return phase ?? DEFAULT_PHASE;
+  // Validate against the known phases: an unrecognized tag would otherwise fall
+  // into no bucket and silently drop the plugin from the pipeline.
+  return phase && PHASE_ORDER.includes(phase) ? phase : DEFAULT_PHASE;
 }
 
 /**

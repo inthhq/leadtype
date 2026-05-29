@@ -545,6 +545,11 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" exclude must be an array of glob strings`
       );
     }
+    if (entry.flatteners !== undefined && !Array.isArray(entry.flatteners)) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" flatteners must be an array of remark plugins`
+      );
+    }
     out[key] = entry as DocsCollection;
   }
   return out;
@@ -600,6 +605,12 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
         `docs config at "${configPath}" must export nav as an array of navigation nodes`
       );
     }
+  }
+
+  if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
+    throw new Error(
+      `docs config at "${configPath}" must export flatteners as an array of remark plugins`
+    );
   }
 
   return {

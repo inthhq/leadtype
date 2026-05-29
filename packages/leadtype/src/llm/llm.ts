@@ -215,9 +215,16 @@ export type DocsCollection = {
   /** Per-collection curated docs UI and agent navigation tree. */
   nav?: DocsNavNode[];
   /**
-   * Custom component flatteners (from `defineComponentFlattener`) applied
-   * during generation for this collection's pages, in addition to any declared
-   * at the top level. Run in the `custom` phase, before the built-in flatteners.
+   * Custom component flatteners (from `defineComponentFlattener`) declared
+   * alongside this collection. Run in the `custom` phase, before the built-in
+   * flatteners.
+   *
+   * @remarks
+   * Merged into the build's single flattener list together with the top-level
+   * `flatteners` and every other collection's — generation runs one conversion
+   * pass over all pages. Flatteners match by component name, so a collection's
+   * flatteners effectively apply build-wide; only collections that reuse the
+   * same component name with different intended output would collide.
    */
   flatteners?: PluggableList;
 };

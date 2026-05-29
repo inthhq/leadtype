@@ -98,11 +98,11 @@ export default defineDocsConfig({
 });
 ```
 
-`flatteners` is also valid on each entry of `collections` (merged with the top-level list). If you drive conversion programmatically instead, pass the same plugin to `createDocsSource`/`convertAllMdx` via `remarkPlugins: [...defaultRemarkPlugins, hint]`.
+`flatteners` is also valid on each entry of `collections`. Generation runs one conversion pass over all pages, so top-level and per-collection lists are merged into one set that matches by component name — a collection's flatteners effectively apply build-wide. If you drive conversion programmatically instead, pass the same plugin to `createDocsSource`/`convertAllMdx` via `remarkPlugins: [...defaultRemarkPlugins, hint]`.
 
 ### Scheduling
 
-A flattener runs in a dedicated **custom** phase: after includes and placeholder resolution, before the built-in flatteners. Order in the array doesn't matter — leadtype reorders by phase. So a `<Steps>` wrapping your `<Hint>` and a `<Hint>` wrapping a `<Callout>` both flatten correctly.
+A flattener runs in a dedicated **custom** phase: after includes and placeholder resolution, before the built-in flatteners. Position relative to the built-ins doesn't matter — leadtype reorders by phase — so a `<Steps>` wrapping your `<Hint>` and a `<Hint>` wrapping a `<Callout>` both flatten correctly. Order **among** custom flatteners is preserved, and it matters when one custom component nests inside another (see the note under [Escape hatch](#escape-hatch)).
 
 ### Props
 
