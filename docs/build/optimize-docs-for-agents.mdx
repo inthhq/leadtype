@@ -63,6 +63,32 @@ The generated `agent-readability.json` manifest is the bridge between build-time
 
 Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
 
+## Make the index worth reading
+
+`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the `product.blocks` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
+
+```ts title="docs/docs.config.ts"
+product: {
+  name: "My product",
+  summary: "Developer-first tooling for modern apps.",
+  blocks: [
+    { type: "markdown", heading: "Overview", body: "- What it does\n- Who it's for" },
+    {
+      type: "markdown",
+      heading: "Popularity",
+      body: "12k GitHub stars · 90k weekly npm downloads. Hosted by [Acme](https://acme.com).",
+    },
+    {
+      type: "links",
+      heading: "Best Starting Points",
+      links: [{ urlPath: "/docs/quickstart" }],
+    },
+  ],
+}
+```
+
+Blocks render in array order. A `links` block and a `markdown` block with a `heading` each become an `## heading` section; a `markdown` block without a `heading` renders its body inline, with no heading. Use `markdown` blocks for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` blocks for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → Content blocks](/docs/reference/llm#content-blocks).
+
 ## Verify locally
 
 Start the docs site, then check the URLs agents use:

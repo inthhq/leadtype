@@ -122,16 +122,49 @@ export type CuratedLink = {
   description?: string;
 };
 
+/**
+ * One content block in the body of `llms.txt`, rendered after the summary
+ * blockquote. Blocks render in array order, so position is just the index —
+ * there are no placement enums.
+ *
+ * - `markdown`: a verbatim markdown body under an optional H2 heading. Covers
+ *   bullets, prose, popularity stats (stars, downloads), a "Hosted by …"
+ *   mention, community links, badges, etc. leadtype never fetches or computes
+ *   these values — supply them in `docs.config.ts` (you can fetch at build
+ *   time from your own `.ts` config module) or via a `beforeLlmsTxt` transformer.
+ * - `links`: a curated link list under an H2 heading, resolved against the
+ *   source docs (titles/descriptions auto-filled, URLs rewritten via
+ *   mounts/baseUrl), exactly like the legacy `bestStartingPoints` field.
+ */
+export type LlmsBlock =
+  | { type: "markdown"; heading?: string; body: string }
+  | { type: "links"; heading: string; links: CuratedLink[] };
+
 export type ProductInfo = {
-  /** Product display name, e.g. "DSAR SDK" */
+  /** Product display name, e.g. "DSAR SDK". Rendered as the H1. */
   name: string;
-  /** Short one-line summary, rendered as a blockquote at the top of llms.txt */
+  /** Short one-line summary, rendered as a blockquote under the H1. */
   summary: string;
-  /** Bullets rendered under "## Product Summary" */
+  /**
+   * Ordered content blocks rendered after the summary blockquote. Array order
+   * is file order. When set, this fully describes the body and supersedes the
+   * deprecated `bullets` / `bestStartingPoints` / `agentGuidance` fields.
+   */
+  blocks?: LlmsBlock[];
+  /**
+   * @deprecated Use `blocks`. Sugar for a `markdown` block titled
+   * "Product Summary" rendered first.
+   */
   bullets?: string[];
-  /** Curated links rendered under "## Best Starting Points" */
+  /**
+   * @deprecated Use `blocks`. Sugar for a `links` block titled
+   * "Best Starting Points".
+   */
   bestStartingPoints?: CuratedLink[];
-  /** Optional agent guidance paragraph at the bottom of llms.txt */
+  /**
+   * @deprecated Use `blocks`. Sugar for a `markdown` block titled
+   * "Agent Guidance" rendered last.
+   */
   agentGuidance?: string;
 };
 
@@ -1354,35 +1387,71 @@ function pagesUnderGroup(
   return collected;
 }
 
+/**
+ * Resolve the ordered content blocks for a product. When `blocks` is set it is
+ * used as-is; otherwise the deprecated `bullets` / `bestStartingPoints` /
+ * `agentGuidance` fields are synthesized into the equivalent block sequence so
+ * existing configs emit byte-for-byte identical output.
+ */
+function resolveBlocks(product: ProductInfo): LlmsBlock[] {
+  if (product.blocks) {
+    return product.blocks;
+  }
+  const blocks: LlmsBlock[] = [];
+  if (product.bullets && product.bullets.length > 0) {
+    blocks.push({
+      type: "markdown",
+      heading: "Product Summary",
+      body: product.bullets.map((bullet) => `- ${bullet}`).join("\n"),
+    });
+  }
+  if (product.bestStartingPoints && product.bestStartingPoints.length > 0) {
+    blocks.push({
+      type: "links",
+      heading: "Best Starting Points",
+      links: product.bestStartingPoints,
+    });
+  }
+  if (product.agentGuidance) {
+    blocks.push({
+      type: "markdown",
+      heading: "Agent Guidance",
+      body: product.agentGuidance,
+    });
+  }
+  return blocks;
+}
+
+/** Render one block for the website `llms.txt` (absolute markdown URL paths). */
+function renderProductBlock(
+  block: LlmsBlock,
+  sourceDocs: Map<string, SourceDoc>,
+  mounts?: DocsPathMount[]
+): string[] {
+  if (block.type === "links") {
+    const links = block.links.map((link) =>
+      resolveCuratedLink(link, sourceDocs, mounts)
+    );
+    if (links.length === 0) {
+      return [];
+    }
+    return ["", `## ${block.heading}`, "", ...links.map(renderLink)];
+  }
+  if (block.heading) {
+    return ["", `## ${block.heading}`, "", block.body];
+  }
+  return ["", block.body];
+}
+
 function renderProductSummary(
   product: ProductInfo,
   sourceDocs: Map<string, SourceDoc>,
   mounts?: DocsPathMount[]
 ): string {
-  const startingPoints = product.bestStartingPoints ?? [];
-  const links = startingPoints.map((link) =>
-    resolveCuratedLink(link, sourceDocs, mounts)
-  );
-
   const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
-
-  if (product.bullets && product.bullets.length > 0) {
-    sections.push(
-      "",
-      "## Product Summary",
-      "",
-      ...product.bullets.map((bullet) => `- ${bullet}`)
-    );
+  for (const block of resolveBlocks(product)) {
+    sections.push(...renderProductBlock(block, sourceDocs, mounts));
   }
-
-  if (links.length > 0) {
-    sections.push("", "## Best Starting Points", "", ...links.map(renderLink));
-  }
-
-  if (product.agentGuidance) {
-    sections.push("", "## Agent Guidance", "", product.agentGuidance);
-  }
-
   return sections.join("\n");
 }
 
@@ -1963,6 +2032,40 @@ function pageDescription(
   );
 }
 
+/**
+ * Render one product block for the offline `AGENTS.md` bundle. Link blocks use
+ * relative filesystem paths (`./docs/<slug>.md`) and skip links not present in
+ * the source, mirroring the legacy `bestStartingPoints` behavior.
+ */
+function renderAgentsBlock(
+  block: LlmsBlock,
+  sourceDocs: Map<string, SourceDoc>,
+  docsSubdir: string
+): string[] {
+  if (block.type === "links") {
+    const rendered: string[] = [];
+    for (const link of block.links) {
+      const sourceDoc = sourceDocs.get(link.urlPath);
+      if (!sourceDoc) {
+        continue;
+      }
+      const title = link.title ?? sourceDoc.title;
+      const description = link.description ?? pageDescription(sourceDoc);
+      rendered.push(
+        `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
+      );
+    }
+    if (rendered.length === 0) {
+      return [];
+    }
+    return ["", `## ${block.heading}`, "", ...rendered];
+  }
+  if (block.heading) {
+    return ["", `## ${block.heading}`, "", block.body];
+  }
+  return ["", block.body];
+}
+
 function renderAgentsNavigationGroup(
   group: DocsNavigationGroup,
   docsByUrlPath: Map<string, SourceDoc>,
@@ -2040,30 +2143,39 @@ export async function generateAgentsMd(
     "These docs ship inside the package so coding agents can read them offline. Open the topic file you need from the list below — paths are relative to this file.",
   ];
 
-  if (config.product.bullets && config.product.bullets.length > 0) {
-    lines.push("", "## Product Summary", "");
-    for (const bullet of config.product.bullets) {
-      lines.push(`- ${bullet}`);
+  if (config.product.blocks) {
+    // Author-curated blocks: render each (markdown + resolved link lists) in
+    // order. Unlike the legacy path below, an explicit Agent Guidance block is
+    // honored — the author opted into the bundle content.
+    for (const block of config.product.blocks) {
+      lines.push(...renderAgentsBlock(block, sourceDocs, docsSubdir));
     }
-  }
+  } else {
+    if (config.product.bullets && config.product.bullets.length > 0) {
+      lines.push("", "## Product Summary", "");
+      for (const bullet of config.product.bullets) {
+        lines.push(`- ${bullet}`);
+      }
+    }
 
-  const startingPoints = config.product.bestStartingPoints ?? [];
-  const renderedStarts: string[] = [];
-  for (const link of startingPoints) {
-    const sourceDoc = sourceDocs.get(link.urlPath);
-    if (!sourceDoc) {
-      // bestStartingPoints can reference URLs not present in source (e.g.
-      // /docs root). Skip those rather than emit a broken relative link.
-      continue;
+    const startingPoints = config.product.bestStartingPoints ?? [];
+    const renderedStarts: string[] = [];
+    for (const link of startingPoints) {
+      const sourceDoc = sourceDocs.get(link.urlPath);
+      if (!sourceDoc) {
+        // bestStartingPoints can reference URLs not present in source (e.g.
+        // /docs root). Skip those rather than emit a broken relative link.
+        continue;
+      }
+      const title = link.title ?? sourceDoc.title;
+      const description = link.description ?? pageDescription(sourceDoc);
+      renderedStarts.push(
+        `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
+      );
     }
-    const title = link.title ?? sourceDoc.title;
-    const description = link.description ?? pageDescription(sourceDoc);
-    renderedStarts.push(
-      `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
-    );
-  }
-  if (renderedStarts.length > 0) {
-    lines.push("", "## Best Starting Points", "", ...renderedStarts);
+    if (renderedStarts.length > 0) {
+      lines.push("", "## Best Starting Points", "", ...renderedStarts);
+    }
   }
 
   if (hasNav) {
@@ -2118,10 +2230,10 @@ export async function generateAgentsMd(
     }
   }
 
-  // Skip product.agentGuidance — it's written for the website's llms.txt
-  // routing flow ("open /docs/llms.txt then…") and would mislead an agent
-  // reading from node_modules. The preamble paragraph already covers offline
-  // navigation in format-agnostic terms.
+  // Legacy path only: skip product.agentGuidance — it's written for the
+  // website's llms.txt routing flow ("open /docs/llms.txt then…") and would
+  // mislead an agent reading from node_modules. The preamble paragraph already
+  // covers offline navigation. Author-curated `blocks` are honored above.
 
   const content = `${lines.join("\n")}\n`;
   await mkdir(outDir, { recursive: true });

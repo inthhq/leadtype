@@ -177,7 +177,7 @@ generateLlmsTxt writes the product-level /llms.txt and the docs-scoped /docs/llm
 
 generateLLMFullContextFiles writes one root /llms-full.txt file containing every generated markdown docs page. Groups still organize llms.txt sections, navigation, search metadata, and AGENTS.md; they are not published as per-group full-context files by default.
 
-generateAgentsMd writes AGENTS.md for npm-bundled docs. It intentionally ignores product.agentGuidance because that text is written for website URL routing.
+generateAgentsMd writes AGENTS.md for npm-bundled docs. The deprecated product.agentGuidance field is intentionally skipped because that text is written for website URL routing, but author-curated product.blocks are emitted verbatim, so keep block bodies sensible for offline readers.
 
 isAgentReadabilityArtifactPath identifies artifact paths that should not be rewritten as missing markdown pages. It covers llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json.
 
