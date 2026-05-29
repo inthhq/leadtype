@@ -8,6 +8,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+import type { PluggableList } from "unified";
 import {
   type DocsI18nConfig,
   type DocsI18nManifest,
@@ -213,6 +214,19 @@ export type DocsCollection = {
   groups?: DocsGroup[];
   /** Per-collection curated docs UI and agent navigation tree. */
   nav?: DocsNavNode[];
+  /**
+   * Custom component flatteners (from `defineComponentFlattener`) declared
+   * alongside this collection. Run in the `custom` phase, before the built-in
+   * flatteners.
+   *
+   * @remarks
+   * Merged into the build's single flattener list together with the top-level
+   * `flatteners` and every other collection's — generation runs one conversion
+   * pass over all pages. Flatteners match by component name, so a collection's
+   * flatteners effectively apply build-wide; only collections that reuse the
+   * same component name with different intended output would collide.
+   */
+  flatteners?: PluggableList;
 };
 
 /**
@@ -231,6 +245,13 @@ export type DocsConfig<
   frontmatterSchema?: DocsFrontmatterSchema<TFrontmatter>;
   /** Build-time lifecycle hooks for frontmatter, search, and agent artifacts. */
   transformers?: DocsTransformer<TFrontmatter>[];
+  /**
+   * Custom component flatteners (from `defineComponentFlattener`) applied during
+   * generation, in addition to the built-in stack. Run in the `custom` phase —
+   * after includes/placeholder resolution, before the built-in flatteners.
+   * For multi-collection configs, these merge with each collection's `flatteners`.
+   */
+  flatteners?: PluggableList;
   /**
    * Top-level navigation for the single-collection shape. Mutually exclusive
    * with `collections`. Pages declare which group they belong to via MDX

@@ -1,6 +1,8 @@
 import { defineDocsConfig } from "leadtype";
+import { regulationFlattener } from "../flatteners";
 
 export default defineDocsConfig({
+  flatteners: [regulationFlattener],
   product: {
     name: "Leadtype Dogfood",
     summary:
