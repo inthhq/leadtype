@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-28T13:59:23.849Z",
+  "generatedAt": "2026-05-29T08:49:33.039Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -148,7 +148,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/sync-docs-across-repos.md",
       "relativePath": "build/sync-docs-across-repos",
       "groups": [],
-      "lastModified": "2026-05-28T13:59:23.713Z",
+      "lastModified": "2026-05-28T21:01:10.000Z",
       "logicalPath": "build/sync-docs-across-repos"
     },
     {
