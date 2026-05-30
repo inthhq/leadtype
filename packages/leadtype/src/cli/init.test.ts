@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -143,5 +143,49 @@ describe("runInitCommand", () => {
     const code = await runInitCommand(["--dir", dir], capture.io);
     expect(code).toBe(2);
     expect(capture.stderr).toContain("could not detect a framework");
+  });
+
+  it("auto-detects the framework from package.json dependencies", async () => {
+    const dir = await createTempDir();
+    await writeFile(
+      path.join(dir, "package.json"),
+      JSON.stringify({ dependencies: { next: "^16.0.0" } })
+    );
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--no-generate"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("scaffolded next");
+  });
+
+  it("adds a docs:generate script and leaves an existing one untouched", async () => {
+    const dir = await createTempDir();
+    const pkgPath = path.join(dir, "package.json");
+    await writeFile(pkgPath, JSON.stringify({ name: "x", scripts: {} }));
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      createCapture().io
+    );
+    const pkg = JSON.parse(await readFile(pkgPath, "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    expect(pkg.scripts["docs:generate"]).toContain("leadtype generate");
+    expect(pkg.scripts["docs:generate"]).toContain("--out public");
+
+    // A project that already defines docs:generate keeps its own command.
+    await writeFile(
+      pkgPath,
+      JSON.stringify({ name: "x", scripts: { "docs:generate": "custom" } })
+    );
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate", "--force"],
+      createCapture().io
+    );
+    const pkg2 = JSON.parse(await readFile(pkgPath, "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    expect(pkg2.scripts["docs:generate"]).toBe("custom");
   });
 });

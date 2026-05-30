@@ -95,6 +95,11 @@ export async function generateMetadata({
   return {
     title: `${page.title} — c15t docs`,
     description: page.description,
-    alternates: meta ? { canonical: meta.absoluteUrl } : undefined,
+    alternates: meta
+      ? {
+          canonical: meta.absoluteUrl,
+          types: { "text/markdown": meta.markdownAbsoluteUrl },
+        }
+      : undefined,
   };
 }

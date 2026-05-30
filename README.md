@@ -43,10 +43,11 @@ bun add leadtype
 
 ## 30-second example
 
-The fastest start in an existing app — scaffolds the docs source, route, config, and a first artifact set, auto-detecting your framework:
+The fastest start in an existing app — scaffolds the docs source, route, config, and a first artifact set. The framework is auto-detected from `package.json`; pass `--framework` to be explicit:
 
 ```bash
-npx leadtype init --framework next   # or astro · nuxt · sveltekit
+npx leadtype init                    # auto-detect, or:
+npx leadtype init --framework next   # next · astro · nuxt · sveltekit
 ```
 
 Or wire the pipeline by hand. For a hosted docs site:

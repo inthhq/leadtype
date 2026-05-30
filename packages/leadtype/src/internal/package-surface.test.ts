@@ -164,7 +164,10 @@ describe("core/adapter boundary", () => {
       (file) =>
         !(
           file.endsWith(".test.ts") ||
-          TEMPLATE_PAYLOAD_FILES.has(path.relative(srcRoot, file))
+          // Normalize to POSIX so the exclusion matches on Windows too.
+          TEMPLATE_PAYLOAD_FILES.has(
+            path.relative(srcRoot, file).split(path.sep).join("/")
+          )
         )
     );
   }
