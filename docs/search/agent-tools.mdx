@@ -1,0 +1,77 @@
+---
+title: "Agent search tools"
+description: "Expose docs as a read-only virtual filesystem so an agent can explore with ls, cat, find, grep, and rg instead of receiving pre-selected chunks."
+related:
+  - title: "Stream AI answers"
+    href: "/docs/search/ai-answers"
+    description: "Pre-retrieve chunks and stream a grounded answer instead."
+  - title: "Search reference"
+    href: "/docs/reference/search"
+    description: "createDocsBashTool / createDocsBashTools signatures."
+---
+
+# Agent search tools
+
+[AI answers](/docs/search/ai-answers) pre-select chunks and hand them to the
+model. Bash tools do the opposite: they give an agent a **read-only virtual
+`/docs` filesystem** built from the same static index, and let it explore with
+`ls`, `cat`, `find`, `grep`, and `rg`. Reach for this when the agent should
+decide what to read — multi-step research, "find everywhere X is configured,"
+or when one retrieval pass isn't enough. There's no network, no code execution,
+and no writes.
+
+## Wire the tools
+
+Both factories take the same `(index, content)` and return ready-to-register
+`tools` plus `instructions` to add to your system prompt.
+
+<Tabs items={["Vercel AI SDK", "TanStack AI"]}>
+  <Tab value="Vercel AI SDK">
+```ts
+import { streamText } from "ai";
+import { createDocsBashTool } from "leadtype/search/bash";
+
+const { tools, instructions } = await createDocsBashTool(index, content);
+
+const result = streamText({
+  model: "openai/gpt-5.5",
+  system: `Answer from the docs. ${instructions}`,
+  tools,
+  prompt: query,
+});
+```
+  </Tab>
+  <Tab value="TanStack AI">
+```ts
+import { chat } from "@tanstack/ai";
+import { createDocsBashTools } from "leadtype/search/bash";
+
+const { tools, instructions } = await createDocsBashTools(index, content);
+
+const stream = chat({
+  adapter,
+  systemPrompts: [`Answer from the docs. ${instructions}`],
+  tools,
+  messages: [{ role: "user", content: query }],
+  stream: true,
+});
+```
+  </Tab>
+</Tabs>
+
+Need the raw filesystem (for a custom tool layer)? `createDocsBashFileMap(index,
+content)` returns the `/docs` file map the adapters are built on.
+
+## When to use which
+
+| Situation | Use |
+| --- | --- |
+| Direct Q&A over docs, fast and cheap | [AI answers](/docs/search/ai-answers) (pre-retrieved chunks) |
+| Agent needs to explore, follow references, or read whole files | Bash tools (this page) |
+| You want both | Register bash tools **and** seed the prompt with `createAnswerContext` |
+
+## Notes
+
+- The filesystem is read-only and sandboxed: `ls`/`cat`/`find`/`grep`/`rg` only. No network, no execution, no writes.
+- It's the same `index` + `content` from [Add search](/docs/search/add-search) — no extra build step.
+- Tool-driven exploration costs more tokens and round-trips than a single grounded answer; default to AI answers and escalate to tools when the task is genuinely multi-step.
