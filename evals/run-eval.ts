@@ -11,6 +11,7 @@ import {
   judgeAnswer,
 } from "./lib/judge";
 import { namespaceModelId, parseModelList, providerFor } from "./lib/models";
+import { summarizePackageReads } from "./lib/package-metrics";
 import { runPool } from "./lib/pool";
 import type { RunRecord } from "./lib/record";
 import { withRetry } from "./lib/retry";
@@ -130,22 +131,6 @@ function discoverFixtures(): string[] {
     .sort();
 }
 
-function isAgentsMdRead(call: ToolCall): boolean {
-  if (call.tool !== "read") {
-    return false;
-  }
-  const p = (call.args.path as string | undefined) ?? "";
-  return p.includes("node_modules/leadtype/AGENTS.md");
-}
-
-function isBundledDocRead(call: ToolCall): boolean {
-  if (call.tool !== "read") {
-    return false;
-  }
-  const p = (call.args.path as string | undefined) ?? "";
-  return /node_modules\/leadtype\/docs\//.test(p);
-}
-
 async function collectArtifacts(
   tempDir: string,
   filesModified: string[]
@@ -256,8 +241,8 @@ async function runOne(options: {
     judgeModel: judge,
   });
 
-  const discoveredAgentsMd = transcriptCalls.some(isAgentsMdRead);
-  const readBundledDocs = transcriptCalls.some(isBundledDocRead);
+  const { discoveredAgentsMd, readBundledDocs, usedBundle } =
+    summarizePackageReads(transcriptCalls);
 
   const record: RunRecord = {
     benchmark: "package",
@@ -272,7 +257,7 @@ async function runOne(options: {
     judgeError: verdict.error,
     discoveredAgentsMd,
     readBundledDocs,
-    usedBundle: discoveredAgentsMd || readBundledDocs,
+    usedBundle,
     toolCalls: transcriptCalls.length,
     inputTokens,
     outputTokens,

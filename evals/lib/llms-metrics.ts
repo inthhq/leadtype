@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { readSucceeded } from "./reads";
 import type { Transcript } from "./transcript";
 
 export type LlmsExpected = {
-  answerPatterns: string[];
-  forbiddenAnswerPatterns?: string[];
   expectedGroups: string[];
   expectedPages: string[];
 };
@@ -29,8 +28,11 @@ export function loadLlmsExpected(fixtureDir: string): LlmsExpected {
 }
 
 export function llmsReadPaths(transcript: Transcript): string[] {
+  // Only successful reads count toward context match. A read that 404s (the
+  // agent guessed a path that doesn't exist in this variant) is not evidence
+  // that the agent followed the intended context route.
   return transcript.toolCalls
-    .filter((call) => call.tool === "read")
+    .filter(readSucceeded)
     .map((call) => call.args.path)
     .filter((value): value is string => typeof value === "string")
     .map(normalizeReadPath);

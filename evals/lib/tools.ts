@@ -74,6 +74,7 @@ async function recorded<T>(
       tool: toolName,
       args,
       resultSummary: errorMessage ? `error: ${errorMessage}` : summary,
+      isError: errorMessage !== undefined,
       durationMs: Date.now() - start,
     });
   }

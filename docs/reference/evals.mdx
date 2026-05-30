@@ -59,6 +59,19 @@ LLM judges can favor their own model family, so we re-graded all 1,680 saved ans
 
 The Opus judge scored Claude answers higher across the board and strict-failed GPT's borderline *no-docs* answers that both Gemini judges accepted — manufacturing a "+10 GPT needs docs" that the neutral judges don't see. We grade with `gemini-3-pro` for exactly this reason. Use `bun run rejudge <runDir> --judge <model>` to reproduce.
 
+### Docs also make runs cheaper
+
+Correctness isn't the only axis. We log tokens, tool calls, and wall-clock per run (judge-independent — straight from the transcripts). Pooled across fixtures, bundling docs made **every** model's runs cheaper: the agent reads one short doc instead of probing the installed package with repeated `grep`/`read`/`list` calls.
+
+| Model | Tokens (docs → none) | Tool calls (docs → none) | Wall-clock (docs → none) |
+| --- | --- | --- | --- |
+| `claude-haiku-4-5` | 17.0k → 31.0k (**−45%**) | 12.8 → 19.5 (−35%) | 28.7s → 43.2s (−34%) |
+| `claude-sonnet-4-6` | 21.1k → 37.7k (**−44%**) | 12.8 → 18.2 (−29%) | 55.6s → 76.8s (−28%) |
+| `claude-opus-4-7` | 17.1k → 34.6k (**−51%**) | 7.5 → 12.4 (−39%) | 42.3s → 68.4s (−38%) |
+| `gpt-5.5` | 34.0k → 40.0k (**−15%**) | 13.4 → 14.6 (−9%) | 44.5s → 53.0s (−16%) |
+
+Even GPT‑5.5, which cleared every task without docs, spent **15% fewer tokens** with them. The takeaway holds even where bundling doesn't move the pass rate: docs still pay for themselves in run cost.
+
 ## Which llms.txt shape routes agents best? (hosted-docs benchmark)
 
 The hosted-docs benchmark simulates a hosted docs web root as local files. Agents start at `/llms.txt` and follow links; a "pass" means the judge marked the answer correct, and **context match** means the agent actually read the context path the variant intends (not just answered from `/llms.txt` summaries or prior knowledge). A shape only earns trust when both are high.
@@ -83,7 +96,7 @@ Across 1,200 runs, **pass rate saturates** — every shape scores 95–100%, bec
 | Root `llms-full.txt` monolith | 95–100% | **77–100%** | 0.00 |
 | Section `llms.txt` indexes | 98–100% | **75–88%** | 0.00–0.12 |
 | Explicit group bundles | 97–100% | **8–35%** | 0.62–1.77 |
-| Root `llms-full.txt` router | 98–100% | **7–40%** | 0.65–1.37 |
+| Root `llms-full.txt` router | 98–100% | **7–40%** | 0.63–1.37 |
 
 `page-links` and `monolith` are the only shapes agents reliably *use as intended* — high context match on every model, no stray reads. `section-indexes` is close behind but adds more public artifacts. `explicit-bundles` and `router` look fine on pass rate but **agents don't follow their intended path**: context match collapses to 7–40% and they read the wrong group bundle ~0.6–1.8 times per run. The extra structure doesn't earn its keep — models either answer from the `/llms.txt` summary or grab whatever bundle looks closest.
 

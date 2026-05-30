@@ -1,7 +1,7 @@
 {
   "benchmark": "package",
   "runId": "2026-05-25-package",
-  "generatedAt": "2026-05-26T12:30:47.536Z",
+  "generatedAt": "2026-05-30T09:36:09.176Z",
   "judgeModels": [
     "gemini-3-pro"
   ],
@@ -37,8 +37,10 @@
         0.9821242504842788
       ],
       "meanScore": 96.5,
-      "discoveryRate": 0.3,
+      "discoveryRate": 0,
       "avgTokens": 17091.8,
+      "avgToolCalls": 14.5,
+      "avgDurationMs": 25880.9,
       "judgeErrors": 0
     },
     {
@@ -55,6 +57,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 15484.7,
+      "avgToolCalls": 10.2,
+      "avgDurationMs": 19333.8,
       "judgeErrors": 0
     },
     {
@@ -71,6 +75,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 14783.9,
+      "avgToolCalls": 7,
+      "avgDurationMs": 41755.2,
       "judgeErrors": 0
     },
     {
@@ -87,6 +93,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 10121.8,
+      "avgToolCalls": 5.5,
+      "avgDurationMs": 29035.4,
       "judgeErrors": 0
     },
     {
@@ -103,6 +111,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 24760.9,
+      "avgToolCalls": 9,
+      "avgDurationMs": 46702.2,
       "judgeErrors": 0
     },
     {
@@ -119,6 +129,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 15209.6,
+      "avgToolCalls": 6.1,
+      "avgDurationMs": 32565.5,
       "judgeErrors": 0
     },
     {
@@ -135,6 +147,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 34093.7,
+      "avgToolCalls": 10.1,
+      "avgDurationMs": 43519.3,
       "judgeErrors": 0
     },
     {
@@ -151,6 +165,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 28034.2,
+      "avgToolCalls": 10,
+      "avgDurationMs": 25088.1,
       "judgeErrors": 0
     },
     {
@@ -165,8 +181,10 @@
         0.892210712513788
       ],
       "meanScore": 89.5,
-      "discoveryRate": 0.2,
+      "discoveryRate": 0,
       "avgTokens": 26016.5,
+      "avgToolCalls": 25,
+      "avgDurationMs": 66439,
       "judgeErrors": 0
     },
     {
@@ -183,6 +201,8 @@
       "meanScore": 90,
       "discoveryRate": 0.8,
       "avgTokens": 26425.2,
+      "avgToolCalls": 24.7,
+      "avgDurationMs": 64959.7,
       "judgeErrors": 1
     },
     {
@@ -199,6 +219,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 35138,
+      "avgToolCalls": 19,
+      "avgDurationMs": 65457.8,
       "judgeErrors": 0
     },
     {
@@ -215,6 +237,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 27634.9,
+      "avgToolCalls": 14.4,
+      "avgDurationMs": 67878.6,
       "judgeErrors": 0
     },
     {
@@ -231,6 +255,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 42340.7,
+      "avgToolCalls": 32,
+      "avgDurationMs": 114226.9,
       "judgeErrors": 0
     },
     {
@@ -247,6 +273,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 38269.9,
+      "avgToolCalls": 29.1,
+      "avgDurationMs": 108603,
       "judgeErrors": 0
     },
     {
@@ -261,8 +289,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.1,
+      "discoveryRate": 0,
       "avgTokens": 39976.2,
+      "avgToolCalls": 25.3,
+      "avgDurationMs": 93965.1,
       "judgeErrors": 0
     },
     {
@@ -279,6 +309,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 40706.6,
+      "avgToolCalls": 25.5,
+      "avgDurationMs": 104499.8,
       "judgeErrors": 0
     },
     {
@@ -293,8 +325,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.1,
+      "discoveryRate": 0,
       "avgTokens": 28072.9,
+      "avgToolCalls": 12.2,
+      "avgDurationMs": 23532.4,
       "judgeErrors": 0
     },
     {
@@ -311,6 +345,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 10115.9,
+      "avgToolCalls": 6.5,
+      "avgDurationMs": 12371.6,
       "judgeErrors": 0
     },
     {
@@ -327,6 +363,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 38867.9,
+      "avgToolCalls": 6.1,
+      "avgDurationMs": 35059,
       "judgeErrors": 0
     },
     {
@@ -343,6 +381,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 25587.2,
+      "avgToolCalls": 7.6,
+      "avgDurationMs": 36084.2,
       "judgeErrors": 0
     },
     {
@@ -359,6 +399,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 31925.9,
+      "avgToolCalls": 8.3,
+      "avgDurationMs": 34279.9,
       "judgeErrors": 0
     },
     {
@@ -375,6 +417,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 20777.6,
+      "avgToolCalls": 12.2,
+      "avgDurationMs": 39399.8,
       "judgeErrors": 0
     },
     {
@@ -391,6 +435,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 27760.5,
+      "avgToolCalls": 9.3,
+      "avgDurationMs": 23627.1,
       "judgeErrors": 0
     },
     {
@@ -407,6 +453,8 @@
       "meanScore": 100,
       "discoveryRate": 0.9,
       "avgTokens": 18772.9,
+      "avgToolCalls": 8.3,
+      "avgDurationMs": 21929.2,
       "judgeErrors": 0
     },
     {
@@ -423,6 +471,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 52142.2,
+      "avgToolCalls": 25.1,
+      "avgDurationMs": 54487.7,
       "judgeErrors": 0
     },
     {
@@ -439,6 +489,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 16894.1,
+      "avgToolCalls": 12.5,
+      "avgDurationMs": 26194.5,
       "judgeErrors": 0
     },
     {
@@ -453,8 +505,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.7,
+      "discoveryRate": 0,
       "avgTokens": 36514.8,
+      "avgToolCalls": 12.3,
+      "avgDurationMs": 72035.1,
       "judgeErrors": 0
     },
     {
@@ -471,6 +525,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 14489.4,
+      "avgToolCalls": 5.9,
+      "avgDurationMs": 30240.3,
       "judgeErrors": 0
     },
     {
@@ -487,6 +543,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 48616.6,
+      "avgToolCalls": 19.3,
+      "avgDurationMs": 78187.7,
       "judgeErrors": 0
     },
     {
@@ -503,6 +561,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 18356,
+      "avgToolCalls": 10.3,
+      "avgDurationMs": 44694.8,
       "judgeErrors": 0
     },
     {
@@ -517,8 +577,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.2,
+      "discoveryRate": 0,
       "avgTokens": 45803.7,
+      "avgToolCalls": 12.5,
+      "avgDurationMs": 52416.3,
       "judgeErrors": 0
     },
     {
@@ -535,6 +597,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 37882.9,
+      "avgToolCalls": 12.4,
+      "avgDurationMs": 43995.4,
       "judgeErrors": 0
     },
     {
@@ -549,8 +613,10 @@
         0.5098431532792767
       ],
       "meanScore": 66.7,
-      "discoveryRate": 0.1,
+      "discoveryRate": 0,
       "avgTokens": 36637.7,
+      "avgToolCalls": 18.3,
+      "avgDurationMs": 40745.3,
       "judgeErrors": 0
     },
     {
@@ -567,6 +633,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 23240.5,
+      "avgToolCalls": 14,
+      "avgDurationMs": 27948.7,
       "judgeErrors": 0
     },
     {
@@ -581,8 +649,10 @@
         0.892210712513788
       ],
       "meanScore": 89.2,
-      "discoveryRate": 0.9,
+      "discoveryRate": 0,
       "avgTokens": 57011.7,
+      "avgToolCalls": 15.5,
+      "avgDurationMs": 92335.2,
       "judgeErrors": 0
     },
     {
@@ -599,6 +669,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 12510.3,
+      "avgToolCalls": 6.7,
+      "avgDurationMs": 41869.7,
       "judgeErrors": 0
     },
     {
@@ -613,8 +685,10 @@
         0.4041563854975721
       ],
       "meanScore": 66.3,
-      "discoveryRate": 0.6,
+      "discoveryRate": 0,
       "avgTokens": 49403.4,
+      "avgToolCalls": 16.8,
+      "avgDurationMs": 87840.9,
       "judgeErrors": 0
     },
     {
@@ -631,6 +705,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 22991,
+      "avgToolCalls": 12.3,
+      "avgDurationMs": 57689.7,
       "judgeErrors": 0
     },
     {
@@ -645,8 +721,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.5,
+      "discoveryRate": 0,
       "avgTokens": 57506.6,
+      "avgToolCalls": 12,
+      "avgDurationMs": 44957,
       "judgeErrors": 0
     },
     {
@@ -663,6 +741,8 @@
       "meanScore": 90,
       "discoveryRate": 1,
       "avgTokens": 64659.1,
+      "avgToolCalls": 14.1,
+      "avgDurationMs": 46533.8,
       "judgeErrors": 0
     },
     {
@@ -677,8 +757,10 @@
         1
       ],
       "meanScore": 99.5,
-      "discoveryRate": 0.6,
+      "discoveryRate": 0,
       "avgTokens": 26114.6,
+      "avgToolCalls": 21.9,
+      "avgDurationMs": 48329.5,
       "judgeErrors": 0
     },
     {
@@ -695,6 +777,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 9872.9,
+      "avgToolCalls": 8.7,
+      "avgDurationMs": 21445.4,
       "judgeErrors": 0
     },
     {
@@ -709,8 +793,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.3,
+      "discoveryRate": 0,
       "avgTokens": 25106.1,
+      "avgToolCalls": 14.6,
+      "avgDurationMs": 103901.7,
       "judgeErrors": 0
     },
     {
@@ -727,6 +813,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 12324.4,
+      "avgToolCalls": 5.2,
+      "avgDurationMs": 48562.1,
       "judgeErrors": 0
     },
     {
@@ -743,6 +831,8 @@
       "meanScore": 100,
       "discoveryRate": 0,
       "avgTokens": 29343.9,
+      "avgToolCalls": 23.8,
+      "avgDurationMs": 99611.6,
       "judgeErrors": 0
     },
     {
@@ -759,6 +849,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 10811.1,
+      "avgToolCalls": 7.1,
+      "avgDurationMs": 50600.5,
       "judgeErrors": 0
     },
     {
@@ -773,8 +865,10 @@
         1
       ],
       "meanScore": 100,
-      "discoveryRate": 0.2,
+      "discoveryRate": 0,
       "avgTokens": 35090.4,
+      "avgToolCalls": 18.6,
+      "avgDurationMs": 59780.3,
       "judgeErrors": 0
     },
     {
@@ -791,6 +885,8 @@
       "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 14142.5,
+      "avgToolCalls": 9.9,
+      "avgDurationMs": 25004.4,
       "judgeErrors": 0
     }
   ],

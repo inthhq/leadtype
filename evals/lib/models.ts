@@ -21,9 +21,14 @@ export function namespaceModelId(modelId: string): string {
 }
 
 export function providerFor(modelId: string): Provider {
-  return namespaceModelId(modelId).startsWith("openai/")
-    ? "openai"
-    : "anthropic";
+  const namespaced = namespaceModelId(modelId);
+  if (namespaced.startsWith("openai/")) {
+    return "openai";
+  }
+  if (namespaced.startsWith("google/")) {
+    return "google";
+  }
+  return "anthropic";
 }
 
 /** Parse a comma-separated `--models` list into trimmed, de-duped ids. */

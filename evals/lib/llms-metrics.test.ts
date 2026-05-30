@@ -21,7 +21,6 @@ afterEach(async () => {
 });
 
 const expected: LlmsExpected = {
-  answerPatterns: [],
   expectedGroups: ["reference"],
   expectedPages: ["docs/reference/cli.md"],
 };
@@ -131,6 +130,25 @@ describe("selectionMatchesVariant", () => {
     const result = selectionMatchesVariant(transcript, expected);
     expect(result.passed).toBe(false);
     expect(result.wrongGroupReads).toEqual(["build"]);
+  });
+
+  it("ignores failed reads — a 404 of the intended page is not a match", () => {
+    const transcript = transcriptFor(
+      ["/llms.txt", "/docs/reference/cli.md"],
+      "page-links"
+    );
+    // The agent tried the right path but the read failed (e.g. wrong path
+    // shape for this variant). A failed read is not evidence it followed
+    // the intended route.
+    const cliRead = transcript.toolCalls.find(
+      (c) => c.args.path === "/docs/reference/cli.md"
+    );
+    if (cliRead) {
+      cliRead.isError = true;
+      cliRead.resultSummary = "error: ENOENT";
+    }
+
+    expect(selectionMatchesVariant(transcript, expected).passed).toBe(false);
   });
 
   it("summarizes page, root, and group reads", () => {

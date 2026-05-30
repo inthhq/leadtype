@@ -1,7 +1,7 @@
 {
   "benchmark": "llms",
   "runId": "2026-05-25-llms",
-  "generatedAt": "2026-05-26T12:46:52.993Z",
+  "generatedAt": "2026-05-30T09:36:49.566Z",
   "judgeModels": [
     "gemini-3-pro"
   ],
@@ -43,6 +43,8 @@
       "contextMatchRate": 0.4,
       "avgWrongGroupReads": 0.7,
       "avgTokens": 4710.7,
+      "avgToolCalls": 8.2,
+      "avgDurationMs": 21827.8,
       "judgeErrors": 0
     },
     {
@@ -60,6 +62,8 @@
       "contextMatchRate": 0.8,
       "avgWrongGroupReads": 0,
       "avgTokens": 4904.2,
+      "avgToolCalls": 9.9,
+      "avgDurationMs": 21545.3,
       "judgeErrors": 0
     },
     {
@@ -77,6 +81,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4297.4,
+      "avgToolCalls": 8.5,
+      "avgDurationMs": 21094.5,
       "judgeErrors": 0
     },
     {
@@ -94,6 +100,8 @@
       "contextMatchRate": 0.5,
       "avgWrongGroupReads": 0.6,
       "avgTokens": 4437.6,
+      "avgToolCalls": 8.2,
+      "avgDurationMs": 22152.8,
       "judgeErrors": 0
     },
     {
@@ -111,6 +119,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4232.1,
+      "avgToolCalls": 7.9,
+      "avgDurationMs": 25159.4,
       "judgeErrors": 0
     },
     {
@@ -128,6 +138,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1,
       "avgTokens": 5470.2,
+      "avgToolCalls": 4.2,
+      "avgDurationMs": 34111,
       "judgeErrors": 1
     },
     {
@@ -145,6 +157,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 0,
       "avgTokens": 5009.1,
+      "avgToolCalls": 10.3,
+      "avgDurationMs": 40080.3,
       "judgeErrors": 0
     },
     {
@@ -162,6 +176,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4961.8,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 32374.8,
       "judgeErrors": 0
     },
     {
@@ -179,6 +195,8 @@
       "contextMatchRate": 0.4,
       "avgWrongGroupReads": 0.6,
       "avgTokens": 5491.6,
+      "avgToolCalls": 4.8,
+      "avgDurationMs": 37904.5,
       "judgeErrors": 0
     },
     {
@@ -196,6 +214,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5884.2,
+      "avgToolCalls": 6.1,
+      "avgDurationMs": 37600.6,
       "judgeErrors": 0
     },
     {
@@ -213,6 +233,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 2.1,
       "avgTokens": 4881,
+      "avgToolCalls": 6,
+      "avgDurationMs": 36857.9,
       "judgeErrors": 0
     },
     {
@@ -230,6 +252,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5531.7,
+      "avgToolCalls": 8.6,
+      "avgDurationMs": 54265.9,
       "judgeErrors": 0
     },
     {
@@ -247,6 +271,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3573.1,
+      "avgToolCalls": 4.2,
+      "avgDurationMs": 26648.8,
       "judgeErrors": 0
     },
     {
@@ -264,6 +290,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.6,
       "avgTokens": 4560.9,
+      "avgToolCalls": 6,
+      "avgDurationMs": 39811.7,
       "judgeErrors": 0
     },
     {
@@ -281,6 +309,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4771.3,
+      "avgToolCalls": 8.8,
+      "avgDurationMs": 42826.3,
       "judgeErrors": 0
     },
     {
@@ -298,6 +328,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.3,
       "avgTokens": 3655,
+      "avgToolCalls": 8.5,
+      "avgDurationMs": 33408.9,
       "judgeErrors": 0
     },
     {
@@ -315,6 +347,8 @@
       "contextMatchRate": 0.9,
       "avgWrongGroupReads": 0,
       "avgTokens": 3364.2,
+      "avgToolCalls": 7.5,
+      "avgDurationMs": 24201.7,
       "judgeErrors": 0
     },
     {
@@ -332,6 +366,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2718.3,
+      "avgToolCalls": 7.3,
+      "avgDurationMs": 24383.7,
       "judgeErrors": 0
     },
     {
@@ -349,6 +385,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.2,
       "avgTokens": 3114.3,
+      "avgToolCalls": 7.2,
+      "avgDurationMs": 39474.7,
       "judgeErrors": 0
     },
     {
@@ -366,6 +404,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3637.1,
+      "avgToolCalls": 9.7,
+      "avgDurationMs": 41179.6,
       "judgeErrors": 0
     },
     {
@@ -383,6 +423,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.2,
       "avgTokens": 4381.3,
+      "avgToolCalls": 7.7,
+      "avgDurationMs": 19155.8,
       "judgeErrors": 0
     },
     {
@@ -400,6 +442,8 @@
       "contextMatchRate": 0.6,
       "avgWrongGroupReads": 0,
       "avgTokens": 4811.2,
+      "avgToolCalls": 6.5,
+      "avgDurationMs": 18503.7,
       "judgeErrors": 0
     },
     {
@@ -417,6 +461,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4028.4,
+      "avgToolCalls": 5.9,
+      "avgDurationMs": 23006,
       "judgeErrors": 0
     },
     {
@@ -432,8 +478,10 @@
       ],
       "meanScore": 100,
       "contextMatchRate": 0,
-      "avgWrongGroupReads": 1.3,
+      "avgWrongGroupReads": 1.2,
       "avgTokens": 4101.8,
+      "avgToolCalls": 6.5,
+      "avgDurationMs": 18924.6,
       "judgeErrors": 0
     },
     {
@@ -451,6 +499,8 @@
       "contextMatchRate": 0.2,
       "avgWrongGroupReads": 0,
       "avgTokens": 3834.6,
+      "avgToolCalls": 6.8,
+      "avgDurationMs": 16387.1,
       "judgeErrors": 0
     },
     {
@@ -468,6 +518,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1,
       "avgTokens": 5380.7,
+      "avgToolCalls": 5.6,
+      "avgDurationMs": 37646.7,
       "judgeErrors": 0
     },
     {
@@ -485,6 +537,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 6287.6,
+      "avgToolCalls": 3.1,
+      "avgDurationMs": 33213.9,
       "judgeErrors": 0
     },
     {
@@ -502,6 +556,8 @@
       "contextMatchRate": 0.2,
       "avgWrongGroupReads": 0,
       "avgTokens": 5614.7,
+      "avgToolCalls": 6.2,
+      "avgDurationMs": 74885.2,
       "judgeErrors": 0
     },
     {
@@ -519,6 +575,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.2,
       "avgTokens": 5878.4,
+      "avgToolCalls": 6.1,
+      "avgDurationMs": 38646.7,
       "judgeErrors": 0
     },
     {
@@ -536,6 +594,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5804.4,
+      "avgToolCalls": 8.6,
+      "avgDurationMs": 52815.9,
       "judgeErrors": 0
     },
     {
@@ -553,6 +613,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 2.7,
       "avgTokens": 5732.5,
+      "avgToolCalls": 6.7,
+      "avgDurationMs": 39695.3,
       "judgeErrors": 0
     },
     {
@@ -570,6 +632,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5316.5,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 38658,
       "judgeErrors": 0
     },
     {
@@ -587,6 +651,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4907.6,
+      "avgToolCalls": 6.8,
+      "avgDurationMs": 59211.7,
       "judgeErrors": 0
     },
     {
@@ -604,6 +670,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 2.1,
       "avgTokens": 5581.8,
+      "avgToolCalls": 7.3,
+      "avgDurationMs": 43228.4,
       "judgeErrors": 0
     },
     {
@@ -621,6 +689,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 6219.2,
+      "avgToolCalls": 12.8,
+      "avgDurationMs": 52298.4,
       "judgeErrors": 0
     },
     {
@@ -638,6 +708,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.3,
       "avgTokens": 3665.6,
+      "avgToolCalls": 6.6,
+      "avgDurationMs": 21780.6,
       "judgeErrors": 0
     },
     {
@@ -655,6 +727,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2762.5,
+      "avgToolCalls": 3.8,
+      "avgDurationMs": 30532.8,
       "judgeErrors": 0
     },
     {
@@ -672,6 +746,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2556.2,
+      "avgToolCalls": 6.7,
+      "avgDurationMs": 20019.1,
       "judgeErrors": 0
     },
     {
@@ -689,6 +765,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.6,
       "avgTokens": 3241.7,
+      "avgToolCalls": 7.5,
+      "avgDurationMs": 24241.9,
       "judgeErrors": 0
     },
     {
@@ -706,6 +784,8 @@
       "contextMatchRate": 0.3,
       "avgWrongGroupReads": 0,
       "avgTokens": 4165.3,
+      "avgToolCalls": 10.8,
+      "avgDurationMs": 31493,
       "judgeErrors": 0
     },
     {
@@ -723,6 +803,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 0.2,
       "avgTokens": 4328.3,
+      "avgToolCalls": 6.7,
+      "avgDurationMs": 13748.1,
       "judgeErrors": 0
     },
     {
@@ -740,6 +822,8 @@
       "contextMatchRate": 0.2,
       "avgWrongGroupReads": 0,
       "avgTokens": 3697.2,
+      "avgToolCalls": 5.9,
+      "avgDurationMs": 14256.7,
       "judgeErrors": 0
     },
     {
@@ -757,6 +841,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2847,
+      "avgToolCalls": 4.8,
+      "avgDurationMs": 59140.5,
       "judgeErrors": 0
     },
     {
@@ -774,6 +860,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 0.7,
       "avgTokens": 4158.7,
+      "avgToolCalls": 6.4,
+      "avgDurationMs": 12692.6,
       "judgeErrors": 0
     },
     {
@@ -791,6 +879,8 @@
       "contextMatchRate": 0.6,
       "avgWrongGroupReads": 0,
       "avgTokens": 3514.1,
+      "avgToolCalls": 6.2,
+      "avgDurationMs": 11875,
       "judgeErrors": 0
     },
     {
@@ -808,6 +898,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1,
       "avgTokens": 5446.8,
+      "avgToolCalls": 4.3,
+      "avgDurationMs": 23206.2,
       "judgeErrors": 0
     },
     {
@@ -825,6 +917,8 @@
       "contextMatchRate": 0.7,
       "avgWrongGroupReads": 0,
       "avgTokens": 4935.5,
+      "avgToolCalls": 3.4,
+      "avgDurationMs": 16771.2,
       "judgeErrors": 0
     },
     {
@@ -842,6 +936,8 @@
       "contextMatchRate": 0.7,
       "avgWrongGroupReads": 0,
       "avgTokens": 4271.1,
+      "avgToolCalls": 4,
+      "avgDurationMs": 23138.2,
       "judgeErrors": 0
     },
     {
@@ -859,6 +955,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1,
       "avgTokens": 5431.5,
+      "avgToolCalls": 5.3,
+      "avgDurationMs": 23233.9,
       "judgeErrors": 0
     },
     {
@@ -876,6 +974,8 @@
       "contextMatchRate": 0.1,
       "avgWrongGroupReads": 0,
       "avgTokens": 6197.7,
+      "avgToolCalls": 5.8,
+      "avgDurationMs": 24917.6,
       "judgeErrors": 0
     },
     {
@@ -893,6 +993,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1,
       "avgTokens": 3271.5,
+      "avgToolCalls": 4,
+      "avgDurationMs": 19010.2,
       "judgeErrors": 0
     },
     {
@@ -910,6 +1012,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4009.3,
+      "avgToolCalls": 3.9,
+      "avgDurationMs": 20638.2,
       "judgeErrors": 0
     },
     {
@@ -927,6 +1031,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2976.8,
+      "avgToolCalls": 4,
+      "avgDurationMs": 20947.7,
       "judgeErrors": 0
     },
     {
@@ -944,6 +1050,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1,
       "avgTokens": 3382.7,
+      "avgToolCalls": 5,
+      "avgDurationMs": 20580.3,
       "judgeErrors": 0
     },
     {
@@ -961,6 +1069,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3381.1,
+      "avgToolCalls": 6.7,
+      "avgDurationMs": 24835.7,
       "judgeErrors": 0
     },
     {
@@ -978,6 +1088,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 0.4,
       "avgTokens": 2532.1,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 11214.7,
       "judgeErrors": 0
     },
     {
@@ -995,6 +1107,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2124,
+      "avgToolCalls": 3.1,
+      "avgDurationMs": 9746.3,
       "judgeErrors": 0
     },
     {
@@ -1012,6 +1126,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2069.3,
+      "avgToolCalls": 5.1,
+      "avgDurationMs": 12753.4,
       "judgeErrors": 0
     },
     {
@@ -1029,6 +1145,8 @@
       "contextMatchRate": 0.1,
       "avgWrongGroupReads": 0.5,
       "avgTokens": 2755.1,
+      "avgToolCalls": 5.5,
+      "avgDurationMs": 13642.4,
       "judgeErrors": 0
     },
     {
@@ -1046,6 +1164,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2824.4,
+      "avgToolCalls": 6.5,
+      "avgDurationMs": 14662.8,
       "judgeErrors": 0
     },
     {
@@ -1063,6 +1183,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.5,
       "avgTokens": 3737.5,
+      "avgToolCalls": 5.5,
+      "avgDurationMs": 11258.8,
       "judgeErrors": 0
     },
     {
@@ -1080,6 +1202,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3567.4,
+      "avgToolCalls": 3,
+      "avgDurationMs": 8137.4,
       "judgeErrors": 0
     },
     {
@@ -1097,6 +1221,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2566.8,
+      "avgToolCalls": 3,
+      "avgDurationMs": 8677.9,
       "judgeErrors": 0
     },
     {
@@ -1114,6 +1240,8 @@
       "contextMatchRate": 0.2,
       "avgWrongGroupReads": 1,
       "avgTokens": 3583.1,
+      "avgToolCalls": 5.8,
+      "avgDurationMs": 13248.6,
       "judgeErrors": 0
     },
     {
@@ -1131,6 +1259,8 @@
       "contextMatchRate": 0.7,
       "avgWrongGroupReads": 0,
       "avgTokens": 3185.9,
+      "avgToolCalls": 5.7,
+      "avgDurationMs": 15961.9,
       "judgeErrors": 0
     },
     {
@@ -1148,6 +1278,8 @@
       "contextMatchRate": 0.1,
       "avgWrongGroupReads": 0.7,
       "avgTokens": 4387.3,
+      "avgToolCalls": 4.3,
+      "avgDurationMs": 22616,
       "judgeErrors": 0
     },
     {
@@ -1165,6 +1297,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5004.8,
+      "avgToolCalls": 3,
+      "avgDurationMs": 19116.7,
       "judgeErrors": 0
     },
     {
@@ -1182,6 +1316,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3516.4,
+      "avgToolCalls": 3,
+      "avgDurationMs": 18379.1,
       "judgeErrors": 0
     },
     {
@@ -1199,6 +1335,8 @@
       "contextMatchRate": 0.6,
       "avgWrongGroupReads": 0.2,
       "avgTokens": 4249.3,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 23430.5,
       "judgeErrors": 0
     },
     {
@@ -1216,6 +1354,8 @@
       "contextMatchRate": 0.7,
       "avgWrongGroupReads": 0,
       "avgTokens": 3745.2,
+      "avgToolCalls": 4.5,
+      "avgDurationMs": 24026.8,
       "judgeErrors": 0
     },
     {
@@ -1233,6 +1373,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.8,
       "avgTokens": 3620.1,
+      "avgToolCalls": 4.8,
+      "avgDurationMs": 16675.8,
       "judgeErrors": 0
     },
     {
@@ -1250,6 +1392,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3634.3,
+      "avgToolCalls": 3,
+      "avgDurationMs": 15894.9,
       "judgeErrors": 0
     },
     {
@@ -1267,6 +1411,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2832.3,
+      "avgToolCalls": 4.1,
+      "avgDurationMs": 17553.6,
       "judgeErrors": 0
     },
     {
@@ -1284,6 +1430,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.1,
       "avgTokens": 3455.6,
+      "avgToolCalls": 5.1,
+      "avgDurationMs": 20792.8,
       "judgeErrors": 0
     },
     {
@@ -1301,6 +1449,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3030.5,
+      "avgToolCalls": 5.8,
+      "avgDurationMs": 21685.8,
       "judgeErrors": 0
     },
     {
@@ -1318,6 +1468,8 @@
       "contextMatchRate": 0.5,
       "avgWrongGroupReads": 0.6,
       "avgTokens": 2136.8,
+      "avgToolCalls": 4.2,
+      "avgDurationMs": 10322.8,
       "judgeErrors": 0
     },
     {
@@ -1335,6 +1487,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2115.2,
+      "avgToolCalls": 3.1,
+      "avgDurationMs": 10445.2,
       "judgeErrors": 0
     },
     {
@@ -1352,6 +1506,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 1242.6,
+      "avgToolCalls": 3,
+      "avgDurationMs": 13653.7,
       "judgeErrors": 0
     },
     {
@@ -1369,6 +1525,8 @@
       "contextMatchRate": 0.3,
       "avgWrongGroupReads": 0.7,
       "avgTokens": 2227.6,
+      "avgToolCalls": 5.5,
+      "avgDurationMs": 13625.5,
       "judgeErrors": 0
     },
     {
@@ -1386,6 +1544,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 1836.5,
+      "avgToolCalls": 5.1,
+      "avgDurationMs": 13894.7,
       "judgeErrors": 0
     },
     {
@@ -1400,9 +1560,11 @@
         1
       ],
       "meanScore": 100,
-      "contextMatchRate": 0.3,
-      "avgWrongGroupReads": 1,
+      "contextMatchRate": 0.4,
+      "avgWrongGroupReads": 0.9,
       "avgTokens": 4250.8,
+      "avgToolCalls": 6,
+      "avgDurationMs": 18028.6,
       "judgeErrors": 0
     },
     {
@@ -1420,6 +1582,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4168.7,
+      "avgToolCalls": 3,
+      "avgDurationMs": 14330.9,
       "judgeErrors": 0
     },
     {
@@ -1437,6 +1601,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3733.5,
+      "avgToolCalls": 5.5,
+      "avgDurationMs": 21488.8,
       "judgeErrors": 0
     },
     {
@@ -1454,6 +1620,8 @@
       "contextMatchRate": 0.7,
       "avgWrongGroupReads": 0.3,
       "avgTokens": 3636,
+      "avgToolCalls": 5.2,
+      "avgDurationMs": 15778.2,
       "judgeErrors": 0
     },
     {
@@ -1471,6 +1639,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4724.4,
+      "avgToolCalls": 8.7,
+      "avgDurationMs": 22375.5,
       "judgeErrors": 0
     },
     {
@@ -1488,6 +1658,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4921.8,
+      "avgToolCalls": 3.5,
+      "avgDurationMs": 29842.2,
       "judgeErrors": 0
     },
     {
@@ -1505,6 +1677,8 @@
       "contextMatchRate": 0.9,
       "avgWrongGroupReads": 0,
       "avgTokens": 5741.2,
+      "avgToolCalls": 3.7,
+      "avgDurationMs": 31006.4,
       "judgeErrors": 0
     },
     {
@@ -1522,6 +1696,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4783.1,
+      "avgToolCalls": 4,
+      "avgDurationMs": 30865.2,
       "judgeErrors": 0
     },
     {
@@ -1539,6 +1715,8 @@
       "contextMatchRate": 0.1,
       "avgWrongGroupReads": 0.9,
       "avgTokens": 5431.5,
+      "avgToolCalls": 5.6,
+      "avgDurationMs": 38702.9,
       "judgeErrors": 0
     },
     {
@@ -1556,6 +1734,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5969.1,
+      "avgToolCalls": 5.6,
+      "avgDurationMs": 38517.9,
       "judgeErrors": 0
     },
     {
@@ -1573,6 +1753,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 2.5,
       "avgTokens": 5427.1,
+      "avgToolCalls": 6.9,
+      "avgDurationMs": 41011.2,
       "judgeErrors": 0
     },
     {
@@ -1590,6 +1772,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5128,
+      "avgToolCalls": 5.1,
+      "avgDurationMs": 36917.5,
       "judgeErrors": 0
     },
     {
@@ -1607,6 +1791,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4219.6,
+      "avgToolCalls": 5.2,
+      "avgDurationMs": 37530.7,
       "judgeErrors": 0
     },
     {
@@ -1624,6 +1810,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.8,
       "avgTokens": 5166.7,
+      "avgToolCalls": 7.8,
+      "avgDurationMs": 39955.3,
       "judgeErrors": 0
     },
     {
@@ -1641,6 +1829,8 @@
       "contextMatchRate": 0.3,
       "avgWrongGroupReads": 0.7,
       "avgTokens": 5067.6,
+      "avgToolCalls": 8.9,
+      "avgDurationMs": 37727,
       "judgeErrors": 0
     },
     {
@@ -1658,6 +1848,8 @@
       "contextMatchRate": 0.1,
       "avgWrongGroupReads": 1.6,
       "avgTokens": 3030.8,
+      "avgToolCalls": 7.7,
+      "avgDurationMs": 18684.9,
       "judgeErrors": 0
     },
     {
@@ -1675,6 +1867,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2865.3,
+      "avgToolCalls": 4.5,
+      "avgDurationMs": 15129.4,
       "judgeErrors": 0
     },
     {
@@ -1692,6 +1886,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2184.9,
+      "avgToolCalls": 5.4,
+      "avgDurationMs": 17428.5,
       "judgeErrors": 0
     },
     {
@@ -1709,6 +1905,8 @@
       "contextMatchRate": 0,
       "avgWrongGroupReads": 1.5,
       "avgTokens": 3278.7,
+      "avgToolCalls": 7.8,
+      "avgDurationMs": 20062,
       "judgeErrors": 0
     },
     {
@@ -1726,6 +1924,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3534.8,
+      "avgToolCalls": 9.5,
+      "avgDurationMs": 21143.4,
       "judgeErrors": 0
     },
     {
@@ -1743,6 +1943,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3156.8,
+      "avgToolCalls": 4,
+      "avgDurationMs": 11511.1,
       "judgeErrors": 0
     },
     {
@@ -1760,6 +1962,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3587.9,
+      "avgToolCalls": 3,
+      "avgDurationMs": 8028.9,
       "judgeErrors": 0
     },
     {
@@ -1777,6 +1981,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2584.9,
+      "avgToolCalls": 3,
+      "avgDurationMs": 8311.4,
       "judgeErrors": 0
     },
     {
@@ -1794,6 +2000,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3301.3,
+      "avgToolCalls": 5,
+      "avgDurationMs": 11313.9,
       "judgeErrors": 0
     },
     {
@@ -1811,6 +2019,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2634.3,
+      "avgToolCalls": 4,
+      "avgDurationMs": 9621,
       "judgeErrors": 0
     },
     {
@@ -1828,6 +2038,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4368.2,
+      "avgToolCalls": 3.1,
+      "avgDurationMs": 22757.3,
       "judgeErrors": 0
     },
     {
@@ -1845,6 +2057,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 5574,
+      "avgToolCalls": 3,
+      "avgDurationMs": 26275.2,
       "judgeErrors": 0
     },
     {
@@ -1862,6 +2076,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3801.3,
+      "avgToolCalls": 3.2,
+      "avgDurationMs": 20224.2,
       "judgeErrors": 0
     },
     {
@@ -1879,6 +2095,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4997.8,
+      "avgToolCalls": 5,
+      "avgDurationMs": 29655.1,
       "judgeErrors": 0
     },
     {
@@ -1896,6 +2114,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 4068.8,
+      "avgToolCalls": 4.3,
+      "avgDurationMs": 26230.6,
       "judgeErrors": 0
     },
     {
@@ -1913,6 +2133,8 @@
       "contextMatchRate": 0.5,
       "avgWrongGroupReads": 0.5,
       "avgTokens": 3537.9,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 24160,
       "judgeErrors": 0
     },
     {
@@ -1930,6 +2152,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 3846.3,
+      "avgToolCalls": 3,
+      "avgDurationMs": 18558.1,
       "judgeErrors": 0
     },
     {
@@ -1947,6 +2171,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2829.4,
+      "avgToolCalls": 3.1,
+      "avgDurationMs": 18578.7,
       "judgeErrors": 0
     },
     {
@@ -1964,6 +2190,8 @@
       "contextMatchRate": 0.4,
       "avgWrongGroupReads": 0.6,
       "avgTokens": 3698.6,
+      "avgToolCalls": 5.6,
+      "avgDurationMs": 24383.9,
       "judgeErrors": 1
     },
     {
@@ -1981,6 +2209,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2832.7,
+      "avgToolCalls": 4,
+      "avgDurationMs": 19878.1,
       "judgeErrors": 0
     },
     {
@@ -1998,6 +2228,8 @@
       "contextMatchRate": 0.8,
       "avgWrongGroupReads": 0.2,
       "avgTokens": 1849.3,
+      "avgToolCalls": 4.3,
+      "avgDurationMs": 15238.8,
       "judgeErrors": 0
     },
     {
@@ -2015,6 +2247,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 2351,
+      "avgToolCalls": 3.3,
+      "avgDurationMs": 10826.7,
       "judgeErrors": 0
     },
     {
@@ -2032,6 +2266,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 1634.8,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 15925.8,
       "judgeErrors": 0
     },
     {
@@ -2049,6 +2285,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 1953.4,
+      "avgToolCalls": 5.3,
+      "avgDurationMs": 13797,
       "judgeErrors": 0
     },
     {
@@ -2066,6 +2304,8 @@
       "contextMatchRate": 1,
       "avgWrongGroupReads": 0,
       "avgTokens": 1958.4,
+      "avgToolCalls": 5.7,
+      "avgDurationMs": 15674,
       "judgeErrors": 0
     }
   ]

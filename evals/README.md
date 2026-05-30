@@ -6,7 +6,8 @@ Measure whether real coding agents (Claude, GPT) discover and use leadtype's bun
 
 - **Pass rate** — can the agent complete leadtype-related tasks correctly? Correctness is graded by an **independent LLM judge** against a per-fixture `RUBRIC.md`, not by keyword matching. This is the headline metric.
 - **Treatment vs control delta** — judged pass rate WITH bundled docs minus WITHOUT. The bundled docs' value, in points, reported with a **Wilson 95% confidence interval** so small-sample noise is visible.
-- **Bundle usage (mechanism)** — did the agent actually read the bundle (`AGENTS.md` or any `docs/*.md`) in treatment? A supporting metric, not the pass gate.
+- **Bundle usage (mechanism)** — did the agent actually read the bundle (`AGENTS.md` or any `docs/*.md`) in treatment? A supporting metric, not the pass gate. Only *successful* reads count: in control the bundle is deleted, so an attempted read fails (ENOENT) and is not mistaken for usage.
+- **Efficiency (cost)** — average total tokens, tool calls, and wall-clock per run, reported per arm with a treatment-vs-control delta. Answers "does bundling docs make a run cheaper or more expensive?" — a short doc can replace a flurry of exploratory `grep`/`read` calls, or add an upfront read.
 
 > Headline correctness is the judge's verdict. The "did it read our files" checks are reported as supporting evidence, never as the pass condition — so treatment and control are graded on the same footing (in control the bundle is gone, so a read-gate would be meaningless).
 
@@ -64,7 +65,13 @@ bun run evals -- --models claude-opus-4-7,gpt-5.5 --runs 5 --judge gpt-5.5
 Every run writes to `results/package/<label>/` (label defaults to a timestamp). Re-aggregate an existing run folder without re-running the models:
 
 ```bash
-bun run aggregate results/package/2026-05-25
+bun run aggregate results/package/2026-05-25-package
+```
+
+If you change how a *mechanism* metric is derived (bundle usage, context match), recompute it for an already-graded run straight from its archived transcripts — no agents, no judge re-run. It rewrites each `record.json`'s supporting metrics in place (the judge verdict is preserved) and re-aggregates:
+
+```bash
+bun run remetric results/package/2026-05-25-package
 ```
 
 `results/` is gitignored by default (the harness writes a folder per local run), so publish a run explicitly with `git add -f results/<benchmark>/<label>`. `summary.json`, `report.md`, and per-run `record.json` are committed loose. `record.json` holds the **canonical verdict** (the `2026-05-25` run is graded by `gemini-3-pro`); the `judge.json` inside `transcripts.tgz` is the original first-pass (Opus) verdict, kept as a historical cross-judge artifact. The bulky per-run `transcript.json` + `judge.json` + produced `files/` are bundled into `transcripts.tgz` to keep the repo light — regenerate the loose copies with `tar xzf transcripts.tgz`. To re-bundle after a fresh run:
@@ -133,6 +140,8 @@ evals/
 │   ├── llms-sandbox.ts      # llms-eval tempdir lifecycle, web-root materialization
 │   ├── llms-variants.ts     # five llms.txt/llms-full.txt artifact shapes under test
 │   ├── llms-metrics.ts      # transcript → selection/context-match decisions
+│   ├── package-metrics.ts   # transcript → bundle-usage decisions (successful reads only)
+│   ├── reads.ts             # shared readSucceeded predicate (ignores failed/ENOENT reads)
 │   ├── judge.ts             # LLM judge: grade an answer against a RUBRIC.md
 │   ├── stats.ts             # Wilson confidence intervals + aggregation
 │   ├── record.ts            # per-run record schema (one row of evidence)
@@ -140,6 +149,8 @@ evals/
 │   ├── models.ts            # model-id namespacing + --models parsing
 │   ├── transcript.ts        # transcript types + writer/reader
 │   └── *.test.ts            # unit tests for tools + metrics
+├── rejudge.ts               # re-grade saved answers with a different judge (no agents re-run)
+├── remetric.ts              # recompute mechanism metrics from saved transcripts (no agents/judge re-run)
 ├── evals/                   # package-docs benchmark fixtures
 │   └── <fixture>/           (PROMPT.md, RUBRIC.md, package.json, …)
 ├── llms/                    # hosted-docs (llms.txt) benchmark fixtures
@@ -165,6 +176,8 @@ Open `results/<benchmark>/<label>/report.md`. The package report leads with per-
 | `claude-opus-4-7` | 88% [74–95%] (35/40) | 45% [31–60%] (18/40) | +43% |
 
 Brackets are the Wilson 95% interval; `(passes/n)` is the raw count. A **large positive delta** is the bundled docs earning their place. A **small delta** means the task is recoverable without docs — often because the compiled CLI self-documents the flag, or the model already knew it. A **wide interval** means you need more `--runs`. The per-fixture table adds bundle-usage (did the agent read the bundle in treatment) and the judge's mean score.
+
+The report also has an **Efficiency** section: per model, average tokens / tool calls / wall-clock for treatment vs control, with a signed delta. A negative delta means bundling docs made runs *cheaper* — the agent reads one short doc instead of probing the package with repeated `grep`/`read`/`list` calls. This is orthogonal to correctness: docs can leave the pass rate flat yet still cut tokens and time.
 
 ## Tests
 

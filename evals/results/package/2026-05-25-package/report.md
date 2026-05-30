@@ -1,7 +1,7 @@
 # Package-docs benchmark — bundled docs vs no bundle
 
 - **Run:** `2026-05-25-package`
-- **Generated:** 2026-05-26T12:30:47.536Z
+- **Generated:** 2026-05-30T09:36:09.176Z
 - **Judge:** `gemini-3-pro`
 - **Candidate models:** `claude-haiku-4-5`, `claude-opus-4-7`, `claude-sonnet-4-6`, `gpt-5.5`
 - **Runs per cell:** 10
@@ -48,5 +48,16 @@ Pass = an independent LLM judge marked the agent's answer correct against the fi
 | search-when-embeddings | `claude-opus-4-7` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
 | search-when-embeddings | `claude-sonnet-4-6` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
 | search-when-embeddings | `gpt-5.5` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
+
+## Efficiency — does bundling docs change run cost?
+
+Per model, pooled across fixtures: average total tokens, tool calls, and wall-clock per run. Δ is treatment relative to control (negative = bundling docs made runs *cheaper*). Reading a short bundled doc can replace a flurry of exploratory `grep`/`read` calls, or it can add an upfront read — this shows which way it nets out.
+
+| Model | Tokens (T → C, Δ) | Tool calls (T → C, Δ) | Time (T → C, Δ) |
+| --- | --- | --- | --- |
+| `claude-haiku-4-5` | 17.0k → 31.0k (-45%) | 12.8 → 19.5 (-35%) | 28.7s → 43.2s (-34%) |
+| `claude-opus-4-7` | 17.1k → 34.6k (-51%) | 7.5 → 12.4 (-39%) | 42.3s → 68.4s (-38%) |
+| `claude-sonnet-4-6` | 21.1k → 37.7k (-44%) | 12.8 → 18.2 (-29%) | 55.6s → 76.8s (-28%) |
+| `gpt-5.5` | 34.0k → 40.0k (-15%) | 13.4 → 14.6 (-9%) | 44.5s → 53.0s (-16%) |
 
 _Judge note: no candidate model graded its own output (no self-preference bias)._

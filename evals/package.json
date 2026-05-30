@@ -11,6 +11,7 @@
     "evals:llms:full": "bun --env-file=../.env run run-llms-eval.ts --models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-7,gpt-5.5 --runs 10 --concurrency 12",
     "aggregate": "bun --env-file=../.env run lib/aggregate.ts",
     "rejudge": "bun --env-file=../.env run rejudge.ts",
+    "remetric": "bun run remetric.ts",
     "test": "vitest run lib",
     "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && bun run build && npm pack --pack-destination ../../evals/.tarballs"
   },
