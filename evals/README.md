@@ -26,7 +26,7 @@ No shell, no Docker, no escape vector — every tool call resolves paths relativ
 
 ### The judge
 
-`lib/judge.ts` calls a strong model (default `claude-opus-4-7`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
+`lib/judge.ts` calls a strong model (default `gemini-3-pro`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
 
 ## Setup
 
@@ -49,17 +49,17 @@ bun run pack-leadtype
 
 ```bash
 # Smoke test — one fixture, treatment mode, 1 run, default model.
-bun run evals -- --fixture wire-content-negotiation --mode treatment
+bun run evals -- --fixture nav-unknown-group --mode treatment
 
 # Default model (claude-haiku-4-5), all fixtures, both modes, 1 run each.
 bun run evals
 
-# The published matrix: 4 models × 10 runs, judged by opus.
-# (= `--models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-7,gpt-5.5 --runs 10`)
+# The published matrix: 4 models × 10 runs, judged by the neutral gemini-3-pro.
+# (= `--models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-8,gpt-5.5 --runs 10`)
 bun run evals:full -- --label 2026-05-25
 
 # Pick your own grid.
-bun run evals -- --models claude-opus-4-7,gpt-5.5 --runs 5 --judge gpt-5.5
+bun run evals -- --models claude-opus-4-8,gpt-5.5 --runs 5 --judge gpt-5.5
 ```
 
 Every run writes to `results/package/<label>/` (label defaults to a timestamp). Re-aggregate an existing run folder without re-running the models:
@@ -126,7 +126,7 @@ The `router` variant is intentionally distinct from `monolith`: it evaluates a b
 | `--variant <name>` | all | One llms.txt shape. llms benchmark only. |
 | `--models <a,b,c>` | `claude-haiku-4-5` | Comma-separated candidate model ids. `gpt-*` → OpenAI, `gemini*` → Google, else Anthropic. |
 | `--model <id>` | — | Alias for a single `--models` entry. |
-| `--judge <id>` | `claude-opus-4-7` | Model that grades answers against each `RUBRIC.md`. |
+| `--judge <id>` | `gemini-3-pro` | Model that grades answers against each `RUBRIC.md`. |
 | `--runs <n>` | `1` | Repetitions per cell (fixture × mode/variant × model). |
 | `--label <name>` | timestamp | Results folder name under `results/<benchmark>/`. |
 
@@ -173,7 +173,7 @@ Open `results/<benchmark>/<label>/report.md`. The package report leads with per-
 
 | Model | Treatment | Control | Delta |
 | --- | --- | --- | --- |
-| `claude-opus-4-7` | 88% [74–95%] (35/40) | 45% [31–60%] (18/40) | +43% |
+| `claude-opus-4-8` | 88% [74–95%] (35/40) | 45% [31–60%] (18/40) | +43% |
 
 Brackets are the Wilson 95% interval; `(passes/n)` is the raw count. A **large positive delta** is the bundled docs earning their place. A **small delta** means the task is recoverable without docs — often because the compiled CLI self-documents the flag, or the model already knew it. A **wide interval** means you need more `--runs`. The per-fixture table adds bundle-usage (did the agent read the bundle in treatment) and the judge's mean score.
 
