@@ -7,7 +7,7 @@
     "dev": "bun run --filter leadtype build && bun run --silent pipeline:build && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite dev",
     "build": "bun run --filter leadtype build && bun run --silent pipeline:build && vite build",
     "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite preview",
-    "check-types": "tsgo --noEmit",
+    "check-types": "bun run --filter leadtype build && bun run --silent pipeline:build && tsgo --noEmit",
     "test:e2e": "bun run --filter leadtype build && bun run pipeline:build && playwright test",
     "convert": "bun run pipeline:convert",
     "llm": "bun run pipeline:llm",
