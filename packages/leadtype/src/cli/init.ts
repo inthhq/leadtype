@@ -1,0 +1,359 @@
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { runGenerateCommand } from "./generate";
+import {
+  buildPlan,
+  defaultBaseUrl,
+  type FrameworkPlan,
+  type InitFile,
+  type InitFramework,
+  isInitFramework,
+  RECIPE_FRAMEWORKS,
+  SUPPORTED_FRAMEWORKS,
+  sharedFiles,
+} from "./init-templates";
+
+export type { InitFramework } from "./init-templates";
+
+const DEFAULT_NAME = "My docs";
+const DEFAULT_SUMMARY = "What this project does in one sentence.";
+const RECIPE_URL = "https://leadtype.dev/docs/build/use-the-source-primitive";
+
+const INIT_USAGE = `leadtype init — scaffold an agent-ready docs integration
+
+Usage:
+  leadtype init [options]
+
+Options:
+  -f, --framework <name>   Target framework: next | astro | nuxt | sveltekit.
+                           Auto-detected from package.json when omitted.
+      --dir <dir>          Project root to scaffold into (default: ".").
+      --base-url <url>     Base URL for generated links (default: per-framework dev URL).
+      --name <name>        Product name written into docs.config.ts.
+      --summary <text>     One-line product summary.
+      --force              Overwrite files that already exist.
+      --dry-run            Print the file plan without writing anything.
+      --no-generate        Skip running \`leadtype generate\` after scaffolding.
+      --json               Emit the file plan as JSON.
+  -h, --help               Show help
+
+Frameworks with bespoke setup (tanstack, fumadocs) are documented as recipes:
+  ${RECIPE_URL}
+`;
+
+export type InitArgs = {
+  baseUrl?: string;
+  dir: string;
+  dryRun: boolean;
+  force: boolean;
+  framework?: InitFramework;
+  generate: boolean;
+  help: boolean;
+  json: boolean;
+  name?: string;
+  summary?: string;
+};
+
+export type InitIo = {
+  stderr: Pick<NodeJS.WriteStream, "write">;
+  stdout: Pick<NodeJS.WriteStream, "write">;
+};
+
+export function getInitUsage(): string {
+  return INIT_USAGE;
+}
+
+export function parseInitArgs(argv: string[]): InitArgs {
+  const args: InitArgs = {
+    dir: ".",
+    dryRun: false,
+    force: false,
+    generate: true,
+    help: false,
+    json: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    const next = (): string => {
+      const value = argv[index + 1];
+      if (value === undefined) {
+        throw new Error(`missing value for ${token}`);
+      }
+      index += 1;
+      return value;
+    };
+
+    switch (token) {
+      case "-f":
+      case "--framework": {
+        const value = next();
+        if (!isInitFramework(value)) {
+          throw new Error(
+            `unsupported framework "${value}". Use one of: ${SUPPORTED_FRAMEWORKS.join(", ")}.`
+          );
+        }
+        args.framework = value;
+        break;
+      }
+      case "--dir":
+        args.dir = next();
+        break;
+      case "--base-url":
+        args.baseUrl = next();
+        break;
+      case "--name":
+        args.name = next();
+        break;
+      case "--summary":
+        args.summary = next();
+        break;
+      case "--force":
+        args.force = true;
+        break;
+      case "--dry-run":
+        args.generate = false;
+        args.dryRun = true;
+        break;
+      case "--no-generate":
+        args.generate = false;
+        break;
+      case "--json":
+        args.json = true;
+        break;
+      case "-h":
+      case "--help":
+        args.help = true;
+        break;
+      default:
+        throw new Error(`unknown option: ${token}`);
+    }
+  }
+
+  return args;
+}
+
+async function detectFramework(
+  projectRoot: string
+): Promise<InitFramework | null> {
+  const pkgPath = path.join(projectRoot, "package.json");
+  if (!existsSync(pkgPath)) {
+    return null;
+  }
+  let deps: Record<string, string> = {};
+  try {
+    const pkg = JSON.parse(await readFile(pkgPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  } catch {
+    return null;
+  }
+  if (deps.next) {
+    return "next";
+  }
+  if (deps.astro) {
+    return "astro";
+  }
+  if (deps.nuxt) {
+    return "nuxt";
+  }
+  if (deps["@sveltejs/kit"]) {
+    return "sveltekit";
+  }
+  return null;
+}
+
+type WriteOutcome = { action: "skipped" | "wrote"; path: string };
+
+async function writeFiles(
+  projectRoot: string,
+  files: InitFile[],
+  options: { dryRun: boolean; force: boolean }
+): Promise<WriteOutcome[]> {
+  const outcomes: WriteOutcome[] = [];
+  for (const file of files) {
+    const absolute = path.join(projectRoot, file.path);
+    const exists = existsSync(absolute);
+    if (exists && !options.force) {
+      outcomes.push({ action: "skipped", path: file.path });
+      continue;
+    }
+    if (!options.dryRun) {
+      await mkdir(path.dirname(absolute), { recursive: true });
+      await writeFile(absolute, file.contents, "utf8");
+    }
+    outcomes.push({ action: "wrote", path: file.path });
+  }
+  return outcomes;
+}
+
+async function patchPackageJsonScript(
+  projectRoot: string,
+  outDir: string,
+  baseUrl: string,
+  dryRun: boolean
+): Promise<boolean> {
+  const pkgPath = path.join(projectRoot, "package.json");
+  if (!existsSync(pkgPath)) {
+    return false;
+  }
+  try {
+    const raw = await readFile(pkgPath, "utf8");
+    const pkg = JSON.parse(raw) as { scripts?: Record<string, string> };
+    if (pkg.scripts?.["docs:generate"]) {
+      return false;
+    }
+    if (dryRun) {
+      return true;
+    }
+    pkg.scripts = {
+      ...pkg.scripts,
+      "docs:generate": `leadtype generate --src . --out ${outDir} --base-url ${baseUrl}`,
+    };
+    await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function renderNextSteps(
+  framework: InitFramework,
+  plan: FrameworkPlan,
+  ranGenerate: boolean
+): string {
+  const lines: string[] = [];
+  lines.push("");
+  lines.push("Next steps:");
+  lines.push(
+    `  1. Ensure these are installed: leadtype, ${plan.deps.join(", ")}`
+  );
+  if (ranGenerate) {
+    lines.push(`  2. Start your app: ${plan.devCommand}`);
+    lines.push("  3. Visit /docs, /llms.txt, and /docs/index.md");
+  } else {
+    lines.push("  2. Generate agent artifacts: bun run docs:generate");
+    lines.push(`  3. Start your app: ${plan.devCommand}`);
+  }
+  lines.push("");
+  lines.push("Keep `docs:generate` in your build so artifacts stay in sync.");
+  lines.push(`Reference: ${RECIPE_URL}#${framework}`);
+  return lines.join("\n");
+}
+
+async function runPostScaffoldGenerate(
+  projectRoot: string,
+  plan: FrameworkPlan,
+  baseUrl: string,
+  io: InitIo
+): Promise<boolean> {
+  io.stdout.write("\nleadtype init: generating agent artifacts…\n");
+  const generateCode = await runGenerateCommand(
+    [
+      "--src",
+      projectRoot,
+      "--out",
+      path.join(projectRoot, plan.outDir),
+      "--base-url",
+      baseUrl,
+    ],
+    io
+  );
+  if (generateCode !== 0) {
+    io.stderr.write(
+      "leadtype init: scaffolding succeeded but generate failed — run `leadtype generate` after installing dependencies.\n"
+    );
+    return false;
+  }
+  return true;
+}
+
+export async function runInitCommand(
+  argv: string[],
+  io: InitIo = { stderr: process.stderr, stdout: process.stdout }
+): Promise<number> {
+  let args: InitArgs;
+  try {
+    args = parseInitArgs(argv);
+  } catch (error) {
+    io.stderr.write(`${String(error)}\n\n${INIT_USAGE}`);
+    return 2;
+  }
+
+  if (args.help) {
+    io.stdout.write(INIT_USAGE);
+    return 0;
+  }
+
+  const projectRoot = path.resolve(args.dir);
+  const dryRun = args.dryRun;
+
+  const framework = args.framework ?? (await detectFramework(projectRoot));
+  if (!framework) {
+    io.stderr.write(
+      `leadtype init: could not detect a framework. Pass --framework <${SUPPORTED_FRAMEWORKS.join(" | ")}>.\n` +
+        `For ${RECIPE_FRAMEWORKS.join(" and ")}, follow the recipe at ${RECIPE_URL}\n`
+    );
+    return 2;
+  }
+
+  const name = args.name ?? DEFAULT_NAME;
+  const summary = args.summary ?? DEFAULT_SUMMARY;
+  const baseUrl = args.baseUrl ?? defaultBaseUrl(framework);
+
+  const plan = buildPlan(framework, baseUrl);
+  const allFiles = [...sharedFiles(name, summary), ...plan.files];
+
+  if (args.json) {
+    io.stdout.write(
+      `${JSON.stringify(
+        {
+          framework,
+          projectRoot,
+          baseUrl,
+          outDir: plan.outDir,
+          files: allFiles.map((file) => file.path),
+          dryRun,
+        },
+        null,
+        2
+      )}\n`
+    );
+    return 0;
+  }
+
+  const outcomes = await writeFiles(projectRoot, allFiles, {
+    dryRun,
+    force: args.force,
+  });
+  const patched = await patchPackageJsonScript(
+    projectRoot,
+    plan.outDir,
+    baseUrl,
+    dryRun
+  );
+
+  const prefix = dryRun ? "would scaffold" : "scaffolded";
+  io.stdout.write(`leadtype init: ${prefix} ${framework} docs integration\n`);
+  for (const outcome of outcomes) {
+    const mark = outcome.action === "wrote" ? "+" : "~";
+    const note = outcome.action === "skipped" ? " (exists, use --force)" : "";
+    io.stdout.write(`  ${mark} ${outcome.path}${note}\n`);
+  }
+  if (patched) {
+    io.stdout.write(
+      `  ${dryRun ? "~" : "+"} package.json (added "docs:generate" script)\n`
+    );
+  }
+
+  let ranGenerate = false;
+  if (args.generate && !dryRun) {
+    ranGenerate = await runPostScaffoldGenerate(projectRoot, plan, baseUrl, io);
+  }
+
+  io.stdout.write(`${renderNextSteps(framework, plan, ranGenerate)}\n`);
+  return 0;
+}
