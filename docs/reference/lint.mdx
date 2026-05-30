@@ -40,8 +40,11 @@ Grouped by what they catch.
 | `invalid-link` | error | A `/docs/...` link points to a route that doesn't exist. |
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
+| `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
 
 Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
+
+The `unflattened-component` rule walks the MDX AST, so components inside code fences or inline code are examples — not rendered JSX — and never warn. It recognizes the built-in [tag contract](/docs/authoring/components#the-naming-contract) plus any custom `defineComponentFlattener` plugins declared in your config.
 
 ## Library API
 
@@ -80,7 +83,8 @@ type LintResult = {
       | "parse-error"
       | "invalid-link"
       | "unresolved-placeholder"
-      | "cross-framework-link";
+      | "cross-framework-link"
+      | "unflattened-component";
     field?: string;
     message: string;
   }>;

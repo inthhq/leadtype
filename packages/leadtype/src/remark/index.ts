@@ -4,6 +4,7 @@ export { type Builders, b, parseMarkdown } from "./builders";
 // The built-in plugin set, split by phase. `defaultRemarkPlugins` keeps its
 // historical order; phase tags handle scheduling when consumers add their own.
 export {
+  BUILTIN_FLATTENER_COMPONENT_NAMES,
   builtinFlattenerPlugins,
   defaultRemarkPlugins,
 } from "./default-plugins";

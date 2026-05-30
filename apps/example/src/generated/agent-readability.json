@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-30T09:40:03.584Z",
+  "generatedAt": "2026-05-30T10:33:39.633Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -16,7 +16,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
       "groups": [],
-      "lastModified": "2026-05-30T09:29:32.000Z",
+      "lastModified": "2026-05-30T09:40:04.000Z",
       "logicalPath": "index"
     },
     {
@@ -232,7 +232,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/concepts/methodology.md",
       "relativePath": "concepts/methodology",
       "groups": [],
-      "lastModified": "2026-05-30T09:29:32.000Z",
+      "lastModified": "2026-05-30T09:40:04.000Z",
       "logicalPath": "concepts/methodology"
     },
     {

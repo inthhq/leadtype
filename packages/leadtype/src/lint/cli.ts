@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
+import type { PluggableList } from "unified";
 import { loadLeadtypeConfig } from "../cli/generate";
 import { setLogFormat, setVerbose } from "../internal/logger";
+import { getFlattenerNames } from "../internal/remark-phase";
 import { resolveAllCollections } from "../sync/sync";
 import { type ReporterFormat, renderReport } from "./reporters";
 import {
@@ -159,6 +161,22 @@ export async function runLintCommand(
   const projectConfig = await loadLeadtypeConfig(resolvedSrcDir);
   const collections = projectConfig?.config.collections;
 
+  // Custom-flattener component names, so the `unflattened-component` rule
+  // doesn't warn on components the project has actually wired a flattener for.
+  const knownComponentSet = new Set<string>();
+  const addFlattenerNames = (plugins?: PluggableList): void => {
+    for (const entry of plugins ?? []) {
+      for (const name of getFlattenerNames(entry)) {
+        knownComponentSet.add(name);
+      }
+    }
+  };
+  addFlattenerNames(projectConfig?.config.flatteners);
+  for (const collection of Object.values(collections ?? {})) {
+    addFlattenerNames(collection.flatteners);
+  }
+  const knownComponents = [...knownComponentSet];
+
   let result: LintResult;
   if (collections && Object.keys(collections).length > 0) {
     const configDir = resolve(projectConfig.path, "..");
@@ -175,6 +193,7 @@ export async function runLintCommand(
         srcDir: entry.absoluteDir,
         ignore: args.ignore,
         unknownFieldSeverity: args.unknownFieldSeverity,
+        knownComponents,
         schemas: entry.collection.schema
           ? { frontmatter: entry.collection.schema }
           : undefined,
@@ -201,6 +220,7 @@ export async function runLintCommand(
         : undefined,
       ignore: args.ignore,
       unknownFieldSeverity: args.unknownFieldSeverity,
+      knownComponents,
     });
   }
 

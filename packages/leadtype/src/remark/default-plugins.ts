@@ -65,6 +65,38 @@ export const builtinFlattenerPlugins = [
 ];
 
 /**
+ * Component names the built-in flattener stack recognizes — the tag contract
+ * the default pipeline turns into markdown (containers and their children).
+ * Keep in sync with `builtinFlattenerPlugins`; tooling (the lint
+ * `unflattened-component` rule) uses it to spot components that would otherwise
+ * leak raw JSX into agent markdown.
+ */
+export const BUILTIN_FLATTENER_COMPONENT_NAMES = [
+  "Accordion",
+  "AccordionItem",
+  "Audience",
+  "Callout",
+  "Card",
+  "Cards",
+  "CommandTabs",
+  "Details",
+  "Example",
+  "ExtractedTypeTable",
+  "File",
+  "FileTree",
+  "Folder",
+  "Mermaid",
+  "Prompt",
+  "Section",
+  "Step",
+  "Steps",
+  "Tab",
+  "Tabs",
+  "TopicSwitcher",
+  "TypeTable",
+] as const;
+
+/**
  * Default remark plugins for MDX → Markdown conversion for agent/LLM docs.
  * Order matters: imports are stripped first, then components are flattened
  * into markdown equivalents.

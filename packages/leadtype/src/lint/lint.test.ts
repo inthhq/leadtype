@@ -498,3 +498,96 @@ Body
     );
   });
 });
+
+describe("lintDocs unflattened-component", () => {
+  it("warns on rendered components with no flattener but not on code-block examples", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guide.mdx"),
+      `---
+title: Guide
+---
+
+This renders for real and has no flattener:
+
+<DangerWidget />
+
+But these are only examples in a fence and must NOT warn:
+
+\`\`\`tsx
+<ConsentBanner />
+<DangerWidget />
+\`\`\`
+
+Inline \`<AlsoFine />\` must not warn either.
+`
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const unflattened = result.violations.filter(
+      (violation) => violation.rule === "unflattened-component"
+    );
+
+    expect(unflattened).toHaveLength(1);
+    expect(unflattened[0]?.message).toContain("<DangerWidget>");
+    expect(unflattened[0]?.message).toContain("line 7");
+    expect(unflattened.some((v) => v.message.includes("ConsentBanner"))).toBe(
+      false
+    );
+    expect(unflattened.some((v) => v.message.includes("AlsoFine"))).toBe(false);
+  });
+
+  it("does not warn on built-in contract components", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "builtin.mdx"),
+      `---
+title: Builtin
+---
+
+<Callout title="Heads up">Be careful.</Callout>
+
+<Tabs items={["npm", "pnpm"]}>
+  <Tab value="npm">npm i x</Tab>
+  <Tab value="pnpm">pnpm add x</Tab>
+</Tabs>
+`
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    expect(
+      result.violations.some((v) => v.rule === "unflattened-component")
+    ).toBe(false);
+  });
+
+  it("treats knownComponents as recognized", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "custom.mdx"),
+      `---
+title: Custom
+---
+
+<Hint>Use a flattener.</Hint>
+`
+    );
+
+    const withoutKnown = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+    expect(
+      withoutKnown.violations.some((v) => v.rule === "unflattened-component")
+    ).toBe(true);
+
+    const withKnown = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      knownComponents: ["Hint"],
+    });
+    expect(
+      withKnown.violations.some((v) => v.rule === "unflattened-component")
+    ).toBe(false);
+  });
+});
