@@ -1,8 +1,16 @@
 <!-- biome-ignore-all lint/correctness/noUnusedVariables lint/correctness/useHookAtTopLevel: Nuxt auto-imports and Vue template references are resolved by Nuxt. -->
 <script setup lang="ts">
+import {
+  createDocsJsonLd,
+  normalizeAgentReadabilityManifest,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
 import { useLeadtypeSearch } from "leadtype/search/vue";
 import { computed } from "vue";
-import { createError, useAsyncData, useRoute } from "#app";
+import { createError, useAsyncData, useHead, useRoute } from "#imports";
+import manifestJson from "../../../public/docs/agent-readability.json";
+
+const manifest = normalizeAgentReadabilityManifest(manifestJson);
 
 const route = useRoute();
 interface PageData {
@@ -28,6 +36,26 @@ if (error.value || !pageData.value) {
 
 const page = computed(() => pageData.value as PageData);
 const docsSearch = useLeadtypeSearch("docs");
+
+const meta = manifest.pages.find(
+  (entry) => entry.urlPath === page.value.urlPath
+);
+const jsonLd = createDocsJsonLd({ urlPath: page.value.urlPath, manifest });
+useHead({
+  link: meta
+    ? [
+        { rel: "canonical", href: meta.absoluteUrl },
+        {
+          rel: "alternate",
+          type: "text/markdown",
+          href: meta.markdownAbsoluteUrl,
+        },
+      ]
+    : [],
+  script: jsonLd
+    ? [{ type: "application/ld+json", innerHTML: stringifyJsonLd(jsonLd) }]
+    : [],
+});
 </script>
 
 <template>
