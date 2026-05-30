@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 import { gateway, generateText, stepCountIs } from "ai";
 import { aggregateRun } from "./lib/aggregate";
 import { DEFAULT_JUDGE_MODEL, judgeAnswer } from "./lib/judge";
-import { loadLlmsExpected, selectionMatchesVariant } from "./lib/llms-metrics";
+import {
+  loadLlmsExpected,
+  selectionMatchesVariant,
+  summarizeLlmsReads,
+} from "./lib/llms-metrics";
 import { createLlmsSandbox } from "./lib/llms-sandbox";
 import {
   LLMS_VARIANTS,
@@ -29,6 +33,14 @@ The docs site's web root is represented by files in the current project root. Tr
 
 Start at /llms.txt. Use only the docs files you read from this web-root representation. Write your final answer to ANSWER.md.`;
 
+// Discovery arm: a realistic web root, but NO hint about where to start. The
+// agent has the docs pages, /llms.txt, /llms-full.txt, robots.txt and a
+// sitemap available — it must decide what to consult. Measures whether the
+// llms.txt convention gets used unprompted.
+const DISCOVERY_SYSTEM_PROMPT = `You are an expert coding agent helping with a project that uses the \`leadtype\` library.
+
+The current project root is a local mirror of the library's hosted docs site: a URL like /docs/reference/cli.md is the file docs/reference/cli.md, and /sitemap.xml is sitemap.xml. Answer the task using what you can find here. Write your final answer to ANSWER.md.`;
+
 const STEP_LIMIT = 40;
 const DEFAULT_MODEL = "claude-haiku-4-5";
 const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
@@ -43,6 +55,8 @@ const MODEL_TIMEOUT_MS =
 type CliArgs = {
   fixture?: string;
   variant?: LlmsVariant;
+  /** Run the unhinted discovery arm instead of the routing variants. */
+  discovery: boolean;
   models: string[];
   judge: string;
   runs: number;
@@ -77,6 +91,7 @@ function parseArgs(argv: string[]): CliArgs {
     judge: DEFAULT_JUDGE_MODEL,
     runs: 1,
     concurrency: 1,
+    discovery: false,
   };
   let i = 0;
   while (i < argv.length) {
@@ -84,6 +99,8 @@ function parseArgs(argv: string[]): CliArgs {
     i++;
     if (a === "--fixture") {
       args.fixture = parseRequiredFlagValue(argv[i++], "--fixture");
+    } else if (a === "--discovery") {
+      args.discovery = true;
     } else if (a === "--variant") {
       args.variant = parseLlmsVariant(
         parseRequiredFlagValue(argv[i++], "--variant")
@@ -114,6 +131,7 @@ function printUsage(): void {
 Options:
   --fixture <name>   Run only one fixture (default: all)
   --variant <name>   Run one variant: ${LLMS_VARIANTS.join("|")} (default: all)
+  --discovery        Unhinted discovery arm: realistic web root, no "start at llms.txt" hint
   --models <a,b,c>   Comma-separated candidate model ids (default: ${DEFAULT_MODEL})
   --model <id>       Alias for a single --models entry
   --judge <id>       Judge model id (default: ${DEFAULT_JUDGE_MODEL})
@@ -135,9 +153,77 @@ function discoverFixtures(): string[] {
     .sort();
 }
 
+/**
+ * Compute the context signal for a run. For routing variants this is the
+ * intended-path match; for the discovery arm it's simply whether the agent
+ * consulted /llms.txt unprompted.
+ */
+function evaluateContext(
+  transcript: Transcript,
+  fixtureDir: string,
+  discovery: boolean
+): {
+  selection: { passed: boolean; wrongGroupReads: string[] };
+  discoveredLlmsTxt: boolean;
+} {
+  const discoveredLlmsTxt = summarizeLlmsReads(transcript).readLlmsTxt;
+  if (discovery) {
+    return {
+      selection: { passed: discoveredLlmsTxt, wrongGroupReads: [] },
+      discoveredLlmsTxt,
+    };
+  }
+  const expected = loadLlmsExpected(fixtureDir);
+  return {
+    selection: selectionMatchesVariant(transcript, expected),
+    discoveredLlmsTxt,
+  };
+}
+
+type AgentOutcome = {
+  finalText: string;
+  steps: number;
+  inputTokens: number;
+  outputTokens: number;
+  errors: string[];
+};
+
+/** Run the model loop once, capturing usage and failing soft (errors → array). */
+async function invokeAgent(opts: {
+  modelId: string;
+  discovery: boolean;
+  promptText: string;
+  tools: Record<string, unknown>;
+}): Promise<AgentOutcome> {
+  const errors: string[] = [];
+  try {
+    const result = await withRetry(() =>
+      generateText({
+        model: gateway(namespaceModelId(opts.modelId)),
+        system: opts.discovery ? DISCOVERY_SYSTEM_PROMPT : SYSTEM_PROMPT,
+        prompt: opts.promptText,
+        tools: opts.tools as Parameters<typeof generateText>[0]["tools"],
+        stopWhen: stepCountIs(STEP_LIMIT),
+        timeout: MODEL_TIMEOUT_MS,
+      })
+    );
+    return {
+      finalText: result.text ?? "",
+      steps: result.steps?.length ?? 0,
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
+      errors,
+    };
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : String(err));
+    return { finalText: "", steps: 0, inputTokens: 0, outputTokens: 0, errors };
+  }
+}
+
 async function runOne(options: {
   fixture: string;
-  variant: LlmsVariant;
+  variant?: LlmsVariant;
+  discovery: boolean;
   modelId: string;
   judge: string;
   runIndex: number;
@@ -149,6 +235,7 @@ async function runOne(options: {
   const {
     fixture,
     variant,
+    discovery,
     modelId,
     judge,
     runIndex,
@@ -158,12 +245,13 @@ async function runOne(options: {
     rubricText,
   } = options;
   const fixtureDir = path.join(fixturesRoot, fixture);
+  const arm = discovery ? "discovery" : (variant ?? "?");
 
   process.stdout.write(
-    `▶ ${fixture} / ${variant} / ${modelId} [${runIndex}/${totalRuns}]\n`
+    `▶ ${fixture} / ${arm} / ${modelId} [${runIndex}/${totalRuns}]\n`
   );
 
-  const sandbox = await createLlmsSandbox({ fixtureDir, variant });
+  const sandbox = await createLlmsSandbox({ fixtureDir, variant, discovery });
   const start = Date.now();
   const transcriptCalls: ToolCall[] = [];
   const filesModified = new Set<string>();
@@ -175,36 +263,17 @@ async function runOne(options: {
   });
 
   const provider = providerFor(modelId);
-  const errors: string[] = [];
-  let finalText = "";
-  let steps = 0;
-  let inputTokens = 0;
-  let outputTokens = 0;
-  try {
-    const result = await withRetry(() =>
-      generateText({
-        model: gateway(namespaceModelId(modelId)),
-        system: SYSTEM_PROMPT,
-        prompt: promptText,
-        tools,
-        stopWhen: stepCountIs(STEP_LIMIT),
-        timeout: MODEL_TIMEOUT_MS,
-      })
-    );
-    finalText = result.text ?? "";
-    steps = result.steps?.length ?? 0;
-    inputTokens = result.usage?.inputTokens ?? 0;
-    outputTokens = result.usage?.outputTokens ?? 0;
-  } catch (err) {
-    errors.push(err instanceof Error ? err.message : String(err));
-  }
+  const outcome = await invokeAgent({ modelId, discovery, promptText, tools });
+  const { finalText, steps, inputTokens, outputTokens, errors } = outcome;
 
   const durationMs = Date.now() - start;
   const transcript: Transcript = {
     fixture,
     benchmark: "llms",
     mode: "treatment",
-    variant,
+    // Discovery transcripts have no routing variant; the variant metrics don't
+    // apply to them.
+    variant: discovery ? undefined : variant,
     agent: { provider, model: modelId },
     toolCalls: transcriptCalls,
     filesModified: [...filesModified].sort(),
@@ -215,8 +284,11 @@ async function runOne(options: {
     tokens: { input: inputTokens, output: outputTokens },
   };
 
-  const expected = loadLlmsExpected(fixtureDir);
-  const selection = selectionMatchesVariant(transcript, expected);
+  const { selection, discoveredLlmsTxt } = evaluateContext(
+    transcript,
+    fixtureDir,
+    discovery
+  );
 
   let answerContent = "";
   try {
@@ -239,7 +311,7 @@ async function runOne(options: {
     fixture,
     model: modelId,
     runIndex,
-    variant,
+    variant: arm,
     passed: verdict.correct,
     score: verdict.score,
     judgeModel: verdict.judgeModel,
@@ -247,6 +319,7 @@ async function runOne(options: {
     judgeError: verdict.error,
     contextMatched: selection.passed,
     wrongGroupReads: selection.wrongGroupReads.length,
+    discoveredLlmsTxt: discovery ? discoveredLlmsTxt : undefined,
     toolCalls: transcriptCalls.length,
     inputTokens,
     outputTokens,
@@ -258,7 +331,7 @@ async function runOne(options: {
   await archiveRun({
     runDir,
     fixture,
-    variant,
+    arm,
     modelId,
     runIndex,
     tempDir: sandbox.tempDir,
@@ -269,8 +342,11 @@ async function runOne(options: {
   });
   await sandbox.cleanup();
 
+  const contextLabel = discovery
+    ? `llms.txt ${selection.passed ? "consulted" : "skipped"}`
+    : `context ${selection.passed ? "ok" : "miss"}`;
   process.stdout.write(
-    `  ${verdict.correct ? "✓" : "✗"} score ${verdict.score} · context ${selection.passed ? "ok" : "miss"} · ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls${verdict.error ? " · JUDGE ERROR" : ""}\n`
+    `  ${verdict.correct ? "✓" : "✗"} score ${verdict.score} · ${contextLabel} · ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls${verdict.error ? " · JUDGE ERROR" : ""}\n`
   );
   for (const e of errors) {
     process.stdout.write(`    ! ${e}\n`);
@@ -281,7 +357,7 @@ async function runOne(options: {
 async function archiveRun(opts: {
   runDir: string;
   fixture: string;
-  variant: LlmsVariant;
+  arm: string;
   modelId: string;
   runIndex: number;
   tempDir: string;
@@ -294,7 +370,7 @@ async function archiveRun(opts: {
     opts.runDir,
     "runs",
     opts.fixture,
-    opts.variant,
+    opts.arm,
     sanitizeSegment(opts.modelId),
     `run-${opts.runIndex}`
   );
@@ -337,15 +413,21 @@ async function main(): Promise<void> {
   const variants = args.variant
     ? [args.variant]
     : LLMS_VARIANTS.map(parseLlmsVariant);
+  // The discovery arm is a single arm, not a grid over variants.
+  const arms: Array<LlmsVariant | undefined> = args.discovery
+    ? [undefined]
+    : variants;
 
   const runId = args.label ?? new Date().toISOString().replace(/[.:]/g, "-");
   const runDir = path.join(evalsRoot, "results", "llms", runId);
   await mkdir(runDir, { recursive: true });
 
-  const total =
-    fixtures.length * variants.length * args.models.length * args.runs;
+  const total = fixtures.length * arms.length * args.models.length * args.runs;
+  const armsLabel = args.discovery
+    ? "discovery arm"
+    : `${arms.length} variants`;
   process.stdout.write(
-    `Hosted-docs benchmark: ${fixtures.length} fixtures × ${variants.length} variants × ${args.models.length} models × ${args.runs} runs = ${total} agent runs\nJudge: ${args.judge} · concurrency: ${args.concurrency}\nResults: ${runDir}\n\n`
+    `Hosted-docs benchmark: ${fixtures.length} fixtures × ${armsLabel} × ${args.models.length} models × ${args.runs} runs = ${total} agent runs\nJudge: ${args.judge} · concurrency: ${args.concurrency}\nResults: ${runDir}\n\n`
   );
 
   const fixtureText = new Map<string, { prompt: string; rubric: string }>();
@@ -359,13 +441,13 @@ async function main(): Promise<void> {
 
   type Task = {
     fixture: string;
-    variant: LlmsVariant;
+    variant?: LlmsVariant;
     modelId: string;
     runIndex: number;
   };
   const tasks: Task[] = [];
   for (const fixture of fixtures) {
-    for (const variant of variants) {
+    for (const variant of arms) {
       for (const modelId of args.models) {
         for (let i = 1; i <= args.runs; i++) {
           tasks.push({ fixture, variant, modelId, runIndex: i });
@@ -383,6 +465,7 @@ async function main(): Promise<void> {
     await runOne({
       fixture: task.fixture,
       variant: task.variant,
+      discovery: args.discovery,
       modelId: task.modelId,
       judge: args.judge,
       runIndex: task.runIndex,

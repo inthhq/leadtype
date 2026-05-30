@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,12 +127,38 @@ export async function createSandbox(options: {
     await Promise.all(maps.map((mapFile) => rm(mapFile, { force: true })));
   }
 
+  if (mode === "pointer") {
+    // leadtype's *recommended* consumer setup: a root AGENTS.md that points
+    // coding agents at the bundled, version-matched docs. The `treatment` arm
+    // tests organic discovery (no pointer); this arm tests the documented happy
+    // path. The pointer names only the entry file — not any behavior — so it
+    // doesn't leak an answer, it just removes the "did the agent think to look
+    // in node_modules" step. (Verbatim from packages/leadtype/README.md.)
+    await writeRootPointer(tempDir);
+  }
+
   return {
     tempDir,
     cleanup: async () => {
       await rm(tempDir, { recursive: true, force: true });
     },
   };
+}
+
+// The pointer snippet leadtype's README tells consumers to add to their root
+// AGENTS.md. Kept in sync with packages/leadtype/README.md.
+const ROOT_POINTER = `When working with the \`leadtype\` library, read
+\`node_modules/leadtype/AGENTS.md\` first — it points at version-matched
+markdown topic files.
+`;
+
+async function writeRootPointer(tempDir: string): Promise<void> {
+  const target = path.join(tempDir, "AGENTS.md");
+  // Don't clobber a fixture that already ships its own root AGENTS.md.
+  if (existsSync(target)) {
+    return;
+  }
+  await writeFile(target, ROOT_POINTER, "utf-8");
 }
 
 function npmInstall(tempDir: string, tarball: string): Promise<void> {

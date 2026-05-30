@@ -1,7 +1,11 @@
 import { cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { type LlmsVariant, materializeLlmsVariant } from "./llms-variants";
+import {
+  type LlmsVariant,
+  materializeDiscoveryRoot,
+  materializeLlmsVariant,
+} from "./llms-variants";
 
 const ROOT_FIXTURE_FILES = new Set([
   "PROMPT.md",
@@ -17,9 +21,12 @@ export type LlmsSandboxHandle = {
 
 export async function createLlmsSandbox(options: {
   fixtureDir: string;
-  variant: LlmsVariant;
+  /** Routing variant to materialize. Ignored when `discovery` is set. */
+  variant?: LlmsVariant;
+  /** Materialize a realistic web root with no "start at llms.txt" hint. */
+  discovery?: boolean;
 }): Promise<LlmsSandboxHandle> {
-  const { fixtureDir, variant } = options;
+  const { fixtureDir, variant, discovery } = options;
   const tempDir = await mkdtemp(path.join(tmpdir(), "leadtype-llms-eval-"));
 
   try {
@@ -41,7 +48,15 @@ export async function createLlmsSandbox(options: {
     );
   }
 
-  await materializeLlmsVariant({ tempDir, variant });
+  if (discovery) {
+    await materializeDiscoveryRoot({ tempDir });
+  } else if (variant) {
+    await materializeLlmsVariant({ tempDir, variant });
+  } else {
+    throw new Error(
+      "createLlmsSandbox needs a variant unless discovery is set"
+    );
+  }
 
   return {
     tempDir,

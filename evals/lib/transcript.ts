@@ -14,7 +14,17 @@ export type ToolCall = {
   durationMs: number;
 };
 
-export type Mode = "treatment" | "control";
+/**
+ * Package-benchmark arms:
+ * - `treatment` — the bundle ships in node_modules; the agent must *discover*
+ *   it by exploring (no pointer). The conservative "does it help if found" test.
+ * - `control` — the bundle is stripped; the agent falls back to compiled code,
+ *   types, README, and prior knowledge.
+ * - `pointer` — treatment PLUS leadtype's *recommended* setup: a root AGENTS.md
+ *   that tells the agent to read node_modules/leadtype/AGENTS.md first. Measures
+ *   the documented happy path rather than organic discovery.
+ */
+export type Mode = "treatment" | "control" | "pointer";
 export type Provider = "anthropic" | "openai" | "google";
 export type Benchmark = "package" | "llms";
 

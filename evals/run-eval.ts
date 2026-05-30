@@ -33,13 +33,16 @@ const MODEL_TIMEOUT_MS = 180_000;
 
 type CliArgs = {
   fixture?: string;
-  mode?: Mode;
+  modes?: Mode[];
   models: string[];
   judge: string;
   runs: number;
   label?: string;
   concurrency: number;
 };
+
+const ALL_MODES: Mode[] = ["treatment", "control", "pointer"];
+const DEFAULT_MODES: Mode[] = ["treatment", "control"];
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
   if (value === undefined) {
@@ -61,11 +64,18 @@ function parseRequiredFlagValue(
   return value;
 }
 
-function parseMode(value: string | undefined): Mode {
-  if (value !== "treatment" && value !== "control") {
-    throw new Error(`--mode must be treatment|control, got ${value}`);
+function parseModes(value: string | undefined): Mode[] {
+  const raw = parseRequiredFlagValue(value, "--mode");
+  const modes = raw
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+  for (const m of modes) {
+    if (!ALL_MODES.includes(m as Mode)) {
+      throw new Error(`--mode must be ${ALL_MODES.join("|")}, got ${m}`);
+    }
   }
-  return value;
+  return [...new Set(modes)] as Mode[];
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: a flat CLI flag switch is clearer left inline than split apart
@@ -83,7 +93,7 @@ function parseArgs(argv: string[]): CliArgs {
     if (a === "--fixture") {
       args.fixture = parseRequiredFlagValue(argv[i++], "--fixture");
     } else if (a === "--mode") {
-      args.mode = parseMode(argv[i++]);
+      args.modes = parseModes(argv[i++]);
     } else if (a === "--model" || a === "--models") {
       args.models = parseModelList(parseRequiredFlagValue(argv[i++], a));
     } else if (a === "--judge") {
@@ -109,7 +119,7 @@ function printUsage(): void {
 
 Options:
   --fixture <name>   Run only one fixture (default: all)
-  --mode <m>         Run only one mode: treatment|control (default: both)
+  --mode <a,b>       Arms to run: treatment|control|pointer (default: treatment,control)
   --models <a,b,c>   Comma-separated candidate model ids (default: ${DEFAULT_MODEL})
   --model <id>       Alias for a single --models entry
   --judge <id>       Judge model id (default: ${DEFAULT_JUDGE_MODEL})
@@ -354,7 +364,7 @@ async function main(): Promise<void> {
     process.stderr.write(`Fixture not found: ${args.fixture}\n`);
     process.exit(1);
   }
-  const modes: Mode[] = args.mode ? [args.mode] : ["treatment", "control"];
+  const modes: Mode[] = args.modes ?? DEFAULT_MODES;
 
   const runId = args.label ?? new Date().toISOString().replace(/[.:]/g, "-");
   const runDir = path.join(evalsRoot, "results", "package", runId);

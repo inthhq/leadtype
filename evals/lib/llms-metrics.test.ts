@@ -7,7 +7,10 @@ import {
   selectionMatchesVariant,
   summarizeLlmsReads,
 } from "./llms-metrics";
-import { materializeLlmsVariant } from "./llms-variants";
+import {
+  materializeDiscoveryRoot,
+  materializeLlmsVariant,
+} from "./llms-variants";
 import type { ToolCall, Transcript } from "./transcript";
 
 let tempDir: string;
@@ -64,6 +67,28 @@ describe("llms variant materialization", () => {
     );
     expect(monolith).toContain("All generated markdown docs pages");
     expect(monolith).toContain("isAgentReadabilityArtifactPath");
+  });
+
+  it("materializes a realistic discovery root (docs, llms.txt, sitemap, robots)", async () => {
+    await materializeDiscoveryRoot({ tempDir });
+
+    const llms = await readFile(path.join(tempDir, "llms.txt"), "utf-8");
+    expect(llms).toContain("/docs/reference/cli.md");
+
+    const robots = await readFile(path.join(tempDir, "robots.txt"), "utf-8");
+    expect(robots).toContain("Sitemap: /sitemap.xml");
+
+    const sitemap = await readFile(path.join(tempDir, "sitemap.xml"), "utf-8");
+    expect(sitemap).toContain("<loc>/llms.txt</loc>");
+    expect(sitemap).toContain("<loc>/docs/reference/cli.md</loc>");
+
+    // The actual page content exists too, so consulting llms.txt is a real
+    // choice rather than the only readable file.
+    const page = await readFile(
+      path.join(tempDir, "docs", "reference", "cli.md"),
+      "utf-8"
+    );
+    expect(page.length).toBeGreaterThan(0);
   });
 
   it("writes section indexes with page links and optional full context", async () => {

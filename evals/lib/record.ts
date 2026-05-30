@@ -30,6 +30,13 @@ export type RunRecord = {
   usedBundle?: boolean;
   contextMatched?: boolean;
   wrongGroupReads?: number;
+  /**
+   * llms discovery arm only: did the agent consult `/llms.txt` *without being
+   * told to*? (In the routing variants the system prompt says "start at
+   * /llms.txt"; the discovery arm drops that hint and measures whether the
+   * agent finds the convention on its own.)
+   */
+  discoveredLlmsTxt?: boolean;
 
   toolCalls: number;
   inputTokens: number;

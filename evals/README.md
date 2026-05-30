@@ -28,6 +28,15 @@ No shell, no Docker, no escape vector — every tool call resolves paths relativ
 
 `lib/judge.ts` calls a strong model (default `gemini-3-pro`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
 
+### Arms: discovery vs. the recommended setup
+
+The default package run tests **organic discovery** — the bundle is installed but nothing tells the agent it exists, so `treatment` only pays off if the agent explores `node_modules` and finds `AGENTS.md`/`docs/` on its own. Two optional arms separate *discovery* from *value*:
+
+- **`pointer`** (package, `--mode pointer`) — `treatment` plus leadtype's *recommended* root `AGENTS.md` pointer. Measures the documented happy path; compare against plain `treatment` to see how much the pointer adds. The report adds a "Recommended setup" section when this arm runs.
+- **`--discovery`** (llms) — drops the "start at /llms.txt" hint and serves a realistic web root (docs pages + `llms.txt` + `llms-full.txt` + `robots.txt` + `sitemap.xml`). The "context match" column then reads as *did the agent consult `/llms.txt` unprompted* — i.e. whether the convention gets used in the wild, not just whether a known entry point routes well.
+
+Convenience matrices: `bun run evals:full:arms` (treatment+control+pointer) and `bun run evals:llms:discovery`.
+
 ## Setup
 
 ```bash
@@ -122,8 +131,9 @@ The `router` variant is intentionally distinct from `monolith`: it evaluates a b
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--fixture <name>` | (all) | Run only one fixture. |
-| `--mode <m>` | both | `treatment` or `control`. Package benchmark only. |
+| `--mode <a,b>` | `treatment,control` | Comma list of arms: `treatment`, `control`, `pointer`. Package benchmark only. |
 | `--variant <name>` | all | One llms.txt shape. llms benchmark only. |
+| `--discovery` | off | Unhinted discovery arm — realistic web root, no "start at llms.txt" hint. llms benchmark only. |
 | `--models <a,b,c>` | `claude-haiku-4-5` | Comma-separated candidate model ids. `gpt-*` → OpenAI, `gemini*` → Google, else Anthropic. |
 | `--model <id>` | — | Alias for a single `--models` entry. |
 | `--judge <id>` | `gemini-3-pro` | Model that grades answers against each `RUBRIC.md`. |
