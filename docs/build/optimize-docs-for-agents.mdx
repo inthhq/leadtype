@@ -9,7 +9,7 @@ Use this guide when you already have a docs site and want agents to find, fetch,
 
 Leadtype generates the files. Your app wires those files into routing and HTML — that runtime side is covered in [Serve agent responses](/docs/build/serve-agent-responses).
 
-The default output shape is based on the repo's agent evals. See [Evals](/docs/reference/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
+The default output shape is based on the repo's agent evals. See [Evals](/docs/concepts/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
 
 ## What good looks like
 
@@ -59,7 +59,37 @@ public/
     └── agent-readability.json
 ```
 
-The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, group navigation, and freshness dates.
+The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, navigation, and freshness dates. Your framework loads it once and passes it to the runtime helpers (markdown responses, JSON-LD, sitemap, robots):
+
+```jsonc
+{
+  "version": 1,
+  "generatedAt": "2026-05-29T09:36:07.521Z",
+  "baseUrl": "https://leadtype.dev",
+  "product": { "name": "My product", "summary": "One sentence." },
+  "navigation": { "groups": [ /* … nav tree … */ ] },
+  "files": {
+    "robotsTxt": "docs/robots.txt",
+    "sitemapMd": "docs/sitemap.md",
+    "sitemapXml": "docs/sitemap.xml"
+  },
+  "pages": [
+    {
+      "title": "Quickstart",
+      "description": "Build an agent-ready docs site from one MDX page.",
+      "urlPath": "/docs/quickstart",
+      "absoluteUrl": "https://leadtype.dev/docs/quickstart",
+      "markdownUrlPath": "/docs/quickstart.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
+      "relativePath": "quickstart",
+      "groups": ["start"],
+      "lastModified": "2026-05-29T09:36:07.000Z"
+    }
+  ]
+}
+```
+
+Pass it through `normalizeAgentReadabilityManifest()` before handing it to a runtime helper — that validates the shape and fills defaults.
 
 Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
 

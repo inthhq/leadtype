@@ -1,0 +1,139 @@
+---
+title: "Localize docs"
+description: "Author multi-locale MDX, generate per-locale llms.txt and markdown mirrors, and serve locale-prefixed docs with alternate-locale links."
+related:
+  - title: "i18n reference"
+    href: "/docs/reference/i18n"
+    description: "Config fields, URL helpers, and the i18n-manifest.json shape."
+---
+
+# Localize docs
+
+Leadtype localizes the whole pipeline from one config block: locale-prefixed
+URLs, a per-locale `llms.txt`, `llms-full.txt`, markdown mirror set, search
+index, sitemap, and robots file, plus an `i18n-manifest.json` and
+alternate-locale links. The default locale stays at the docs root; each
+translation lives under a `/{locale}` prefix.
+
+## 1. Enable i18n
+
+```ts title="docs.config.ts"
+export default defineDocsConfig({
+  product: { name: "My library", summary: "..." },
+  nav: [{ title: "Start", pages: [""] }],
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "zh", { code: "fr", label: "Français" }],
+    // fallback: "default" (the default) serves the default-locale page
+    // wherever a translation is missing.
+  },
+});
+```
+
+## 2. Author content
+
+Put default-locale pages at the docs root and each translation under a folder
+named for its locale code:
+
+<FileTree root="docs">
+  <File name="index.mdx" />
+  <File name="quickstart.mdx" />
+  <Folder name="zh">
+    <File name="index.mdx" />
+    <File name="quickstart.mdx" />
+  </Folder>
+  <Folder name="fr">
+    <File name="quickstart.mdx" />
+  </Folder>
+</FileTree>
+
+- The default locale (`en` here) is the **unprefixed** content. Put it at the
+  root **or** under `docs/en/` — not both. Mixing the two raises an *"Ambiguous
+  i18n default-locale output"* error.
+- A translation only needs the pages it has translated. With
+  `fallback: "default"`, missing pages (e.g. `fr/index.mdx` above) resolve to
+  the default-locale page, and the alternate-locale link is marked
+  `isFallback: true`.
+
+## 3. Generate per-locale artifacts
+
+One `leadtype generate` run produces every locale:
+
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com
+```
+
+```txt
+public/
+├── llms.txt                      # default locale (en)
+├── llms-full.txt
+└── docs/
+    ├── quickstart.md             # en mirrors at the root
+    ├── i18n-manifest.json        # locales + per-locale artifact paths
+    ├── zh/
+    │   ├── llms.txt              # zh index
+    │   ├── quickstart.md
+    │   └── …
+    └── fr/
+        └── …
+```
+
+The [`i18n-manifest.json`](/docs/reference/i18n#i18n-manifestjson) maps each
+locale to its generated files, so the runtime can serve the right artifacts per
+locale.
+
+## 4. Render locale-prefixed routes
+
+Build one source per locale by passing `i18n` and the active `locale` to
+[`createDocsSource`](/docs/reference/source). The locale selects which pages
+load (with default-locale fallback); the rest of the wiring is the same docs
+route you already have, parameterized by locale.
+
+```ts title="lib/source.ts"
+import { createDocsSource } from "leadtype";
+import docsConfig from "../docs/docs.config";
+
+export function getSource(locale: string) {
+  return createDocsSource({
+    contentDir: "./docs",
+    nav: docsConfig.nav,
+    baseUrl: "https://example.com",
+    i18n: docsConfig.i18n,
+    locale,
+  });
+}
+```
+
+Resolve the active locale from the request path with `resolveDocsLocale`, and
+route translated locales under `/docs/{locale}/…` (the default locale stays at
+`/docs/…`). See [Use the source primitive](/docs/build/use-the-source-primitive)
+for the per-framework route shape.
+
+## 5. Add alternate-locale links
+
+Emit `<link rel="alternate" hreflang>` so search engines and agents discover
+translations. `getAlternateLocaleLinks` returns one entry per locale that has a
+matching page:
+
+```ts
+import { getAlternateLocaleLinks } from "leadtype/i18n";
+
+const alternates = getAlternateLocaleLinks(page, pagesByLocale, docsConfig.i18n);
+// → [{ locale: "en", urlPath: "/docs/quickstart", isFallback: false }, … ]
+```
+
+Render each as `<link rel="alternate" hreflang={locale} href={urlPath} />` in the
+page head, next to the canonical and markdown-alternate links from
+[Serve agent responses](/docs/build/serve-agent-responses).
+
+## 6. Verify
+
+```bash
+curl https://example.com/llms.txt          # default locale
+curl https://example.com/docs/zh/llms.txt  # translated locale
+curl https://example.com/docs/zh/quickstart.md
+curl https://example.com/docs/i18n-manifest.json
+```
+
+Each locale's `llms.txt` should link `.md` URLs under that locale's prefix, and
+the manifest should list every locale with its artifact paths.

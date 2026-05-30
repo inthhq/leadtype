@@ -43,7 +43,13 @@ bun add leadtype
 
 ## 30-second example
 
-For a hosted docs site:
+The fastest start in an existing app — scaffolds the docs source, route, config, and a first artifact set, auto-detecting your framework:
+
+```bash
+npx leadtype init --framework next   # or astro · nuxt · sveltekit
+```
+
+Or wire the pipeline by hand. For a hosted docs site:
 
 ```bash
 npx leadtype generate --src . --out public --base-url https://leadtype.dev
@@ -65,11 +71,11 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 - [How it works](https://leadtype.dev/docs/how-it-works)
 - [Build a docs site](https://leadtype.dev/docs/build/build-a-docs-site)
 - [Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)
-- [Add search](https://leadtype.dev/docs/build/add-search)
+- [Add search](https://leadtype.dev/docs/search/add-search)
 - [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
 - [CLI reference](https://leadtype.dev/docs/reference/cli)
-- [Architecture](https://leadtype.dev/docs/reference/architecture) — core package boundary and framework adapter rules
-- [Methodology](https://leadtype.dev/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
+- [Architecture](https://leadtype.dev/docs/concepts/architecture) — core package boundary and framework adapter rules
+- [Methodology](https://leadtype.dev/docs/concepts/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
 
 ## Repo layout
 

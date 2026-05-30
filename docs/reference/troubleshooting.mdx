@@ -1,0 +1,110 @@
+---
+title: "Troubleshooting"
+description: "Common Leadtype errors — missing manifests, unknown groups, broken includes, content negotiation, and the base-url audit mismatch — with fixes."
+related:
+  - title: "CLI"
+    href: "/docs/reference/cli"
+    description: "Flags and exit codes for init, generate, sync, and lint."
+  - title: "Optimize docs for agents"
+    href: "/docs/build/optimize-docs-for-agents"
+    description: "Generate and verify the agent-readability artifacts."
+---
+
+# Troubleshooting
+
+Common failures and how to fix them. Most surface as a `leadtype generate` or
+`leadtype lint` error, or as wrong output at request time.
+
+## `Cannot find module '.../agent-readability.json'`
+
+Your route imports the generated manifest, but `leadtype generate` hasn't run
+yet (or wrote to a different `--out`).
+
+- Run `leadtype generate` — or `bun run docs:generate` — before `build`/`dev`.
+  Keep it as a `prebuild`/`predev` script so the manifest always exists.
+- Confirm the import path matches your `--out` directory: `public/docs/` for
+  Next, Astro, and Nuxt; `static/docs/` for SvelteKit.
+- `leadtype init` wires this for you and runs `generate` once on scaffold.
+
+## `unknown group "<slug>"`
+
+A page declares `group: <slug>` (or a `nav` include resolves to one) that isn't
+declared in `docs.config.ts`. The build fails on purpose — same source of truth,
+no drift.
+
+- Add the group to `docs.config.ts`, or fix the typo in the page's frontmatter.
+- Migrating off groups? Move placement into config-owned
+  [`nav`](/docs/authoring/frontmatter#how-nav-becomes-site-navigation-and-the-agent-map)
+  and drop the `group:` field.
+
+## `invalid-link` / `cross-framework-link` from `leadtype lint`
+
+- `invalid-link` — a `/docs/...` link points to a route that doesn't exist.
+  Check for a typo, a missing page, or a stale path after a rename.
+- `cross-framework-link` — a framework-scoped page links into another
+  framework's docs. Link to the shared/neutral page instead, or use a
+  `{framework}` placeholder that resolves per build.
+
+Run `leadtype lint docs --format github` in CI to catch these before publish.
+
+## An `<include>` renders empty or errors
+
+Includes resolve relative to the including file at build time.
+
+- The target path is relative to the current file, not the docs root.
+- To pull a single block, give the target an id and append `#section-id` —
+  the referenced block must be wrapped in a lowercase HTML `<section id="…">`.
+- A missing target fails the build; check the path and that the file ships in
+  your source (not excluded by `--exclude` or a collection filter).
+
+See [Components](/docs/authoring/components) for the include contract.
+
+## Agent requests get HTML instead of markdown
+
+Content negotiation isn't wired, or the request didn't signal an agent.
+
+- Mount the markdown route/handler from your framework adapter (`leadtype/next`,
+  `leadtype/astro`, `leadtype/nuxt`, `leadtype/sveltekit`). See
+  [Serve agent responses](/docs/build/serve-agent-responses).
+- Markdown is returned for `Accept: text/markdown`, a known AI user-agent, or a
+  `.md` URL. A plain browser `Accept: text/html` correctly gets HTML.
+- Verify directly:
+
+```bash
+curl -H "Accept: text/markdown" http://localhost:3000/docs/quickstart
+curl http://localhost:3000/docs/quickstart.md
+```
+
+## Vercel audit reports broken `llms.txt` links
+
+This is almost always a base-url mismatch: generated links use the production
+`--base-url`, but the local audit hits `localhost`.
+
+- Run the audit against a preview URL whose origin matches `--base-url`, or
+- Regenerate with `--base-url http://localhost:<port>` for a local audit, or
+- Serve the root and docs-scoped `sitemap`/`robots` files from the current
+  request origin in dev.
+
+```bash
+npx @vercel/agent-readability audit https://your-preview-url/docs
+```
+
+## `<ExtractedTypeTable>` is empty or fails
+
+Type extraction resolves source files from `typeTableBasePath`.
+
+- Set `typeTableBasePath` on `createDocsSource()` / `createMdxSourcePlugins()`
+  to the directory that contains the referenced TypeScript.
+- Pass `typeTableStrict: true` to turn silent extraction misses into errors
+  while you debug.
+
+## `leadtype: command not found` in a fresh checkout
+
+The package bin is a workspace symlink created on install. In a fresh clone or
+worktree, build the package first, then reinstall so the `leadtype` bin links:
+
+```bash
+bun install && bun run build && bun install
+```
+
+Use `npx leadtype …` / `bun x leadtype …` to run the locally installed binary.

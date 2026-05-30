@@ -9,11 +9,52 @@ description: "Build an agent-ready docs site from one MDX page: render it, gener
   This quickstart covers **site mode** (docs website). For npm-bundled docs, follow [Bundle docs into a package](/docs/package-docs/bundle) instead.
 </Callout>
 
-This is the GA happy path: one MDX source, one docs route, and one generated artifact set for agents. Steps 1, 2, 4, and 5 are framework-neutral; step 3 (rendering) is shown in Next App Router as a concrete example. For TanStack Start, Nuxt, Astro, SvelteKit, or Fumadocs, follow the same `createDocsSource()` call and swap in the per-framework recipe at the end of step 3.
+This is the GA happy path: one MDX source, one docs route, and one generated artifact set for agents.
 
 ## Install
 
 <CommandTabs command="leadtype" mode="install" />
+
+## Fastest: scaffold with `leadtype init`
+
+In an existing app, `leadtype init` writes the integration for you — a starter
+`docs/` source, the docs route, the markdown route, config, and a generated set
+of agent artifacts — then runs `leadtype generate` so the site works on the
+first `dev`.
+
+```bash
+# Auto-detects your framework from package.json, or pass --framework
+npx leadtype init --framework next
+```
+
+```text
+leadtype init: scaffolded next docs integration
+  + docs/docs.config.ts
+  + docs/index.mdx
+  + next.config.mjs
+  + lib/source.ts
+  + lib/mdx-components.tsx
+  + app/docs/[[...slug]]/page.tsx
+  + package.json (added "docs:generate" script)
+
+leadtype init: generating agent artifacts…
+```
+
+Supported targets: `next`, `astro`, `nuxt`, `sveltekit`. Run with `--dry-run`
+to preview the file list, or `--base-url`, `--name`, and `--summary` to seed the
+config. For TanStack Start and Fumadocs (heavier app-specific setup), follow the
+recipes in [Use the source primitive](/docs/build/use-the-source-primitive) and
+[Integrate with Fumadocs](/docs/build/integrate-with-fumadocs).
+
+`init` scaffolds the **local-`docs/`** case. If your docs live in another repo,
+or you're adding Leadtype to an app with an existing structure, hand a coding
+agent one of the [agent setup prompts](/docs/build/agent-setup-prompts) instead
+— it adapts to your real layout.
+
+That's the whole quickstart if you let the CLI scaffold it. The steps below
+walk through the same wiring by hand — read them to understand what `init`
+generated or to customize it. Steps 1, 2, 4, and 5 are framework-neutral; only
+step 3 (rendering) varies by framework.
 
 ## 1. Author one page
 
@@ -202,7 +243,7 @@ Then add runtime handling for markdown responses, sitemap/robots regeneration, a
 | --- | --- |
 | Compare every hosted-site integration shape | [Build a docs site](/docs/build/build-a-docs-site) |
 | Serve markdown, sitemaps, robots, and JSON-LD for agents | [Serve agent responses](/docs/build/serve-agent-responses) |
-| Add local search or source-grounded answers | [Add search](/docs/build/add-search) |
+| Add local search or source-grounded answers | [Add search](/docs/search/add-search) |
 | Combine local folders, mounted folders, or remote git repos | [Configure docs sources](/docs/sources/configure-sources) |
 | Publish version-matched docs inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
 | Validate frontmatter, links, and nav in CI | [Validate in CI](/docs/build/validate-in-ci) |
