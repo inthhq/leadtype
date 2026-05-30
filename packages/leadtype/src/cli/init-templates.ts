@@ -329,7 +329,7 @@ export default defineEventHandler(createRequiredNitroDocsHandler({ manifest }));
 `,
       },
       {
-        path: "pages/docs/[[slug]].vue",
+        path: "app/pages/docs/[...slug].vue",
         contents: `<script setup lang="ts">
 const route = useRoute();
 const slug = computed(() => {
