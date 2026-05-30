@@ -930,6 +930,112 @@ describe("agent readability helpers", () => {
     );
   });
 
+  it("builds a nested breadcrumb trail and articleSection from nav groups", () => {
+    const nestedManifest = {
+      version: 1,
+      generatedAt: "2026-05-01T00:00:00.000Z",
+      baseUrl: "https://example.com",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      files: {
+        robotsTxt: "/docs/robots.txt",
+        sitemapMd: "/docs/sitemap.md",
+        sitemapXml: "/docs/sitemap.xml",
+      },
+      navigation: {
+        ungrouped: [],
+        unknown: [],
+        groups: [
+          {
+            slug: "docs",
+            segmentPath: ["docs"],
+            title: "Docs",
+            pages: [],
+            children: [
+              {
+                slug: "build",
+                segmentPath: ["docs", "build"],
+                title: "Build",
+                pages: [],
+                children: [
+                  {
+                    slug: "agents",
+                    segmentPath: ["docs", "build", "agents"],
+                    title: "Agents",
+                    pages: [
+                      {
+                        urlPath: "/docs/build/agents/optimize",
+                        relativePath: "build/agents/optimize",
+                        title: "Optimize",
+                        description: "",
+                        groups: ["agents"],
+                        toc: [],
+                      },
+                    ],
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      pages: [
+        {
+          title: "Optimize",
+          description: "Optimize docs for agents.",
+          urlPath: "/docs/build/agents/optimize",
+          absoluteUrl: "https://example.com/docs/build/agents/optimize",
+          markdownUrlPath: "/docs/build/agents/optimize.md",
+          markdownAbsoluteUrl:
+            "https://example.com/docs/build/agents/optimize.md",
+          relativePath: "build/agents/optimize",
+          groups: ["agents"],
+          lastModified: "2026-05-01T12:00:00.000Z",
+        },
+        {
+          title: "Build",
+          description: "Build section landing.",
+          urlPath: "/docs/build",
+          absoluteUrl: "https://example.com/docs/build",
+          markdownUrlPath: "/docs/build/index.md",
+          markdownAbsoluteUrl: "https://example.com/docs/build/index.md",
+          relativePath: "build/index",
+          groups: ["build"],
+          lastModified: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    } as const;
+
+    const page = nestedManifest.pages[0];
+    if (!page) {
+      throw new Error("missing test page");
+    }
+    const jsonLd = renderJsonLd(page, nestedManifest);
+
+    // The outermost "Docs" tab (segmentPath ["docs"]) is the breadcrumb home,
+    // not a duplicate crumb, and articleSection is the real section.
+    expect(jsonLd.articleSection).toBe("Build");
+
+    const breadcrumb = jsonLd.breadcrumb as {
+      itemListElement: Array<{ position: number; name: string; item?: string }>;
+    };
+    expect(breadcrumb.itemListElement.map((entry) => entry.name)).toEqual([
+      "Docs",
+      "Build",
+      "Agents",
+      "Optimize",
+    ]);
+    // Home crumb points to /docs; section crumbs are name-only; leaf is the page.
+    expect(breadcrumb.itemListElement[0]?.item).toBe(
+      "https://example.com/docs"
+    );
+    expect(breadcrumb.itemListElement[1]?.item).toBeUndefined();
+    expect(breadcrumb.itemListElement[2]?.item).toBeUndefined();
+    expect(breadcrumb.itemListElement[3]?.item).toBe(
+      "https://example.com/docs/build/agents/optimize"
+    );
+  });
+
   it("creates JSON-LD by urlPath and supports safe overrides", () => {
     const jsonLd = createDocsJsonLd({
       urlPath: "/docs/quickstart",
