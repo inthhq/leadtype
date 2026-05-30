@@ -28,15 +28,15 @@
   {
     "slug": [
       "build",
-      "add-search"
+      "agent-setup-prompts"
     ],
-    "urlPath": "/docs/build/add-search",
-    "title": "Add search",
-    "description": "Generate a static docs search index, query it at runtime, and optionally stream source-grounded answers.",
-    "relativePath": "build/add-search",
+    "urlPath": "/docs/build/agent-setup-prompts",
+    "title": "Agent setup prompts",
+    "description": "Copyable prompts that let a coding agent wire Leadtype into your app — local docs, external/multi-repo docs, or a package bundle — adapting to your real layout.",
+    "relativePath": "build/agent-setup-prompts",
     "extension": ".mdx",
     "groups": [],
-    "globKey": "../../../../../docs/build/add-search.mdx"
+    "globKey": "../../../../../docs/build/agent-setup-prompts.mdx"
   },
   {
     "slug": [
@@ -102,6 +102,19 @@
     "extension": ".mdx",
     "groups": [],
     "globKey": "../../../../../docs/build/integrate-with-fumadocs.mdx"
+  },
+  {
+    "slug": [
+      "build",
+      "localize-docs"
+    ],
+    "urlPath": "/docs/build/localize-docs",
+    "title": "Localize docs",
+    "description": "Author multi-locale MDX, generate per-locale llms.txt and markdown mirrors, and serve locale-prefixed docs with alternate-locale links.",
+    "relativePath": "build/localize-docs",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/build/localize-docs.mdx"
   },
   {
     "slug": [
@@ -183,6 +196,45 @@
   },
   {
     "slug": [
+      "concepts",
+      "architecture"
+    ],
+    "urlPath": "/docs/concepts/architecture",
+    "title": "Architecture",
+    "description": "The core / adapter boundary — what ships where, and the rules adapters must follow.",
+    "relativePath": "concepts/architecture",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/concepts/architecture.mdx"
+  },
+  {
+    "slug": [
+      "concepts",
+      "evals"
+    ],
+    "urlPath": "/docs/concepts/evals",
+    "title": "Evals",
+    "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
+    "relativePath": "concepts/evals",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/concepts/evals.mdx"
+  },
+  {
+    "slug": [
+      "concepts",
+      "methodology"
+    ],
+    "urlPath": "/docs/concepts/methodology",
+    "title": "Methodology",
+    "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+    "relativePath": "concepts/methodology",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/concepts/methodology.mdx"
+  },
+  {
+    "slug": [
       "how-it-works"
     ],
     "urlPath": "/docs/how-it-works",
@@ -202,18 +254,6 @@
     "extension": ".mdx",
     "groups": [],
     "globKey": "../../../../../docs/index.mdx"
-  },
-  {
-    "slug": [
-      "methodology"
-    ],
-    "urlPath": "/docs/methodology",
-    "title": "Methodology",
-    "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
-    "relativePath": "methodology",
-    "extension": ".mdx",
-    "groups": [],
-    "globKey": "../../../../../docs/methodology.mdx"
   },
   {
     "slug": [
@@ -243,24 +283,11 @@
   {
     "slug": [
       "reference",
-      "architecture"
-    ],
-    "urlPath": "/docs/reference/architecture",
-    "title": "Architecture",
-    "description": "The core / adapter boundary — what ships where, and the rules adapters must follow.",
-    "relativePath": "reference/architecture",
-    "extension": ".mdx",
-    "groups": [],
-    "globKey": "../../../../../docs/reference/architecture.mdx"
-  },
-  {
-    "slug": [
-      "reference",
       "cli"
     ],
     "urlPath": "/docs/reference/cli",
     "title": "CLI",
-    "description": "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output.",
+    "description": "leadtype init, generate, sync, and lint — flags, exit codes, and JSON output.",
     "relativePath": "reference/cli",
     "extension": ".mdx",
     "groups": [],
@@ -282,19 +309,6 @@
   {
     "slug": [
       "reference",
-      "evals"
-    ],
-    "urlPath": "/docs/reference/evals",
-    "title": "Evals",
-    "description": "How Leadtype benchmarks AGENTS.md, llms.txt, and llms-full.txt output before changing defaults.",
-    "relativePath": "reference/evals",
-    "extension": ".mdx",
-    "groups": [],
-    "globKey": "../../../../../docs/reference/evals.mdx"
-  },
-  {
-    "slug": [
-      "reference",
       "frontmatter-transformers"
     ],
     "urlPath": "/docs/reference/frontmatter-transformers",
@@ -304,6 +318,19 @@
     "extension": ".mdx",
     "groups": [],
     "globKey": "../../../../../docs/reference/frontmatter-transformers.mdx"
+  },
+  {
+    "slug": [
+      "reference",
+      "i18n"
+    ],
+    "urlPath": "/docs/reference/i18n",
+    "title": "i18n",
+    "description": "Localization config, locale-aware URL helpers, alternate-locale links, and the per-locale artifact manifest from leadtype/i18n.",
+    "relativePath": "reference/i18n",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/reference/i18n.mdx"
   },
   {
     "slug": [
@@ -364,7 +391,7 @@
     ],
     "urlPath": "/docs/reference/search",
     "title": "Search",
-    "description": "Static search index, runtime helpers, and source-grounded answer streaming.",
+    "description": "API surface for leadtype/search: index generation, runtime query, framework hooks, answer streaming, bash tools, and endpoint guards.",
     "relativePath": "reference/search",
     "extension": ".mdx",
     "groups": [],
@@ -382,6 +409,58 @@
     "extension": ".mdx",
     "groups": [],
     "globKey": "../../../../../docs/reference/source.mdx"
+  },
+  {
+    "slug": [
+      "reference",
+      "troubleshooting"
+    ],
+    "urlPath": "/docs/reference/troubleshooting",
+    "title": "Troubleshooting",
+    "description": "Common Leadtype errors — missing manifests, unknown groups, broken includes, content negotiation, and the base-url audit mismatch — with fixes.",
+    "relativePath": "reference/troubleshooting",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/reference/troubleshooting.mdx"
+  },
+  {
+    "slug": [
+      "search",
+      "add-search"
+    ],
+    "urlPath": "/docs/search/add-search",
+    "title": "Add search",
+    "description": "Generate a static docs search index, query it at runtime, and wire a search UI with the React, Vue, or Svelte hooks.",
+    "relativePath": "search/add-search",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/search/add-search.mdx"
+  },
+  {
+    "slug": [
+      "search",
+      "agent-tools"
+    ],
+    "urlPath": "/docs/search/agent-tools",
+    "title": "Agent search tools",
+    "description": "Expose docs as a read-only virtual filesystem so an agent can explore with ls, cat, find, grep, and rg instead of receiving pre-selected chunks.",
+    "relativePath": "search/agent-tools",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/search/agent-tools.mdx"
+  },
+  {
+    "slug": [
+      "search",
+      "ai-answers"
+    ],
+    "urlPath": "/docs/search/ai-answers",
+    "title": "Stream AI answers",
+    "description": "Source-grounded answer streaming over the static index — Vercel AI SDK, TanStack AI, or Cloudflare Workers AI — behind a hardened endpoint.",
+    "relativePath": "search/ai-answers",
+    "extension": ".mdx",
+    "groups": [],
+    "globKey": "../../../../../docs/search/ai-answers.mdx"
   },
   {
     "slug": [
