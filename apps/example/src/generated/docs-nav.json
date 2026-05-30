@@ -233,16 +233,16 @@
               "urlPath": "/docs/concepts/methodology",
               "relativePath": "concepts/methodology",
               "title": "Methodology",
-              "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+              "description": "Where leadtype fits alongside docs frameworks like Fumadocs and Starlight — the portable content and agent-readability layer you run behind any of them.",
               "groups": [],
               "toc": [
                 {
-                  "id": "the-short-version",
-                  "title": "The short version",
+                  "id": "where-leadtype-fits",
+                  "title": "Where leadtype fits",
                   "level": 2,
                   "urlPath": "/docs/concepts/methodology",
-                  "urlWithHash": "/docs/concepts/methodology#the-short-version",
-                  "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#the-short-version",
+                  "urlWithHash": "/docs/concepts/methodology#where-leadtype-fits",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#where-leadtype-fits",
                   "children": []
                 },
                 {
@@ -264,12 +264,12 @@
                   "children": []
                 },
                 {
-                  "id": "when-the-combination-shines",
-                  "title": "When the combination shines",
+                  "id": "pairing-with-a-framework",
+                  "title": "Pairing with a framework",
                   "level": 2,
                   "urlPath": "/docs/concepts/methodology",
-                  "urlWithHash": "/docs/concepts/methodology#when-the-combination-shines",
-                  "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#when-the-combination-shines",
+                  "urlWithHash": "/docs/concepts/methodology#pairing-with-a-framework",
+                  "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#pairing-with-a-framework",
                   "children": []
                 }
               ],

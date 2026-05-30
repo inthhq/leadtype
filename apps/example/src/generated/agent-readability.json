@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-30T09:21:01.812Z",
+  "generatedAt": "2026-05-30T09:40:03.584Z",
   "baseUrl": "https://leadtype.dev",
   "product": {
     "name": "Leadtype",
@@ -16,7 +16,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/index.md",
       "relativePath": "index",
       "groups": [],
-      "lastModified": "2026-05-18T07:16:29.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "index"
     },
     {
@@ -52,7 +52,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/agent-setup-prompts.md",
       "relativePath": "build/agent-setup-prompts",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.575Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/agent-setup-prompts"
     },
     {
@@ -64,7 +64,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/build-a-docs-site.md",
       "relativePath": "build/build-a-docs-site",
       "groups": [],
-      "lastModified": "2026-05-18T07:16:29.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/build-a-docs-site"
     },
     {
@@ -112,7 +112,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/integrate-with-fumadocs.md",
       "relativePath": "build/integrate-with-fumadocs",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/integrate-with-fumadocs"
     },
     {
@@ -124,7 +124,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/localize-docs.md",
       "relativePath": "build/localize-docs",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.569Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/localize-docs"
     },
     {
@@ -136,7 +136,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/optimize-docs-for-agents.md",
       "relativePath": "build/optimize-docs-for-agents",
       "groups": [],
-      "lastModified": "2026-05-29T08:47:12.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/optimize-docs-for-agents"
     },
     {
@@ -148,7 +148,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/serve-agent-responses.md",
       "relativePath": "build/serve-agent-responses",
       "groups": [],
-      "lastModified": "2026-05-18T07:16:29.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/serve-agent-responses"
     },
     {
@@ -172,7 +172,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/build/use-the-source-primitive.md",
       "relativePath": "build/use-the-source-primitive",
       "groups": [],
-      "lastModified": "2026-05-27T11:17:08.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "build/use-the-source-primitive"
     },
     {
@@ -208,7 +208,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/concepts/architecture.md",
       "relativePath": "concepts/architecture",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.553Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "concepts/architecture"
     },
     {
@@ -220,19 +220,19 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/concepts/evals.md",
       "relativePath": "concepts/evals",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.456Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "concepts/evals"
     },
     {
       "title": "Methodology",
-      "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+      "description": "Where leadtype fits alongside docs frameworks like Fumadocs and Starlight — the portable content and agent-readability layer you run behind any of them.",
       "urlPath": "/docs/concepts/methodology",
       "absoluteUrl": "https://leadtype.dev/docs/concepts/methodology",
       "markdownUrlPath": "/docs/concepts/methodology.md",
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/concepts/methodology.md",
       "relativePath": "concepts/methodology",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.454Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "concepts/methodology"
     },
     {
@@ -268,7 +268,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
       "relativePath": "quickstart",
       "groups": [],
-      "lastModified": "2026-05-29T08:47:12.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "quickstart"
     },
     {
@@ -280,7 +280,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/cli.md",
       "relativePath": "reference/cli",
       "groups": [],
-      "lastModified": "2026-05-18T07:16:29.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "reference/cli"
     },
     {
@@ -316,7 +316,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/i18n.md",
       "relativePath": "reference/i18n",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.634Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "reference/i18n"
     },
     {
@@ -340,7 +340,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/llm.md",
       "relativePath": "reference/llm",
       "groups": [],
-      "lastModified": "2026-05-29T08:47:12.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "reference/llm"
     },
     {
@@ -376,7 +376,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/search.md",
       "relativePath": "reference/search",
       "groups": [],
-      "lastModified": "2026-05-16T01:20:02.000Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "reference/search"
     },
     {
@@ -400,7 +400,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/reference/troubleshooting.md",
       "relativePath": "reference/troubleshooting",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.571Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "reference/troubleshooting"
     },
     {
@@ -412,7 +412,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/search/add-search.md",
       "relativePath": "search/add-search",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.461Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "search/add-search"
     },
     {
@@ -424,7 +424,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/search/agent-tools.md",
       "relativePath": "search/agent-tools",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.448Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "search/agent-tools"
     },
     {
@@ -436,7 +436,7 @@
       "markdownAbsoluteUrl": "https://leadtype.dev/docs/search/ai-answers.md",
       "relativePath": "search/ai-answers",
       "groups": [],
-      "lastModified": "2026-05-30T09:21:01.453Z",
+      "lastModified": "2026-05-30T09:29:32.000Z",
       "logicalPath": "search/ai-answers"
     },
     {
@@ -699,16 +699,16 @@
                 "urlPath": "/docs/concepts/methodology",
                 "relativePath": "concepts/methodology",
                 "title": "Methodology",
-                "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+                "description": "Where leadtype fits alongside docs frameworks like Fumadocs and Starlight — the portable content and agent-readability layer you run behind any of them.",
                 "groups": [],
                 "toc": [
                   {
-                    "id": "the-short-version",
-                    "title": "The short version",
+                    "id": "where-leadtype-fits",
+                    "title": "Where leadtype fits",
                     "level": 2,
                     "urlPath": "/docs/concepts/methodology",
-                    "urlWithHash": "/docs/concepts/methodology#the-short-version",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#the-short-version",
+                    "urlWithHash": "/docs/concepts/methodology#where-leadtype-fits",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#where-leadtype-fits",
                     "children": []
                   },
                   {
@@ -730,12 +730,12 @@
                     "children": []
                   },
                   {
-                    "id": "when-the-combination-shines",
-                    "title": "When the combination shines",
+                    "id": "pairing-with-a-framework",
+                    "title": "Pairing with a framework",
                     "level": 2,
                     "urlPath": "/docs/concepts/methodology",
-                    "urlWithHash": "/docs/concepts/methodology#when-the-combination-shines",
-                    "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#when-the-combination-shines",
+                    "urlWithHash": "/docs/concepts/methodology#pairing-with-a-framework",
+                    "absoluteUrlWithHash": "https://leadtype.dev/docs/concepts/methodology#pairing-with-a-framework",
                     "children": []
                   }
                 ],

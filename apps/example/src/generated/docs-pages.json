@@ -227,7 +227,7 @@
     ],
     "urlPath": "/docs/concepts/methodology",
     "title": "Methodology",
-    "description": "How leadtype differs from Fumadocs, Starlight, and Mintlify.",
+    "description": "Where leadtype fits alongside docs frameworks like Fumadocs and Starlight — the portable content and agent-readability layer you run behind any of them.",
     "relativePath": "concepts/methodology",
     "extension": ".mdx",
     "groups": [],

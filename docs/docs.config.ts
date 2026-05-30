@@ -56,7 +56,7 @@ export default defineDocsConfig({
             urlPath: "/docs/concepts/methodology",
             title: "Methodology",
             description:
-              "Why leadtype is a pipeline, not a docs framework — and how it compares to Fumadocs, Starlight, and Mintlify.",
+              "Why leadtype is a pipeline, not a docs framework — and how it pairs with Fumadocs, Starlight, and Mintlify.",
           },
           {
             urlPath: "/docs/build/build-a-docs-site",

@@ -23,7 +23,7 @@ flowchart LR
   bundle_out --> offline_agents
 ```
 
-leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, Nuxt, SvelteKit, Vue, Svelte, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
+leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, Nuxt, SvelteKit, Vue, Svelte, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs it specializes in. It's designed to layer behind a framework like Fumadocs or Starlight, not replace it.
 
 ## Choose your path
 
