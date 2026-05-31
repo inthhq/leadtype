@@ -265,6 +265,7 @@ async function runOne(options: {
     judgeModel: verdict.judgeModel,
     judgeReasoning: verdict.reasoning,
     judgeError: verdict.error,
+    failureMode: verdict.failureMode,
     discoveredAgentsMd,
     readBundledDocs,
     usedBundle,

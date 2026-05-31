@@ -26,7 +26,7 @@ No shell, no Docker, no escape vector — every tool call resolves paths relativ
 
 ### The judge
 
-`lib/judge.ts` calls a strong model (default `gemini-3-pro`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
+`lib/judge.ts` calls a strong model (default `gemini-3-pro`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. It also classifies a **failure mode** (`none` / `confident_wrong` / `uncertain` / `refused`); the package report surfaces the **confident-wrong rate** per arm, so you can see whether docs cut the dangerous "states the opposite of the truth" answers, not just raise the pass rate. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
 
 ### Arms: discovery vs. the recommended setup
 

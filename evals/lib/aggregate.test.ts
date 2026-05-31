@@ -82,6 +82,28 @@ describe("aggregateRun — package arms", () => {
     expect(report).toContain("Bundle read (pointer)");
   });
 
+  it("surfaces a confident-wrong rate and failure-modes section", async () => {
+    await writeRecords([
+      record({ mode: "treatment", passed: true, failureMode: "none" }),
+      record({
+        mode: "control",
+        passed: false,
+        score: 30,
+        failureMode: "confident_wrong",
+      }),
+    ]);
+
+    const summary = await aggregateRun(runDir);
+    const controlCell = summary.cells.find((c) => c.arm === "control");
+    const treatmentCell = summary.cells.find((c) => c.arm === "treatment");
+    expect(controlCell?.confidentWrongRate).toBe(1);
+    expect(treatmentCell?.confidentWrongRate).toBe(0);
+
+    const report = await readFile(path.join(runDir, "report.md"), "utf-8");
+    expect(report).toContain("Failure modes");
+    expect(report).toContain("Confident-wrong");
+  });
+
   it("leaves a plain treatment/control run untouched (no armDeltas, no pointer section)", async () => {
     await writeRecords([
       record({ mode: "treatment", passed: true }),

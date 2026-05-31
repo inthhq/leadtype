@@ -26,13 +26,19 @@ import type { Transcript } from "./lib/transcript";
 const evalsRoot = fileURLToPath(new URL(".", import.meta.url));
 const MAX_ARTIFACTS = 12;
 
-type Args = { runDir: string; judge: string; concurrency: number };
+type Args = {
+  runDir: string;
+  judge: string;
+  concurrency: number;
+  inPlace: boolean;
+};
 
 function parseArgs(argv: string[]): Args {
   const args: Args = {
     runDir: "",
     judge: DEFAULT_JUDGE_MODEL,
     concurrency: 8,
+    inPlace: false,
   };
   let i = 0;
   while (i < argv.length) {
@@ -41,13 +47,17 @@ function parseArgs(argv: string[]): Args {
       args.judge = argv[i++] ?? args.judge;
     } else if (a === "--concurrency") {
       args.concurrency = Number(argv[i++]);
+    } else if (a === "--in-place") {
+      // Re-grade the run's own records in place (back-fill the committed run),
+      // rather than writing a parallel results-judge-<model> folder.
+      args.inPlace = true;
     } else if (a && !a.startsWith("--")) {
       args.runDir = a;
     }
   }
   if (!args.runDir) {
     throw new Error(
-      "usage: bun run rejudge.ts <runDir> [--judge <id>] [--concurrency <n>]"
+      "usage: bun run rejudge.ts <runDir> [--judge <id>] [--concurrency <n>] [--in-place]"
     );
   }
   return args;
@@ -175,6 +185,7 @@ async function rejudgeOne(opts: {
     judgeModel: verdict.judgeModel,
     judgeReasoning: verdict.reasoning,
     judgeError: verdict.error,
+    failureMode: verdict.failureMode,
   };
 
   const destDir = path.join(newRunDir, relDir);
@@ -236,11 +247,17 @@ async function main(): Promise<void> {
 
   const recordDirs = await listRecordDirs(path.join(runDir, "runs"));
   const judgeSlug = args.judge.replace(/[^\w.-]+/g, "_");
-  const newRunDir = `${runDir}-judge-${judgeSlug}`;
+  const newRunDir = args.inPlace ? runDir : `${runDir}-judge-${judgeSlug}`;
   await mkdir(newRunDir, { recursive: true });
 
+  // Snapshot the existing summary before we overwrite anything (matters for the
+  // in-place back-fill, where aggregateRun rewrites runDir/summary.json).
+  const old = JSON.parse(
+    await readFile(path.join(runDir, "summary.json"), "utf-8")
+  ) as RunSummary;
+
   process.stdout.write(
-    `Re-judging ${recordDirs.length} runs from ${path.basename(runDir)} with ${args.judge} (concurrency ${args.concurrency})\n`
+    `Re-judging ${recordDirs.length} runs from ${path.basename(runDir)} with ${args.judge}${args.inPlace ? " (in place)" : ""} (concurrency ${args.concurrency})\n`
   );
 
   const promptCache = new Map<string, { prompt: string; rubric: string }>();
@@ -261,9 +278,6 @@ async function main(): Promise<void> {
   });
 
   const fresh = await aggregateRun(newRunDir);
-  const old = JSON.parse(
-    await readFile(path.join(runDir, "summary.json"), "utf-8")
-  ) as RunSummary;
   compareSummaries(old, fresh);
   await rm(extractDir, { recursive: true, force: true });
   process.stdout.write(`\nWrote ${newRunDir}/summary.json + report.md\n`);

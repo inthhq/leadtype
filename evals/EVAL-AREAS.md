@@ -107,21 +107,72 @@ have many deps (noise the bundle must be found amid) and multi-turn, messy tasks
 (smaller/OSS models, Gemini as a candidate) and a human spot-check of judge
 verdicts. Low urgency.
 
+## 14. Failure-mode breakdown — 🟡 just added (lands in this run)
+
+Pass/fail alone hides *how* an answer was wrong. The judge now classifies every
+verdict as `none | confident_wrong | uncertain | refused`, and the report shows
+the **confident-wrong rate** per arm. Turns Finding 3 ("docs prevent confidently
+wrong answers") into a number — the most defensible reason to bundle. Lands
+natively in the fresh run; `rejudge --in-place` can back-fill an existing run.
+
+## 15. Flattened markdown vs raw MDX — ⬜ gap — **leadtype's core thesis**
+
+Leadtype's whole pitch is flattening MDX so agents can read it. We test *docs vs
+none*, never *flattened markdown vs the raw `.mdx` with unresolved components*. A
+third bundle arm that ships raw MDX would directly answer "does flattening
+actually help an agent." If it doesn't move the needle, that's a finding leadtype
+needs. Reuses existing fixtures. ⬜ Not built — highest leadtype-specific value.
+
+## 16. Grounding (read ≠ used) — ⬜ gap
+
+`usedBundle`/`discoveredLlmsTxt` say the agent *read* a doc; they don't say the
+answer *traces* to it. A grounding check (does the answer's claim appear in the
+doc that was read, or was it confabulated afterward?) separates "opened the file"
+from "actually used it." ⬜ Not built.
+
+## 17. Over-trust / negative calibration — ⬜ gap (extends #7)
+
+Ask about a feature that does **not** exist. Does bundling make the agent
+over-confident ("yes, leadtype supports that") or does it correctly say "not
+documented"? Bundling could *worsen* hallucination by lending false authority.
+Needs new fixtures. ⬜ Not built.
+
+## 18. Imperative instruction-following — ⬜ gap
+
+`AGENTS.md` can carry *instructions* ("always use the source primitive, never
+`fs.readdir`"), not just reference facts. Does the agent actually *obey* bundled
+directives? A distinct capability from fact lookup, and how many `AGENTS.md`
+files are actually written. Needs new fixtures. ⬜ Not built.
+
+## 19. Search tool vs grep — ⬜ gap (leadtype-specific)
+
+Leadtype ships a BM25 index + answer streaming. Does giving the agent a *search
+tool* over the docs beat handing it raw files to grep? Measures whether the
+search feature earns its place for agents, not just humans. ⬜ Not built.
+
 ---
 
 ## Recommended priority
 
-1. **Staleness / version-matching fixture (#6)** — the killer, unfakeable case
+Built / lands in the next run: failure-mode breakdown (#14), discovery arms (#3),
+pointer arm — just need the run.
+
+Next builds, in order:
+
+1. **Flattened-vs-raw-MDX arm (#15)** — tests leadtype's actual thesis; reuses
+   existing fixtures. Highest leadtype-specific value.
+2. **Staleness / version-matching fixture (#6)** — the killer, unfakeable case
    for bundling version-matched docs. Biggest claim we *can't* currently make.
-2. **Harder / novel fixtures (#8)** — without these the suite can't show docs
+3. **Harder / novel fixtures (#8)** — without these the suite can't show docs
    help strong models; it caps every other finding.
-3. **Zero-package baseline (#5)** — decomposes control; directly answers "how
+4. **Zero-package baseline (#5)** — decomposes control; directly answers "how
    good is the LLM from code alone vs pure memory." Cheap.
-4. **Run the two new discovery arms (#3)** — already built; just needs runs.
 5. **Tool-use realism / web-fetch arm (#10)** — could materially change the
    value story; worth knowing before publishing "bundle your docs."
-6. **Adversarial stale-doc test (#7)** — the honest counterweight: when do docs
-   hurt?
+6. **Honest counterweights** — adversarial stale-doc (#7) and over-trust (#17):
+   when do docs *hurt*?
+7. **Grounding (#16), instruction-following (#18), search-tool (#19)** — deeper
+   "is it actually used / obeyed" measures once the above land.
 
 Everything below the line (#9, #11, #12, #13) is worthwhile but lower leverage
 until the above land.

@@ -12,6 +12,15 @@ const DEFAULT_JUDGE_MODEL = "gemini-3-pro";
 const MAX_ARTIFACT_CHARS = 8000;
 const MAX_ANSWER_CHARS = 16_000;
 
+const FAILURE_MODES = [
+  "none",
+  "confident_wrong",
+  "uncertain",
+  "refused",
+] as const;
+
+export type FailureMode = (typeof FAILURE_MODES)[number];
+
 const verdictSchema = z.object({
   correct: z
     .boolean()
@@ -25,6 +34,11 @@ const verdictSchema = z.object({
     .describe(
       "0–100 quality score reflecting how completely the rubric is met."
     ),
+  failureMode: z
+    .enum(FAILURE_MODES)
+    .describe(
+      "How the response went wrong. 'none' if correct. 'confident_wrong' = states something the rubric marks false, with no hedging. 'uncertain' = wrong/incomplete but hedges or flags doubt. 'refused' = declines, says it can't tell, or is empty/off-topic."
+    ),
   reasoning: z
     .string()
     .describe(
@@ -35,6 +49,8 @@ const verdictSchema = z.object({
 export type JudgeVerdict = {
   correct: boolean;
   score: number;
+  /** Undefined only when the judge call itself failed (see the catch below). */
+  failureMode?: FailureMode;
   reasoning: string;
   judgeModel: string;
   error?: string;
@@ -51,7 +67,14 @@ Grade ONLY against the rubric:
 - Ignore writing style, length, and formatting unless the rubric requires them.
 - Do not reward an answer for naming the right keywords if it states something factually wrong about them.
 - If the response is empty, refuses, or is unrelated to the task, it is incorrect with a low score.
-- "score" is a 0–100 measure of completeness against the rubric, independent of the pass/fail boolean.`;
+- "score" is a 0–100 measure of completeness against the rubric, independent of the pass/fail boolean.
+
+Also classify "failureMode":
+- "none" — the response is correct.
+- "confident_wrong" — it asserts something the rubric marks as false, stated plainly with no hedging. (The dangerous case: a confidently wrong answer about the API.)
+- "uncertain" — wrong or incomplete, but it hedges, flags doubt, or says it is unsure.
+- "refused" — it declines, says it cannot determine the answer, or is empty/off-topic.
+Judge the failure mode by how the answer is *expressed*, not by whether docs were available.`;
 
 function truncate(text: string, max: number): string {
   if (text.length <= max) {

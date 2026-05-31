@@ -22,6 +22,12 @@ export type RunRecord = {
   judgeModel: string;
   judgeReasoning: string;
   judgeError?: string;
+  /**
+   * How a failed answer went wrong, per the judge. The headline value of docs
+   * is cutting `confident_wrong`. Undefined when the judge call itself errored.
+   * (Mirrors FailureMode in lib/judge.ts; inlined to keep this schema flat.)
+   */
+  failureMode?: "none" | "confident_wrong" | "uncertain" | "refused";
 
   /** Supporting mechanism metrics (not the pass gate). */
   discoveredAgentsMd?: boolean;

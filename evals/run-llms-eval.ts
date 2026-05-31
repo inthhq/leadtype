@@ -317,6 +317,7 @@ async function runOne(options: {
     judgeModel: verdict.judgeModel,
     judgeReasoning: verdict.reasoning,
     judgeError: verdict.error,
+    failureMode: verdict.failureMode,
     contextMatched: selection.passed,
     wrongGroupReads: selection.wrongGroupReads.length,
     discoveredLlmsTxt: discovery ? discoveredLlmsTxt : undefined,
