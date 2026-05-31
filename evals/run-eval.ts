@@ -15,7 +15,7 @@ import { summarizePackageReads } from "./lib/package-metrics";
 import { runPool } from "./lib/pool";
 import type { RunRecord } from "./lib/record";
 import { withRetry } from "./lib/retry";
-import { createSandbox } from "./lib/sandbox";
+import { createSandbox, warmTemplate } from "./lib/sandbox";
 import { scopedTools } from "./lib/tools";
 import type { Mode, ToolCall, Transcript } from "./lib/transcript";
 
@@ -41,7 +41,7 @@ type CliArgs = {
   concurrency: number;
 };
 
-const ALL_MODES: Mode[] = ["treatment", "control", "pointer"];
+const ALL_MODES: Mode[] = ["bare", "control", "treatment", "pointer"];
 const DEFAULT_MODES: Mode[] = ["treatment", "control"];
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
@@ -119,7 +119,7 @@ function printUsage(): void {
 
 Options:
   --fixture <name>   Run only one fixture (default: all)
-  --mode <a,b>       Arms to run: treatment|control|pointer (default: treatment,control)
+  --mode <a,b>       Arms to run: bare|control|treatment|pointer (default: treatment,control)
   --models <a,b,c>   Comma-separated candidate model ids (default: ${DEFAULT_MODEL})
   --model <id>       Alias for a single --models entry
   --judge <id>       Judge model id (default: ${DEFAULT_JUDGE_MODEL})
@@ -375,6 +375,12 @@ async function main(): Promise<void> {
   process.stdout.write(
     `Package benchmark: ${fixtures.length} fixtures × ${modes.length} modes × ${args.models.length} models × ${args.runs} runs = ${total} agent runs\nJudge: ${args.judge} · concurrency: ${args.concurrency}\nResults: ${runDir}\n\n`
   );
+
+  // Warm the shared node_modules template before the pool, so the first batch
+  // of sandboxes doesn't serialize on the one-time install. (bare needs none.)
+  if (modes.some((m) => m !== "bare")) {
+    await warmTemplate();
+  }
 
   // Prefetch prompt + rubric per fixture once.
   const fixtureText = new Map<string, { prompt: string; rubric: string }>();

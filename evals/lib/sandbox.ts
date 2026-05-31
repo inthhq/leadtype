@@ -36,6 +36,20 @@ export type SandboxHandle = {
 // Memoized as a promise so concurrent callers share a single install.
 let templatePromise: Promise<string> | undefined;
 
+/**
+ * Kick off the one-time template install before the run pool starts, so the
+ * first concurrent batch of sandboxes doesn't all block on it. Best-effort:
+ * if it fails, createSandbox falls back to a per-sandbox install. No-op once
+ * the template promise is memoized.
+ */
+export async function warmTemplate(): Promise<void> {
+  try {
+    await prepareTemplate();
+  } catch {
+    // createSandbox handles the real failure path with a direct install.
+  }
+}
+
 function prepareTemplate(): Promise<string> {
   if (!templatePromise) {
     templatePromise = (async () => {
@@ -104,13 +118,19 @@ export async function createSandbox(options: {
     );
   }
 
-  // Clone the prepared install; fall back to a direct install if cloning fails
-  // (e.g. clonefile unsupported on the volume).
-  try {
-    const templateDir = await prepareTemplate();
-    await cloneNodeModules(templateDir, tempDir);
-  } catch {
-    await npmInstall(tempDir, findLeadtypeTarball());
+  // `bare` baseline: leadtype is never installed, so the agent has nothing to
+  // read and must answer from prior knowledge. The fixture's package.json still
+  // declares the dep (a realistic "depends on leadtype but not consulted"
+  // project); node_modules is simply absent. Skip the install entirely.
+  if (mode !== "bare") {
+    // Clone the prepared install; fall back to a direct install if cloning
+    // fails (e.g. clonefile unsupported on the volume).
+    try {
+      const templateDir = await prepareTemplate();
+      await cloneNodeModules(templateDir, tempDir);
+    } catch {
+      await npmInstall(tempDir, findLeadtypeTarball());
+    }
   }
 
   if (mode === "control") {

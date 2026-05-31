@@ -15,16 +15,19 @@ export type ToolCall = {
 };
 
 /**
- * Package-benchmark arms:
+ * Package-benchmark arms, in order of increasing information given to the agent:
+ * - `bare` — leadtype is NOT installed at all. Pure training-data recall (the
+ *   project's package.json still names the dep, but there's nothing to read).
+ *   The floor; `control` minus this is the value of the installed compiled code.
+ * - `control` — the package is installed but its bundled docs are stripped; the
+ *   agent falls back to compiled code, types, README, and prior knowledge.
  * - `treatment` — the bundle ships in node_modules; the agent must *discover*
  *   it by exploring (no pointer). The conservative "does it help if found" test.
- * - `control` — the bundle is stripped; the agent falls back to compiled code,
- *   types, README, and prior knowledge.
  * - `pointer` — treatment PLUS leadtype's *recommended* setup: a root AGENTS.md
  *   that tells the agent to read node_modules/leadtype/AGENTS.md first. Measures
  *   the documented happy path rather than organic discovery.
  */
-export type Mode = "treatment" | "control" | "pointer";
+export type Mode = "bare" | "treatment" | "control" | "pointer";
 export type Provider = "anthropic" | "openai" | "google";
 export type Benchmark = "package" | "llms";
 

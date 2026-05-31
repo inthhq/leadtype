@@ -47,15 +47,15 @@ delta is the token cost of that guessing.**
 Five hosted shapes × context-match (judge-independent). Finding: page-links +
 monolith route reliably; explicit group bundles + router get bypassed.
 
-## 5. Baseline decomposition — code vs docs vs memory — ⬜ gap (one piece)
+## 5. Baseline decomposition — code vs docs vs memory — ✅ added (`bare` arm)
 
-`control` keeps the *installed compiled package* (JS + `.d.ts` + README). That
-conflates "the code/types helped" with "the model already knew." Add a third
-baseline: **no package installed at all** (pure training recall, agent must
-answer from memory). Decomposes the control number into "installed code is worth
-X" vs "prior knowledge is worth Y." Cheap to add (a sandbox mode that skips the
-install / strips the whole package). **High value, directly extends your
-baseline question.**
+`control` keeps the *installed compiled package* (JS + `.d.ts` + README), which
+conflates "the code/types helped" with "the model already knew." The **`bare`**
+arm (`--mode bare`) installs nothing, so the agent answers from pure memory. The
+report's **arm-decomposition table** now shows the full ladder per model — bare →
+control → treatment → pointer — so `bare → control` isolates the installed code,
+`control → treatment` the docs, `treatment → pointer` the pointer. Run via
+`evals:full:arms` (all four arms).
 
 ## 6. Staleness / version-matching — ⬜ gap — **highest-value missing test**
 
@@ -160,7 +160,7 @@ search feature earns its place for agents, not just humans. ⬜ Not built.
 ## Recommended priority
 
 Built / lands in the next run: failure-mode breakdown (#14), discovery arms (#3),
-pointer arm — just need the run.
+pointer arm, zero-package `bare` baseline (#5) — just need the run.
 
 Next builds, in order:
 
@@ -170,13 +170,11 @@ Next builds, in order:
    for bundling version-matched docs. Biggest claim we *can't* currently make.
 3. **Harder / novel fixtures (#8)** — without these the suite can't show docs
    help strong models; it caps every other finding.
-4. **Zero-package baseline (#5)** — decomposes control; directly answers "how
-   good is the LLM from code alone vs pure memory." Cheap.
-5. **Tool-use realism / web-fetch arm (#10)** — could materially change the
+4. **Tool-use realism / web-fetch arm (#10)** — could materially change the
    value story; worth knowing before publishing "bundle your docs."
-6. **Honest counterweights** — adversarial stale-doc (#7) and over-trust (#17):
+5. **Honest counterweights** — adversarial stale-doc (#7) and over-trust (#17):
    when do docs *hurt*?
-7. **Grounding (#16), instruction-following (#18), search-tool (#19)** — deeper
+6. **Grounding (#16), instruction-following (#18), search-tool (#19)** — deeper
    "is it actually used / obeyed" measures once the above land.
 
 Everything below the line (#9, #11, #12, #13) is worthwhile but lower leverage

@@ -126,6 +126,16 @@ The variants are:
 
 The `router` variant is intentionally distinct from `monolith`: it evaluates a base file that directs agents to topic bundles, not a root file containing all docs content.
 
+## Performance & tuning
+
+The matrix is **network-bound** — wall-clock is dominated by model latency, not CPU. Levers:
+
+- **`--concurrency <n>`** is the main knob (full scripts default to 20). Each in-flight run holds one slot through both its agent call and its judge call, so `n` ≈ simultaneous gateway requests. Raise it for faster local runs; if you start seeing repeated retries or rate-limit errors in the output, the gateway is throttling you — drop back to ~8–12.
+- **Sandbox setup is already cheap.** The `node_modules/leadtype` template is installed **once** and copy-on-write cloned per sandbox (APFS `clonefile` on macOS, near-instant); it's pre-warmed before the pool so the first batch doesn't stall. The `bare` arm skips the install entirely.
+- **Judging is inline** (each run grades itself), so agent and judge calls hit different providers and don't contend for the same rate limit. If you ever need to max throughput further, the next step would be a two-pass design (run all agents, then judge from saved transcripts) — not currently needed.
+
+A 4-model × 10-run full matrix is ~hundreds–thousands of runs; at `--concurrency 20` expect roughly 1–2.5h depending on arms and gateway limits.
+
 ## CLI flags
 
 | Flag | Default | Description |

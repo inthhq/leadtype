@@ -82,6 +82,27 @@ describe("aggregateRun — package arms", () => {
     expect(report).toContain("Bundle read (pointer)");
   });
 
+  it("renders an arm-decomposition table when bare/pointer arms are present", async () => {
+    await writeRecords([
+      record({ mode: "bare", passed: false }),
+      record({ mode: "control", passed: false }),
+      record({ mode: "treatment", passed: true }),
+      record({ mode: "pointer", passed: true }),
+    ]);
+
+    const summary = await aggregateRun(runDir);
+    expect(summary.arms).toEqual(
+      expect.arrayContaining(["bare", "control", "treatment", "pointer"])
+    );
+
+    const report = await readFile(path.join(runDir, "report.md"), "utf-8");
+    expect(report).toContain("Arm decomposition");
+    // Columns ordered by increasing information.
+    expect(report).toMatch(
+      /\| Model \| bare \| control \| treatment \| pointer \|/
+    );
+  });
+
   it("surfaces a confident-wrong rate and failure-modes section", async () => {
     await writeRecords([
       record({ mode: "treatment", passed: true, failureMode: "none" }),
