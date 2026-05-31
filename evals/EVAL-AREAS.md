@@ -35,7 +35,12 @@ delta is the token cost of that guessing.**
 - **Hosted, unprompted** — 🟡 just added (`--discovery`). Drops the "start at
   /llms.txt" hint, serves a realistic web root (docs + llms.txt + llms-full +
   robots + sitemap); measures whether the `llms.txt` convention gets used in the
-  wild. Run `evals:llms:discovery`.
+  wild. Run `evals:llms:discovery`. Fixtures that named the entry file get a
+  neutral `DISCOVERY_PROMPT.md`. **Caveat:** `cross-group-agent-flows` asks which
+  files each flow *starts from*, so its answer inherently requires reading
+  `llms.txt`/`AGENTS.md` — its consult-rate will read ~100% regardless and is not
+  a real discovery signal. Read the per-fixture breakdown, not just the average,
+  or drop it from the discovery headline.
 
 ## 4. Routing — which `llms.txt` shape routes best? — ✅ covered
 
