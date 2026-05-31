@@ -63,9 +63,9 @@ bun run evals -- --fixture nav-unknown-group --mode treatment
 # Default model (claude-haiku-4-5), all fixtures, both modes, 1 run each.
 bun run evals
 
-# The full matrix: 6 models across 4 families × 10 runs, judged by the neutral
-# deepseek-v4-pro. (= claude haiku-4.5/sonnet-4.6/opus-4.8, gpt-5.5,
-# kimi-k2.6, gemini-3.5-flash)
+# The full matrix: 5 models across 4 families × 10 runs, judged by the neutral
+# deepseek-v4-pro. (= claude haiku-4.5/opus-4.8, gpt-5.5, kimi-k2.6,
+# gemini-3.5-flash — small + frontier tiers, no redundant mid-Claude)
 bun run evals:full -- --label 2026-05-31
 
 # Pick your own grid (use full provider/model ids for non-Anthropic models).

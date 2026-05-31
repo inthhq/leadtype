@@ -108,9 +108,10 @@ have many deps (noise the bundle must be found amid) and multi-turn, messy tasks
 
 ## 13. Model & judge coverage — ✅
 
-6 current candidates across 4 families — Anthropic (haiku-4.5 / sonnet-4.6 /
-opus-4.8), OpenAI (gpt-5.5), Moonshot (kimi-k2.6), Google (gemini-3.5-flash) —
-so the "lift tracks capability" curve isn't Claude-only. Judge is
+5 current candidates across 4 families — Anthropic (haiku-4.5 / opus-4.8),
+OpenAI (gpt-5.5), Moonshot (kimi-k2.6), Google (gemini-3.5-flash) — small +
+frontier tiers, no redundant mid-Claude. So the "lift tracks capability" curve
+isn't Claude-only. Judge is
 `deepseek-v4-pro`: a current, strong model from a family with *no* candidate
 (the only way to stay neutral once Gemini became a candidate). Cross-validate
 headline numbers with `rejudge --judge xai/grok-4.3`. A human spot-check of
