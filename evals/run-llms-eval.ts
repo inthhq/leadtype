@@ -396,6 +396,25 @@ function sanitizeSegment(value: string): string {
   return value.replace(/[^\w.-]+/g, "_");
 }
 
+/**
+ * The discovery arm prefers a fixture's `DISCOVERY_PROMPT.md` if present: a
+ * neutral phrasing that does NOT name `llms.txt`/`llms-full.txt`/`AGENTS.md`,
+ * so "did the agent consult llms.txt unprompted" isn't contaminated by the
+ * task itself pointing at the file. Falls back to PROMPT.md when absent.
+ */
+async function readPromptText(
+  fixtureDir: string,
+  discovery: boolean
+): Promise<string> {
+  if (discovery) {
+    const discoveryPath = path.join(fixtureDir, "DISCOVERY_PROMPT.md");
+    if (existsSync(discoveryPath)) {
+      return await readFile(discoveryPath, "utf-8");
+    }
+  }
+  return await readFile(path.join(fixtureDir, "PROMPT.md"), "utf-8");
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const allFixtures = discoverFixtures();
@@ -434,7 +453,7 @@ async function main(): Promise<void> {
   for (const fixture of fixtures) {
     const dir = path.join(fixturesRoot, fixture);
     fixtureText.set(fixture, {
-      prompt: await readFile(path.join(dir, "PROMPT.md"), "utf-8"),
+      prompt: await readPromptText(dir, args.discovery),
       rubric: await readFile(path.join(dir, "RUBRIC.md"), "utf-8"),
     });
   }

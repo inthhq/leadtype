@@ -9,6 +9,7 @@ import {
 
 const ROOT_FIXTURE_FILES = new Set([
   "PROMPT.md",
+  "DISCOVERY_PROMPT.md",
   "EVAL.ts",
   "expected.json",
   "RUBRIC.md",
