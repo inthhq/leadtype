@@ -26,7 +26,7 @@ No shell, no Docker, no escape vector — every tool call resolves paths relativ
 
 ### The judge
 
-`lib/judge.ts` calls a strong model (default `gemini-3-pro`, set with `--judge`) at temperature 0. It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. It also classifies a **failure mode** (`none` / `confident_wrong` / `uncertain` / `refused`); the package report surfaces the **confident-wrong rate** per arm, so you can see whether docs cut the dangerous "states the opposite of the truth" answers, not just raise the pass rate. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
+`lib/judge.ts` calls a strong model (default `deepseek/deepseek-v4-pro`, set with `--judge`) at temperature 0. It's chosen to be **neutral to every candidate family** — the candidate set spans Anthropic, OpenAI, Google, and Moonshot, so the judge comes from a family with no candidate (DeepSeek). Cross-validate the headline with a second neutral judge (`rejudge --judge xai/grok-4.3`). It sees the task, the rubric (ground truth), and the agent's output, and marks `correct` only when every REQUIRED rubric point is met. It also classifies a **failure mode** (`none` / `confident_wrong` / `uncertain` / `refused`); the package report surfaces the **confident-wrong rate** per arm, so you can see whether docs cut the dangerous "states the opposite of the truth" answers, not just raise the pass rate. A judge call that fails fails *closed* — counted as a miss, never crashing the matrix. Pick a judge outside your candidate set to avoid self-preference bias; the report flags any candidate that also served as judge.
 
 ### Arms: discovery vs. the recommended setup
 
@@ -63,12 +63,13 @@ bun run evals -- --fixture nav-unknown-group --mode treatment
 # Default model (claude-haiku-4-5), all fixtures, both modes, 1 run each.
 bun run evals
 
-# The published matrix: 4 models × 10 runs, judged by the neutral gemini-3-pro.
-# (= `--models claude-haiku-4-5,claude-sonnet-4-6,claude-opus-4-8,gpt-5.5 --runs 10`)
-bun run evals:full -- --label 2026-05-25
+# The full matrix: 6 models across 4 families × 10 runs, judged by the neutral
+# deepseek-v4-pro. (= claude haiku-4.5/sonnet-4.6/opus-4.8, gpt-5.5,
+# kimi-k2.6, gemini-3.5-flash)
+bun run evals:full -- --label 2026-05-31
 
-# Pick your own grid.
-bun run evals -- --models claude-opus-4-8,gpt-5.5 --runs 5 --judge gpt-5.5
+# Pick your own grid (use full provider/model ids for non-Anthropic models).
+bun run evals -- --models anthropic/claude-opus-4.8,moonshotai/kimi-k2.6 --runs 5 --judge deepseek/deepseek-v4-pro
 ```
 
 Every run writes to `results/package/<label>/` (label defaults to a timestamp). Re-aggregate an existing run folder without re-running the models:
@@ -141,12 +142,12 @@ A 4-model × 10-run full matrix is ~hundreds–thousands of runs; at `--concurre
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--fixture <name>` | (all) | Run only one fixture. |
-| `--mode <a,b>` | `treatment,control` | Comma list of arms: `treatment`, `control`, `pointer`. Package benchmark only. |
+| `--mode <a,b>` | `treatment,control` | Comma list of arms: `bare`, `control`, `treatment`, `pointer`. Package benchmark only. |
 | `--variant <name>` | all | One llms.txt shape. llms benchmark only. |
 | `--discovery` | off | Unhinted discovery arm — realistic web root, no "start at llms.txt" hint. llms benchmark only. |
-| `--models <a,b,c>` | `claude-haiku-4-5` | Comma-separated candidate model ids. `gpt-*` → OpenAI, `gemini*` → Google, else Anthropic. |
+| `--models <a,b,c>` | `claude-haiku-4-5` | Comma-separated candidate model ids. An id with a `provider/` prefix (e.g. `moonshotai/kimi-k2.6`) passes through as-is; a bare id routes by family (`gpt-*`→OpenAI, `gemini*`→Google, else Anthropic). |
 | `--model <id>` | — | Alias for a single `--models` entry. |
-| `--judge <id>` | `gemini-3-pro` | Model that grades answers against each `RUBRIC.md`. |
+| `--judge <id>` | `deepseek/deepseek-v4-pro` | Model that grades answers against each `RUBRIC.md`. Keep it outside every candidate family. |
 | `--runs <n>` | `1` | Repetitions per cell (fixture × mode/variant × model). |
 | `--label <name>` | timestamp | Results folder name under `results/<benchmark>/`. |
 

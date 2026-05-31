@@ -1,5 +1,5 @@
 const TRANSIENT_PATTERN =
-  /timed?.?out|timeout|429|rate.?limit|server_error|overloaded|too many requests|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up|\b5\d\d\b/i;
+  /timed?.?out|timeout|429|rate.?limit|server_error|internal server error|service unavailable|bad gateway|gateway timeout|temporarily unavailable|overloaded|capacity|too many requests|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up|\b5\d\d\b/i;
 
 /**
  * Heuristic: is this error a transient gateway/network hiccup worth retrying,

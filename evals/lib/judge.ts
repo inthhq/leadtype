@@ -3,12 +3,14 @@ import { z } from "zod";
 import { namespaceModelId } from "./models";
 import { withRetry } from "./retry";
 
-// Neutral judge: outside the candidate set (no Claude/GPT family), so it has
-// no self-preference for any model under test. gemini-3-pro (not the flatter,
-// more lenient gemini-3.5-flash) — strong enough to discriminate borderline
-// answers while staying neutral. Cross-validated: it agrees with flash on
-// direction and corrects the same-family bias an Opus judge showed.
-const DEFAULT_JUDGE_MODEL = "gemini-3-pro";
+// Neutral judge: outside every candidate family. The candidate set now spans
+// Anthropic, OpenAI, Google (Gemini), and Moonshot (Kimi), so the judge can't
+// be any of those without self-preference bias (see the Opus-judge bias we
+// found earlier). deepseek-v4-pro is a strong, current model from a family with
+// no candidate — and it discriminates (passes correct answers, fails wrong
+// ones) in validation. Cross-validate headline numbers with a second neutral
+// judge via `rejudge --judge xai/grok-4.3`.
+const DEFAULT_JUDGE_MODEL = "deepseek/deepseek-v4-pro";
 const MAX_ARTIFACT_CHARS = 8000;
 const MAX_ANSWER_CHARS = 16_000;
 
