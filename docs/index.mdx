@@ -7,7 +7,7 @@ description: "Build agent-ready docs from MDX: rendered pages, llms.txt, markdow
 
 Leadtype is a **docs pipeline** for teams that want one MDX source to serve humans and agents. Write docs once, render them in your app, then generate the files agents need: markdown mirrors, `llms.txt`, root `llms-full.txt`, search JSON, [Agent Readability](/docs/how-it-works#vocabulary) metadata, and package-bundled `AGENTS.md` output.
 
-It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Nuxt, Astro, SvelteKit, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
+It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Nuxt, Astro, SvelteKit, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs it specializes in, layered behind the framework you already use.
 
 <Mermaid chart={`flowchart LR
   src["docs/*.mdx<br/>(your source)"]
@@ -58,9 +58,9 @@ These show up throughout the docs. The full glossary lives in [How it works → 
     href="/docs/build/optimize-docs-for-agents"
   />
   <Card
-    title="Why leadtype, not Fumadocs/Starlight/Mintlify"
-    description="Leadtype is a pipeline, not a website framework. Pair it with any UI, or with another docs framework when you want one portable pipeline for markdown, search, and agent outputs."
-    href="/docs/methodology"
+    title="Where leadtype fits with Fumadocs, Starlight & co."
+    description="Leadtype is a pipeline, not a website framework. Pair it with any UI, or layer it under a docs framework you already like for one portable pipeline across markdown, search, and agent outputs."
+    href="/docs/concepts/methodology"
   />
   <Card
     title="Version-matched package docs"

@@ -149,13 +149,27 @@ describe("core/adapter boundary", () => {
   // Lazily resolved so the test files themselves can be skipped from the scan.
   const srcRoot = fileURLToPath(new URL("../", import.meta.url));
 
+  // Files that hold inert scaffold templates: the framework `import` lines in
+  // them are strings we generate into a consumer's app, not imports of the
+  // module. Real logic lives elsewhere and stays under the boundary scan.
+  const TEMPLATE_PAYLOAD_FILES = new Set(["cli/init-templates.ts"]);
+
   async function listSourceFiles(): Promise<string[]> {
     const matches = await glob("**/*.ts", {
       cwd: srcRoot,
       onlyFiles: true,
       absolute: true,
     });
-    return matches.filter((file) => !file.endsWith(".test.ts"));
+    return matches.filter(
+      (file) =>
+        !(
+          file.endsWith(".test.ts") ||
+          // Normalize to POSIX so the exclusion matches on Windows too.
+          TEMPLATE_PAYLOAD_FILES.has(
+            path.relative(srcRoot, file).split(path.sep).join("/")
+          )
+        )
+    );
   }
 
   function relative(file: string): string {

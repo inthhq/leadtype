@@ -1,0 +1,66 @@
+---
+title: "Methodology"
+description: "Where leadtype fits alongside docs frameworks like Fumadocs and Starlight — the portable content and agent-readability layer you run behind any of them."
+---
+
+# Methodology
+
+Leadtype is **a docs pipeline, not a docs website framework**. It produces the
+artifacts a docs site needs — markdown, `llms.txt`, a search index, navigation,
+`AGENTS.md` — and stays out of routing, layout, and theming. It's designed to
+work *with* a framework, not instead of one.
+
+## Where leadtype fits
+
+Most docs tools answer "how do I publish a great docs site?" Leadtype answers a
+narrower, complementary question: "how do I own portable, agent-readable docs
+artifacts across any framework or repo?" The two compose.
+
+| Tool | What it's great at |
+| --- | --- |
+| **Fumadocs** | A polished React docs framework (Next.js, TanStack Start, React Router, Waku) with first-class UI, search, and `llms.txt` support. |
+| **Starlight** | A batteries-included Astro docs framework with theming, i18n, and a deep plugin ecosystem. |
+| **Mintlify** | A managed docs platform — hosted publishing, search, analytics, and AI, all built in. |
+| **Leadtype** | The portable content + agent-readability layer you run behind any of them. |
+
+Reach for a framework like **Fumadocs** or **Starlight** when the job is shipping
+a polished docs UI — they're built for exactly that. Choose a managed platform
+like **Mintlify** when you want publishing, search, and AI handled for you. Use
+**leadtype** when you want to *own* the generated artifacts — framework-agnostic
+markdown, navigation, search, `llms.txt`, a root `llms-full.txt` fallback, and
+`AGENTS.md` bundles that ship inside your npm tarballs — and keep them identical
+across frameworks and repos. These aren't mutually exclusive: leadtype is
+happiest layered *underneath* a framework you already like.
+
+## What leadtype owns
+
+- The **MDX tag contract** — typed prop shapes for `<Callout>`, `<Tabs>`, `<Steps>`, `<TypeTable>`, and the rest of the custom tags (see [`leadtype/mdx`](/docs/reference/mdx)).
+- A **build-time source preset** that expands `<include>` partials, resolves `<ExtractedTypeTable>`, and strips authoring `import`s — without flattening live components.
+- A **framework-neutral source primitive** (`createDocsSource`) exposing navigation, page loading, search index building, and include resolution.
+- **Framework adapters and recipes** — thin, optional packages or copyable recipes that wire the source primitive into native host conventions: Next App Router, TanStack Start, Nuxt/Nitro, Astro, SvelteKit, Fumadocs, Vue, and Svelte. Adapters export **state and routing primitives only** — hooks, composables, stores, route-handler factories, static-param helpers, pure data helpers — never rendered DOM.
+- The agent / LLM pipeline: MDX-to-markdown conversion, `llms.txt`, root `llms-full.txt` fallback context, markdown mirrors, sitemap, and AGENTS.md bundles.
+- A static, edge-safe **search index** plus optional source-grounded answer streaming.
+- **Lint rules** for frontmatter, navigation metadata, and internal links.
+- **CLI orchestration** so the whole pipeline runs from one command.
+
+## What leadtype does not own
+
+- **Rendered DOM, ever.** No leadtype package — core or adapter — ships `<SearchBox>`, `<DocsLayout>`, `<Callout>`, `<Sidebar>`, or any component that emits markup. This is permanent, not a "for now." Consumers implement components against the tag contract from [`leadtype/mdx`](/docs/reference/mdx); leadtype supplies the data, types, and wiring. The one-line test for any new adapter: *does it return data, state, or a function, or does it return JSX?* If JSX, it doesn't ship.
+- Visual UI, theming, CSS, design tokens, or component styling. **This is a framework's job, and frameworks like Fumadocs and Starlight do it beautifully** — leadtype deliberately leaves that to them.
+- Routing, hosting, deployment, or analytics.
+- The MDX compiler — leadtype produces the source preset; your bundler (Next App Router, TanStack Start, Nuxt, Astro, SvelteKit, or fumadocs-mdx) does the compile.
+
+## Pairing with a framework
+
+Leadtype is built to layer on, not replace. Use **Fumadocs** or **Starlight**
+for the UI and run leadtype alongside for one portable pipeline — markdown,
+search, `llms.txt`, root `llms-full.txt`, Agent Readability files, and
+npm-bundled `AGENTS.md` — shared across every framework and package. The
+[Integrate with Fumadocs](/docs/build/integrate-with-fumadocs) guide is a worked
+example: Fumadocs renders the site, leadtype adds the content and agent layer
+underneath.
+
+This pairing shines across repos: each repo keeps its content next to the code
+it documents, and a shared docs app — public, private, or templated — renders it
+all with your design system. Leadtype handles conversion, search, validation,
+and agent outputs identically everywhere, whatever framework draws the UI.

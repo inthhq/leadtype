@@ -54,6 +54,48 @@ export function tagPhase<T>(plugin: T, phase: RemarkPhase): T {
   return plugin;
 }
 
+export const REMARK_FLATTENER_NAMES = Symbol.for(
+  "leadtype.remark.flattenerNames"
+);
+
+type FlattenerNameTaggable = {
+  [REMARK_FLATTENER_NAMES]?: string[];
+};
+
+/**
+ * Tag a flattener plugin with the component name(s) it handles, so tooling
+ * (e.g. the lint `unflattened-component` rule) can recognize custom components
+ * without running the pipeline. Mutates the function with a non-enumerable
+ * property and returns it for chaining.
+ */
+export function tagFlattenerNames<T>(plugin: T, names: string[]): T {
+  try {
+    Object.defineProperty(
+      plugin as FlattenerNameTaggable,
+      REMARK_FLATTENER_NAMES,
+      {
+        value: names,
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      }
+    );
+  } catch {
+    // Frozen/primitive plugins can't be tagged — callers fall back to treating
+    // the component as unrecognized, which is the safe (warn) default.
+  }
+  return plugin;
+}
+
+/** Read the component names a plugin entry flattens (bare attacher or `[attacher, ...opts]`). */
+export function getFlattenerNames(entry: Pluggable): string[] {
+  const fn = Array.isArray(entry) ? entry[0] : entry;
+  const names = (fn as FlattenerNameTaggable | undefined)?.[
+    REMARK_FLATTENER_NAMES
+  ];
+  return Array.isArray(names) ? names : [];
+}
+
 /** Read the phase of a plugin entry (bare attacher or `[attacher, ...opts]`). */
 export function getPhase(entry: Pluggable): RemarkPhase {
   const fn = Array.isArray(entry) ? entry[0] : entry;

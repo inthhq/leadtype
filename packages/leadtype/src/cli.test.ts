@@ -174,7 +174,9 @@ describe("leadtype CLI", () => {
     expect(code).toBe(0);
     expect(capture.stdout).toBe("");
     expect(capture.stderr).toContain("Generated docs pipeline output");
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
@@ -202,7 +204,7 @@ describe("leadtype CLI", () => {
     );
     expect(docsSummary).toContain("Methodology");
     expect(docsSummary).toContain("Build an agent-ready docs site");
-    expect(docsSummary).toContain("](/docs/methodology.md)");
+    expect(docsSummary).toContain("](/docs/concepts/methodology.md)");
 
     const llmsFull = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
     expect(llmsFull).toContain("# leadtype Full Context");
@@ -990,9 +992,13 @@ Initial release.
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
+      existsSync(
+        path.join(outDir, "docs", "build", "optimize-docs-for-agents.md")
+      )
     ).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(false);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(false);
   });
 
   it("applies exclude path globs after includes", async () => {
@@ -1016,7 +1022,9 @@ Initial release.
 
     expect(code).toBe(0);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
+      existsSync(
+        path.join(outDir, "docs", "build", "optimize-docs-for-agents.md")
+      )
     ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
@@ -1216,7 +1224,9 @@ This page is valid, but the output path is not a directory.
       false
     );
     // .md files should still ship.
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);

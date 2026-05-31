@@ -1,6 +1,14 @@
 ---
 import { createGetStaticPaths, createLoadPageData } from "leadtype/astro";
+import {
+  createDocsJsonLd,
+  normalizeAgentReadabilityManifest,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
+import manifestJson from "../../../public/docs/agent-readability.json";
 import { source } from "../../lib/source";
+
+const manifest = normalizeAgentReadabilityManifest(manifestJson);
 
 export const getStaticPaths = createGetStaticPaths({ source });
 
@@ -10,11 +18,18 @@ const page = await loadPageData(Astro.params.slug);
 if (!page) {
   return Astro.redirect("/docs");
 }
+
+const meta = manifest.pages.find((entry) => entry.urlPath === page.urlPath);
+const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
+const jsonLdScript = jsonLd ? stringifyJsonLd(jsonLd) : null;
 ---
 
 <html lang="en">
   <head>
     <title>{page.title}</title>
+    {meta && <link rel="canonical" href={meta.absoluteUrl} />}
+    {meta && <link rel="alternate" type="text/markdown" href={meta.markdownAbsoluteUrl} />}
+    {jsonLdScript && <script type="application/ld+json" set:html={jsonLdScript} />}
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>

@@ -53,10 +53,10 @@ export default defineDocsConfig({
               "Mental model: one MDX source, two output modes, three audiences, plus the canonical vocabulary.",
           },
           {
-            urlPath: "/docs/methodology",
+            urlPath: "/docs/concepts/methodology",
             title: "Methodology",
             description:
-              "Why leadtype is a pipeline, not a docs framework — and how it compares to Fumadocs, Starlight, and Mintlify.",
+              "Why leadtype is a pipeline, not a docs framework — and how it pairs with Fumadocs, Starlight, and Mintlify.",
           },
           {
             urlPath: "/docs/build/build-a-docs-site",
@@ -101,7 +101,7 @@ export default defineDocsConfig({
               "Ship AGENTS.md + per-topic markdown inside the npm tarball so coding agents read version-matched docs.",
           },
           {
-            urlPath: "/docs/reference/architecture",
+            urlPath: "/docs/concepts/architecture",
             title: "Architecture",
             description:
               "Core package boundary and framework adapter rules — what leadtype ships and what it never will.",
@@ -121,24 +121,52 @@ export default defineDocsConfig({
       children: [
         {
           title: "Start",
-          pages: ["", "quickstart", "how-it-works", "methodology"],
+          pages: ["", "quickstart", "how-it-works"],
+        },
+        {
+          title: "Concepts",
+          base: "concepts",
+          pages: ["methodology", "architecture", "evals"],
         },
         {
           title: "Build an Agent-Ready Site",
           base: "build",
-          pages: [
-            "build-a-docs-site",
-            "use-the-source-primitive",
-            "generate-static-artifacts",
-            "sync-docs-across-repos",
-            "optimize-docs-for-agents",
-            "serve-agent-responses",
-            "deploy-generated-artifacts",
-            "add-search",
-            "validate-in-ci",
-            "framework-matrix",
-            "integrate-with-fumadocs",
+          children: [
+            {
+              title: "Set up",
+              pages: [
+                "build-a-docs-site",
+                "agent-setup-prompts",
+                "use-the-source-primitive",
+              ],
+            },
+            {
+              title: "Generate & serve",
+              pages: [
+                "generate-static-artifacts",
+                "optimize-docs-for-agents",
+                "serve-agent-responses",
+                "deploy-generated-artifacts",
+              ],
+            },
+            {
+              title: "Operate",
+              pages: [
+                "sync-docs-across-repos",
+                "validate-in-ci",
+                "localize-docs",
+              ],
+            },
+            {
+              title: "Integrate",
+              pages: ["framework-matrix", "integrate-with-fumadocs"],
+            },
           ],
+        },
+        {
+          title: "Search & AI",
+          base: "search",
+          pages: ["add-search", "ai-answers", "agent-tools"],
         },
         {
           title: "Docs Sources",
@@ -159,7 +187,6 @@ export default defineDocsConfig({
           title: "Reference",
           base: "reference",
           pages: [
-            "architecture",
             "cli",
             "source",
             "llm",
@@ -169,7 +196,8 @@ export default defineDocsConfig({
             "mdx",
             "remark",
             "search",
-            "evals",
+            "i18n",
+            "troubleshooting",
           ],
         },
       ],

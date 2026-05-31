@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
+import remarkMdx from "remark-mdx";
 import { glob as fg } from "tinyglobby";
 import { visit } from "unist-util-visit";
 import * as v from "valibot";
@@ -14,7 +15,11 @@ import {
   routeFromFilePath,
 } from "../internal/docs-context";
 import { parseFrontmatter } from "../internal/frontmatter";
-import { defaultRemarkPlugins, remarkInclude } from "../remark";
+import {
+  BUILTIN_FLATTENER_COMPONENT_NAMES,
+  defaultRemarkPlugins,
+  remarkInclude,
+} from "../remark";
 import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
@@ -31,7 +36,8 @@ export type LintRule =
   | "parse-error"
   | "invalid-link"
   | "unresolved-placeholder"
-  | "cross-framework-link";
+  | "cross-framework-link"
+  | "unflattened-component";
 
 export type LintViolation = {
   file: string;
@@ -66,6 +72,13 @@ export type LintOptions = {
   ignore?: string[];
   /** Treat unknown frontmatter fields as warnings (default) or errors */
   unknownFieldSeverity?: LintSeverity;
+  /**
+   * Component names that flatten to markdown beyond the built-in tag contract —
+   * typically the names of custom `defineComponentFlattener` plugins from
+   * config. Used by the `unflattened-component` rule to avoid warning on
+   * components the consumer has actually wired a flattener for.
+   */
+  knownComponents?: string[];
   /** Custom schemas override the defaults */
   schemas?: {
     frontmatter?: v.ObjectSchema<
@@ -352,6 +365,55 @@ function validateDocUrls(
   return violations;
 }
 
+const mdxComponentParser = remark().use(remarkMdx);
+// A JSX element is a component (not an intrinsic HTML element) when its name is
+// capitalized or a member expression like `Foo.Bar`.
+const COMPONENT_NAME_PATTERN = /^[A-Z]/;
+
+/**
+ * Find JSX components in `body` that won't flatten to markdown — i.e. names not
+ * in the built-in tag contract and not covered by a registered custom
+ * flattener. These leak raw JSX into the generated agent markdown.
+ */
+function collectUnflattenedComponents(
+  body: string,
+  recognized: Set<string>
+): { line?: number; name: string }[] {
+  let tree: ReturnType<typeof mdxComponentParser.parse>;
+  try {
+    tree = mdxComponentParser.parse(body);
+  } catch {
+    // Parse failures are reported by the markdown link-check path as
+    // `parse-error`; don't double-report here.
+    return [];
+  }
+
+  const seen = new Map<string, number | undefined>();
+  visit(tree, (node) => {
+    const element = node as {
+      name?: unknown;
+      position?: { start?: { line?: number } };
+      type: string;
+    };
+    if (
+      element.type !== "mdxJsxFlowElement" &&
+      element.type !== "mdxJsxTextElement"
+    ) {
+      return;
+    }
+    const name = element.name;
+    if (typeof name !== "string" || name.length === 0) {
+      return; // fragments (<>…</>)
+    }
+    const isComponent = COMPONENT_NAME_PATTERN.test(name) || name.includes(".");
+    if (!isComponent || recognized.has(name) || seen.has(name)) {
+      return;
+    }
+    seen.set(name, element.position?.start?.line);
+  });
+  return Array.from(seen, ([name, line]) => ({ name, line }));
+}
+
 export async function lintDocs(options: LintOptions): Promise<LintResult> {
   const {
     srcDir,
@@ -359,7 +421,13 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     ignore = DEFAULT_IGNORE_GLOBS,
     unknownFieldSeverity = "warn",
     schemas = {},
+    knownComponents = [],
   } = options;
+
+  const recognizedComponents = new Set<string>([
+    ...BUILTIN_FLATTENER_COMPONENT_NAMES,
+    ...knownComponents,
+  ]);
 
   const frontmatterSchema = schemas.frontmatter ?? defaultFrontmatterSchema;
   const changelogSchema =
@@ -392,11 +460,17 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       : "frontmatter";
 
     let data: Record<string, unknown>;
+    let body = "";
+    // Frontmatter is stripped from `body` and its lines renumbered from 1, so
+    // track the offset to report file-relative line numbers.
+    let bodyLineOffset = 0;
     const relativeFile = toRelative(srcDir, file);
     try {
       const raw = await readFile(file, "utf-8");
       const parsed = parseFrontmatter(raw);
       data = parsed.data;
+      body = parsed.content;
+      bodyLineOffset = raw.split("\n").length - body.split("\n").length;
     } catch (error) {
       violations.push({
         file: relativeFile,
@@ -411,6 +485,23 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     violations.push(
       ...validate(schemaToUse, data, relativeFile, kind, unknownFieldSeverity)
     );
+
+    // Flag components that won't flatten — they'd leak raw JSX into the agent
+    // markdown. Walks the MDX AST, so JSX inside code fences (a `code` node, not
+    // a JSX element) is correctly ignored.
+    for (const { name, line } of collectUnflattenedComponents(
+      body,
+      recognizedComponents
+    )) {
+      const fileLine = line ? line + bodyLineOffset : undefined;
+      violations.push({
+        file: relativeFile,
+        kind: "content",
+        severity: "warn",
+        rule: "unflattened-component",
+        message: `<${name}>${fileLine ? ` (line ${fileLine})` : ""} has no markdown flattener — agents will see raw JSX in the generated markdown. Add one with defineComponentFlattener, or rename to a built-in tag.`,
+      });
+    }
 
     try {
       const converted = await convertMdxToMarkdown(file, [

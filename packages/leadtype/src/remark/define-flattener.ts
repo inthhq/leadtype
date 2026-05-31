@@ -19,7 +19,7 @@ import remarkMdx from "remark-mdx";
 import type { Plugin } from "unified";
 import type { VFile } from "vfile";
 import { logger } from "../internal/logger";
-import { tagPhase } from "../internal/remark-phase";
+import { tagFlattenerNames, tagPhase } from "../internal/remark-phase";
 import { type Builders, b } from "./builders";
 import { builtinFlattenerPlugins } from "./default-plugins";
 import {
@@ -237,5 +237,6 @@ export function defineComponentFlattener<
     );
 
   tagPhase(plugin, "custom");
+  tagFlattenerNames(plugin, names);
   return plugin;
 }
