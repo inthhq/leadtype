@@ -181,7 +181,7 @@ export default defineDocsConfig({
         {
           title: "Author Content",
           base: "authoring",
-          pages: ["frontmatter", "components"],
+          pages: ["write-for-agents", "frontmatter", "components"],
         },
         {
           title: "Reference",
