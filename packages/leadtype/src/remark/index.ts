@@ -1,52 +1,51 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
+export { type Builders, b, parseMarkdown } from "./builders";
+// The built-in plugin set, split by phase. `defaultRemarkPlugins` keeps its
+// historical order; phase tags handle scheduling when consumers add their own.
+export {
+  BUILTIN_FLATTENER_COMPONENT_NAMES,
+  builtinFlattenerPlugins,
+  defaultRemarkPlugins,
+} from "./default-plugins";
+// High-level authoring surface for custom component → markdown flattening.
+export {
+  type ComponentFlattenerSpec,
+  defineComponentFlattener,
+  type FlattenContext,
+  type FlattenResult,
+  type InferProps,
+  type PropKind,
+  type PropsSpec,
+} from "./define-flattener";
+// Low-level toolkit — the same building blocks the built-in flatteners use.
+// Reach for these when you need full mdast control inside a custom plugin.
+export {
+  createBlockquote,
+  createHeading,
+  createInlineCode,
+  createJsxComponentProcessor,
+  createLink,
+  createListItem,
+  createOrderedList,
+  createParagraph,
+  createStrong,
+  createStrongParagraph,
+  createTable,
+  createTableCell,
+  createTableRow,
+  createText,
+  createUnorderedList,
+  extractNodeText,
+  getAttributeValue,
+  hasName,
+  type MdxNode,
+  normalizeWhitespace,
+  parseItemsArray,
+  processContentNode,
+} from "./libs";
 export { remarkInclude } from "./plugins/include.remark";
 export {
   extractTypeFromFile,
   remarkTypeTableToMarkdown,
 } from "./plugins/type-table.remark";
-
-import { remarkAccordionToMarkdown } from "./plugins/accordion.remark";
-import { remarkAudienceToMarkdown } from "./plugins/audience.remark";
-import { remarkCalloutToMarkdown } from "./plugins/callout.remark";
-import { remarkCardsToMarkdown } from "./plugins/cards.remark";
-import { remarkCommandTabsToMarkdown } from "./plugins/command-tabs.remark";
-import { remarkDetailsToMarkdown } from "./plugins/details.remark";
-import { remarkResolveDocPlaceholders } from "./plugins/doc-placeholders.remark";
-import { remarkExampleToMarkdown } from "./plugins/example.remark";
-import { remarkFileTreeToMarkdown } from "./plugins/file-tree.remark";
-import { remarkMermaidToMarkdown } from "./plugins/mermaid.remark";
-import { remarkPromptToMarkdown } from "./plugins/prompt.remark";
-import { remarkRemoveImports } from "./plugins/remove-imports.remark";
-import { remarkRemoveJsxComments } from "./plugins/remove-jsx-comments.remark";
-import { remarkSectionToMarkdown } from "./plugins/section.remark";
-import { remarkStepsToMarkdown } from "./plugins/steps.remark";
-import { remarkTabsToMarkdown } from "./plugins/tabs.remark";
-import { remarkTopicSwitcherToMarkdown } from "./plugins/topic-switcher.remark";
-import { remarkTypeTableToMarkdown } from "./plugins/type-table.remark";
-
-/**
- * Default remark plugins for MDX → Markdown conversion for agent/LLM docs.
- * Order matters: imports are stripped first, then components are flattened
- * into markdown equivalents.
- */
-export const defaultRemarkPlugins = [
-  remarkRemoveImports,
-  remarkRemoveJsxComments,
-  remarkResolveDocPlaceholders,
-  remarkAudienceToMarkdown,
-  remarkSectionToMarkdown,
-  remarkCalloutToMarkdown,
-  remarkCardsToMarkdown,
-  remarkDetailsToMarkdown,
-  remarkMermaidToMarkdown,
-  remarkCommandTabsToMarkdown,
-  remarkStepsToMarkdown,
-  remarkTabsToMarkdown,
-  remarkTypeTableToMarkdown,
-  remarkAccordionToMarkdown,
-  remarkTopicSwitcherToMarkdown,
-  remarkFileTreeToMarkdown,
-  remarkPromptToMarkdown,
-  remarkExampleToMarkdown,
-] as const;

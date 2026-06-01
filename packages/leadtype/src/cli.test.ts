@@ -174,7 +174,9 @@ describe("leadtype CLI", () => {
     expect(code).toBe(0);
     expect(capture.stdout).toBe("");
     expect(capture.stderr).toContain("Generated docs pipeline output");
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
@@ -202,7 +204,7 @@ describe("leadtype CLI", () => {
     );
     expect(docsSummary).toContain("Methodology");
     expect(docsSummary).toContain("Build an agent-ready docs site");
-    expect(docsSummary).toContain("](/docs/methodology.md)");
+    expect(docsSummary).toContain("](/docs/concepts/methodology.md)");
 
     const llmsFull = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
     expect(llmsFull).toContain("# leadtype Full Context");
@@ -326,6 +328,58 @@ describe("leadtype CLI", () => {
     expect(docsLlmsTxt.indexOf("## Zeta First")).toBeLessThan(
       docsLlmsTxt.indexOf("## Alpha Second")
     );
+  });
+
+  it("applies config flatteners to custom components during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    // Temp dirs have no node_modules, so import the flattener factory by
+    // absolute source path; the `Symbol.for` phase tag works across module
+    // instances, so scheduling is unaffected.
+    const remarkEntry = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "remark",
+      "index.ts"
+    );
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `import { defineComponentFlattener } from ${JSON.stringify(remarkEntry)};
+
+export default {
+  product: { name: "Flattener Product", summary: "Custom flatteners." },
+  groups: [{ slug: "guide", title: "Guide" }],
+  flatteners: [
+    defineComponentFlattener({
+      name: "Regulation",
+      props: { region: "string" },
+      toMarkdown: ({ props, content, b }) =>
+        b.blockquote([\`**\${props.region}** \${content}\`]),
+    }),
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "compliance.mdx",
+      'title: "Compliance"\ndescription: "Rules."\ngroup: guide',
+      '<Regulation region="GDPR">Store consent first.</Regulation>'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "compliance.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("**GDPR** Store consent first.");
+    expect(markdown).not.toContain("<Regulation");
   });
 
   it("generates locale-scoped i18n artifacts while keeping default URLs stable", async () => {
@@ -938,9 +992,13 @@ Initial release.
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
+      existsSync(
+        path.join(outDir, "docs", "build", "optimize-docs-for-agents.md")
+      )
     ).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(false);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(false);
   });
 
   it("applies exclude path globs after includes", async () => {
@@ -964,7 +1022,9 @@ Initial release.
 
     expect(code).toBe(0);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
+      existsSync(
+        path.join(outDir, "docs", "build", "optimize-docs-for-agents.md")
+      )
     ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
@@ -1164,7 +1224,9 @@ This page is valid, but the output path is not a directory.
       false
     );
     // .md files should still ship.
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(true);
     expect(
       existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
     ).toBe(true);

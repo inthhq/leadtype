@@ -107,7 +107,7 @@ Each MDX page has YAML frontmatter. title is required. description is optional b
 
 The group value drives the sidebar position, the llms.txt section, search metadata, and AGENTS.md grouping. Pages can belong to multiple groups with group: [a, b]. The root /llms-full.txt fallback contains all generated markdown pages and is not split by group. If a page declares an unknown group, the build fails.
 
-Optional fields include icon, deprecated, deprecatedReason, experimental, canary, new, draft, tags, availableIn, full, lastModified, and lastAuthor. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
+Optional fields include icon, status, deprecated, tags, variants, related, full, lastModified, and lastAuthor. status is editorial page metadata: new, updated, or experimental. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
   },
   {
     path: "docs/authoring/components.md",
@@ -177,7 +177,7 @@ generateLlmsTxt writes the product-level /llms.txt and the docs-scoped /docs/llm
 
 generateLLMFullContextFiles writes one root /llms-full.txt file containing every generated markdown docs page. Groups still organize llms.txt sections, navigation, search metadata, and AGENTS.md; they are not published as per-group full-context files by default.
 
-generateAgentsMd writes AGENTS.md for npm-bundled docs. It intentionally ignores product.agentGuidance because that text is written for website URL routing.
+generateAgentsMd writes AGENTS.md for npm-bundled docs. The deprecated product.agentGuidance field is intentionally skipped because that text is written for website URL routing, but author-curated product.blocks are emitted verbatim, so keep block bodies sensible for offline readers.
 
 isAgentReadabilityArtifactPath identifies artifact paths that should not be rewritten as missing markdown pages. It covers llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json.
 

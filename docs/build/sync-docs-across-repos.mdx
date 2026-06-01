@@ -1,0 +1,258 @@
+---
+title: "Sync docs across repositories"
+description: "Keep a separate docs UI repository pinned to a reviewed package-docs source revision."
+---
+
+# Sync docs across repositories
+
+Use this when one repository owns package code and MDX, but another repository owns the rendered docs UI. Start with a remote collection pinned in the docs UI repo, then choose how that pin gets updated.
+
+The important part is not `repository_dispatch`. The important part is that the docs UI repo has a durable Leadtype remote collection that says exactly which source revision to render:
+
+```ts
+defineCollection({
+  repository: "https://github.com/acme/sdk",
+  ref: "f4e3c2d1",
+  cacheDir: ".docs-src/sdk",
+  dir: "docs",
+  prefix: "/docs",
+});
+```
+
+That remote collection makes docs deploys reproducible. If `1.0.0` is live and `main` is halfway to `2.0.0`, a Vercel, Cloudflare Pages, Netlify, self-hosted CI, or local redeploy still renders the `1.0.0` docs.
+
+## Recommended flow
+
+The safest default is a manual promotion:
+
+1. Release the package from the source repo.
+2. Update the remote collection `ref` in the docs UI repo to the release commit SHA.
+3. Open a PR in the docs UI repo.
+4. Review the docs preview.
+5. Merge the PR to deploy production docs.
+
+This keeps production docs as an explicit promotion step. It is provider-neutral and easy to debug because the docs UI repo records the exact source revision it is rendering.
+
+## Configure the remote collection
+
+Keep the source repo and commit SHA in `leadtype.config.ts`:
+
+```ts title="leadtype.config.ts"
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "Acme",
+    summary: "Docs for Acme SDKs and platform APIs.",
+  },
+  collections: {
+    docs: defineCollection({
+      repository: "https://github.com/acme/sdk",
+      ref: "f4e3c2d1",
+      cacheDir: ".docs-src/sdk",
+      dir: "docs",
+      prefix: "/docs",
+    }),
+  },
+});
+```
+
+Then sync and generate before the framework build:
+
+```json title="package.json"
+{
+  "scripts": {
+    "docs:sync": "leadtype sync --src .",
+    "docs:generate": "leadtype generate --src . --out public --base-url https://docs.example.com",
+    "build": "bun run docs:sync && bun run docs:generate && next build"
+  }
+}
+```
+
+Use the same script shape for Astro, Nuxt, SvelteKit, TanStack Start, Vite, or a static file deploy. The framework only needs to render the human docs UI and serve the generated files.
+
+If the docs UI repo uses the released package at build time, pin that dependency to the same version in the same PR and refresh the lockfile. That pins both the docs content and the package code used to render or generate it.
+
+## Optional automation: open the pin PR
+
+Automation is useful when you want every package release to propose a docs update. In that setup, `repository_dispatch` is only the cross-repo notification. The docs UI repo still opens a PR and waits for review.
+
+Dispatch a small immutable payload after publish:
+
+```json
+{
+  "repo": "acme/sdk",
+  "sha": "f4e3c2d1...",
+  "version": "1.0.0"
+}
+```
+
+`repo` and `sha` are enough to fetch the exact docs. `version` is useful for PR titles, dependency pins, build logs, and release dashboards.
+
+## Source repo release workflow
+
+Dispatch after the package publish step succeeds. A fine-grained token or GitHub App token needs write access to contents on the target docs repo because the GitHub API treats `repository_dispatch` as a write operation. Keep the target workflow on the docs repo's default branch; GitHub only starts `repository_dispatch` workflows from there.
+
+```yaml title=".github/workflows/release.yml"
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Publish packages
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: bun run version
+          publish: bun run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Request docs source pin update
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          DOCS_DISPATCH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+          DOCS_REPOSITORY: ${{ vars.DOCS_REPOSITORY }}
+          PACKAGE_NAME: ${{ vars.DOCS_PACKAGE_NAME }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          # Set DOCS_PACKAGE_NAME to the published package whose release drives the docs pin.
+          VERSION=$(printf '%s\n' "$PUBLISHED_PACKAGES" | jq -r --arg name "$PACKAGE_NAME" '.[] | select(.name == $name) | .version // empty')
+
+          if [ -z "$VERSION" ]; then
+            echo "No published version found for '$PACKAGE_NAME'; skipping docs pin dispatch."
+            exit 0
+          fi
+
+          jq -n \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg sha "$GITHUB_SHA" \
+            --arg version "$VERSION" \
+            '{ event_type: "docs-source-released", client_payload: { repo: $repo, sha: $sha, version: $version } }' > dispatch.json
+
+          curl -fsSL \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $DOCS_DISPATCH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$DOCS_REPOSITORY/dispatches" \
+            --data @dispatch.json
+```
+
+Store:
+
+- `DOCS_DISPATCH_TOKEN` as a secret in the source repo.
+- `DOCS_REPOSITORY` as a repo variable, for example `acme/docs`.
+- `DOCS_PACKAGE_NAME` as a repo variable set to the published package that drives docs pins, for example `@acme/sdk`.
+
+## Docs repo PR workflow
+
+The docs UI repo receives the event, updates the remote collection ref on a branch, and opens a PR. Your hosting provider can build PR previews from the docs UI repo as usual.
+
+```yaml title=".github/workflows/update-source-pin.yml"
+name: Update docs source pin
+
+on:
+  repository_dispatch:
+    types:
+      - docs-source-released
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-source-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update remote collection pin
+        env:
+          SOURCE_REPO: ${{ github.event.client_payload.repo }}
+          SOURCE_SHA: ${{ github.event.client_payload.sha }}
+          SOURCE_VERSION: ${{ github.event.client_payload.version }}
+        run: |
+          node ./scripts/update-leadtype-source.mjs
+
+      - name: Open pin PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: docs/source-${{ github.event.client_payload.version }}
+          commit-message: Update docs source to ${{ github.event.client_payload.version }}
+          title: Update docs source to ${{ github.event.client_payload.version }}
+          body: |
+            Updates the Leadtype source pin.
+
+            - Source: `${{ github.event.client_payload.repo }}`
+            - Commit: `${{ github.event.client_payload.sha }}`
+            - Version: `${{ github.event.client_payload.version }}`
+```
+
+By default `peter-evans/create-pull-request` opens the PR with the workflow's `GITHUB_TOKEN`, and PRs created that way do not trigger downstream `push` or `pull_request` workflows on the docs repo. Hosting-provider previews (Vercel, Cloudflare Pages, Netlify) still build because they run through their own GitHub Apps, but workflow-driven CI on the pin PR — link checks, MDX lint, `leadtype lint` — silently will not run. If you need those, pass a fine-grained PAT or GitHub App token via the action's `token:` input.
+
+Keep `scripts/update-leadtype-source.mjs` in the docs UI repo so the repo owns how its Leadtype config is edited. Prefer a small AST-aware script or a deliberately marked config block over ad hoc shell replacement. If you also pin the released package dependency, update `package.json` and the lockfile before `Open pin PR`.
+
+## Deployment options
+
+| Option | Use when | Tradeoff |
+| --- | --- | --- |
+| Manual pin PR | You want the clearest and safest release promotion. | Recommended baseline. Requires a maintainer to update and merge. |
+| Dispatch opens pin PR | You want release automation but still want review before production docs change. | Recommended automation path. Needs a cross-repo token. |
+| Dispatch commits to main | You want publish to deploy docs automatically. | Fast, but couples npm publish directly to docs production. Avoid as the default. |
+| Provider deploy hook | You only need "rebuild now" and the source ref already lives in the docs repo. | Too weak by itself; hooks do not carry a durable pin. |
+| Release artifact | You want a hermetic tarball of generated markdown/search artifacts. | Strong reproducibility, but more storage and promotion plumbing. |
+| Git submodule or subtree | You want the docs repo to vendor the source revision directly. | Reproducible, but heavier contributor DX than a remote collection ref. |
+| Same repo | The docs UI and packages ship together. | Simplest when ownership allows it. |
+
+## Preview builds
+
+For PR previews, do not update the production pin. Either:
+
+- Let the docs UI repo build previews from source branches by passing a temporary SHA to preview-only CI.
+- Dispatch preview events from same-repo PRs only, and require a maintainer-triggered workflow for fork previews.
+
+Keep preview refs separate from the production remote collection ref.
+
+## Agent prompt
+
+<Prompt title="Set up pinned multi-repo docs" description="Give this to an agent in the source repo and docs UI repo.">
+You are setting up a multi-repo Leadtype docs pipeline.
+
+Requirements:
+
+1. The package/source repo owns MDX and releases packages.
+2. The docs UI repo owns the rendered site.
+3. Production docs must be pinned to an explicit released source revision, not the source repo default branch.
+4. Configure `leadtype.config.ts` in the docs UI repo with a remote Leadtype collection whose `repository` points at the source repo and whose `ref` is pinned to the released commit SHA.
+5. Keep the package version near that config when useful for reviewers, PR titles, dependency pins, or release dashboards.
+6. Run `leadtype sync`, then `leadtype generate`, before the docs UI framework build.
+7. Prefer manual pin PRs as the baseline. If automating, make the source repo dispatch a small payload after publish and make the docs UI repo open a PR that updates the remote collection ref.
+8. Do not make package publish directly deploy production docs unless the project explicitly wants that coupling.
+9. For PR previews, do not update the production pin. Keep preview refs separate.
+
+Return the changed workflows, the remote collection shape, required secrets and variables, and the build scripts needed for the docs UI repo.
+</Prompt>
+
+## What to read next
+
+<Cards>
+  <Card title="Configure docs sources" description="Use local folders, mounted folders, and remote git collections." href="/docs/sources/configure-sources" />
+  <Card title="Generate static artifacts" description="Write llms.txt, markdown mirrors, search, sitemap, and Agent Readability files." href="/docs/build/generate-static-artifacts" />
+  <Card title="Deploy generated artifacts" description="Serve Leadtype output on common framework and hosting combinations." href="/docs/build/deploy-generated-artifacts" />
+</Cards>

@@ -17,3 +17,15 @@ The examples implement a tiny runtime component set for the shared MDX names.
     Generated markdown flattens custom components into portable text.
   </Tab>
 </Tabs>
+
+## Custom component flattener
+
+`<Regulation>` is **not** part of Leadtype's naming contract — it's an app-defined
+component. `examples/shared-docs/flatteners.ts` teaches the agent pipeline how to
+flatten it with `defineComponentFlattener`, wired in via the config `flatteners`
+field. In the browser it renders as a styled note; in the generated `.md` it
+becomes a labeled blockquote.
+
+<Regulation region="GDPR">
+  Store consent before loading non-essential scripts.
+</Regulation>

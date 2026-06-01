@@ -60,6 +60,43 @@ export default defineDocsConfig({
   product: {
     name: "c15t",
     summary: "Developer-first consent management for modern web apps.",
+    // `blocks` fully describes the body of llms.txt in order. Use markdown
+    // blocks for prose/credibility content (popularity, hosting) and links
+    // blocks for curated, source-resolved entry points. Popularity numbers are
+    // author-supplied here — fetch them at build time in this module if you
+    // want them live; leadtype never fetches.
+    blocks: [
+      {
+        type: "markdown",
+        heading: "Overview",
+        body: [
+          "- GDPR-ready cookie banners, consent dialogs, and preference flows",
+          "- Framework guides for JavaScript, React, and Next.js",
+          "- Load scripts, iframes, and analytics only after the required consent",
+          "- Self-host the consent backend, or use managed hosting",
+        ].join("\n"),
+      },
+      {
+        type: "markdown",
+        heading: "Popularity",
+        body: "A widely adopted consent stack across the JavaScript ecosystem. Need a fully managed backend? Hosted by [Inth](https://inth.com).",
+      },
+      {
+        type: "links",
+        heading: "Best Starting Points",
+        links: [
+          { urlPath: "/docs/frameworks/next/quickstart" },
+          { urlPath: "/docs/frameworks/react/quickstart" },
+          { urlPath: "/docs/frameworks/javascript/quickstart" },
+          { urlPath: "/docs/self-host/quickstart" },
+        ],
+      },
+      {
+        type: "markdown",
+        heading: "Agent Guidance",
+        body: "Start with the framework-specific quickstart for your target app. On the website, /docs/llms.txt routes by task and /llms-full.txt carries full page context; the bundled AGENTS.md lists the same topics as relative links.",
+      },
+    ],
   },
   collections: {
     docs: defineCollection({

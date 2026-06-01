@@ -143,10 +143,12 @@ function createGenerateRemarkPlugins({
   sourceRoot,
   typeTableBasePath,
   typeTableStrict,
+  flatteners,
 }: {
   sourceRoot: string;
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
+  flatteners?: PluggableList;
 }): PluggableList {
   const plugins: PluggableList = [remarkInclude];
   for (const plugin of defaultRemarkPlugins) {
@@ -162,6 +164,11 @@ function createGenerateRemarkPlugins({
         : plugin
     );
   }
+  // Custom flatteners are appended; convertAllMdx phase-sorts them into the
+  // `custom` phase (after resolve, before the built-in flatteners).
+  if (flatteners) {
+    plugins.push(...flatteners);
+  }
   return plugins;
 }
 
@@ -173,6 +180,7 @@ export type LoadedDocsConfig = {
 type ResolvedGenerateMetadata = {
   configPath?: string;
   frontmatterSchema?: DocsFrontmatterSchema;
+  flatteners?: PluggableList;
   groups: DocsGroup[];
   i18n?: DocsConfig["i18n"];
   nav?: DocsNavNode[];
@@ -537,6 +545,11 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" exclude must be an array of glob strings`
       );
     }
+    if (entry.flatteners !== undefined && !Array.isArray(entry.flatteners)) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" flatteners must be an array of remark plugins`
+      );
+    }
     out[key] = entry as DocsCollection;
   }
   return out;
@@ -594,6 +607,12 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     }
   }
 
+  if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
+    throw new Error(
+      `docs config at "${configPath}" must export flatteners as an array of remark plugins`
+    );
+  }
+
   return {
     ...(collections ? { collections } : {}),
     ...(groups ? { groups } : {}),
@@ -606,6 +625,9 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(value.transformers === undefined
       ? {}
       : { transformers: value.transformers as DocsTransformer[] }),
+    ...(value.flatteners === undefined
+      ? {}
+      : { flatteners: value.flatteners as DocsConfig["flatteners"] }),
     ...(value.i18n === undefined
       ? {}
       : { i18n: value.i18n as DocsConfig["i18n"] }),
@@ -860,8 +882,17 @@ function resolveGenerateMetadata(
     const collectionNav = loaded.config.collections
       ? mergeCollectionNav(loaded.config.collections, docsSources)
       : undefined;
+    const flatteners = [
+      ...(loaded.config.flatteners ?? []),
+      ...(loaded.config.collections
+        ? Object.values(loaded.config.collections).flatMap(
+            (collection) => collection.flatteners ?? []
+          )
+        : []),
+    ];
     return Promise.resolve({
       configPath: loaded.path,
+      flatteners: flatteners.length > 0 ? flatteners : undefined,
       frontmatterSchema: loaded.config.frontmatterSchema,
       groups: collectionGroups ?? loaded.config.groups ?? [],
       i18n: loaded.config.i18n,
@@ -1479,6 +1510,7 @@ export async function runGenerateCommand(
         sourceRoot: srcDir,
         typeTableBasePath,
         typeTableStrict,
+        flatteners: metadata.flatteners,
       }),
       enrichFrontmatterFromGit: args.enrichGit,
       failOnError: typeTableStrict,

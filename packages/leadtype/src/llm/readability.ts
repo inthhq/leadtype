@@ -641,28 +641,82 @@ Use [/llms.txt](/llms.txt) or [/sitemap.md](/sitemap.md) to find available pages
 
 /* ----------------------- JSON-LD helpers ------------------------------- */
 
+type BreadcrumbCrumb = { name: string; url?: string };
+
+const DOCS_ROOT_SEGMENT = "docs";
+
+/**
+ * Walk the navigation tree to find the chain of groups that contains `page`,
+ * outermost first. Returns `[]` for ungrouped pages, which yields the simple
+ * Docs → page breadcrumb.
+ */
+function findGroupTrail(
+  groups: DocsNavigationGroup[] | undefined,
+  urlPath: string
+): DocsNavigationGroup[] {
+  if (!groups) {
+    return [];
+  }
+  for (const group of groups) {
+    if (group.pages?.some((entry) => entry.urlPath === urlPath)) {
+      return [group];
+    }
+    const childTrail = findGroupTrail(group.children, urlPath);
+    if (childTrail.length > 0) {
+      return [group, ...childTrail];
+    }
+  }
+  return [];
+}
+
+/**
+ * The outermost nav node is often a "Docs" tab that maps to the `/docs` root
+ * (segmentPath `["docs"]`). That's already the breadcrumb home, so drop it to
+ * avoid a duplicate `Docs → Docs` trail and a useless `articleSection`.
+ */
+function sectionTrail(trail: DocsNavigationGroup[]): DocsNavigationGroup[] {
+  const first = trail.at(0);
+  const isDocsRootContainer =
+    first?.segmentPath.length === 1 &&
+    first.segmentPath[0] === DOCS_ROOT_SEGMENT;
+  return isDocsRootContainer ? trail.slice(1) : trail;
+}
+
+function buildBreadcrumb(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest,
+  sections: DocsNavigationGroup[]
+): JsonLdValue {
+  // Section crumbs are name-only: a group's segmentPath is a structural nav
+  // path, not a URL, and sections rarely have their own landing page. The home
+  // and leaf crumbs carry the URLs agents resolve.
+  const crumbs: BreadcrumbCrumb[] = [
+    { name: "Docs", url: `${manifest.baseUrl}/docs` },
+    ...sections.map((group) => ({ name: group.title })),
+    { name: page.title, url: page.absoluteUrl },
+  ];
+
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.name,
+      ...(crumb.url ? { item: crumb.url } : {}),
+    })),
+  };
+}
+
 export function renderJsonLd(
   page: AgentReadabilityPage,
   manifest: AgentReadabilityManifest
 ): JsonLdValue {
   assertManifestVersion(manifest);
-  const breadcrumb = {
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Docs",
-        item: `${manifest.baseUrl}/docs`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: page.title,
-        item: page.absoluteUrl,
-      },
-    ],
-  };
+  const sections = sectionTrail(
+    findGroupTrail(manifest.navigation?.groups, page.urlPath)
+  );
+  const breadcrumb = buildBreadcrumb(page, manifest, sections);
+  const articleSection = sections.at(0)?.title;
   return {
     "@context": "https://schema.org",
     "@type": "TechArticle",
@@ -672,6 +726,7 @@ export function renderJsonLd(
     url: page.absoluteUrl,
     mainEntityOfPage: page.absoluteUrl,
     dateModified: page.lastModified,
+    ...(articleSection ? { articleSection } : {}),
     ...(page.locale ? { inLanguage: page.locale } : {}),
     isPartOf: {
       "@type": "WebSite",

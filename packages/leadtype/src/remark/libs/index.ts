@@ -4,16 +4,20 @@ export { processContentNode } from "./content-processor";
 export { createJsxComponentProcessor } from "./generic-processor";
 export { hasName } from "./guards";
 export {
+  createBlockquote,
   createHeading,
   createInlineCode,
   createLink,
+  createListItem,
   createOrderedList,
   createParagraph,
   createStrong,
   createStrongParagraph,
   createTable,
+  createTableCell,
   createTableRow,
   createText,
+  createUnorderedList,
 } from "./node-creators";
 export {
   extractNodeText,

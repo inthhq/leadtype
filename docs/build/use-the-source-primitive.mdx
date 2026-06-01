@@ -1,6 +1,13 @@
 ---
 title: "Use the source primitive"
 description: "Wire createDocsSource into Next, TanStack Start, Nuxt, Astro, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes."
+related:
+  - title: "createDocsSource"
+    href: "/docs/reference/source"
+    description: "Reference for the source object returned by the primitive."
+  - title: "Frontmatter transformers"
+    href: "/docs/reference/frontmatter-transformers"
+    description: "Add typed metadata and lifecycle hooks to source loading."
 ---
 
 # Use the source primitive
@@ -92,7 +99,7 @@ export const GET = createDocsRouteHandler({
 });
 ```
 
-Pair with `useLeadtypeSearch` from `leadtype/next/client` when building a search input — see the [search recipe](/docs/build/add-search).
+Pair with `useLeadtypeSearch` from `leadtype/next/client` when building a search input — see the [search recipe](/docs/search/add-search).
 
 ### TanStack Start
 
@@ -319,7 +326,7 @@ export async function GET() {
 }
 ```
 
-For provider-specific search (Vercel AI, TanStack, Cloudflare), feed the bundle into a `leadtype/search/*` adapter — see [Add search](/docs/build/add-search).
+For provider-specific search (Vercel AI, TanStack, Cloudflare), feed the bundle into a `leadtype/search/*` adapter — see [Add search](/docs/search/add-search).
 
 ## Troubleshooting
 

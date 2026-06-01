@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "leadtype generate, leadtype sync, and leadtype lint — flags, exit codes, and JSON output."
+description: "leadtype init, generate, sync, and lint — flags, exit codes, and JSON output."
 ---
 
 # CLI
@@ -9,7 +9,30 @@ description: "leadtype generate, leadtype sync, and leadtype lint — flags, exi
 leadtype <command> [options]
 ```
 
-Three commands: `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), and `lint` validates content. Run `leadtype help <command>` for inline usage.
+Four commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), and `lint` validates content. Run `leadtype help <command>` for inline usage.
+
+## init
+
+Scaffold an agent-ready docs integration into an existing app: a starter `docs/` source, the framework's docs route and markdown route, config, and (unless `--no-generate`) a first run of `generate` so the site works immediately.
+
+```bash
+leadtype init [options]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--framework <name>`, `-f` | auto-detect | Target framework: `next`, `astro`, `nuxt`, or `sveltekit`. Inferred from `package.json` dependencies when omitted. |
+| `--dir <dir>` | `.` | Project root to scaffold into. |
+| `--base-url <url>` | per-framework dev URL | Base URL written into the source config (e.g. `http://localhost:3000`). |
+| `--name <name>` | `My docs` | Product name written into `docs/docs.config.ts`. |
+| `--summary <text>` | placeholder | One-line product summary. |
+| `--force` | off | Overwrite files that already exist. Without it, existing files are skipped. |
+| `--dry-run` | off | Print the file plan without writing or generating. |
+| `--no-generate` | off | Skip the post-scaffold `leadtype generate` run. |
+| `--json` | — | Emit the file plan as JSON and exit (no writes). |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` success, `2` CLI usage error or no framework detected. Existing files are never overwritten unless `--force` is passed. TanStack Start and Fumadocs are not scaffolded by `init` (heavier app-specific setup) — follow their recipes in [Use the source primitive](/docs/build/use-the-source-primitive).
 
 ## generate
 

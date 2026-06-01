@@ -91,9 +91,9 @@ Body
       path.join("docs", "frameworks", "next", "concepts", "overview.mdx"),
       `---
 title: Overview
-availableIn:
-  - framework: next
-    url: /docs/frameworks/{framework}/concepts/policy-packs
+variants:
+  - value: next
+    href: /docs/frameworks/{framework}/concepts/policy-packs
 ---
 <import src="../../../shared/concepts/common.mdx" />
 `
@@ -129,9 +129,9 @@ Body
       path.join("docs", "guides", "overview.mdx"),
       `---
 title: Overview
-availableIn:
-  - framework: next
-    url: /docs/frameworks/{framework}/concepts/policy-packs
+variants:
+  - value: next
+    href: /docs/frameworks/{framework}/concepts/policy-packs
 ---
 [DevTools](/docs/frameworks/next/dev-tools)
 `
@@ -351,5 +351,243 @@ title: Overview
         }),
       ])
     );
+  });
+});
+
+describe("lintDocs default frontmatter schema", () => {
+  it("accepts editorial status, string deprecation, variants, and related links", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+description: Start here.
+icon: book-open
+status: updated
+deprecated: Use /docs/guides/start instead.
+tags: [guides]
+group: get-started
+order: 10
+variants:
+  - value: next
+    label: Next.js
+    href: /docs/guides/overview
+    description: Next.js version.
+related:
+  - title: Start guide
+    href: /docs/guides/overview
+    description: Read this next.
+full: true
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.summary.errors).toBe(0);
+  });
+
+  it("rejects release-channel page status and old lifecycle aliases", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+status: canary
+deprecated: true
+deprecatedReason: Use /docs/guides/start instead.
+experimental: true
+canary: true
+new: true
+draft: true
+availableIn:
+  - framework: next
+    url: /docs/frameworks/{framework}/overview
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "status",
+          kind: "frontmatter",
+          rule: "schema",
+        }),
+        expect.objectContaining({
+          field: "deprecated",
+          kind: "frontmatter",
+          rule: "schema",
+        }),
+        expect.objectContaining({
+          field: "deprecatedReason",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "experimental",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "canary",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "new",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "draft",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+        expect.objectContaining({
+          field: "availableIn",
+          kind: "frontmatter",
+          rule: "unknown-field",
+        }),
+      ])
+    );
+  });
+
+  it("rejects empty deprecated messages", async () => {
+    const projectDir = await createTempProject();
+
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "overview.mdx"),
+      `---
+title: Overview
+deprecated: ""
+---
+Body
+`
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      unknownFieldSeverity: "error",
+    });
+
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "deprecated",
+          kind: "frontmatter",
+          message: "deprecated: must not be empty",
+          rule: "schema",
+        }),
+      ])
+    );
+  });
+});
+
+describe("lintDocs unflattened-component", () => {
+  it("warns on rendered components with no flattener but not on code-block examples", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guide.mdx"),
+      `---
+title: Guide
+---
+
+This renders for real and has no flattener:
+
+<DangerWidget />
+
+But these are only examples in a fence and must NOT warn:
+
+\`\`\`tsx
+<ConsentBanner />
+<DangerWidget />
+\`\`\`
+
+Inline \`<AlsoFine />\` must not warn either.
+`
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const unflattened = result.violations.filter(
+      (violation) => violation.rule === "unflattened-component"
+    );
+
+    expect(unflattened).toHaveLength(1);
+    expect(unflattened[0]?.message).toContain("<DangerWidget>");
+    expect(unflattened[0]?.message).toContain("line 7");
+    expect(unflattened.some((v) => v.message.includes("ConsentBanner"))).toBe(
+      false
+    );
+    expect(unflattened.some((v) => v.message.includes("AlsoFine"))).toBe(false);
+  });
+
+  it("does not warn on built-in contract components", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "builtin.mdx"),
+      `---
+title: Builtin
+---
+
+<Callout title="Heads up">Be careful.</Callout>
+
+<Tabs items={["npm", "pnpm"]}>
+  <Tab value="npm">npm i x</Tab>
+  <Tab value="pnpm">pnpm add x</Tab>
+</Tabs>
+`
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    expect(
+      result.violations.some((v) => v.rule === "unflattened-component")
+    ).toBe(false);
+  });
+
+  it("treats knownComponents as recognized", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "custom.mdx"),
+      `---
+title: Custom
+---
+
+<Hint>Use a flattener.</Hint>
+`
+    );
+
+    const withoutKnown = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+    });
+    expect(
+      withoutKnown.violations.some((v) => v.rule === "unflattened-component")
+    ).toBe(true);
+
+    const withKnown = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      knownComponents: ["Hint"],
+    });
+    expect(
+      withKnown.violations.some((v) => v.rule === "unflattened-component")
+    ).toBe(false);
   });
 });

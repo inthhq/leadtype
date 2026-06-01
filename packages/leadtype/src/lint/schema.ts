@@ -19,15 +19,19 @@ const isoDate = v.pipe(
   } as never)
 );
 
-/**
- * Cross-framework page link used by the "Available in other SDKs" widget.
- * Framework-neutral by default; projects can use this for SDK/framework
- * switchers or ignore it entirely.
- */
-const availableInEntry = v.object({
-  framework: v.string(),
-  url: v.optional(v.string()),
-  title: v.optional(v.string()),
+const nonEmptyString = v.pipe(v.string(), v.minLength(1, "must not be empty"));
+
+const variantEntry = v.object({
+  value: nonEmptyString,
+  label: v.optional(nonEmptyString),
+  href: nonEmptyString,
+  description: v.optional(v.string()),
+});
+
+const relatedEntry = v.object({
+  title: nonEmptyString,
+  href: nonEmptyString,
+  description: v.optional(v.string()),
 });
 
 /**
@@ -38,22 +42,20 @@ const availableInEntry = v.object({
  * Callers can override via `lintDocs({ schemas: { frontmatter: ... } })`.
  */
 export const defaultFrontmatterSchema = v.object({
-  title: v.pipe(v.string(), v.minLength(1, "must not be empty")),
+  title: nonEmptyString,
   description: v.optional(v.string()),
   icon: v.optional(v.string()),
 
-  // Lifecycle
-  deprecated: v.optional(v.boolean()),
-  deprecatedReason: v.optional(v.string()),
-  experimental: v.optional(v.boolean()),
-  canary: v.optional(v.boolean()),
-  new: v.optional(v.boolean()),
-  draft: v.optional(v.boolean()),
+  // Editorial page state. Release channels belong in build config or
+  // transformers, not page frontmatter.
+  status: v.optional(v.picklist(["new", "updated", "experimental"])),
+  deprecated: v.optional(nonEmptyString),
 
   // Categorization
   tags: v.optional(v.array(v.string())),
   group: v.optional(v.union([v.string(), v.array(v.string())])),
-  availableIn: v.optional(v.array(availableInEntry)),
+  variants: v.optional(v.array(variantEntry)),
+  related: v.optional(v.array(relatedEntry)),
   /**
    * Sidebar ordering within a group. Lower numbers come first. Pages
    * without `order` sort alphabetically by URL path **after** explicitly

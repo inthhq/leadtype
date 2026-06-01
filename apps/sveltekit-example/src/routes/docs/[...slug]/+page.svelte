@@ -1,17 +1,37 @@
 <script lang="ts">
 import { createLeadtypeSearch } from "leadtype/search/svelte";
 
-export let data: {
-  page: {
-    title: string;
-    urlPath: string;
-    markdownUrlPath: string;
-    markdown: string;
+let {
+  data,
+}: {
+  data: {
+    page: {
+      title: string;
+      urlPath: string;
+      markdownUrlPath: string;
+      markdown: string;
+      canonicalUrl: string | null;
+      markdownAbsoluteUrl: string | null;
+      jsonLdScript: string | null;
+    };
   };
-};
+} = $props();
 
 const { results, search, status } = createLeadtypeSearch("docs");
 </script>
+
+<svelte:head>
+  {#if data.page.canonicalUrl}
+    <link rel="canonical" href={data.page.canonicalUrl} />
+  {/if}
+  {#if data.page.markdownAbsoluteUrl}
+    <link rel="alternate" type="text/markdown" href={data.page.markdownAbsoluteUrl} />
+  {/if}
+  {#if data.page.jsonLdScript}
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html data.page.jsonLdScript}
+  {/if}
+</svelte:head>
 
 <main class="docs-layout">
   <aside>
@@ -23,7 +43,7 @@ const { results, search, status } = createLeadtypeSearch("docs");
     <section class="search">
       <input
         aria-label="Search docs"
-        on:input={(event) =>
+        oninput={(event) =>
           search((event.currentTarget as HTMLInputElement).value)}
         placeholder="Search docs"
       />

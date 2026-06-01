@@ -8,7 +8,6 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import type {
   AccordionItemProps,
   AudienceProps,
-  CalloutProps,
   CommandTabsProps,
   PromptProps,
   TypeTableProps,
@@ -202,7 +201,7 @@ const Passthrough: ComponentType<{ children?: ReactNode }> = ({ children }) => (
 export const mdxComponents = {
   ...defaultMdxComponents,
   // Leadtype contract → fumadocs-ui
-  Callout: Callout as ComponentType<CalloutProps & { title?: ReactNode }>,
+  Callout,
   Tabs,
   Tab,
   Steps,

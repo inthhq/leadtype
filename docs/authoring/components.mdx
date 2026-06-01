@@ -22,9 +22,11 @@ This means the same content reaches three audiences (humans, agents, search) wit
 
 The remark pipeline recognizes these names. If your components use the same names, flattening Just Works:
 
-`Accordion`, `AccordionItem`, `Audience`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Selector`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+`Accordion`, `AccordionItem`, `Audience`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
 
-If your app uses different names, you have two options: rename to match, or add a custom remark plugin that maps your names back to the contract above.
+If your app uses different names — or a component that has no equivalent above — you have two options: rename to match the contract, or define how it flattens with [`defineComponentFlattener`](/docs/reference/remark#custom-component-flatteners). You declare the component name and a `toMarkdown` function; leadtype handles tree-walking, prop parsing, child flattening, and plugin order for you.
+
+A rendered component that's neither in the contract nor has a flattener passes through as **raw JSX** in the generated markdown — agents see noise instead of content. [`leadtype lint`](/docs/reference/lint) catches this: the [`unflattened-component`](/docs/reference/lint#content--link-rules) rule warns on any such component. Components shown inside code fences are examples, not rendered JSX, so they never warn.
 
 Runtime registration, heading IDs, and "On this page" sidebars are docs-app concerns. See [Use the source primitive](/docs/build/use-the-source-primitive) for runtime wiring and [`leadtype/mdx`](/docs/reference/mdx) for the full prop-type contract.
 
@@ -335,5 +337,5 @@ Diagrams authored as plain text. Renders client-side as interactive SVG. Flatten
 ## Guidelines
 
 - Keep runtime components in your docs app. Leadtype stays out of UI.
-- Keep component names stable. Renaming `<Callout>` breaks the flattening contract until you add a remark plugin to remap.
+- Keep component names stable. Renaming `<Callout>` breaks the flattening contract until you remap it with [`defineComponentFlattener`](/docs/reference/remark#custom-component-flatteners).
 - For agent output quality, read the converted `.md` files first and only edit components or plugin order if the markdown actually looks wrong.

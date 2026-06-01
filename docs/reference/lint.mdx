@@ -1,6 +1,14 @@
 ---
 title: "Lint rules"
 description: "Schema, link, and navigation checks. CLI and library API."
+status: updated
+related:
+  - title: "Frontmatter"
+    href: "/docs/authoring/frontmatter"
+    description: "See the default fields that lint validates."
+  - title: "Validate in CI"
+    href: "/docs/build/validate-in-ci"
+    description: "Run lint before generated artifacts reach production."
 ---
 
 # Lint rules
@@ -32,8 +40,11 @@ Grouped by what they catch.
 | `invalid-link` | error | A `/docs/...` link points to a route that doesn't exist. |
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
+| `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
 
 Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
+
+The `unflattened-component` rule walks the MDX AST, so components inside code fences or inline code are examples — not rendered JSX — and never warn. It recognizes the built-in [tag contract](/docs/authoring/components#the-naming-contract) plus any custom `defineComponentFlattener` plugins declared in your config.
 
 ## Library API
 
@@ -72,7 +83,8 @@ type LintResult = {
       | "parse-error"
       | "invalid-link"
       | "unresolved-placeholder"
-      | "cross-framework-link";
+      | "cross-framework-link"
+      | "unflattened-component";
     field?: string;
     message: string;
   }>;
@@ -95,18 +107,19 @@ Required-field failures are reported as `schema` violations — that's the publi
 | `title` | Yes | non-empty string |
 | `description` | No | string |
 | `icon` | No | string |
-| `deprecated` | No | boolean |
-| `deprecatedReason` | No | string |
-| `experimental` | No | boolean |
-| `canary` | No | boolean |
-| `new` | No | boolean |
-| `draft` | No | boolean |
+| `status` | No | `new`, `updated`, or `experimental` |
+| `deprecated` | No | non-empty string |
 | `tags` | No | string array |
 | `group` | No | string or string array |
-| `availableIn` | No | array of `{ framework, url?, title? }` |
+| `variants` | No | array of `{ value, label?, href, description? }` |
+| `related` | No | array of `{ title, href, description? }` |
 | `full` | No | boolean |
 
 `lastModified` and `lastAuthor` are produced by the converter when `--enrich-git` is set. Don't author them.
+
+Page `status` is editorial metadata. Release channels such as canary, RC,
+preview, and stable should be modeled in build config or transformers, not in
+source-authored page status.
 
 ### Changelog frontmatter
 
@@ -161,7 +174,7 @@ Once you provide a custom schema, `unknown-field` warnings apply to *that* schem
 
 - Run lint **before** `leadtype generate` so content errors fail fast.
 - Use `--format github` in GitHub Actions and `--format json` in any other CI.
-- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `availableIn` or a stale URL template.
+- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `variants` or a stale URL template.
 - After a docs move, lint and run `meta.json` updates together; they drift at the same time.
 
 For wiring lint into pipelines, see [Validate in CI](/docs/build/validate-in-ci).

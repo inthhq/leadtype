@@ -41,7 +41,7 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 | `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
 | `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
-Config `nav` drives `llms.txt` sections, navigation, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `nav`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/reference/evals) for the benchmark behind that default.
+Config `nav` drives `llms.txt` sections, navigation, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `nav`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/concepts/evals) for the benchmark behind that default.
 
 ## ProductInfo
 
@@ -59,51 +59,70 @@ Every generator that writes a top-level index file (`generateLlmsTxt`, `generate
       required: true,
       description: "Single-line summary rendered as the blockquote under the H1.",
     },
-    bullets: {
-      type: "string[]",
-      description: "Rendered under '## Product Summary'. Use for top-level feature highlights.",
-    },
-    bestStartingPoints: {
-      type: "Array<{ urlPath: string, title?: string, description?: string }>",
-      description: "Curated entry points rendered under '## Best Starting Points'. Titles and descriptions fall back to each page's frontmatter when omitted.",
-    },
-    agentGuidance: {
-      type: "string",
-      description: "Optional routing instruction appended at the bottom of llms.txt. Ignored by generateAgentsMd — the URL-routing flow doesn't apply to offline package docs.",
+    blocks: {
+      type: "LlmsBlock[]",
+      description: "Ordered content blocks rendered after the blockquote — array order is file order. This is the full body of llms.txt; in AGENTS.md the same blocks render as the product-content section, with generateAgentsMd adding the offline preamble and navigation around them. See 'Content blocks' below.",
     },
   }}
 />
+
+## Content blocks
+
+`blocks` describes the body of `llms.txt`. It is one ordered array, so a block's position is just its index — there are no placement flags.
+
+Each `LlmsBlock` is one of two kinds:
+
+- **`markdown`** — `{ type: "markdown", heading?: string, body: string }`. The `body` is emitted verbatim under an optional `## heading`. Use it for prose, bullet lists, popularity (GitHub stars, npm downloads), a "Hosted by …" mention, community links, or badges. leadtype never fetches or computes values — supply them yourself (you can fetch at build time in your `.ts` config module, since it's just code).
+- **`links`** — `{ type: "links", heading: string, links: CuratedLink[] }`. A curated link list under a `## heading`, resolved against your source docs — titles and descriptions auto-fill from each page's frontmatter and URLs are rewritten for the website (`/docs/<topic>.md`) or the offline bundle (`./docs/<topic>.md`).
+
+```ts
+product: {
+  name: "c15t",
+  summary: "Developer-first consent management for modern web apps.",
+  blocks: [
+    { type: "markdown", heading: "Overview", body: "- GDPR-ready banners\n- Framework guides" },
+    {
+      type: "markdown",
+      heading: "Popularity",
+      body: "Widely adopted across the JS ecosystem. Hosted by [Inth](https://inth.com).",
+    },
+    {
+      type: "links",
+      heading: "Best Starting Points",
+      links: [{ urlPath: "/docs/frameworks/next/quickstart" }],
+    },
+    { type: "markdown", heading: "Agent Guidance", body: "Start with the framework quickstart." },
+  ],
+}
+```
 
 The `docs.config.ts` `product` field has this exact shape; both the CLI and the library APIs read it.
 
 ## Example llms.txt
 
+This is the output of the `blocks` config above — each block becomes an `## heading` section, in array order, with `links` blocks resolved to markdown mirror links:
+
 ```txt
-# My Library
+# c15t
 
-> A library that does one thing well.
+> Developer-first consent management for modern web apps.
 
-- Helper that handles the boring parts.
-- Type-safe by default.
-- Works in any runtime.
+## Overview
+
+- GDPR-ready banners
+- Framework guides
+
+## Popularity
+
+Widely adopted across the JS ecosystem. Hosted by [Inth](https://inth.com).
 
 ## Best Starting Points
 
-- [Documentation](/docs/index.md)
-- [Quickstart](/docs/quickstart.md)
+- [Quickstart](/docs/frameworks/next/quickstart.md): Get started with Next.js.
 
-## Get Started
+## Agent Guidance
 
-Five-minute happy path and the mental model.
-
-- [Quickstart](/docs/quickstart.md): Install and run the pipeline.
-- [How it works](/docs/how-it-works.md): The mental model.
-
-## Reference
-
-CLI flags and conversion APIs.
-
-- [CLI](/docs/reference/cli.md): Every flag.
+Start with the framework quickstart.
 ```
 
 ## Typical sequence
@@ -424,7 +443,7 @@ Writes `<outDir>/AGENTS.md` (singular, at the root) with the same product summar
 | --- | --- |
 | `srcDir` | Repo root containing the `docs/` source. |
 | `outDir` | Package root. `AGENTS.md` is written at `<outDir>/AGENTS.md`. |
-| `product` | Same `ProductInfo` shape as `generateLlmsTxt`. `agentGuidance` is intentionally ignored — it's written for the website's URL-routing flow and would mislead an offline agent. |
+| `product` | Same `ProductInfo` shape as `generateLlmsTxt`. The `blocks` array renders here too, so author offline-friendly content (relative links, no website-routing prose). |
 | `groups` | Group tree from `docs.config.ts`. Same shape as `generateLlmsTxt`. |
 | `docsSubdir` | Subdirectory under `outDir` that holds the `.md` files. Default: `docs`. Used as the relative-path prefix in every link. |
 

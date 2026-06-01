@@ -9,7 +9,7 @@ Use this guide when you already have a docs site and want agents to find, fetch,
 
 Leadtype generates the files. Your app wires those files into routing and HTML — that runtime side is covered in [Serve agent responses](/docs/build/serve-agent-responses).
 
-The default output shape is based on the repo's agent evals. See [Evals](/docs/reference/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
+The default output shape is based on the repo's agent evals. See [Evals](/docs/concepts/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
 
 ## What good looks like
 
@@ -59,9 +59,65 @@ public/
     └── agent-readability.json
 ```
 
-The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, group navigation, and freshness dates.
+The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, navigation, and freshness dates. Your framework loads it once and passes it to the runtime helpers (markdown responses, JSON-LD, sitemap, robots):
+
+```jsonc
+{
+  "version": 1,
+  "generatedAt": "2026-05-29T09:36:07.521Z",
+  "baseUrl": "https://leadtype.dev",
+  "product": { "name": "My product", "summary": "One sentence." },
+  "navigation": { "groups": [ /* … nav tree … */ ] },
+  "files": {
+    "robotsTxt": "docs/robots.txt",
+    "sitemapMd": "docs/sitemap.md",
+    "sitemapXml": "docs/sitemap.xml"
+  },
+  "pages": [
+    {
+      "title": "Quickstart",
+      "description": "Build an agent-ready docs site from one MDX page.",
+      "urlPath": "/docs/quickstart",
+      "absoluteUrl": "https://leadtype.dev/docs/quickstart",
+      "markdownUrlPath": "/docs/quickstart.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
+      "relativePath": "quickstart",
+      "groups": ["start"],
+      "lastModified": "2026-05-29T09:36:07.000Z"
+    }
+  ]
+}
+```
+
+Pass it through `normalizeAgentReadabilityManifest()` before handing it to a runtime helper — that validates the shape and fills defaults.
 
 Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
+
+## Make the index worth reading
+
+`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the `product.blocks` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
+
+```ts title="docs/docs.config.ts"
+product: {
+  name: "My product",
+  summary: "Developer-first tooling for modern apps.",
+  blocks: [
+    { type: "markdown", heading: "Overview", body: "- What it does\n- Who it's for" },
+    {
+      type: "markdown",
+      heading: "Popularity",
+      body: "12k GitHub stars · 90k weekly npm downloads. Hosted by [Acme](https://acme.com).",
+    },
+    {
+      type: "links",
+      heading: "Best Starting Points",
+      links: [{ urlPath: "/docs/quickstart" }],
+    },
+  ],
+}
+```
+
+Blocks render in array order. A `links` block and a `markdown` block with a `heading` each become an `## heading` section; a `markdown` block without a `heading` renders its body inline, with no heading. Use `markdown` blocks for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` blocks for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → Content blocks](/docs/reference/llm#content-blocks).
 
 ## Verify locally
 

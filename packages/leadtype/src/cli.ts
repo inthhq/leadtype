@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
+import { getInitUsage, runInitCommand } from "./cli/init";
 import { getSyncUsage, runSyncCommand } from "./cli/sync";
 import { logger, setLogStreams } from "./internal/logger";
 import { getLintUsage, runLintCommand } from "./lint/cli";
@@ -17,6 +18,7 @@ Usage:
   leadtype <command> [options]
 
 Commands:
+  init       Scaffold an agent-ready docs integration for your framework
   generate   Convert MDX, generate LLM files, and build search artifacts
   sync       Clone or refresh remote sources declared by collections
   lint       Validate MDX frontmatter, meta.json, and docs links
@@ -26,6 +28,9 @@ Run leadtype <command> --help for command-specific options.
 `;
 
 function commandUsage(command: string | undefined): string {
+  if (command === "init") {
+    return getInitUsage();
+  }
   if (command === "generate") {
     return getGenerateUsage();
   }
@@ -53,6 +58,10 @@ export async function runCli(
   if (command === "help") {
     io.stdout.write(commandUsage(rest[0]));
     return 0;
+  }
+
+  if (command === "init") {
+    return await runInitCommand(rest, io);
   }
 
   if (command === "generate") {
