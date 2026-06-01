@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "Response correctly identifies nav as curated driver of sidebar/agent map and group as legacy fallback/taxonomy. However, it explicitly states that unknown group slugs do not cause a build failure, claiming 'Build continues without failure' and pages are 'not lost or errored.' This contradicts the required point that unknown groups trigger a build failure (error). Thus, the answer fails on a required rubric point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 282806,
+  "outputTokens": 2584,
+  "durationMs": 59517,
+  "steps": 14,
+  "errors": []
+}

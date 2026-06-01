@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default as a static BM25 lexical index with no database, and it explicitly states that the lexical index should be kept for exact matches and that embeddings are complementary. However, it fails to mention the specific corpus-size condition (≈ tens of thousands of chunks) that the rubric requires as a warrant for embeddings, listing only vocabulary mismatch and general semantic triggers. This omission makes the answer incomplete, so it does not satisfy every required rubric point.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 66354,
+  "outputTokens": 1730,
+  "durationMs": 49918,
+  "steps": 7,
+  "errors": []
+}

@@ -210,8 +210,10 @@ async function invokeAgent(opts: {
     return {
       finalText: result.text ?? "",
       steps: result.steps?.length ?? 0,
-      inputTokens: result.usage?.inputTokens ?? 0,
-      outputTokens: result.usage?.outputTokens ?? 0,
+      // `totalUsage` sums every step; `result.usage` is the last step only and
+      // would undercount a multi-step tool loop to a single step.
+      inputTokens: result.totalUsage?.inputTokens ?? 0,
+      outputTokens: result.totalUsage?.outputTokens ?? 0,
       errors,
     };
   } catch (err) {

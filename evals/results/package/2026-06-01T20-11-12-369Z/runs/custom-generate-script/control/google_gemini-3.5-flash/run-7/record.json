@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "judge call failed — counted as a miss",
+  "judgeError": "Invalid error response format: Gateway request failed",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 34,
+  "inputTokens": 1061292,
+  "outputTokens": 11514,
+  "durationMs": 151443,
+  "steps": 35,
+  "errors": []
+}

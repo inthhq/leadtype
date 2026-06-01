@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports all required leadtype library APIs, runs convertAllMdx before the LLM and search generators, calls generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, and passes product/nav from docs.config.ts. Every required rubric point is satisfied with correct ordering.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 102,
+  "inputTokens": 688463,
+  "outputTokens": 9559,
+  "durationMs": 510227,
+  "steps": 25,
+  "errors": []
+}

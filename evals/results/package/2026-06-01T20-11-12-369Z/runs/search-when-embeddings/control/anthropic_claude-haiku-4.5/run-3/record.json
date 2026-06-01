@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static BM25 index and emphasizes keeping the lexical index as complementary. However, it incorrectly asserts that embeddings are only warranted under conditions like moderate-to-high query volume and a recall problem—conditions not part of the true warrant (vocabulary mismatch and/or very large corpus). This is stated confidently, making the embedding-warranty portion factually wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 216089,
+  "outputTokens": 3171,
+  "durationMs": 46161,
+  "steps": 19,
+  "errors": []
+}

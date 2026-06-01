@@ -229,8 +229,11 @@ async function runOne(options: {
     );
     finalText = result.text ?? "";
     steps = result.steps?.length ?? 0;
-    inputTokens = result.usage?.inputTokens ?? 0;
-    outputTokens = result.usage?.outputTokens ?? 0;
+    // `result.usage` is the LAST step's usage only; `totalUsage` sums every
+    // step. Tool loops run many steps, so we need the total to report true
+    // per-run token cost — `usage` would undercount it to a single step.
+    inputTokens = result.totalUsage?.inputTokens ?? 0;
+    outputTokens = result.totalUsage?.outputTokens ?? 0;
   } catch (err) {
     errors.push(err instanceof Error ? err.message : String(err));
   }

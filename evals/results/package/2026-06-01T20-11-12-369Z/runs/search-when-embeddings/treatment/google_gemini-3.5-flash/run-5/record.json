@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states the default static, local lexical index using BM25 with no database. It specifies embedding conditions exactly as required: vocabulary mismatch and corpus past tens of thousands of chunks. It also explicitly says to keep the lexical index for exact matches and layer embeddings as complementary, not a replacement. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 75269,
+  "outputTokens": 3968,
+  "durationMs": 34140,
+  "steps": 11,
+  "errors": []
+}

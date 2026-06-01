@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both lastModified and lastAuthor, states they are added to frontmatter, and clearly indicates they come from git history. All rubric requirements are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 137160,
+  "outputTokens": 1446,
+  "durationMs": 28919,
+  "steps": 7,
+  "errors": []
+}

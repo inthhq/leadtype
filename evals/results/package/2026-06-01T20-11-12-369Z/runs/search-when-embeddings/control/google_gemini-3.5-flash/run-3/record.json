@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static local BM25 index with no database, and correctly states the lexical index should be kept for exact matches. However, it omits the required condition that embeddings are also warranted when the corpus grows very large (tens of thousands of chunks). Without this, the answer is incomplete. The conditions given are partial, so correct is false.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 181467,
+  "outputTokens": 6200,
+  "durationMs": 45220,
+  "steps": 13,
+  "errors": []
+}

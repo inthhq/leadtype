@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that leadtype's default search is a static, local BM25 index with no database. It provides specific conditions for adding embeddings—semantic mismatch with docs and/or large corpus (500+ pages, which implies many chunks)—and explicitly instructs that the lexical index must be kept as a complementary layer, not replaced. All required rubric points are fully and accurately addressed.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 261341,
+  "outputTokens": 3465,
+  "durationMs": 57499,
+  "steps": 19,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "Response uses the correct `--docs-dir changelog=/changelog` mount syntax. It correctly states the canonical URL under `/changelog/...`, mentions the public mirror at `public/changelog/v1.md`, and notes the internal copy remains under `public/docs/changelog/`. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 248368,
+  "outputTokens": 7436,
+  "durationMs": 55637,
+  "steps": 14,
+  "errors": []
+}

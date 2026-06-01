@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "judge call failed — counted as a miss",
+  "judgeError": "Invalid error response format: Gateway request failed",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 214337,
+  "outputTokens": 4121,
+  "durationMs": 40134,
+  "steps": 15,
+  "errors": []
+}

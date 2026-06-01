@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, and it orders conversion before the other generators. It passes product and/or nav from the config. However, the search index is imported from 'leadtype/search/node-index' instead of the documented example 'leadtype/search/node'. This likely invents an API name not part of leadtype, violating the rubric’s correctness condition. All other required points are satisfied, so the script is almost complete.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 212088,
+  "outputTokens": 3516,
+  "durationMs": 42100,
+  "steps": 18,
+  "errors": []
+}

@@ -32,7 +32,7 @@ It is not a docs website framework. Bring your own UI — Next.js, TanStack Star
 
 You're building a docs **website** — [Quickstart](/docs/quickstart) — render MDX in your app and generate `llms.txt`, markdown mirrors, search, and discovery files for HTTP agents.
 
-You're shipping docs inside an **npm package** — [Bundle docs into a package](/docs/package-docs/bundle) — generate an `AGENTS.md` plus per-topic markdown that ships in the tarball so coding agents read version-matched docs from `node_modules`.
+You're shipping docs inside an **npm package** — [Bundle docs into a package](/docs/package-docs/bundle) — generate an `AGENTS.md` plus per-topic markdown that ships in the tarball so coding agents read version-matched docs from `node_modules`. Agents that install your package then run cheaper and stop confidently guessing wrong about your API — see the [evals](/docs/concepts/evals).
 
 Just want the mental model first? — [How it works](/docs/how-it-works) — the pipeline, the two output modes, and every artifact named once.
 
@@ -64,7 +64,7 @@ These show up throughout the docs. The full glossary lives in [How it works → 
   />
   <Card
     title="Version-matched package docs"
-    description="Bundle AGENTS.md and markdown docs inside npm packages so coding agents can read node_modules/<pkg>/AGENTS.md."
+    description="Bundle AGENTS.md and markdown inside npm packages so coding agents read node_modules/<pkg>/AGENTS.md — they run cheaper and stop guessing wrong about your API."
     href="/docs/package-docs/bundle"
   />
 </Cards>

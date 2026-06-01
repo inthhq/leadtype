@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The command uses the required mount syntax '--docs-dir changelog=/changelog' alongside '--docs-dir docs'. It states the canonical URL as '/changelog/v1.md' and describes both the internal copy at 'public/docs/changelog/v1.md' and the static mirror at 'public/changelog/v1.md'. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 37924,
+  "outputTokens": 1445,
+  "durationMs": 18480,
+  "steps": 7,
+  "errors": []
+}

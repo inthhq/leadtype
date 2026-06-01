@@ -1,6 +1,6 @@
 # Do bundled docs actually help coding agents? What our evals found
 
-**TL;DR — Bundling agent-readable docs into a package helps coding agents, most for the small/cheap models a lot of agents actually run, and most where the library behaves in non-obvious ways. The clearest, judge-robust win: docs stop agents from confidently asserting the *wrong* behavior about your API. Frontier models often get the answer right without them — but every model, frontier ones included, runs 16–50% cheaper (tokens, tool calls, time) when the docs are there.**
+**TL;DR — Bundling agent-readable docs into a package helps coding agents, most for the small/cheap models a lot of agents actually run, and most where the library behaves in non-obvious ways. The clearest, judge-robust win: docs stop agents from confidently asserting the *wrong* behavior about your API. Frontier models often get the answer right without them — but every model, frontier ones included, spends 32–54% fewer tokens (and generally fewer tool calls) when the docs are there.**
 
 These results come from three harnesses in [`evals/`](./evals). They run real coding agents against generated artifacts and grade the **answer** with an independent LLM judge against a per-fixture rubric — not by keyword matching. Run: `2026-05-31`. The **package** benchmark uses **5 models across 4 families** — Anthropic (Haiku 4.5 / Opus 4.8), OpenAI (GPT‑5.5), Moonshot (Kimi K2.6), Google (Gemini 3.5 Flash) — **× 4 arms × 10 runs**, graded by the neutral **`deepseek-v4-pro`** (a family with no candidate) and **cross-validated with `grok-4.3`**. The hosted-docs benchmarks use a 3-model subset (Haiku, Opus, GPT‑5.5). Pass rates carry Wilson 95% CIs. Full numbers in [`docs/reference/evals.mdx`](./docs/reference/evals.mdx) and `evals/results/*/report.md`.
 
@@ -65,19 +65,21 @@ The judge classifies each failure. The dangerous one is **confidently wrong** �
 
 Without docs, models don't say "I don't know" — they make up plausible-but-wrong behavior about a non-obvious API rule. Bundling docs is cheap insurance against exactly that, and it's the most defensible reason to ship them.
 
-## Finding 5 — Even when docs don't change the answer, they make the run cheaper
+## Finding 5 — Even when docs don't change the answer, they cut tokens
 
-Pooled across fixtures, bundling docs cut the cost of **every** model's runs — the agent reads one short doc instead of probing the package with repeated `grep`/`read`/`list` calls:
+Pooled across fixtures, bundling docs cut the **tokens** every model spent — the agent reads one short doc instead of probing the package with repeated `grep`/`read`/`list` calls. Tokens are input + output summed across every step of the tool loop (`result.totalUsage`):
 
 | Model | Tokens (docs → none) | Tool calls (docs → none) | Wall-clock (docs → none) |
 | --- | --- | --- | --- |
-| `claude-haiku-4.5` | 17.1k → 33.9k (**−50%**) | 13.7 → 20.6 (−33%) | 27.9s → 44.1s (−37%) |
-| `claude-opus-4.8` | 20.5k → 40.7k (**−50%**) | 9.3 → 14.3 (−35%) | 36.9s → 62.4s (−41%) |
-| `gemini-3.5-flash` | 20.6k → 34.7k (**−41%**) | 12.7 → 23.0 (−45%) | 35.7s → 68.5s (−48%) |
-| `kimi-k2.6` | 24.0k → 41.5k (**−42%**) | 14.9 → 19.8 (−25%) | 45.5s → 72.1s (−37%) |
-| `gpt-5.5` | 31.6k → 37.8k (**−16%**) | 14.3 → 15.3 (−7%) | 43.1s → 56.7s (−24%) |
+| `claude-haiku-4.5` | 115.8k → 227.0k (**−49%**) | 15.1 → 18.2 (−17%) | 54.2s → 41.4s (+31%) |
+| `claude-opus-4.8` | 98.8k → 215.4k (**−54%**) | 9.1 → 15.5 (−41%) | 38.5s → 71.4s (−46%) |
+| `gemini-3.5-flash` | 228.1k → 422.3k (**−46%**) | 14.0 → 27.5 (−49%) | 60.5s → 136.6s (−56%) |
+| `kimi-k2.6` | 153.5k → 309.3k (**−50%**) | 15.6 → 20.1 (−22%) | 52.9s → 79.9s (−34%) |
+| `gpt-5.5` | 160.3k → 234.5k (**−32%**) | 14.4 → 15.5 (−7%) | 43.1s → 56.7s (−16%) |
 
-Even GPT‑5.5, which barely needs docs for correctness, ran 16% cheaper with them. Docs pay for themselves in run cost regardless of whether they move the pass rate.
+Even GPT‑5.5, which barely needs docs for correctness, spent **32%** fewer tokens with them. Tokens pay for themselves regardless of whether docs move the pass rate. Tool calls drop for every model too. **Wall-clock is not a claim we lean on** — it tracks gateway latency more than work done and is unstable run-to-run (Haiku was *faster* with docs in an earlier run, slower here).
+
+> **Measurement note.** These cost numbers are from a `2026-06-01` treatment-vs-control re-run after fixing a token-counting bug: the harness recorded only the final tool-loop step (`result.usage`) instead of the sum across all steps (`result.totalUsage`), undercounting per-run tokens several-fold. The fix doesn't affect any pass-rate or confident-wrong finding — those depend only on the judge's verdict.
 
 ## Finding 6 — The recommended setup (a root pointer) helps, especially small models
 

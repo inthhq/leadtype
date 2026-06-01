@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default BM25 static index (no DB) and states that the lexical index should be kept as complementary. However, it fails to mention the specific condition of a very large corpus (tens of thousands of chunks) as warranting embeddings. The rubric requires both vocabulary mismatch and/or large corpus; the answer only covers semantic gaps. Thus, it is incomplete and not fully correct.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 137241,
+  "outputTokens": 3057,
+  "durationMs": 51627,
+  "steps": 17,
+  "errors": []
+}

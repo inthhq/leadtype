@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent’s ANSWER.md clearly explains that llms.txt is a website convention with absolute URLs, making it wrong inside a tarball (point 1). It describes AGENTS.md as a filesystem-first entry point with relative paths, offline, and version-matched (point 2). It correctly states that --bundle skips llms.txt, llms-full.txt, search artifacts, sitemap, and robots.txt, all website-only artifacts (point 3). No rubric violations are present; the response is accurate and complete.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 160648,
+  "outputTokens": 2062,
+  "durationMs": 38825,
+  "steps": 7,
+  "errors": []
+}

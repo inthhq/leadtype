@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer explicitly states that curated nav drives the sidebar, llms.txt, AGENTS.md, and sitemap.md agent map. It describes group as legacy/optional, useful for fallback navigation and search facets via page.groups metadata. It clearly explains that an unknown group slug causes a hard build failure (throws an Error), satisfying all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 84,
+  "inputTokens": 1260198,
+  "outputTokens": 11353,
+  "durationMs": 459813,
+  "steps": 28,
+  "errors": []
+}

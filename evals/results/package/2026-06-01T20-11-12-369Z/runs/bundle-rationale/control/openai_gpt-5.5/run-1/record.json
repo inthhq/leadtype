@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP convention with URL-oriented links, unsuitable for tarball; AGENTS.md uses relative paths for offline, version-matched use; and --bundle skips llms.txt, llms-full.txt, search, sitemap, and robots files. All required points satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 101610,
+  "outputTokens": 1553,
+  "durationMs": 45165,
+  "steps": 9,
+  "errors": []
+}

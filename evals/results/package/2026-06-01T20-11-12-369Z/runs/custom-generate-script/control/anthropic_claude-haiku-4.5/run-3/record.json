@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first, then generateLlmsTxt and generateLLMFullContextFiles, and passes product/nav from docs.config.ts. However, it fails to use the search‑node API as required: instead of generateDocsSearchFiles from leadtype/search/node, it uses createDocsSource from leadtype, which is not the specified API. All other required points are satisfied.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 230719,
+  "outputTokens": 4278,
+  "durationMs": 51452,
+  "steps": 16,
+  "errors": []
+}

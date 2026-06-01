@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer uses the required --docs-dir changelog=/changelog mount syntax, states the canonical URL is under /changelog/ (e.g., /changelog/v1), and mentions both the public mirror at public/changelog/v1.md and the internal copy at public/docs/changelog/v1.md. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 208606,
+  "outputTokens": 4306,
+  "durationMs": 58476,
+  "steps": 11,
+  "errors": []
+}

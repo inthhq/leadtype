@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the required library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) and assures conversion runs before the generators. It passes product and nav from docs.config.ts, producing all required artifacts under public/. The ordering and API usage match the rubric exactly.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 24,
+  "inputTokens": 415095,
+  "outputTokens": 12231,
+  "durationMs": 98002,
+  "steps": 25,
+  "errors": []
+}
