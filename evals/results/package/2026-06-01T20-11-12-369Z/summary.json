@@ -1,7 +1,7 @@
 {
   "benchmark": "package",
   "runId": "2026-06-01T20-11-12-369Z",
-  "generatedAt": "2026-06-01T20:58:27.483Z",
+  "generatedAt": "2026-06-01T21:25:08.701Z",
   "judgeModels": [
     "deepseek/deepseek-v4-pro"
   ],
@@ -240,19 +240,19 @@
       "model": "anthropic/claude-haiku-4.5",
       "arm": "treatment",
       "n": 10,
-      "passes": 8,
-      "rate": 0.8,
+      "passes": 9,
+      "rate": 0.9,
       "ci95": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.5958436145024278,
+        0.9821242504842788
       ],
-      "meanScore": 86,
+      "meanScore": 96,
       "discoveryRate": 0.6,
       "avgTokens": 344583.7,
       "avgToolCalls": 30.6,
       "avgDurationMs": 79529.1,
       "confidentWrongRate": 0.1,
-      "judgeErrors": 1
+      "judgeErrors": 0
     },
     {
       "fixture": "custom-generate-script",
@@ -303,13 +303,13 @@
         0.39677321997956516,
         0.892210712513788
       ],
-      "meanScore": 79,
+      "meanScore": 83,
       "discoveryRate": 0,
       "avgTokens": 745824.3,
       "avgToolCalls": 34.2,
       "avgDurationMs": 136124.7,
-      "confidentWrongRate": 0.2,
-      "judgeErrors": 1
+      "confidentWrongRate": 0.3,
+      "judgeErrors": 0
     },
     {
       "fixture": "custom-generate-script",
@@ -392,19 +392,19 @@
       "model": "openai/gpt-5.5",
       "arm": "treatment",
       "n": 10,
-      "passes": 9,
-      "rate": 0.9,
+      "passes": 10,
+      "rate": 1,
       "ci95": [
-        0.5958436145024278,
-        0.9821242504842788
+        0.7224598312333834,
+        1
       ],
-      "meanScore": 90,
+      "meanScore": 100,
       "discoveryRate": 1,
       "avgTokens": 261937.6,
       "avgToolCalls": 31.3,
       "avgDurationMs": 131214.1,
       "confidentWrongRate": 0,
-      "judgeErrors": 1
+      "judgeErrors": 0
     },
     {
       "fixture": "explain-cli-flag",
@@ -1246,12 +1246,12 @@
     {
       "fixture": "custom-generate-script",
       "model": "anthropic/claude-haiku-4.5",
-      "treatmentRate": 0.8,
+      "treatmentRate": 0.9,
       "controlRate": 0.7,
-      "delta": 0.10000000000000009,
+      "delta": 0.20000000000000007,
       "treatmentCi": [
-        0.49015684672072335,
-        0.9433190520193067
+        0.5958436145024278,
+        0.9821242504842788
       ],
       "controlCi": [
         0.39677321997956516,
@@ -1306,12 +1306,12 @@
     {
       "fixture": "custom-generate-script",
       "model": "openai/gpt-5.5",
-      "treatmentRate": 0.9,
+      "treatmentRate": 1,
       "controlRate": 0.9,
-      "delta": 0,
+      "delta": 0.09999999999999998,
       "treatmentCi": [
-        0.5958436145024278,
-        0.9821242504842788
+        0.7224598312333834,
+        1
       ],
       "controlCi": [
         0.5958436145024278,

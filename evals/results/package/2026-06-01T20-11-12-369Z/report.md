@@ -1,7 +1,7 @@
 # Package-docs benchmark — bundled docs vs no bundle
 
 - **Run:** `2026-06-01T20-11-12-369Z`
-- **Generated:** 2026-06-01T20:58:27.483Z
+- **Generated:** 2026-06-01T21:25:08.701Z
 - **Judge:** `deepseek/deepseek-v4-pro`
 - **Candidate models:** `anthropic/claude-haiku-4.5`, `anthropic/claude-opus-4.8`, `google/gemini-3.5-flash`, `moonshotai/kimi-k2.6`, `openai/gpt-5.5`
 - **Runs per cell:** 10
@@ -15,11 +15,11 @@ Pass = an independent LLM judge marked the agent's answer correct against the fi
 
 | Model | Treatment | Control | Delta |
 | --- | --- | --- | --- |
-| `anthropic/claude-haiku-4.5` | 93% [84–97%] (56/60) | 68% [56–79%] (41/60) | +25% |
+| `anthropic/claude-haiku-4.5` | 95% [86–98%] (57/60) | 68% [56–79%] (41/60) | +27% |
 | `anthropic/claude-opus-4.8` | 100% [94–100%] (60/60) | 83% [72–91%] (50/60) | +17% |
 | `google/gemini-3.5-flash` | 98% [91–100%] (59/60) | 85% [74–92%] (51/60) | +13% |
 | `moonshotai/kimi-k2.6` | 97% [89–99%] (58/60) | 93% [84–97%] (56/60) | +3% |
-| `openai/gpt-5.5` | 97% [89–99%] (58/60) | 82% [70–89%] (49/60) | +15% |
+| `openai/gpt-5.5` | 98% [91–100%] (59/60) | 82% [70–89%] (49/60) | +17% |
 
 ### Per fixture × model
 
@@ -30,11 +30,11 @@ Pass = an independent LLM judge marked the agent's answer correct against the fi
 | bundle-rationale | `google/gemini-3.5-flash` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
 | bundle-rationale | `moonshotai/kimi-k2.6` | 100% [72–100%] | 90% [60–98%] | +10% | 100% | 100 |
 | bundle-rationale | `openai/gpt-5.5` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
-| custom-generate-script | `anthropic/claude-haiku-4.5` | 80% [49–94%] | 70% [40–89%] | +10% | 60% | 86 |
+| custom-generate-script | `anthropic/claude-haiku-4.5` | 90% [60–98%] | 70% [40–89%] | +20% | 60% | 96 |
 | custom-generate-script | `anthropic/claude-opus-4.8` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
 | custom-generate-script | `google/gemini-3.5-flash` | 90% [60–98%] | 70% [40–89%] | +20% | 50% | 93 |
 | custom-generate-script | `moonshotai/kimi-k2.6` | 80% [49–94%] | 100% [72–100%] | -20% | 70% | 93 |
-| custom-generate-script | `openai/gpt-5.5` | 90% [60–98%] | 90% [60–98%] | +0% | 100% | 90 |
+| custom-generate-script | `openai/gpt-5.5` | 100% [72–100%] | 90% [60–98%] | +10% | 100% | 100 |
 | explain-cli-flag | `anthropic/claude-haiku-4.5` | 100% [72–100%] | 100% [72–100%] | +0% | 100% | 100 |
 | explain-cli-flag | `anthropic/claude-opus-4.8` | 100% [72–100%] | 100% [72–100%] | +0% | 30% | 100 |
 | explain-cli-flag | `google/gemini-3.5-flash` | 100% [72–100%] | 100% [72–100%] | +0% | 60% | 100 |
@@ -76,7 +76,7 @@ Share of runs the judge marked **confidently wrong** (asserts something false wi
 | --- | --- |
 | `anthropic/claude-haiku-4.5` | 32% → 5% |
 | `anthropic/claude-opus-4.8` | 15% → 0% |
-| `google/gemini-3.5-flash` | 13% → 2% |
+| `google/gemini-3.5-flash` | 15% → 2% |
 | `moonshotai/kimi-k2.6` | 5% → 3% |
 | `openai/gpt-5.5` | 17% → 2% |
 

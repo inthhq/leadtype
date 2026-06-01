@@ -75,7 +75,7 @@ Pooled across fixtures, bundling docs cut the **tokens** every model spent — t
 | `claude-opus-4.8` | 98.8k → 215.4k (**−54%**) | 9.1 → 15.5 (−41%) | 38.5s → 71.4s (−46%) |
 | `gemini-3.5-flash` | 228.1k → 422.3k (**−46%**) | 14.0 → 27.5 (−49%) | 60.5s → 136.6s (−56%) |
 | `kimi-k2.6` | 153.5k → 309.3k (**−50%**) | 15.6 → 20.1 (−22%) | 52.9s → 79.9s (−34%) |
-| `gpt-5.5` | 160.3k → 234.5k (**−32%**) | 14.4 → 15.5 (−7%) | 43.1s → 56.7s (−16%) |
+| `gpt-5.5` | 160.3k → 234.5k (**−32%**) | 14.4 → 15.5 (−7%) | 51.4s → 61.2s (−16%) |
 
 Even GPT‑5.5, which barely needs docs for correctness, spent **32%** fewer tokens with them. Tokens pay for themselves regardless of whether docs move the pass rate. Tool calls drop for every model too. **Wall-clock is not a claim we lean on** — it tracks gateway latency more than work done and is unstable run-to-run (Haiku was *faster* with docs in an earlier run, slower here).
 
