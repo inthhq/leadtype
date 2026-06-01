@@ -18,13 +18,22 @@ describe("isTransientError", () => {
   });
 
   it("treats numeric 5xx, 429, and network hiccups as transient", () => {
-    for (const msg of ["503 error", "429 Too Many Requests", "ECONNRESET", "fetch failed"]) {
+    for (const msg of [
+      "503 error",
+      "429 Too Many Requests",
+      "ECONNRESET",
+      "fetch failed",
+    ]) {
       expect(isTransientError(new Error(msg))).toBe(true);
     }
   });
 
   it("treats real errors as terminal", () => {
-    for (const msg of ["400 Bad Request", "invalid_api_key", "schema validation failed"]) {
+    for (const msg of [
+      "400 Bad Request",
+      "invalid_api_key",
+      "schema validation failed",
+    ]) {
       expect(isTransientError(new Error(msg))).toBe(false);
     }
   });
