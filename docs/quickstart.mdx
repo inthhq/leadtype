@@ -36,9 +36,12 @@ leadtype init: scaffolded next docs integration
   + lib/mdx-components.tsx
   + app/docs/[[...slug]]/page.tsx
   + package.json (added "docs:generate" script)
+  + AGENTS.md (created leadtype docs pointer)
 
 leadtype init: generating agent artifacts…
 ```
+
+The last line is the [root-`AGENTS.md` pointer](/docs/package-docs/bundle#point-consumers-at-the-bundle): `init` adds (or merges, never overwrites) a marked block pointing your coding agent at `node_modules/leadtype/AGENTS.md`, so any agent using leadtype or editing your docs reads leadtype's own version-matched docs. Re-running refreshes the block in place.
 
 Supported targets: `next`, `astro`, `nuxt`, `sveltekit`. Run with `--dry-run`
 to preview the file list, or `--base-url`, `--name`, and `--summary` to seed the

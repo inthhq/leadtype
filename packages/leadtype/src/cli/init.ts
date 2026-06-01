@@ -190,6 +190,70 @@ async function writeFiles(
   return outcomes;
 }
 
+const AGENTS_POINTER_START = "<!-- leadtype:start -->";
+const AGENTS_POINTER_END = "<!-- leadtype:end -->";
+// Lazy match between the markers so a re-run refreshes the block in place
+// instead of stacking duplicates.
+const AGENTS_POINTER_BLOCK_PATTERN =
+  /<!-- leadtype:start -->[\s\S]*?<!-- leadtype:end -->/;
+const TRAILING_WHITESPACE_PATTERN = /\s+$/;
+
+type AgentsPointerOutcome = {
+  action: "appended" | "created" | "refreshed";
+  path: string;
+};
+
+function renderAgentsPointerBlock(): string {
+  return [
+    AGENTS_POINTER_START,
+    "When using leadtype or writing/editing docs, read the bundled docs in",
+    "`node_modules/leadtype/AGENTS.md` first — they're version-matched to the",
+    "installed package and stay accurate as it updates.",
+    AGENTS_POINTER_END,
+  ].join("\n");
+}
+
+/**
+ * Wire the consuming project's coding agent to leadtype's own bundled docs by
+ * dropping the recommended root-`AGENTS.md` pointer (the pattern leadtype tells
+ * its users to adopt — our evals show it lifts bundle-read from ~29% to
+ * ~90–100%). Marker-delimited and additive: create the file if absent, refresh
+ * the marked block in place if present, otherwise append — never overwrite a
+ * user's existing content.
+ */
+async function mergeAgentsPointer(
+  projectRoot: string,
+  dryRun: boolean
+): Promise<AgentsPointerOutcome> {
+  const agentsPath = path.join(projectRoot, "AGENTS.md");
+  const block = renderAgentsPointerBlock();
+
+  if (!existsSync(agentsPath)) {
+    if (!dryRun) {
+      await writeFile(agentsPath, `${block}\n`, "utf8");
+    }
+    return { action: "created", path: "AGENTS.md" };
+  }
+
+  const existing = await readFile(agentsPath, "utf8");
+  if (AGENTS_POINTER_BLOCK_PATTERN.test(existing)) {
+    if (!dryRun) {
+      await writeFile(
+        agentsPath,
+        existing.replace(AGENTS_POINTER_BLOCK_PATTERN, block),
+        "utf8"
+      );
+    }
+    return { action: "refreshed", path: "AGENTS.md" };
+  }
+
+  if (!dryRun) {
+    const trimmed = existing.replace(TRAILING_WHITESPACE_PATTERN, "");
+    await writeFile(agentsPath, `${trimmed}\n\n${block}\n`, "utf8");
+  }
+  return { action: "appended", path: "AGENTS.md" };
+}
+
 async function patchPackageJsonScript(
   projectRoot: string,
   outDir: string,
@@ -315,7 +379,7 @@ export async function runInitCommand(
           projectRoot,
           baseUrl,
           outDir: plan.outDir,
-          files: allFiles.map((file) => file.path),
+          files: [...allFiles.map((file) => file.path), "AGENTS.md"],
           dryRun,
         },
         null,
@@ -335,6 +399,7 @@ export async function runInitCommand(
     baseUrl,
     dryRun
   );
+  const agentsPointer = await mergeAgentsPointer(projectRoot, dryRun);
 
   const prefix = dryRun ? "would scaffold" : "scaffolded";
   io.stdout.write(`leadtype init: ${prefix} ${framework} docs integration\n`);
@@ -348,6 +413,10 @@ export async function runInitCommand(
       `  ${dryRun ? "~" : "+"} package.json (added "docs:generate" script)\n`
     );
   }
+  const agentsMark = dryRun || agentsPointer.action === "refreshed" ? "~" : "+";
+  io.stdout.write(
+    `  ${agentsMark} AGENTS.md (${agentsPointer.action} leadtype docs pointer)\n`
+  );
 
   let ranGenerate = false;
   if (args.generate && !dryRun) {

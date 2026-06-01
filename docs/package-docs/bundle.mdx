@@ -9,6 +9,14 @@ Use this path when **you publish a library on npm** and want version-matched doc
 
 The website is for humans and HTTP agents. The package-bundled docs are for coding agents, IDEs, and CLI tooling that can read files from the installed dependency.
 
+<Callout title="The setup is two steps — don't skip the second" variant="warning">
+  **1.** Ship `AGENTS.md` in your tarball (this page). **2.** Tell consumers to
+  point their root `AGENTS.md` at it. Left to discover the bundle on their own,
+  agents read it only **~29%** of the time; with the pointer it jumps to
+  **~90–100%** ([evals](/docs/concepts/evals)). Step 1 without step 2 ships docs
+  nothing reliably reads — [jump to the snippet](#point-consumers-at-the-bundle).
+</Callout>
+
 ## The flow
 
 <Mermaid chart={`flowchart LR
@@ -38,14 +46,14 @@ leadtype emits both — `llms.txt` in [website mode](/docs/build/build-a-docs-si
 npx leadtype generate \
   --bundle \
   --src . \
-  --out packages/my-package \
-  --name "my-package" \
-  --summary "Docs for my-package."
+  --out packages/acme \
+  --name "acme" \
+  --summary "Docs for acme."
 ```
 
 This writes:
 
-<FileTree root="packages/my-package">
+<FileTree root="packages/acme">
   <File name="AGENTS.md" />
   <Folder name="docs">
     <File name="index.md" />
@@ -56,7 +64,7 @@ This writes:
   </Folder>
 </FileTree>
 
-Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/my-package/AGENTS.md` (during local dev) and at `node_modules/my-package/AGENTS.md` (after install).
+Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/acme/AGENTS.md` (during local dev) and at `node_modules/acme/AGENTS.md` (after install).
 
 `--bundle` skips `llms.txt`, `llms-full.txt`, and the search index — those are website artifacts that don't make sense offline.
 
@@ -136,8 +144,8 @@ Point your build script at it: `"build": "tsup && bun run scripts/generate-docs.
 ## Verify before publishing
 
 ```bash
-npx leadtype generate --bundle --src . --out packages/my-package
-cd packages/my-package && npm pack --dry-run
+npx leadtype generate --bundle --src . --out packages/acme
+cd packages/acme && npm pack --dry-run
 ```
 
 `npm pack --dry-run` should list:
@@ -147,21 +155,19 @@ cd packages/my-package && npm pack --dry-run
 
 If `AGENTS.md` is missing, check `files` in `package.json`. If `.md` files are missing, check the `--include`/`--exclude` filters.
 
-## Tell consuming projects to use the bundle
+## Point consumers at the bundle
 
-`AGENTS.md` inside your tarball is available at `node_modules/<your-package>/AGENTS.md` after install. Some agents discover dependency docs from tool use or search. The reliable pattern is to point the consuming project at the bundled docs.
+This is the step that makes the bundle pay off. `AGENTS.md` inside your tarball lands at `node_modules/<your-package>/AGENTS.md` after install, but agents only discover it on their own **~29%** of the time. A root-`AGENTS.md` pointer in the consuming project pushes that to **~90–100%** ([evals](/docs/concepts/evals)) — so treat it as required setup, not a nice-to-have.
 
-Recommend this snippet in your README so consumers add it to their own root `AGENTS.md`:
+Recommend this snippet in your published README so consumers add it to their own root `AGENTS.md`:
 
 ```md
-# <my project>
-
-When working with the `<your-package>` library, read the bundled docs in
-`node_modules/<your-package>/AGENTS.md` first — they're version-matched to
-the installed package and stay accurate as the library updates.
+When working with the `acme` library, read the bundled docs in
+`node_modules/acme/AGENTS.md` first — they're version-matched to the
+installed package and stay accurate as it updates.
 ```
 
-This is the same pattern Next.js uses to point agents at `node_modules/next/dist/docs/`.
+`leadtype generate --bundle` prints this snippet — filled in with your package's name — on success, so you don't have to hand-write it. This is the same pattern Next.js uses to point agents at `node_modules/next/dist/docs/`.
 
 ## When to use this
 

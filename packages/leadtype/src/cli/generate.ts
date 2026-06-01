@@ -1352,6 +1352,59 @@ function renderGenerateResult(result: GenerateResult): string {
   return JSON.stringify(result, null, 2);
 }
 
+const BUNDLE_DOCS_URL = "https://leadtype.dev/docs/package-docs/bundle";
+
+/**
+ * The installable npm name for the bundled package. The pointer must reference
+ * `node_modules/<name>/AGENTS.md`, so it needs the real package name from the
+ * output package's `package.json` — not `product.name`, which is often a human
+ * display name ("My library") that wouldn't resolve as a directory.
+ */
+async function readBundlePackageName(
+  outDir: string,
+  fallback: string
+): Promise<string> {
+  const packageJsonPath = path.join(outDir, "package.json");
+  if (existsSync(packageJsonPath)) {
+    try {
+      const data = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
+        name?: unknown;
+      };
+      if (typeof data.name === "string" && data.name.length > 0) {
+        return data.name;
+      }
+    } catch {
+      // Fall through to the product-name fallback on unreadable/invalid JSON.
+    }
+  }
+  return fallback;
+}
+
+/**
+ * The wiring guidance printed after a successful `--bundle` run. Bundled docs
+ * only pay off when an agent actually reads them, and our evals show the root
+ * `AGENTS.md` pointer is what makes that reliable — so we surface the exact
+ * snippet here instead of leaving it buried in the docs.
+ */
+function renderBundlePointerGuidance(packageName: string): string {
+  return [
+    "",
+    "Make coding agents read these docs — the highest-leverage setup step.",
+    "Add this to your published README so consuming projects point their root",
+    "AGENTS.md at the bundle (in our evals this lifts bundle-read from ~29% to",
+    "~90–100%):",
+    "",
+    "  ```md",
+    `  When working with the \`${packageName}\` library, read the bundled docs`,
+    `  in \`node_modules/${packageName}/AGENTS.md\` first — they're`,
+    "  version-matched to the installed package and stay accurate as it updates.",
+    "  ```",
+    "",
+    `  Details: ${BUNDLE_DOCS_URL}`,
+    "",
+  ].join("\n");
+}
+
 export async function runGenerateCommand(
   argv: string[],
   io: GenerateIo = { stderr: process.stderr, stdout: process.stdout }
@@ -1683,6 +1736,13 @@ export async function runGenerateCommand(
         fields: { outDir, mode: result.mode },
       },
     });
+    // Print the root-pointer wiring snippet after a bundle run so authors know
+    // the one setup step that makes agents actually read the docs. Text mode
+    // only — JSON output stays a clean machine record on stdout.
+    if (result.mode === "bundle" && args.format !== "json") {
+      const packageName = await readBundlePackageName(outDir, product.name);
+      io.stdout.write(`${renderBundlePointerGuidance(packageName)}\n`);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     reportFailure(message);
