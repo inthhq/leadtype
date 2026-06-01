@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx before the generators and passes product/nav from docs.config.ts. It also calls generateLlmsTxt and generateLLMFullContextFiles as required. However, it imports generateDocsSearchFiles from 'leadtype/llm' instead of the required search-node API (e.g., from 'leadtype/search/node'). This misses the rubric's explicit requirement to use the search-node API, so it is not fully correct.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 112887,
+  "outputTokens": 2362,
+  "durationMs": 26542,
+  "steps": 11,
+  "errors": []
+}

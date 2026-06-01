@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the correct leadtype library APIs and calls convertAllMdx before generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, satisfying all required points. It passes product and nav from docs.config.ts, uses no CLI commands, and the ordering ensures the generators read the markdown produced by conversion.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 26,
+  "inputTokens": 361839,
+  "outputTokens": 5040,
+  "durationMs": 83767,
+  "steps": 18,
+  "errors": []
+}

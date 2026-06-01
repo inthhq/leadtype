@@ -17,7 +17,7 @@ Each eval is one **cell** — a fixture (task) × arm × model — run 10 times.
 2. Lets the agent work with a small set of path-scoped tools (`read`, `write`, `list`, `glob`, `grep`, and a narrow `npm`). No shell, no network beyond the model call.
 3. Sends the agent's answer (and any files it wrote) to an **LLM judge**, which grades it against a per-fixture rubric and returns pass/fail + a 0–100 score + a failure-mode classification. We judge with **`deepseek-v4-pro`** — a model from a family with **no candidate under test**, so it has no same-family preference. The judge is the headline metric; "did the agent read our files" is tracked separately as supporting evidence.
 
-Pass rates are reported with a **Wilson 95% confidence interval**, and every run's transcript, judge verdict, and produced files are archived under `evals/results/` for inspection. The numbers below are from the `2026-05-31` run: the package benchmark uses **5 models across 4 families** (Anthropic Haiku 4.5 / Opus 4.8, OpenAI GPT‑5.5, Moonshot Kimi K2.6, Google Gemini 3.5 Flash) **× 4 arms × 10 runs**, judged by `deepseek-v4-pro` and [cross-validated with `grok-4.3`](#judge-choice-matters). The hosted-docs benchmarks use a 3-model subset (Haiku, Opus, GPT‑5.5).
+Pass rates are reported with a **Wilson 95% confidence interval**, and every run's transcript, judge verdict, and produced files are archived under `evals/results/` for inspection. Except where noted (the cost table was re-measured `2026-06-01` after a token-counting fix), the numbers below are from the `2026-05-31` run: the package benchmark uses **5 models across 4 families** (Anthropic Haiku 4.5 / Opus 4.8, OpenAI GPT‑5.5, Moonshot Kimi K2.6, Google Gemini 3.5 Flash) **× 4 arms × 10 runs**, judged by `deepseek-v4-pro` and [cross-validated with `grok-4.3`](#judge-choice-matters). The hosted-docs benchmarks use a 3-model subset (Haiku, Opus, GPT‑5.5).
 
 ## Does bundling docs help? (package benchmark)
 
@@ -26,7 +26,52 @@ The package benchmark answers the core question with an A/B test:
 - **Treatment** — the installed `leadtype` ships its bundled `AGENTS.md` + `docs/*.md`.
 - **Control** — those files are stripped (along with `dist/*.map` source maps, which would otherwise leak the original commented source). The compiled JS — including the CLI's `--help` text — and the `.d.ts` types stay. An honest "a package that simply didn't bundle agent docs," **not** "an agent with no information."
 
-Bundling docs lifts task success — most for the smaller, cheaper models that most agents actually run on, and marginally for frontier models that recover more from the package alone:
+Three things change when the docs are present, and they differ in how universal they are. Two hold for **every** model and are the wins to lead with; the third is real but uneven:
+
+1. **Every run gets cheaper** — universal, frontier models included.
+2. **Agents stop confidently guessing wrong** about the API — the clearest, most judge-robust correctness win.
+3. **Raw accuracy rises** — but mostly for the small, cheap models most agents run on; the frontier lift is small and judge-sensitive.
+
+### Every run gets cheaper
+
+Pooled across fixtures, bundling docs cut the **tokens** every model spent — the agent reads one short doc instead of probing the package with repeated `grep`/`read`/`list` calls. Tokens (input + output, summed across every step of the tool loop) drop **32–54%**, and tool calls drop for every model too:
+
+| Model | Tokens (docs → none) | Tool calls (docs → none) | Wall-clock (docs → none) |
+| --- | --- | --- | --- |
+| `claude-haiku-4.5` | 115.8k → 227.0k (**−49%**) | 15.1 → 18.2 (−17%) | 54.2s → 41.4s (+31%) |
+| `claude-opus-4.8` | 98.8k → 215.4k (**−54%**) | 9.1 → 15.5 (−41%) | 38.5s → 71.4s (−46%) |
+| `gemini-3.5-flash` | 228.1k → 422.3k (**−46%**) | 14.0 → 27.5 (−49%) | 60.5s → 136.6s (−56%) |
+| `kimi-k2.6` | 153.5k → 309.3k (**−50%**) | 15.6 → 20.1 (−22%) | 52.9s → 79.9s (−34%) |
+| `gpt-5.5` | 160.3k → 234.5k (**−32%**) | 14.4 → 15.5 (−7%) | 51.4s → 61.2s (−16%) |
+
+Even GPT‑5.5, which barely needs docs for correctness, spent **32%** fewer tokens with them — the token win holds regardless of model tier or whether docs ever move the pass rate. **Wall-clock is not a claim we lean on:** it tracks gateway latency more than work done, and is unstable run-to-run (Haiku came out *slower* with docs here, −37% in an earlier run). Tokens and tool calls are the defensible cost signal.
+
+<Callout title="Cost re-measured after a token-counting fix" variant="info">
+  The cost figures above are from a `2026-06-01` treatment-vs-control re-run. The
+  original harness recorded only the **final** step of each tool loop
+  (`result.usage`) rather than the **sum across all steps** (`result.totalUsage`),
+  which undercounted per-run tokens several-fold. The fix doesn't touch the
+  pass-rate or confident-wrong results below — those come from the `2026-05-31`
+  run and only depend on the judge's verdict.
+</Callout>
+
+### Agents stop confidently guessing wrong
+
+The judge classifies each failure, and the dangerous mode is **confidently wrong** — asserting the opposite of the truth with no hedging. Docs cut it across the board:
+
+| Model | Confident-wrong: control → treatment |
+| --- | --- |
+| `claude-haiku-4.5` | 28% → **10%** |
+| `claude-opus-4.8` | 7% → **0%** |
+| `gemini-3.5-flash` | 8% → **0%** |
+| `gpt-5.5` | 8% → **0%** |
+| `kimi-k2.6` | 3% → 2% |
+
+The clearest case is **`nav-unknown-group`** — "what happens if a page declares a `group` the config doesn't know?" The build actually fails, but without docs agents don't say "I don't know"; they confidently assert the *wrong* answer. Bundling docs is cheap insurance against exactly that, and it's the most defensible reason to ship them — it doesn't depend on the model being small or the judge being generous.
+
+### Accuracy lift — concentrated in small models
+
+Bundling docs also lifts raw task success, but the gain is **largest for the smaller, cheaper models that most agents actually run on, and marginal for frontier models** that recover more from the package alone:
 
 | Model | With bundled docs | Without (control) | Lift |
 | --- | --- | --- | --- |
@@ -38,7 +83,7 @@ Bundling docs lifts task success — most for the smaller, cheaper models that m
 
 (Pooled over all fixtures, n = 60 runs per cell, judged by neutral `deepseek-v4-pro`.)
 
-### Decomposing the value: code vs. docs vs. memory
+#### Decomposing the value: code vs. docs vs. memory
 
 A `bare` arm installs **nothing** (pure training-memory recall); `control` adds the compiled package; `treatment` adds the docs; `pointer` adds leadtype's recommended root `AGENTS.md` pointer. The ladder shows exactly what each layer buys:
 
@@ -52,28 +97,15 @@ A `bare` arm installs **nothing** (pure training-memory recall); `control` adds 
 
 Small models are nearly helpless from memory (Haiku 22%) and gain from *both* the installed code and the docs; frontier models already know ~90% and docs add the last few points.
 
-### Where the lift comes from
+#### Where the lift comes from
 
-The per-fixture breakdown is more telling than the average: almost all of the lift comes from **two** behavioral gotchas the compiled package can't self-document, and the mechanism is that docs prevent **confident wrong answers**.
+The per-fixture breakdown is more telling than the average: almost all of the accuracy lift comes from **two** behavioral gotchas the compiled package can't self-document.
 
-- **`nav-unknown-group`** (+28 pooled) — "what happens if a page declares a `group` the config doesn't know?" Without docs, agents don't say "I don't know" — they confidently assert the *wrong* answer (the build actually fails). The judge's confident-wrong rate drops from **28% → 10% (Haiku)** and to **0%** for Opus/Gemini/GPT once docs are present.
+- **`nav-unknown-group`** (+28 pooled) — the confident-wrong case above; docs turn a confident *wrong* answer into a correct one.
 - **`search-when-embeddings`** (+28 pooled) — "when is the default static BM25 index enough vs. embeddings?" Another non-obvious behavioral rule recoverable only from prose.
 - **`explain-cli-flag`, `mounted-changelog-urls`, `bundle-rationale`, `custom-generate-script`** — roughly flat (−2 to +6). Recoverable from the CLI's `--help`, the `.d.ts` types, or the README. We keep them to show the benchmark isn't cherry-picked and to pin down where docs *don't* pay off.
 
-**Takeaway for library authors:** bundle docs as insurance against agents confidently guessing wrong about your library's non-obvious behavior — the payoff is largest for smaller models. It adds little for facts your CLI, types, or README already expose. [Write for agents](/docs/authoring/write-for-agents) turns this into an authoring rule.
-
-### Docs also make runs cheaper
-
-Correctness isn't the only axis. Pooled across fixtures, bundling docs made **every** model's runs cheaper — the agent reads one short doc instead of probing the package with repeated `grep`/`read`/`list` calls:
-
-| Model | Tokens (docs → none) | Tool calls (docs → none) | Wall-clock (docs → none) |
-| --- | --- | --- | --- |
-| `claude-haiku-4.5` | 17.1k → 33.9k (**−50%**) | 13.7 → 20.6 (−33%) | 27.9s → 44.1s (−37%) |
-| `claude-opus-4.8` | 20.5k → 40.7k (**−50%**) | 9.3 → 14.3 (−35%) | 36.9s → 62.4s (−41%) |
-| `gemini-3.5-flash` | 20.6k → 34.7k (**−41%**) | 12.7 → 23.0 (−45%) | 35.7s → 68.5s (−48%) |
-| `gpt-5.5` | 31.6k → 37.8k (**−16%**) | 14.3 → 15.3 (−7%) | 43.1s → 56.7s (−24%) |
-
-Even GPT‑5.5, which barely needs docs for correctness, ran 16% cheaper with them.
+So docs add little for facts your CLI, types, or README already expose — the accuracy payoff is concentrated where the library's behavior is non-obvious, and largest for smaller models. [Write for agents](/docs/authoring/write-for-agents) turns this into an authoring rule.
 
 ### Judge choice matters
 

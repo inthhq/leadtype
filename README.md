@@ -28,7 +28,7 @@ leadtype is **not a docs website framework**. Bring your own UI — Next.js, Tan
 ## Choose your path
 
 - **[Build a docs site](https://leadtype.dev/docs/build/build-a-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
-- **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`.
+- **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`. Agents that install your package then spend **32–54% fewer tokens** and **stop confidently guessing wrong** about your API — the win is biggest for the small, cheap models most agents run, with a smaller accuracy bump for frontier models ([evals](./FINDINGS.md)).
 
 ## Install
 

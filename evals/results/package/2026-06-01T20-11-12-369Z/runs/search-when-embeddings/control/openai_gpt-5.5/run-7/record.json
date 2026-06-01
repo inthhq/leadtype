@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "Describes default BM25 correctly and states lexical index should be kept. Conditions for adding embeddings mention vocabulary mismatch but omit the large corpus (tens of thousands of chunks) condition, which is required. Thus incomplete and not fully meeting the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 257084,
+  "outputTokens": 1897,
+  "durationMs": 66784,
+  "steps": 15,
+  "errors": []
+}

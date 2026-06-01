@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both `lastModified` and `lastAuthor` as the frontmatter fields added by `--enrich-git`. It clearly states they are added to the page's frontmatter and that their values come from the page's Git history. All required rubric points are satisfied, with no errors or omissions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 47618,
+  "outputTokens": 2443,
+  "durationMs": 105216,
+  "steps": 8,
+  "errors": []
+}

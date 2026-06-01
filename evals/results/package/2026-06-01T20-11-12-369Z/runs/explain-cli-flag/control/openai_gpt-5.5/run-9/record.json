@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly names both required frontmatter fields (`lastModified` and `lastAuthor`), states they are added to page frontmatter, and explains they come from git history (last commit author date and author name). All required points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 57014,
+  "outputTokens": 775,
+  "durationMs": 28146,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately distinguishes llms.txt (website convention with absolute URLs, no agent looks for it in node_modules) from AGENTS.md (filesystem convention with relative links, works offline in installed packages) and correctly lists that --bundle skips llms.txt, llms-full.txt, search/sitemap/robots, and related website artifacts. All required points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 44308,
+  "outputTokens": 1734,
+  "durationMs": 24322,
+  "steps": 5,
+  "errors": []
+}

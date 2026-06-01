@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of sidebar, llms.txt, and AGENTS.md grouping; states group is legacy/optional taxonomy still useful for fallback navigation and search facets; and explicitly says the build fails with an 'unknown group' error. All required rubric points are fully satisfied with no factual errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 17,
+  "inputTokens": 156752,
+  "outputTokens": 1715,
+  "durationMs": 30707,
+  "steps": 9,
+  "errors": []
+}

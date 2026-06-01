@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly names both required frontmatter fields (lastModified and lastAuthor), states they are added to page frontmatter, and explains that the values come from the git history. Every required rubric point is satisfied and there are no factual errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 50247,
+  "outputTokens": 1374,
+  "durationMs": 24668,
+  "steps": 6,
+  "errors": []
+}

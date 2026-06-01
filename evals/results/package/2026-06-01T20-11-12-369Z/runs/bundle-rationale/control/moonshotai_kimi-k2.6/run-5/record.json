@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website-only artifact with absolute URLs requiring a live server, making it unsuitable inside a tarball, and that AGENTS.md works offline with relative links inside node_modules. It accurately lists the website artifacts skipped by --bundle: llms.txt, llms-full.txt, search-index.json, sitemap.xml, sitemap.md, robots.txt. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 154789,
+  "outputTokens": 3217,
+  "durationMs": 50612,
+  "steps": 11,
+  "errors": []
+}

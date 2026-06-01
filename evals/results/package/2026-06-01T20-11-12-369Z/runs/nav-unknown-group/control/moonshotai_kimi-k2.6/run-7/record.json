@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver and group as legacy fallback/search taxonomy. It initially states the build fails for unknown groups, but then adds a contradictory nuance: 'If you use nav but do not define groups in the config ... the frontmatter group is then silently ignored and the build succeeds.' This directly violates the required point that an unknown group always causes a build failure, and it matches the 'incorrect if' clause about silent ignoring. Because a required point is not fully satisfied, the answer is marked incorrect. Score is low because the key error undermines a critical rubric point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 194223,
+  "outputTokens": 6365,
+  "durationMs": 88500,
+  "steps": 9,
+  "errors": []
+}

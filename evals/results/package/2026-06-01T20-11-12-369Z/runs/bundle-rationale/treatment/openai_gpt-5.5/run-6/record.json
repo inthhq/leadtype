@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website convention with absolute URLs, while AGENTS.md is the filesystem convention with relative links that works offline inside the installed package. It correctly lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, search indices, sitemaps, robots.txt, and agent-readability files. All rubric required points are met with no factual errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 31371,
+  "outputTokens": 666,
+  "durationMs": 20491,
+  "steps": 5,
+  "errors": []
+}

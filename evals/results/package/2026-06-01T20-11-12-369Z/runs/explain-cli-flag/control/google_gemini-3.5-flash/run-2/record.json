@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md paragraph names both required fields ('lastModified' and 'lastAuthor'), clearly states they are added to the YAML frontmatter, and specifies that the values are retrieved from the local Git history by running git log. All rubric requirements are fully met with no incorrect statements.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 126100,
+  "outputTokens": 2636,
+  "durationMs": 82180,
+  "steps": 12,
+  "errors": []
+}

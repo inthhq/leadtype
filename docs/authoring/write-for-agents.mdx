@@ -74,4 +74,4 @@ The second version is the one an agent can't reconstruct from the type. It's als
 
 ## A note on cost
 
-Documenting the non-obvious doesn't just raise correctness — it makes agent runs cheaper. When the answer is one short doc instead of a fan-out of `grep`/`read`/`list` calls probing your package, agents read fewer tokens and make fewer tool calls. The [evals](/docs/concepts/evals#docs-also-make-runs-cheaper) show every model ran cheaper with docs present, including frontier models that barely needed them for correctness.
+Documenting the non-obvious doesn't just raise correctness — it makes agent runs cheaper. When the answer is one short doc instead of a fan-out of `grep`/`read`/`list` calls probing your package, agents read fewer tokens and make fewer tool calls. The [evals](/docs/concepts/evals#every-run-gets-cheaper) show every model spent 32–54% fewer tokens with docs present, including frontier models that barely needed them for correctness.

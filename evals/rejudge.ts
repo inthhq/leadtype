@@ -33,6 +33,8 @@ type Args = {
   inPlace: boolean;
   /** Limit to these arms (package mode/llms variant); undefined = all. */
   arms?: Set<string>;
+  /** Only re-judge records whose verdict errored (gateway hiccup), not all. */
+  onlyErrors: boolean;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -41,6 +43,7 @@ function parseArgs(argv: string[]): Args {
     judge: DEFAULT_JUDGE_MODEL,
     concurrency: 8,
     inPlace: false,
+    onlyErrors: false,
   };
   let i = 0;
   while (i < argv.length) {
@@ -62,13 +65,17 @@ function parseArgs(argv: string[]): Args {
           .map((s) => s.trim())
           .filter(Boolean)
       );
+    } else if (a === "--only-errors") {
+      // Only re-grade records whose committed verdict carries a judgeError, so a
+      // few gateway hiccups can be back-filled without re-judging the whole run.
+      args.onlyErrors = true;
     } else if (a && !a.startsWith("--")) {
       args.runDir = a;
     }
   }
   if (!args.runDir) {
     throw new Error(
-      "usage: bun run rejudge.ts <runDir> [--judge <id>] [--concurrency <n>] [--in-place] [--arms a,b]"
+      "usage: bun run rejudge.ts <runDir> [--judge <id>] [--concurrency <n>] [--in-place] [--arms a,b] [--only-errors]"
     );
   }
   return args;
@@ -278,6 +285,21 @@ async function main(): Promise<void> {
       const seg = path.relative(runsDir, d).split(path.sep)[1]; // fixture/<arm>/model/run
       return seg !== undefined && arms.has(seg);
     });
+  }
+  if (args.onlyErrors) {
+    const errored = await Promise.all(
+      recordDirs.map(async (d) => {
+        try {
+          const rec = JSON.parse(
+            await readFile(path.join(d, "record.json"), "utf-8")
+          ) as RunRecord;
+          return rec.judgeError ? d : null;
+        } catch {
+          return null;
+        }
+      })
+    );
+    recordDirs = errored.filter((d): d is string => d !== null);
   }
   const judgeSlug = args.judge.replace(/[^\w.-]+/g, "_");
   const newRunDir = args.inPlace ? runDir : `${runDir}-judge-${judgeSlug}`;

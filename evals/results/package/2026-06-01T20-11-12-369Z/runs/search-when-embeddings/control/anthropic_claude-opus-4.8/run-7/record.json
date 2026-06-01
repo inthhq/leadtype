@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default static BM25 lexical index (no database, no embeddings) and correctly states that the lexical index must be kept for exact matches. However, it fails to provide the specific condition that a very large corpus “past tens of thousands of chunks” is one of the triggers for adding embeddings, instead only mentioning a “large” corpus vaguely. This omission makes it incomplete against the required rubric point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 98153,
+  "outputTokens": 4343,
+  "durationMs": 75814,
+  "steps": 10,
+  "errors": []
+}

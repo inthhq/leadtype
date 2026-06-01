@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The default is correctly described as static BM25 with no database. The agent correctly states that the lexical index should be kept and embeddings are complementary. However, the condition for adding embeddings regarding corpus size is given only as 'large and semantically diverse enough' without the required threshold of 'tens of thousands of chunks', making it insufficiently specific. All other required points are fully met.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 197906,
+  "outputTokens": 4753,
+  "durationMs": 87999,
+  "steps": 11,
+  "errors": []
+}

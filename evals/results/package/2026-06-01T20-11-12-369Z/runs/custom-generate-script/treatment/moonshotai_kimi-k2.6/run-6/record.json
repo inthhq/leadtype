@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls the required library APIs in the correct order: convertAllMdx first, then the LLM and search generators. It imports and passes product and nav from docs.config.ts. However, it fails to configure the generators to read from the converted markdown directory (public/docs/). For example, generateLlmsTxt is given srcDir: \".\", and the search generator gets only outDir without a srcDir that points to public/docs. As the ground truth specifies that the generators must read the already-converted markdown from <outDir>/docs/, the script is not correct and would not produce the expected artifacts.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 31,
+  "inputTokens": 622488,
+  "outputTokens": 7684,
+  "durationMs": 116340,
+  "steps": 20,
+  "errors": []
+}

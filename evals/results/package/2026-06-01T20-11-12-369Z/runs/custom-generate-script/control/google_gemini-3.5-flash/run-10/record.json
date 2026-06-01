@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly imports library APIs and sequences `convertAllMdx` before the generators. However, it fails to direct the full-context and search generators to read from the already-converted markdown output (`public/docs`). `generateLlmsTxt` is passed `srcDir: 'docs'` (the original MDX source), not the converted markdown, and `generateLLMFullContextFiles` lacks any input‑directory argument. The rubric explicitly requires these generators to read from the converted markdown, so this omission makes the script incorrect. The agent's summary confidently claims the steps are ordered and works, but it does not address or acknowledge this essential requirement.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 593747,
+  "outputTokens": 13761,
+  "durationMs": 123186,
+  "steps": 28,
+  "errors": []
+}

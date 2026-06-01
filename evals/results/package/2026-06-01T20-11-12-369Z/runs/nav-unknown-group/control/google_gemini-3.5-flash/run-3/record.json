@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies 'nav' as the curated driver of sidebar/agent map and 'group' as the legacy fallback, still useful for validation and metadata. It unambiguously states that an unknown group slug fails the build with an explicit error, not a silent skip. All required rubric points are satisfied with no incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 89,
+  "inputTokens": 368279,
+  "outputTokens": 9535,
+  "durationMs": 513999,
+  "steps": 26,
+  "errors": []
+}

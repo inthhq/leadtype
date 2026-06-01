@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP convention with absolute URLs, making it unsuitable for a tarball (required point 1). It then explains that AGENTS.md works offline inside the installed package, is version-matched, and points to local markdown files (required point 2). Finally, it states that --bundle skips llms.txt, llms-full.txt, and other site‑only artifacts like search indexes and sitemaps (required point 3). All required points are met with clear detail and no incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 116452,
+  "outputTokens": 2483,
+  "durationMs": 45472,
+  "steps": 8,
+  "errors": []
+}

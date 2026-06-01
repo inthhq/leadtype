@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver and group as legacy, but it incorrectly states that an unknown group slug does not cause a build failure, contrary to the rubric which requires a build failure with an 'unknown group' error. The response explicitly says generation does not fail, which is a confident and critical mistake.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 165265,
+  "outputTokens": 2753,
+  "durationMs": 58907,
+  "steps": 11,
+  "errors": []
+}

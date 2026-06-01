@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly imports and calls convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles from leadtype's library APIs. Conversion runs first (Step 1), then the generators (Steps 2-4), satisfying the critical ordering requirement. It dynamically loads product and nav from docs.config.ts and passes them into the generators. All required artifacts (markdown mirrors, llms.txt, llms-full.txt, search index) are written under public/ with correct paths. While the logging message for step 2 says 'public/docs/llms.txt', the code actually writes to public/llms.txt, which matches the task's specification. All rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 35,
+  "inputTokens": 638246,
+  "outputTokens": 5563,
+  "durationMs": 71741,
+  "steps": 29,
+  "errors": []
+}

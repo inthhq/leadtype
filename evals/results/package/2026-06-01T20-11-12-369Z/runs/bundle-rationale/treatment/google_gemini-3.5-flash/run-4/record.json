@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer explains that llms.txt is a website/HTTP convention with absolute URLs and that no coding agent looks for it in node_modules. It describes AGENTS.md as using relative links for offline, version-matched access. It lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, search indices, sitemap, robots, and agent-readability. Every required rubric point is covered with no inaccuracies.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 90564,
+  "outputTokens": 2974,
+  "durationMs": 25205,
+  "steps": 8,
+  "errors": []
+}

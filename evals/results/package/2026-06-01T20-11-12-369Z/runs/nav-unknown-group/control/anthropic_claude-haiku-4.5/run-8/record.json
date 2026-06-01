@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies `nav` as the curated driver of sidebar and agent map, and `group` as a legacy fallback. However, it fails to explicitly state that `nav` drives `llms.txt` sections and `AGENTS.md` grouping (it mentions only an 'agent map'). Most critically, it asserts that an unknown `group` slug does NOT cause a build failure, instead describing it as a warning, which directly contradicts the rubric's required point that the build fails with an 'unknown group' error.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 152991,
+  "outputTokens": 3659,
+  "durationMs": 71068,
+  "steps": 15,
+  "errors": []
+}

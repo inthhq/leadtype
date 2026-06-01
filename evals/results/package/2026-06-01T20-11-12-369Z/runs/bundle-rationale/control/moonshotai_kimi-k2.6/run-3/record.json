@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website convention with absolute URLs, unsuitable for a tarball; that AGENTS.md works offline and is version-matched; and that --bundle skips website artifacts including llms.txt and llms-full.txt. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 73120,
+  "outputTokens": 1927,
+  "durationMs": 30036,
+  "steps": 8,
+  "errors": []
+}

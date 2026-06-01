@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website/HTTP convention with absolute URLs unsuitable for offline packages, notes that major coding agents do not look for it inside node_modules, and contrasts with AGENTS.md's relative-link filesystem convention that works offline and is version-matched. It lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, and additional items like sitemaps and robots.txt. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 82631,
+  "outputTokens": 2977,
+  "durationMs": 30058,
+  "steps": 10,
+  "errors": []
+}
