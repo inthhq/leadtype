@@ -1,0 +1,77 @@
+---
+title: "Write for agents"
+description: "Document the non-obvious — error conditions, defaults, ordering constraints, and surprising behavior — not restatements of your types, CLI help, or README."
+related:
+  - title: "Evals"
+    href: "/docs/concepts/evals"
+    description: "The eval evidence behind the 'document the gotchas' principle."
+  - title: "Optimize docs for agents"
+    href: "/docs/build/optimize-docs-for-agents"
+    description: "Generate the discovery and attribution files once your content earns its keep."
+---
+
+# Write for agents
+
+Once your pipeline is wired up, the hard part isn't generating `llms.txt` or markdown mirrors — it's deciding *what to write*. The single highest-leverage authoring rule:
+
+<Callout variant="info">
+**Document the non-obvious.** Error conditions, defaults, ordering constraints, and surprising behavior pay off. Restating what your CLI `--help`, `.d.ts` types, or README already expose adds ~0.
+</Callout>
+
+## Why restatements add nothing
+
+An agent reading your library already has its compiled code, type signatures, and CLI help text in context. A doc page that paraphrases a function signature gives the agent a second copy of something it can already see — no new information, just more tokens to read.
+
+The repo's [evals](/docs/concepts/evals) measured this directly. Per-fixture lift, pooled across five models, concentrated **entirely** on behavioral gotchas; conventional restatements were flat:
+
+| Fixture | What it tests | Lift |
+| --- | --- | --- |
+| `nav-unknown-group` | A page declares a `group` the config doesn't know → the build fails | **+28** |
+| `search-when-embeddings` | When the default BM25 index is enough vs. when to add embeddings | **+28** |
+| `explain-cli-flag`, `mounted-changelog-urls`, `bundle-rationale`, `custom-generate-script` | Facts already in `--help`, the `.d.ts` types, or the README | −2 to +6 |
+
+The mechanism is that docs stop agents from **confidently guessing wrong**. Without the `nav-unknown-group` doc, agents don't say "I don't know" — they assert the *wrong* answer. With it, the confident-wrong rate drops to near zero. The conventional fixtures don't move because the agent could already recover those facts from the package itself.
+
+## The litmus test
+
+Before you write a page or paragraph, ask:
+
+> Could the agent recover this from the type signature, the CLI help, or by reading the code?
+
+- **Yes** → skip it, or compress it to a one-line pointer. The package already self-documents it.
+- **No** → write it. This is where the docs earn their keep.
+
+## What counts as non-obvious
+
+<Steps>
+  <Step title="Error conditions">
+    What fails, and the exact failure mode. "An undeclared `group` makes the build fail" is invisible in the types — the field is just a `string`.
+  </Step>
+  <Step title="Defaults and when to override them">
+    The default behavior *and* the rule for choosing otherwise. "Search uses a static BM25 index by default; add embeddings only when…" — a decision boundary no signature encodes.
+  </Step>
+  <Step title="Ordering and sequencing constraints">
+    What must run before what. "Run `generate` before your app build," "register `remarkInclude` before the default plugin stack" — order that types can't enforce.
+  </Step>
+  <Step title="Surprising behavior">
+    Anything that violates a reasonable default expectation — silent fallbacks, values that look interchangeable but aren't, side effects that aren't obvious from the call site.
+  </Step>
+</Steps>
+
+## Write it like a gotcha
+
+Lead with the surprising fact, not the API. Compare:
+
+**Skip — restates the type:**
+
+> The `group` field on a page is an optional string that associates the page with a navigation group.
+
+**Write — documents the behavior:**
+
+> If a page declares a `group` that isn't defined in your config, **the build fails** — leadtype won't silently drop it or invent the group. Declare every group in `docs.config.ts` first.
+
+The second version is the one an agent can't reconstruct from the type. It's also the one that prevents a confident wrong answer.
+
+## A note on cost
+
+Documenting the non-obvious doesn't just raise correctness — it makes agent runs cheaper. When the answer is one short doc instead of a fan-out of `grep`/`read`/`list` calls probing your package, agents read fewer tokens and make fewer tool calls. The [evals](/docs/concepts/evals#docs-also-make-runs-cheaper) show every model ran cheaper with docs present, including frontier models that barely needed them for correctness.
