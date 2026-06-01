@@ -265,4 +265,41 @@ describe("runInitCommand", () => {
     const plan = JSON.parse(capture.stdout) as { files: string[] };
     expect(plan.files).toContain("AGENTS.md");
   });
+
+  it("reports the AGENTS.md action in the --json plan", async () => {
+    const dir = await createTempDir();
+    const fresh = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--json"],
+      fresh.io
+    );
+    const freshPlan = JSON.parse(fresh.stdout) as {
+      agentsPointer: { action: string; path: string };
+    };
+    expect(freshPlan.agentsPointer).toEqual({
+      action: "created",
+      path: "AGENTS.md",
+    });
+
+    // An existing user file with the marker block should plan a refresh, not a
+    // create — the plan must reflect the larger blast radius without writing.
+    await writeFile(
+      path.join(dir, "AGENTS.md"),
+      "# House rules\n\n<!-- leadtype:start -->\nold\n<!-- leadtype:end -->\n",
+      "utf8"
+    );
+    const existing = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--json"],
+      existing.io
+    );
+    const existingPlan = JSON.parse(existing.stdout) as {
+      agentsPointer: { action: string };
+    };
+    expect(existingPlan.agentsPointer.action).toBe("refreshed");
+    // --json must not have mutated the file.
+    expect(await readFile(path.join(dir, "AGENTS.md"), "utf8")).toContain(
+      "old"
+    );
+  });
 });

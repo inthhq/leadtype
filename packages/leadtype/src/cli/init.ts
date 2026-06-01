@@ -198,8 +198,10 @@ const AGENTS_POINTER_BLOCK_PATTERN =
   /<!-- leadtype:start -->[\s\S]*?<!-- leadtype:end -->/;
 const TRAILING_WHITESPACE_PATTERN = /\s+$/;
 
+type AgentsPointerAction = "appended" | "created" | "refreshed";
+
 type AgentsPointerOutcome = {
-  action: "appended" | "created" | "refreshed";
+  action: AgentsPointerAction;
   path: string;
 };
 
@@ -214,6 +216,57 @@ function renderAgentsPointerBlock(): string {
 }
 
 /**
+ * Decide what writing the pointer would do to an `AGENTS.md` given its current
+ * contents (`null` when the file is absent). Shared by the `--json` plan (which
+ * predicts without writing) and the merge (which acts), so the two never drift.
+ */
+function decideAgentsPointerAction(
+  existing: string | null
+): AgentsPointerAction {
+  if (existing === null) {
+    return "created";
+  }
+  if (AGENTS_POINTER_BLOCK_PATTERN.test(existing)) {
+    return "refreshed";
+  }
+  return "appended";
+}
+
+function renderMergedAgents(
+  existing: string | null,
+  action: AgentsPointerAction
+): string {
+  const block = renderAgentsPointerBlock();
+  if (action === "created") {
+    return `${block}\n`;
+  }
+  const current = existing ?? "";
+  if (action === "refreshed") {
+    return current.replace(AGENTS_POINTER_BLOCK_PATTERN, block);
+  }
+  const trimmed = current.replace(TRAILING_WHITESPACE_PATTERN, "");
+  return `${trimmed}\n\n${block}\n`;
+}
+
+async function readAgentsFile(projectRoot: string): Promise<string | null> {
+  const agentsPath = path.join(projectRoot, "AGENTS.md");
+  if (!existsSync(agentsPath)) {
+    return null;
+  }
+  return await readFile(agentsPath, "utf8");
+}
+
+/**
+ * Predict the pointer action without touching disk, for the `--json` plan.
+ */
+async function planAgentsPointer(
+  projectRoot: string
+): Promise<AgentsPointerOutcome> {
+  const existing = await readAgentsFile(projectRoot);
+  return { action: decideAgentsPointerAction(existing), path: "AGENTS.md" };
+}
+
+/**
  * Wire the consuming project's coding agent to leadtype's own bundled docs by
  * dropping the recommended root-`AGENTS.md` pointer (the pattern leadtype tells
  * its users to adopt — our evals show it lifts bundle-read from ~29% to
@@ -225,33 +278,13 @@ async function mergeAgentsPointer(
   projectRoot: string,
   dryRun: boolean
 ): Promise<AgentsPointerOutcome> {
-  const agentsPath = path.join(projectRoot, "AGENTS.md");
-  const block = renderAgentsPointerBlock();
-
-  if (!existsSync(agentsPath)) {
-    if (!dryRun) {
-      await writeFile(agentsPath, `${block}\n`, "utf8");
-    }
-    return { action: "created", path: "AGENTS.md" };
-  }
-
-  const existing = await readFile(agentsPath, "utf8");
-  if (AGENTS_POINTER_BLOCK_PATTERN.test(existing)) {
-    if (!dryRun) {
-      await writeFile(
-        agentsPath,
-        existing.replace(AGENTS_POINTER_BLOCK_PATTERN, block),
-        "utf8"
-      );
-    }
-    return { action: "refreshed", path: "AGENTS.md" };
-  }
-
+  const existing = await readAgentsFile(projectRoot);
+  const action = decideAgentsPointerAction(existing);
   if (!dryRun) {
-    const trimmed = existing.replace(TRAILING_WHITESPACE_PATTERN, "");
-    await writeFile(agentsPath, `${trimmed}\n\n${block}\n`, "utf8");
+    const agentsPath = path.join(projectRoot, "AGENTS.md");
+    await writeFile(agentsPath, renderMergedAgents(existing, action), "utf8");
   }
-  return { action: "appended", path: "AGENTS.md" };
+  return { action, path: "AGENTS.md" };
 }
 
 async function patchPackageJsonScript(
@@ -372,6 +405,7 @@ export async function runInitCommand(
   const allFiles = [...sharedFiles(name, summary), ...plan.files];
 
   if (args.json) {
+    const agentsPointer = await planAgentsPointer(projectRoot);
     io.stdout.write(
       `${JSON.stringify(
         {
@@ -380,6 +414,10 @@ export async function runInitCommand(
           baseUrl,
           outDir: plan.outDir,
           files: [...allFiles.map((file) => file.path), "AGENTS.md"],
+          // Surfaced separately so consumers can tell a fresh file from a
+          // refresh of an existing user `AGENTS.md` — different blast radius.
+          // The bare path stays in `files` for backwards compatibility.
+          agentsPointer,
           dryRun,
         },
         null,
