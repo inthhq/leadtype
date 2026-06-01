@@ -1232,6 +1232,68 @@ This page is valid, but the output path is not a directory.
     ).toBe(true);
   });
 
+  it("prints the root-pointer wiring snippet after a --bundle run", async () => {
+    const outDir = await createTempDir();
+    // The pointer must reference the installable npm name, taken from the
+    // output package's package.json — not the human --name.
+    await writeFile(
+      path.join(outDir, "package.json"),
+      JSON.stringify({ name: "acme" })
+    );
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--name",
+        "Acme Toolkit",
+        "--summary",
+        "Bundled docs for acme.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("node_modules/acme/AGENTS.md");
+    expect(capture.stdout).toContain("read the bundled docs");
+    expect(capture.stdout).toContain(
+      "https://leadtype.dev/docs/package-docs/bundle"
+    );
+  });
+
+  it("keeps stdout clean (no wiring snippet) for --bundle --json", async () => {
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--name",
+        "leadtype",
+        "--summary",
+        "Bundled docs for leadtype.",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stdout).not.toContain("node_modules/");
+    // stdout must still parse as a single JSON document.
+    expect(() => JSON.parse(capture.stdout)).not.toThrow();
+  });
+
   it("fails clearly when the docs source directory is missing", async () => {
     const tempDir = await createTempDir();
     const capture = createCapture();

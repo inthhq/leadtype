@@ -59,10 +59,20 @@ npx leadtype generate --src . --out public --base-url https://leadtype.dev
 For an npm-bundled doc set:
 
 ```bash
-npx leadtype generate --bundle --src . --out packages/my-package
+npx leadtype generate --bundle --src . --out packages/acme
 ```
 
-The first produces `public/llms.txt`, `public/llms-full.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/my-package/AGENTS.md` and `packages/my-package/docs/*.md` with relative links that still work after npm install.
+The first produces `public/llms.txt`, `public/llms-full.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/acme/AGENTS.md` and `packages/acme/docs/*.md` with relative links that still work after npm install.
+
+**Bundling is two steps, and the second is the one that matters.** Shipping `AGENTS.md` only pays off if consuming projects point their agent at it — left to discover it on their own, agents read the bundle only ~29% of the time; with a root-`AGENTS.md` pointer it's ~90–100% ([evals](./FINDINGS.md)). So tell consumers to add this to their own root `AGENTS.md`:
+
+```md
+When working with the `acme` library, read the bundled docs in
+`node_modules/acme/AGENTS.md` first — they're version-matched to the
+installed package and stay accurate as it updates.
+```
+
+`leadtype generate --bundle` prints this snippet, filled in with your package name, on success.
 
 ## Documentation
 

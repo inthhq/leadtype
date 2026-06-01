@@ -190,6 +190,103 @@ async function writeFiles(
   return outcomes;
 }
 
+const AGENTS_POINTER_START = "<!-- leadtype:start -->";
+const AGENTS_POINTER_END = "<!-- leadtype:end -->";
+// Lazy match between the markers so a re-run refreshes the block in place
+// instead of stacking duplicates.
+const AGENTS_POINTER_BLOCK_PATTERN =
+  /<!-- leadtype:start -->[\s\S]*?<!-- leadtype:end -->/;
+const TRAILING_WHITESPACE_PATTERN = /\s+$/;
+
+type AgentsPointerAction = "appended" | "created" | "refreshed";
+
+type AgentsPointerOutcome = {
+  action: AgentsPointerAction;
+  path: string;
+};
+
+function renderAgentsPointerBlock(): string {
+  return [
+    AGENTS_POINTER_START,
+    "When using leadtype or writing/editing docs, read the bundled docs in",
+    "`node_modules/leadtype/AGENTS.md` first — they're version-matched to the",
+    "installed package and stay accurate as it updates.",
+    AGENTS_POINTER_END,
+  ].join("\n");
+}
+
+/**
+ * Decide what writing the pointer would do to an `AGENTS.md` given its current
+ * contents (`null` when the file is absent). Shared by the `--json` plan (which
+ * predicts without writing) and the merge (which acts), so the two never drift.
+ */
+function decideAgentsPointerAction(
+  existing: string | null
+): AgentsPointerAction {
+  if (existing === null) {
+    return "created";
+  }
+  if (AGENTS_POINTER_BLOCK_PATTERN.test(existing)) {
+    return "refreshed";
+  }
+  return "appended";
+}
+
+function renderMergedAgents(
+  existing: string | null,
+  action: AgentsPointerAction
+): string {
+  const block = renderAgentsPointerBlock();
+  if (action === "created") {
+    return `${block}\n`;
+  }
+  const current = existing ?? "";
+  if (action === "refreshed") {
+    return current.replace(AGENTS_POINTER_BLOCK_PATTERN, block);
+  }
+  const trimmed = current.replace(TRAILING_WHITESPACE_PATTERN, "");
+  return `${trimmed}\n\n${block}\n`;
+}
+
+async function readAgentsFile(projectRoot: string): Promise<string | null> {
+  const agentsPath = path.join(projectRoot, "AGENTS.md");
+  if (!existsSync(agentsPath)) {
+    return null;
+  }
+  return await readFile(agentsPath, "utf8");
+}
+
+/**
+ * Predict the pointer action without touching disk, for the `--json` plan.
+ */
+async function planAgentsPointer(
+  projectRoot: string
+): Promise<AgentsPointerOutcome> {
+  const existing = await readAgentsFile(projectRoot);
+  return { action: decideAgentsPointerAction(existing), path: "AGENTS.md" };
+}
+
+/**
+ * Wire the consuming project's coding agent to leadtype's own bundled docs by
+ * dropping the recommended root-`AGENTS.md` pointer (the pattern leadtype tells
+ * its users to adopt — our evals show it lifts bundle-read from ~29% to
+ * ~90–100%). Marker-delimited and additive: create the file if absent, refresh
+ * the marked block in place if present, otherwise append — never overwrite a
+ * user's existing content.
+ */
+async function mergeAgentsPointer(
+  projectRoot: string,
+  dryRun: boolean
+): Promise<AgentsPointerOutcome> {
+  const existing = await readAgentsFile(projectRoot);
+  const action = decideAgentsPointerAction(existing);
+  if (!dryRun) {
+    const agentsPath = path.join(projectRoot, "AGENTS.md");
+    await writeFile(agentsPath, renderMergedAgents(existing, action), "utf8");
+  }
+  return { action, path: "AGENTS.md" };
+}
+
 async function patchPackageJsonScript(
   projectRoot: string,
   outDir: string,
@@ -308,6 +405,7 @@ export async function runInitCommand(
   const allFiles = [...sharedFiles(name, summary), ...plan.files];
 
   if (args.json) {
+    const agentsPointer = await planAgentsPointer(projectRoot);
     io.stdout.write(
       `${JSON.stringify(
         {
@@ -315,7 +413,11 @@ export async function runInitCommand(
           projectRoot,
           baseUrl,
           outDir: plan.outDir,
-          files: allFiles.map((file) => file.path),
+          files: [...allFiles.map((file) => file.path), "AGENTS.md"],
+          // Surfaced separately so consumers can tell a fresh file from a
+          // refresh of an existing user `AGENTS.md` — different blast radius.
+          // The bare path stays in `files` for backwards compatibility.
+          agentsPointer,
           dryRun,
         },
         null,
@@ -335,6 +437,7 @@ export async function runInitCommand(
     baseUrl,
     dryRun
   );
+  const agentsPointer = await mergeAgentsPointer(projectRoot, dryRun);
 
   const prefix = dryRun ? "would scaffold" : "scaffolded";
   io.stdout.write(`leadtype init: ${prefix} ${framework} docs integration\n`);
@@ -348,6 +451,10 @@ export async function runInitCommand(
       `  ${dryRun ? "~" : "+"} package.json (added "docs:generate" script)\n`
     );
   }
+  const agentsMark = dryRun || agentsPointer.action === "refreshed" ? "~" : "+";
+  io.stdout.write(
+    `  ${agentsMark} AGENTS.md (${agentsPointer.action} leadtype docs pointer)\n`
+  );
 
   let ranGenerate = false;
   if (args.generate && !dryRun) {

@@ -188,4 +188,118 @@ describe("runInitCommand", () => {
     };
     expect(pkg2.scripts["docs:generate"]).toBe("custom");
   });
+
+  it("creates a root AGENTS.md with the leadtype pointer when none exists", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      capture.io
+    );
+    const agents = await readFile(path.join(dir, "AGENTS.md"), "utf8");
+    expect(agents).toContain("node_modules/leadtype/AGENTS.md");
+    expect(agents).toContain("<!-- leadtype:start -->");
+    expect(agents).toContain("<!-- leadtype:end -->");
+    expect(capture.stdout).toContain(
+      "AGENTS.md (created leadtype docs pointer)"
+    );
+  });
+
+  it("appends the pointer to an existing AGENTS.md without clobbering it", async () => {
+    const dir = await createTempDir();
+    const agentsPath = path.join(dir, "AGENTS.md");
+    await writeFile(agentsPath, "# My project\n\nHand-written guidance.\n");
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      capture.io
+    );
+    const agents = await readFile(agentsPath, "utf8");
+    expect(agents).toContain("Hand-written guidance.");
+    expect(agents).toContain("node_modules/leadtype/AGENTS.md");
+    expect(capture.stdout).toContain(
+      "AGENTS.md (appended leadtype docs pointer)"
+    );
+  });
+
+  it("refreshes the marked block in place on re-run (idempotent)", async () => {
+    const dir = await createTempDir();
+    const agentsPath = path.join(dir, "AGENTS.md");
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      createCapture().io
+    );
+    const second = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate", "--force"],
+      second.io
+    );
+    const agents = await readFile(agentsPath, "utf8");
+    const occurrences = agents.split("<!-- leadtype:start -->").length - 1;
+    expect(occurrences).toBe(1);
+    expect(second.stdout).toContain(
+      "AGENTS.md (refreshed leadtype docs pointer)"
+    );
+  });
+
+  it("does not write AGENTS.md on --dry-run", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--dry-run"],
+      capture.io
+    );
+    expect(existsSync(path.join(dir, "AGENTS.md"))).toBe(false);
+    expect(capture.stdout).toContain(
+      "AGENTS.md (created leadtype docs pointer)"
+    );
+  });
+
+  it("lists AGENTS.md in the --json plan", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--json"],
+      capture.io
+    );
+    const plan = JSON.parse(capture.stdout) as { files: string[] };
+    expect(plan.files).toContain("AGENTS.md");
+  });
+
+  it("reports the AGENTS.md action in the --json plan", async () => {
+    const dir = await createTempDir();
+    const fresh = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--json"],
+      fresh.io
+    );
+    const freshPlan = JSON.parse(fresh.stdout) as {
+      agentsPointer: { action: string; path: string };
+    };
+    expect(freshPlan.agentsPointer).toEqual({
+      action: "created",
+      path: "AGENTS.md",
+    });
+
+    // An existing user file with the marker block should plan a refresh, not a
+    // create — the plan must reflect the larger blast radius without writing.
+    await writeFile(
+      path.join(dir, "AGENTS.md"),
+      "# House rules\n\n<!-- leadtype:start -->\nold\n<!-- leadtype:end -->\n",
+      "utf8"
+    );
+    const existing = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--json"],
+      existing.io
+    );
+    const existingPlan = JSON.parse(existing.stdout) as {
+      agentsPointer: { action: string };
+    };
+    expect(existingPlan.agentsPointer.action).toBe("refreshed");
+    // --json must not have mutated the file.
+    expect(await readFile(path.join(dir, "AGENTS.md"), "utf8")).toContain(
+      "old"
+    );
+  });
 });
