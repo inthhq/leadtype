@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON result object describing the generation run and names required output-path fields like llmsTxt, docsLlmsTxt, and llmsFullTxt. However, it lists the agent readability manifest field as 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', which is an invented field not in the result shape. This factual error makes the response incorrect per the rubric's 'Invents fields that aren't part of the result shape' condition, though the overall explanation is largely accurate.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 5,
+  "inputTokens": 2238,
+  "outputTokens": 10,
+  "durationMs": 18905,
+  "steps": 6,
+  "errors": []
+}

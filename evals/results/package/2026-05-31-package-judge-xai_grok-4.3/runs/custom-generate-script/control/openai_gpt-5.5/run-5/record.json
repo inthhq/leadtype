@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is imported and invoked first (writing public/docs/*.md), followed by generateLlmsTxt + generateLLMFullContextFiles (producing llms.txt and llms-full.txt) and generateDocsSearchFiles (search index), with product/nav passed through from the updated docs.config.ts. Ordering is correct per the ground-truth note; no CLI usage or invented APIs appear. The extra resolveDocsNavigation call and docs.config.ts edits are harmless and do not violate any constraint.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 44004,
+  "outputTokens": 668,
+  "durationMs": 117903,
+  "steps": 18,
+  "errors": []
+}

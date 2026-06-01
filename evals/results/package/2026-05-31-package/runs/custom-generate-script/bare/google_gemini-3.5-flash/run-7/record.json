@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent did not create the requested file scripts/build-docs.ts. Its response \"I will read public/llms.txt to verify its contents.\" is unrelated to writing the build script. All required rubric points are unmet.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 48309,
+  "outputTokens": 78,
+  "durationMs": 157877,
+  "steps": 50,
+  "errors": []
+}

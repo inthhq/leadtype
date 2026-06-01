@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly identifies the 'LLM files' area (Reference → LLM files page) and lists the relevant output APIs (generateLlmsTxt, generateLLMFullContextFiles, etc.), explicitly ruling out the Search UI/APIs. It then describes the monolithic /llms-full.txt as a last-resort fallback to be used only when page-level links are insufficient, aligning perfectly with the rubric's required points. No incorrect statements are made.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4283,
+  "outputTokens": 502,
+  "durationMs": 29278,
+  "steps": 5,
+  "errors": []
+}

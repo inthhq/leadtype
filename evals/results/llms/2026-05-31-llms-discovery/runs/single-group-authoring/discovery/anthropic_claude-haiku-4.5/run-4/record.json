@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "discovery",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping, and correctly describes `/llms-full.txt` as a monolithic file not split per group. It also names several valid optional frontmatter fields (e.g., `icon`, `tags`, `deprecated`). However, it invents `description` as an optional frontmatter field, which is not in the schema; this violates the rubric's requirement that only valid fields be listed. Therefore the response is incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 10,
+  "inputTokens": 5257,
+  "outputTokens": 254,
+  "durationMs": 25200,
+  "steps": 7,
+  "errors": []
+}

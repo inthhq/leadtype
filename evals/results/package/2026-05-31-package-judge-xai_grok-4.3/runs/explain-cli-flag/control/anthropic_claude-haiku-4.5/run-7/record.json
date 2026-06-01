@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: ANSWER.md names both `lastModified` and `lastAuthor`, states they are added to page frontmatter, and states the values are populated from git history (via git log). No invented fields, no wrong source attribution, and the content matches the ground truth exactly.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 31075,
+  "outputTokens": 172,
+  "durationMs": 14973,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately explains that llms.txt is an HTTP/web convention with absolute URLs, making it unsuitable for a tarball, and that AGENTS.md works with relative paths offline in node_modules. It also correctly lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, and search indexes, fully meeting all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 46,
+  "inputTokens": 19226,
+  "outputTokens": 305,
+  "durationMs": 98459,
+  "steps": 47,
+  "errors": []
+}

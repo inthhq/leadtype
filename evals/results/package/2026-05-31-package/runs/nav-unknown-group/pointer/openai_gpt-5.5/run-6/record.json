@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "mode": "pointer",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth and group as legacy taxonomy with fallback use. However, it incorrectly states that an unknown group slug only causes a build failure when a legacy groups vocabulary is configured, and that a nav-only config without a groups list would not validate or fail on unknown groups. The rubric requires that an unknown group slug always fails the build, regardless of configuration. This makes the answer partially wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 70265,
+  "outputTokens": 68,
+  "durationMs": 54024,
+  "steps": 12,
+  "errors": []
+}

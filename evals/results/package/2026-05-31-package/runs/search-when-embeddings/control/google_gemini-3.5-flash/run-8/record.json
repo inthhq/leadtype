@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical index with no database, and correctly states that lexical search should be kept for exact matches. However, the condition for adding embeddings due to large corpus is not specific enough; the rubric requires mentioning tens of thousands of chunks, but the response only mentions 'millions of lines', setting an overly high threshold. This omission makes the response incomplete against the rubric, hence incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 27067,
+  "outputTokens": 706,
+  "durationMs": 57422,
+  "steps": 20,
+  "errors": []
+}

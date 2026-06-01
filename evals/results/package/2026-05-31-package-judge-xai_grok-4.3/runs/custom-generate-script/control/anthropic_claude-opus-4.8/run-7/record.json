@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "Script satisfies every REQUIRED rubric point: imports product/nav, calls convertAllMdx first (step 2) before generateLlmsTxt / generateLLMFullContextFiles / generateDocsSearchFiles, uses exactly the documented leadtype/* library entry points, and never shells out to the CLI. The only minor deviation from the literal ground-truth list is the extra resolveDocsNavigation call, which is harmless and does not violate ordering.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 55374,
+  "outputTokens": 835,
+  "durationMs": 94972,
+  "steps": 15,
+  "errors": []
+}

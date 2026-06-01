@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that `llms.txt` is a website convention and `AGENTS.md` is for packages (point 1). However, it fails to explain that `AGENTS.md` uses relative links to work offline (point 2). Moreover, it incorrectly states that `--bundle` skips landing pages, marketing content, etc., omitting the required mention of `llms.txt` and `llms-full.txt` (point 3). Therefore it is incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 3678,
+  "outputTokens": 230,
+  "durationMs": 24152,
+  "steps": 12,
+  "errors": []
+}

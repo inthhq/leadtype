@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "Agent response is a single unrelated sentence about searching for normalizeBaseUrl; it produces no script, makes none of the required API calls, and ignores the entire task and ordering constraints.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 34389,
+  "outputTokens": 93,
+  "durationMs": 117758,
+  "steps": 50,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer names both required fields (lastModified and lastAuthor), explicitly states they are added to YAML frontmatter, and describes that they come from git history (using git log). All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 24891,
+  "outputTokens": 232,
+  "durationMs": 30037,
+  "steps": 12,
+  "errors": []
+}

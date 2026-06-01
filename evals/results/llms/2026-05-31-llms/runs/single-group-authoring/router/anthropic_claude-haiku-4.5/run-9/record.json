@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping, and accurately describes `/llms-full.txt` as a monolithic, non-sharded file. However, it invents two frontmatter fields not present in the rubric's allowed list: `deprecatedReason` and `availableIn`. This violates the 'Incorrect if ... invents fields not in the schema' rule, making the answer incorrect despite covering the main required points. Score reflects substantial completeness with a minor factual error.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3323,
+  "outputTokens": 225,
+  "durationMs": 13702,
+  "steps": 5,
+  "errors": []
+}

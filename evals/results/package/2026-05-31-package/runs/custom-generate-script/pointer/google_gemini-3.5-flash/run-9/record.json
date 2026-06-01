@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first, ensuring markdown conversion before any index/search generators. It then calls generateLlmsTxt and generateLLMFullContextFiles, and generates the static search index via generateDocsSearchFiles. product and nav from docs.config.ts are passed into the generators. All required APIs are used in the correct order, and no CLI commands are used.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 33,
+  "inputTokens": 43469,
+  "outputTokens": 1082,
+  "durationMs": 92471,
+  "steps": 34,
+  "errors": []
+}

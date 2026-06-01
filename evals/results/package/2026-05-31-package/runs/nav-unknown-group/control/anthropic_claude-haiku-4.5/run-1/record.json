@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver and group as a legacy fallback (2 of 3 required points met). However, it incorrectly states that unknown group validation is skipped when nav is configured; the rubric specifies that the build fails unconditionally for unknown groups. This confident assertion makes the answer incorrect overall.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 60233,
+  "outputTokens": 363,
+  "durationMs": 40293,
+  "steps": 12,
+  "errors": []
+}

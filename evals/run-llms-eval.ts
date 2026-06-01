@@ -1,25 +1,28 @@
 #!/usr/bin/env bun
-import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gateway, generateText, stepCountIs } from "ai";
-import { loadLlmsExpected, selectionMatchesVariant } from "./lib/llms-metrics";
+import { aggregateRun } from "./lib/aggregate";
+import { DEFAULT_JUDGE_MODEL, judgeAnswer } from "./lib/judge";
+import {
+  loadLlmsExpected,
+  selectionMatchesVariant,
+  summarizeLlmsReads,
+} from "./lib/llms-metrics";
 import { createLlmsSandbox } from "./lib/llms-sandbox";
 import {
   LLMS_VARIANTS,
   type LlmsVariant,
   parseLlmsVariant,
 } from "./lib/llms-variants";
+import { namespaceModelId, parseModelList, providerFor } from "./lib/models";
+import { runPool } from "./lib/pool";
+import type { RunRecord } from "./lib/record";
+import { withRetry } from "./lib/retry";
 import { scopedTools } from "./lib/tools";
-import {
-  type Provider,
-  type ToolCall,
-  type Transcript,
-  transcriptPathFor,
-  writeTranscript,
-} from "./lib/transcript";
+import type { ToolCall, Transcript } from "./lib/transcript";
 
 const evalsRoot = fileURLToPath(new URL(".", import.meta.url));
 const fixturesRoot = path.join(evalsRoot, "llms");
@@ -30,7 +33,16 @@ The docs site's web root is represented by files in the current project root. Tr
 
 Start at /llms.txt. Use only the docs files you read from this web-root representation. Write your final answer to ANSWER.md.`;
 
+// Discovery arm: a realistic web root, but NO hint about where to start. The
+// agent has the docs pages, /llms.txt, /llms-full.txt, robots.txt and a
+// sitemap available — it must decide what to consult. Measures whether the
+// llms.txt convention gets used unprompted.
+const DISCOVERY_SYSTEM_PROMPT = `You are an expert coding agent helping with a project that uses the \`leadtype\` library.
+
+The current project root is a local mirror of the library's hosted docs site: a URL like /docs/reference/cli.md is the file docs/reference/cli.md, and /sitemap.xml is sitemap.xml. Answer the task using what you can find here. Write your final answer to ANSWER.md.`;
+
 const STEP_LIMIT = 40;
+const DEFAULT_MODEL = "claude-haiku-4-5";
 const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
 const MODEL_TIMEOUT_MS =
   process.env.LLMS_EVAL_MODEL_TIMEOUT_MS === undefined
@@ -39,26 +51,17 @@ const MODEL_TIMEOUT_MS =
         process.env.LLMS_EVAL_MODEL_TIMEOUT_MS,
         "LLMS_EVAL_MODEL_TIMEOUT_MS"
       );
-const VITEST_TIMEOUT_MS = 60_000;
 
 type CliArgs = {
   fixture?: string;
   variant?: LlmsVariant;
-  model: string;
+  /** Run the unhinted discovery arm instead of the routing variants. */
+  discovery: boolean;
+  models: string[];
+  judge: string;
   runs: number;
-};
-
-type RunResult = {
-  fixture: string;
-  variant: LlmsVariant;
-  passed: boolean;
-  contextMatched: boolean;
-  wrongGroupReads: number;
-  durationMs: number;
-  toolCalls: number;
-  inputTokens: number;
-  outputTokens: number;
-  evalOutput: string;
+  label?: string;
+  concurrency: number;
 };
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
@@ -68,8 +71,7 @@ function parsePositiveInt(value: string | undefined, flag: string): number {
   if (!/^[1-9]\d*$/.test(value)) {
     throw new Error(`${flag} must be a positive integer, got ${value}`);
   }
-  const parsed = Number(value);
-  return parsed;
+  return Number(value);
 }
 
 function parseRequiredFlagValue(
@@ -82,22 +84,37 @@ function parseRequiredFlagValue(
   return value;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: a flat CLI flag switch is clearer left inline than split apart
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { model: "claude-haiku-4-5", runs: 1 };
+  const args: CliArgs = {
+    models: [DEFAULT_MODEL],
+    judge: DEFAULT_JUDGE_MODEL,
+    runs: 1,
+    concurrency: 1,
+    discovery: false,
+  };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i];
     i++;
     if (a === "--fixture") {
       args.fixture = parseRequiredFlagValue(argv[i++], "--fixture");
+    } else if (a === "--discovery") {
+      args.discovery = true;
     } else if (a === "--variant") {
       args.variant = parseLlmsVariant(
         parseRequiredFlagValue(argv[i++], "--variant")
       );
-    } else if (a === "--model") {
-      args.model = parseRequiredFlagValue(argv[i++], "--model");
+    } else if (a === "--model" || a === "--models") {
+      args.models = parseModelList(parseRequiredFlagValue(argv[i++], a));
+    } else if (a === "--judge") {
+      args.judge = parseRequiredFlagValue(argv[i++], "--judge");
     } else if (a === "--runs") {
       args.runs = parsePositiveInt(argv[i++], "--runs");
+    } else if (a === "--concurrency") {
+      args.concurrency = parsePositiveInt(argv[i++], "--concurrency");
+    } else if (a === "--label") {
+      args.label = parseRequiredFlagValue(argv[i++], "--label");
     } else if (a === "--help" || a === "-h") {
       printUsage();
       process.exit(0);
@@ -112,11 +129,15 @@ function printUsage(): void {
   process.stdout.write(`Usage: bun run run-llms-eval.ts [options]
 
 Options:
-  --fixture <name>    Run only one fixture (default: all)
+  --fixture <name>   Run only one fixture (default: all)
   --variant <name>   Run one variant: ${LLMS_VARIANTS.join("|")} (default: all)
-  --model <id>       Model id, e.g. claude-haiku-4-5, claude-opus-4-7,
-                     gpt-5.5 (default: claude-haiku-4-5)
-  --runs <n>         Repetitions per (fixture x variant) combo (default: 1)
+  --discovery        Unhinted discovery arm: realistic web root, no "start at llms.txt" hint
+  --models <a,b,c>   Comma-separated candidate model ids (default: ${DEFAULT_MODEL})
+  --model <id>       Alias for a single --models entry
+  --judge <id>       Judge model id (default: ${DEFAULT_JUDGE_MODEL})
+  --runs <n>         Repetitions per (fixture × variant × model) (default: 1)
+  --concurrency <n>  Number of runs in flight at once (default: 1)
+  --label <name>     Results folder name under results/llms/ (default: timestamp)
   -h, --help         Show this help
 `);
 }
@@ -132,305 +153,267 @@ function discoverFixtures(): string[] {
     .sort();
 }
 
-function namespaceModelId(modelId: string): string {
-  if (modelId.includes("/")) {
-    return modelId;
+/**
+ * Compute the context signal for a run. For routing variants this is the
+ * intended-path match; for the discovery arm it's simply whether the agent
+ * consulted /llms.txt unprompted.
+ */
+function evaluateContext(
+  transcript: Transcript,
+  fixtureDir: string,
+  discovery: boolean
+): {
+  selection: { passed: boolean; wrongGroupReads: string[] };
+  discoveredLlmsTxt: boolean;
+} {
+  const discoveredLlmsTxt = summarizeLlmsReads(transcript).readLlmsTxt;
+  if (discovery) {
+    return {
+      selection: { passed: discoveredLlmsTxt, wrongGroupReads: [] },
+      discoveredLlmsTxt,
+    };
   }
-  if (modelId.startsWith("gpt-")) {
-    return `openai/${modelId}`;
-  }
-  return `anthropic/${modelId}`;
+  const expected = loadLlmsExpected(fixtureDir);
+  return {
+    selection: selectionMatchesVariant(transcript, expected),
+    discoveredLlmsTxt,
+  };
 }
 
-function getModel(modelId: string): {
-  provider: Provider;
-  model: ReturnType<typeof gateway>;
-} {
-  const namespaced = namespaceModelId(modelId);
-  const provider: Provider = namespaced.startsWith("openai/")
-    ? "openai"
-    : "anthropic";
-  return { provider, model: gateway(namespaced) };
+type AgentOutcome = {
+  finalText: string;
+  steps: number;
+  inputTokens: number;
+  outputTokens: number;
+  errors: string[];
+};
+
+/** Run the model loop once, capturing usage and failing soft (errors → array). */
+async function invokeAgent(opts: {
+  modelId: string;
+  discovery: boolean;
+  promptText: string;
+  tools: Record<string, unknown>;
+}): Promise<AgentOutcome> {
+  const errors: string[] = [];
+  try {
+    const result = await withRetry(() =>
+      generateText({
+        model: gateway(namespaceModelId(opts.modelId)),
+        system: opts.discovery ? DISCOVERY_SYSTEM_PROMPT : SYSTEM_PROMPT,
+        prompt: opts.promptText,
+        tools: opts.tools as Parameters<typeof generateText>[0]["tools"],
+        stopWhen: stepCountIs(STEP_LIMIT),
+        timeout: MODEL_TIMEOUT_MS,
+      })
+    );
+    return {
+      finalText: result.text ?? "",
+      steps: result.steps?.length ?? 0,
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
+      errors,
+    };
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : String(err));
+    return { finalText: "", steps: 0, inputTokens: 0, outputTokens: 0, errors };
+  }
 }
 
 async function runOne(options: {
   fixture: string;
-  variant: LlmsVariant;
+  variant?: LlmsVariant;
+  discovery: boolean;
   modelId: string;
+  judge: string;
   runIndex: number;
   totalRuns: number;
-}): Promise<RunResult> {
-  const { fixture, variant, modelId, runIndex, totalRuns } = options;
+  runDir: string;
+  promptText: string;
+  rubricText: string;
+}): Promise<RunRecord> {
+  const {
+    fixture,
+    variant,
+    discovery,
+    modelId,
+    judge,
+    runIndex,
+    totalRuns,
+    runDir,
+    promptText,
+    rubricText,
+  } = options;
   const fixtureDir = path.join(fixturesRoot, fixture);
-  const promptText = await readFile(
-    path.join(fixtureDir, "PROMPT.md"),
-    "utf-8"
-  );
+  const arm = discovery ? "discovery" : (variant ?? "?");
 
   process.stdout.write(
-    `* ${fixture} / ${variant} [${runIndex}/${totalRuns}] (${modelId})\n`
+    `▶ ${fixture} / ${arm} / ${modelId} [${runIndex}/${totalRuns}]\n`
   );
 
-  const sandbox = await createLlmsSandbox({ fixtureDir, variant });
+  const sandbox = await createLlmsSandbox({ fixtureDir, variant, discovery });
+  const start = Date.now();
+  const transcriptCalls: ToolCall[] = [];
+  const filesModified = new Set<string>();
+  // Docs-reading task: drop the npm tool so the model doesn't waste steps.
+  const { npm: _omit, ...tools } = scopedTools({
+    tempDir: sandbox.tempDir,
+    transcript: transcriptCalls,
+    filesModified,
+  });
+
+  const provider = providerFor(modelId);
+  const outcome = await invokeAgent({ modelId, discovery, promptText, tools });
+  const { finalText, steps, inputTokens, outputTokens, errors } = outcome;
+
+  const durationMs = Date.now() - start;
+  const transcript: Transcript = {
+    fixture,
+    benchmark: "llms",
+    mode: "treatment",
+    // Discovery transcripts have no routing variant; the variant metrics don't
+    // apply to them.
+    variant: discovery ? undefined : variant,
+    agent: { provider, model: modelId },
+    toolCalls: transcriptCalls,
+    filesModified: [...filesModified].sort(),
+    finalText,
+    durationMs,
+    steps,
+    errors,
+    tokens: { input: inputTokens, output: outputTokens },
+  };
+
+  const { selection, discoveredLlmsTxt } = evaluateContext(
+    transcript,
+    fixtureDir,
+    discovery
+  );
+
+  let answerContent = "";
   try {
-    const start = Date.now();
-    const transcriptCalls: ToolCall[] = [];
-    const filesModified = new Set<string>();
-    // The llms eval is a docs-reading task: the model should not invoke `npm`.
-    // Omit it from the toolset so the model does not waste steps exploring it.
-    const { npm: _omit, ...tools } = scopedTools({
-      tempDir: sandbox.tempDir,
-      transcript: transcriptCalls,
-      filesModified,
-    });
-
-    const { provider, model } = getModel(modelId);
-    const errors: string[] = [];
-    let finalText = "";
-    let steps = 0;
-    let inputTokens = 0;
-    let outputTokens = 0;
-
-    try {
-      const result = await generateText({
-        model,
-        system: SYSTEM_PROMPT,
-        prompt: promptText,
-        tools,
-        stopWhen: stepCountIs(STEP_LIMIT),
-        timeout: MODEL_TIMEOUT_MS,
-      });
-      finalText = result.text ?? "";
-      steps = result.steps?.length ?? 0;
-      inputTokens = result.usage?.inputTokens ?? 0;
-      outputTokens = result.usage?.outputTokens ?? 0;
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
-    }
-
-    const durationMs = Date.now() - start;
-    const transcript: Transcript = {
-      fixture,
-      benchmark: "llms",
-      mode: "treatment",
-      variant,
-      agent: { provider, model: modelId },
-      toolCalls: transcriptCalls,
-      filesModified: [...filesModified].sort(),
-      finalText,
-      durationMs,
-      steps,
-      errors,
-      tokens: { input: inputTokens, output: outputTokens },
-    };
-    await writeTranscript(sandbox.tempDir, transcript);
-
-    const expected = loadLlmsExpected(fixtureDir);
-    const selection = selectionMatchesVariant(transcript, expected);
-    const evalResult = await runVitest(fixture, sandbox.tempDir);
-    const passed = evalResult.passed;
-
-    process.stdout.write(
-      `  ${passed ? "ok" : "fail"} ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls · context ${selection.passed ? "ok" : "miss"} · ${inputTokens}in/${outputTokens}out\n`
+    answerContent = await readFile(
+      path.join(sandbox.tempDir, "ANSWER.md"),
+      "utf-8"
     );
-    if (errors.length > 0) {
-      for (const error of errors) {
-        process.stdout.write(`    ! ${error}\n`);
-      }
-    }
-    if (!passed) {
-      const tailLines = evalResult.output.split("\n").slice(-25).join("\n");
-      process.stdout.write(`${tailLines}\n`);
-    }
-
-    await archiveTranscript({
-      fixture,
-      variant,
-      runIndex,
-      tempDir: sandbox.tempDir,
-      transcript,
-    });
-
-    return {
-      fixture,
-      variant,
-      passed,
-      contextMatched: selection.passed,
-      wrongGroupReads: selection.wrongGroupReads.length,
-      durationMs,
-      toolCalls: transcriptCalls.length,
-      inputTokens,
-      outputTokens,
-      evalOutput: evalResult.output,
-    };
-  } finally {
-    await sandbox.cleanup();
+  } catch {
+    answerContent = finalText;
   }
+  const verdict = await judgeAnswer({
+    task: promptText,
+    rubric: rubricText,
+    answer: answerContent || finalText,
+    judgeModel: judge,
+  });
+
+  const record: RunRecord = {
+    benchmark: "llms",
+    fixture,
+    model: modelId,
+    runIndex,
+    variant: arm,
+    passed: verdict.correct,
+    score: verdict.score,
+    judgeModel: verdict.judgeModel,
+    judgeReasoning: verdict.reasoning,
+    judgeError: verdict.error,
+    failureMode: verdict.failureMode,
+    contextMatched: selection.passed,
+    wrongGroupReads: selection.wrongGroupReads.length,
+    discoveredLlmsTxt: discovery ? discoveredLlmsTxt : undefined,
+    toolCalls: transcriptCalls.length,
+    inputTokens,
+    outputTokens,
+    durationMs,
+    steps,
+    errors,
+  };
+
+  await archiveRun({
+    runDir,
+    fixture,
+    arm,
+    modelId,
+    runIndex,
+    tempDir: sandbox.tempDir,
+    transcript,
+    verdict,
+    record,
+    answerContent,
+  });
+  await sandbox.cleanup();
+
+  const contextLabel = discovery
+    ? `llms.txt ${selection.passed ? "consulted" : "skipped"}`
+    : `context ${selection.passed ? "ok" : "miss"}`;
+  process.stdout.write(
+    `  ${verdict.correct ? "✓" : "✗"} score ${verdict.score} · ${contextLabel} · ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls${verdict.error ? " · JUDGE ERROR" : ""}\n`
+  );
+  for (const e of errors) {
+    process.stdout.write(`    ! ${e}\n`);
+  }
+  return record;
 }
 
-async function archiveTranscript(opts: {
+async function archiveRun(opts: {
+  runDir: string;
   fixture: string;
-  variant: LlmsVariant;
+  arm: string;
+  modelId: string;
   runIndex: number;
   tempDir: string;
   transcript: Transcript;
+  verdict: Awaited<ReturnType<typeof judgeAnswer>>;
+  record: RunRecord;
+  answerContent: string;
 }): Promise<void> {
-  const { fixture, variant, runIndex, tempDir, transcript } = opts;
-  const ts = new Date().toISOString().replace(/[.:]/g, "-");
   const dir = path.join(
-    evalsRoot,
-    "results",
-    "llms",
-    fixture,
-    variant,
-    `${ts}-run${runIndex}`
+    opts.runDir,
+    "runs",
+    opts.fixture,
+    opts.arm,
+    sanitizeSegment(opts.modelId),
+    `run-${opts.runIndex}`
   );
   await mkdir(dir, { recursive: true });
   await writeFile(
     path.join(dir, "transcript.json"),
-    `${JSON.stringify(transcript, null, 2)}\n`
+    `${JSON.stringify(opts.transcript, null, 2)}\n`
   );
-  for (const rel of transcript.filesModified) {
-    try {
-      const safeRel = toSafeArchivePath(rel);
-      if (!safeRel) {
-        continue;
-      }
-      const content = await readFile(path.join(tempDir, safeRel), "utf-8");
-      const filesDir = path.join(dir, "files");
-      const dest = path.join(filesDir, safeRel);
-      const relativeDest = path.relative(filesDir, dest);
-      if (relativeDest.startsWith("..") || path.isAbsolute(relativeDest)) {
-        continue;
-      }
-      await mkdir(path.dirname(dest), { recursive: true });
-      await writeFile(dest, content);
-    } catch {
-      // Best effort archive for files that still exist.
+  await writeFile(
+    path.join(dir, "judge.json"),
+    `${JSON.stringify(opts.verdict, null, 2)}\n`
+  );
+  await writeFile(
+    path.join(dir, "record.json"),
+    `${JSON.stringify(opts.record, null, 2)}\n`
+  );
+  if (opts.answerContent) {
+    await writeFile(path.join(dir, "ANSWER.md"), opts.answerContent);
+  }
+}
+
+function sanitizeSegment(value: string): string {
+  return value.replace(/[^\w.-]+/g, "_");
+}
+
+/**
+ * The discovery arm prefers a fixture's `DISCOVERY_PROMPT.md` if present: a
+ * neutral phrasing that does NOT name `llms.txt`/`llms-full.txt`/`AGENTS.md`,
+ * so "did the agent consult llms.txt unprompted" isn't contaminated by the
+ * task itself pointing at the file. Falls back to PROMPT.md when absent.
+ */
+async function readPromptText(
+  fixtureDir: string,
+  discovery: boolean
+): Promise<string> {
+  if (discovery) {
+    const discoveryPath = path.join(fixtureDir, "DISCOVERY_PROMPT.md");
+    if (existsSync(discoveryPath)) {
+      return await readFile(discoveryPath, "utf-8");
     }
   }
-}
-
-function toSafeArchivePath(rel: string): string | undefined {
-  if (path.isAbsolute(rel)) {
-    return;
-  }
-  const normalized = path.normalize(rel);
-  if (
-    normalized === "." ||
-    normalized.startsWith("..") ||
-    path.isAbsolute(normalized) ||
-    normalized.split(path.sep).includes("..")
-  ) {
-    return;
-  }
-  return normalized;
-}
-
-async function runVitest(
-  fixture: string,
-  tempDir: string
-): Promise<{ passed: boolean; output: string }> {
-  const evalFile = path.join(fixturesRoot, fixture, "EVAL.ts");
-  return await new Promise((resolveSpawn) => {
-    let settled = false;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const settle = (result: { passed: boolean; output: string }) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-      resolveSpawn(result);
-    };
-
-    let proc: ReturnType<typeof spawn>;
-    try {
-      proc = spawn("bun", ["x", "vitest", "run", evalFile], {
-        cwd: evalsRoot,
-        env: {
-          ...process.env,
-          TRANSCRIPT_PATH: transcriptPathFor(tempDir),
-        },
-      });
-    } catch (err) {
-      settle({
-        passed: false,
-        output: `failed to spawn vitest: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      return;
-    }
-
-    let output = "";
-    timeout = setTimeout(() => {
-      proc.kill("SIGKILL");
-      settle({
-        passed: false,
-        output: `${output}\ntimeout after ${VITEST_TIMEOUT_MS}ms`,
-      });
-    }, VITEST_TIMEOUT_MS);
-    proc.stdout?.on("data", (b) => {
-      output += b.toString();
-    });
-    proc.stderr?.on("data", (b) => {
-      output += b.toString();
-    });
-    proc.on("error", (err) => {
-      settle({
-        passed: false,
-        output: `${output}\nspawn error: ${err.message}`,
-      });
-    });
-    proc.on("close", (code) => {
-      settle({ passed: code === 0, output });
-    });
-  });
-}
-
-function summarize(results: RunResult[]): void {
-  process.stdout.write("\n== llms-full Variant Summary ==\n");
-  process.stdout.write(
-    "fixture                         variant             pass       context    wrong grp   avg calls   avg tokens\n"
-  );
-  const keys = [
-    ...new Set(results.map((result) => `${result.fixture}\0${result.variant}`)),
-  ].sort();
-
-  for (const key of keys) {
-    const [fixture, variant] = key.split("\0") as [string, LlmsVariant];
-    const rows = results.filter(
-      (result) => result.fixture === fixture && result.variant === variant
-    );
-    const passed = rows.filter((row) => row.passed).length;
-    const contextMatched = rows.filter((row) => row.contextMatched).length;
-    const wrongGroups = rows.reduce(
-      (total, row) => total + row.wrongGroupReads,
-      0
-    );
-    const avgCalls = average(rows.map((row) => row.toolCalls));
-    const avgTokens = average(
-      rows.map((row) => row.inputTokens + row.outputTokens)
-    );
-
-    process.stdout.write(
-      `${fixture.padEnd(32)}${variant.padEnd(20)}${`${passed}/${rows.length}`.padEnd(11)}${`${contextMatched}/${rows.length}`.padEnd(11)}${String(wrongGroups).padEnd(12)}${avgCalls.toFixed(1).padEnd(12)}${avgTokens.toFixed(0)}\n`
-    );
-  }
-
-  const totalRuns = results.length;
-  const passed = results.filter((result) => result.passed).length;
-  process.stdout.write(
-    `\nOverall: ${passed}/${totalRuns} passed (${((passed / totalRuns) * 100).toFixed(0)}%)\n`
-  );
-}
-
-function average(values: number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-  return values.reduce((total, value) => total + value, 0) / values.length;
+  return await readFile(path.join(fixtureDir, "PROMPT.md"), "utf-8");
 }
 
 async function main(): Promise<void> {
@@ -450,24 +433,77 @@ async function main(): Promise<void> {
   const variants = args.variant
     ? [args.variant]
     : LLMS_VARIANTS.map(parseLlmsVariant);
+  // The discovery arm is a single arm, not a grid over variants.
+  const arms: Array<LlmsVariant | undefined> = args.discovery
+    ? [undefined]
+    : variants;
 
-  const results: RunResult[] = [];
+  const runId = args.label ?? new Date().toISOString().replace(/[.:]/g, "-");
+  const runDir = path.join(evalsRoot, "results", "llms", runId);
+  await mkdir(runDir, { recursive: true });
+
+  const total = fixtures.length * arms.length * args.models.length * args.runs;
+  const armsLabel = args.discovery
+    ? "discovery arm"
+    : `${arms.length} variants`;
+  process.stdout.write(
+    `Hosted-docs benchmark: ${fixtures.length} fixtures × ${armsLabel} × ${args.models.length} models × ${args.runs} runs = ${total} agent runs\nJudge: ${args.judge} · concurrency: ${args.concurrency}\nResults: ${runDir}\n\n`
+  );
+
+  const fixtureText = new Map<string, { prompt: string; rubric: string }>();
   for (const fixture of fixtures) {
-    for (const variant of variants) {
-      for (let i = 1; i <= args.runs; i++) {
-        const result = await runOne({
-          fixture,
-          variant,
-          modelId: args.model,
-          runIndex: i,
-          totalRuns: args.runs,
-        });
-        results.push(result);
+    const dir = path.join(fixturesRoot, fixture);
+    fixtureText.set(fixture, {
+      prompt: await readPromptText(dir, args.discovery),
+      rubric: await readFile(path.join(dir, "RUBRIC.md"), "utf-8"),
+    });
+  }
+
+  type Task = {
+    fixture: string;
+    variant?: LlmsVariant;
+    modelId: string;
+    runIndex: number;
+  };
+  const tasks: Task[] = [];
+  for (const fixture of fixtures) {
+    for (const variant of arms) {
+      for (const modelId of args.models) {
+        for (let i = 1; i <= args.runs; i++) {
+          tasks.push({ fixture, variant, modelId, runIndex: i });
+        }
       }
     }
   }
-  summarize(results);
-  process.exit(results.every((result) => result.passed) ? 0 : 1);
+
+  let completed = 0;
+  await runPool(tasks, args.concurrency, async (task) => {
+    const texts = fixtureText.get(task.fixture);
+    if (!texts) {
+      return;
+    }
+    await runOne({
+      fixture: task.fixture,
+      variant: task.variant,
+      discovery: args.discovery,
+      modelId: task.modelId,
+      judge: args.judge,
+      runIndex: task.runIndex,
+      totalRuns: args.runs,
+      runDir,
+      promptText: texts.prompt,
+      rubricText: texts.rubric,
+    });
+    completed++;
+    if (completed % 25 === 0 || completed === tasks.length) {
+      process.stdout.write(`  …${completed}/${tasks.length} runs done\n`);
+    }
+  });
+
+  const summary = await aggregateRun(runDir);
+  process.stdout.write(
+    `\n══ Done ══\n${summary.totalRuns} runs · report: ${path.join(runDir, "report.md")}\n`
+  );
 }
 
 main().catch((err) => {

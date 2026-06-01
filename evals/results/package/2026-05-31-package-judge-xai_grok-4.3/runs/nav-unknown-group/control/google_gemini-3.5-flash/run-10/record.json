@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied: ANSWER.md correctly identifies `nav` as the curated driver of sidebar + llms.txt/AGENTS.md grouping, identifies `group` as the legacy fallback (useful for navigation when nav omitted + metadata/search facets), and states that an unknown group produces a hard build-time 'unknown group' error rather than a warning or silent skip. No rubric violations or incorrect claims are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 37,
+  "inputTokens": 37501,
+  "outputTokens": 384,
+  "durationMs": 118957,
+  "steps": 38,
+  "errors": []
+}

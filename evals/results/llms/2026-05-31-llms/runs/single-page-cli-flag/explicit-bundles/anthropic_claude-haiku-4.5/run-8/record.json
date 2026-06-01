@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json produces a JSON object describing generated artifacts and names required keys like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents fields: \"agentReadabilityJson\" instead of \"agentReadabilityManifest\", and splits sitemap/robots into \"sitemapXml\", \"sitemapMd\", \"robotsTxt\" without evidence. This fabrication violates the rubric's 'Incorrect if' clause, so the answer is wrong despite satisfying the two official required points. The confident listing of these false fields without hedging makes the failure mode 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3055,
+  "outputTokens": 50,
+  "durationMs": 9548,
+  "steps": 5,
+  "errors": []
+}

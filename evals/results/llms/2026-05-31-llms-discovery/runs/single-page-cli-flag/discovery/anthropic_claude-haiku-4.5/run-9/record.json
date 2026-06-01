@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "discovery",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `--json` prints a JSON object describing generated artifacts, and it names several valid field keys such as `llmsFullTxt` and `docsLlmsTxt`. However, it invents `agentReadabilityJson` (should be `agentReadabilityManifest`) and `sitemapMd`, which are not part of the actual result shape per the rubric. This violates the 'Invents fields' condition, making the answer incorrect. The statement is made confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2196,
+  "outputTokens": 150,
+  "durationMs": 10236,
+  "steps": 4,
+  "errors": []
+}

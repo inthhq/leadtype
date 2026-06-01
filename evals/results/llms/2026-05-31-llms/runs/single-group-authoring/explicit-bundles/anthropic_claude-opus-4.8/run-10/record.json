@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that group drives sidebar placement, llms.txt sections, AGENTS.md grouping, and search metadata, satisfying the navigation/organization requirement. It correctly characterizes /llms-full.txt as a single monolithic file not split per group, and lists many optional frontmatter fields from the rubric (icon, deprecated, experimental, etc.), well exceeding the two-field minimum. All required points are met with accuracy.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 6,
+  "inputTokens": 5469,
+  "outputTokens": 413,
+  "durationMs": 26405,
+  "steps": 5,
+  "errors": []
+}

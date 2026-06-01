@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "variant": "page-links",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that group organizes navigation, llms.txt sections, AGENTS.md grouping, and that /llms-full.txt is a single monolithic file. However, it lists optional frontmatter fields including description, deprecatedReason, and availableIn, which are not in the correct schema list. This invents fields, violating the rubric's 'incorrect if' condition. The core information is otherwise accurate.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 2394,
+  "outputTokens": 13,
+  "durationMs": 98635,
+  "steps": 5,
+  "errors": []
+}

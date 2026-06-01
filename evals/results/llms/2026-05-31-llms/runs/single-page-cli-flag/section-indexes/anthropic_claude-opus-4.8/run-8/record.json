@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "States it prints a JSON object, correctly names required output fields (llmsFullTxt, docsLlmsTxt, llmsTxt). Describes a machine-readable manifest, not human-readable output. Lists many additional valid fields (sitemaps, robots.txt, search index, etc.). Minor inaccuracy: uses 'agentReadabilityJson' instead of the ground-truth 'agentReadabilityManifest', but this is a bonus detail and does not violate the required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3449,
+  "outputTokens": 294,
+  "durationMs": 24078,
+  "steps": 6,
+  "errors": []
+}

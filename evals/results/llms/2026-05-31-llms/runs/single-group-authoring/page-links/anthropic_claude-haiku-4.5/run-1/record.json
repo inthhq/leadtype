@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer explains how group controls navigation (sidebar, llms.txt sections, AGENTS.md grouping). It correctly describes /llms-full.txt as a single monolithic file, not sharded by group. It names three valid optional frontmatter fields (icon, deprecated, tags) from the required list. All rubric points are fully satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3441,
+  "outputTokens": 281,
+  "durationMs": 15737,
+  "steps": 6,
+  "errors": []
+}

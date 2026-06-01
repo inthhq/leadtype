@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 45,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly names `nav` as the primary/curated driver and `group` as legacy/fallback, satisfying the first two REQUIRED bullets. However it violates the third REQUIRED point and the \"Incorrect if\" rules by asserting that unknown-group validation is skipped entirely when `nav` is present and that stale `group` values then cause no error; the ground truth states unconditionally that an unknown group produces a hard \"unknown group\" build failure. This is a plain factual contradiction rather than hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 60233,
+  "outputTokens": 363,
+  "durationMs": 40293,
+  "steps": 12,
+  "errors": []
+}

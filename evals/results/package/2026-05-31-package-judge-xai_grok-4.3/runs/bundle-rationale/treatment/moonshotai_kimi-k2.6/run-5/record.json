@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED points are met: the answer correctly identifies llms.txt as a website/HTTP convention whose absolute URLs make it unusable inside node_modules (and notes agents do not look there), contrasts it with AGENTS.md's relative links that enable offline/version-matched use, and explicitly lists the website-only artifacts that --bundle skips (including at minimum llms.txt/llms-full.txt plus search/sitemap/robots). No rubric violations or incorrect claims appear; the content is drawn from the package docs as instructed.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 17121,
+  "outputTokens": 303,
+  "durationMs": 21312,
+  "steps": 7,
+  "errors": []
+}

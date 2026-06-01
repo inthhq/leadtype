@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver (satisfies req. 1) and `group` as legacy/fallback metadata (satisfies req. 2). However it directly contradicts req. 3 by asserting that unknown groups are silently tracked in an `unknown` array with no build failure; the rubric states the build must fail with an explicit \"unknown group\" error. This is stated plainly and confidently, so failureMode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 41110,
+  "outputTokens": 376,
+  "durationMs": 49877,
+  "steps": 15,
+  "errors": []
+}

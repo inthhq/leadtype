@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes leadtype's default static lexical BM25 search with no database, provides the required specific conditions for adding embeddings (vocabulary mismatch and corpus past tens of thousands of chunks), and states that the lexical index must be kept for exact matches, making embeddings complementary. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 28,
+  "inputTokens": 15547,
+  "outputTokens": 509,
+  "durationMs": 70820,
+  "steps": 29,
+  "errors": []
+}

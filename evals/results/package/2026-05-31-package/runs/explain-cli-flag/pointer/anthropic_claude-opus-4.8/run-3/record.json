@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md explicitly names both required frontmatter fields (lastModified and lastAuthor), states they are injected into output frontmatter, and clearly attributes their values to git history (the file's latest git commit). All required rubric points are fully satisfied with specific details.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 35788,
+  "outputTokens": 367,
+  "durationMs": 32280,
+  "steps": 7,
+  "errors": []
+}

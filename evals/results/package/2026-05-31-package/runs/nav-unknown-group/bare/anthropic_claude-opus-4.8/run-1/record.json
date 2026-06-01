@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly identifies the config-declared group tree (nav) as the curated driver of sidebar, llms.txt sections, and AGENTS.md grouping. It explains that the page's group frontmatter is a pointer/membership signal and mentions its fallback role when no config exists and search facets, satisfying the legacy/optional point. It states explicitly that an unknown group slug causes a build failure with an 'unknown group' error, not a silent skip or warning.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 18,
+  "inputTokens": 30095,
+  "outputTokens": 821,
+  "durationMs": 79053,
+  "steps": 14,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required frontmatter fields, states they are added to frontmatter, and explains they come from git history. All rubric points are satisfied completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 24706,
+  "outputTokens": 47,
+  "durationMs": 20676,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the produced ANSWER.md paragraph explicitly names both `lastModified` and `lastAuthor`, states they are added to document frontmatter, and states the values are taken from the file's git history (via `git log`). No invented fields, no wrong source attribution, and the content is not describing a different flag. The extra detail and trailing code block do not violate any rubric criteria.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 40054,
+  "outputTokens": 396,
+  "durationMs": 32060,
+  "steps": 8,
+  "errors": []
+}

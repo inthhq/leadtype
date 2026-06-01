@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains group's role in navigation, llms.txt sections, and AGENTS.md grouping, and correctly characterizes /llms-full.txt as a monolithic all-docs file without group splitting. However, it lists 'description' as an optional frontmatter field, which is not present in the ground truth set of valid optional fields (icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, lastAuthor). This invented field violates the rubric's 'invents fields not in the schema' condition, making the answer incorrect overall. Despite this error, the other required points are satisfied, so a score of 75 reflects the partial completeness.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2870,
+  "outputTokens": 203,
+  "durationMs": 15704,
+  "steps": 4,
+  "errors": []
+}

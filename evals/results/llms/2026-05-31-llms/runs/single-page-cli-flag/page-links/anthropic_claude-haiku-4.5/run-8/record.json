@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "page-links",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the output as a JSON object and names the required llmsTxt, docsLlmsTxt, and llmsFullTxt fields. However, it incorrectly lists 'agentReadabilityJson' instead of 'agentReadabilityManifest', inventing a field not in the actual result shape, which makes the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2472,
+  "outputTokens": 119,
+  "durationMs": 7777,
+  "steps": 4,
+  "errors": []
+}

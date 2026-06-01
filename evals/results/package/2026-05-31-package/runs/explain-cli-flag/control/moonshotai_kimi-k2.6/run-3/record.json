@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly names both `lastModified` and `lastAuthor` as the added frontmatter fields, states they are added to every converted markdown page’s YAML frontmatter, and explains that the values come from git history via `git log`. All required rubric points are satisfied accurately and completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 23146,
+  "outputTokens": 203,
+  "durationMs": 25170,
+  "steps": 10,
+  "errors": []
+}

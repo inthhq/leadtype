@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `leadtype generate --json` prints a JSON object to stdout and names several key output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt), satisfying both required rubric points. However, it invents a field 'agentReadabilityJson' that does not match the ground-truth key 'agentReadabilityManifest', which violates the rubric's 'Incorrect if' clause. The overall answer is therefore marked incorrect. The score reflects strong coverage of the required points despite the single invented field.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3145,
+  "outputTokens": 134,
+  "durationMs": 11518,
+  "steps": 6,
+  "errors": []
+}

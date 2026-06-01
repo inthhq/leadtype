@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files page as the location for agent-facing output APIs, and explicitly steers away from Search. It accurately describes /llms-full.txt as the broad fallback when page-level links are insufficient, making it a last-resort option.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4226,
+  "outputTokens": 447,
+  "durationMs": 25993,
+  "steps": 5,
+  "errors": []
+}

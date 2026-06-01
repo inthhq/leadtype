@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names are stated, they are described as added to frontmatter, and their source is explicitly git history (via the git log command shown). No invented fields, no wrong provenance, and the output is a single paragraph in ANSWER.md as requested.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 15603,
+  "outputTokens": 285,
+  "durationMs": 41184,
+  "steps": 20,
+  "errors": []
+}

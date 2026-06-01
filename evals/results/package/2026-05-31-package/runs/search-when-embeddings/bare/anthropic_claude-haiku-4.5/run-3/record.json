@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default static BM25 lexical index and that embeddings are complementary, not a replacement. However, when describing the conditions for adding embeddings, it gives a corpus size threshold of '1000+ documents' instead of the required 'tens of thousands of chunks'. This is a specific, confident claim that contradicts the rubric's ground truth and could lead to premature introduction of embeddings. The other required points are met.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 5478,
+  "outputTokens": 315,
+  "durationMs": 37815,
+  "steps": 18,
+  "errors": []
+}

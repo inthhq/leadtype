@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: ANSWER.md correctly identifies curated `nav` as the driver for sidebar + llms.txt/AGENTS.md maps, labels `group` as legacy/optional (useful for fallback + validation metadata), and states that an unknown group slug produces a hard build failure with the exact error shape. No rubric violations (no claim that group is primary, no assertion of silent ignore/warning). Minor deduction only for not explicitly naming 'search facets' as one possible use of group.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 61050,
+  "outputTokens": 65,
+  "durationMs": 55071,
+  "steps": 12,
+  "errors": []
+}

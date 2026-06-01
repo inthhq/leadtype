@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response refused to answer, stating the package was missing and it could not determine the flag's behavior. It did not name the required frontmatter fields (lastModified, lastAuthor) or state they come from git history, so it fails all rubric points.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 3776,
+  "outputTokens": 318,
+  "durationMs": 43751,
+  "steps": 10,
+  "errors": []
+}

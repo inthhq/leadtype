@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly names both `lastModified` and `lastAuthor` as frontmatter fields added by `--enrich-git`. It states they are added to page frontmatter and that their values come from git history. All required rubric points are covered, and the answer is a single paragraph written to `ANSWER.md` as requested.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 30295,
+  "outputTokens": 229,
+  "durationMs": 16400,
+  "steps": 7,
+  "errors": []
+}

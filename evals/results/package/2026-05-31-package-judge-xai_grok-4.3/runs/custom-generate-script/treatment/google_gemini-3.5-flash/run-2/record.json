@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is called first (writing public/docs/*.md), followed by generateLlmsTxt + generateLLMFullContextFiles (from leadtype/llm) and generateDocsSearchFiles (from leadtype/search/node). product/nav are imported from docs.config.ts and passed through. No CLI usage or inverted ordering occurs. Minor deduction only for the extra non-required call and default-import style, neither of which violate the rubric.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 30,
+  "inputTokens": 39999,
+  "outputTokens": 1743,
+  "durationMs": 93508,
+  "steps": 31,
+  "errors": []
+}

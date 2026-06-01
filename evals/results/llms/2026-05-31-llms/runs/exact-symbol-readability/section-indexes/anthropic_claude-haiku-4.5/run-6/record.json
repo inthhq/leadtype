@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "judge call failed — counted as a miss",
+  "judgeError": "No object generated: could not parse the response.",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 5294,
+  "outputTokens": 140,
+  "durationMs": 19438,
+  "steps": 9,
+  "errors": []
+}

@@ -1,20 +1,23 @@
 #!/usr/bin/env bun
-import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gateway, generateText, stepCountIs } from "ai";
-import { createSandbox } from "./lib/sandbox";
-import { scopedTools } from "./lib/tools";
+import { aggregateRun } from "./lib/aggregate";
 import {
-  type Mode,
-  type Provider,
-  type ToolCall,
-  type Transcript,
-  transcriptPathFor,
-  writeTranscript,
-} from "./lib/transcript";
+  DEFAULT_JUDGE_MODEL,
+  type JudgeArtifact,
+  judgeAnswer,
+} from "./lib/judge";
+import { namespaceModelId, parseModelList, providerFor } from "./lib/models";
+import { summarizePackageReads } from "./lib/package-metrics";
+import { runPool } from "./lib/pool";
+import type { RunRecord } from "./lib/record";
+import { withRetry } from "./lib/retry";
+import { createSandbox, warmTemplate } from "./lib/sandbox";
+import { scopedTools } from "./lib/tools";
+import type { Mode, ToolCall, Transcript } from "./lib/transcript";
 
 const evalsRoot = fileURLToPath(new URL(".", import.meta.url));
 const fixturesRoot = path.join(evalsRoot, "evals");
@@ -24,13 +27,31 @@ const SYSTEM_PROMPT = `You are an expert coding agent working inside a project t
 Solve the user's task as you normally would: explore relevant files first, then make the changes. When the task asks you to verify a result (e.g. with \`npm pack --dry-run\`), use the npm tool. When you are done, write a short final summary describing what you did.`;
 
 const STEP_LIMIT = 50;
+const DEFAULT_MODEL = "claude-haiku-4-5";
+const MAX_JUDGE_ARTIFACTS = 12;
+// Override with PKG_EVAL_MODEL_TIMEOUT_MS for slow models (e.g. re-running a
+// model that times out under load at a longer per-request budget).
+const DEFAULT_MODEL_TIMEOUT_MS = 180_000;
+const MODEL_TIMEOUT_MS =
+  process.env.PKG_EVAL_MODEL_TIMEOUT_MS === undefined
+    ? DEFAULT_MODEL_TIMEOUT_MS
+    : parsePositiveInt(
+        process.env.PKG_EVAL_MODEL_TIMEOUT_MS,
+        "PKG_EVAL_MODEL_TIMEOUT_MS"
+      );
 
 type CliArgs = {
   fixture?: string;
-  mode?: Mode;
-  model: string;
+  modes?: Mode[];
+  models: string[];
+  judge: string;
   runs: number;
+  label?: string;
+  concurrency: number;
 };
+
+const ALL_MODES: Mode[] = ["bare", "control", "treatment", "pointer"];
+const DEFAULT_MODES: Mode[] = ["treatment", "control"];
 
 function parsePositiveInt(value: string | undefined, flag: string): number {
   if (value === undefined) {
@@ -52,15 +73,28 @@ function parseRequiredFlagValue(
   return value;
 }
 
-function parseMode(value: string | undefined): Mode {
-  if (value !== "treatment" && value !== "control") {
-    throw new Error(`--mode must be treatment|control, got ${value}`);
+function parseModes(value: string | undefined): Mode[] {
+  const raw = parseRequiredFlagValue(value, "--mode");
+  const modes = raw
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+  for (const m of modes) {
+    if (!ALL_MODES.includes(m as Mode)) {
+      throw new Error(`--mode must be ${ALL_MODES.join("|")}, got ${m}`);
+    }
   }
-  return value;
+  return [...new Set(modes)] as Mode[];
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: a flat CLI flag switch is clearer left inline than split apart
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { model: "claude-haiku-4-5", runs: 1 };
+  const args: CliArgs = {
+    models: [DEFAULT_MODEL],
+    judge: DEFAULT_JUDGE_MODEL,
+    runs: 1,
+    concurrency: 1,
+  };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i];
@@ -68,11 +102,17 @@ function parseArgs(argv: string[]): CliArgs {
     if (a === "--fixture") {
       args.fixture = parseRequiredFlagValue(argv[i++], "--fixture");
     } else if (a === "--mode") {
-      args.mode = parseMode(argv[i++]);
-    } else if (a === "--model") {
-      args.model = parseRequiredFlagValue(argv[i++], "--model");
+      args.modes = parseModes(argv[i++]);
+    } else if (a === "--model" || a === "--models") {
+      args.models = parseModelList(parseRequiredFlagValue(argv[i++], a));
+    } else if (a === "--judge") {
+      args.judge = parseRequiredFlagValue(argv[i++], "--judge");
     } else if (a === "--runs") {
       args.runs = parsePositiveInt(argv[i++], "--runs");
+    } else if (a === "--concurrency") {
+      args.concurrency = parsePositiveInt(argv[i++], "--concurrency");
+    } else if (a === "--label") {
+      args.label = parseRequiredFlagValue(argv[i++], "--label");
     } else if (a === "--help" || a === "-h") {
       printUsage();
       process.exit(0);
@@ -88,10 +128,13 @@ function printUsage(): void {
 
 Options:
   --fixture <name>   Run only one fixture (default: all)
-  --mode <m>         Run only one mode: treatment|control (default: both)
-  --model <id>       Model id, e.g. claude-haiku-4-5, claude-opus-4-7,
-                     gpt-5.5 (default: claude-haiku-4-5)
-  --runs <n>         Repetitions per (fixture × mode) combo (default: 1)
+  --mode <a,b>       Arms to run: bare|control|treatment|pointer (default: treatment,control)
+  --models <a,b,c>   Comma-separated candidate model ids (default: ${DEFAULT_MODEL})
+  --model <id>       Alias for a single --models entry
+  --judge <id>       Judge model id (default: ${DEFAULT_JUDGE_MODEL})
+  --runs <n>         Repetitions per (fixture × mode × model) (default: 1)
+  --concurrency <n>  Number of runs in flight at once (default: 1)
+  --label <name>     Results folder name under results/package/ (default: timestamp)
   -h, --help         Show this help
 `);
 }
@@ -107,59 +150,58 @@ function discoverFixtures(): string[] {
     .sort();
 }
 
-function namespaceModelId(modelId: string): string {
-  if (modelId.includes("/")) {
-    return modelId;
+async function collectArtifacts(
+  tempDir: string,
+  filesModified: string[]
+): Promise<JudgeArtifact[]> {
+  const artifacts: JudgeArtifact[] = [];
+  for (const rel of filesModified) {
+    if (artifacts.length >= MAX_JUDGE_ARTIFACTS) {
+      break;
+    }
+    if (rel.includes("node_modules") || rel.endsWith("package-lock.json")) {
+      continue;
+    }
+    try {
+      const content = await readFile(path.join(tempDir, rel), "utf-8");
+      artifacts.push({ path: rel, content });
+    } catch {
+      // File vanished or unreadable — skip.
+    }
   }
-  if (modelId.startsWith("gpt-")) {
-    return `openai/${modelId}`;
-  }
-  return `anthropic/${modelId}`;
+  return artifacts;
 }
-
-function getModel(modelId: string): {
-  provider: Provider;
-  // biome-ignore lint/suspicious/noExplicitAny: the AI SDK model handle is an opaque shape
-  model: any;
-} {
-  const namespaced = namespaceModelId(modelId);
-  const provider: Provider = namespaced.startsWith("openai/")
-    ? "openai"
-    : "anthropic";
-  return { provider, model: gateway(namespaced) };
-}
-
-type RunResult = {
-  fixture: string;
-  mode: Mode;
-  passed: boolean;
-  durationMs: number;
-  toolCalls: number;
-  discoveredAgentsMd: boolean;
-  evalOutput: string;
-};
 
 async function runOne(options: {
   fixture: string;
   mode: Mode;
   modelId: string;
+  judge: string;
   runIndex: number;
   totalRuns: number;
-}): Promise<RunResult> {
-  const { fixture, mode, modelId, runIndex, totalRuns } = options;
+  runDir: string;
+  promptText: string;
+  rubricText: string;
+}): Promise<RunRecord> {
+  const {
+    fixture,
+    mode,
+    modelId,
+    judge,
+    runIndex,
+    totalRuns,
+    runDir,
+    promptText,
+    rubricText,
+  } = options;
   const fixtureDir = path.join(fixturesRoot, fixture);
-  const promptText = await readFile(
-    path.join(fixtureDir, "PROMPT.md"),
-    "utf-8"
-  );
 
   process.stdout.write(
-    `▶ ${fixture} / ${mode} [${runIndex}/${totalRuns}] (${modelId})\n`
+    `▶ ${fixture} / ${mode} / ${modelId} [${runIndex}/${totalRuns}]\n`
   );
 
   const sandbox = await createSandbox({ fixtureDir, mode });
   const start = Date.now();
-
   const transcriptCalls: ToolCall[] = [];
   const filesModified = new Set<string>();
   const tools = scopedTools({
@@ -168,20 +210,23 @@ async function runOne(options: {
     filesModified,
   });
 
-  const { provider, model } = getModel(modelId);
+  const provider = providerFor(modelId);
   const errors: string[] = [];
   let finalText = "";
   let steps = 0;
   let inputTokens = 0;
   let outputTokens = 0;
   try {
-    const result = await generateText({
-      model,
-      system: SYSTEM_PROMPT,
-      prompt: promptText,
-      tools,
-      stopWhen: stepCountIs(STEP_LIMIT),
-    });
+    const result = await withRetry(() =>
+      generateText({
+        model: gateway(namespaceModelId(modelId)),
+        system: SYSTEM_PROMPT,
+        prompt: promptText,
+        tools,
+        stopWhen: stepCountIs(STEP_LIMIT),
+        timeout: MODEL_TIMEOUT_MS,
+      })
+    );
     finalText = result.text ?? "";
     steps = result.steps?.length ?? 0;
     inputTokens = result.usage?.inputTokens ?? 0;
@@ -191,190 +236,128 @@ async function runOne(options: {
   }
 
   const durationMs = Date.now() - start;
+  const modifiedList = [...filesModified].sort();
   const transcript: Transcript = {
     fixture,
     benchmark: "package",
     mode,
     agent: { provider, model: modelId },
     toolCalls: transcriptCalls,
-    filesModified: [...filesModified].sort(),
+    filesModified: modifiedList,
     finalText,
     durationMs,
     steps,
     errors,
     tokens: { input: inputTokens, output: outputTokens },
   };
-  await writeTranscript(sandbox.tempDir, transcript);
 
-  try {
-    const evalResult = await runVitest(fixture, sandbox.tempDir);
+  const artifacts = await collectArtifacts(sandbox.tempDir, modifiedList);
+  const verdict = await judgeAnswer({
+    task: promptText,
+    rubric: rubricText,
+    answer: finalText,
+    artifacts,
+    judgeModel: judge,
+  });
 
-    const discoveredAgentsMd = transcriptCalls.some((c) => {
-      if (c.tool !== "read") {
-        return false;
-      }
-      const p = (c.args.path as string | undefined) ?? "";
-      return p.includes("node_modules/leadtype/AGENTS.md");
-    });
+  const { discoveredAgentsMd, readBundledDocs, usedBundle } =
+    summarizePackageReads(transcriptCalls);
 
-    process.stdout.write(
-      `  ${evalResult.passed ? "✓" : "✗"} ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} tool calls · ${inputTokens}in/${outputTokens}out${
-        discoveredAgentsMd ? " · read AGENTS.md" : ""
-      }\n`
-    );
-    if (errors.length > 0) {
-      for (const e of errors) {
-        process.stdout.write(`    ! ${e}\n`);
-      }
-    }
-    if (!evalResult.passed) {
-      // Print just the last chunk of vitest's output — it contains the
-      // assertion error in whatever format vitest is using today.
-      const tailLines = evalResult.output.split("\n").slice(-25).join("\n");
-      process.stdout.write(`${tailLines}\n`);
-    }
+  const record: RunRecord = {
+    benchmark: "package",
+    fixture,
+    model: modelId,
+    runIndex,
+    mode,
+    passed: verdict.correct,
+    score: verdict.score,
+    judgeModel: verdict.judgeModel,
+    judgeReasoning: verdict.reasoning,
+    judgeError: verdict.error,
+    failureMode: verdict.failureMode,
+    discoveredAgentsMd,
+    readBundledDocs,
+    usedBundle,
+    toolCalls: transcriptCalls.length,
+    inputTokens,
+    outputTokens,
+    durationMs,
+    steps,
+    errors,
+  };
 
-    await archiveTranscript({
-      fixture,
-      mode,
-      runIndex,
-      tempDir: sandbox.tempDir,
-      transcript,
-    });
+  await archiveRun({
+    runDir,
+    fixture,
+    arm: mode,
+    modelId,
+    runIndex,
+    tempDir: sandbox.tempDir,
+    transcript,
+    verdict,
+    record,
+    artifacts,
+  });
+  await sandbox.cleanup();
 
-    return {
-      fixture,
-      mode,
-      passed: evalResult.passed,
-      durationMs,
-      toolCalls: transcriptCalls.length,
-      discoveredAgentsMd,
-      evalOutput: evalResult.output,
-    };
-  } finally {
-    await sandbox.cleanup();
+  process.stdout.write(
+    `  ${verdict.correct ? "✓" : "✗"} score ${verdict.score} · ${(durationMs / 1000).toFixed(1)}s · ${transcriptCalls.length} calls${
+      discoveredAgentsMd ? " · read AGENTS.md" : ""
+    }${verdict.error ? " · JUDGE ERROR" : ""}\n`
+  );
+  for (const e of errors) {
+    process.stdout.write(`    ! ${e}\n`);
   }
+  return record;
 }
 
-async function archiveTranscript(opts: {
+async function archiveRun(opts: {
+  runDir: string;
   fixture: string;
-  mode: Mode;
+  arm: string;
+  modelId: string;
   runIndex: number;
   tempDir: string;
   transcript: Transcript;
+  verdict: Awaited<ReturnType<typeof judgeAnswer>>;
+  record: RunRecord;
+  artifacts: JudgeArtifact[];
 }): Promise<void> {
-  const { fixture, mode, runIndex, tempDir, transcript } = opts;
-  const ts = new Date().toISOString().replace(/[.:]/g, "-");
   const dir = path.join(
-    evalsRoot,
-    "results",
-    fixture,
-    mode,
-    `${ts}-run${runIndex}`
+    opts.runDir,
+    "runs",
+    opts.fixture,
+    opts.arm,
+    sanitizeSegment(opts.modelId),
+    `run-${opts.runIndex}`
   );
   await mkdir(dir, { recursive: true });
   await writeFile(
     path.join(dir, "transcript.json"),
-    `${JSON.stringify(transcript, null, 2)}\n`
+    `${JSON.stringify(opts.transcript, null, 2)}\n`
   );
-  // Also list the modified files' content snapshots — helpful when an
-  // assertion that reads a file fails.
-  for (const rel of transcript.filesModified) {
-    try {
-      const src = path.join(tempDir, rel);
-      const content = await readFile(src, "utf-8");
-      const dest = path.join(dir, "files", rel);
-      await mkdir(path.dirname(dest), { recursive: true });
-      await writeFile(dest, content);
-    } catch {
-      // Best effort; skip silently if a file vanished.
+  await writeFile(
+    path.join(dir, "judge.json"),
+    `${JSON.stringify(opts.verdict, null, 2)}\n`
+  );
+  await writeFile(
+    path.join(dir, "record.json"),
+    `${JSON.stringify(opts.record, null, 2)}\n`
+  );
+  for (const file of opts.artifacts) {
+    const dest = path.join(dir, "files", file.path);
+    const filesDir = path.join(dir, "files");
+    const relativeDest = path.relative(filesDir, dest);
+    if (relativeDest.startsWith("..") || path.isAbsolute(relativeDest)) {
+      continue;
     }
+    await mkdir(path.dirname(dest), { recursive: true });
+    await writeFile(dest, file.content);
   }
 }
 
-async function runVitest(
-  fixture: string,
-  tempDir: string
-): Promise<{ passed: boolean; output: string }> {
-  const evalFile = path.join(fixturesRoot, fixture, "EVAL.ts");
-  return await new Promise((resolveSpawn) => {
-    let settled = false;
-    const settle = (result: { passed: boolean; output: string }) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolveSpawn(result);
-    };
-
-    let proc: ReturnType<typeof spawn>;
-    try {
-      proc = spawn("bun", ["x", "vitest", "run", evalFile], {
-        cwd: evalsRoot,
-        env: {
-          ...process.env,
-          TRANSCRIPT_PATH: transcriptPathFor(tempDir),
-        },
-      });
-    } catch (err) {
-      settle({
-        passed: false,
-        output: `failed to spawn vitest: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      return;
-    }
-
-    let output = "";
-    proc.stdout?.on("data", (b) => {
-      output += b.toString();
-    });
-    proc.stderr?.on("data", (b) => {
-      output += b.toString();
-    });
-    proc.on("error", (err) => {
-      settle({
-        passed: false,
-        output: `${output}\nspawn error: ${err.message}`,
-      });
-    });
-    proc.on("close", (code) => {
-      settle({ passed: code === 0, output });
-    });
-  });
-}
-
-function summarize(results: RunResult[]): void {
-  process.stdout.write("\n══ Summary ══\n");
-  const fixtures = [...new Set(results.map((r) => r.fixture))].sort();
-  process.stdout.write(
-    "fixture                          treatment   control   delta   discovered AGENTS.md (treatment)\n"
-  );
-  for (const fixture of fixtures) {
-    const t = results.filter(
-      (r) => r.fixture === fixture && r.mode === "treatment"
-    );
-    const c = results.filter(
-      (r) => r.fixture === fixture && r.mode === "control"
-    );
-    const tPass = t.filter((r) => r.passed).length;
-    const cPass = c.filter((r) => r.passed).length;
-    const tDisc = t.filter((r) => r.discoveredAgentsMd).length;
-    const treatmentLabel = t.length > 0 ? `${tPass}/${t.length}` : "—";
-    const controlLabel = c.length > 0 ? `${cPass}/${c.length}` : "—";
-    const delta =
-      t.length > 0 && c.length > 0 ? tPass / t.length - cPass / c.length : 0;
-    const deltaLabel = `${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(0)}%`;
-    const discLabel = t.length > 0 ? `${tDisc}/${t.length}` : "—";
-    process.stdout.write(
-      `${fixture.padEnd(34)}${treatmentLabel.padEnd(12)}${controlLabel.padEnd(10)}${deltaLabel.padEnd(8)}${discLabel}\n`
-    );
-  }
-
-  const totalRuns = results.length;
-  const passed = results.filter((r) => r.passed).length;
-  process.stdout.write(
-    `\nOverall: ${passed}/${totalRuns} passed (${((passed / totalRuns) * 100).toFixed(0)}%)\n`
-  );
+function sanitizeSegment(value: string): string {
+  return value.replace(/[^\w.-]+/g, "_");
 }
 
 async function main(): Promise<void> {
@@ -391,26 +374,77 @@ async function main(): Promise<void> {
     process.stderr.write(`Fixture not found: ${args.fixture}\n`);
     process.exit(1);
   }
-  const modes: Mode[] = args.mode ? [args.mode] : ["treatment", "control"];
+  const modes: Mode[] = args.modes ?? DEFAULT_MODES;
 
-  const results: RunResult[] = [];
+  const runId = args.label ?? new Date().toISOString().replace(/[.:]/g, "-");
+  const runDir = path.join(evalsRoot, "results", "package", runId);
+  await mkdir(runDir, { recursive: true });
+
+  const total = fixtures.length * modes.length * args.models.length * args.runs;
+  process.stdout.write(
+    `Package benchmark: ${fixtures.length} fixtures × ${modes.length} modes × ${args.models.length} models × ${args.runs} runs = ${total} agent runs\nJudge: ${args.judge} · concurrency: ${args.concurrency}\nResults: ${runDir}\n\n`
+  );
+
+  // Warm the shared node_modules template before the pool, so the first batch
+  // of sandboxes doesn't serialize on the one-time install. (bare needs none.)
+  if (modes.some((m) => m !== "bare")) {
+    await warmTemplate();
+  }
+
+  // Prefetch prompt + rubric per fixture once.
+  const fixtureText = new Map<string, { prompt: string; rubric: string }>();
+  for (const fixture of fixtures) {
+    const dir = path.join(fixturesRoot, fixture);
+    fixtureText.set(fixture, {
+      prompt: await readFile(path.join(dir, "PROMPT.md"), "utf-8"),
+      rubric: await readFile(path.join(dir, "RUBRIC.md"), "utf-8"),
+    });
+  }
+
+  type Task = {
+    fixture: string;
+    mode: Mode;
+    modelId: string;
+    runIndex: number;
+  };
+  const tasks: Task[] = [];
   for (const fixture of fixtures) {
     for (const mode of modes) {
-      for (let i = 1; i <= args.runs; i++) {
-        const result = await runOne({
-          fixture,
-          mode,
-          modelId: args.model,
-          runIndex: i,
-          totalRuns: args.runs,
-        });
-        results.push(result);
+      for (const modelId of args.models) {
+        for (let i = 1; i <= args.runs; i++) {
+          tasks.push({ fixture, mode, modelId, runIndex: i });
+        }
       }
     }
   }
-  summarize(results);
-  const allPassed = results.every((r) => r.passed);
-  process.exit(allPassed ? 0 : 1);
+
+  let completed = 0;
+  await runPool(tasks, args.concurrency, async (task) => {
+    const texts = fixtureText.get(task.fixture);
+    if (!texts) {
+      return;
+    }
+    await runOne({
+      fixture: task.fixture,
+      mode: task.mode,
+      modelId: task.modelId,
+      judge: args.judge,
+      runIndex: task.runIndex,
+      totalRuns: args.runs,
+      runDir,
+      promptText: texts.prompt,
+      rubricText: texts.rubric,
+    });
+    completed++;
+    if (completed % 20 === 0 || completed === tasks.length) {
+      process.stdout.write(`  …${completed}/${tasks.length} runs done\n`);
+    }
+  });
+
+  const summary = await aggregateRun(runDir);
+  process.stdout.write(
+    `\n══ Done ══\n${summary.totalRuns} runs · report: ${path.join(runDir, "report.md")}\n`
+  );
 }
 
 main().catch((err) => {

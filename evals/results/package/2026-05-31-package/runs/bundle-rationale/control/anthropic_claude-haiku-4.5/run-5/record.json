@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP artifact needing network access and absolute URLs, making it unsuitable for a package tarball. It describes AGENTS.md as a version-matched, disk-local entry with offline, relative links inside node_modules. It accurately lists the website-only artifacts skipped by --bundle (llms.txt, llms-full.txt, search-index.json) and explains why they don't belong. All required rubric points are satisfied clearly and completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 27387,
+  "outputTokens": 354,
+  "durationMs": 21982,
+  "steps": 8,
+  "errors": []
+}

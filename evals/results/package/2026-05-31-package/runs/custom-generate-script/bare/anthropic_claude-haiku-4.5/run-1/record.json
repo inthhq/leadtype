@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script does not use leadtype's library APIs at all; it manually implements MDX conversion and index generation. Required calls like convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles are absent. Instead, it invents its own conversion and generation logic, which fails to meet the rubric's mandatory library usage requirements. The response confidently states it uses library APIs, but that is incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 8267,
+  "outputTokens": 438,
+  "durationMs": 35943,
+  "steps": 12,
+  "errors": []
+}

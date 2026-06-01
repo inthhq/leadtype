@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first and uses the required leadtype library APIs. It passes product and nav from docs.config.ts. However, it does not point the subsequent generators (generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) to the converted markdown directory public/docs. The rubric requires that those generators read from that directory, but the script either omits the srcDir parameter or points it to '.', which would cause them to miss the converted files. Therefore, the script is not correct enough to run and produce the artifacts as intended.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 44,
+  "inputTokens": 36471,
+  "outputTokens": 613,
+  "durationMs": 119471,
+  "steps": 45,
+  "errors": []
+}

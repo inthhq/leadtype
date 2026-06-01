@@ -5,10 +5,17 @@
   "description": "Agent discoverability evals for leadtype's bundled docs (AGENTS.md vs no-bundle control). Custom harness on the Vercel AI SDK.",
   "type": "module",
   "scripts": {
-    "evals": "bun run run-eval.ts",
-    "evals:llms": "bun run run-llms-eval.ts",
+    "evals": "bun --env-file=../.env run run-eval.ts",
+    "evals:llms": "bun --env-file=../.env run run-llms-eval.ts",
+    "evals:full": "bun --env-file=../.env run run-eval.ts --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
+    "evals:full:arms": "bun --env-file=../.env run run-eval.ts --mode bare,control,treatment,pointer --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
+    "evals:llms:full": "bun --env-file=../.env run run-llms-eval.ts --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
+    "evals:llms:discovery": "bun --env-file=../.env run run-llms-eval.ts --discovery --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
+    "aggregate": "bun --env-file=../.env run lib/aggregate.ts",
+    "rejudge": "bun --env-file=../.env run rejudge.ts",
+    "remetric": "bun run remetric.ts",
     "test": "vitest run lib",
-    "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && npm pack --pack-destination ../../evals/.tarballs"
+    "pack-leadtype": "mkdir -p .tarballs && cd ../packages/leadtype && bun run build && npm pack --pack-destination ../../evals/.tarballs"
   },
   "devDependencies": {
     "ai": "^6.0.168",

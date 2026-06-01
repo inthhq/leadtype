@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response in ANSWER.md names both required frontmatter fields (lastModified and lastAuthor), explicitly says they are added to the page's frontmatter, and states they come from git history. It provides the correct explanation in one paragraph, meeting all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 12841,
+  "outputTokens": 189,
+  "durationMs": 20324,
+  "steps": 10,
+  "errors": []
+}

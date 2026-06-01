@@ -245,6 +245,41 @@ export async function materializeLlmsVariant(options: {
   }
 }
 
+/**
+ * Materialize a *realistic* hosted-docs web root for the discovery arm: the
+ * actual page markdown, a page-links `/llms.txt`, a monolith `/llms-full.txt`,
+ * plus `robots.txt` and `sitemap.xml`. Unlike the routing variants, the agent
+ * is NOT told to start at `/llms.txt` — so it could grep the docs pages, read
+ * the sitemap, or consult `/llms.txt`. Measures whether the convention gets
+ * used unprompted.
+ */
+export async function materializeDiscoveryRoot(options: {
+  tempDir: string;
+}): Promise<void> {
+  const { tempDir } = options;
+  await writeDocsPages(tempDir);
+  await writeTextFile(tempDir, "llms.txt", renderLlmsTxt("page-links"));
+  await writeTextFile(tempDir, "llms-full.txt", renderMonolith());
+  await writeTextFile(
+    tempDir,
+    "robots.txt",
+    ["User-agent: *", "Allow: /", "Sitemap: /sitemap.xml"].join("\n")
+  );
+  await writeTextFile(tempDir, "sitemap.xml", renderSitemap());
+}
+
+function renderSitemap(): string {
+  const urls = ["/llms.txt", "/llms-full.txt", ...PAGES.map(pageUrl)]
+    .map((loc) => `  <url><loc>${loc}</loc></url>`)
+    .join("\n");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    urls,
+    "</urlset>",
+  ].join("\n");
+}
+
 function pagesForGroup(group: LlmsVariantGroup): DocsPage[] {
   return PAGES.filter((page) => page.group === group);
 }

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default is explicitly described as the static/local BM25 lexical index with no DB or embeddings; (2) the conditions for adding embeddings are the specific ones (vocabulary mismatch/semantic gap after exhausting built-in levers, plus large corpus/traffic justifying cost) rather than a generic claim; (3) the answer repeatedly states that the lexical/BM25 index must be kept as the backbone even in a hybrid setup. The corpus-size threshold is paraphrased rather than quoted verbatim, which is why the score is not 100, but nothing required is missing or contradicted.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 34273,
+  "outputTokens": 735,
+  "durationMs": 82394,
+  "steps": 11,
+  "errors": []
+}

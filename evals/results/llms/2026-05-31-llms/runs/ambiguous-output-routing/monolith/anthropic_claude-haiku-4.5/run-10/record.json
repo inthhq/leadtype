@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails the primary required point: it routes the user to '/docs/package-docs/bundle.md' instead of the LLM files / leadtype/llm output APIs (e.g., generateLLMFullContextFiles). While it correctly describes /llms-full.txt as a fallback for when page-level links are insufficient, the core identification of the correct documentation area is wrong and confident. This makes the answer largely incomplete against the rubric.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 12,
+  "inputTokens": 3784,
+  "outputTokens": 192,
+  "durationMs": 19484,
+  "steps": 9,
+  "errors": []
+}

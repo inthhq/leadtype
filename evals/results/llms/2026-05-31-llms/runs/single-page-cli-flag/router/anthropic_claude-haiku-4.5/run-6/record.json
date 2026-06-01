@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "router",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the --json flag causes leadtype generate to print a JSON object containing paths for generated artifacts. It names at least one of the required output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt). It does not describe human-readable output or invent fields. While it omits some internal structure (mode, source/output dirs, product, groups), those are not required by the rubric. The answer is accurate and sufficiently complete.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3181,
+  "outputTokens": 105,
+  "durationMs": 10951,
+  "steps": 6,
+  "errors": []
+}

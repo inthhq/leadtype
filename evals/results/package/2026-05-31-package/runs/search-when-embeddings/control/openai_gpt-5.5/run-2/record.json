@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical index and correctly insists that the lexical index is kept for exact matches, with embeddings being complementary. It lists valid conditions for adding embeddings, including vocabulary mismatch and large corpus, but fails to include the rubric-required specific threshold of 'tens of thousands of chunks'. Because this specificity is required, the answer is incomplete and does not satisfy every required point. The omission is not a confident falsehood, but the response does not hedge its confidence; however, given the choice of failure modes, 'uncertain' is the best fit for missing a required detail.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 23831,
+  "outputTokens": 101,
+  "durationMs": 43146,
+  "steps": 8,
+  "errors": []
+}

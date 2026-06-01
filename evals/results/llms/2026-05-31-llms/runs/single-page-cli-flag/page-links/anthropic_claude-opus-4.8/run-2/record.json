@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "variant": "page-links",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object with output paths, naming required fields like llmsFullTxt and docsLlmsTxt. However, it incorrectly lists 'agentReadabilityJson' as a field; the actual field is 'agentReadabilityManifest'. This is a confident assertion of a nonexistent field, violating the rubric's 'Invents fields' clause, so the answer is not fully correct. All other details (site and bundle modes, many valid paths) are accurate and thorough.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3894,
+  "outputTokens": 300,
+  "durationMs": 23845,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both exact field names (lastModified and lastAuthor) are stated, they are explicitly described as frontmatter fields written/overwritten on the output, and their values are attributed to git log output (%aI and %an) from the file's git history. No incorrect fields, sources, or flag behaviors are introduced. The single-paragraph format and extra implementation detail do not violate any rubric constraints.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 25630,
+  "outputTokens": 38,
+  "durationMs": 19536,
+  "steps": 7,
+  "errors": []
+}

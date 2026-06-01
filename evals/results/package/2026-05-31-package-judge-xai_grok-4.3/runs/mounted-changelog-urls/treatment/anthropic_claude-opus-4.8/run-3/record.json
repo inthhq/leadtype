@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the command repeats `--docs-dir` using the `changelog=/changelog` mount syntax, the canonical URL is stated as `/changelog/v1` (not under /docs), and both the internal copy under `public/docs/changelog/` (for search) and the public mirror at `public/changelog/v1.md` are described. No rubric violations or invented flags.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 15399,
+  "outputTokens": 563,
+  "durationMs": 28325,
+  "steps": 5,
+  "errors": []
+}

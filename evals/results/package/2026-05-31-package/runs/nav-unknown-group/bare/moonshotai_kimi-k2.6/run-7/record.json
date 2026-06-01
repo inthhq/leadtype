@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies `nav` (groups array in config) as the curated driver of sidebar, llms.txt sections, and AGENTS.md grouping. It treats `group` as a membership signal and mentions fallback navigation when no config exists, satisfying the second required point. It clearly states that an unknown group slug fails the build with an error (not a silent skip). While the answer could have explicitly mentioned `group` as a legacy field or noted search facets, the core requirements are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 31,
+  "inputTokens": 48191,
+  "outputTokens": 413,
+  "durationMs": 147694,
+  "steps": 29,
+  "errors": []
+}

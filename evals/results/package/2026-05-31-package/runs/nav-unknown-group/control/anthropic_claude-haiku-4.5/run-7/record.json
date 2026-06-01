@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the primary driver and group as a legacy fallback for taxonomy/search facets, but it fails to mention that nav drives llms.txt sections and AGENTS.md grouping (only vaguely references agent-readability sitemap). More critically, it explicitly states that an unknown group slug does not cause build failure and only logs a warning, directly contradicting the required rubric point that the build fails with an \"unknown group\" error. This confident assertion makes the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 21126,
+  "outputTokens": 376,
+  "durationMs": 32151,
+  "steps": 12,
+  "errors": []
+}

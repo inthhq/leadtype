@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately states No to the vector index question, describes the default as a static local lexical index with BM25 ranking that does not require a database, and explains embeddings are an opt-in enhancement for specific cases like vocabulary mismatch or very large corpus, exactly matching the rubric requirements.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3480,
+  "outputTokens": 157,
+  "durationMs": 11050,
+  "steps": 6,
+  "errors": []
+}

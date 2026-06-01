@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names the required fields llmsFullTxt, docsLlmsTxt, llmsTxt. However, it includes 'agentReadabilityJson' which is not among the fields listed in the rubric (the ground truth states agentReadabilityManifest). Inventing a field that isn't part of the result shape makes the response incorrect per the rubric, despite otherwise describing the concept.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 2220,
+  "outputTokens": 6,
+  "durationMs": 16489,
+  "steps": 6,
+  "errors": []
+}

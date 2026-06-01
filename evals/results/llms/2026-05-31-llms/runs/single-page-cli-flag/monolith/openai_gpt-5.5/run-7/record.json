@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing the generation run and lists required fields like llmsTxt, docsLlmsTxt, llmsFullTxt. However, it invents the field 'agentReadabilityJson', which is not part of the result shape (the correct field is 'agentReadabilityManifest'), violating the rubric's incorrect condition. This is asserted confidently, so failure mode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2071,
+  "outputTokens": 6,
+  "durationMs": 9031,
+  "steps": 4,
+  "errors": []
+}

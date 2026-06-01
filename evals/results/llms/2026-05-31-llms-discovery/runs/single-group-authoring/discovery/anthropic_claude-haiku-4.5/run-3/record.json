@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that `group` controls navigation (sidebar position, llms.txt section organization, AGENTS.md grouping), correctly describes `/llms-full.txt` as a monolithic file containing all pages without group-based splitting, and names at least two valid optional frontmatter fields (e.g., `icon`, `deprecated`, `experimental`, `tags`, `lastModified`). All required points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3116,
+  "outputTokens": 265,
+  "durationMs": 17554,
+  "steps": 4,
+  "errors": []
+}

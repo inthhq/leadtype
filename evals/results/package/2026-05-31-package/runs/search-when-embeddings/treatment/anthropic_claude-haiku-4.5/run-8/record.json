@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes leadtype's default static BM25 lexical index without a database. It provides the specific conditions for adding embeddings (vocabulary mismatch and large corpus > tens of thousands of chunks), and emphasizes keeping the lexical index for exact matches, layer embeddings on top. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 13027,
+  "outputTokens": 354,
+  "durationMs": 27170,
+  "steps": 9,
+  "errors": []
+}

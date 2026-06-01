@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately explains that llms.txt is a website convention with absolute URLs and is not discoverable inside node_modules, while AGENTS.md uses relative paths and works offline, version-matched. It also correctly lists the website-only artifacts skipped by --bundle, including llms.txt and llms-full.txt. All rubric requirements are fully satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 16489,
+  "outputTokens": 301,
+  "durationMs": 17935,
+  "steps": 5,
+  "errors": []
+}

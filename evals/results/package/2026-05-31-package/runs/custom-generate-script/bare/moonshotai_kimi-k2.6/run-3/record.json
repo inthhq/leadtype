@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx before the LLM and search generators, satisfying the critical ordering requirement. It uses the library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) and passes product and nav-derived groups into the generators. No CLI usage or invented APIs. All required artifacts are produced.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 50,
+  "inputTokens": 61672,
+  "outputTokens": 1932,
+  "durationMs": 273662,
+  "steps": 38,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response thoroughly explains why llms.txt (website convention with absolute URLs, not looked for in node_modules) is wrong in a tarball, and why AGENTS.md (filesystem convention with relative links, works offline) is correct. It correctly lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, and others. All required rubric points are met; no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 14340,
+  "outputTokens": 233,
+  "durationMs": 31271,
+  "steps": 6,
+  "errors": []
+}

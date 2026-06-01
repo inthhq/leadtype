@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md accurately describes the --enrich-git flag: it names both fields `lastModified` and `lastAuthor`, explicitly states they are added to frontmatter, and explains they come from the git history of the source file. All rubric requirements are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 15255,
+  "outputTokens": 254,
+  "durationMs": 21812,
+  "steps": 11,
+  "errors": []
+}

@@ -1,11 +1,4 @@
 {
-  "answerPatterns": [
-    "group",
-    "llms\\.txt",
-    "llms-full",
-    "lastModified",
-    "lastAuthor"
-  ],
   "expectedGroups": ["authoring"],
   "expectedPages": ["docs/authoring/frontmatter.md"]
 }

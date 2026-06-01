@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `--json` prints a JSON object of generated artifact paths and names several valid fields (llmsTxt, docsLlmsTxt, llmsFullTxt, etc.), satisfying the required rubric points. However, it invents the field `agentReadabilityJson`; the ground truth specifies `agentReadabilityManifest`. This violates the rubric's 'Incorrect if… invents fields that aren't part of the result shape,' so it is not fully correct. The confident assertion of a non-existent field makes it 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2187,
+  "outputTokens": 128,
+  "durationMs": 8117,
+  "steps": 4,
+  "errors": []
+}

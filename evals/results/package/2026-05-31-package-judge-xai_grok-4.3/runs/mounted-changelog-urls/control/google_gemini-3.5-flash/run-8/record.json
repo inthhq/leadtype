@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The provided ANSWER.md contains the exact required invocation (`--docs-dir changelog=/changelog` repeated with `--docs-dir docs`), states the canonical URL as `/changelog/...` (not `/docs/...`), and correctly describes both the internal copy under `public/docs/changelog/` (for search) and the static mirror at `public/changelog/v1.md`. All rubric REQUIRED points are satisfied and none of the incorrect conditions apply.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 33618,
+  "outputTokens": 399,
+  "durationMs": 49818,
+  "steps": 15,
+  "errors": []
+}

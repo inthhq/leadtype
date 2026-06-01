@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default described as static/local BM25 lexical index with no DB, (2) specific conditions given for embeddings (vocabulary/intent mismatch plus large corpus), and (3) lexical index explicitly kept for exact matches in a hybrid setup. The large-corpus threshold is stated as 'millions of pages' rather than 'tens of thousands of chunks' but still satisfies the intent without generic claims or contradictions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 34114,
+  "outputTokens": 560,
+  "durationMs": 54633,
+  "steps": 15,
+  "errors": []
+}

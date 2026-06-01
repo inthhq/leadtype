@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object summarizing generated artifacts and lists several valid output-path keys (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it invent fields not specified in the ground truth, such as 'agentReadabilityJson' (should be 'agentReadabilityManifest') and 'sitemapMd' (ground truth mentions sitemap but not a markdown variant). This violates the rubric's 'Incorrect if' condition regarding invented fields, making the answer incorrect overall. The core explanation of structured JSON output is otherwise present.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3284,
+  "outputTokens": 122,
+  "durationMs": 11826,
+  "steps": 6,
+  "errors": []
+}

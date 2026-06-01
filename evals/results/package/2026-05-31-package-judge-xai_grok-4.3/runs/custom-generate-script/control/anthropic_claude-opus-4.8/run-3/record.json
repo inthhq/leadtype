@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is called first (before any generator that reads public/docs), generateLlmsTxt + generateLLMFullContextFiles are called, generateDocsSearchFiles is called from leadtype/search/node, and product/nav from docs.config.ts are passed through. The produced script never shells to the CLI and follows the exact ordering the rubric demands. The supporting docs.config.ts change is also present and correct. Minor deduction only for the extra resolveDocsNavigation call (harmless but not required).",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 57261,
+  "outputTokens": 923,
+  "durationMs": 73543,
+  "steps": 12,
+  "errors": []
+}

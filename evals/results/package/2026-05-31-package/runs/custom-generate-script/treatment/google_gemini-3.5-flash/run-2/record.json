@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, satisfying the critical ordering requirement. It imports library APIs rather than shelling out to the CLI. It passes product and nav from docs.config.ts into the generators. All required tasks are completed.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 30,
+  "inputTokens": 39999,
+  "outputTokens": 1743,
+  "durationMs": 93508,
+  "steps": 31,
+  "errors": []
+}

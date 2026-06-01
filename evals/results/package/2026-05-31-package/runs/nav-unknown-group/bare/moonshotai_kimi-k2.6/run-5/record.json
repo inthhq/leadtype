@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that the config drives the sidebar/navigation and that an unknown group causes a hard build failure. However, it fails a REQUIRED point by explicitly denying that the `group` frontmatter field is legacy; it states it is the current standard and not legacy, contradicting the rubric ground truth. This is expressed confidently without hedging, so the taxonomy is wrong and the answer is not fully correct.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 29,
+  "inputTokens": 44730,
+  "outputTokens": 337,
+  "durationMs": 150380,
+  "steps": 26,
+  "errors": []
+}

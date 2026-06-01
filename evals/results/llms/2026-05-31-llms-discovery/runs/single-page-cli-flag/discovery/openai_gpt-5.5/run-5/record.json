@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON result object and names several valid output fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it incorrectly lists 'agentReadabilityJson' instead of 'agentReadabilityManifest' as a field, which is a factual error per the ground truth. This is a confident wrong statement about the output shape.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 8,
+  "inputTokens": 3468,
+  "outputTokens": 13,
+  "durationMs": 19550,
+  "steps": 6,
+  "errors": []
+}

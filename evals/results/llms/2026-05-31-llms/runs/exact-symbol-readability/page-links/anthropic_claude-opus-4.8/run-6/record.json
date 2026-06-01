@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly names 'isAgentReadabilityArtifactPath' and describes that it matches artifact paths including llms.txt and llms-full.txt, along with sitemap, robots.txt, search JSON, and agent-readability.json, preventing them from being rewritten. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3368,
+  "outputTokens": 250,
+  "durationMs": 14384,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied: the ANSWER.md correctly states the default is a static/local BM25 lexical index with no DB; it gives the specific warranted conditions (vocabulary/intent mismatch + large corpus) rather than a generic claim; and it explicitly requires keeping the lexical index for exact matches as a hybrid complement. The only minor deviation is the agent's size threshold (500+ docs) vs. the rubric's 'tens of thousands of chunks,' but this does not violate any required point or introduce a factual error.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 28308,
+  "outputTokens": 401,
+  "durationMs": 47297,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "discovery",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the output is a JSON object and names several valid output-path fields like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents the field 'agentReadabilityJson' which does not match the ground truth key 'agentReadabilityManifest'. This violates the rubric's 'incorrect if invents fields' condition, making the answer incorrect. The score reflects that most required points were met, but the error is significant.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2193,
+  "outputTokens": 78,
+  "durationMs": 8062,
+  "steps": 4,
+  "errors": []
+}

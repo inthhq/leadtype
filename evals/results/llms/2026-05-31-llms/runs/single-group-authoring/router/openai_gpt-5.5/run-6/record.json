@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that 'group' controls sidebar/navigation, sections in llms.txt, search metadata, and AGENTS.md grouping. It correctly characterizes /llms-full.txt as a single monolithic fallback file containing all docs, not split per group. It names numerous optional frontmatter fields including 'icon', 'deprecated', and 'experimental', satisfying the requirement for at least two valid fields from the provided list.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 7,
+  "inputTokens": 2745,
+  "outputTokens": 6,
+  "durationMs": 16283,
+  "steps": 6,
+  "errors": []
+}

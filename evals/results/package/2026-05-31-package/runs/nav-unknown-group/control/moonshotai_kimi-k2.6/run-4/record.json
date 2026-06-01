@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of the sidebar and agent navigation, explains `group` as a legacy fallback still useful for fallback navigation and consumer metadata, and states the build fails with an 'unknown group' error when a page declares an unknown group slug. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 67937,
+  "outputTokens": 346,
+  "durationMs": 76765,
+  "steps": 15,
+  "errors": []
+}

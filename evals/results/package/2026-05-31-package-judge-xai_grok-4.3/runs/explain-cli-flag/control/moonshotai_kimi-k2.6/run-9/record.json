@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected into page frontmatter, and states they are populated from git history (via explicit git log command on the source file). All rubric REQUIRED points are met with no incorrect attributions or omissions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 28265,
+  "outputTokens": 320,
+  "durationMs": 29871,
+  "steps": 12,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that an unknown group slug causes a build failure (second question). It also identifies the config as the curator of the navigation tree, which partially meets the first required point. However, it fails the required point that group is a legacy/optional field and still useful for fallback navigation or search facets, because it explicitly denies the legacy status and presents group as a co‑equal half of the mechanism, contradicting the rubric’s ground truth. The answer is therefore incorrect on that critical aspect, and the failure mode is confident_wrong because it asserts the correction of the premise without hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 24,
+  "inputTokens": 19905,
+  "outputTokens": 642,
+  "durationMs": 86100,
+  "steps": 19,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object to stdout with generated artifact paths, satisfying the required point of describing a single JSON result object. It lists multiple output-path fields, including 'llmsTxt', 'docsLlmsTxt', and 'llmsFullTxt', which meets the required naming of at least one such field. No invented fields are introduced; all mentioned are consistent with the ground truth. The explanation is structured and does not describe human-readable log output.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2469,
+  "outputTokens": 118,
+  "durationMs": 8816,
+  "steps": 4,
+  "errors": []
+}

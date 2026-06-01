@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected into frontmatter, and attributes their values to git history (via git log -1). All three rubric REQUIRED points are satisfied; extra implementation details do not violate any incorrect-if conditions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 28533,
+  "outputTokens": 235,
+  "durationMs": 18014,
+  "steps": 9,
+  "errors": []
+}

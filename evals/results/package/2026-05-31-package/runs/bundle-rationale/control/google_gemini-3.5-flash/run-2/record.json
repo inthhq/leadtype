@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that llms.txt is an HTTP-native standard with absolute URLs, making it inappropriate for a filesystem package, while AGENTS.md uses relative paths for offline, version-matched access inside node_modules. It accurately lists the website artifacts that --bundle skips, including llms.txt, llms-full.txt, search indexes, robots.txt, and sitemap. Every required rubric point is satisfied without error.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 32098,
+  "outputTokens": 306,
+  "durationMs": 42828,
+  "steps": 15,
+  "errors": []
+}

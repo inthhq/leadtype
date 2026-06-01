@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response describes leadtype's default as a static BM25 index with no database, meeting requirement 1. It gives specific conditions for adding embeddings: large corpus (10k+ chunks) and semantic query mismatch, meeting requirement 2. It states to keep the BM25 index for exact matches and treat embeddings as complementary, not a replacement, meeting requirement 3. All required points are accurately and completely addressed.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 52299,
+  "outputTokens": 395,
+  "durationMs": 122841,
+  "steps": 25,
+  "errors": []
+}

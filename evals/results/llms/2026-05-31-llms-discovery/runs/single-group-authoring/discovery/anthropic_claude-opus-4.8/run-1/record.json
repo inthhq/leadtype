@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that group controls navigation, llms.txt sections, and AGENTS.md grouping, and correctly characterizes /llms-full.txt as a monolithic file not sharded by group. However, it lists 'description' and 'availableIn' as optional frontmatter fields, which are not in the rubric's list of valid fields. The rubric states that listing invented fields makes the answer incorrect. Although it also names several valid fields, the inclusion of invented fields violates the rubric's condition, so the answer is considered incorrect. Score reduced to 90 for this error.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 7,
+  "inputTokens": 4056,
+  "outputTokens": 426,
+  "durationMs": 32359,
+  "steps": 7,
+  "errors": []
+}

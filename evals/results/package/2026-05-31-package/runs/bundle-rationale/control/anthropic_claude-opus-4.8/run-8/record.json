@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly explains llms.txt as a website artifact unsuitable for a tarball, and AGENTS.md as an offline, filesystem entry point with relative links. It accurately lists that --bundle skips llms.txt, llms-full.txt, search artifacts, sitemap, robots, and agent-readability files, with reasoning that they are website-only. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 32999,
+  "outputTokens": 540,
+  "durationMs": 40657,
+  "steps": 5,
+  "errors": []
+}

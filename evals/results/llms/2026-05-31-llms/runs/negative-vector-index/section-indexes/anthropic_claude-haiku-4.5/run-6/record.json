@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response directly answers 'No' to the hosted database-backed vector index question, correctly identifies the default as a static local lexical index with BM25 ranking and no database, and clearly states embeddings are an optional later addition for cases of vocabulary mismatch or large corpus. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2476,
+  "outputTokens": 110,
+  "durationMs": 8227,
+  "steps": 5,
+  "errors": []
+}

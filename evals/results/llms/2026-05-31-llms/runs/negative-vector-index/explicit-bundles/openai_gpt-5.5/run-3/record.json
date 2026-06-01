@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states No, describes the default static local lexical index with BM25, and explains embeddings are added later only when needed, satisfying all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 1556,
+  "outputTokens": 6,
+  "durationMs": 16088,
+  "steps": 4,
+  "errors": []
+}

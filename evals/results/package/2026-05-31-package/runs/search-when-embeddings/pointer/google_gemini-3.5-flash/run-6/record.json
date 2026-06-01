@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent correctly states that leadtype defaults to a static, edge-safe BM25 lexical index with no database, fulfilling the first required point. It gives the specific conditions for adding embeddings: vocabulary mismatch with conversational phrases and scale past tens of thousands of chunks, which satisfies the second required point. It also explicitly says to keep the lexical index for exact matches, treating embeddings as complementary, meeting the third required point. All points are covered without incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 9189,
+  "outputTokens": 599,
+  "durationMs": 28683,
+  "steps": 10,
+  "errors": []
+}

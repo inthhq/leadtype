@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` drives navigation and `llms.txt`/`AGENTS.md` sections, and it characterizes `/llms-full.txt` as a monolithic all-docs fallback. It names multiple valid optional fields (icon, deprecated, experimental, etc.), but it incorrectly lists `description` as an optional frontmatter field, which is not present in the ground‑truth schema. This invention violates the rubric’s 'incorrect if' clause, so the answer is not fully correct.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3366,
+  "outputTokens": 225,
+  "durationMs": 15542,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required frontmatter fields (`lastModified` and `lastAuthor`), states they are injected into frontmatter, and specifies the values come from git commit metadata (author date and author name from `git log`), satisfying all rubric points completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 15078,
+  "outputTokens": 238,
+  "durationMs": 20899,
+  "steps": 7,
+  "errors": []
+}

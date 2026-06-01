@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md names both required fields (lastModified and lastAuthor), states they are added to page frontmatter during conversion, and states the values are populated from git history (via the exact git log command and format specifiers). All rubric REQUIRED points are satisfied and none of the incorrect behaviors occur.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 20799,
+  "outputTokens": 425,
+  "durationMs": 28117,
+  "steps": 6,
+  "errors": []
+}

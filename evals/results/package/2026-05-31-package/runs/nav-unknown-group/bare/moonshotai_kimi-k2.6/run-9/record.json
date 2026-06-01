@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the config `groups` as the source of truth driving sidebar, llms.txt, and AGENTS.md, and correctly states that an unknown group slug fails the build. However, it incorrectly claims the frontmatter `group` field is 'not legacy' and describes it as an active membership mechanism. The rubric requires identifying `group` as legacy/optional, so this required point is missed. The error is stated without hedging, making it a confident wrong answer.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 37,
+  "inputTokens": 73785,
+  "outputTokens": 323,
+  "durationMs": 183136,
+  "steps": 37,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response incorrectly claims the build succeeds without error when a page declares an unknown group slug, contradicting the rubric which requires stating the build fails with an 'unknown group' error. It also omits the required mention that nav drives llms.txt sections and AGENTS.md grouping, only noting sidebar and agent map. While it correctly identifies nav as authoritative and group as legacy, the critical error and missing required details make it incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 5365,
+  "outputTokens": 237,
+  "durationMs": 32590,
+  "steps": 16,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver including llms.txt/AGENTS.md, group as legacy fallback and taxonomy, and states that unknown group causes build failure. All required points are satisfied with no contradictions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 51512,
+  "outputTokens": 292,
+  "durationMs": 99281,
+  "steps": 21,
+  "errors": []
+}

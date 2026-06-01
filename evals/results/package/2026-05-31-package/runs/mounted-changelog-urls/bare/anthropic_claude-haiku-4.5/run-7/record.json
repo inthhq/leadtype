@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent invents a `--mount` flag (`--mount changelog:/changelog`) instead of using the correct repeated `--docs-dir` mount syntax (`--docs-dir changelog=/changelog`), violating the rubric's requirement. It does not mention the internal generated copy at `public/docs/changelog/v1.md` or the static mirror at `public/changelog/v1.md`. The canonical URL is given without the `.md` extension. All required points are missed, and the answer is presented confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 6917,
+  "outputTokens": 360,
+  "durationMs": 40849,
+  "steps": 17,
+  "errors": []
+}

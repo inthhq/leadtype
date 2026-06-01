@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "monolith",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names the required fields llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents a field 'agentReadabilityJson' that does not match the ground truth's 'agentReadabilityManifest'. This violates the rubric's 'Incorrect if' rule against inventing fields, so the answer is incorrect. The assertion is made confidently with no hedging, leading to 'confident_wrong' failure mode. Score 75 reflects that most of the response is accurate and detailed.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4496,
+  "outputTokens": 267,
+  "durationMs": 15892,
+  "steps": 4,
+  "errors": []
+}

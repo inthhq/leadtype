@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately states that the config nav is the primary driver of sidebar/agent docs while group is a legacy field used for fallback and taxonomy. It correctly reports that an unknown group causes a build failure with an 'unknown group' error. All rubric requirements are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 15692,
+  "outputTokens": 282,
+  "durationMs": 26579,
+  "steps": 7,
+  "errors": []
+}

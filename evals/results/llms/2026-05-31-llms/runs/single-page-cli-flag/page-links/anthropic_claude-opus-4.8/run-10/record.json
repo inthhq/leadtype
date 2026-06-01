@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": false,
+  "score": 45,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names several required output keys (llmsTxt, docsLlmsTxt, llmsFullTxt), satisfying one required point. However, it incorrectly describes the JSON result as a flat object whose values are file paths, omitting the top-level structure that includes mode, product, groups, and a files map. This misrepresentation and omission of required fields mean the answer does not accurately state that --json prints a single result object describing the generation run. The assertion is made without hedging, so it is confidently wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4308,
+  "outputTokens": 430,
+  "durationMs": 31917,
+  "steps": 5,
+  "errors": []
+}

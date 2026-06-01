@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required points satisfied: the response explains that group organizes navigation (sidebar, llms.txt sections, AGENTS.md grouping); it correctly characterizes /llms-full.txt as the monolithic all-docs fallback not split per group; and it names multiple valid optional frontmatter fields (icon, deprecated, experimental, etc.). No errors or omissions.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3005,
+  "outputTokens": 215,
+  "durationMs": 13697,
+  "steps": 5,
+  "errors": []
+}

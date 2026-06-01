@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that leadtype generate --json prints a JSON object describing the generated files, meeting the first required point. It names llmsFullTxt, docsLlmsTxt, and llmsTxt, satisfying the second required point. The list of fields is largely correct, though 'agentReadabilityJson' is a slight deviation from the ground truth's 'agentReadabilityManifest'; this does not affect the required points and is a minor inaccuracy.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 1313,
+  "outputTokens": 6,
+  "durationMs": 8451,
+  "steps": 4,
+  "errors": []
+}

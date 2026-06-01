@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that the command prints a JSON object (satisfying required point 1) and lists multiple required fields including llmsFullTxt, docsLlmsTxt, and llmsTxt (satisfying required point 2). It also mentions many bonus fields. No required points missed, and no erroneous invention of fields that aren't part of the shape.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3199,
+  "outputTokens": 95,
+  "durationMs": 11158,
+  "steps": 6,
+  "errors": []
+}

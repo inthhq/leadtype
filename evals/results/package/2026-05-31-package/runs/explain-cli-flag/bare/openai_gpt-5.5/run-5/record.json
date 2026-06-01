@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required frontmatter fields (`lastModified` and `lastAuthor`), explicitly states they are added to YAML frontmatter, and states they are populated from Git history. All rubric requirements are fully satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 18,
+  "inputTokens": 19397,
+  "outputTokens": 46,
+  "durationMs": 65828,
+  "steps": 14,
+  "errors": []
+}

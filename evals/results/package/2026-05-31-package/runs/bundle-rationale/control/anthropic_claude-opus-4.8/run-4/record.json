@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly distinguishes that llms.txt is a website/HTTP convention unsuitable for a tarball (no server, no HTTP fetching), while AGENTS.md is the correct filesystem entry point with relative links to offline docs. It explicitly enumerates the website-only artifacts skipped by --bundle, including llms.txt, llms-full.txt, search index, sitemap, and robots. All rubric-required points are satisfied without error.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 32148,
+  "outputTokens": 550,
+  "durationMs": 32766,
+  "steps": 6,
+  "errors": []
+}

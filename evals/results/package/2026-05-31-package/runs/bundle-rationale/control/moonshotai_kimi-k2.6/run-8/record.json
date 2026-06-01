@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 98,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required rubric points are satisfied: it explains that llms.txt is a website/HTTP convention requiring a base URL and live server, making it wrong for a tarball; it describes AGENTS.md as a filesystem-native offline entry pointing to version-matched docs (implicitly relative); and it lists the skipped website artifacts including llms.txt, llms-full.txt, search indexes, and SEO files. No incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 22891,
+  "outputTokens": 280,
+  "durationMs": 33010,
+  "steps": 9,
+  "errors": []
+}

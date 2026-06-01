@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that group organizes navigation, llms.txt sections, and AGENTS.md grouping (meets point 1). It correctly states /llms-full.txt is a monolithic all-docs fallback file, not split per group (meets point 2). It names multiple optional frontmatter fields including icon and deprecated, satisfying point 3. Minor extraneous fields (description, deprecatedReason) do not invalidate the core requirements.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4017,
+  "outputTokens": 239,
+  "durationMs": 14973,
+  "steps": 4,
+  "errors": []
+}

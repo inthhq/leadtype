@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports library APIs (not CLI) and calls them in the correct sequence: convertAllMdx first, then the LLM and search generators. It reads product/nav from docs.config.ts and passes them to the generators. All required outputs are produced under public/.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 32,
+  "inputTokens": 56831,
+  "outputTokens": 1186,
+  "durationMs": 91552,
+  "steps": 33,
+  "errors": []
+}
