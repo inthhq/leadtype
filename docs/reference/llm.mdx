@@ -533,7 +533,7 @@ For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX str
 
 The `groups` you pass to these APIs come from `docs.config.ts`. Two principles:
 
-- **Use groups for routing, not sharding.** Groups organize `llms.txt`, navigation, search metadata, and `AGENTS.md`. The root `llms-full.txt` remains the broad fallback.
+- **Use groups for routing, not sharding.** Groups organize `llms.txt`, navigation, search metadata, and `AGENTS.md`. The root `llms-full.txt` remains the broad fallback. Per-group full-context bundles and an `llms-full.txt` router are **not recommended**: the [eval run](/docs/concepts/evals#which-llms-txt-shape-routes-agents-best-hosted-docs-benchmark) shows agents bypass them (context match **26–28%** vs. **83–100%** for page links, the monolith, and section indexes), so leadtype doesn't emit them and you shouldn't hand-roll them.
 - **Write group descriptions for routing, not flavor text.** Agents read those descriptions to decide which pages to load. "How to install and run" beats "Welcome to our guides!"
 
 ## Base URL precedence
