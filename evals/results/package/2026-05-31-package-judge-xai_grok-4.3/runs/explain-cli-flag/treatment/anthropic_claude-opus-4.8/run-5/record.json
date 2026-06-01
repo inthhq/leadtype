@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected into frontmatter, and states they are populated from git log / git history metadata. All rubric REQUIRED points are satisfied and none of the incorrect behaviors occur.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 38790,
+  "outputTokens": 419,
+  "durationMs": 31121,
+  "steps": 8,
+  "errors": []
+}

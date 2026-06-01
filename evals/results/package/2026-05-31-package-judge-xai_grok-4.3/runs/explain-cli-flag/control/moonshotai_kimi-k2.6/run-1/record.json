@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected as frontmatter, and correctly attributes the values to git history / `git log` metadata. All three REQUIRED rubric points are satisfied with no factual errors or invented fields. Minor deduction only because the file contains an extra code block after the requested single paragraph.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 24804,
+  "outputTokens": 218,
+  "durationMs": 28443,
+  "steps": 11,
+  "errors": []
+}

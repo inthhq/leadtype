@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately explains that the 'group' frontmatter field drives navigation, llms.txt sections, search metadata, and AGENTS.md grouping. It correctly characterizes '/llms-full.txt' as a monolithic all-docs fallback file, explicitly stating it is not sharded per-group. It also names numerous valid optional frontmatter fields from the allowed list, satisfying the requirement for at least two. All rubric points are met with no factual errors.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 10,
+  "inputTokens": 5142,
+  "outputTokens": 242,
+  "durationMs": 27944,
+  "steps": 11,
+  "errors": []
+}

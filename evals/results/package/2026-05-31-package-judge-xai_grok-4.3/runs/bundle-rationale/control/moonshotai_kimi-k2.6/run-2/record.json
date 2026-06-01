@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the answer states that llms.txt is a website/HTTP convention whose absolute URLs break inside a tarball (and nothing looks for it in node_modules), that AGENTS.md succeeds because its links are relative and work offline/version-matched inside the installed package, and that --bundle deliberately omits llms.txt/llms-full.txt plus the listed search/sitemap/agent-readability files because they are HTTP-only. No incorrect claims appear (no recommendation to ship llms.txt, no assertion that AGENTS.md uses absolute URLs or that --bundle emits those files).",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 24522,
+  "outputTokens": 206,
+  "durationMs": 26796,
+  "steps": 6,
+  "errors": []
+}

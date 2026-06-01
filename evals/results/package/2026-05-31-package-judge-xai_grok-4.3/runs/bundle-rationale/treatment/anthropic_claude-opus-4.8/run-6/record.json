@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly identifies llms.txt as a website/HTTP convention using absolute URLs (and notes nothing looks for it in node_modules), explains that AGENTS.md succeeds inside the tarball because its links are relative and require no network (offline + version-matched), and states that --bundle skips at least llms.txt + llms-full.txt (plus search index) as website-only artifacts. No incorrect claims appear, and the produced ANSWER.md is faithful to the supplied ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 11235,
+  "outputTokens": 397,
+  "durationMs": 24958,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt is a website/HTTP convention with absolute URLs and that no coding agent looks for it in node_modules, making it unsuitable for a tarball. It correctly contrasts AGENTS.md as a filesystem convention with relative links that work offline, version-matched to the package. It also states that --bundle skips website artifacts including llms.txt and llms-full.txt (plus search index), fulfilling all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 14972,
+  "outputTokens": 253,
+  "durationMs": 17210,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly contrasts AGENTS.md as offline-friendly and llms.txt as a website convention, but it fails the REQUIRED point to explicitly list the website artifacts that `--bundle` skips. It mentions generic artifacts like HTML/CSS/search indexes but does not name the essential `llms.txt` and `llms-full.txt`, which the rubric requires at minimum. The confident assertion about skipped artifacts is incomplete and thus wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 3442,
+  "outputTokens": 257,
+  "durationMs": 25937,
+  "steps": 11,
+  "errors": []
+}

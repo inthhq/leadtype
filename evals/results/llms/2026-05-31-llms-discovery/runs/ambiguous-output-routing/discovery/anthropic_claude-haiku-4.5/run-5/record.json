@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response points to the LLM files output APIs (generateLLMFullContextFiles, generateLlmsTxt, etc.) and does not route the user to the Search UI/APIs. It explains that /llms-full.txt is the broad fallback used when page-level links are insufficient, meeting both required rubric points. No incorrect statements are present.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 13,
+  "inputTokens": 8115,
+  "outputTokens": 265,
+  "durationMs": 22768,
+  "steps": 7,
+  "errors": []
+}

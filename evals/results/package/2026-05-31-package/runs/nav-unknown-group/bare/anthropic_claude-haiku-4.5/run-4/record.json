@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver but omits that it also drives `llms.txt` sections. It describes `group` as legacy with fallback metadata, but fails to mention it is still useful for fallback navigation and search facets/taxonomy. Critically, it states an unknown `group` slug causes the build to continue successfully with only a warning, directly contradicting the rubric's required point that the build fails with an 'unknown group' error. This confident assertion of incorrect behavior is the primary failure.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 4804,
+  "outputTokens": 216,
+  "durationMs": 29656,
+  "steps": 13,
+  "errors": []
+}

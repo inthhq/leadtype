@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names required fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it invents a field 'sitemapMd' and misnames 'agentReadabilityManifest' as 'agentReadabilityJson', violating the rubric's 'Incorrect if — invents fields' condition. Thus, despite satisfying the required points, the presence of fabricated fields makes the answer incorrect overall.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3333,
+  "outputTokens": 252,
+  "durationMs": 14855,
+  "steps": 4,
+  "errors": []
+}

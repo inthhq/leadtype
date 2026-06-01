@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes `nav` as the curated driver of the sidebar, `llms.txt` sections, and `AGENTS.md` grouping. It correctly identifies `group` as a legacy field used for fallback navigation and taxonomy/search facets. It also states that an unknown `group` slug causes a build error (the build fails with an \"unknown group\" message), fulfilling the required build-failure point. All rubric requirements are met without contradictions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 58066,
+  "outputTokens": 418,
+  "durationMs": 103629,
+  "steps": 29,
+  "errors": []
+}

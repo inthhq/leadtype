@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly answers No, describes the default as a static local lexical index using BM25, and explains that embeddings are only added later for vocabulary mismatch or large corpus, satisfying all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3478,
+  "outputTokens": 128,
+  "durationMs": 8127,
+  "steps": 4,
+  "errors": []
+}

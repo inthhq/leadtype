@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that AGENTS.md is for offline, disk-based discovery and that llms.txt is a website artifact, and it lists the skipped artifacts (`llms.txt`, `llms-full.txt`, `search-index.json`). However, it does not explicitly explain that llms.txt uses absolute URLs or that AGENTS.md relies on relative links—both required by the rubric. This omission makes the answer incomplete and therefore incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 28512,
+  "outputTokens": 222,
+  "durationMs": 21638,
+  "steps": 10,
+  "errors": []
+}

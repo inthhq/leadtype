@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED points are met: the answer states that llms.txt assumes a hosted --base-url/HTTP context (hence wrong for a tarball), that AGENTS.md supplies relative pointers usable offline from node_modules, and that --bundle explicitly omits llms.txt/llms-full.txt plus the other website artifacts. No rubric violations occur (no endorsement of shipping llms.txt, no claim that AGENTS.md uses absolute URLs, and the skipped files are listed). Minor deduction only for not using the exact phrase \"absolute URLs,\" which the rubric permits via the \"and/or\" clause.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 21417,
+  "outputTokens": 318,
+  "durationMs": 33948,
+  "steps": 10,
+  "errors": []
+}

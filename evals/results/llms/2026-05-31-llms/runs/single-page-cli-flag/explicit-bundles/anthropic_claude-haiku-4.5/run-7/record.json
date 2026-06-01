@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that a JSON object is printed and names required fields like llmsTxt, docsLlmsTxt, and llmsFullTxt. However, it incorrectly invents the field 'agentReadabilityJson' (the ground truth is 'agentReadabilityManifest'), which violates the 'Incorrect if — Invents fields that aren't part of the result shape' rule. The error is stated confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3043,
+  "outputTokens": 124,
+  "durationMs": 8887,
+  "steps": 5,
+  "errors": []
+}

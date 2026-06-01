@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that leadtype's default is a static BM25 lexical index with no database, gives the specific conditions for adding embeddings (vocabulary mismatch and large corpus), and emphasizes that the lexical index should be kept for exact matches, with embeddings as a complementary layer. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 14945,
+  "outputTokens": 106,
+  "durationMs": 26214,
+  "steps": 7,
+  "errors": []
+}

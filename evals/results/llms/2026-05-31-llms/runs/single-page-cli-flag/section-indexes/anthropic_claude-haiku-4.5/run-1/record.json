@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that the output is a JSON object and lists several valid fields like `llmsFullTxt`, `docsLlmsTxt`, and `llmsTxt`. However, it includes `agentReadabilityJson`, which is an invented field (the actual field is `agentReadabilityManifest`). The rubric explicitly states that inventing fields not part of the result shape makes the answer incorrect. Therefore, the required point of naming correct fields is partially met, but the presence of a fabricated field invalidates correctness.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2517,
+  "outputTokens": 190,
+  "durationMs": 9822,
+  "steps": 5,
+  "errors": []
+}

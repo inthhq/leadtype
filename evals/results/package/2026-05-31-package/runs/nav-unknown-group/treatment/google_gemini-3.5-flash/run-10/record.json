@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of the sidebar, llms.txt, and AGENTS.md. It describes group as a legacy field still useful for fallback navigation and search facets. It states that an unknown group slug causes the build to fail with an 'unknown group' error. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 20588,
+  "outputTokens": 354,
+  "durationMs": 24122,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "discovery",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that /llms-full.txt is a fallback for insufficient page-level context, satisfying one rubric point. However, it fails to point to the LLM files / leadtype/llm output APIs (e.g., generateLLMFullContextFiles) as the required agent-facing API area; it instead describes HTTP endpoints like /llms.txt, which are not the requested library APIs. This confident misidentification makes it incorrect on a required point.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 13,
+  "inputTokens": 5835,
+  "outputTokens": 307,
+  "durationMs": 22989,
+  "steps": 7,
+  "errors": []
+}

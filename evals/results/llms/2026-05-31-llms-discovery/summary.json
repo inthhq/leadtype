@@ -1,0 +1,387 @@
+{
+  "benchmark": "llms",
+  "runId": "2026-05-31-llms-discovery",
+  "generatedAt": "2026-06-01T09:16:15.318Z",
+  "judgeModels": [
+    "deepseek/deepseek-v4-pro"
+  ],
+  "models": [
+    "anthropic/claude-haiku-4.5",
+    "anthropic/claude-opus-4.8",
+    "openai/gpt-5.5"
+  ],
+  "fixtures": [
+    "ambiguous-output-routing",
+    "cross-group-agent-flows",
+    "exact-symbol-readability",
+    "negative-vector-index",
+    "single-group-authoring",
+    "single-page-cli-flag"
+  ],
+  "arms": [
+    "discovery"
+  ],
+  "totalRuns": 180,
+  "cells": [
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 5,
+      "rate": 0.5,
+      "ci95": [
+        0.23658959361548731,
+        0.7634104063845126
+      ],
+      "meanScore": 71,
+      "contextMatchRate": 0.4,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 6305.6,
+      "avgToolCalls": 12.2,
+      "avgDurationMs": 22482.1,
+      "confidentWrongRate": 0.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5228.7,
+      "avgToolCalls": 10.4,
+      "avgDurationMs": 41495.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "ambiguous-output-routing",
+      "model": "openai/gpt-5.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5029.6,
+      "avgToolCalls": 13.3,
+      "avgDurationMs": 35186.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5645.7,
+      "avgToolCalls": 13.8,
+      "avgDurationMs": 51419.8,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 6050.2,
+      "avgToolCalls": 10.2,
+      "avgDurationMs": 49553.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "cross-group-agent-flows",
+      "model": "openai/gpt-5.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0.6,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4268.4,
+      "avgToolCalls": 11.3,
+      "avgDurationMs": 35053.6,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3454.1,
+      "avgToolCalls": 6.1,
+      "avgDurationMs": 28669.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3349.7,
+      "avgToolCalls": 4,
+      "avgDurationMs": 18121,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "exact-symbol-readability",
+      "model": "openai/gpt-5.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2116.8,
+      "avgToolCalls": 3.7,
+      "avgDurationMs": 13079.6,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2955,
+      "avgToolCalls": 5.7,
+      "avgDurationMs": 15774.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0.1,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3254.1,
+      "avgToolCalls": 4.7,
+      "avgDurationMs": 20595.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "negative-vector-index",
+      "model": "openai/gpt-5.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 1245.4,
+      "avgToolCalls": 4.5,
+      "avgDurationMs": 13327.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 7,
+      "rate": 0.7,
+      "ci95": [
+        0.39677321997956516,
+        0.892210712513788
+      ],
+      "meanScore": 94.5,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3813.9,
+      "avgToolCalls": 7.7,
+      "avgDurationMs": 19797.9,
+      "confidentWrongRate": 0.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 99,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 5184.7,
+      "avgToolCalls": 6.4,
+      "avgDurationMs": 29427.3,
+      "confidentWrongRate": 0.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-group-authoring",
+      "model": "openai/gpt-5.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 7,
+      "rate": 0.7,
+      "ci95": [
+        0.39677321997956516,
+        0.892210712513788
+      ],
+      "meanScore": 94.5,
+      "contextMatchRate": 0.7,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 3794.9,
+      "avgToolCalls": 7.6,
+      "avgDurationMs": 18645.1,
+      "confidentWrongRate": 0.3,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 0,
+      "rate": 0,
+      "ci95": [
+        0,
+        0.2775401687666165
+      ],
+      "meanScore": 74,
+      "contextMatchRate": 0,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2316.2,
+      "avgToolCalls": 4,
+      "avgDurationMs": 8547,
+      "confidentWrongRate": 1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 3,
+      "rate": 0.3,
+      "ci95": [
+        0.10778928748621183,
+        0.6032267800204347
+      ],
+      "meanScore": 81.5,
+      "contextMatchRate": 0.2,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 4392.3,
+      "avgToolCalls": 6.4,
+      "avgDurationMs": 24544.8,
+      "confidentWrongRate": 0.7,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "single-page-cli-flag",
+      "model": "openai/gpt-5.5",
+      "arm": "discovery",
+      "n": 10,
+      "passes": 1,
+      "rate": 0.1,
+      "ci95": [
+        0.01787574951572113,
+        0.4041563854975721
+      ],
+      "meanScore": 78,
+      "contextMatchRate": 0.3,
+      "avgWrongGroupReads": 0,
+      "avgTokens": 2674.2,
+      "avgToolCalls": 6.6,
+      "avgDurationMs": 17513.1,
+      "confidentWrongRate": 0.9,
+      "judgeErrors": 0
+    }
+  ]
+}

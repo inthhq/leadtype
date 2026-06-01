@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both exact field names are stated, they are described as being added to frontmatter, and their source is explicitly git history (via the git log command on the file). The produced ANSWER.md paragraph contains no factual contradictions with the rubric and does not invent other fields or origins. Minor deduction only for length slightly exceeding a single tight paragraph.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 37790,
+  "outputTokens": 399,
+  "durationMs": 25275,
+  "steps": 6,
+  "errors": []
+}

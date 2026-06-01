@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies leadtype's default as a static BM25 index without a database. It provides specific conditions for adding embeddings (vocabulary mismatch and corpus size past tens of thousands of chunks), and explicitly states that the lexical index should be kept as a complementary first-stage retriever. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 39,
+  "inputTokens": 47899,
+  "outputTokens": 303,
+  "durationMs": 81652,
+  "steps": 21,
+  "errors": []
+}

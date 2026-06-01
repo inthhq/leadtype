@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response points to the LLM files reference (leadtype/llm) and names the relevant output APIs (including generateLLMFullContextFiles), and it clearly explains that /llms-full.txt is a broad fallback used only when page-level links are insufficient. It does not route the user to Search UI/APIs or present the monolithic file as the primary path. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 10,
+  "inputTokens": 5043,
+  "outputTokens": 510,
+  "durationMs": 36927,
+  "steps": 7,
+  "errors": []
+}

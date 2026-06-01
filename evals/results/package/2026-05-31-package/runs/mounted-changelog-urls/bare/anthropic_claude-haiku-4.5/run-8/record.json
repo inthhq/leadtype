@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent used '--source' flag and 'changelog:/' mount syntax, which does not match the required '--docs-dir changelog=/changelog' invocation. The rubric explicitly requires the '--docs-dir' flag with the 'dir=url-prefix' form. The agent's answer invents a non-existent syntax, and the output description does not align with the correct internal paths (e.g., public/docs/changelog/).",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 5016,
+  "outputTokens": 343,
+  "durationMs": 37125,
+  "steps": 13,
+  "errors": []
+}

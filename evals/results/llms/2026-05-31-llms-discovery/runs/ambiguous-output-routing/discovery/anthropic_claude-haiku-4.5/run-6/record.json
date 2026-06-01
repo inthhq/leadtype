@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "discovery",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response discusses output formats like /llms.txt and /llms-full.txt, but it does not name or point to the required agent-facing output APIs (e.g., generateLLMFullContextFiles, the LLM files/leadtype/llm entry point) as the rubric demands. It explains the all-docs fallback but misses the explicit condition 'when page-level links are insufficient' and fails to identify the proper library entry point. No hedging is used, and the answer is confidently presented.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 11,
+  "inputTokens": 4507,
+  "outputTokens": 242,
+  "durationMs": 21071,
+  "steps": 7,
+  "errors": []
+}

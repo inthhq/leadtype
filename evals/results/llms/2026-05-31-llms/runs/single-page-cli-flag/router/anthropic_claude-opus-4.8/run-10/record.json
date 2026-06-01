@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object with paths, and lists several required output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it invents the field 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest' as specified in the rubric, which violates the 'Incorrect if' clause about inventing fields. This single error makes the answer factually wrong, though it is largely on-point.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3411,
+  "outputTokens": 245,
+  "durationMs": 16741,
+  "steps": 5,
+  "errors": []
+}

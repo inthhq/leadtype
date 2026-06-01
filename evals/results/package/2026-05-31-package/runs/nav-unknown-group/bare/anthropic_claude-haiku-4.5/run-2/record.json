@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails on a required point: it claims that an unknown `group` slug is silently ignored and the build does not fail, whereas the rubric states that it causes a build‑time 'unknown group' error. Additionally, it omits that `nav` also drives `llms.txt` sections (as explicitly required), and it does not identify `group` as useful for search facets or fallback navigation. These missing or incorrect elements make the answer unreliable.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 3888,
+  "outputTokens": 220,
+  "durationMs": 22822,
+  "steps": 11,
+  "errors": []
+}

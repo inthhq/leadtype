@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first to generate public/docs/*.md, then generateLlmsTxt and generateLLMFullContextFiles (with product/nav from config), and finally generateDocsSearchFiles for the search index. All required API calls are present, the ordering ensures generators read the converted markdown, and config values are properly imported and passed. No invented function names or CLI usage; uses leadtype library APIs as required.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 22453,
+  "outputTokens": 499,
+  "durationMs": 49416,
+  "steps": 21,
+  "errors": []
+}

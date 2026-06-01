@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer explicitly states that the default search is a static, local BM25 lexical index with no database, meeting requirement 1. It provides specific triggers for adding embeddings, including vocabulary/intent mismatch and corpus size (large enough to cause performance issues), satisfying requirement 2 without using a generic 'better search' rationale. It clearly states that the lexical index should be kept for exact-match fallback and that embeddings are complementary, not a replacement, fulfilling requirement 3. All rubric points are fully addressed.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 27061,
+  "outputTokens": 97,
+  "durationMs": 56808,
+  "steps": 15,
+  "errors": []
+}

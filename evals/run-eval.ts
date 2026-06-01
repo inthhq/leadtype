@@ -29,7 +29,16 @@ Solve the user's task as you normally would: explore relevant files first, then 
 const STEP_LIMIT = 50;
 const DEFAULT_MODEL = "claude-haiku-4-5";
 const MAX_JUDGE_ARTIFACTS = 12;
-const MODEL_TIMEOUT_MS = 180_000;
+// Override with PKG_EVAL_MODEL_TIMEOUT_MS for slow models (e.g. re-running a
+// model that times out under load at a longer per-request budget).
+const DEFAULT_MODEL_TIMEOUT_MS = 180_000;
+const MODEL_TIMEOUT_MS =
+  process.env.PKG_EVAL_MODEL_TIMEOUT_MS === undefined
+    ? DEFAULT_MODEL_TIMEOUT_MS
+    : parsePositiveInt(
+        process.env.PKG_EVAL_MODEL_TIMEOUT_MS,
+        "PKG_EVAL_MODEL_TIMEOUT_MS"
+      );
 
 type CliArgs = {
   fixture?: string;

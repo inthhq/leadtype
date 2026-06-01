@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies llms.txt as a website/HTTP convention not suited for node_modules.  However, it omits the REQUIRED explanation that AGENTS.md works inside the package because it uses **relative** links (offline, version‑matched) – the answer only notes it is a filesystem convention.  It also fails to mention llms‑full.txt among the website artifacts that --bundle skips, which the rubric explicitly requires.  Missing these points makes the answer incomplete; the assertive style implies completeness, so it is classified as confident_wrong rather than uncertain.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 6435,
+  "outputTokens": 337,
+  "durationMs": 56434,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly names the helper as `isAgentReadabilityArtifactPath` and describes its purpose: it identifies artifact paths that should not be rewritten. The listed coverage includes `llms.txt`, `llms-full.txt`, sitemap, `robots.txt`, search JSON, and `agent-readability.json`, satisfying the rubric's minimum and ideal requirements. No inaccuracies or missing elements.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3190,
+  "outputTokens": 97,
+  "durationMs": 12784,
+  "steps": 7,
+  "errors": []
+}

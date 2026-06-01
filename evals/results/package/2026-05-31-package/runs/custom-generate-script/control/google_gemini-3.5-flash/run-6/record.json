@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response is a single sentence about searching for a function definition, unrelated to the requested build script. It contains no code, no API calls, and does not satisfy any rubric point; effectively it declined to produce the task.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 34389,
+  "outputTokens": 93,
+  "durationMs": 117758,
+  "steps": 50,
+  "errors": []
+}

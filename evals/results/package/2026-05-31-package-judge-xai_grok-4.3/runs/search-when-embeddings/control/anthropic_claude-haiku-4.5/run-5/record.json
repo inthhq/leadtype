@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the response correctly describes the default as a static/local BM25 lexical index with no DB, states the lexical index must be kept (hybrid/complementary use), and gives concrete conditions under which embeddings become warranted (semantic/vocabulary mismatch or very large corpus) rather than a generic claim. The conditions are phrased slightly more generally than the exact ground-truth wording but are not incorrect or missing the required elements, so the answer satisfies the rubric.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 16352,
+  "outputTokens": 357,
+  "durationMs": 34948,
+  "steps": 12,
+  "errors": []
+}

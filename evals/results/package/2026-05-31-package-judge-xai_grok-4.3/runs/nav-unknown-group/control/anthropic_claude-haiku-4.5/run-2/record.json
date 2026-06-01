@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 15,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly notes that nav (in docs.config.ts) is the primary/curated driver for sidebar, AGENTS.md, etc., satisfying the first required point. It partially covers group as legacy/fallback metadata, but then directly contradicts the third required point by claiming unknown groups produce no build error (only an unknown[] registry + optional lint), when the rubric states the build must fail with an explicit \"unknown group\" error. This is a confident_wrong assertion of the opposite behavior.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 40510,
+  "outputTokens": 344,
+  "durationMs": 40513,
+  "steps": 13,
+  "errors": []
+}

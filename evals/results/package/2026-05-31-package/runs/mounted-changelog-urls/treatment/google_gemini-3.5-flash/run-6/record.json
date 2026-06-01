@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response uses the required --docs-dir changelog=/changelog mount syntax, states the canonical URL is /changelog/... (specifically /changelog/v1), and mentions both the public mirror at public/changelog/v1.md and the internal copy at public/docs/changelog/v1.md for search. All RUBRIC required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 37421,
+  "outputTokens": 356,
+  "durationMs": 30770,
+  "steps": 12,
+  "errors": []
+}

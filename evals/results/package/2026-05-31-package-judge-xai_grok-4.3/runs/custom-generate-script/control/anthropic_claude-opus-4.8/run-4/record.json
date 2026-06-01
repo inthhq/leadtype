@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced script satisfies every REQUIRED rubric point: it imports and calls convertAllMdx (first), generateLlmsTxt + generateLLMFullContextFiles, and generateDocsSearchFiles; it imports product/nav from docs.config.ts and passes them to the generators that need them; conversion precedes the other generators so they read the produced public/docs/*.md files. No CLI usage or invented APIs appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 23251,
+  "outputTokens": 937,
+  "durationMs": 50407,
+  "steps": 8,
+  "errors": []
+}

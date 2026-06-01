@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the command prints a JSON object and names required fields like llmsTxt, satisfying the two required rubric points. However, it incorrectly lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', thereby inventing a field not in the result shape—violating the 'Incorrect if' condition and making the answer factually inaccurate.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2194,
+  "outputTokens": 74,
+  "durationMs": 7018,
+  "steps": 4,
+  "errors": []
+}

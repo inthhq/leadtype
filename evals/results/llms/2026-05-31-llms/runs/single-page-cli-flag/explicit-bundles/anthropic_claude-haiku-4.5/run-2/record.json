@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object to stdout and names several valid output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt), satisfying both required rubric points. However, it lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', an invented field not part of the result shape. This violates the rubric's 'Incorrect if' clause regarding invented fields, making the answer overall incorrect despite the required points being met. The response also omits bundle-mode details and higher-level keys like mode/product/groups.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3063,
+  "outputTokens": 199,
+  "durationMs": 9416,
+  "steps": 5,
+  "errors": []
+}

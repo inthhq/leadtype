@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script uses library APIs (no CLI) and runs conversion first, then LLM and search generators. It imports product and nav from docs.config.ts and passes them into the generators. All required artifacts (converted MD, llms.txt, llms-full.txt, search index) are produced, satisfying every REQUIRED rubric point.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 35372,
+  "outputTokens": 968,
+  "durationMs": 57749,
+  "steps": 11,
+  "errors": []
+}

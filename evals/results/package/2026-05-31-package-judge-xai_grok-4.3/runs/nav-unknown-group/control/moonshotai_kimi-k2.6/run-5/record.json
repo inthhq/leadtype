@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: ANSWER.md correctly identifies `nav` in docs.config.ts as the curated driver for sidebar, llms.txt, AGENTS.md, etc.; correctly labels `group` as legacy/optional still useful for fallback taxonomy and validation; and states that an unknown group produces a hard build failure with the exact 'unknown group' error rather than a warning or silent skip. No rubric violations or incorrect claims appear. Minor deduction only for slight wording differences on 'search facets' vs. 'validation' that do not affect correctness.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 75138,
+  "outputTokens": 190,
+  "durationMs": 145987,
+  "steps": 24,
+  "errors": []
+}

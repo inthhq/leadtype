@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `--json` prints a JSON result object and names required fields like `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. However, it invents the field `agentReadabilityJson`—the correct field is `agentReadabilityManifest`—which violates the rubric's 'incorrect if' rule about invented fields, making the answer overall incorrect. Otherwise, it provides thorough detail on the output shape.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 3387,
+  "outputTokens": 6,
+  "durationMs": 20460,
+  "steps": 7,
+  "errors": []
+}

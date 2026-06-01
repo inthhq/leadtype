@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains how `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping, and correctly characterizes `/llms-full.txt` as a monolithic all-docs file not split by group. However, it explicitly names `description` as an optional frontmatter field, but `description` is not among the rubric's listed valid optional fields (which include `icon`, `deprecated`, `experimental`, etc.). This means it fails to provide at least two valid optional fields from the required list, missing one of the required points. The agent later mentions many valid fields in passing, but the direct answer names an invalid one, so the requirement is not fully met.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3775,
+  "outputTokens": 436,
+  "durationMs": 28652,
+  "steps": 4,
+  "errors": []
+}

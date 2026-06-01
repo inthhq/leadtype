@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default as a static BM25 lexical index with no database, and it clearly states that the lexical index should be kept as a complementary layer. However, it fails to meet the required specificity for the large-corpus condition: the rubric demands 'past tens of thousands of chunks', but the response only mentions '500+ docs' as the trigger. While close, this is not the exact condition required, making the answer incomplete on that point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 28308,
+  "outputTokens": 401,
+  "durationMs": 47297,
+  "steps": 15,
+  "errors": []
+}

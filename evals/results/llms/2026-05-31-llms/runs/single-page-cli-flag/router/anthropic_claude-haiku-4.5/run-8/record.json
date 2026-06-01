@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "router",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `leadtype generate --json` prints a JSON object describing generated artifact paths, and it names multiple valid fields like `llmsFullTxt`, `docsLlmsTxt`, and `llmsTxt`. However, it invents the field `agentReadabilityJson`, whereas the actual result shape uses `agentReadabilityManifest`. Under the rubric's 'Incorrect if' clause, inventing fields that aren't part of the result shape makes the response incorrect. Apart from this error, the response accurately conveys the structured JSON nature and lists many correct keys, so it scores 85.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3158,
+  "outputTokens": 78,
+  "durationMs": 9836,
+  "steps": 6,
+  "errors": []
+}

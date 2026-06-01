@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: ANSWER.md explicitly identifies `nav` as the curated driver of sidebar/UI and agent-facing indexes (covering llms.txt/AGENTS.md), labels `group` as the legacy/optional fallback for taxonomy/filtering/validation, and states that an unknown group produces a hard build-time error with the exact message rather than a warning or silent drop. The added nuance about `groups` being omitted does not contradict the ground truth or violate any 'Incorrect if' clause, so the response satisfies the rubric.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 68905,
+  "outputTokens": 389,
+  "durationMs": 102555,
+  "steps": 18,
+  "errors": []
+}

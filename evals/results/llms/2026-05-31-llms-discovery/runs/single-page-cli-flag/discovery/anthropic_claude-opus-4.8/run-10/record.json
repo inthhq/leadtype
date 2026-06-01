@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing the generated artifacts, and it names the required fields llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it lists a field 'agentReadabilityJson' that does not appear in the ground truth (which specifies 'agentReadabilityManifest'), thus inventing a field and violating the 'Incorrect if' condition. The rest of the description is accurate and detailed.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 7,
+  "inputTokens": 4160,
+  "outputTokens": 399,
+  "durationMs": 24284,
+  "steps": 5,
+  "errors": []
+}

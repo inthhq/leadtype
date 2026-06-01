@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website convention with absolute URLs, not looked for in node_modules, making it wrong for a tarball. It describes AGENTS.md as the offline filesystem convention with relative links, version-matched to the package. It also explicitly states that --bundle skips llms.txt, llms-full.txt, and other website artifacts like search index, sitemaps, robots.txt, and agent-readability.json, and explains they assume HTTP discovery and don't belong in a package. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 4,
+  "inputTokens": 7966,
+  "outputTokens": 414,
+  "durationMs": 20466,
+  "steps": 4,
+  "errors": []
+}

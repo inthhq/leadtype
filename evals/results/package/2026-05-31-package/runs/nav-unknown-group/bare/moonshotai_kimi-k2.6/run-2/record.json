@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` in config as the source of truth driving sidebar, `llms.txt`, and `AGENTS.md` (point 1). It also correctly states that an unknown group causes a build failure (point 3). However, it misrepresents the `group` field as still required for navigation inclusion, contrary to the rubric’s description of it as legacy/optional, useful only for fallback navigation and search facets. This makes the answer confidently wrong on the second required point, so it is incorrect overall. Score of 50 reflects partial credit for the two correct points but failure on the essential distinction.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 35,
+  "inputTokens": 33059,
+  "outputTokens": 293,
+  "durationMs": 94464,
+  "steps": 32,
+  "errors": []
+}

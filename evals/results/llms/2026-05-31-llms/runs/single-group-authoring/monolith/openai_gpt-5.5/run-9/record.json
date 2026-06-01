@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping. It correctly describes `/llms-full.txt` as a single monolithic file not split by group. It names multiple valid optional fields including `icon`, `deprecated`, and `lastModified`. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2394,
+  "outputTokens": 6,
+  "durationMs": 12061,
+  "steps": 4,
+  "errors": []
+}

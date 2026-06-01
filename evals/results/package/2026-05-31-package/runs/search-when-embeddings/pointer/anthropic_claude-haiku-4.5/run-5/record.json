@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies the default static BM25 lexical search without a database, and rightly advises keeping the lexical index as complementary when adding embeddings. However, it misstates the conditions for adding embeddings: it says both semantic mismatch and a large corpus are required, whereas the ground truth specifies that either condition alone can warrant embeddings. This makes the response incorrect on a required point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 9493,
+  "outputTokens": 277,
+  "durationMs": 19762,
+  "steps": 5,
+  "errors": []
+}

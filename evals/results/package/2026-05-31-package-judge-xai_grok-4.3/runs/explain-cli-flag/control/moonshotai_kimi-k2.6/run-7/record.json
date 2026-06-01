@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: the paragraph in ANSWER.md explicitly names both `lastModified` and `lastAuthor`, states they are injected into each page's frontmatter, and states the values are taken from git history (via `git log` on the source file). No invented fields, no attribution to non-git sources, and the described behavior matches the ground-truth flag exactly.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 22937,
+  "outputTokens": 215,
+  "durationMs": 24121,
+  "steps": 8,
+  "errors": []
+}

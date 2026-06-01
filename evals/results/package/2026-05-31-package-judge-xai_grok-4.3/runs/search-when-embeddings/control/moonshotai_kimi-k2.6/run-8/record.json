@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default is explicitly described as the static/local BM25 lexical index with no DB or embeddings; (2) the two core warranted conditions (vocabulary/intent mismatch and corpus scale past ~10k chunks) are stated specifically, even though two extra conditions are also listed; (3) the answer repeatedly states that the lexical/BM25 index must be kept as a hybrid or fallback. No rubric 'Incorrect if' violations occur. Minor deduction only for the extra conditions and the 10k vs. 'tens of thousands' phrasing.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 30736,
+  "outputTokens": 327,
+  "durationMs": 77672,
+  "steps": 16,
+  "errors": []
+}

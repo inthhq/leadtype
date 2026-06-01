@@ -109,8 +109,8 @@ bun run evals:llms -- --fixture exact-symbol-readability --variant router
 # Default model, all fixtures × all variants, 1 run each.
 bun run evals:llms
 
-# The published matrix: 4 models × 10 runs.
-bun run evals:llms:full -- --label 2026-05-25
+# The published matrix (3-model subset for hosted docs).
+bun run evals:llms:full -- --label 2026-05-31-llms
 ```
 
 Here a "pass" still means the judge marked the answer correct, but the report also tracks **context match** — whether the agent read the context path the variant intends, rather than answering from `/llms.txt` summaries or prior knowledge. A variant only earns trust when both pass rate and context match are high.

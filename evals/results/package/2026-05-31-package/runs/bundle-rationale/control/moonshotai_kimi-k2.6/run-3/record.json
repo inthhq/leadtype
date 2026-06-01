@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website-oriented artifact fetched over HTTP and has no meaning inside a tarball, while AGENTS.md serves as an offline, version-matched entry point in the installed package. It correctly lists llms.txt, llms-full.txt, and other website artifacts that --bundle skips, and does not state anything false per the rubric. All required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 20350,
+  "outputTokens": 371,
+  "durationMs": 24736,
+  "steps": 10,
+  "errors": []
+}

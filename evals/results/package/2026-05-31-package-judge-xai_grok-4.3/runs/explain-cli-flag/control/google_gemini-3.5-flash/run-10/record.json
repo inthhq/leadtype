@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: ANSWER.md explicitly names both `lastModified` and `lastAuthor`, states they are added to output frontmatter, and states the values are populated from git log / git history metadata. No incorrect field names or non-git sources are mentioned. The paragraph is concise and on-topic.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 13333,
+  "outputTokens": 325,
+  "durationMs": 28934,
+  "steps": 13,
+  "errors": []
+}

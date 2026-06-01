@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that Leadtype does not include a hosted database-backed vector index by default. It accurately describes the default as a static local lexical search index using BM25 ranking with no database. It correctly explains that embeddings are added later only for vocabulary mismatch or large corpus growth, and that they are an optimization, not a replacement. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 3428,
+  "outputTokens": 154,
+  "durationMs": 18368,
+  "steps": 6,
+  "errors": []
+}

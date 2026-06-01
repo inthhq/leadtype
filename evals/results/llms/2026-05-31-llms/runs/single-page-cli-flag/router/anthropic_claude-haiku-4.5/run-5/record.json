@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing generated artifacts and names required fields like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents the field 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', which makes it incorrect per the rubric's 'Incorrect if invents fields that aren't part of the result shape.' The rest of the content is accurate and covers most required points, so the score reflects partial completeness.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3194,
+  "outputTokens": 110,
+  "durationMs": 11461,
+  "steps": 6,
+  "errors": []
+}

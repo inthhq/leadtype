@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping. It describes `/llms-full.txt` as the monolithic all-docs file, explicitly stating it is not sharded per group. It names multiple valid optional frontmatter fields (icon, deprecated, experimental, etc.), exceeding the minimum of two. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 3721,
+  "outputTokens": 6,
+  "durationMs": 55922,
+  "steps": 9,
+  "errors": []
+}

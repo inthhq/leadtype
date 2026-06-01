@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly distinguishes llms.txt as a website/absolute-URL convention and explains why AGENTS.md with relative offline links is the right choice for a tarball. It then accurately lists the website artifacts skipped by --bundle (llms.txt, llms-full.txt, search index, and discovery files) and explains why each doesn't belong. All rubric required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 32591,
+  "outputTokens": 689,
+  "durationMs": 72647,
+  "steps": 7,
+  "errors": []
+}

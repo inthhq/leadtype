@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fully addresses all required rubric points: it describes the default search as static lexical BM25 without a database, provides specific conditions for adding embeddings (vocabulary mismatch, large corpus), and states that the lexical index is kept for exact matches with embeddings complementary. Minor imprecision about the corpus size threshold (not explicitly 'tens of thousands') slightly reduces score.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 24710,
+  "outputTokens": 121,
+  "durationMs": 46593,
+  "steps": 10,
+  "errors": []
+}

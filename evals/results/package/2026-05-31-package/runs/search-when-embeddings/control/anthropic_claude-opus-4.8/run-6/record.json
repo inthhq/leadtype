@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states the default is a static lexical BM25 index with no database, and emphasizes keeping the lexical layer alongside embeddings. It fails however to give the specific threshold of 'tens of thousands of chunks' as part of the conditions for adding embeddings; instead it says 'large and/or naturally-language-heavy enough,' which is too vague compared to the rubric's required specificity. This omission makes the answer incomplete on a required point, despite being otherwise accurate and comprehensive.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 41846,
+  "outputTokens": 767,
+  "durationMs": 69990,
+  "steps": 8,
+  "errors": []
+}

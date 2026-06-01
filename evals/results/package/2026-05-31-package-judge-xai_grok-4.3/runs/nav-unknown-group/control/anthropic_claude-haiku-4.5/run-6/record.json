@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver for sidebar/agent indexes/llms.txt when present, and `group` as legacy fallback metadata. However, it directly contradicts the REQUIRED point on unknown groups: it asserts silent tracking in an `unknown` array with no build failure or lint error, whereas the rubric states the build must fail with an explicit 'unknown group' error. This is stated plainly and confidently from the type definitions, matching the 'confident_wrong' mode.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 20839,
+  "outputTokens": 356,
+  "durationMs": 34120,
+  "steps": 12,
+  "errors": []
+}

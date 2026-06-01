@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md`. It accurately describes `/llms-full.txt` as a monolithic file not split by group. However, it lists `availableIn` as an optional frontmatter field, which is not in the ground truth schema, making the answer incorrect per the rubric. The core explanation is otherwise complete.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 4785,
+  "outputTokens": 486,
+  "durationMs": 32762,
+  "steps": 9,
+  "errors": []
+}

@@ -31,6 +31,8 @@ type Args = {
   judge: string;
   concurrency: number;
   inPlace: boolean;
+  /** Limit to these arms (package mode/llms variant); undefined = all. */
+  arms?: Set<string>;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -51,13 +53,22 @@ function parseArgs(argv: string[]): Args {
       // Re-grade the run's own records in place (back-fill the committed run),
       // rather than writing a parallel results-judge-<model> folder.
       args.inPlace = true;
+    } else if (a === "--arms") {
+      // Only re-judge these arms (e.g. cross-validate just treatment,control).
+      const raw = argv[i++] ?? "";
+      args.arms = new Set(
+        raw
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      );
     } else if (a && !a.startsWith("--")) {
       args.runDir = a;
     }
   }
   if (!args.runDir) {
     throw new Error(
-      "usage: bun run rejudge.ts <runDir> [--judge <id>] [--concurrency <n>] [--in-place]"
+      "usage: bun run rejudge.ts <runDir> [--judge <id>] [--concurrency <n>] [--in-place] [--arms a,b]"
     );
   }
   return args;
@@ -235,17 +246,39 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const runDir = path.resolve(args.runDir);
   const tgz = path.join(runDir, "transcripts.tgz");
-  if (!existsSync(tgz)) {
-    throw new Error(`No transcripts.tgz in ${runDir} — nothing to re-grade.`);
+
+  // Transcripts may be bundled (transcripts.tgz, the published form) or loose
+  // (a fresh run not yet re-bundled). Extract the tgz to a temp dir; for loose
+  // runs read straight from runDir (transcript.json/files/ sit next to each
+  // record.json there).
+  let extractDir = runDir;
+  let usedTempExtract = false;
+  if (existsSync(tgz)) {
+    extractDir = await mkdtemp(path.join(tmpdir(), "rejudge-"));
+    usedTempExtract = true;
+    const untar = spawnSync("tar", ["xzf", tgz, "-C", extractDir]);
+    if (untar.status !== 0) {
+      throw new Error(`tar extract failed: ${untar.stderr}`);
+    }
+  } else if (
+    (await listRecordDirs(path.join(runDir, "runs"))).every(
+      (d) => !existsSync(path.join(d, "transcript.json"))
+    )
+  ) {
+    throw new Error(
+      `No transcripts.tgz and no loose transcript.json in ${runDir} — nothing to re-grade.`
+    );
   }
 
-  const extractDir = await mkdtemp(path.join(tmpdir(), "rejudge-"));
-  const untar = spawnSync("tar", ["xzf", tgz, "-C", extractDir]);
-  if (untar.status !== 0) {
-    throw new Error(`tar extract failed: ${untar.stderr}`);
+  const runsDir = path.join(runDir, "runs");
+  let recordDirs = await listRecordDirs(runsDir);
+  if (args.arms) {
+    const arms = args.arms;
+    recordDirs = recordDirs.filter((d) => {
+      const seg = path.relative(runsDir, d).split(path.sep)[1]; // fixture/<arm>/model/run
+      return seg !== undefined && arms.has(seg);
+    });
   }
-
-  const recordDirs = await listRecordDirs(path.join(runDir, "runs"));
   const judgeSlug = args.judge.replace(/[^\w.-]+/g, "_");
   const newRunDir = args.inPlace ? runDir : `${runDir}-judge-${judgeSlug}`;
   await mkdir(newRunDir, { recursive: true });
@@ -279,7 +312,9 @@ async function main(): Promise<void> {
 
   const fresh = await aggregateRun(newRunDir);
   compareSummaries(old, fresh);
-  await rm(extractDir, { recursive: true, force: true });
+  if (usedTempExtract) {
+    await rm(extractDir, { recursive: true, force: true });
+  }
   process.stdout.write(`\nWrote ${newRunDir}/summary.json + report.md\n`);
 }
 

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response meets both required rubric points: it states that the command prints a single JSON object to stdout, and it correctly names the required fields `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. However, it invents the field `agentReadabilityJson`, which is not part of the actual result shape (the correct field is `agentReadabilityManifest`). The 'Incorrect if' clause explicitly marks answers with invented fields as incorrect, and this error is stated confidently without hedging. The answer is otherwise comprehensive, covering many valid fields, but omits the `--bundle` mode shape, leading to a score of 85.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3828,
+  "outputTokens": 382,
+  "durationMs": 24203,
+  "steps": 6,
+  "errors": []
+}

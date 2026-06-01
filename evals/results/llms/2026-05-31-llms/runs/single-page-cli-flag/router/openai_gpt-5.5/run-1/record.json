@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `--json` outputs a JSON object describing generated artifacts and names the required fields (`llmsFullTxt`, `docsLlmsTxt`, `llmsTxt`). However, it invents the field name `agentReadabilityJson`; according to the ground truth, the actual field is `agentReadabilityManifest`. Because the rubric marks responses as incorrect if they invent fields not in the result shape, this discrepancy makes the response fail the 'correct' condition despite otherwise meeting the required points. The agent confidently presents the wrong field name without hedging, so the failure mode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1878,
+  "outputTokens": 13,
+  "durationMs": 15202,
+  "steps": 6,
+  "errors": []
+}

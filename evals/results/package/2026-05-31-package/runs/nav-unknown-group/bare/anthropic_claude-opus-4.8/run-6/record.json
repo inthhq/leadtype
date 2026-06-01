@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response incorrectly claims that the page `group` frontmatter is the primary driver of the sidebar, `llms.txt` sections, and `AGENTS.md` grouping, which contradicts the rubric's required point that `nav` in `docs.config.ts` is the curated source of truth. It also fails to identify `group` as legacy/optional and useful only for fallback navigation or search facets, instead presenting it as essential membership. The unknown group build failure is correctly described, satisfying one of three required points.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 19287,
+  "outputTokens": 679,
+  "durationMs": 70384,
+  "steps": 12,
+  "errors": []
+}

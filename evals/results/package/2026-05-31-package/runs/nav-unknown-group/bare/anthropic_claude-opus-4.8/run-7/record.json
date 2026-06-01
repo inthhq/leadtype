@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response presents the page `group` field as essential for placing pages, and describes config and group as complementary drivers of navigation. This contradicts the rubric, which requires that `nav` be identified as the curated driver and `group` as legacy/optional, useful only for fallback and search facets. The response fails on those two required points, though it correctly explains the build failure. Its confident assertion of a mistaken relationship qualifies as confident_wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 20,
+  "inputTokens": 19604,
+  "outputTokens": 590,
+  "durationMs": 73648,
+  "steps": 15,
+  "errors": []
+}

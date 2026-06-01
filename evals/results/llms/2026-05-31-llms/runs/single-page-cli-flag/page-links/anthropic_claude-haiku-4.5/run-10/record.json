@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `--json` prints a single JSON object to stdout and mentions required artifact paths like `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`, satisfying both required rubric points. However, it invents the field `agentReadabilityJson` (the rubric's ground truth specifies `agentReadabilityManifest`) and may misrepresent sitemap/robots as separate `sitemapXml`/`sitemapMd` keys, which introduces factually incorrect details about the result shape. This confident assertion of non-existent fields makes the answer incorrect per the rubric's 'Invents fields that aren't part of the result shape' condition.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2498,
+  "outputTokens": 154,
+  "durationMs": 8327,
+  "steps": 4,
+  "errors": []
+}

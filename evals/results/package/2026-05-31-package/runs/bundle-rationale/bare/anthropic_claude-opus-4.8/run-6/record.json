@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly distinguishes llms.txt as a website convention with absolute URLs, explaining why it fails inside a tarball (unreachable, version drift, agent ignore). It correctly describes AGENTS.md as using relative links, working offline, and being version-matched. It enumerates the skipped website artifacts—llms.txt, llms-full.txt, search, sitemaps, robots, agent-readability—exactly meeting the rubric.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 12004,
+  "outputTokens": 495,
+  "durationMs": 65838,
+  "steps": 14,
+  "errors": []
+}

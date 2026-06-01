@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly notes that --json prints a JSON object with file paths and names required fields like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents fields not in the ground truth, such as 'agentReadabilityJson' (correct is 'agentReadabilityManifest') and possibly separates sitemap into 'sitemapXml' and 'sitemapMd', which are unconfirmed. It also omits explicitly stating the output goes to stdout. Because of these inaccuracies, it is incorrect per the rubric.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3041,
+  "outputTokens": 94,
+  "durationMs": 9282,
+  "steps": 5,
+  "errors": []
+}

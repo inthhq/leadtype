@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports leadtype library APIs and runs them in the required order: convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles. It imports product and nav from docs.config.ts and passes them to the generators. All necessary artifacts are produced, and the critical ordering constraint is satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 23648,
+  "outputTokens": 485,
+  "durationMs": 66762,
+  "steps": 10,
+  "errors": []
+}

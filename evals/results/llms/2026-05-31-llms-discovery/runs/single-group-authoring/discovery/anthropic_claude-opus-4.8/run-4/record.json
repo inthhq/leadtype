@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that group controls navigation (sidebar), llms.txt sections, AGENTS.md grouping, and search metadata. It correctly states that /llms-full.txt is a monolithic all-docs file not split per group. It lists many optional frontmatter fields including at least two from the required list (icon, deprecated, etc.). All rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 5279,
+  "outputTokens": 365,
+  "durationMs": 26186,
+  "steps": 5,
+  "errors": []
+}

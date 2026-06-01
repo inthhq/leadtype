@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the ANSWER.md states the default is a static/local BM25 lexical index with no DB, gives the precise conditions (vocabulary mismatch or corpus > tens of thousands of chunks), and explicitly says to keep the lexical index for exact matches as a complementary layer. No incorrect claims appear (no vector DB by default, no replacement of lexical search). The produced file matches the ground-truth description verbatim in substance and detail.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 15201,
+  "outputTokens": 116,
+  "durationMs": 33159,
+  "steps": 8,
+  "errors": []
+}

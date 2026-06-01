@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly answers 'No' to a default hosted database-backed vector index, states the default is a static local lexical BM25 index without a database, and explains embeddings are added only later for vocabulary mismatch or large corpus, satisfying all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 1209,
+  "outputTokens": 13,
+  "durationMs": 16511,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly identifies llms.txt as an HTTP/website convention using absolute URLs (and useless in node_modules), explains AGENTS.md's relative links enabling offline/version-matched use inside the tarball, and states that --bundle skips llms.txt/llms-full.txt plus the other web artifacts (sitemap/robots/etc.) because they are web-specific. No rubric violations (no recommendation of llms.txt, no claim that AGENTS.md uses absolute URLs or that --bundle emits those files).",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 13421,
+  "outputTokens": 376,
+  "durationMs": 17112,
+  "steps": 7,
+  "errors": []
+}

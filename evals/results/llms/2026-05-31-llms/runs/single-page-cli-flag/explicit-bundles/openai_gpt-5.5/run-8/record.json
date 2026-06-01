@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object and correctly names llmsFullTxt, docsLlmsTxt, and llmsTxt (satisfying both required points). However, it invents the field 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', which violates the rubric's 'Invents fields that aren't part of the result shape' rule, making the overall answer incorrect despite mostly correct content.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1814,
+  "outputTokens": 6,
+  "durationMs": 13006,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files reference area (e.g., generateLLMFullContextFiles) and explicitly avoids the Search docs. It explains that /llms-full.txt is a fallback only when scoped bundles or page-level links are insufficient, meeting both required rubric points.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 5846,
+  "outputTokens": 529,
+  "durationMs": 34836,
+  "steps": 6,
+  "errors": []
+}

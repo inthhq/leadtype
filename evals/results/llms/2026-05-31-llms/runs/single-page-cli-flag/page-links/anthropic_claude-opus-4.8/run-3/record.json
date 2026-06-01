@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `leadtype generate --json` prints a JSON object describing the generated artifacts, satisfying the first required point. It names multiple output-path fields such as `llmsFullTxt`, `docsLlmsTxt`, and `llmsTxt`, meeting the second required point. The answer does not describe human-readable output or invent invalid fields.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4277,
+  "outputTokens": 413,
+  "durationMs": 23576,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails all three required points. (1) It never mentions that llms.txt uses absolute URLs or that no agent looks for it inside node_modules; it only says it's a website convention, which is insufficient. (2) It never explains that AGENTS.md uses relative links and works offline; it merely says it's version-locked and accessible from the package directory. (3) It incorrectly claims `--bundle` skips stylesheets, navigation metadata, JS bundles, and SEO markup, while the ground truth states it skips `llms.txt`, `llms-full.txt`, search index, sitemap, robots, etc. These are confident, unhedged errors about what the tool does.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 4142,
+  "outputTokens": 240,
+  "durationMs": 27948,
+  "steps": 13,
+  "errors": []
+}

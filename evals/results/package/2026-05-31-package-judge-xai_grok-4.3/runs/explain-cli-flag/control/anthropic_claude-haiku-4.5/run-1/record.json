@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected into frontmatter of each output markdown file, and states the values come from git log / git history of the source file. All three REQUIRED rubric points are therefore satisfied; extra implementation details do not violate any rubric constraints.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 26441,
+  "outputTokens": 184,
+  "durationMs": 21966,
+  "steps": 8,
+  "errors": []
+}

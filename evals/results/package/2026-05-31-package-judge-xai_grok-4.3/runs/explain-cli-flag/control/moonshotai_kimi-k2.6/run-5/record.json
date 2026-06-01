@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both exact field names are stated, they are described as being injected into YAML frontmatter, and their source is explicitly the git log of the source file. No incorrect attributions or invented fields appear. The extra implementation detail (exact git command) does not violate any rubric constraint.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 23065,
+  "outputTokens": 190,
+  "durationMs": 26031,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default lexical BM25 index and that embeddings are complementary. However, it states embeddings are warranted only if both semantic mismatch and scale conditions hold, whereas the rubric specifies either condition ('and/or') justifies embeddings. This is a confident assertion of a stricter requirement than the truth, making the response incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 25720,
+  "outputTokens": 367,
+  "durationMs": 39326,
+  "steps": 19,
+  "errors": []
+}

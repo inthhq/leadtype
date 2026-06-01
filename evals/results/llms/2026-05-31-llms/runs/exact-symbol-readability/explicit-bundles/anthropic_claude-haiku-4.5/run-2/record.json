@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names the helper exactly as 'isAgentReadabilityArtifactPath' and describes that it covers llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json — satisfying both required rubric points completely.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 3036,
+  "outputTokens": 138,
+  "durationMs": 8326,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "judge call failed — counted as a miss",
+  "judgeError": "No object generated: response did not match schema.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 26377,
+  "outputTokens": 765,
+  "durationMs": 72837,
+  "steps": 9,
+  "errors": []
+}

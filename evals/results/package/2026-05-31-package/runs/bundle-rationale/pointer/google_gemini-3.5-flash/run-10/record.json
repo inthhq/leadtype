@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md correctly explains that llms.txt is a website convention relying on absolute URLs and HTTP, making it unsuitable inside an npm tarball where offline, version-matched docs are needed. It highlights that AGENTS.md uses relative links and works offline inside node_modules, and it clearly lists the website artifacts skipped by --bundle (llms.txt, llms-full.txt, search index, sitemaps, robots). All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 19872,
+  "outputTokens": 568,
+  "durationMs": 26792,
+  "steps": 9,
+  "errors": []
+}

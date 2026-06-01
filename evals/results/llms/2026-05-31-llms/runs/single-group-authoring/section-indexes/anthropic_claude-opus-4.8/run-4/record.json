@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that group controls navigation and llms.txt sections, and that /llms-full.txt is monolithic. It lists many valid optional fields (icon, deprecated, etc.), satisfying the requirement to name at least two. However, it includes 'description' as an optional field, which is not in the ground truth list, and thus invents a field not in the schema. Per the rubric, inventing fields makes the answer incorrect, even though other parts are correct.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 5295,
+  "outputTokens": 549,
+  "durationMs": 29081,
+  "steps": 6,
+  "errors": []
+}

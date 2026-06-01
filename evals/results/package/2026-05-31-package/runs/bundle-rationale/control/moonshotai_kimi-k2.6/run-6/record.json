@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly distinguishes AGENTS.md (relative filesystem paths, works offline in node_modules) from llms.txt (website convention with absolute URLs, broken in a tarball). It then lists the website-only artifacts skipped by --bundle, including llms.txt, llms-full.txt, search files, sitemap, and robots.txt. All rubric REQUIRED points are satisfied, and no incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 24413,
+  "outputTokens": 368,
+  "durationMs": 44333,
+  "steps": 13,
+  "errors": []
+}

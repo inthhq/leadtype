@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "Point 1 (default static BM25 lexical index, no DB) is fully met. Point 3 (keep lexical index for exact matches, embeddings complementary) is also met. Point 2 fails because the stated conditions use a 500-page threshold and require both conditions simultaneously, whereas the rubric specifies vocabulary mismatch and/or tens-of-thousands-of-chunks scale. The mismatch on the precise trigger conditions makes the answer incorrect per the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 25720,
+  "outputTokens": 367,
+  "durationMs": 39326,
+  "steps": 19,
+  "errors": []
+}

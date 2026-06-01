@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the curated config (groups in docs.config.ts) as driving sidebar, llms.txt, and AGENTS.md grouping. It identifies the frontmatter group as legacy/optional, useful for fallback navigation. It explicitly states that an unknown group causes the build to fail with an error. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 35,
+  "inputTokens": 44458,
+  "outputTokens": 341,
+  "durationMs": 96477,
+  "steps": 23,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names are stated, they are identified as frontmatter fields added to generated pages, and their values are attributed to git commit history (timestamp + author). No invented fields, no wrong source, and the paragraph matches the requested one-paragraph format in ANSWER.md.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 6668,
+  "outputTokens": 153,
+  "durationMs": 9691,
+  "steps": 5,
+  "errors": []
+}

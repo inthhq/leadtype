@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the output as a JSON object and names several valid fields like llmsFullTxt and docsLlmsTxt, satisfying the required points. However, it invents the field 'agentReadabilityJson' (the correct field is 'agentReadabilityManifest') and possibly others like 'sitemapMd', which are not part of the result shape according to the ground truth. This invention makes the answer incorrect per the rubric, and it is stated confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2490,
+  "outputTokens": 90,
+  "durationMs": 8794,
+  "steps": 5,
+  "errors": []
+}

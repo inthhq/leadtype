@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports and calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in the correct order. It passes product and nav from docs.config.ts to the LLM generators. All required library APIs are used as instructed, and there is no use of the CLI or invented API names. The build order satisfies the critical requirement that conversion occurs before the search and full-context generators.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 25,
+  "inputTokens": 45462,
+  "outputTokens": 395,
+  "durationMs": 118462,
+  "steps": 13,
+  "errors": []
+}

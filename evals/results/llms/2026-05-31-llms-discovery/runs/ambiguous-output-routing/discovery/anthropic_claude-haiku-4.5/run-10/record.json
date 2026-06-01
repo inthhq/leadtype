@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the agent-facing output APIs (e.g., generateLlmsTxt and generateAgentsMd) and the /llms-full.txt fallback, fulfilling both required rubric points. It never routes to Search UI/APIs, and it clearly positions the monolithic file as a fallback for when page-level links are insufficient. The answer is detailed and directly addresses the task.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 13,
+  "inputTokens": 6433,
+  "outputTokens": 289,
+  "durationMs": 22695,
+  "steps": 6,
+  "errors": []
+}

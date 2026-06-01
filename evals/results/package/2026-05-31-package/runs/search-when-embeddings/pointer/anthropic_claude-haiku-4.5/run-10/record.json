@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response meets all required rubric points: it describes the default as a static, edge-safe BM25 lexical index with no database; it gives specific conditions for adding embeddings (vocabulary mismatch and corpus exceeding tens of thousands of chunks); and it states the lexical index should be kept for exact matches, with embeddings as a complementary layer. No incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 11055,
+  "outputTokens": 260,
+  "durationMs": 20248,
+  "steps": 6,
+  "errors": []
+}

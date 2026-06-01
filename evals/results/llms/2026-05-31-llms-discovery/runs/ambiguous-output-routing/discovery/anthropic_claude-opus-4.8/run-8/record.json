@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly points to the LLM file generation APIs (not Search) and names generateLLMFullContextFiles. It explains that /llms-full.txt is a broad fallback, used only when page-level links are insufficient, and emphasizes defaulting to page-level context. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 8,
+  "inputTokens": 4565,
+  "outputTokens": 519,
+  "durationMs": 30051,
+  "steps": 5,
+  "errors": []
+}

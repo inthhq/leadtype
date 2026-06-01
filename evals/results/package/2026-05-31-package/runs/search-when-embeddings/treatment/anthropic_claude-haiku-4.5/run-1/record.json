@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default static BM25 index and the need to keep it alongside embeddings. However, it states that embeddings are warranted only when both conditions (vocabulary mismatch and large corpus) are present, while the ground truth specifies that either condition alone is sufficient. This factual error on the necessary conditions means the answer does not fully satisfy the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 9943,
+  "outputTokens": 308,
+  "durationMs": 21221,
+  "steps": 8,
+  "errors": []
+}

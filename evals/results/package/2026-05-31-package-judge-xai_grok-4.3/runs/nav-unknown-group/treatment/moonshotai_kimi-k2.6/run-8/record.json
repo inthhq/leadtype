@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The ANSWER.md correctly identifies `nav` as the curated driver for sidebar/llms.txt/AGENTS.md (first required point) and `group` as legacy for fallback + taxonomy (second required point). It also states that unknown groups produce an explicit build error. However, the added 'nav-only configs' caveat (validation only happens against a separate `groups` array) introduces a qualification absent from the rubric's ground truth, which asserts unconditional failure on unknown group slugs. This makes the response incomplete against the strict 'states that an unknown group slug causes the build to fail' requirement.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 27,
+  "inputTokens": 77570,
+  "outputTokens": 553,
+  "durationMs": 118072,
+  "steps": 18,
+  "errors": []
+}

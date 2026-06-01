@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response identifies the LLM files area (leadtype/llm) and lists the appropriate APIs, avoiding the Search UI. It explains that /llms-full.txt is a fallback used when page-level topic routes are insufficient, matching the rubric requirements.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 4813,
+  "outputTokens": 518,
+  "durationMs": 29682,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "judge call failed — counted as a miss",
+  "judgeError": "Invalid error response format: Gateway request failed",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 5100,
+  "outputTokens": 256,
+  "durationMs": 29659,
+  "steps": 12,
+  "errors": []
+}

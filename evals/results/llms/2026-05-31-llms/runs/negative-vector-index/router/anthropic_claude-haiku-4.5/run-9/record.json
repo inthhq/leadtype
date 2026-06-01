@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly denies a default hosted vector index, describes the default static lexical BM25 index without a database, and explains embeddings are added later for vocabulary mismatch or large corpus—meeting all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3128,
+  "outputTokens": 139,
+  "durationMs": 33853,
+  "steps": 6,
+  "errors": []
+}

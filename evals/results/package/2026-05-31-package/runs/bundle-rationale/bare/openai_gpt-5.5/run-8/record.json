@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly explains that llms.txt is a website convention with URL-oriented links and not discovered in node_modules, making it unsuitable for a tarball. It correctly states AGENTS.md uses relative links and works offline/version-matched. It lists skipped website artifacts including llms.txt, llms-full.txt, and others. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 20,
+  "inputTokens": 15998,
+  "outputTokens": 36,
+  "durationMs": 69039,
+  "steps": 16,
+  "errors": []
+}

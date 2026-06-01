@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails to mention that `leadtype generate --bundle` skips `llms.txt` and `llms-full.txt`, which the rubric explicitly requires. It discusses website artifacts generally but omits these key files, making the answer incomplete. Additionally, the explanation of `llms.txt` being a website/HTTP convention is implicit and does not directly state it uses absolute URLs or that nothing looks for it in `node_modules`, though that point is partially addressed. The response confidently presents its list of skipped artifacts, which is dangerously wrong relative to the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 7526,
+  "outputTokens": 397,
+  "durationMs": 49801,
+  "steps": 21,
+  "errors": []
+}

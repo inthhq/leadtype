@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response provides the exact `leadtype generate` invocation with `--docs-dir changelog=/changelog`, correctly stating the canonical URL as `/changelog/v1.md`. It also describes the internal copy at `public/docs/changelog/v1.md` (for search) and the public mirror at `public/changelog/v1.md`, satisfying all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 22550,
+  "outputTokens": 281,
+  "durationMs": 30847,
+  "steps": 13,
+  "errors": []
+}

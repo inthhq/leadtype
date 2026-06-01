@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response satisfies the required rubric points by stating that --json prints a JSON object and naming at least one valid output-path field (e.g., llmsFullTxt, docsLlmsTxt, llmsTxt). However, it includes an invented field, 'agentReadabilityJson', while the ground truth specifies 'agentReadabilityManifest'. This invention makes the response incorrect per the rubric's 'Incorrect if' rule. The answer is otherwise thorough, with no hedging, so it is confidently wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2517,
+  "outputTokens": 151,
+  "durationMs": 10823,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states 'No,' describes the default as a static local lexical index using BM25 (no database), and explains embeddings are an opt-in later enhancement (added for vocabulary mismatch or large corpus) and do not replace the lexical index. All required rubric points are met.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 5,
+  "inputTokens": 3594,
+  "outputTokens": 244,
+  "durationMs": 17697,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "variant": "monolith",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping, and that `/llms-full.txt` is a monolithic file not sharded by group. However, it lists `description` and `deprecatedReason` as optional frontmatter fields, which are not part of the ground truth schema. This violates the rubric's rule against inventing fields, making the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2401,
+  "outputTokens": 6,
+  "durationMs": 14225,
+  "steps": 4,
+  "errors": []
+}

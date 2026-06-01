@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the output as a JSON object and names several required fields (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it invents the field \"agentReadabilityJson\" which does not match the ground truth's \"agentReadabilityManifest\". This factual error makes the answer incorrect per the rubric, and the response states it with no hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2527,
+  "outputTokens": 137,
+  "durationMs": 9234,
+  "steps": 5,
+  "errors": []
+}

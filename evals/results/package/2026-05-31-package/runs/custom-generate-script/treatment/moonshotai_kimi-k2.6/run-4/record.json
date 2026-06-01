@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx before any other generators, satisfying the ordering requirement. It uses generateLlmsTxt and generateLLMFullContextFiles to produce llms.txt and llms-full.txt, and generateDocsSearchFiles for the search index. It imports and passes product and nav from docs.config.ts. All required API calls are present and correctly sequenced, and no CLI invocations or invented APIs are used.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 23,
+  "inputTokens": 43100,
+  "outputTokens": 483,
+  "durationMs": 109392,
+  "steps": 17,
+  "errors": []
+}

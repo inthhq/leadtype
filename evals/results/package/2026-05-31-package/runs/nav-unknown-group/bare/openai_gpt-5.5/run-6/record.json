@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that nav is the source of truth driving sidebar and agent-facing documentation (agent map), group is legacy metadata useful for fallback and search/taxonomy, and unknown group causes a build failure. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 22,
+  "inputTokens": 41506,
+  "outputTokens": 166,
+  "durationMs": 99844,
+  "steps": 21,
+  "errors": []
+}

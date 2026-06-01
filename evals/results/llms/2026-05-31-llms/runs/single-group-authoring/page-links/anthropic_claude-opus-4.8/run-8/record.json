@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required points satisfied: (1) group is described as driving sidebar, llms.txt sections, search metadata, and AGENTS.md grouping; (2) /llms-full.txt is explicitly identified as the monolithic, non-per-group file; (3) at least two optional frontmatter fields (icon, deprecated, experimental, etc.) are listed correctly. No incorrect claims or missing elements.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3908,
+  "outputTokens": 442,
+  "durationMs": 24687,
+  "steps": 4,
+  "errors": []
+}
