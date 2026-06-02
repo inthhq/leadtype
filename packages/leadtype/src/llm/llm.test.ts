@@ -930,6 +930,53 @@ describe("generateAgentReadabilityArtifacts", () => {
       })
     ).toContain("Sitemap: https://example.com/sitemap.xml");
   });
+
+  it("defaults robots.txt to the balanced Content-Signal policy", () => {
+    const robots = renderRobotsTxt({ baseUrl: "https://example.com" });
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=no"
+    );
+    // Balanced keeps both retrieval and training crawlers crawlable.
+    expect(robots).toContain("User-agent: GPTBot"); // training
+    expect(robots).toContain("User-agent: PerplexityBot"); // retrieval
+    expect(robots).not.toContain("Disallow: /");
+  });
+
+  it("block-training disallows training crawlers but keeps retrieval", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      policy: "block-training",
+    });
+    const gptBlock = robots.slice(robots.indexOf("User-agent: GPTBot"));
+    expect(gptBlock.startsWith("User-agent: GPTBot\nDisallow: /")).toBe(true);
+    const perplexityBlock = robots.slice(
+      robots.indexOf("User-agent: PerplexityBot")
+    );
+    expect(perplexityBlock).toContain("Allow: /");
+  });
+
+  it("block-ai disallows every AI crawler and signals no ai use", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      policy: "block-ai",
+    });
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=no, ai-train=no"
+    );
+    expect(robots).toContain("User-agent: GPTBot\nDisallow: /");
+    expect(robots).toContain("User-agent: PerplexityBot\nDisallow: /");
+  });
+
+  it("signals override individual directives on top of a policy", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      policy: "balanced",
+      signals: { aiTrain: "yes" },
+    });
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=yes"
+    );
+  });
 });
 
 describe("agent readability helpers", () => {
@@ -1198,8 +1245,22 @@ describe("agent readability helpers", () => {
       Vary: "Accept, User-Agent",
       Link: '<https://example.com/docs>; rel="canonical", </llms.txt>; rel="llms-txt"',
       "X-Llms-Txt": "/llms.txt",
+      "Content-Signal": "search=yes, ai-input=yes, ai-train=no",
       "Cache-Control": "public, max-age=300, must-revalidate",
     });
+    // Content-Signal can be customized or omitted.
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        contentSignal: { search: "yes", aiInput: "no", aiTrain: "no" },
+      })["Content-Signal"]
+    ).toBe("search=yes, ai-input=no, ai-train=no");
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        contentSignal: null,
+      })
+    ).not.toHaveProperty("Content-Signal");
     expect(
       createMarkdownResponseHeaders({
         canonicalUrl: "https://example.com/docs",

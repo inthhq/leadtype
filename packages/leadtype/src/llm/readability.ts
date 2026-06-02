@@ -30,27 +30,77 @@ const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
 const AI_USER_AGENT_PATTERN =
   /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-web|claudebot|google-extended|gptbot|metaexternalagent|meta-externalagent|mistralbot|oai-searchbot|perplexitybot|youbot)\b/i;
-const DEFAULT_AI_CRAWLER_USER_AGENTS = [
-  "GPTBot",
-  "ChatGPT-User",
+// Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
+// fetch a page to answer a live query; training bots gather corpora for model
+// training. Policies treat the two groups differently.
+const RETRIEVAL_AI_CRAWLERS = [
   "OAI-SearchBot",
+  "ChatGPT-User",
+  "PerplexityBot",
   "ClaudeBot",
   "Claude-Web",
-  "anthropic-ai",
-  "CCBot",
-  "Google-Extended",
   "AmazonBot",
   "Bingbot",
-  "MetaExternalAgent",
-  "ByteSpider",
-  "PerplexityBot",
   "MistralBot",
   "AppleBot",
   "YouBot",
 ] as const;
+const TRAINING_AI_CRAWLERS = [
+  "GPTBot",
+  "Google-Extended",
+  "CCBot",
+  "ByteSpider",
+  "anthropic-ai",
+  "MetaExternalAgent",
+] as const;
 const DEFAULT_CACHE_CONTROL = "public, max-age=300, must-revalidate";
 const SUPPORTED_MANIFEST_VERSION = 1;
 const XML_ESCAPE_PATTERN = /[<>&'"]/g;
+
+/* --------------------------- content signals --------------------------- */
+
+export type ContentSignalValue = "yes" | "no";
+
+/**
+ * Cloudflare Content-Signals vocabulary, shared between robots.txt (a
+ * `Content-Signal:` line) and the `Content-Signal` response header on markdown
+ * responses — one config knob, two emitters.
+ */
+export type ContentSignals = {
+  /** Conventional search indexing. */
+  search: ContentSignalValue;
+  /** Use as live input/grounding for an AI answer (retrieval / RAG). */
+  aiInput: ContentSignalValue;
+  /** Use to train AI models. */
+  aiTrain: ContentSignalValue;
+};
+
+/**
+ * Crawler-access stance. `balanced` (default) keeps the site fully crawlable but
+ * signals "don't train on this"; `open` welcomes training; `block-training`
+ * hard-disallows training crawlers; `block-ai` disallows every AI crawler while
+ * leaving conventional search engines allowed.
+ */
+export type RobotsPolicy = "balanced" | "open" | "block-training" | "block-ai";
+
+const ROBOTS_POLICY_SIGNALS: Record<RobotsPolicy, ContentSignals> = {
+  balanced: { search: "yes", aiInput: "yes", aiTrain: "no" },
+  open: { search: "yes", aiInput: "yes", aiTrain: "yes" },
+  "block-training": { search: "yes", aiInput: "yes", aiTrain: "no" },
+  "block-ai": { search: "yes", aiInput: "no", aiTrain: "no" },
+};
+
+export function resolveContentSignals(
+  policy: RobotsPolicy = "balanced",
+  overrides?: Partial<ContentSignals>
+): ContentSignals {
+  return { ...ROBOTS_POLICY_SIGNALS[policy], ...overrides };
+}
+
+/** Render the `search=…, ai-input=…, ai-train=…` directive string. */
+export function renderContentSignal(signals: ContentSignals): string {
+  return `search=${signals.search}, ai-input=${signals.aiInput}, ai-train=${signals.aiTrain}`;
+}
 
 export type JsonLdValue = Record<string, unknown>;
 export type JsonLdType = string | readonly string[];
@@ -163,6 +213,12 @@ export type MarkdownResponseHeadersConfig = {
    * to `/llms.txt`; pass `null` to omit the discovery headers.
    */
   llmsTxtPath?: string | null;
+  /**
+   * Cloudflare `Content-Signal` header value. Pass `ContentSignals` (rendered
+   * for you) or a prebuilt string. Defaults to the `balanced` policy; pass
+   * `null` to omit the header.
+   */
+  contentSignal?: ContentSignals | string | null;
 };
 
 const DEFAULT_LLMS_TXT_PATH = "/llms.txt";
@@ -220,8 +276,12 @@ export type CreateRobotsTxtResponseConfig = {
   sitemapUrlPath?: string;
   /** Allow paths under the User-agent directives. */
   allowPaths?: string[];
-  /** Override the AI crawler User-agent list. */
+  /** Override the AI crawler User-agent list (legacy flat allow-list). */
   userAgents?: readonly string[];
+  /** Crawler-access stance. Defaults to `balanced`. */
+  policy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  signals?: Partial<ContentSignals>;
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
 };
@@ -298,7 +358,16 @@ export type RenderRobotsTxtConfig = {
   baseUrl?: string;
   sitemapUrlPath?: string;
   allowPaths?: string[];
+  /**
+   * Legacy: a flat allow-list of crawler user-agents. When set, every listed
+   * agent is allowed (pre-policy behavior). Prefer `policy` for the
+   * train-vs-retrieve split.
+   */
   userAgents?: readonly string[];
+  /** Crawler-access stance. Defaults to `balanced`. */
+  policy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  signals?: Partial<ContentSignals>;
 };
 
 /* ----------------------- internal helpers ------------------------------ */
@@ -593,6 +662,16 @@ export function createMarkdownResponseHeaders(
     headers["X-Llms-Txt"] = llmsTxtPath;
   }
   headers.Link = linkParts.join(", ");
+  const contentSignal =
+    config.contentSignal === undefined
+      ? resolveContentSignals("balanced")
+      : config.contentSignal;
+  if (contentSignal !== null) {
+    headers["Content-Signal"] =
+      typeof contentSignal === "string"
+        ? contentSignal
+        : renderContentSignal(contentSignal);
+  }
   const cacheControl =
     config.cacheControl === undefined
       ? DEFAULT_CACHE_CONTROL
@@ -984,6 +1063,23 @@ export function renderSitemapMarkdown(
   return `${lines.join("\n")}\n`;
 }
 
+function pushCrawlerBlock(
+  lines: string[],
+  userAgent: string,
+  allowPaths: string[],
+  disallow: boolean
+): void {
+  lines.push(`User-agent: ${userAgent}`);
+  if (disallow) {
+    lines.push("Disallow: /");
+  } else {
+    for (const allowPath of allowPaths) {
+      lines.push(`Allow: ${allowPath}`);
+    }
+  }
+  lines.push("");
+}
+
 export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
   const baseUrl = stripTrailingSlashes(config.baseUrl ?? "");
   const sitemapPath = config.sitemapUrlPath ?? "/sitemap.xml";
@@ -996,19 +1092,33 @@ export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
     "/sitemap.xml",
     "/sitemap.md",
   ];
-  const userAgents = config.userAgents ?? DEFAULT_AI_CRAWLER_USER_AGENTS;
-  const lines = ["User-agent: *"];
+  const policy = config.policy ?? "balanced";
+  const signals = resolveContentSignals(policy, config.signals);
+
+  // `User-agent: *` carries the Content-Signal line + the allow-list.
+  const lines = [
+    "User-agent: *",
+    `Content-Signal: ${renderContentSignal(signals)}`,
+  ];
   for (const allowPath of allowPaths) {
     lines.push(`Allow: ${allowPath}`);
   }
   lines.push("");
 
-  for (const userAgent of userAgents) {
-    lines.push(`User-agent: ${userAgent}`);
-    for (const allowPath of allowPaths) {
-      lines.push(`Allow: ${allowPath}`);
+  if (config.userAgents) {
+    // Legacy flat allow-list.
+    for (const userAgent of config.userAgents) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, false);
     }
-    lines.push("");
+  } else {
+    const blockRetrieval = policy === "block-ai";
+    const blockTraining = policy === "block-ai" || policy === "block-training";
+    for (const userAgent of RETRIEVAL_AI_CRAWLERS) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, blockRetrieval);
+    }
+    for (const userAgent of TRAINING_AI_CRAWLERS) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, blockTraining);
+    }
   }
 
   lines.push(`Sitemap: ${sitemapUrl}`, "");
@@ -1120,6 +1230,8 @@ export function createRobotsTxtResponse(
       sitemapUrlPath: config.sitemapUrlPath,
       allowPaths: config.allowPaths,
       userAgents: config.userAgents,
+      policy: config.policy,
+      signals: config.signals,
     }),
     {
       status: 200,
