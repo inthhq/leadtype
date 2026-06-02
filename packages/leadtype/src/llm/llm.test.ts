@@ -32,6 +32,7 @@ import {
   renderSitemapXml,
   resolveMarkdownMirrorTarget,
   stringifyJsonLd,
+  validateJsonLd,
 } from "./readability";
 
 const tempDirs: string[] = [];
@@ -1112,6 +1113,38 @@ describe("agent readability helpers", () => {
     expect(types).not.toContain("SoftwareApplication");
     const website = graph["@graph"].find((node) => node["@type"] === "WebSite");
     expect(website).not.toHaveProperty("potentialAction");
+  });
+
+  it("validates JSON-LD structure (validateJsonLd)", () => {
+    // A valid TechArticle passes.
+    expect(
+      validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        name: "Quickstart",
+        dateModified: "2026-05-01T00:00:00.000Z",
+      })
+    ).toEqual([]);
+    // The rendered site graph passes.
+    expect(validateJsonLd(renderSiteJsonLd(manifest))).toEqual([]);
+    // Missing @context, a bad date, and a nameless article are each flagged.
+    expect(validateJsonLd({ "@type": "TechArticle", name: "X" })).toContain(
+      "root: missing or empty @context"
+    );
+    expect(
+      validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        name: "X",
+        dateModified: "last tuesday",
+      }).some((issue) => issue.includes("dateModified is not a valid date"))
+    ).toBe(true);
+    expect(
+      validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+      }).some((issue) => issue.includes("requires a headline or name"))
+    ).toBe(true);
   });
 
   it("types reference-section pages as APIReference", () => {

@@ -41,6 +41,7 @@ Grouped by what they catch.
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
 | `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
+| `jsonld` | warn | The page's frontmatter would emit invalid JSON-LD — most often a `lastModified`/`last_updated` value that isn't a valid date, producing a broken `dateModified`. Broken schema is worse than none. |
 
 Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
 
@@ -84,7 +85,8 @@ type LintResult = {
       | "invalid-link"
       | "unresolved-placeholder"
       | "cross-framework-link"
-      | "unflattened-component";
+      | "unflattened-component"
+      | "jsonld";
     field?: string;
     message: string;
   }>;

@@ -1,6 +1,6 @@
 # DESIGN: leadtype agent surface
 
-Status: accepted · One coherent release · Owner: Kaylee
+Status: shipped (all four phases) · One coherent release · Owner: Kaylee
 
 ## Why
 
@@ -157,13 +157,19 @@ defineDocsConfig({
 
 ## Phasing (within the one release)
 
-1. **MCP server** (stdio + `createMcpHandler`, `search-docs` + `get-page`, client snippet) —
-   reuses `searchDocs()`; highest visible value.
-2. **Content-negotiation handler + llms.txt discovery** (`.well-known`, headers, `## Optional`).
-3. **robots AI-policy + Content-Signals** (shared vocab with §2).
-4. **JSON-LD entity graph + lint validation.**
+1. ✅ **MCP server** (stdio + `createMcpHandler`, `search-docs` + `get-page`, bundle `--mcp`) —
+   reuses `searchDocs()`; dogfooded in `apps/example`.
+2. ✅ **Content-negotiation + llms.txt discovery** (`.well-known`, `Link`/`X-Llms-Txt` headers,
+   `## Optional` section). The negotiation handler (`createAgentMarkdownResponse`) pre-existed.
+3. ✅ **robots AI-policy + Content-Signals** (`balanced`/`open`/`block-training`/`block-ai`
+   policy, shared `Content-Signal` vocab on robots.txt + markdown responses, `agents.robots`
+   config knob).
+4. ✅ **JSON-LD entity graph + lint validation** (referenced `@id`s, `renderSiteJsonLd`,
+   APIReference auto-typing, `validateJsonLd` + the `jsonld` lint rule).
 
-Ships together under one `DESIGN.md`, one changeset, one docs update.
+**All phases shipped** across a series of tested, committed steps — each with its own changeset
+and docs. The `agents` config block (`agents.robots`, extensible to `jsonLd`) is the additive
+config surface from the design.
 
 ## Resolved decisions
 

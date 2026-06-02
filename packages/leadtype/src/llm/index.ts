@@ -92,4 +92,5 @@ export {
   renderSitemapXml,
   resolveMarkdownMirrorTarget,
   slugifyDocsHeading,
+  validateJsonLd,
 } from "./readability";

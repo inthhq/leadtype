@@ -15,6 +15,7 @@ import {
   routeFromFilePath,
 } from "../internal/docs-context";
 import { parseFrontmatter } from "../internal/frontmatter";
+import { validateJsonLd } from "../llm/readability";
 import {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
   defaultRemarkPlugins,
@@ -37,7 +38,8 @@ export type LintRule =
   | "invalid-link"
   | "unresolved-placeholder"
   | "cross-framework-link"
-  | "unflattened-component";
+  | "unflattened-component"
+  | "jsonld";
 
 export type LintViolation = {
   file: string;
@@ -485,6 +487,33 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     violations.push(
       ...validate(schemaToUse, data, relativeFile, kind, unknownFieldSeverity)
     );
+
+    // JSON-LD validity: render the identity fields the per-page TechArticle is
+    // built from and structurally validate them. Catches the common breakage — a
+    // malformed date that would emit an invalid `dateModified`. Skips changelog
+    // entries (not docs pages) and pages without a title (already flagged above).
+    if (!isChangelog && typeof data.title === "string") {
+      const rawDate =
+        data.lastModified ?? data.last_updated ?? data.dateModified;
+      const dateModified =
+        rawDate instanceof Date ? rawDate.toISOString() : rawDate;
+      const jsonLdIssues = validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        name: data.title,
+        headline: data.title,
+        ...(dateModified === undefined ? {} : { dateModified }),
+      });
+      for (const issue of jsonLdIssues) {
+        violations.push({
+          file: relativeFile,
+          kind: "content",
+          severity: "warn",
+          rule: "jsonld",
+          message: `JSON-LD would be invalid — ${issue}. Broken schema is worse than none.`,
+        });
+      }
+    }
 
     // Flag components that won't flatten — they'd leak raw JSX into the agent
     // markdown. Walks the MDX AST, so JSX inside code fences (a `code` node, not

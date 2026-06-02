@@ -591,3 +591,31 @@ title: Custom
     ).toBe(false);
   });
 });
+
+describe("lintDocs JSON-LD validity", () => {
+  it("flags a malformed date that would emit invalid JSON-LD", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "quickstart.mdx"),
+      "---\ntitle: Quickstart\ndescription: Start here.\nlastModified: not-a-date\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const jsonLd = result.violations.filter((v) => v.rule === "jsonld");
+    expect(jsonLd).toHaveLength(1);
+    expect(jsonLd[0].message).toContain("dateModified");
+  });
+
+  it("accepts a valid ISO date", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "quickstart.mdx"),
+      "---\ntitle: Quickstart\ndescription: Start here.\nlastModified: 2026-05-01T00:00:00.000Z\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    expect(result.violations.some((v) => v.rule === "jsonld")).toBe(false);
+  });
+});

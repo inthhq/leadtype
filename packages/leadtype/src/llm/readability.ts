@@ -943,6 +943,88 @@ export function renderSiteJsonLd(
   };
 }
 
+const JSON_LD_DATE_FIELDS = ["dateModified", "datePublished", "dateCreated"];
+const ARTICLE_TYPE_PATTERN = /article/i;
+
+function isValidDateString(value: unknown): boolean {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function jsonLdTypes(node: JsonLdValue): string[] {
+  const type = node["@type"];
+  if (typeof type === "string") {
+    return [type];
+  }
+  if (Array.isArray(type)) {
+    return type.filter((entry): entry is string => typeof entry === "string");
+  }
+  return [];
+}
+
+function validateJsonLdNode(
+  node: JsonLdValue,
+  nodePath: string,
+  issues: string[]
+): void {
+  const types = jsonLdTypes(node);
+  if (types.length === 0) {
+    issues.push(`${nodePath}: missing or invalid @type`);
+  }
+  if (
+    "@id" in node &&
+    !(typeof node["@id"] === "string" && (node["@id"] as string).length > 0)
+  ) {
+    issues.push(`${nodePath}: @id must be a non-empty string`);
+  }
+  if ("url" in node && !(typeof node.url === "string" && node.url.length > 0)) {
+    issues.push(`${nodePath}: url must be a non-empty string`);
+  }
+  for (const field of JSON_LD_DATE_FIELDS) {
+    if (field in node && !isValidDateString(node[field])) {
+      issues.push(
+        `${nodePath}: ${field} is not a valid date ("${String(node[field])}")`
+      );
+    }
+  }
+  if (
+    types.some((type) => ARTICLE_TYPE_PATTERN.test(type)) &&
+    !(node.headline || node.name)
+  ) {
+    issues.push(`${nodePath}: ${types.join(", ")} requires a headline or name`);
+  }
+}
+
+/**
+ * Structurally validates a JSON-LD object (or `@graph`) — broken schema is worse
+ * than none (DESIGN.md Phase 4). Returns a list of human-readable issues; an empty
+ * array means valid. Checks `@context`, `@type`, `@id` references, `url`, ISO dates,
+ * and that article-like nodes carry a headline/name. Not a full Schema.org validator.
+ */
+export function validateJsonLd(value: JsonLdValue): string[] {
+  const issues: string[] = [];
+  if (
+    !(typeof value["@context"] === "string" && value["@context"].length > 0)
+  ) {
+    issues.push("root: missing or empty @context");
+  }
+  const graph = value["@graph"];
+  if (Array.isArray(graph)) {
+    if (graph.length === 0) {
+      issues.push("@graph: must not be empty");
+    }
+    graph.forEach((node, index) => {
+      if (node && typeof node === "object") {
+        validateJsonLdNode(node as JsonLdValue, `@graph[${index}]`, issues);
+      } else {
+        issues.push(`@graph[${index}]: not an object`);
+      }
+    });
+  } else {
+    validateJsonLdNode(value, "root", issues);
+  }
+  return issues;
+}
+
 export function stringifyJsonLd(value: JsonLdValue): string {
   return jsonScriptEscape(JSON.stringify(value));
 }
