@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import {
   type AgentReadabilityPage,
-  resolveMarkdownMirrorTarget,
+  resolveManifestMarkdownMirrorTarget,
 } from "../llm/readability.js";
 import { type DocsSearchResult, searchDocs } from "../search/index.js";
 import type { DocsArtifacts } from "./artifacts.js";
@@ -74,7 +74,7 @@ function formatIssues(issues: readonly v.BaseIssue<unknown>[]): string {
     .join("; ");
 }
 
-const SearchInput = v.object({
+const SearchInput = v.strictObject({
   query: v.pipe(
     v.string(),
     v.trim(),
@@ -85,7 +85,7 @@ const SearchInput = v.object({
   ),
 });
 
-const GetPageInput = v.object({
+const GetPageInput = v.strictObject({
   urlPath: v.pipe(
     v.string(),
     v.trim(),
@@ -93,7 +93,7 @@ const GetPageInput = v.object({
   ),
 });
 
-const ListPagesInput = v.object({});
+const ListPagesInput = v.strictObject({});
 
 function toSearchHit(result: DocsSearchResult) {
   return {
@@ -194,7 +194,10 @@ function createGetPageTool(artifacts: DocsArtifacts): DocsTool {
           true
         );
       }
-      const target = resolveMarkdownMirrorTarget(page.urlPath);
+      const target = resolveManifestMarkdownMirrorTarget(
+        page.urlPath,
+        artifacts.manifest
+      );
       if (!target) {
         return textResult(
           `Page "${page.urlPath}" has no Markdown mirror.`,

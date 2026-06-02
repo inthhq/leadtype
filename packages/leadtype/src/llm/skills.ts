@@ -8,6 +8,10 @@ const EDGE_DASH_PATTERN = /^-+|-+$/g;
 const WELL_KNOWN_DIR = ".well-known";
 const SKILLS_DIR = "agent-skills";
 const YAML_NEEDS_QUOTE = /[:#]/;
+// A skill name becomes a `.well-known/agent-skills/<name>/` directory and the
+// agentskills.io identifier, so it must be a safe lowercase slug — never a path
+// fragment that could escape the output dir.
+const SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 export type GenerateSkillArtifactsConfig = {
   /** Output root. Site mode writes under `.well-known/`; bundle mode writes `SKILL.md`. */
@@ -197,8 +201,10 @@ export async function generateSkillArtifacts(
     // always the auto docs-skill, never a capability skill. Capability `items`
     // are a site-surface concept (one file each under /.well-known/agent-skills),
     // not a single root file, so bundle mode ignores them. With `docsSkill: false`
-    // there is nothing to point at, so no SKILL.md is emitted.
+    // there is nothing to point at, so no SKILL.md is emitted (and a stale one
+    // from a prior run is removed).
     if (!docsSkill) {
+      await rm(path.join(outDir, "SKILL.md"), { force: true });
       return { files: [], skills: [] };
     }
     const body = await resolveBody(docsSkill, config.srcDir);
@@ -207,13 +213,19 @@ export async function generateSkillArtifacts(
     return { files: [skillPath], skills: [docsSkill.name] };
   }
 
+  const skillsRoot = path.join(outDir, WELL_KNOWN_DIR, SKILLS_DIR);
+  const cardPath = path.join(outDir, WELL_KNOWN_DIR, "agent-card.json");
+  // Clear generated artifacts first on every run, so skills/cards the config no
+  // longer emits (renamed, removed, or fully disabled) don't linger and keep
+  // getting discovered by clients.
+  await rm(skillsRoot, { recursive: true, force: true });
+
   if (skills.length === 0) {
+    // Whole surface disabled — also drop a stale agent card from a prior run.
+    await rm(cardPath, { force: true });
     return { files: [], skills: [] };
   }
 
-  const skillsRoot = path.join(outDir, WELL_KNOWN_DIR, SKILLS_DIR);
-  // Generated tree — clear stale skills so renamed/removed ones don't linger.
-  await rm(skillsRoot, { recursive: true, force: true });
   await mkdir(skillsRoot, { recursive: true });
 
   const manifestEntries: {
@@ -224,6 +236,12 @@ export async function generateSkillArtifacts(
   }[] = [];
 
   for (const skill of skills) {
+    if (!SKILL_NAME_PATTERN.test(skill.name)) {
+      throw new Error(
+        `leadtype: invalid skill name "${skill.name}". Skill names must be a lowercase slug ` +
+          '(letters, digits, hyphens; starting alphanumeric), e.g. "deploy-acme".'
+      );
+    }
     const body = await resolveBody(skill, config.srcDir);
     const content = renderSkillMd(skill, body);
     const dir = path.join(skillsRoot, skill.name);
@@ -246,8 +264,10 @@ export async function generateSkillArtifacts(
   );
   files.push(indexPath);
 
-  if (config.skills?.agentCard !== false) {
-    const cardPath = path.join(outDir, WELL_KNOWN_DIR, "agent-card.json");
+  if (config.skills?.agentCard === false) {
+    // Card disabled but skills exist — remove any stale card from a prior run.
+    await rm(cardPath, { force: true });
+  } else {
     await writeFile(
       cardPath,
       `${JSON.stringify(buildAgentCard(config, skills), null, 2)}\n`

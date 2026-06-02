@@ -77,17 +77,19 @@ export function createMcpHandler(
         tools: config.tools,
         serverInfo: config.serverInfo,
       });
-      const transport = new WebStandardStreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-        enableJsonResponse: true,
-      });
-      await server.connect(transport);
 
       try {
+        const transport = new WebStandardStreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+          enableJsonResponse: true,
+        });
+        await server.connect(transport);
         // JSON-response mode buffers the full response, so it is safe to close
         // the per-request server once handleRequest resolves.
         return await transport.handleRequest(request);
       } finally {
+        // Close even if transport construction / connect threw, so the
+        // per-request server never leaks listeners.
         await server.close();
       }
     } catch (error) {

@@ -73,7 +73,14 @@ export function parseScoreArgs(argv: string[]): ScoreCliArgs {
     } else if (arg === "--json") {
       args.format = "json";
     } else if (arg === "--min") {
-      args.min = Number.parseInt(readValue(argv, ++i, "--min"), 10);
+      const raw = readValue(argv, ++i, "--min");
+      const min = Number.parseInt(raw, 10);
+      if (!Number.isFinite(min)) {
+        // A NaN min would make the `score < min` gate always pass, silently
+        // disabling the CI threshold it was meant to enforce.
+        throw new Error(`--min must be a number (got "${raw}")`);
+      }
+      args.min = min;
     } else {
       throw new Error(`unknown option: ${arg}`);
     }

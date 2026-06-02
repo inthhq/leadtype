@@ -110,6 +110,48 @@ describe("generateSkillArtifacts — site mode", () => {
     // agentCard: false → no card.
     expect(result.files.some((f) => f.endsWith("agent-card.json"))).toBe(false);
   });
+
+  it("rejects an unsafe skill name", async () => {
+    const outDir = await tempDir();
+    await expect(
+      generateSkillArtifacts({
+        outDir,
+        product,
+        mode: "site",
+        skills: {
+          docsSkill: false,
+          items: [{ name: "../escape", description: "x", body: "# x\n" }],
+        },
+      })
+    ).rejects.toThrow(/invalid skill name/);
+  });
+
+  it("clears a previously-generated surface when skills are disabled", async () => {
+    const outDir = await tempDir();
+    // First run emits the docs-skill + agent card.
+    const first = await generateSkillArtifacts({
+      outDir,
+      product,
+      mode: "site",
+    });
+    expect(first.files.length).toBeGreaterThan(0);
+
+    // Second run with everything disabled must remove the stale artifacts so
+    // clients stop discovering skills/cards the config no longer emits.
+    const second = await generateSkillArtifacts({
+      outDir,
+      product,
+      mode: "site",
+      skills: { docsSkill: false },
+    });
+    expect(second.files).toEqual([]);
+    await expect(
+      readFile(join(outDir, ".well-known/agent-skills/index.json"), "utf8")
+    ).rejects.toThrow();
+    await expect(
+      readFile(join(outDir, ".well-known/agent-card.json"), "utf8")
+    ).rejects.toThrow();
+  });
 });
 
 describe("generateSkillArtifacts — bundle mode", () => {

@@ -633,7 +633,12 @@ export function resolveMarkdownMirrorTarget(
   };
 }
 
-function resolveManifestMarkdownMirrorTarget(
+/**
+ * Resolve a page's Markdown mirror from the manifest entry (not the raw public
+ * route), so pages mounted outside `/docs` (e.g. a changelog at `/changelog`)
+ * still resolve to their `docs/<relativePath>.md` mirror.
+ */
+export function resolveManifestMarkdownMirrorTarget(
   urlPath: string,
   manifest: AgentReadabilityManifest
 ): MarkdownMirrorTarget | null {

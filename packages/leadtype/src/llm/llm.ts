@@ -1683,7 +1683,11 @@ ${renderedSections.join("\n\n")}`;
 function renderNavigationSummaryGroup(
   group: DocsNavigationGroup,
   mounts: DocsPathMount[] | undefined,
-  depth = 2
+  depth = 2,
+  // Children flagged `optional` at any depth collapse into the trailing
+  // `## Optional` section rather than rendering inline. Their pages accumulate
+  // here so the caller can render them once.
+  optionalPages?: DocsNavigationPage[]
 ): string[] {
   const lines: string[] = [`${"#".repeat(depth)} ${group.title}`];
   if (group.description) {
@@ -1700,7 +1704,14 @@ function renderNavigationSummaryGroup(
   }
 
   for (const child of group.children) {
-    lines.push("", ...renderNavigationSummaryGroup(child, mounts, depth + 1));
+    if (child.optional && optionalPages) {
+      optionalPages.push(...collectNavigationGroupPages(child));
+      continue;
+    }
+    lines.push(
+      "",
+      ...renderNavigationSummaryGroup(child, mounts, depth + 1, optionalPages)
+    );
   }
 
   return lines;
@@ -1731,7 +1742,7 @@ function renderDocsNavigationSummary(
       continue;
     }
     renderedSections.push(
-      renderNavigationSummaryGroup(group, mounts).join("\n")
+      renderNavigationSummaryGroup(group, mounts, 2, optionalPages).join("\n")
     );
   }
 

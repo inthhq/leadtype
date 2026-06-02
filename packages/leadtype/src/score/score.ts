@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { lintDocs } from "../lint/runner";
@@ -139,6 +139,15 @@ export async function scoreDocs(
 
   const hasIndex = has("docs", "search-index.json");
   const hasManifest = Boolean(normalizedManifest);
+  // Real on-disk evidence of offline docs: AGENTS.md (bundle) or any `.md`
+  // mirror under the docs dir (site). A manifest can list pages without their
+  // mirrors actually being emitted, so the page count is not sufficient.
+  const hasMarkdownMirror =
+    has("AGENTS.md") ||
+    (existsSync(docsDir) &&
+      readdirSync(docsDir, { recursive: true }).some(
+        (entry) => typeof entry === "string" && entry.endsWith(".md")
+      ));
   // JSON-LD is host-rendered from the manifest; "ready" = the fields renderJsonLd
   // needs are present on every page.
   const jsonLdReady =
@@ -148,11 +157,17 @@ export async function scoreDocs(
   const descriptionCoverage =
     pages.length > 0 ? describedPages / pages.length : 0;
 
-  // Structural GEO: reuse the lint geo:* rules over the source.
-  let geoClean = true;
-  if (existsSync(srcDir)) {
+  // Structural GEO: reuse the lint geo:* rules over the source. Fail closed when
+  // the source isn't found — otherwise a typo'd/missing --src scores GEO as
+  // perfect and can let --min pass on incomplete inputs.
+  const srcExists = existsSync(srcDir);
+  let geoClean = false;
+  let geoFix = "Run `leadtype lint` and fix the geo:* warnings.";
+  if (srcExists) {
     const lint = await lintDocs({ srcDir });
     geoClean = !lint.violations.some((vio) => vio.rule.startsWith("geo:"));
+  } else {
+    geoFix = `Docs source not found at "${srcDir}". Pass --src <docs dir> so GEO structure can be scored.`;
   }
 
   const identitySignals: ScoreSignal[] = [
@@ -220,7 +235,7 @@ export async function scoreDocs(
       "GEO structure (headings, code labels, alt text)",
       geoClean,
       2,
-      "Run `leadtype lint` and fix the geo:* warnings."
+      geoFix
     ),
   ];
 
@@ -242,7 +257,7 @@ export async function scoreDocs(
     signal(
       "offline-docs",
       "offline docs (AGENTS.md or markdown mirror)",
-      has("AGENTS.md") || has("docs", "index.md") || pages.length > 0,
+      hasMarkdownMirror,
       1,
       "Emit AGENTS.md (`--bundle`) or the markdown mirror so on-disk agents can read the docs."
     ),

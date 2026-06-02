@@ -12,18 +12,20 @@ Use leadtype to turn an existing MDX/Markdown docs source into a site that AI ag
    import { defineDocsConfig } from "leadtype";
 
    export default defineDocsConfig({
-     product: { name: "Acme", summary: "One sentence about the product." },
-     nav: [{ title: "Start", slug: "start", pages: ["/docs/quickstart"] }],
+     // Identity — reused across llms.txt, JSON-LD, and the agent card.
+     product: { name: "Acme", tagline: "One sentence about the product." },
+     // Who publishes it → JSON-LD Organization + agent-card provider.
+     organization: { name: "Acme Inc", url: "https://acme.com" },
+     navigation: [{ title: "Start", slug: "start", pages: ["/docs/quickstart"] }],
      agents: {
        robots: { policy: "balanced" }, // balanced · open · block-training · block-ai
-       jsonLd: { organization: { name: "Acme Inc", url: "https://acme.com" } },
        seo: { keywords: ["docs", "api"] },
        mcp: { enabled: true }, // only if you host a docs MCP endpoint
      },
    });
    ```
 
-   Every key is optional — omit `agents` and you still get balanced robots, JSON-LD, per-page metadata, the auto docs-skill, and an agent card. Add keys only to change a default.
+   `name` + `tagline` are the only required fields. Everything else is optional — omit `organization`/`agents` and you still get balanced robots, the JSON-LD graph, per-page metadata, the auto docs-skill, and an agent card. Add keys only to change a default.
 
 3. **Generate.** Run before your app build:
 

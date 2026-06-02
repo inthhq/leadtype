@@ -121,7 +121,9 @@ export function resolveBundleArtifactsBase(
   packageName: string,
   fromDir: string = process.cwd()
 ): string {
-  const require = createRequire(path.join(fromDir, "package.json"));
+  // createRequire throws ERR_INVALID_ARG_VALUE on a relative path (e.g. `.`),
+  // so anchor it to an absolute package.json location.
+  const require = createRequire(path.resolve(fromDir, "package.json"));
   // Preferred: the package exposes `./package.json` in its exports map.
   try {
     return path.dirname(require.resolve(`${packageName}/package.json`));

@@ -27,6 +27,7 @@ import type {
   DocsLlmsConfig,
   DocsNavNode,
   LlmsProductInfo,
+  OrganizationInfo,
   ProductInfo,
   RenderSiteJsonLdOptions,
 } from "../llm";
@@ -335,6 +336,14 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     );
   }
 
+  // `--mcp` only emits artifacts in bundle mode; accepting it in site mode would
+  // silently no-op and mislead automation into thinking MCP files were emitted.
+  if (args.mcp && !args.bundle) {
+    throw new Error(
+      "--mcp requires --bundle (MCP artifacts ship in the bundle)"
+    );
+  }
+
   return args;
 }
 
@@ -406,6 +415,57 @@ function validateProductInfo(value: unknown): ProductInfo | undefined {
     return;
   }
   return value as ProductInfo;
+}
+
+function validateOrganization(
+  value: unknown,
+  configPath: string
+): OrganizationInfo | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value) || typeof value.name !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": organization must be an object with a string name`
+    );
+  }
+  if (value.url !== undefined && typeof value.url !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": organization.url must be a string`
+    );
+  }
+  return value as OrganizationInfo;
+}
+
+function validateLlmsConfig(
+  value: unknown,
+  configPath: string
+): DocsLlmsConfig | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}": llms must be an object`);
+  }
+  if (value.sections !== undefined && !Array.isArray(value.sections)) {
+    throw new Error(
+      `docs config at "${configPath}": llms.sections must be an array`
+    );
+  }
+  return value as DocsLlmsConfig;
+}
+
+function validateAgentsConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["agents"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}": agents must be an object`);
+  }
+  return value as DocsConfig["agents"];
 }
 
 function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
@@ -638,6 +698,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     }
   }
 
+  const organization = validateOrganization(value.organization, configPath);
+  const llms = validateLlmsConfig(value.llms, configPath);
+  const agents = validateAgentsConfig(value.agents, configPath);
+
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
       `docs config at "${configPath}" must export flatteners as an array of remark plugins`
@@ -648,13 +712,9 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(collections ? { collections } : {}),
     ...(groups ? { groups } : {}),
     ...(nav ? { navigation: nav } : {}),
-    ...(value.organization === undefined
-      ? {}
-      : { organization: value.organization as DocsConfig["organization"] }),
-    ...(value.llms === undefined ? {} : { llms: value.llms as DocsLlmsConfig }),
-    ...(value.agents === undefined
-      ? {}
-      : { agents: value.agents as DocsConfig["agents"] }),
+    ...(organization ? { organization } : {}),
+    ...(llms ? { llms } : {}),
+    ...(agents ? { agents } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {

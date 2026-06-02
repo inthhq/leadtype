@@ -101,6 +101,13 @@ export function parseMcpArgs(argv: string[]): McpCliArgs {
       throw new Error(`unknown option: ${arg}`);
     }
   }
+  // They select the same thing two different ways; accepting both would silently
+  // prefer one and ignore the other.
+  if (args.artifacts !== undefined && args.package !== undefined) {
+    throw new Error(
+      "--artifacts and --package are mutually exclusive (pass a directory or a package name, not both)"
+    );
+  }
   return args;
 }
 

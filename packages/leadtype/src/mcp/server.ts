@@ -18,14 +18,24 @@ const MISSING_SDK_MESSAGE =
  * into a clear, actionable error (DESIGN.md Q1 — the SDK stays out of every install
  * and is only required when actually running an MCP server).
  */
+const MODULE_NOT_FOUND_CODES = new Set([
+  "ERR_MODULE_NOT_FOUND", // Node ESM
+  "MODULE_NOT_FOUND", // Bun / CJS
+]);
+const MODULE_NOT_FOUND_MESSAGE = /cannot find (module|package)/i;
+
 export async function importSdkModule<T>(specifier: string): Promise<T> {
   try {
     return (await import(specifier)) as T;
   } catch (error) {
+    const code =
+      error instanceof Error && "code" in error
+        ? (error as { code?: string }).code
+        : undefined;
+    const message = error instanceof Error ? error.message : "";
     if (
-      error instanceof Error &&
-      "code" in error &&
-      (error as { code?: string }).code === "ERR_MODULE_NOT_FOUND"
+      (code && MODULE_NOT_FOUND_CODES.has(code)) ||
+      MODULE_NOT_FOUND_MESSAGE.test(message)
     ) {
       throw new Error(MISSING_SDK_MESSAGE, { cause: error });
     }
@@ -76,17 +86,30 @@ export async function createDocsMcpServer(
     })),
   }));
 
-  server.setRequestHandler(CallToolRequestSchema, (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const tool = toolsByName.get(request.params.name as DocsToolName);
     if (!tool) {
-      return Promise.resolve({
+      return {
         content: [
           { type: "text", text: `Unknown tool: ${request.params.name}` },
         ],
         isError: true,
-      });
+      };
     }
-    return tool.handler(request.params.arguments ?? {});
+    // A tool throwing (bad args, I/O failure) should surface as a normal
+    // `isError` tool response, not a request-level exception that breaks the
+    // whole MCP interaction.
+    try {
+      return await tool.handler(request.params.arguments ?? {});
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [
+          { type: "text", text: `Tool "${tool.name}" failed: ${message}` },
+        ],
+        isError: true,
+      };
+    }
   });
 
   return server;

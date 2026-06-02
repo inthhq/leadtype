@@ -125,19 +125,23 @@ Both, because they serve different moments (CI gate vs. headline number):
 
 Extends the additive `agents` block from DESIGN.md (all optional; zero-config holds):
 
+As shipped (the config restructure moved identity/content out of `agents`):
+
 ```ts
 defineDocsConfig({
-  product: { name, summary },
+  product: { name, tagline, homepage?, docs?, repository?, kind?, category? },
+  organization: { name, url? },              // JSON-LD Organization + agent-card provider
+  llms: { sections: [/* llms.txt body */] },
   agents: {
-    mcp, robots, jsonLd,            // shipped (DESIGN.md)
+    mcp, robots,                             // shipped (DESIGN.md)
+    agentCard: { enabled: true },            // emit /.well-known/agent-card.json
     skills: {
-      docsSkill: true,             // auto "use these docs" skill (default true)
-      agentCard: true,             // emit /.well-known/agent-card.json
-      items: [                     // author-declared capability skills
+      docsSkill: true,                       // auto "use these docs" skill (default true)
+      items: [                               // author-declared capability skills
         { name, description, license?, compatibility?, allowedTools?, bodyPath },
       ],
     },
-    seo: { ogImage?, twitter?, keywords? },   // defaults for head meta; frontmatter overrides
+    seo: { ogImage?, twitter?, keywords? },  // defaults for head meta; frontmatter overrides
   },
 });
 ```

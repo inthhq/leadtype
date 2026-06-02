@@ -49,7 +49,7 @@ Place this file at the project root (the cwd from which you run `leadtype`). Lea
 | `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
 | `schema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
 | `navigation` | `DocsNavNode[]` | — | Per-collection curated navigation tree. Preferred when you need stable sidebar and agent-map structure. |
-| `groups` | `DocsGroup[]` | — | Per-collection navigation tree. Slugs must be globally unique across all collections. |
+| `groups` | `DocsGroup[]` | — | Legacy/fallback taxonomy (not a second navigation tree) — used when a collection hasn't adopted `navigation`. Slugs must be globally unique across all collections. |
 
 ## Local-only collections
 

@@ -394,7 +394,9 @@ function collectGeoIssues(body: string): GeoIssue[] {
   }
 
   const issues: GeoIssue[] = [];
-  let prevDepth = 0;
+  // The frontmatter title is the page's implicit H1, so the first authored
+  // heading should be H2. Seed at 1 so a page that opens at H3+ trips the rule.
+  let prevDepth = 1;
   visit(tree, (node) => {
     const element = node as {
       type: string;

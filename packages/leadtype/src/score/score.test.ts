@@ -52,9 +52,24 @@ async function writeSiteArtifacts(outDir: string): Promise<void> {
   await writeFile(join(outDir, "llms-full.txt"), "# Acme\n");
   await writeFile(join(outDir, ".well-known", "llms.txt"), "# Acme\n");
   await writeFile(join(outDir, "docs", "search-index.json"), "{}");
+  // A real Markdown mirror — offline-docs evidence is the file on disk, not the
+  // manifest page count.
+  await writeFile(
+    join(outDir, "docs", "quickstart.md"),
+    "# Quickstart\n\nInstall it.\n"
+  );
   await writeFile(
     join(outDir, "docs", "agent-readability.json"),
     JSON.stringify(MANIFEST)
+  );
+}
+
+/** A GEO-clean docs source: sequential headings, no unlabeled code, no missing alt. */
+async function writeCleanDocsSource(srcDir: string): Promise<void> {
+  await mkdir(srcDir, { recursive: true });
+  await writeFile(
+    join(srcDir, "quickstart.mdx"),
+    '---\ntitle: "Quickstart"\ndescription: "Install and run Acme."\n---\n\n## Install\n\nRun the installer.\n\n## Use\n\nCall the API.\n'
   );
 }
 
@@ -62,8 +77,10 @@ describe("scoreDocs", () => {
   it("scores a full site build high with Identity complete", async () => {
     const outDir = await tempDir();
     await writeSiteArtifacts(outDir);
+    const srcDir = join(outDir, "src-docs");
+    await writeCleanDocsSource(srcDir);
 
-    const result = await scoreDocs({ outDir, srcDir: join(outDir, "missing") });
+    const result = await scoreDocs({ outDir, srcDir });
     const identity = result.dimensions.find((d) => d.id === "identity");
     expect(identity?.points).toBe(identity?.max);
     expect(result.score).toBeGreaterThanOrEqual(80);
