@@ -109,6 +109,12 @@ export default defineDocsConfig({
       policy: "block-training", // balanced · open · block-training · block-ai
       signals: { aiInput: "yes" }, // override individual directives
     },
+    // Site-wide SEO/social defaults, emitted on every page head by createDocsHead.
+    seo: {
+      ogImage: "https://acme.dev/og.png", // emitted as a URL; you supply the image
+      twitterSite: "@acme",
+      keywords: ["acme", "docs"],
+    },
   },
 });
 ```

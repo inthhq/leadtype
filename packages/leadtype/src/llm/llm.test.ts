@@ -661,6 +661,12 @@ describe("generateLLMFullContextFiles", () => {
       false
     );
     expect(existsSync(path.join(projectDir, "docs", "llms-full"))).toBe(false);
+    // Discovery copy at the well-known location, identical to the root file.
+    const wellKnownFull = await readFile(
+      path.join(projectDir, ".well-known", "llms-full.txt"),
+      "utf8"
+    );
+    expect(wellKnownFull).toBe(llmsFull);
   });
 
   it("inlines a multi-group page only once", async () => {
@@ -1780,6 +1786,43 @@ describe("createDocsHead", () => {
       rel: "alternate",
       type: "text/markdown",
       href: "https://leadtype.dev/docs/quickstart.md",
+    });
+  });
+
+  it("emits SEO meta (og:type, twitter:card always; image/keywords when set)", () => {
+    // No seo configured: still emits og:type + a summary twitter:card.
+    const bare = createDocsHead({ urlPath: "/docs/quickstart", manifest });
+    expect(bare.meta).toContainEqual({
+      property: "og:type",
+      content: "article",
+    });
+    expect(bare.meta).toContainEqual({
+      name: "twitter:card",
+      content: "summary",
+    });
+    expect(bare.meta.some((m) => m.property === "og:image")).toBe(false);
+
+    // Site-level seo (manifest) + per-page override (config.seo), config wins.
+    const withSeo = createDocsHead({
+      urlPath: "/docs/quickstart",
+      manifest: { ...manifest, seo: { keywords: ["docs"], twitterSite: "@x" } },
+      seo: { ogImage: "https://leadtype.dev/og/quickstart.png" },
+    });
+    expect(withSeo.meta).toContainEqual({
+      name: "twitter:card",
+      content: "summary_large_image",
+    });
+    expect(withSeo.meta).toContainEqual({
+      property: "og:image",
+      content: "https://leadtype.dev/og/quickstart.png",
+    });
+    expect(withSeo.meta).toContainEqual({
+      name: "keywords",
+      content: "docs",
+    });
+    expect(withSeo.meta).toContainEqual({
+      name: "twitter:site",
+      content: "@x",
     });
   });
 

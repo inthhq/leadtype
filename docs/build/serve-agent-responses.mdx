@@ -128,6 +128,8 @@ const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
 
 Use `createDocsJsonLd()` if your framework has a typed metadata or head API. Use `stringifyJsonLd()` for safe script contents.
 
+`createDocsHead` also emits the SEO/social meta a search crawler and link unfurler expect: `og:title`/`og:description` (from the page), `og:type`, and a `twitter:card`, plus `og:image`/`twitter:image`, `twitter:site`, and `keywords` from your `agents.seo` config (per-page overrides via the `seo` option win). leadtype emits the `og:image` **URL**, not the image — it ships no UI, so generating a social card is your app's job.
+
 The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the page's full position in your `nav` tree — `Docs → Section → Subsection → Page` — and `articleSection` is set to the page's top-level section. Heading-only groups (no landing page) appear as name-only crumbs; ungrouped pages fall back to a simple `Docs → Page` trail. Pages under a `reference`/`api` section are additionally typed `["TechArticle", "APIReference"]` automatically.
 
 `isPartOf` and `publisher` **reference the site-level entities by `@id`** rather than re-inlining a `WebSite`/`Organization` on every page — so an answer engine stitches the whole site into one entity graph. Emit the matching graph once (see below) so those `@id`s resolve.

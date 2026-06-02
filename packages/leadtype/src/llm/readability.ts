@@ -177,6 +177,8 @@ export type AgentReadabilityManifest = {
   };
   /** Site-level JSON-LD options (from `agents.jsonLd`), so `renderSiteJsonLd` is config-driven. */
   jsonLd?: RenderSiteJsonLdOptions;
+  /** Site-level SEO defaults (from `agents.seo`), emitted by `createDocsHead`. */
+  seo?: SeoMeta;
 };
 
 export function normalizeAgentReadabilityManifest(
@@ -341,6 +343,16 @@ export type CreateDocsJsonLdConfig = DocsJsonLdOptions & {
   manifest: AgentReadabilityManifest;
 };
 
+/** Social/SEO metadata defaults, emitted by `createDocsHead`. */
+export type SeoMeta = {
+  /** Absolute `og:image` / `twitter:image` URL (a social card). leadtype emits the URL, not the image. */
+  ogImage?: string;
+  /** `twitter:site` handle, e.g. `@acme`. */
+  twitterSite?: string;
+  /** `keywords` meta (joined with commas). */
+  keywords?: string[];
+};
+
 export type CreateDocsHeadConfig = {
   urlPath: string;
   manifest: AgentReadabilityManifest;
@@ -348,6 +360,8 @@ export type CreateDocsHeadConfig = {
   jsonLdMetaKey?: string;
   /** Optional JSON-LD overrides passed through to `createDocsJsonLd`. */
   jsonLd?: DocsJsonLdOptions;
+  /** Per-page SEO overrides; merged over the manifest's site-level `seo` defaults. */
+  seo?: SeoMeta;
 };
 
 export type RenderSitemapMarkdownConfig = {
@@ -1493,12 +1507,34 @@ export function createDocsHead(config: CreateDocsHeadConfig): DocsHead {
     manifest: config.manifest,
     ...config.jsonLd,
   });
+  const seo: SeoMeta = { ...config.manifest.seo, ...config.seo };
+  const seoMeta: DocsHeadEntry[] = [
+    { property: "og:type", content: "article" },
+    {
+      name: "twitter:card",
+      content: seo.ogImage ? "summary_large_image" : "summary",
+    },
+  ];
+  if (seo.ogImage) {
+    seoMeta.push(
+      { property: "og:image", content: seo.ogImage },
+      { name: "twitter:image", content: seo.ogImage }
+    );
+  }
+  if (seo.twitterSite) {
+    seoMeta.push({ name: "twitter:site", content: seo.twitterSite });
+  }
+  if (seo.keywords && seo.keywords.length > 0) {
+    seoMeta.push({ name: "keywords", content: seo.keywords.join(", ") });
+  }
+
   return {
     meta: [
       { title },
       { name: "description", content: description },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
+      ...seoMeta,
       ...(jsonLd ? [{ [jsonLdKey]: jsonLd }] : []),
     ],
     links: [

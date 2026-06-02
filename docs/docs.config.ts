@@ -226,5 +226,15 @@ export default defineDocsConfig({
     robots: { policy: "balanced" },
     // The example app hosts a docs MCP endpoint, so the docs-skill points agents at it.
     mcp: { enabled: true },
+    // Site-wide SEO defaults emitted on every page head via createDocsHead.
+    seo: {
+      keywords: [
+        "documentation pipeline",
+        "llms.txt",
+        "agent-readable docs",
+        "MDX",
+        "GEO",
+      ],
+    },
   },
 });

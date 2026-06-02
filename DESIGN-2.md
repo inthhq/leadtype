@@ -1,6 +1,6 @@
 # DESIGN: agent surface II — skills, GEO, SEO polish
 
-Status: proposed · One coherent release · Owner: Kaylee · Builds on [DESIGN.md](./DESIGN.md)
+Status: shipped (all four phases) · One coherent release · Owner: Kaylee · Builds on [DESIGN.md](./DESIGN.md)
 
 ## Why
 
@@ -174,16 +174,17 @@ defineDocsConfig({
 
 ## Phasing (within the one release)
 
-1. **"Write for agents & GEO"** merged page + restructure our own docs. Docs-first: it's the
-   reference the rest leans on, lowest risk, immediately useful.
-2. **GEO lint rules + `leadtype score`.** Turns the guide into something automatable; `score`
-   gives the headline. Reuses the lint pipeline.
-3. **Skills surface** (`/.well-known/agent-skills` + `SKILL.md` + auto docs-skill + author items
-   + agent-card). The net-new surface; new public files + config.
-4. **SEO meta + `/.well-known/llms-full.txt`.** Parity polish; fold in alongside.
+1. ✅ **"Write for agents & GEO"** merged page (the reference; our docs already lint clean on
+   the `geo:*` rules, so no restructure was needed).
+2. ✅ **GEO lint rules + `leadtype score`** — `geo:heading-skip`/`code-language`/`image-alt`
+   warn rules, and a 0–100 score mapped to the ora rubric (`apps/example` scores 100/100).
+3. ✅ **Skills surface** — `/.well-known/agent-skills` + `agent-card.json` (site) and a bundled
+   `SKILL.md`; auto context-aware docs-skill + `agents.skills.items`.
+4. ✅ **SEO meta + `/.well-known/llms-full.txt`** — `og:*`/`twitter:*`/`keywords` via
+   `agents.seo`, and the full-context discovery copy.
 
-Ships as a series of tested, committed steps — each with its own changeset and docs — like the
-first release.
+**All shipped** across tested, committed steps — each with its own changeset and docs, same
+release as [DESIGN.md](./DESIGN.md).
 
 ## Open questions / risks
 

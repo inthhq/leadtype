@@ -1715,6 +1715,7 @@ export async function runGenerateCommand(
         robotsPolicy: metadata.agents?.robots?.policy,
         contentSignals: metadata.agents?.robots?.signals,
         jsonLd: metadata.agents?.jsonLd,
+        seo: metadata.agents?.seo,
       });
       // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
       // Default-on: the auto docs-skill is free and points agents at the docs.
@@ -1781,6 +1782,7 @@ export async function runGenerateCommand(
             robotsPolicy: metadata.agents?.robots?.policy,
             contentSignals: metadata.agents?.robots?.signals,
             jsonLd: metadata.agents?.jsonLd,
+            seo: metadata.agents?.seo,
           });
         }
       }

@@ -54,6 +54,7 @@ import {
   renderRobotsTxt,
   renderSitemapMarkdown,
   renderSitemapXml,
+  type SeoMeta,
 } from "./readability";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
@@ -350,6 +351,8 @@ export type DocsAgentsConfig = {
   };
   /** Site-level JSON-LD options consumed by `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
+  /** Site-level SEO defaults (og:image, twitter, keywords) for `createDocsHead`. */
+  seo?: SeoMeta;
   /** Skills surface emitted to `/.well-known/agent-skills` (+ bundled `SKILL.md`). */
   skills?: {
     /** Emit the auto "use these docs" skill. Default `true`. */
@@ -427,6 +430,8 @@ export type AgentReadabilityConfig = {
   contentSignals?: Partial<ContentSignals>;
   /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
+  /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
+  seo?: SeoMeta;
 };
 
 export type AgentReadabilityResult = {
@@ -1911,6 +1916,10 @@ export async function generateLLMFullContextFiles(
         transformer.beforeLlmsFull?.(value, context)
     );
     await writeFile(outputPath, artifact.content);
+    // Discovery copy at the well-known location, alongside .well-known/llms.txt.
+    const wellKnownFull = path.join(outDir, ".well-known", "llms-full.txt");
+    await mkdir(path.dirname(wellKnownFull), { recursive: true });
+    await writeFile(wellKnownFull, artifact.content);
     return;
   }
 
@@ -2059,6 +2068,7 @@ export async function generateAgentReadabilityArtifacts(
       sitemapXml: `${docsUrlPrefix}/${SITEMAP_XML_FILE}`,
     },
     ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
+    ...(config.seo ? { seo: config.seo } : {}),
   };
 
   const files = {

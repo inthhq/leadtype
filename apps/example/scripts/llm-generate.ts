@@ -63,6 +63,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
   jsonLd: docsConfig.agents?.jsonLd,
   robotsPolicy: docsConfig.agents?.robots?.policy,
   contentSignals: docsConfig.agents?.robots?.signals,
+  seo: docsConfig.agents?.seo,
 });
 
 // Agent-skills surface (/.well-known/agent-skills + agent-card). The auto docs-skill
