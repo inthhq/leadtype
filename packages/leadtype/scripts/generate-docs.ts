@@ -4,8 +4,15 @@ import { fileURLToPath } from "node:url";
 import docsConfig from "../../../docs/docs.config";
 import { convertAllMdx } from "../src/convert/index";
 import { logger } from "../src/internal/logger";
-import { generateAgentsMd, resolveDocsNavigation } from "../src/llm/index";
+import {
+  generateAgentReadabilityArtifacts,
+  generateAgentsMd,
+  generateSkillArtifacts,
+  resolveAgentInputs,
+  resolveDocsNavigation,
+} from "../src/llm/index";
 import { defaultRemarkPlugins } from "../src/remark/index";
+import { generateDocsSearchFiles } from "../src/search/node-index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const REPO_ROOT = resolve(PACKAGE_ROOT, "..", "..");
@@ -17,6 +24,7 @@ const OUT_DOCS_DIR = join(PACKAGE_ROOT, "docs");
 // `llms-full.txt` from earlier (website-mode) builds.
 await rm(OUT_DOCS_DIR, { recursive: true, force: true });
 await rm(join(PACKAGE_ROOT, "AGENTS.md"), { force: true });
+await rm(join(PACKAGE_ROOT, "SKILL.md"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms.txt"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms-full.txt"), { force: true });
 
@@ -29,9 +37,15 @@ await convertAllMdx({
 // Validate group references against docs.config.ts and fail fast on typos —
 // the lint rule covers this in CI, but the package build is also a gate so a
 // bad config can't ship.
+const agentInputs = resolveAgentInputs({
+  product: docsConfig.product,
+  organization: docsConfig.organization,
+  llms: docsConfig.llms,
+});
+
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
@@ -52,8 +66,37 @@ if (navigation.unknown.length > 0) {
 const { outputPath } = await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product: agentInputs.product,
+  nav: docsConfig.navigation,
+});
+
+// Also ship the MCP artifacts (search index + readability manifest) inside the
+// tarball — the `--bundle --mcp` story — so a consumer can run a version-matched
+// docs MCP server over our own docs: `leadtype mcp --package leadtype`.
+// URL-independent, so no base URL is needed.
+await generateDocsSearchFiles({ outDir: PACKAGE_ROOT });
+await generateAgentReadabilityArtifacts({
+  outDir: PACKAGE_ROOT,
+  product: {
+    name: agentInputs.product.name,
+    summary: agentInputs.product.summary,
+  },
+  nav: docsConfig.navigation,
+  jsonLd: agentInputs.jsonLd,
+});
+
+// Ship the docs-skill SKILL.md next to AGENTS.md so on-disk agents discover it the
+// same way they discover AGENTS.md (offline, version-matched). Bundle MCP is on.
+await generateSkillArtifacts({
+  outDir: PACKAGE_ROOT,
+  srcDir: REPO_ROOT,
+  product: {
+    name: agentInputs.product.name,
+    summary: agentInputs.product.summary,
+  },
+  skills: docsConfig.agents?.skills,
+  mode: "bundle",
+  mcpEnabled: true,
 });
 
 logger.info({

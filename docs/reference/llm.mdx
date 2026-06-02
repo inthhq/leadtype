@@ -41,11 +41,25 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 | `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
 | `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
-Config `nav` drives `llms.txt` sections, navigation, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `nav`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/concepts/evals) for the benchmark behind that default.
+Config `navigation` drives `llms.txt` sections, the sidebar, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `navigation`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/concepts/evals) for the benchmark behind that default.
 
-## ProductInfo
+### Optional sections
 
-Every generator that writes a top-level index file (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) takes the same `product` object:
+Mark a navigation node `optional: true` to flag it "safe to drop for shorter context". Its pages don't get their own heading in `docs/llms.txt` — they collapse into a single trailing **`## Optional`** section (the [llms.txt](https://llmstxt.org) convention for low-priority links), so an agent under a tight context budget knows what it can skip first.
+
+```ts
+navigation: [
+  { title: "Start", pages: ["", "quickstart"] },
+  { title: "Reference", base: "reference", pages: [{ include: "*" }] },
+  { title: "Changelog", base: "changelog", optional: true, pages: [{ include: "*" }] },
+],
+```
+
+The flag applies to the whole subtree, so nested children of an optional node are flattened into `## Optional` too. It affects `docs/llms.txt` only — the website sidebar, sitemap, and search still list every page normally.
+
+## product (identity)
+
+The `product` block in `docs.config.ts` is the identity of the documented thing — authored once and reused across `llms.txt`, the JSON-LD graph, and the agent card.
 
 <TypeTable
   properties={{
@@ -54,21 +68,44 @@ Every generator that writes a top-level index file (`generateLlmsTxt`, `generate
       required: true,
       description: "Product display name. Rendered as the H1 of llms.txt and AGENTS.md.",
     },
-    summary: {
+    tagline: {
       type: "string",
       required: true,
-      description: "Single-line summary rendered as the blockquote under the H1.",
+      description: "One-line description rendered as the blockquote under the H1, and reused as the agent-card / JSON-LD description.",
     },
-    blocks: {
-      type: "LlmsBlock[]",
-      description: "Ordered content blocks rendered after the blockquote — array order is file order. This is the full body of llms.txt; in AGENTS.md the same blocks render as the product-content section, with generateAgentsMd adding the offline preamble and navigation around them. See 'Content blocks' below.",
+    homepage: {
+      type: "string",
+      description: "Canonical product homepage. Agent-card `url` fallback when no MCP endpoint is set.",
+    },
+    docs: {
+      type: "string",
+      description: "Docs entry point. Becomes the agent-card `documentationUrl`. Defaults to `${baseUrl}/docs`.",
+    },
+    repository: {
+      type: "string",
+      description: "Source repository URL. Emitted as JSON-LD `codeRepository` for libraries.",
+    },
+    kind: {
+      type: '"library" | "app"',
+      description: "`library` emits JSON-LD `SoftwareSourceCode`; anything else emits `SoftwareApplication`. Defaults to `app`.",
+    },
+    category: {
+      type: "string",
+      description: "JSON-LD `applicationCategory`, e.g. `DeveloperApplication`.",
     },
   }}
 />
 
-## Content blocks
+Two sibling top-level blocks complete the identity:
 
-`blocks` describes the body of `llms.txt`. It is one ordered array, so a block's position is just its index — there are no placement flags.
+- **`organization`** — `{ name, url?, logo? }`. Who publishes the product. Feeds the JSON-LD `Organization` node and the agent-card `provider`. Distinct from `product`: the product is the documented thing, the organization is who stands behind it.
+- **`llms.sections`** — the authored `llms.txt` body (see below).
+
+The low-level generators (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) consume an internal `{ name, summary, blocks }` product shape — not the config `product` directly. `resolveAgentInputs(config)` bridges the two: it maps `product.tagline` → `summary`, `llms.sections` → `blocks`, and `organization` + `product` (`kind`/`category`/`repository`) → JSON-LD and agent-card inputs. `leadtype generate` uses it internally; call it yourself when composing the generators by hand (see "Typical sequence").
+
+## llms.sections
+
+`llms.sections` describes the body of `llms.txt`. It is one ordered array, so a section's position is just its index — there are no placement flags.
 
 Each `LlmsBlock` is one of two kinds:
 
@@ -78,8 +115,11 @@ Each `LlmsBlock` is one of two kinds:
 ```ts
 product: {
   name: "c15t",
-  summary: "Developer-first consent management for modern web apps.",
-  blocks: [
+  tagline: "Developer-first consent management for modern web apps.",
+},
+organization: { name: "Inth", url: "https://inth.com" },
+llms: {
+  sections: [
     { type: "markdown", heading: "Overview", body: "- GDPR-ready banners\n- Framework guides" },
     {
       type: "markdown",
@@ -96,11 +136,11 @@ product: {
 }
 ```
 
-The `docs.config.ts` `product` field has this exact shape; both the CLI and the library APIs read it.
+In `AGENTS.md` the same sections render as the product-content body, with `generateAgentsMd` adding the offline preamble and navigation around them.
 
 ## Example llms.txt
 
-This is the output of the `blocks` config above — each block becomes an `## heading` section, in array order, with `links` blocks resolved to markdown mirror links:
+This is the output of the `llms.sections` config above — each section becomes an `## heading`, in array order, with `links` sections resolved to markdown mirror links:
 
 ```txt
 # c15t
@@ -129,12 +169,13 @@ Start with the framework quickstart.
 
 ```ts
 import { convertAllMdx } from "leadtype/convert";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 import {
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  resolveAgentInputs,
 } from "leadtype/llm";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 await convertAllMdx({
   srcDir: "docs",
@@ -142,29 +183,31 @@ await convertAllMdx({
   remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
 });
 
+// Bridge the config identity (product/organization/llms) into the internal
+// generator inputs — the same mapping `leadtype generate` uses.
+const { product, jsonLd } = resolveAgentInputs(docsConfig);
+
 await generateLlmsTxt({
   srcDir: ".",
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: {
-    name: "My Library",
-    summary: "A library that does one thing well.",
-  },
-  nav: docsConfig.nav,
+  product,
+  nav: docsConfig.navigation,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: { name: "My Library" },
-  nav: docsConfig.nav,
+  product: { name: product.name },
+  nav: docsConfig.navigation,
 });
 
 await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product,
+  nav: docsConfig.navigation,
+  jsonLd, // bakes the site graph into the manifest for renderSiteJsonLd
 });
 ```
 
@@ -189,22 +232,22 @@ Pass the same `mounts` array to every artifact generator that reads generated ma
 await generateLlmsTxt({
   srcDir: ".",
   outDir: "public",
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product: resolveAgentInputs(docsConfig).product,
+  nav: docsConfig.navigation,
   mounts,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   product: { name: docsConfig.product.name },
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   mounts,
 });
 
 await generateAgentReadabilityArtifacts({
   outDir: "public",
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product: resolveAgentInputs(docsConfig).product,
+  nav: docsConfig.navigation,
   mounts,
 });
 ```
@@ -226,7 +269,7 @@ import {
 const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: docsConfig.product,
+  product: resolveAgentInputs(docsConfig).product,
 });
 ```
 
@@ -237,7 +280,7 @@ await writeFile("public/sitemap.xml", renderSitemapXml(result.manifest.pages));
 await writeFile(
   "public/sitemap.md",
   renderSitemapMarkdown({
-    product: docsConfig.product,
+    product: resolveAgentInputs(docsConfig).product,
     navigation: result.manifest.navigation,
     pages: result.manifest.pages,
   })
@@ -433,7 +476,7 @@ import { generateAgentsMd } from "leadtype/llm";
 await generateAgentsMd({
   srcDir: ".",
   outDir: "packages/my-package",
-  product: docsConfig.product,
+  product: resolveAgentInputs(docsConfig).product,
 });
 ```
 
@@ -478,7 +521,7 @@ Same nav-resolution logic the LLM files use, but returns the navigation manifest
 const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
 });
 
 if (navigation.unknown.length > 0) {
@@ -513,12 +556,12 @@ For the heading slug contract and renderer wiring, see [Use the source primitive
 const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   toc: { minLevel: 2, maxLevel: 4 },
 });
 ```
 
-If you only need TOC data and not the full nav tree, call `resolveDocsTableOfContents`:
+If you only need TOC data and not the full navigation tree, call `resolveDocsTableOfContents`:
 
 ```ts
 const pages = await resolveDocsTableOfContents({

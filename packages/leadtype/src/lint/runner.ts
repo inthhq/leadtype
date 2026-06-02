@@ -15,6 +15,7 @@ import {
   routeFromFilePath,
 } from "../internal/docs-context";
 import { parseFrontmatter } from "../internal/frontmatter";
+import { validateJsonLd } from "../llm/readability";
 import {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
   defaultRemarkPlugins,
@@ -37,7 +38,11 @@ export type LintRule =
   | "invalid-link"
   | "unresolved-placeholder"
   | "cross-framework-link"
-  | "unflattened-component";
+  | "unflattened-component"
+  | "jsonld"
+  | "geo:heading-skip"
+  | "geo:code-language"
+  | "geo:image-alt";
 
 export type LintViolation = {
   file: string;
@@ -366,6 +371,76 @@ function validateDocUrls(
 }
 
 const mdxComponentParser = remark().use(remarkMdx);
+
+type GeoIssue = {
+  rule: "geo:code-language" | "geo:heading-skip" | "geo:image-alt";
+  line?: number;
+  message: string;
+};
+
+/**
+ * Structural GEO checks over a page body: skipped heading levels, unlabeled code
+ * fences, and images without alt text. These are the mechanical signals from the
+ * "Write for agents & GEO" guide — the editorial ones (lead-with-answer,
+ * question-form headings) can't be linted. All warn-level: legitimate exceptions
+ * exist, so they never block by default.
+ */
+function collectGeoIssues(body: string): GeoIssue[] {
+  let tree: ReturnType<typeof mdxComponentParser.parse>;
+  try {
+    tree = mdxComponentParser.parse(body);
+  } catch {
+    return []; // parse errors are reported by the link-check path
+  }
+
+  const issues: GeoIssue[] = [];
+  // The frontmatter title is the page's implicit H1, so the first authored
+  // heading should be H2. Seed at 1 so a page that opens at H3+ trips the rule.
+  let prevDepth = 1;
+  visit(tree, (node) => {
+    const element = node as {
+      type: string;
+      depth?: number;
+      lang?: unknown;
+      alt?: unknown;
+      position?: { start?: { line?: number } };
+    };
+    const line = element.position?.start?.line;
+    if (element.type === "heading" && typeof element.depth === "number") {
+      if (prevDepth > 0 && element.depth > prevDepth + 1) {
+        issues.push({
+          rule: "geo:heading-skip",
+          line,
+          message: `heading jumps from H${prevDepth} to H${element.depth} — keep the hierarchy sequential (no skipped levels) so answer engines can parse the topic tree`,
+        });
+      }
+      prevDepth = element.depth;
+    } else if (element.type === "code") {
+      if (
+        typeof element.lang !== "string" ||
+        element.lang.trim().length === 0
+      ) {
+        issues.push({
+          rule: "geo:code-language",
+          line,
+          message:
+            "fenced code block has no language — label it (e.g. ```ts) so answer engines surface it for the right stack",
+        });
+      }
+    } else if (
+      element.type === "image" &&
+      (typeof element.alt !== "string" || element.alt.trim().length === 0)
+    ) {
+      issues.push({
+        rule: "geo:image-alt",
+        line,
+        message:
+          "image has no alt text — describe what it conveys; answer engines can't see images",
+      });
+    }
+  });
+  return issues;
+}
 // A JSX element is a component (not an intrinsic HTML element) when its name is
 // capitalized or a member expression like `Foo.Bar`.
 const COMPONENT_NAME_PATTERN = /^[A-Z]/;
@@ -486,6 +561,33 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       ...validate(schemaToUse, data, relativeFile, kind, unknownFieldSeverity)
     );
 
+    // JSON-LD validity: render the identity fields the per-page TechArticle is
+    // built from and structurally validate them. Catches the common breakage — a
+    // malformed date that would emit an invalid `dateModified`. Skips changelog
+    // entries (not docs pages) and pages without a title (already flagged above).
+    if (!isChangelog && typeof data.title === "string") {
+      const rawDate =
+        data.lastModified ?? data.last_updated ?? data.dateModified;
+      const dateModified =
+        rawDate instanceof Date ? rawDate.toISOString() : rawDate;
+      const jsonLdIssues = validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        name: data.title,
+        headline: data.title,
+        ...(dateModified === undefined ? {} : { dateModified }),
+      });
+      for (const issue of jsonLdIssues) {
+        violations.push({
+          file: relativeFile,
+          kind: "content",
+          severity: "warn",
+          rule: "jsonld",
+          message: `JSON-LD would be invalid — ${issue}. Broken schema is worse than none.`,
+        });
+      }
+    }
+
     // Flag components that won't flatten — they'd leak raw JSX into the agent
     // markdown. Walks the MDX AST, so JSX inside code fences (a `code` node, not
     // a JSX element) is correctly ignored.
@@ -500,6 +602,18 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
         severity: "warn",
         rule: "unflattened-component",
         message: `<${name}>${fileLine ? ` (line ${fileLine})` : ""} has no markdown flattener — agents will see raw JSX in the generated markdown. Add one with defineComponentFlattener, or rename to a built-in tag.`,
+      });
+    }
+
+    // Structural GEO checks (warn): skipped headings, unlabeled code, missing alt.
+    for (const issue of collectGeoIssues(body)) {
+      const fileLine = issue.line ? issue.line + bodyLineOffset : undefined;
+      violations.push({
+        file: relativeFile,
+        kind: "content",
+        severity: "warn",
+        rule: issue.rule,
+        message: `${issue.message}${fileLine ? ` (line ${fileLine})` : ""}`,
       });
     }
 

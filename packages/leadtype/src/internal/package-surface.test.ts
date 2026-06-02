@@ -77,6 +77,7 @@ describe("package surface", () => {
   it("matches the documented entry-point list", () => {
     const expectedExportedPaths = [
       ".",
+      "./package.json",
       "./mdx",
       "./fumadocs",
       "./astro",
@@ -103,6 +104,8 @@ describe("package surface", () => {
       "./sveltekit",
       "./tanstack-start",
       "./lint",
+      "./mcp",
+      "./score",
     ] as const;
 
     expect(exportedPaths).toHaveLength(expectedExportedPaths.length);

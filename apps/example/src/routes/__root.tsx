@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
 import { NotFound } from "@/components/not-found";
+import { siteJsonLdMeta } from "@/lib/docs-head";
 import { useMDXComponents } from "@/mdx-components";
 import appCss from "../styles.css?url";
 
@@ -30,6 +31,8 @@ export const Route = createRootRoute({
           "Reference routes for MDX, components, and playground coverage.",
         name: "description",
       },
+      // Site-level JSON-LD graph, emitted once; per-page TechArticle @ids resolve to it.
+      siteJsonLdMeta(),
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

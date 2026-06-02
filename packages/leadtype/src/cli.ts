@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
 import { getInitUsage, runInitCommand } from "./cli/init";
+import { getMcpUsage, runMcpCommand } from "./cli/mcp";
+import { getScoreUsage, runScoreCommand } from "./cli/score";
 import { getSyncUsage, runSyncCommand } from "./cli/sync";
 import { logger, setLogStreams } from "./internal/logger";
 import { getLintUsage, runLintCommand } from "./lint/cli";
@@ -22,6 +24,8 @@ Commands:
   generate   Convert MDX, generate LLM files, and build search artifacts
   sync       Clone or refresh remote sources declared by collections
   lint       Validate MDX frontmatter, meta.json, and docs links
+  mcp        Serve the generated docs to an MCP client over stdio
+  score      Score the generated docs' agent readiness (mapped to the ora rubric)
   help       Show help
 
 Run leadtype <command> --help for command-specific options.
@@ -39,6 +43,12 @@ function commandUsage(command: string | undefined): string {
   }
   if (command === "lint") {
     return getLintUsage();
+  }
+  if (command === "mcp") {
+    return getMcpUsage();
+  }
+  if (command === "score") {
+    return getScoreUsage();
   }
   return MAIN_USAGE;
 }
@@ -74,6 +84,14 @@ export async function runCli(
 
   if (command === "lint") {
     return await runLintCommand(rest, io);
+  }
+
+  if (command === "mcp") {
+    return await runMcpCommand(rest, io);
+  }
+
+  if (command === "score") {
+    return await runScoreCommand(rest, io);
   }
 
   io.stderr.write(`unknown command: ${command}\n\n${MAIN_USAGE}`);

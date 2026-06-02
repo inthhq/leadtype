@@ -106,7 +106,6 @@ async function bench(): Promise<Stats[]> {
         product: {
           name: "Bench SDK",
           summary: "Benchmark fixture.",
-          bestStartingPoints: [],
         },
         groups: BENCH_GROUPS,
       });

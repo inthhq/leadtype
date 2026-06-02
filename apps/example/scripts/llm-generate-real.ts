@@ -27,13 +27,23 @@ await generateLlmsTxt({
   product: {
     name: "c15t",
     summary: "Open source consent & privacy platform.",
-    bullets: [
-      "Consent management across web frameworks.",
-      "Self-hostable and backend-agnostic.",
+    blocks: [
+      {
+        type: "markdown",
+        heading: "Overview",
+        body: "- Consent management across web frameworks.\n- Self-hostable and backend-agnostic.",
+      },
+      {
+        type: "links",
+        heading: "Best Starting Points",
+        links: [{ urlPath: "/docs/frameworks" }],
+      },
+      {
+        type: "markdown",
+        heading: "Agent Guidance",
+        body: "Start with the framework guide that matches your stack, then consult /llms-full.txt only when page-level context is not enough.",
+      },
     ],
-    bestStartingPoints: [{ urlPath: "/docs/frameworks" }],
-    agentGuidance:
-      "Start with the framework guide that matches your stack, then consult /llms-full.txt only when page-level context is not enough.",
   },
   groups: [
     {

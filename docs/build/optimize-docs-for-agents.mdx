@@ -95,15 +95,93 @@ Pass it through `normalizeAgentReadabilityManifest()` before handing it to a run
 
 Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
 
+## Configure the agent surface
+
+The agent surface is driven by four top-level blocks in `docs.config.ts`: **`product`** (identity), **`organization`** (who publishes it), **`llms`** (the `llms.txt` body), and **`agents`** (robots / SEO / MCP / skills toggles). Everything beyond the required `product.name` and `product.tagline` is optional with zero-config defaults — add a key only to change one.
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  // Identity — authored once, reused in llms.txt, JSON-LD, and the agent card.
+  product: {
+    name: "Acme",
+    tagline: "…",
+    homepage: "https://acme.dev",
+    docs: "https://acme.dev/docs",
+    kind: "library", // -> JSON-LD SoftwareSourceCode (vs default SoftwareApplication)
+    category: "DeveloperApplication",
+  },
+  // Who publishes it -> JSON-LD Organization + agent-card provider.
+  organization: { name: "Acme Inc", url: "https://acme.com" },
+  navigation: [/* … */],
+  // The authored llms.txt body.
+  llms: { sections: [/* markdown + links sections */] },
+  agents: {
+    robots: { policy: "balanced", signals: { aiTrain: "no" } },
+    seo: { ogImage: "https://acme.dev/og.png", twitterSite: "@acme", keywords: ["docs"] },
+    mcp: { enabled: true },
+    agentCard: { enabled: true },
+    skills: { docsSkill: true, items: [/* your capability skills */] },
+  },
+});
+```
+
+| Block | Controls | Default |
+| --- | --- | --- |
+| `product` | identity (name / tagline / links / kind / category) → llms.txt header, JSON-LD software node, agent card | `name` + `tagline` required |
+| `organization` | publisher → JSON-LD `Organization` + agent-card `provider` | optional |
+| `llms.sections` | the authored `llms.txt` body ([reference](/docs/reference/llm#llmssections)) | empty |
+| `agents.robots` | robots.txt crawler policy + Content-Signals ([below](#control-ai-crawler-access)) | `balanced` (crawlable, `ai-train=no`) |
+| `agents.seo` | `og:image` / `twitter` / `keywords` head meta | `og:type` + `twitter:card` always; rest off |
+| `agents.mcp` | `{ enabled }` — points the docs-skill at your MCP endpoint ([MCP](/docs/reference/mcp)) | off |
+| `agents.agentCard` | `{ enabled, version }` — the `/.well-known/agent-card.json` | emitted |
+| `agents.skills` | the `/.well-known/agent-skills` surface ([skills](/docs/reference/skills)) | docs-skill emits |
+
+Per-page JSON-LD always emits; the site-level graph is derived from `product` + `organization`. Omit these blocks (beyond the required `product` fields) and you still get balanced robots/Content-Signals, the JSON-LD graph, per-page metadata, the auto docs-skill, and the agent card.
+
+## Control AI crawler access
+
+By default (`balanced`), `robots.txt` keeps the site fully crawlable and emits a [Content-Signals](https://contentsignals.org) line — `Content-Signal: search=yes, ai-input=yes, ai-train=no` — so retrieval is welcome but you signal "don't train on this". Change the stance with the additive `agents.robots` config:
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Acme", tagline: "…" },
+  agents: {
+    robots: {
+      policy: "block-training", // balanced · open · block-training · block-ai
+      signals: { aiInput: "yes" }, // override individual directives
+    },
+    // Site-wide SEO/social defaults, emitted on every page head by createDocsHead.
+    seo: {
+      ogImage: "https://acme.dev/og.png", // emitted as a URL; you supply the image
+      twitterSite: "@acme",
+      keywords: ["acme", "docs"],
+    },
+  },
+});
+```
+
+- **`balanced`** (default) — crawlable + retrievable; signals `ai-train=no`.
+- **`open`** — also welcomes training (`ai-train=yes`).
+- **`block-training`** — `Disallow: /` for training crawlers (GPTBot, Google-Extended, CCBot, ByteSpider, anthropic-ai, MetaExternalAgent); retrieval crawlers stay allowed.
+- **`block-ai`** — `Disallow: /` for every AI crawler; conventional search engines are untouched; signals `ai-input=no, ai-train=no`.
+
+The same stance drives the `Content-Signal` response header on served markdown (see [Serve agent responses](/docs/build/serve-agent-responses)), so robots.txt and live responses never disagree. Robots `Disallow` is advisory — pair `block-*` with your CDN/WAF if you need hard enforcement.
+
 ## Make the index worth reading
 
-`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the `product.blocks` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
+`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the top-level `llms.sections` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
 
 ```ts title="docs/docs.config.ts"
 product: {
   name: "My product",
-  summary: "Developer-first tooling for modern apps.",
-  blocks: [
+  tagline: "Developer-first tooling for modern apps.",
+},
+llms: {
+  sections: [
     { type: "markdown", heading: "Overview", body: "- What it does\n- Who it's for" },
     {
       type: "markdown",
@@ -119,7 +197,7 @@ product: {
 }
 ```
 
-Blocks render in array order. A `links` block and a `markdown` block with a `heading` each become an `## heading` section; a `markdown` block without a `heading` renders its body inline, with no heading. Use `markdown` blocks for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` blocks for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → Content blocks](/docs/reference/llm#content-blocks).
+Sections render in array order. A `links` section and a `markdown` section with a `heading` each become an `## heading` block; a `markdown` section without a `heading` renders its body inline, with no heading. Use `markdown` sections for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` sections for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → llms.sections](/docs/reference/llm#llmssections).
 
 ## Verify locally
 

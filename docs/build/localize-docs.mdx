@@ -19,8 +19,8 @@ translation lives under a `/{locale}` prefix.
 
 ```ts title="docs.config.ts"
 export default defineDocsConfig({
-  product: { name: "My library", summary: "..." },
-  nav: [{ title: "Start", pages: [""] }],
+  product: { name: "My library", tagline: "..." },
+  navigation: [{ title: "Start", pages: [""] }],
   i18n: {
     defaultLocale: "en",
     locales: ["en", "zh", { code: "fr", label: "Français" }],
@@ -96,7 +96,7 @@ import docsConfig from "../docs/docs.config";
 export function getSource(locale: string) {
   return createDocsSource({
     contentDir: "./docs",
-    nav: docsConfig.nav,
+    nav: docsConfig.navigation,
     baseUrl: "https://example.com",
     i18n: docsConfig.i18n,
     locale,

@@ -38,9 +38,11 @@ dist
 apps/*/public/docs/
 apps/*/public/llms-full.txt
 apps/*/public/llms.txt
+apps/*/public/.well-known/
 apps/sveltekit-example/static/docs/
 apps/sveltekit-example/static/llms-full.txt
 apps/sveltekit-example/static/llms.txt
+apps/sveltekit-example/static/.well-known/
 
 
 # Debug

@@ -27,8 +27,10 @@ import { defineDocsConfig } from "leadtype";
 export default defineDocsConfig({
   product: {
     name: "My product",
-    summary: "Developer tools for modern apps.",
-    blocks: [
+    tagline: "Developer tools for modern apps.",
+  },
+  llms: {
+    sections: [
       {
         type: "links",
         heading: "Best Starting Points",
@@ -47,7 +49,7 @@ export default defineDocsConfig({
       },
     ],
   },
-  nav: [
+  navigation: [
     { title: "Start", pages: ["", "quickstart"] },
     { title: "Guides", pages: [{ include: "guides/*" }] },
     { title: "Reference", pages: [{ include: "reference/*" }] },
@@ -101,13 +103,13 @@ import { defineCollection, defineDocsConfig } from "leadtype";
 export default defineDocsConfig({
   product: {
     name: "My product",
-    summary: "Developer tools for modern apps.",
+    tagline: "Developer tools for modern apps.",
   },
   collections: {
     docs: defineCollection({
       dir: "./docs",
       prefix: "/docs",
-      nav: [{ title: "Start", pages: ["", "quickstart"] }],
+      navigation: [{ title: "Start", pages: ["", "quickstart"] }],
     }),
     changelog: defineCollection({
       dir: "./changelog",
@@ -142,7 +144,7 @@ const sdkDocs = {
 export default defineDocsConfig({
   product: {
     name: "Acme",
-    summary: "Docs for Acme SDKs and platform APIs.",
+    tagline: "Docs for Acme SDKs and platform APIs.",
   },
   collections: {
     platform: defineCollection({

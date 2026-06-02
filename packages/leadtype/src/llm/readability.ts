@@ -30,27 +30,77 @@ const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
 const AI_USER_AGENT_PATTERN =
   /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-web|claudebot|google-extended|gptbot|metaexternalagent|meta-externalagent|mistralbot|oai-searchbot|perplexitybot|youbot)\b/i;
-const DEFAULT_AI_CRAWLER_USER_AGENTS = [
-  "GPTBot",
-  "ChatGPT-User",
+// Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
+// fetch a page to answer a live query; training bots gather corpora for model
+// training. Policies treat the two groups differently.
+const RETRIEVAL_AI_CRAWLERS = [
   "OAI-SearchBot",
+  "ChatGPT-User",
+  "PerplexityBot",
   "ClaudeBot",
   "Claude-Web",
-  "anthropic-ai",
-  "CCBot",
-  "Google-Extended",
   "AmazonBot",
   "Bingbot",
-  "MetaExternalAgent",
-  "ByteSpider",
-  "PerplexityBot",
   "MistralBot",
   "AppleBot",
   "YouBot",
 ] as const;
+const TRAINING_AI_CRAWLERS = [
+  "GPTBot",
+  "Google-Extended",
+  "CCBot",
+  "ByteSpider",
+  "anthropic-ai",
+  "MetaExternalAgent",
+] as const;
 const DEFAULT_CACHE_CONTROL = "public, max-age=300, must-revalidate";
 const SUPPORTED_MANIFEST_VERSION = 1;
 const XML_ESCAPE_PATTERN = /[<>&'"]/g;
+
+/* --------------------------- content signals --------------------------- */
+
+export type ContentSignalValue = "yes" | "no";
+
+/**
+ * Cloudflare Content-Signals vocabulary, shared between robots.txt (a
+ * `Content-Signal:` line) and the `Content-Signal` response header on markdown
+ * responses — one config knob, two emitters.
+ */
+export type ContentSignals = {
+  /** Conventional search indexing. */
+  search: ContentSignalValue;
+  /** Use as live input/grounding for an AI answer (retrieval / RAG). */
+  aiInput: ContentSignalValue;
+  /** Use to train AI models. */
+  aiTrain: ContentSignalValue;
+};
+
+/**
+ * Crawler-access stance. `balanced` (default) keeps the site fully crawlable but
+ * signals "don't train on this"; `open` welcomes training; `block-training`
+ * hard-disallows training crawlers; `block-ai` disallows every AI crawler while
+ * leaving conventional search engines allowed.
+ */
+export type RobotsPolicy = "balanced" | "open" | "block-training" | "block-ai";
+
+const ROBOTS_POLICY_SIGNALS: Record<RobotsPolicy, ContentSignals> = {
+  balanced: { search: "yes", aiInput: "yes", aiTrain: "no" },
+  open: { search: "yes", aiInput: "yes", aiTrain: "yes" },
+  "block-training": { search: "yes", aiInput: "yes", aiTrain: "no" },
+  "block-ai": { search: "yes", aiInput: "no", aiTrain: "no" },
+};
+
+export function resolveContentSignals(
+  policy: RobotsPolicy = "balanced",
+  overrides?: Partial<ContentSignals>
+): ContentSignals {
+  return { ...ROBOTS_POLICY_SIGNALS[policy], ...overrides };
+}
+
+/** Render the `search=…, ai-input=…, ai-train=…` directive string. */
+export function renderContentSignal(signals: ContentSignals): string {
+  return `search=${signals.search}, ai-input=${signals.aiInput}, ai-train=${signals.aiTrain}`;
+}
 
 export type JsonLdValue = Record<string, unknown>;
 export type JsonLdType = string | readonly string[];
@@ -99,6 +149,8 @@ export type DocsNavigationGroup = {
   description?: string;
   pages: DocsNavigationPage[];
   children: DocsNavigationGroup[];
+  /** Section is "safe to drop for shorter context" (rendered under `## Optional`). */
+  optional?: boolean;
 };
 
 export type DocsNavigation = {
@@ -123,6 +175,10 @@ export type AgentReadabilityManifest = {
     sitemapMd: string;
     sitemapXml: string;
   };
+  /** Site-level JSON-LD options (from `agents.jsonLd`), so `renderSiteJsonLd` is config-driven. */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Site-level SEO defaults (from `agents.seo`), emitted by `createDocsHead`. */
+  seo?: SeoMeta;
 };
 
 export function normalizeAgentReadabilityManifest(
@@ -155,7 +211,21 @@ export type MarkdownResponseHeadersConfig = {
   includeUserAgentVary?: boolean;
   /** Override Cache-Control. Pass `null` to omit the header. */
   cacheControl?: string | null;
+  /**
+   * Path to the site's `llms.txt`, advertised via `Link: rel="llms-txt"` and
+   * `X-Llms-Txt` so agents can discover it from any markdown response. Defaults
+   * to `/llms.txt`; pass `null` to omit the discovery headers.
+   */
+  llmsTxtPath?: string | null;
+  /**
+   * Cloudflare `Content-Signal` header value. Pass `ContentSignals` (rendered
+   * for you) or a prebuilt string. Defaults to the `balanced` policy; pass
+   * `null` to omit the header.
+   */
+  contentSignal?: ContentSignals | string | null;
 };
+
+const DEFAULT_LLMS_TXT_PATH = "/llms.txt";
 
 export type EnrichMarkdownFrontmatterConfig = {
   canonicalUrl: string;
@@ -210,8 +280,12 @@ export type CreateRobotsTxtResponseConfig = {
   sitemapUrlPath?: string;
   /** Allow paths under the User-agent directives. */
   allowPaths?: string[];
-  /** Override the AI crawler User-agent list. */
+  /** Override the AI crawler User-agent list (legacy flat allow-list). */
   userAgents?: readonly string[];
+  /** Crawler-access stance. Defaults to `balanced`. */
+  policy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  signals?: Partial<ContentSignals>;
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
 };
@@ -269,6 +343,16 @@ export type CreateDocsJsonLdConfig = DocsJsonLdOptions & {
   manifest: AgentReadabilityManifest;
 };
 
+/** Social/SEO metadata defaults, emitted by `createDocsHead`. */
+export type SeoMeta = {
+  /** Absolute `og:image` / `twitter:image` URL (a social card). leadtype emits the URL, not the image. */
+  ogImage?: string;
+  /** `twitter:site` handle, e.g. `@acme`. */
+  twitterSite?: string;
+  /** `keywords` meta (joined with commas). */
+  keywords?: string[];
+};
+
 export type CreateDocsHeadConfig = {
   urlPath: string;
   manifest: AgentReadabilityManifest;
@@ -276,6 +360,8 @@ export type CreateDocsHeadConfig = {
   jsonLdMetaKey?: string;
   /** Optional JSON-LD overrides passed through to `createDocsJsonLd`. */
   jsonLd?: DocsJsonLdOptions;
+  /** Per-page SEO overrides; merged over the manifest's site-level `seo` defaults. */
+  seo?: SeoMeta;
 };
 
 export type RenderSitemapMarkdownConfig = {
@@ -288,7 +374,16 @@ export type RenderRobotsTxtConfig = {
   baseUrl?: string;
   sitemapUrlPath?: string;
   allowPaths?: string[];
+  /**
+   * Legacy: a flat allow-list of crawler user-agents. When set, every listed
+   * agent is allowed (pre-policy behavior). Prefer `policy` for the
+   * train-vs-retrieve split.
+   */
   userAgents?: readonly string[];
+  /** Crawler-access stance. Defaults to `balanced`. */
+  policy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  signals?: Partial<ContentSignals>;
 };
 
 /* ----------------------- internal helpers ------------------------------ */
@@ -538,7 +633,12 @@ export function resolveMarkdownMirrorTarget(
   };
 }
 
-function resolveManifestMarkdownMirrorTarget(
+/**
+ * Resolve a page's Markdown mirror from the manifest entry (not the raw public
+ * route), so pages mounted outside `/docs` (e.g. a changelog at `/changelog`)
+ * still resolve to their `docs/<relativePath>.md` mirror.
+ */
+export function resolveManifestMarkdownMirrorTarget(
   urlPath: string,
   manifest: AgentReadabilityManifest
 ): MarkdownMirrorTarget | null {
@@ -569,11 +669,30 @@ function resolveManifestMarkdownMirrorTarget(
 export function createMarkdownResponseHeaders(
   config: MarkdownResponseHeadersConfig
 ): Record<string, string> {
+  const linkParts = [`<${config.canonicalUrl}>; rel="canonical"`];
+  const llmsTxtPath =
+    config.llmsTxtPath === undefined
+      ? DEFAULT_LLMS_TXT_PATH
+      : config.llmsTxtPath;
   const headers: Record<string, string> = {
     "Content-Type": "text/markdown; charset=utf-8",
     Vary: config.includeUserAgentVary ? "Accept, User-Agent" : "Accept",
-    Link: `<${config.canonicalUrl}>; rel="canonical"`,
   };
+  if (llmsTxtPath !== null) {
+    linkParts.push(`<${llmsTxtPath}>; rel="llms-txt"`);
+    headers["X-Llms-Txt"] = llmsTxtPath;
+  }
+  headers.Link = linkParts.join(", ");
+  const contentSignal =
+    config.contentSignal === undefined
+      ? resolveContentSignals("balanced")
+      : config.contentSignal;
+  if (contentSignal !== null) {
+    headers["Content-Signal"] =
+      typeof contentSignal === "string"
+        ? contentSignal
+        : renderContentSignal(contentSignal);
+  }
   const cacheControl =
     config.cacheControl === undefined
       ? DEFAULT_CACHE_CONTROL
@@ -707,6 +826,27 @@ function buildBreadcrumb(
   };
 }
 
+const REFERENCE_SECTION_PATTERN = /^(reference|api)$/i;
+const REFERENCE_PATH_PATTERN = /(^|\/)(reference|api)(\/|$)/i;
+
+/**
+ * Stable `@id`s for the site-level entities, derived from the base URL. Per-page
+ * JSON-LD references these instead of re-inlining the Organization/WebSite, so an
+ * answer engine can stitch every page into one entity graph (DESIGN.md Phase 4).
+ */
+function jsonLdEntityIds(baseUrl: string): {
+  organization: string;
+  website: string;
+  software: string;
+} {
+  const base = stripTrailingSlashes(baseUrl);
+  return {
+    organization: `${base}/#organization`,
+    website: `${base}/#website`,
+    software: `${base}/#software`,
+  };
+}
+
 export function renderJsonLd(
   page: AgentReadabilityPage,
   manifest: AgentReadabilityManifest
@@ -717,9 +857,17 @@ export function renderJsonLd(
   );
   const breadcrumb = buildBreadcrumb(page, manifest, sections);
   const articleSection = sections.at(0)?.title;
+  const ids = jsonLdEntityIds(manifest.baseUrl);
+  // Reference pages are additionally typed as APIReference so answer engines can
+  // distinguish prose from the API surface. Keyed on the page's own path as well as
+  // its nav section, so a /reference/ page stays APIReference even when the sidebar
+  // groups it elsewhere.
+  const isApiReference =
+    REFERENCE_PATH_PATTERN.test(page.relativePath) ||
+    sections.some((section) => REFERENCE_SECTION_PATTERN.test(section.slug));
   return {
     "@context": "https://schema.org",
-    "@type": "TechArticle",
+    "@type": isApiReference ? ["TechArticle", "APIReference"] : "TechArticle",
     headline: page.title,
     name: page.title,
     description: jsonLdPageDescription(page, manifest),
@@ -728,13 +876,193 @@ export function renderJsonLd(
     dateModified: page.lastModified,
     ...(articleSection ? { articleSection } : {}),
     ...(page.locale ? { inLanguage: page.locale } : {}),
-    isPartOf: {
-      "@type": "WebSite",
-      name: manifest.product.name,
-      url: manifest.baseUrl,
-    },
+    // Reference shared @ids instead of inlining the WebSite/Organization. The
+    // site-level graph (renderSiteJsonLd) defines them; emit it once on a root page.
+    isPartOf: { "@id": ids.website },
+    publisher: { "@id": ids.organization },
     breadcrumb,
   };
+}
+
+export type RenderSiteJsonLdOptions = {
+  organization?: { name?: string; url?: string; logo?: string };
+  software?: {
+    /** Emit `SoftwareSourceCode` instead of `SoftwareApplication` (for libraries). */
+    isLibrary?: boolean;
+    applicationCategory?: string;
+    operatingSystem?: string;
+    /** Source repository URL, emitted as `codeRepository`. */
+    codeRepository?: string;
+  };
+  /**
+   * URL template for the WebSite `SearchAction`, relative to the base URL.
+   * Defaults to `/docs?q={search_term_string}`. Pass `null` to omit the action.
+   */
+  searchUrlPattern?: string | null;
+};
+
+const DEFAULT_SEARCH_URL_PATTERN = "/docs?q={search_term_string}";
+
+/**
+ * The site-level entity graph — `Organization`, `WebSite` (+ `SearchAction`), and
+ * `SoftwareApplication`/`SoftwareSourceCode` — emitted once (e.g. on the docs home).
+ * Per-page `renderJsonLd` references these by `@id` (DESIGN.md Phase 4).
+ */
+export function renderSiteJsonLd(
+  manifest: AgentReadabilityManifest,
+  optionOverrides: RenderSiteJsonLdOptions = {}
+): JsonLdValue {
+  assertManifestVersion(manifest);
+  // Explicit options win over the config baked into the manifest (`agents.jsonLd`).
+  const fromManifest = manifest.jsonLd ?? {};
+  const options: RenderSiteJsonLdOptions = {
+    ...fromManifest,
+    ...optionOverrides,
+    organization: {
+      ...fromManifest.organization,
+      ...optionOverrides.organization,
+    },
+    software: { ...fromManifest.software, ...optionOverrides.software },
+  };
+  const base = stripTrailingSlashes(manifest.baseUrl);
+  const ids = jsonLdEntityIds(base);
+
+  const organization: JsonLdValue = {
+    "@type": "Organization",
+    "@id": ids.organization,
+    name: options.organization?.name ?? manifest.product.name,
+    url: options.organization?.url ?? base,
+    ...(options.organization?.logo ? { logo: options.organization.logo } : {}),
+  };
+
+  const website: JsonLdValue = {
+    "@type": "WebSite",
+    "@id": ids.website,
+    name: manifest.product.name,
+    url: base,
+    publisher: { "@id": ids.organization },
+  };
+  const searchUrlPattern =
+    options.searchUrlPattern === undefined
+      ? DEFAULT_SEARCH_URL_PATTERN
+      : options.searchUrlPattern;
+  if (searchUrlPattern !== null) {
+    website.potentialAction = {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${base}${searchUrlPattern}`,
+      },
+      "query-input": "required name=search_term_string",
+    };
+  }
+
+  const software: JsonLdValue = {
+    "@type": options.software?.isLibrary
+      ? "SoftwareSourceCode"
+      : "SoftwareApplication",
+    "@id": ids.software,
+    name: manifest.product.name,
+    description: manifest.product.summary,
+    url: base,
+    publisher: { "@id": ids.organization },
+    ...(options.software?.applicationCategory
+      ? { applicationCategory: options.software.applicationCategory }
+      : {}),
+    ...(options.software?.operatingSystem
+      ? { operatingSystem: options.software.operatingSystem }
+      : {}),
+    ...(options.software?.codeRepository
+      ? { codeRepository: options.software.codeRepository }
+      : {}),
+  };
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [organization, website, software],
+  };
+}
+
+const JSON_LD_DATE_FIELDS = ["dateModified", "datePublished", "dateCreated"];
+const ARTICLE_TYPE_PATTERN = /article/i;
+
+function isValidDateString(value: unknown): boolean {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function jsonLdTypes(node: JsonLdValue): string[] {
+  const type = node["@type"];
+  if (typeof type === "string") {
+    return [type];
+  }
+  if (Array.isArray(type)) {
+    return type.filter((entry): entry is string => typeof entry === "string");
+  }
+  return [];
+}
+
+function validateJsonLdNode(
+  node: JsonLdValue,
+  nodePath: string,
+  issues: string[]
+): void {
+  const types = jsonLdTypes(node);
+  if (types.length === 0) {
+    issues.push(`${nodePath}: missing or invalid @type`);
+  }
+  if (
+    "@id" in node &&
+    !(typeof node["@id"] === "string" && (node["@id"] as string).length > 0)
+  ) {
+    issues.push(`${nodePath}: @id must be a non-empty string`);
+  }
+  if ("url" in node && !(typeof node.url === "string" && node.url.length > 0)) {
+    issues.push(`${nodePath}: url must be a non-empty string`);
+  }
+  for (const field of JSON_LD_DATE_FIELDS) {
+    if (field in node && !isValidDateString(node[field])) {
+      issues.push(
+        `${nodePath}: ${field} is not a valid date ("${String(node[field])}")`
+      );
+    }
+  }
+  if (
+    types.some((type) => ARTICLE_TYPE_PATTERN.test(type)) &&
+    !(node.headline || node.name)
+  ) {
+    issues.push(`${nodePath}: ${types.join(", ")} requires a headline or name`);
+  }
+}
+
+/**
+ * Structurally validates a JSON-LD object (or `@graph`) — broken schema is worse
+ * than none (DESIGN.md Phase 4). Returns a list of human-readable issues; an empty
+ * array means valid. Checks `@context`, `@type`, `@id` references, `url`, ISO dates,
+ * and that article-like nodes carry a headline/name. Not a full Schema.org validator.
+ */
+export function validateJsonLd(value: JsonLdValue): string[] {
+  const issues: string[] = [];
+  if (
+    !(typeof value["@context"] === "string" && value["@context"].length > 0)
+  ) {
+    issues.push("root: missing or empty @context");
+  }
+  const graph = value["@graph"];
+  if (Array.isArray(graph)) {
+    if (graph.length === 0) {
+      issues.push("@graph: must not be empty");
+    }
+    graph.forEach((node, index) => {
+      if (node && typeof node === "object") {
+        validateJsonLdNode(node as JsonLdValue, `@graph[${index}]`, issues);
+      } else {
+        issues.push(`@graph[${index}]: not an object`);
+      }
+    });
+  } else {
+    validateJsonLdNode(value, "root", issues);
+  }
+  return issues;
 }
 
 export function stringifyJsonLd(value: JsonLdValue): string {
@@ -965,6 +1293,23 @@ export function renderSitemapMarkdown(
   return `${lines.join("\n")}\n`;
 }
 
+function pushCrawlerBlock(
+  lines: string[],
+  userAgent: string,
+  allowPaths: string[],
+  disallow: boolean
+): void {
+  lines.push(`User-agent: ${userAgent}`);
+  if (disallow) {
+    lines.push("Disallow: /");
+  } else {
+    for (const allowPath of allowPaths) {
+      lines.push(`Allow: ${allowPath}`);
+    }
+  }
+  lines.push("");
+}
+
 export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
   const baseUrl = stripTrailingSlashes(config.baseUrl ?? "");
   const sitemapPath = config.sitemapUrlPath ?? "/sitemap.xml";
@@ -977,19 +1322,33 @@ export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
     "/sitemap.xml",
     "/sitemap.md",
   ];
-  const userAgents = config.userAgents ?? DEFAULT_AI_CRAWLER_USER_AGENTS;
-  const lines = ["User-agent: *"];
+  const policy = config.policy ?? "balanced";
+  const signals = resolveContentSignals(policy, config.signals);
+
+  // `User-agent: *` carries the Content-Signal line + the allow-list.
+  const lines = [
+    "User-agent: *",
+    `Content-Signal: ${renderContentSignal(signals)}`,
+  ];
   for (const allowPath of allowPaths) {
     lines.push(`Allow: ${allowPath}`);
   }
   lines.push("");
 
-  for (const userAgent of userAgents) {
-    lines.push(`User-agent: ${userAgent}`);
-    for (const allowPath of allowPaths) {
-      lines.push(`Allow: ${allowPath}`);
+  if (config.userAgents) {
+    // Legacy flat allow-list.
+    for (const userAgent of config.userAgents) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, false);
     }
-    lines.push("");
+  } else {
+    const blockRetrieval = policy === "block-ai";
+    const blockTraining = policy === "block-ai" || policy === "block-training";
+    for (const userAgent of RETRIEVAL_AI_CRAWLERS) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, blockRetrieval);
+    }
+    for (const userAgent of TRAINING_AI_CRAWLERS) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, blockTraining);
+    }
   }
 
   lines.push(`Sitemap: ${sitemapUrl}`, "");
@@ -1101,6 +1460,8 @@ export function createRobotsTxtResponse(
       sitemapUrlPath: config.sitemapUrlPath,
       allowPaths: config.allowPaths,
       userAgents: config.userAgents,
+      policy: config.policy,
+      signals: config.signals,
     }),
     {
       status: 200,
@@ -1159,12 +1520,34 @@ export function createDocsHead(config: CreateDocsHeadConfig): DocsHead {
     manifest: config.manifest,
     ...config.jsonLd,
   });
+  const seo: SeoMeta = { ...config.manifest.seo, ...config.seo };
+  const seoMeta: DocsHeadEntry[] = [
+    { property: "og:type", content: "article" },
+    {
+      name: "twitter:card",
+      content: seo.ogImage ? "summary_large_image" : "summary",
+    },
+  ];
+  if (seo.ogImage) {
+    seoMeta.push(
+      { property: "og:image", content: seo.ogImage },
+      { name: "twitter:image", content: seo.ogImage }
+    );
+  }
+  if (seo.twitterSite) {
+    seoMeta.push({ name: "twitter:site", content: seo.twitterSite });
+  }
+  if (seo.keywords && seo.keywords.length > 0) {
+    seoMeta.push({ name: "keywords", content: seo.keywords.join(", ") });
+  }
+
   return {
     meta: [
       { title },
       { name: "description", content: description },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
+      ...seoMeta,
       ...(jsonLd ? [{ [jsonLdKey]: jsonLd }] : []),
     ],
     links: [

@@ -591,3 +591,104 @@ title: Custom
     ).toBe(false);
   });
 });
+
+describe("lintDocs GEO structure", () => {
+  it("flags skipped headings, unlabeled code fences, and missing image alt", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guide.mdx"),
+      [
+        "---",
+        "title: Guide",
+        "description: A guide.",
+        "---",
+        "",
+        "## Section",
+        "",
+        "#### Skipped to H4",
+        "",
+        "```",
+        "bare fence, no language",
+        "```",
+        "",
+        "![](/diagram.png)",
+        "",
+        "Done.",
+      ].join("\n")
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const rules = new Set(
+      result.violations
+        .filter((v) => v.rule.startsWith("geo:"))
+        .map((v) => v.rule)
+    );
+    expect(rules.has("geo:heading-skip")).toBe(true);
+    expect(rules.has("geo:code-language")).toBe(true);
+    expect(rules.has("geo:image-alt")).toBe(true);
+    // GEO issues are warnings, never errors — they don't fail the build by default.
+    expect(
+      result.violations
+        .filter((v) => v.rule.startsWith("geo:"))
+        .every((v) => v.severity === "warn")
+    ).toBe(true);
+  });
+
+  it("passes a well-structured page (sequential headings, labeled code, alt text)", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "clean.mdx"),
+      [
+        "---",
+        "title: Clean",
+        "description: A clean page.",
+        "---",
+        "",
+        "## How do I install it?",
+        "",
+        "```bash",
+        "npm install thing",
+        "```",
+        "",
+        "### Details",
+        "",
+        "![Install flow: download then run](/flow.png)",
+      ].join("\n")
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    expect(result.violations.some((v) => v.rule.startsWith("geo:"))).toBe(
+      false
+    );
+  });
+});
+
+describe("lintDocs JSON-LD validity", () => {
+  it("flags a malformed date that would emit invalid JSON-LD", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "quickstart.mdx"),
+      "---\ntitle: Quickstart\ndescription: Start here.\nlastModified: not-a-date\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const jsonLd = result.violations.filter((v) => v.rule === "jsonld");
+    expect(jsonLd).toHaveLength(1);
+    expect(jsonLd[0].message).toContain("dateModified");
+  });
+
+  it("accepts a valid ISO date", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "quickstart.mdx"),
+      "---\ntitle: Quickstart\ndescription: Start here.\nlastModified: 2026-05-01T00:00:00.000Z\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    expect(result.violations.some((v) => v.rule === "jsonld")).toBe(false);
+  });
+});

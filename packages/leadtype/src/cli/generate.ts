@@ -24,14 +24,20 @@ import type {
   DocsConfig,
   DocsFrontmatterSchema,
   DocsGroup,
+  DocsLlmsConfig,
   DocsNavNode,
+  LlmsProductInfo,
+  OrganizationInfo,
   ProductInfo,
+  RenderSiteJsonLdOptions,
 } from "../llm";
 import {
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  generateSkillArtifacts,
+  resolveAgentInputs,
   resolveDocsNavigation,
 } from "../llm";
 import {
@@ -73,6 +79,13 @@ type GenerateFormat = "json" | "text";
 export type GenerateArgs = {
   baseUrl?: string;
   bundle: boolean;
+  /**
+   * Bundle mode only. Also emit `search-index.json` + `agent-readability.json`
+   * alongside the markdown mirror so the published tarball can serve a
+   * version-matched docs MCP server (`leadtype mcp --package <name>`). Off by
+   * default to keep bundles lean.
+   */
+  mcp: boolean;
   docsDirs: string[];
   enrichGit: boolean;
   exclude: string[];
@@ -127,6 +140,9 @@ type GenerateResult = {
     llmsTxt?: string;
     searchContent?: string;
     searchIndex?: string;
+    wellKnownLlmsTxt?: string;
+    skillMd?: string;
+    agentSkills?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavNode[];
@@ -134,7 +150,7 @@ type GenerateResult = {
   mounts: DocsPathMount[];
   mode: "site" | "bundle";
   outDir: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
 };
@@ -184,10 +200,17 @@ type ResolvedGenerateMetadata = {
   groups: DocsGroup[];
   i18n?: DocsConfig["i18n"];
   nav?: DocsNavNode[];
-  product: ProductInfo;
+  product: LlmsProductInfo;
+  /** Derived from `product` + `organization`: JSON-LD options for `renderSiteJsonLd`. */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Derived from `organization`: the agent-card `provider`. */
+  provider?: { organization: string; url?: string };
+  /** Derived from `product.docs`: the agent-card `documentationUrl`. */
+  documentationUrl?: string;
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
+  agents?: DocsConfig["agents"];
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -200,8 +223,10 @@ By default, runs in site mode and writes:
   docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
 
 With --bundle, runs in package mode and writes:
-  AGENTS.md, docs/*.md
+  AGENTS.md, SKILL.md, docs/*.md
   (skips llms.txt, llms-full.txt, and search artifacts — those are website-only)
+  Add --mcp to also emit docs/search-index.json + docs/agent-readability.json
+  so the tarball can serve a version-matched MCP server (leadtype mcp --package).
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
@@ -209,6 +234,7 @@ Options:
                      Use <dir>=<url-prefix> to mount a source outside /docs, e.g. changelog=/changelog.
   --out <dir>        Output root directory (default: public)
   --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
+  --mcp              Bundle mode only: also emit search-index.json + agent-readability.json for a version-matched docs MCP server
   --base-url <url>   Base URL for generated links (site mode)
   --name <name>      Product name for generated index files
   --summary <text>   Product summary for generated index files
@@ -239,6 +265,7 @@ function isGenerateFormat(value: string): value is GenerateFormat {
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
     bundle: false,
+    mcp: false,
     docsDirs: [],
     enrichGit: false,
     exclude: [],
@@ -276,6 +303,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.enrichGit = true;
     } else if (arg === "--bundle") {
       args.bundle = true;
+    } else if (arg === "--mcp") {
+      args.mcp = true;
     } else if (arg === "--sync") {
       syncFlags.push(arg);
       args.syncMode = "auto";
@@ -304,6 +333,14 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
   if (distinctSyncFlags.length > 1) {
     throw new Error(
       `${distinctSyncFlags.join(" and ")} are mutually exclusive`
+    );
+  }
+
+  // `--mcp` only emits artifacts in bundle mode; accepting it in site mode would
+  // silently no-op and mislead automation into thinking MCP files were emitted.
+  if (args.mcp && !args.bundle) {
+    throw new Error(
+      "--mcp requires --bundle (MCP artifacts ship in the bundle)"
     );
   }
 
@@ -374,10 +411,61 @@ function validateProductInfo(value: unknown): ProductInfo | undefined {
   if (!isPlainRecord(value)) {
     return;
   }
-  if (typeof value.name !== "string" || typeof value.summary !== "string") {
+  if (typeof value.name !== "string" || typeof value.tagline !== "string") {
     return;
   }
   return value as ProductInfo;
+}
+
+function validateOrganization(
+  value: unknown,
+  configPath: string
+): OrganizationInfo | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value) || typeof value.name !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": organization must be an object with a string name`
+    );
+  }
+  if (value.url !== undefined && typeof value.url !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": organization.url must be a string`
+    );
+  }
+  return value as OrganizationInfo;
+}
+
+function validateLlmsConfig(
+  value: unknown,
+  configPath: string
+): DocsLlmsConfig | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}": llms must be an object`);
+  }
+  if (value.sections !== undefined && !Array.isArray(value.sections)) {
+    throw new Error(
+      `docs config at "${configPath}": llms.sections must be an array`
+    );
+  }
+  return value as DocsLlmsConfig;
+}
+
+function validateAgentsConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["agents"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}": agents must be an object`);
+  }
+  return value as DocsConfig["agents"];
 }
 
 function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
@@ -530,9 +618,12 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" groups must be an array of { slug, title } entries`
       );
     }
-    if (entry.nav !== undefined && validateDocsNav(entry.nav) === undefined) {
+    if (
+      entry.navigation !== undefined &&
+      validateDocsNav(entry.navigation) === undefined
+    ) {
       throw new Error(
-        `docs config at "${configPath}": collection "${key}" nav must be an array of navigation nodes`
+        `docs config at "${configPath}": collection "${key}" navigation must be an array of navigation nodes`
       );
     }
     if (entry.include !== undefined && !isStringArray(entry.include)) {
@@ -566,13 +657,13 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const product = validateProductInfo(value.product);
   if (!product) {
     throw new Error(
-      `docs config at "${configPath}" must export product.name and product.summary`
+      `docs config at "${configPath}" must export product.name and product.tagline`
     );
   }
 
   const collections = validateCollections(value.collections, configPath);
   const hasGroups = value.groups !== undefined;
-  const hasNav = value.nav !== undefined;
+  const hasNav = value.navigation !== undefined;
 
   if (collections && hasGroups) {
     throw new Error(
@@ -581,7 +672,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
   if (collections && hasNav) {
     throw new Error(
-      `docs config at "${configPath}" sets both "nav" and "collections". Move nav into the relevant collection(s) — top-level nav is for the single-collection shape only.`
+      `docs config at "${configPath}" sets both "navigation" and "collections". Move navigation into the relevant collection(s) — top-level navigation is for the single-collection shape only.`
     );
   }
 
@@ -589,10 +680,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   let nav: DocsNavNode[] | undefined;
   if (collections === undefined) {
     groups = validateDocsGroups(value.groups);
-    nav = validateDocsNav(value.nav);
+    nav = validateDocsNav(value.navigation);
     if (!(groups || nav)) {
       throw new Error(
-        `docs config at "${configPath}" must export groups or nav as an array (or define collections)`
+        `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
       );
     }
     if (hasGroups && !groups) {
@@ -602,10 +693,14 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     }
     if (hasNav && !nav) {
       throw new Error(
-        `docs config at "${configPath}" must export nav as an array of navigation nodes`
+        `docs config at "${configPath}" must export navigation as an array of navigation nodes`
       );
     }
   }
+
+  const organization = validateOrganization(value.organization, configPath);
+  const llms = validateLlmsConfig(value.llms, configPath);
+  const agents = validateAgentsConfig(value.agents, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -616,7 +711,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   return {
     ...(collections ? { collections } : {}),
     ...(groups ? { groups } : {}),
-    ...(nav ? { nav } : {}),
+    ...(nav ? { navigation: nav } : {}),
+    ...(organization ? { organization } : {}),
+    ...(llms ? { llms } : {}),
+    ...(agents ? { agents } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -736,7 +834,7 @@ async function readPackageProduct(
   if (args.name && args.summary) {
     return {
       name: args.name,
-      summary: args.summary,
+      tagline: args.summary,
     };
   }
 
@@ -751,7 +849,7 @@ async function readPackageProduct(
 
   const name =
     args.name ?? (typeof packageData.name === "string" ? packageData.name : "");
-  const summary =
+  const tagline =
     args.summary ??
     (typeof packageData.description === "string"
       ? packageData.description
@@ -759,7 +857,7 @@ async function readPackageProduct(
 
   return {
     name: name || "Docs",
-    summary: summary || "Generated documentation.",
+    tagline: tagline || "Generated documentation.",
   };
 }
 
@@ -770,7 +868,7 @@ function applyProductOverrides(
   return {
     ...product,
     name: args.name ?? product.name,
-    summary: args.summary ?? product.summary,
+    tagline: args.summary ?? product.tagline,
   };
 }
 
@@ -858,11 +956,11 @@ function mergeCollectionNav(
   const nav: DocsNavNode[] = [];
   const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
   for (const [key, collection] of Object.entries(collections)) {
-    if (!collection.nav) {
+    if (!collection.navigation) {
       continue;
     }
     const source = sourcesByKey.get(key);
-    for (const node of collection.nav) {
+    for (const node of collection.navigation) {
       nav.push(prefixCollectionNavNode(node, source?.mountPath ?? ""));
     }
   }
@@ -890,6 +988,11 @@ function resolveGenerateMetadata(
           )
         : []),
     ];
+    const agentInputs = resolveAgentInputs({
+      product: applyProductOverrides(loaded.config.product, args),
+      organization: loaded.config.organization,
+      llms: loaded.config.llms,
+    });
     return Promise.resolve({
       configPath: loaded.path,
       flatteners: flatteners.length > 0 ? flatteners : undefined,
@@ -899,18 +1002,19 @@ function resolveGenerateMetadata(
       nav:
         collectionNav && collectionNav.length > 0
           ? collectionNav
-          : loaded.config.nav,
-      product: applyProductOverrides(loaded.config.product, args),
+          : loaded.config.navigation,
+      ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
         ? path.resolve(srcDir, loaded.config.typeTableBasePath)
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
+      agents: loaded.config.agents,
     });
   }
   return readPackageProduct(srcDir, args).then((product) => ({
     groups: [],
-    product,
+    product: resolveAgentInputs({ product }).product,
   }));
 }
 
@@ -1583,10 +1687,59 @@ export async function runGenerateCommand(
         locale: i18n?.defaultLocale,
         transformers: metadata.transformers,
       });
+      const bundleFiles: GenerateResult["files"] = {
+        agentsMd: agents.outputPath,
+      };
+      // --mcp: also emit the search index + readability manifest so the tarball
+      // can serve a version-matched docs MCP server (`leadtype mcp --package`).
+      // These are URL-independent (MCP keys on urlPath and reads the .md mirror),
+      // so they work without a --base-url.
+      if (args.mcp) {
+        const search = await generateDocsSearchFiles({
+          outDir,
+          baseUrl: args.baseUrl,
+          mounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          transformers: metadata.transformers,
+        });
+        const agentReadability = await generateAgentReadabilityArtifacts({
+          outDir,
+          baseUrl: args.baseUrl,
+          product,
+          groups,
+          nav: effectiveNav,
+          mounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          i18nManifest,
+          transformers: metadata.transformers,
+        });
+        bundleFiles.searchIndex = search.outputPath;
+        if (search.contentOutputPath) {
+          bundleFiles.searchContent = search.contentOutputPath;
+        }
+        bundleFiles.agentReadabilityManifest = agentReadability.files.manifest;
+      }
+      // Ship the docs-skill SKILL.md next to AGENTS.md (offline-pointing), unless
+      // the author disabled it. Bundle MCP is on only with --mcp.
+      const bundleSkills = await generateSkillArtifacts({
+        outDir,
+        // Skill `bodyPath` resolves against the real source root (`--src`), not
+        // the temp conversion mirror (which only holds the docs tree).
+        srcDir,
+        product,
+        skills: metadata.agents?.skills,
+        mode: "bundle",
+        mcpEnabled: args.mcp,
+      });
+      if (bundleSkills.files[0]) {
+        bundleFiles.skillMd = bundleSkills.files[0];
+      }
       result = {
         docsDir,
         docsDirs,
-        files: { agentsMd: agents.outputPath },
+        files: bundleFiles,
         filters: sourceMirror.filters,
         groups,
         ...(effectiveNav ? { nav: effectiveNav } : {}),
@@ -1646,7 +1799,38 @@ export async function runGenerateCommand(
         locale: i18n?.defaultLocale,
         i18nManifest,
         transformers: metadata.transformers,
+        robotsPolicy: metadata.agents?.robots?.policy,
+        contentSignals: metadata.agents?.robots?.signals,
+        jsonLd: metadata.jsonLd,
+        seo: metadata.agents?.seo,
       });
+      // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
+      // Default-on: the auto docs-skill is free and points agents at the docs.
+      const siteSkills = await generateSkillArtifacts({
+        outDir,
+        // Skill `bodyPath` resolves against the real source root (`--src`), not
+        // the temp conversion mirror (which only holds the docs tree).
+        srcDir,
+        baseUrl: args.baseUrl,
+        product,
+        skills: {
+          ...metadata.agents?.skills,
+          agentCard: metadata.agents?.agentCard?.enabled,
+        },
+        mode: "site",
+        mcpEnabled: metadata.agents?.mcp?.enabled,
+        // Agent-card provider / docs URL derived from `organization` + `product.docs`.
+        ...(metadata.provider ? { provider: metadata.provider } : {}),
+        ...(metadata.documentationUrl
+          ? { documentationUrl: metadata.documentationUrl }
+          : {}),
+        ...(metadata.agents?.agentCard?.version
+          ? { version: metadata.agents.agentCard.version }
+          : {}),
+      });
+      const agentSkillsIndex = siteSkills.files.find((f) =>
+        f.endsWith("index.json")
+      );
 
       if (i18n) {
         for (const locale of i18n.locales) {
@@ -1695,6 +1879,10 @@ export async function runGenerateCommand(
             locale: locale.code,
             i18nManifest,
             transformers: metadata.transformers,
+            robotsPolicy: metadata.agents?.robots?.policy,
+            contentSignals: metadata.agents?.robots?.signals,
+            jsonLd: metadata.jsonLd,
+            seo: metadata.agents?.seo,
           });
         }
       }
@@ -1711,6 +1899,8 @@ export async function runGenerateCommand(
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
           llmsFullTxt: path.join(outDir, "llms-full.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),
+          wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
+          ...(agentSkillsIndex ? { agentSkills: agentSkillsIndex } : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
         },

@@ -82,10 +82,12 @@ import { defineDocsConfig } from "leadtype";
 export default defineDocsConfig({
   product: {
     name: "My library",
-    summary: "What it does in one sentence.",
-    // `blocks` is the body of llms.txt, in order. Use markdown blocks for
+    tagline: "What it does in one sentence.",
+  },
+  llms: {
+    // `llms.sections` is the body of llms.txt, in order. Use markdown blocks for
     // prose/highlights and links blocks for curated entry points.
-    blocks: [
+    sections: [
       {
         type: "links",
         heading: "Best Starting Points",
@@ -99,11 +101,11 @@ export default defineDocsConfig({
       },
     ],
   },
-  nav: [{ title: "Start", pages: [""] }],
+  navigation: [{ title: "Start", pages: [""] }],
 });
 ```
 
-`nav` is the shared source of truth for the sidebar, `llms.txt`, `AGENTS.md`, sitemap markdown, and [Agent Readability](/docs/how-it-works#vocabulary) metadata.
+`navigation` is the shared source of truth for the sidebar, `llms.txt`, `AGENTS.md`, sitemap markdown, and [Agent Readability](/docs/how-it-works#vocabulary) metadata.
 
 ## 2. Create the source
 

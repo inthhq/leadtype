@@ -5,7 +5,7 @@ description: "Wire markdown responses, JSON-LD, sitemap, and robots into your fr
 
 # Serve agent responses
 
-Once [Optimize docs for agents](/docs/build/optimize-docs-for-agents) has written `agent-readability.json` and the rest of the discovery files, your app has to wire them into routing and HTML. This page covers the runtime side: one middleware for markdown content negotiation, JSON-LD in the docs page head, and the per-request sitemap/robots regenerators that make preview URLs advertise the right origin.
+Serve agents the runtime side of your docs with one middleware: markdown content negotiation, JSON-LD in the page head, and per-request sitemap/robots that advertise the live origin. This wires the discovery files from [Optimize docs for agents](/docs/build/optimize-docs-for-agents) (`agent-readability.json` and friends) into your app's routing and HTML.
 
 For per-host deploy paths (Next on Vercel, TanStack Start, Nuxt on Cloudflare, etc.), see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
 
@@ -128,7 +128,11 @@ const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
 
 Use `createDocsJsonLd()` if your framework has a typed metadata or head API. Use `stringifyJsonLd()` for safe script contents.
 
-The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the page's full position in your `nav` tree — `Docs → Section → Subsection → Page` — and `articleSection` is set to the page's top-level section. Heading-only groups (no landing page) appear as name-only crumbs; ungrouped pages fall back to a simple `Docs → Page` trail.
+`createDocsHead` also emits the SEO/social meta a search crawler and link unfurler expect: `og:title`/`og:description` (from the page), `og:type`, and a `twitter:card`, plus `og:image`/`twitter:image`, `twitter:site`, and `keywords` from your `agents.seo` config (per-page overrides via the `seo` option win). leadtype emits the `og:image` **URL**, not the image — it ships no UI, so generating a social card is your app's job.
+
+The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the page's full position in your `nav` tree — `Docs → Section → Subsection → Page` — and `articleSection` is set to the page's top-level section. Heading-only groups (no landing page) appear as name-only crumbs; ungrouped pages fall back to a simple `Docs → Page` trail. Pages under a `reference`/`api` section are additionally typed `["TechArticle", "APIReference"]` automatically.
+
+`isPartOf` and `publisher` **reference the site-level entities by `@id`** rather than re-inlining a `WebSite`/`Organization` on every page — so an answer engine stitches the whole site into one entity graph. Emit the matching graph once (see below) so those `@id`s resolve.
 
 ```json
 {
@@ -141,11 +145,8 @@ The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the p
   "mainEntityOfPage": "https://leadtype.dev/docs/build/optimize-docs-for-agents",
   "dateModified": "2026-05-29T09:36:07.000Z",
   "articleSection": "Build an Agent-Ready Site",
-  "isPartOf": {
-    "@type": "WebSite",
-    "name": "Leadtype",
-    "url": "https://leadtype.dev"
-  },
+  "isPartOf": { "@id": "https://leadtype.dev/#website" },
+  "publisher": { "@id": "https://leadtype.dev/#organization" },
   "breadcrumb": {
     "@type": "BreadcrumbList",
     "itemListElement": [
@@ -157,7 +158,20 @@ The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the p
 }
 ```
 
-Set `overrides.type` to use a different Schema.org type (e.g. `["TechArticle", "APIReference"]`), and `overrides.breadcrumb` (or `false`) to replace or drop the trail. Anything you pass in `overrides` is merged into the object before it's serialized.
+Set `overrides.type` to use a different Schema.org type, and `overrides.breadcrumb` (or `false`) to replace or drop the trail. Anything you pass in `overrides` is merged into the object before it's serialized.
+
+### Emit the site-level graph once
+
+The per-page `@id` references resolve against a site-level graph — `Organization`, `WebSite` (with a `SearchAction`), and `SoftwareApplication` (or `SoftwareSourceCode` for libraries). Render it **once**, on your docs home or root layout, with `renderSiteJsonLd`. The graph is derived from your config's `organization` and `product` (`kind`/`category`/`repository`), baked into the manifest at generate time — so no options are needed:
+
+```ts
+import agentManifest from "../public/docs/agent-readability.json";
+import { renderSiteJsonLd, stringifyJsonLd } from "leadtype/llm/readability";
+
+const siteJsonLd = stringifyJsonLd(renderSiteJsonLd(agentManifest));
+```
+
+It returns a `@graph` with stable `@id`s derived from the manifest's base URL, so the `isPartOf`/`publisher` on every page point back to it. Pass overrides as a second argument to win over the config — e.g. `renderSiteJsonLd(agentManifest, { searchUrlPattern: null })` drops the `SearchAction` (default template `/docs?q={search_term_string}`).
 
 Also add canonical and markdown alternate links:
 
@@ -181,7 +195,11 @@ The middleware above uses `createAgentMarkdownResponse`. It returns a Web `Respo
 - Direct `.md` URLs such as `/docs/quickstart.md`.
 - `canonical_url` and `last_updated` frontmatter aliases injected automatically.
 - 200 markdown responses for missing docs pages, so agents do not discard the body.
-- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical"`, `Cache-Control: public, max-age=300, must-revalidate`.
+- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical", </llms.txt>; rel="llms-txt"`, `X-Llms-Txt: /llms.txt`, `Content-Signal: search=yes, ai-input=yes, ai-train=no`, `Cache-Control: public, max-age=300, must-revalidate`.
+
+The `Link: rel="llms-txt"` and `X-Llms-Txt` headers let an agent that fetched any page **discover the site index** without guessing — point them at a different path with `llmsTxtPath: "/docs/llms.txt"`, or drop them with `llmsTxtPath: null`. `leadtype generate` also writes a discovery copy at `/.well-known/llms.txt` (served statically from `public/`), so crawlers that probe the well-known location find it too.
+
+The `Content-Signal` header carries the same [Cloudflare Content-Signals](https://contentsignals.org) vocabulary as `robots.txt` (`search` / `ai-input` / `ai-train`). It defaults to the `balanced` policy (crawlable and retrievable, but "don't train on this"); pass a `contentSignal` of `{ search, aiInput, aiTrain }` or a string to change it, or `contentSignal: null` to omit it. `renderRobotsTxt` / `createRobotsTxtResponse` emit the matching `Content-Signal:` line in `robots.txt` from the same `policy` (`balanced` · `open` · `block-training` · `block-ai`), so one stance drives both surfaces.
 
 `readMarkdownFile` may be sync or async. In Node/Bun, read from disk. In Cloudflare, fetch from KV/R2 or an asset binding. In Vercel Edge, fetch from the deployment's static asset URL.
 

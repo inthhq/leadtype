@@ -28,9 +28,11 @@ import {
   renderJsonLdScript,
   renderMissingMarkdown,
   renderRobotsTxt,
+  renderSiteJsonLd,
   renderSitemapXml,
   resolveMarkdownMirrorTarget,
   stringifyJsonLd,
+  validateJsonLd,
 } from "./readability";
 
 const tempDirs: string[] = [];
@@ -108,6 +110,31 @@ describe("generateLlmsTxt", () => {
     ).resolves.toContain("Transformer note.");
   });
 
+  it("publishes a discovery copy at /.well-known/llms.txt", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      product: { name: "Test", summary: "Testing." },
+      groups: [{ slug: "guides", title: "Guides" }],
+    });
+
+    const [root, wellKnown] = await Promise.all([
+      readFile(path.join(outDir, "llms.txt"), "utf8"),
+      readFile(path.join(outDir, ".well-known", "llms.txt"), "utf8"),
+    ]);
+    expect(wellKnown).toBe(root);
+  });
+
   it("renders nested curated nav sections when nav is configured", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");
@@ -178,6 +205,49 @@ describe("generateLlmsTxt", () => {
       docsSummary.indexOf("Initialization Flow")
     );
     expect(docsSummary.match(/Client Modes/g)).toHaveLength(1);
+  });
+
+  it("collapses optional nav sections into a single ## Optional section", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+      {
+        relativePath: "legacy/v1.mdx",
+        frontmatter: "title: Legacy v1\ndescription: Old API.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://example.com",
+      product: { name: "Test", summary: "Testing." },
+      nav: [
+        { title: "Start", pages: ["quickstart"] },
+        { title: "Legacy", base: "legacy", optional: true, pages: ["v1"] },
+      ],
+    });
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("## Optional");
+    // The optional section's own heading is not rendered as a normal section…
+    expect(docsSummary).not.toContain("## Legacy");
+    // …and its page is listed under ## Optional, after the required sections.
+    expect(docsSummary).toContain("](/docs/legacy/v1.md)");
+    expect(docsSummary.indexOf("## Start")).toBeLessThan(
+      docsSummary.indexOf("## Optional")
+    );
+    expect(docsSummary.indexOf("## Optional")).toBeLessThan(
+      docsSummary.indexOf("/docs/legacy/v1.md")
+    );
   });
 
   it("renders curated docs sections from the group tree and frontmatter", async () => {
@@ -591,6 +661,12 @@ describe("generateLLMFullContextFiles", () => {
       false
     );
     expect(existsSync(path.join(projectDir, "docs", "llms-full"))).toBe(false);
+    // Discovery copy at the well-known location, identical to the root file.
+    const wellKnownFull = await readFile(
+      path.join(projectDir, ".well-known", "llms-full.txt"),
+      "utf8"
+    );
+    expect(wellKnownFull).toBe(llmsFull);
   });
 
   it("inlines a multi-group page only once", async () => {
@@ -837,6 +913,33 @@ describe("generateAgentReadabilityArtifacts", () => {
     );
   });
 
+  it("applies a robotsPolicy + content signals to the emitted robots.txt", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      robotsPolicy: "block-ai",
+      contentSignals: { aiInput: "no" },
+    });
+
+    const robotsTxt = await readFile(result.files.robotsTxt, "utf8");
+    expect(robotsTxt).toContain(
+      "Content-Signal: search=yes, ai-input=no, ai-train=no"
+    );
+    expect(robotsTxt).toContain("User-agent: GPTBot\nDisallow: /");
+    expect(robotsTxt).toContain("User-agent: PerplexityBot\nDisallow: /");
+  });
+
   it("renders helpers that host apps can merge with non-docs pages", () => {
     const pages = [
       {
@@ -861,6 +964,53 @@ describe("generateAgentReadabilityArtifacts", () => {
         sitemapUrlPath: "/sitemap.xml",
       })
     ).toContain("Sitemap: https://example.com/sitemap.xml");
+  });
+
+  it("defaults robots.txt to the balanced Content-Signal policy", () => {
+    const robots = renderRobotsTxt({ baseUrl: "https://example.com" });
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=no"
+    );
+    // Balanced keeps both retrieval and training crawlers crawlable.
+    expect(robots).toContain("User-agent: GPTBot"); // training
+    expect(robots).toContain("User-agent: PerplexityBot"); // retrieval
+    expect(robots).not.toContain("Disallow: /");
+  });
+
+  it("block-training disallows training crawlers but keeps retrieval", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      policy: "block-training",
+    });
+    const gptBlock = robots.slice(robots.indexOf("User-agent: GPTBot"));
+    expect(gptBlock.startsWith("User-agent: GPTBot\nDisallow: /")).toBe(true);
+    const perplexityBlock = robots.slice(
+      robots.indexOf("User-agent: PerplexityBot")
+    );
+    expect(perplexityBlock).toContain("Allow: /");
+  });
+
+  it("block-ai disallows every AI crawler and signals no ai use", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      policy: "block-ai",
+    });
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=no, ai-train=no"
+    );
+    expect(robots).toContain("User-agent: GPTBot\nDisallow: /");
+    expect(robots).toContain("User-agent: PerplexityBot\nDisallow: /");
+  });
+
+  it("signals override individual directives on top of a policy", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      policy: "balanced",
+      signals: { aiTrain: "yes" },
+    });
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=yes"
+    );
   });
 });
 
@@ -916,11 +1066,9 @@ describe("agent readability helpers", () => {
       url: "https://example.com/docs/quickstart",
       mainEntityOfPage: "https://example.com/docs/quickstart",
       dateModified: "2026-05-01T12:00:00.000Z",
-      isPartOf: {
-        "@type": "WebSite",
-        name: "Leadtype",
-        url: "https://example.com",
-      },
+      // Site entities are referenced by @id, not re-inlined per page.
+      isPartOf: { "@id": "https://example.com/#website" },
+      publisher: { "@id": "https://example.com/#organization" },
     });
     expect(renderJsonLdScript(page, manifest)).toContain(
       '<script type="application/ld+json">'
@@ -928,6 +1076,138 @@ describe("agent readability helpers", () => {
     expect(renderJsonLdScript(page, manifest)).toContain(
       "Quickstart \\u003cstart\\u003e"
     );
+  });
+
+  it("emits a referenced site-level entity graph", () => {
+    const graph = renderSiteJsonLd(manifest, {
+      organization: { name: "Acme Inc", url: "https://acme.com" },
+      software: { applicationCategory: "DeveloperApplication" },
+    }) as { "@graph": Record<string, unknown>[] };
+
+    const byType = new Map(
+      graph["@graph"].map((node) => [node["@type"], node])
+    );
+    expect(byType.get("Organization")).toMatchObject({
+      "@id": "https://example.com/#organization",
+      name: "Acme Inc",
+      url: "https://acme.com",
+    });
+    expect(byType.get("WebSite")).toMatchObject({
+      "@id": "https://example.com/#website",
+      publisher: { "@id": "https://example.com/#organization" },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          urlTemplate: "https://example.com/docs?q={search_term_string}",
+        },
+      },
+    });
+    expect(byType.get("SoftwareApplication")).toMatchObject({
+      "@id": "https://example.com/#software",
+      applicationCategory: "DeveloperApplication",
+      publisher: { "@id": "https://example.com/#organization" },
+    });
+  });
+
+  it("emits SoftwareSourceCode for libraries and omits the SearchAction on request", () => {
+    const graph = renderSiteJsonLd(manifest, {
+      software: { isLibrary: true },
+      searchUrlPattern: null,
+    }) as { "@graph": Record<string, unknown>[] };
+    const types = graph["@graph"].map((node) => node["@type"]);
+    expect(types).toContain("SoftwareSourceCode");
+    expect(types).not.toContain("SoftwareApplication");
+    const website = graph["@graph"].find((node) => node["@type"] === "WebSite");
+    expect(website).not.toHaveProperty("potentialAction");
+  });
+
+  it("validates JSON-LD structure (validateJsonLd)", () => {
+    // A valid TechArticle passes.
+    expect(
+      validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        name: "Quickstart",
+        dateModified: "2026-05-01T00:00:00.000Z",
+      })
+    ).toEqual([]);
+    // The rendered site graph passes.
+    expect(validateJsonLd(renderSiteJsonLd(manifest))).toEqual([]);
+    // Missing @context, a bad date, and a nameless article are each flagged.
+    expect(validateJsonLd({ "@type": "TechArticle", name: "X" })).toContain(
+      "root: missing or empty @context"
+    );
+    expect(
+      validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        name: "X",
+        dateModified: "last tuesday",
+      }).some((issue) => issue.includes("dateModified is not a valid date"))
+    ).toBe(true);
+    expect(
+      validateJsonLd({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+      }).some((issue) => issue.includes("requires a headline or name"))
+    ).toBe(true);
+  });
+
+  it("types reference-section pages as APIReference", () => {
+    const refManifest = {
+      version: 1 as const,
+      generatedAt: "2026-05-01T00:00:00.000Z",
+      baseUrl: "https://example.com",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      files: {
+        robotsTxt: "/docs/robots.txt",
+        sitemapMd: "/docs/sitemap.md",
+        sitemapXml: "/docs/sitemap.xml",
+      },
+      navigation: {
+        ungrouped: [],
+        unknown: [],
+        groups: [
+          {
+            slug: "reference",
+            segmentPath: ["reference"],
+            title: "Reference",
+            pages: [
+              {
+                urlPath: "/docs/reference/cli",
+                relativePath: "reference/cli",
+                title: "CLI",
+                description: "",
+                groups: ["reference"],
+                toc: [],
+              },
+            ],
+            children: [],
+          },
+        ],
+      },
+      pages: [
+        {
+          title: "CLI",
+          description: "CLI reference.",
+          urlPath: "/docs/reference/cli",
+          absoluteUrl: "https://example.com/docs/reference/cli",
+          markdownUrlPath: "/docs/reference/cli.md",
+          markdownAbsoluteUrl: "https://example.com/docs/reference/cli.md",
+          relativePath: "reference/cli",
+          groups: ["reference"],
+          lastModified: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const page = refManifest.pages[0];
+    if (!page) {
+      throw new Error("missing test page");
+    }
+    expect(renderJsonLd(page, refManifest)["@type"]).toEqual([
+      "TechArticle",
+      "APIReference",
+    ]);
   });
 
   it("builds a nested breadcrumb trail and articleSection from nav groups", () => {
@@ -1128,9 +1408,24 @@ describe("agent readability helpers", () => {
     ).toEqual({
       "Content-Type": "text/markdown; charset=utf-8",
       Vary: "Accept, User-Agent",
-      Link: '<https://example.com/docs>; rel="canonical"',
+      Link: '<https://example.com/docs>; rel="canonical", </llms.txt>; rel="llms-txt"',
+      "X-Llms-Txt": "/llms.txt",
+      "Content-Signal": "search=yes, ai-input=yes, ai-train=no",
       "Cache-Control": "public, max-age=300, must-revalidate",
     });
+    // Content-Signal can be customized or omitted.
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        contentSignal: { search: "yes", aiInput: "no", aiTrain: "no" },
+      })["Content-Signal"]
+    ).toBe("search=yes, ai-input=no, ai-train=no");
+    expect(
+      createMarkdownResponseHeaders({
+        canonicalUrl: "https://example.com/docs",
+        contentSignal: null,
+      })
+    ).not.toHaveProperty("Content-Signal");
     expect(
       createMarkdownResponseHeaders({
         canonicalUrl: "https://example.com/docs",
@@ -1143,6 +1438,22 @@ describe("agent readability helpers", () => {
         cacheControl: "no-store",
       })["Cache-Control"]
     ).toBe("no-store");
+    // llms.txt discovery headers are omitted when llmsTxtPath is null.
+    const noDiscovery = createMarkdownResponseHeaders({
+      canonicalUrl: "https://example.com/docs",
+      llmsTxtPath: null,
+    });
+    expect(noDiscovery).not.toHaveProperty("X-Llms-Txt");
+    expect(noDiscovery.Link).toBe(
+      '<https://example.com/docs>; rel="canonical"'
+    );
+    // A custom llms.txt path is advertised in both Link and X-Llms-Txt.
+    const customDiscovery = createMarkdownResponseHeaders({
+      canonicalUrl: "https://example.com/docs",
+      llmsTxtPath: "/docs/llms.txt",
+    });
+    expect(customDiscovery["X-Llms-Txt"]).toBe("/docs/llms.txt");
+    expect(customDiscovery.Link).toContain('</docs/llms.txt>; rel="llms-txt"');
   });
 
   it("adds agent-readable frontmatter aliases to markdown", () => {
@@ -1204,8 +1515,9 @@ lastModified: 2026-05-01T12:00:00.000Z
     expect(missingResponse).not.toBeNull();
     expect(missingResponse?.status).toBe(200);
     expect(missingResponse?.headers.get("Link")).toBe(
-      '<http://localhost:3000/missing-page>; rel="canonical"'
+      '<http://localhost:3000/missing-page>; rel="canonical", </llms.txt>; rel="llms-txt"'
     );
+    expect(missingResponse?.headers.get("X-Llms-Txt")).toBe("/llms.txt");
     const missingBody = await missingResponse?.text();
     expect(missingBody).toContain("# Page not found");
 
@@ -1474,6 +1786,43 @@ describe("createDocsHead", () => {
       rel: "alternate",
       type: "text/markdown",
       href: "https://leadtype.dev/docs/quickstart.md",
+    });
+  });
+
+  it("emits SEO meta (og:type, twitter:card always; image/keywords when set)", () => {
+    // No seo configured: still emits og:type + a summary twitter:card.
+    const bare = createDocsHead({ urlPath: "/docs/quickstart", manifest });
+    expect(bare.meta).toContainEqual({
+      property: "og:type",
+      content: "article",
+    });
+    expect(bare.meta).toContainEqual({
+      name: "twitter:card",
+      content: "summary",
+    });
+    expect(bare.meta.some((m) => m.property === "og:image")).toBe(false);
+
+    // Site-level seo (manifest) + per-page override (config.seo), config wins.
+    const withSeo = createDocsHead({
+      urlPath: "/docs/quickstart",
+      manifest: { ...manifest, seo: { keywords: ["docs"], twitterSite: "@x" } },
+      seo: { ogImage: "https://leadtype.dev/og/quickstart.png" },
+    });
+    expect(withSeo.meta).toContainEqual({
+      name: "twitter:card",
+      content: "summary_large_image",
+    });
+    expect(withSeo.meta).toContainEqual({
+      property: "og:image",
+      content: "https://leadtype.dev/og/quickstart.png",
+    });
+    expect(withSeo.meta).toContainEqual({
+      name: "keywords",
+      content: "docs",
+    });
+    expect(withSeo.meta).toContainEqual({
+      name: "twitter:site",
+      content: "@x",
     });
   });
 

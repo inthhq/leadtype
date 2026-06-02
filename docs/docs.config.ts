@@ -1,11 +1,23 @@
 import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
+  // The documented product — reused across llms.txt, JSON-LD, and the agent card.
   product: {
     name: "Leadtype",
-    summary:
+    tagline:
       "A docs pipeline that turns one MDX source into a website, agent-readable artifacts, and a search index.",
-    blocks: [
+    homepage: "https://leadtype.dev",
+    docs: "https://leadtype.dev/docs",
+    repository: "https://github.com/inthhq/leadtype",
+    // A library, so the site-level graph emits SoftwareSourceCode.
+    kind: "library",
+    category: "DeveloperApplication",
+  },
+  // Who publishes it → JSON-LD Organization + the agent-card provider.
+  organization: { name: "Inth", url: "https://inth.com" },
+  // The llms.txt body, rendered in order (was `product.blocks`).
+  llms: {
+    sections: [
       {
         type: "markdown",
         heading: "Overview",
@@ -115,7 +127,7 @@ export default defineDocsConfig({
       },
     ],
   },
-  nav: [
+  navigation: [
     {
       title: "Docs",
       children: [
@@ -164,9 +176,18 @@ export default defineDocsConfig({
           ],
         },
         {
-          title: "Search & AI",
+          title: "Search & agents",
           base: "search",
-          pages: ["add-search", "ai-answers", "agent-tools"],
+          // MCP + skills are runtime agent-integration features, not buried API
+          // reference. Listed here (by absolute path; their /reference/* URLs are
+          // unchanged) next to their siblings.
+          pages: [
+            "add-search",
+            "ai-answers",
+            "agent-tools",
+            "/reference/mcp",
+            "/reference/skills",
+          ],
         },
         {
           title: "Docs Sources",
@@ -205,7 +226,40 @@ export default defineDocsConfig({
     {
       title: "Changelog",
       base: "changelog",
+      // Lower-priority for agents under a tight context budget: collapses into the
+      // `## Optional` section of docs/llms.txt rather than its own heading.
+      optional: true,
       pages: ["nav-migration-prompts"],
     },
   ],
+  agents: {
+    // Fully crawlable + retrievable; signals "don't train on this" (the default).
+    robots: { policy: "balanced" },
+    // The example app hosts a docs MCP endpoint, so the docs-skill points agents at it.
+    mcp: { enabled: true },
+    // Site-wide SEO defaults emitted on every page head via createDocsHead.
+    seo: {
+      keywords: [
+        "documentation pipeline",
+        "llms.txt",
+        "agent-readable docs",
+        "MDX",
+        "GEO",
+      ],
+    },
+    // A real capability skill (beyond the auto docs-skill): teach an agent to
+    // set leadtype up. `bodyPath` resolves against the docs source root.
+    skills: {
+      items: [
+        {
+          name: "setup-agent-ready-docs",
+          description:
+            "Set up agent-ready documentation with leadtype — llms.txt, Markdown mirrors, JSON-LD, robots/Content-Signals, an agent-skills surface, and an optional docs MCP server. Use when a user wants their docs discoverable and usable by AI agents.",
+          license: "MIT",
+          allowedTools: ["Bash", "Read", "Edit", "Write"],
+          bodyPath: "skills/setup-agent-ready-docs.md",
+        },
+      ],
+    },
+  },
 });

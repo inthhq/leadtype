@@ -59,13 +59,16 @@ const javascriptFrameworkNav = {
 export default defineDocsConfig({
   product: {
     name: "c15t",
-    summary: "Developer-first consent management for modern web apps.",
-    // `blocks` fully describes the body of llms.txt in order. Use markdown
-    // blocks for prose/credibility content (popularity, hosting) and links
-    // blocks for curated, source-resolved entry points. Popularity numbers are
-    // author-supplied here — fetch them at build time in this module if you
-    // want them live; leadtype never fetches.
-    blocks: [
+    tagline: "Developer-first consent management for modern web apps.",
+  },
+  organization: { name: "Inth", url: "https://inth.com" },
+  // `llms.sections` fully describes the body of llms.txt in order. Use markdown
+  // sections for prose/credibility content (popularity, hosting) and links
+  // sections for curated, source-resolved entry points. Popularity numbers are
+  // author-supplied here — fetch them at build time in this module if you
+  // want them live; leadtype never fetches.
+  llms: {
+    sections: [
       {
         type: "markdown",
         heading: "Overview",
@@ -103,7 +106,7 @@ export default defineDocsConfig({
       ...c15t,
       dir: "docs",
       prefix: "/docs",
-      nav: [
+      navigation: [
         {
           title: "Frontend",
           children: [
