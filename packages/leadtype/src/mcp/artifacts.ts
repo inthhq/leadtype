@@ -89,9 +89,10 @@ async function readOptionalJson<T>(filePath: string): Promise<T | null> {
 function missingArtifactError(baseDir: string, file: string): Error {
   const docsDir = path.join(baseDir, DOCS_SUBDIR);
   return new Error(
-    `leadtype mcp: could not find ${file} in ${docsDir}. ` +
-      "Run `leadtype generate` first, then point --artifacts at the directory " +
-      "that contains the generated `docs/` folder (default `./public`)."
+    `leadtype: no generated docs at ${docsDir} (missing ${file}). Either:\n` +
+      "  • run `leadtype generate` so it writes ./public/docs, then retry; or\n" +
+      "  • point `--artifacts <dir>` at a directory that contains a generated `docs/` folder; or\n" +
+      "  • pass `--package <name>` to read an installed package's bundled docs from node_modules."
   );
 }
 
