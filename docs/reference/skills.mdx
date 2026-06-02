@@ -65,7 +65,7 @@ export default defineDocsConfig({
 });
 ```
 
-`bodyPath` is resolved against your docs source root. Set `docsSkill: false` to drop the auto docs-skill (e.g. you wrote a richer one yourself), or `agentCard: false` to skip the A2A card.
+`bodyPath` is resolved against your docs source root (the `--src` you pass `generate`). Keep skill bodies *outside* your linted docs content tree — they're build inputs, not pages, so `leadtype lint` would otherwise flag them for missing page frontmatter. A sibling `skills/` directory works well. Set `docsSkill: false` to drop the auto docs-skill (e.g. you wrote a richer one yourself), or `agentCard: false` to skip the A2A card.
 
 ## Config
 

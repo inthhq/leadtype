@@ -243,5 +243,19 @@ export default defineDocsConfig({
         "GEO",
       ],
     },
+    // A real capability skill (beyond the auto docs-skill): teach an agent to
+    // set leadtype up. `bodyPath` resolves against the docs source root.
+    skills: {
+      items: [
+        {
+          name: "setup-agent-ready-docs",
+          description:
+            "Set up agent-ready documentation with leadtype — llms.txt, Markdown mirrors, JSON-LD, robots/Content-Signals, an agent-skills surface, and an optional docs MCP server. Use when a user wants their docs discoverable and usable by AI agents.",
+          license: "MIT",
+          allowedTools: ["Bash", "Read", "Edit", "Write"],
+          bodyPath: "skills/setup-agent-ready-docs.md",
+        },
+      ],
+    },
   },
 });
