@@ -12,12 +12,9 @@ related:
 
 # Write for agents & GEO
 
-Once your pipeline is wired up, the hard part isn't generating `llms.txt` or markdown mirrors — it's the content itself. Authoring for agents (and the answer engines that cite them) has two halves:
+Writing docs agents and answer engines actually use comes down to two things: **write the non-obvious** (not a restatement of your types), and **structure it so a model can find the answer, quote it, and trust it**. This page covers both — and follows its own rules.
 
-- **What to write** — document the non-obvious, not restatement.
-- **How to structure it** — so a model can find the answer, quote it correctly, and trust it.
-
-Both are backed by the repo's [evals](/docs/concepts/evals): docs earn their keep by stopping agents from *confidently guessing wrong*, and that only works if the right fact is present **and** structured so the model actually reaches it.
+Both halves are backed by the repo's [evals](/docs/concepts/evals): docs earn their keep by stopping agents from *confidently guessing wrong*, and that only works if the right fact is present **and** structured so the model actually reaches it. (The hard part isn't generating `llms.txt` or the markdown mirrors — the pipeline does that — it's the content itself.)
 
 ## What to write: the non-obvious
 

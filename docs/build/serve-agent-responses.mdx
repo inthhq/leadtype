@@ -5,7 +5,7 @@ description: "Wire markdown responses, JSON-LD, sitemap, and robots into your fr
 
 # Serve agent responses
 
-Once [Optimize docs for agents](/docs/build/optimize-docs-for-agents) has written `agent-readability.json` and the rest of the discovery files, your app has to wire them into routing and HTML. This page covers the runtime side: one middleware for markdown content negotiation, JSON-LD in the docs page head, and the per-request sitemap/robots regenerators that make preview URLs advertise the right origin.
+Serve agents the runtime side of your docs with one middleware: markdown content negotiation, JSON-LD in the page head, and per-request sitemap/robots that advertise the live origin. This wires the discovery files from [Optimize docs for agents](/docs/build/optimize-docs-for-agents) (`agent-readability.json` and friends) into your app's routing and HTML.
 
 For per-host deploy paths (Next on Vercel, TanStack Start, Nuxt on Cloudflare, etc.), see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
 
