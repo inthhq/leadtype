@@ -95,6 +95,38 @@ Pass it through `normalizeAgentReadabilityManifest()` before handing it to a run
 
 Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
 
+## The `agents` config block
+
+Everything on the agent surface is configured through one optional `agents` block on `defineDocsConfig` — all keys optional, with zero-config defaults. You add a key only to change a default.
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Acme", summary: "…" },
+  agents: {
+    robots: { policy: "balanced", signals: { aiTrain: "no" } },
+    jsonLd: {
+      organization: { name: "Acme Inc", url: "https://acme.com" },
+      software: { isLibrary: true, applicationCategory: "DeveloperApplication" },
+    },
+    seo: { ogImage: "https://acme.dev/og.png", twitterSite: "@acme", keywords: ["docs"] },
+    mcp: { enabled: true },
+    skills: { docsSkill: true, agentCard: true, items: [/* your capability skills */] },
+  },
+});
+```
+
+| Key | Controls | Default | Reference |
+| --- | --- | --- | --- |
+| `robots` | robots.txt crawler policy + Content-Signals | `balanced` (crawlable, `ai-train=no`) | [below](#control-ai-crawler-access) |
+| `jsonLd` | site-level JSON-LD graph + the agent card's `provider` | per-page JSON-LD always emits; site graph on demand | [Serve agent responses](/docs/build/serve-agent-responses) |
+| `seo` | `og:image` / `twitter` / `keywords` head meta | `og:type` + `twitter:card` always; rest off | [Serve agent responses](/docs/build/serve-agent-responses) |
+| `mcp` | `{ enabled }` — points the docs-skill at your MCP endpoint | off | [MCP server](/docs/reference/mcp) |
+| `skills` | the `/.well-known/agent-skills` surface + agent card | docs-skill + card emit | [Agent skills](/docs/reference/skills) |
+
+Omit `agents` entirely and you still get balanced robots/Content-Signals, the JSON-LD graph, per-page metadata, the auto docs-skill, and the agent card.
+
 ## Control AI crawler access
 
 By default (`balanced`), `robots.txt` keeps the site fully crawlable and emits a [Content-Signals](https://contentsignals.org) line — `Content-Signal: search=yes, ai-input=yes, ai-train=no` — so retrieval is welcome but you signal "don't train on this". Change the stance with the additive `agents.robots` config:
