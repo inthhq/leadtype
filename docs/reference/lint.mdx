@@ -42,6 +42,13 @@ Grouped by what they catch.
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
 | `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
 | `jsonld` | warn | The page's frontmatter would emit invalid JSON-LD — most often a `lastModified`/`last_updated` value that isn't a valid date, producing a broken `dateModified`. Broken schema is worse than none. |
+| `geo:heading-skip` | warn | A heading jumps a level (e.g. `H2` → `H4`). Keep the hierarchy sequential so answer engines can parse the topic tree. |
+| `geo:code-language` | warn | A fenced code block has no language label (a bare fence). Tag it with the language (e.g. `ts`) so engines surface it for the right stack. |
+| `geo:image-alt` | warn | An image has no alt text. Answer engines can't see images — describe what it conveys. |
+
+### GEO rules
+
+The `geo:*` rules are the **mechanical** half of [Write for agents & GEO](/docs/authoring/write-for-agents#how-to-structure-for-answer-engines-geo) — the structure signals a linter can check. The editorial ones (lead-with-the-answer, question-form headings) can't be linted; that's what the guide is for. All three are warn-level: legitimate exceptions exist, so they never fail the build by default (gate with `--max-warnings` if you want them to). The same checks feed the **Structure** portion of [`leadtype score`](/docs/reference/cli#score).
 
 Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
 
@@ -86,7 +93,10 @@ type LintResult = {
       | "unresolved-placeholder"
       | "cross-framework-link"
       | "unflattened-component"
-      | "jsonld";
+      | "jsonld"
+      | "geo:heading-skip"
+      | "geo:code-language"
+      | "geo:image-alt";
     field?: string;
     message: string;
   }>;

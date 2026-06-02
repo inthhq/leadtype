@@ -39,7 +39,10 @@ export type LintRule =
   | "unresolved-placeholder"
   | "cross-framework-link"
   | "unflattened-component"
-  | "jsonld";
+  | "jsonld"
+  | "geo:heading-skip"
+  | "geo:code-language"
+  | "geo:image-alt";
 
 export type LintViolation = {
   file: string;
@@ -368,6 +371,74 @@ function validateDocUrls(
 }
 
 const mdxComponentParser = remark().use(remarkMdx);
+
+type GeoIssue = {
+  rule: "geo:code-language" | "geo:heading-skip" | "geo:image-alt";
+  line?: number;
+  message: string;
+};
+
+/**
+ * Structural GEO checks over a page body: skipped heading levels, unlabeled code
+ * fences, and images without alt text. These are the mechanical signals from the
+ * "Write for agents & GEO" guide — the editorial ones (lead-with-answer,
+ * question-form headings) can't be linted. All warn-level: legitimate exceptions
+ * exist, so they never block by default.
+ */
+function collectGeoIssues(body: string): GeoIssue[] {
+  let tree: ReturnType<typeof mdxComponentParser.parse>;
+  try {
+    tree = mdxComponentParser.parse(body);
+  } catch {
+    return []; // parse errors are reported by the link-check path
+  }
+
+  const issues: GeoIssue[] = [];
+  let prevDepth = 0;
+  visit(tree, (node) => {
+    const element = node as {
+      type: string;
+      depth?: number;
+      lang?: unknown;
+      alt?: unknown;
+      position?: { start?: { line?: number } };
+    };
+    const line = element.position?.start?.line;
+    if (element.type === "heading" && typeof element.depth === "number") {
+      if (prevDepth > 0 && element.depth > prevDepth + 1) {
+        issues.push({
+          rule: "geo:heading-skip",
+          line,
+          message: `heading jumps from H${prevDepth} to H${element.depth} — keep the hierarchy sequential (no skipped levels) so answer engines can parse the topic tree`,
+        });
+      }
+      prevDepth = element.depth;
+    } else if (element.type === "code") {
+      if (
+        typeof element.lang !== "string" ||
+        element.lang.trim().length === 0
+      ) {
+        issues.push({
+          rule: "geo:code-language",
+          line,
+          message:
+            "fenced code block has no language — label it (e.g. ```ts) so answer engines surface it for the right stack",
+        });
+      }
+    } else if (
+      element.type === "image" &&
+      (typeof element.alt !== "string" || element.alt.trim().length === 0)
+    ) {
+      issues.push({
+        rule: "geo:image-alt",
+        line,
+        message:
+          "image has no alt text — describe what it conveys; answer engines can't see images",
+      });
+    }
+  });
+  return issues;
+}
 // A JSX element is a component (not an intrinsic HTML element) when its name is
 // capitalized or a member expression like `Foo.Bar`.
 const COMPONENT_NAME_PATTERN = /^[A-Z]/;
@@ -529,6 +600,18 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
         severity: "warn",
         rule: "unflattened-component",
         message: `<${name}>${fileLine ? ` (line ${fileLine})` : ""} has no markdown flattener — agents will see raw JSX in the generated markdown. Add one with defineComponentFlattener, or rename to a built-in tag.`,
+      });
+    }
+
+    // Structural GEO checks (warn): skipped headings, unlabeled code, missing alt.
+    for (const issue of collectGeoIssues(body)) {
+      const fileLine = issue.line ? issue.line + bodyLineOffset : undefined;
+      violations.push({
+        file: relativeFile,
+        kind: "content",
+        severity: "warn",
+        rule: issue.rule,
+        message: `${issue.message}${fileLine ? ` (line ${fileLine})` : ""}`,
       });
     }
 

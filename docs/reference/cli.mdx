@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "leadtype init, generate, sync, lint, and mcp — flags, exit codes, and JSON output."
+description: "leadtype init, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
 ---
 
 # CLI
@@ -9,7 +9,7 @@ description: "leadtype init, generate, sync, lint, and mcp — flags, exit codes
 leadtype <command> [options]
 ```
 
-Five commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), `lint` validates content, and `mcp` serves the generated docs to an MCP client over stdio. Run `leadtype help <command>` for inline usage.
+Six commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
 
 ## init
 
@@ -287,6 +287,27 @@ Exit codes: `0` the server ran and the client disconnected, `1` failed to load a
 
 Requires the optional peer dependency `@modelcontextprotocol/sdk`; a missing install surfaces an actionable error. The server reads artifacts only — `get-page` serves the `.md` mirror from disk, so a deleted mirror makes pages unreadable even when search still works. Regenerate to restore it.
 
+## score
+
+Rate the **leadtype-addressable** agent readiness of a generated build, mapped to the [ora](https://ora.ai/score) rubric, so you can coach toward a high external scan. Run `leadtype generate` first, then `leadtype score`.
+
+```bash
+leadtype score [options]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--out <dir>` | `./public` | Generated output root to inspect. |
+| `--src <dir>` | `./docs` | Docs source root for the structural GEO check. |
+| `--format <fmt>` | `pretty` | `pretty` or `json`. |
+| `--json` | — | Alias for `--format json`. |
+| `--min <n>` | — | Exit non-zero if the score is below `n` (CI gate). |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` scored (and at/above `--min` if set), `1` below `--min`, `2` CLI usage error.
+
+It scores **what leadtype emits + your doc structure** — a local proxy for the external scan, never live answer-engine ranking. Two dimensions are scored (0–100): **Identity** (llms.txt + `.well-known`, search index + manifest, sitemap/robots + Content-Signal, JSON-LD readiness, description coverage, and the `geo:*` structure signals) and **Agent Integration** (MCP-ready artifacts, the skills surface, offline docs). **Discovery, Auth & Access, and User Experience** are shown but **excluded** — answer-engine recall is brand/training, auth is your backend, MCP Apps need UI — so a high score never implies ranking leadtype can't measure. Each missing signal prints the concrete fix. Also available as a library: [`leadtype/score`](#library-entry-points) → `scoreDocs`.
+
 ## help
 
 Show usage:
@@ -296,6 +317,7 @@ leadtype help            # main usage
 leadtype help generate
 leadtype help lint
 leadtype help mcp
+leadtype help score
 ```
 
 ## Library entry points
@@ -309,5 +331,6 @@ The CLI is a thin wrapper. Every command is also available as a TypeScript API f
 - [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.
 - [`leadtype/remark`](/docs/reference/remark) — `defaultRemarkPlugins` and individual plugins.
 - [`leadtype/mcp`](/docs/reference/mcp) — `createMcpHandler`, `runStdioServer`, `createDocsArtifacts` for the docs MCP server.
+- [`leadtype/score`](/docs/reference/lint#geo-rules) — `scoreDocs` for the agent-readiness score (the `leadtype score` command).
 
 Use the CLI for the happy path, the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.

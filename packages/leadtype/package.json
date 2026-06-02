@@ -133,6 +133,10 @@
     "./mcp": {
       "types": "./dist/mcp/index.d.ts",
       "import": "./dist/mcp/index.js"
+    },
+    "./score": {
+      "types": "./dist/score/index.d.ts",
+      "import": "./dist/score/index.js"
     }
   },
   "bin": "./dist/cli.js",

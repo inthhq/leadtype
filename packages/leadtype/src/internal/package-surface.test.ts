@@ -105,6 +105,7 @@ describe("package surface", () => {
       "./tanstack-start",
       "./lint",
       "./mcp",
+      "./score",
     ] as const;
 
     expect(exportedPaths).toHaveLength(expectedExportedPaths.length);

@@ -124,11 +124,17 @@ Go `H2 → H3 → H4` without skipping a level. The heading tree *is* the topic 
 
 ### Label every code block
 
-Tag the language on every fence — ` ```ts ` not bare ` ``` `. The label tells an engine which stack the snippet answers, so it surfaces your TypeScript example for a TypeScript question instead of guessing.
+Tag the language on every fenced code block — a `ts`-labeled fence, not a bare one. The label tells an engine which stack the snippet answers, so it surfaces your TypeScript example for a TypeScript question instead of guessing.
 
 ### Describe images in alt text
 
 Answer engines can't see your diagrams. Put the information the image conveys into its alt text — "Pipeline: MDX → convert → llms.txt + search index + markdown mirror", not "diagram". If the alt text is empty, that content simply doesn't exist for an agent.
+
+### Let leadtype check the mechanical ones
+
+<Callout variant="info">
+`leadtype lint` flags the structural signals — `geo:heading-skip`, `geo:code-language`, and `geo:image-alt` — and [`leadtype score`](/docs/reference/cli#score) rolls them into a 0–100 agent-readiness score mapped to the [ora](https://ora.ai/score) rubric. The editorial tactics above (lead with the answer, question-form headings, specificity) are yours to apply — a linter can't judge them.
+</Callout>
 
 ### Test it
 
