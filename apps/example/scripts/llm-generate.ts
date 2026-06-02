@@ -57,6 +57,11 @@ const agentReadability = await generateAgentReadabilityArtifacts({
     summary: docsConfig.product.summary,
   },
   nav: docsConfig.nav,
+  // Bake the agent-surface config into the manifest so runtime helpers
+  // (renderSiteJsonLd, robots) are config-driven from the one docs.config.ts.
+  jsonLd: docsConfig.agents?.jsonLd,
+  robotsPolicy: docsConfig.agents?.robots?.policy,
+  contentSignals: docsConfig.agents?.robots?.signals,
 });
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps

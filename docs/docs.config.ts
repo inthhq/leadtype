@@ -206,7 +206,22 @@ export default defineDocsConfig({
     {
       title: "Changelog",
       base: "changelog",
+      // Lower-priority for agents under a tight context budget: collapses into the
+      // `## Optional` section of docs/llms.txt rather than its own heading.
+      optional: true,
       pages: ["nav-migration-prompts"],
     },
   ],
+  agents: {
+    // leadtype is a library, so the site-level graph emits SoftwareSourceCode.
+    jsonLd: {
+      organization: { name: "Inth", url: "https://inth.com" },
+      software: {
+        isLibrary: true,
+        applicationCategory: "DeveloperApplication",
+      },
+    },
+    // Fully crawlable + retrievable; signals "don't train on this" (the default).
+    robots: { policy: "balanced" },
+  },
 });

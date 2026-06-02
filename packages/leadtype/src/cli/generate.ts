@@ -1698,6 +1698,7 @@ export async function runGenerateCommand(
         transformers: metadata.transformers,
         robotsPolicy: metadata.agents?.robots?.policy,
         contentSignals: metadata.agents?.robots?.signals,
+        jsonLd: metadata.agents?.jsonLd,
       });
 
       if (i18n) {
@@ -1749,6 +1750,7 @@ export async function runGenerateCommand(
             transformers: metadata.transformers,
             robotsPolicy: metadata.agents?.robots?.policy,
             contentSignals: metadata.agents?.robots?.signals,
+            jsonLd: metadata.agents?.jsonLd,
           });
         }
       }

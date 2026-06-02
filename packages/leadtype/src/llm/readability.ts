@@ -175,6 +175,8 @@ export type AgentReadabilityManifest = {
     sitemapMd: string;
     sitemapXml: string;
   };
+  /** Site-level JSON-LD options (from `agents.jsonLd`), so `renderSiteJsonLd` is config-driven. */
+  jsonLd?: RenderSiteJsonLdOptions;
 };
 
 export function normalizeAgentReadabilityManifest(
@@ -884,9 +886,20 @@ const DEFAULT_SEARCH_URL_PATTERN = "/docs?q={search_term_string}";
  */
 export function renderSiteJsonLd(
   manifest: AgentReadabilityManifest,
-  options: RenderSiteJsonLdOptions = {}
+  optionOverrides: RenderSiteJsonLdOptions = {}
 ): JsonLdValue {
   assertManifestVersion(manifest);
+  // Explicit options win over the config baked into the manifest (`agents.jsonLd`).
+  const fromManifest = manifest.jsonLd ?? {};
+  const options: RenderSiteJsonLdOptions = {
+    ...fromManifest,
+    ...optionOverrides,
+    organization: {
+      ...fromManifest.organization,
+      ...optionOverrides.organization,
+    },
+    software: { ...fromManifest.software, ...optionOverrides.software },
+  };
   const base = stripTrailingSlashes(manifest.baseUrl);
   const ids = jsonLdEntityIds(base);
 

@@ -49,6 +49,7 @@ import {
   type DocsNavigationPage,
   type DocsTableOfContentsItem,
   type DocsTableOfContentsOptions,
+  type RenderSiteJsonLdOptions,
   type RobotsPolicy,
   renderRobotsTxt,
   renderSitemapMarkdown,
@@ -330,6 +331,8 @@ export type DocsAgentsConfig = {
     /** Override individual Content-Signals beyond the policy preset. */
     signals?: Partial<ContentSignals>;
   };
+  /** Site-level JSON-LD options consumed by `renderSiteJsonLd`. */
+  jsonLd?: RenderSiteJsonLdOptions;
 };
 
 /**
@@ -396,6 +399,8 @@ export type AgentReadabilityConfig = {
   robotsPolicy?: RobotsPolicy;
   /** Override individual Content-Signals beyond the policy preset. */
   contentSignals?: Partial<ContentSignals>;
+  /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
+  jsonLd?: RenderSiteJsonLdOptions;
 };
 
 export type AgentReadabilityResult = {
@@ -2027,6 +2032,7 @@ export async function generateAgentReadabilityArtifacts(
       sitemapMd: `${docsUrlPrefix}/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `${docsUrlPrefix}/${SITEMAP_XML_FILE}`,
     },
+    ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
   };
 
   const files = {
