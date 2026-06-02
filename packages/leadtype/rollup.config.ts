@@ -31,6 +31,7 @@ const entries = {
   "sveltekit/index": "src/sveltekit/index.ts",
   "tanstack-start/index": "src/tanstack-start/index.ts",
   "lint/index": "src/lint/index.ts",
+  "mcp/index": "src/mcp/index.ts",
   cli: "src/cli.ts",
 } as const;
 

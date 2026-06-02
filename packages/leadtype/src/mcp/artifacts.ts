@@ -1,0 +1,156 @@
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
+import {
+  createPublicMarkdownReader,
+  isMissingFileError,
+  type ReadMarkdownFile,
+} from "../internal/framework.js";
+import {
+  type AgentReadabilityManifest,
+  normalizeAgentReadabilityManifest,
+} from "../llm/readability.js";
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "../search/index.js";
+
+/**
+ * Subdirectory (under the artifacts base) that `generate` writes docs artifacts
+ * into — both for site mode (`<public>/docs`) and bundle mode (`<package>/docs`).
+ */
+const DOCS_SUBDIR = "docs";
+const SEARCH_INDEX_FILE = "search-index.json";
+const SEARCH_CONTENT_FILE = "search-content.json";
+const MANIFEST_FILE = "agent-readability.json";
+
+/**
+ * The generated artifacts a docs MCP server reads at runtime. The search index
+ * is the ranking backend; `readMarkdown` reads the `.md` mirror from disk so
+ * `get-page` returns byte-identical content to the content-negotiation handler
+ * (DESIGN.md Q2 — the `.md` mirror is the single content surface).
+ */
+export type DocsArtifacts = {
+  index: DocsSearchIndex;
+  /** Present when `search-content.json` was emitted separately (improves excerpts). */
+  content?: DocsSearchContentStore;
+  manifest: AgentReadabilityManifest;
+  readMarkdown: ReadMarkdownFile;
+  /** Resolved base directory, when loaded from disk. Absent for in-memory artifacts. */
+  baseDir?: string;
+};
+
+export type CreateDocsArtifactsInput = {
+  index: DocsSearchIndex;
+  /** Raw or normalized agent-readability manifest (e.g. a bundled JSON import). */
+  manifest: AgentReadabilityManifest | unknown;
+  content?: DocsSearchContentStore;
+  /** Reads a page's Markdown mirror. The host owns where bytes come from (disk, KV, bundle). */
+  readMarkdown: ReadMarkdownFile;
+};
+
+/**
+ * Assembles `DocsArtifacts` from in-memory pieces — for hosts that already bundle the
+ * index + manifest (Vite/edge apps) and bring their own Markdown reader, rather than
+ * re-reading artifacts from disk. Pair with `createMcpHandler({ artifacts })`.
+ */
+export function createDocsArtifacts(
+  input: CreateDocsArtifactsInput
+): DocsArtifacts {
+  return {
+    index: input.index,
+    content: input.content,
+    manifest: normalizeAgentReadabilityManifest(input.manifest),
+    readMarkdown: input.readMarkdown,
+  };
+}
+
+export type LoadDocsArtifactsOptions = {
+  /**
+   * Base directory containing a `docs/` folder — a site `public` dir (site mode)
+   * or an installed package root (bundle mode). Defaults to `./public`.
+   */
+  artifacts?: string;
+};
+
+async function readOptionalJson<T>(filePath: string): Promise<T | null> {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8")) as T;
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function missingArtifactError(baseDir: string, file: string): Error {
+  const docsDir = path.join(baseDir, DOCS_SUBDIR);
+  return new Error(
+    `leadtype mcp: could not find ${file} in ${docsDir}. ` +
+      "Run `leadtype generate` first, then point --artifacts at the directory " +
+      "that contains the generated `docs/` folder (default `./public`)."
+  );
+}
+
+/**
+ * Loads the generated docs artifacts needed to run an MCP server. Works for both
+ * site artifacts (`./public/docs`) and bundled artifacts (`<package>/docs`) — the
+ * caller resolves which base directory to pass (see `resolveBundleArtifactsBase`).
+ */
+export async function loadDocsArtifacts(
+  options: LoadDocsArtifactsOptions = {}
+): Promise<DocsArtifacts> {
+  const baseDir = path.resolve(options.artifacts ?? "./public");
+  const docsDir = path.join(baseDir, DOCS_SUBDIR);
+
+  const index = await readOptionalJson<DocsSearchIndex>(
+    path.join(docsDir, SEARCH_INDEX_FILE)
+  );
+  if (!index) {
+    throw missingArtifactError(baseDir, SEARCH_INDEX_FILE);
+  }
+
+  const rawManifest = await readOptionalJson<unknown>(
+    path.join(docsDir, MANIFEST_FILE)
+  );
+  if (!rawManifest) {
+    throw missingArtifactError(baseDir, MANIFEST_FILE);
+  }
+
+  const content =
+    (await readOptionalJson<DocsSearchContentStore>(
+      path.join(docsDir, SEARCH_CONTENT_FILE)
+    )) ?? undefined;
+
+  return {
+    index,
+    content,
+    manifest: normalizeAgentReadabilityManifest(rawManifest),
+    // The markdown mirror lives at `<baseDir>/docs/**.md`; the reader resolves a
+    // MarkdownMirrorTarget's `filePath` (e.g. `docs/quickstart.md`) under baseDir.
+    readMarkdown: createPublicMarkdownReader(baseDir),
+    baseDir,
+  };
+}
+
+/**
+ * Resolves the directory that holds an installed package's bundled docs artifacts
+ * (bundle mode). Returns the package root, which contains the `docs/` folder the
+ * package shipped. Throws a helpful error if the package can't be resolved.
+ */
+export function resolveBundleArtifactsBase(
+  packageName: string,
+  fromDir: string = process.cwd()
+): string {
+  const require = createRequire(path.join(fromDir, "package.json"));
+  try {
+    const pkgJson = require.resolve(`${packageName}/package.json`);
+    return path.dirname(pkgJson);
+  } catch {
+    throw new Error(
+      `leadtype mcp: could not resolve package "${packageName}" from ${fromDir}. ` +
+        "Install it, or pass --artifacts <dir> pointing at a directory with a `docs/` folder."
+    );
+  }
+}

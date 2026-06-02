@@ -1,0 +1,190 @@
+---
+title: "MCP server"
+description: "Serve docs to MCP clients over stdio or Streamable HTTP — the gate for when it's worth it, the optional-peer-dep and stateless-HTTP gotchas, and how edge/bundled hosts skip the disk path."
+related:
+  - title: "Agent search tools"
+    href: "/docs/search/agent-tools"
+    description: "In-process bash tools for your own AI app — the alternative to a standalone MCP server."
+  - title: "CLI"
+    href: "/docs/reference/cli"
+    description: "leadtype mcp flags and exit codes."
+  - title: "Search reference"
+    href: "/docs/reference/search"
+    description: "searchDocs() and the index the MCP server ranks over."
+---
+
+# MCP server
+
+`leadtype/mcp` serves your generated docs to MCP clients with two tools:
+`search-docs(query, limit?)` returns ranked `{ title, urlPath, snippet }`, and
+`get-page(urlPath)` returns the full Markdown of one page. (`list-pages()` is
+available but off by default.) It's a thin adapter over artifacts you already
+build — the search index ranks results, the `.md` mirror supplies pages — so
+there's no new content surface to maintain.
+
+Two delivery shapes, same tools:
+
+- **stdio** (`leadtype mcp`) — a local process an **IDE client** spawns (Claude
+  Desktop, Cursor, Cline).
+- **Streamable HTTP** (`createMcpHandler`) — a request handler **your app
+  mounts** for remote clients.
+
+## When it's worth adding
+
+<Callout variant="info">
+**A docs MCP server earns its keep on large corpora, not small ones.** If your
+whole doc set fits comfortably in an agent's context, `llms-full.txt` already
+hands it everything in one fetch — an MCP server just adds a round-trip. Reach
+for MCP when the docs are large enough that *targeted retrieval* beats dumping
+the corpus: SDK references, multi-product docs, anything an agent should search
+rather than read end-to-end.
+</Callout>
+
+These tools also don't make your *product* agent-callable — they let an agent
+read your *docs*. Function-calling against your API is a separate surface that
+lives in your own backend, not here.
+
+## Local IDE clients (`leadtype mcp`)
+
+```bash
+leadtype mcp --artifacts ./public
+```
+
+Reads the artifacts `leadtype generate` writes (`search-index.json`,
+`agent-readability.json`, and the `docs/*.md` mirror) and speaks MCP over
+stdin/stdout until the client disconnects. See the [CLI reference](/docs/reference/cli#mcp)
+for every flag.
+
+Register it with an IDE client by pointing at the command:
+
+<Tabs items={["Claude Desktop", "Cursor"]}>
+  <Tab value="Claude Desktop">
+```json
+// claude_desktop_config.json
+{
+  "mcpServers": {
+    "my-docs": {
+      "command": "leadtype",
+      "args": ["mcp", "--artifacts", "/abs/path/to/your/app/public"]
+    }
+  }
+}
+```
+  </Tab>
+  <Tab value="Cursor">
+```json
+// .cursor/mcp.json
+{
+  "mcpServers": {
+    "my-docs": {
+      "command": "leadtype",
+      "args": ["mcp", "--artifacts", "/abs/path/to/your/app/public"]
+    }
+  }
+}
+```
+  </Tab>
+</Tabs>
+
+<Callout variant="warning">
+**Use an absolute `--artifacts` path in IDE config.** The client spawns the
+binary from an unpredictable working directory, so the default `./public`
+(resolved against the process CWD) usually won't point where you expect.
+</Callout>
+
+Two more things that aren't obvious from the flags:
+
+- **Run `leadtype generate` first.** The server only reads artifacts; it never
+  builds them. Against a directory with no `docs/search-index.json` +
+  `docs/agent-readability.json`, it exits with a "run `leadtype generate`" error
+  rather than starting empty.
+- **`get-page` reads the `.md` files from disk**, not the search index. If the
+  index exists but the `.md` mirror was deleted, search works and `get-page`
+  reports the page is missing — regenerate to restore the mirror.
+
+## Hosted endpoint (`createMcpHandler`)
+
+`createMcpHandler` returns a Web-standard `(Request) => Promise<Response>` you
+mount in your own route. **leadtype never owns the port, hosting, or auth** —
+that's the host's job.
+
+<Tabs items={["Next (App Router)", "Generic Request → Response"]}>
+  <Tab value="Next (App Router)">
+```ts
+// app/mcp/route.ts
+import { createMcpHandler } from "leadtype/mcp";
+
+export const POST = createMcpHandler({ artifacts: "./public" });
+```
+  </Tab>
+  <Tab value="Generic Request → Response">
+```ts
+// Works on TanStack Start, SvelteKit, Nuxt, Astro, Workers, Deno, Bun.
+import { createMcpHandler } from "leadtype/mcp";
+
+const handler = createMcpHandler({ artifacts: "./public" });
+// mount `handler(request)` on a POST route at /mcp
+```
+  </Tab>
+</Tabs>
+
+<Callout variant="info">
+**It runs stateless and returns JSON — it never opens an SSE stream.** That's
+the whole transport: a client POSTs a JSON-RPC request and gets one JSON
+response. There are no sessions to track and nothing to keep alive between
+requests, which is exactly what makes the handler safe to drop onto serverless
+and edge routes. Artifacts load once and are reused; each request gets a fresh
+server instance so concurrent requests never share state.
+</Callout>
+
+## Edge and bundled hosts (`createDocsArtifacts`)
+
+`createMcpHandler({ artifacts: "./public" })` reads artifacts from disk at
+request time. That's wrong for two common setups: apps that **bundle** the
+index/manifest as imports (Vite, edge) and runtimes with **no `fs`** at request
+time (Workers). For those, build the artifacts in memory and pass them
+directly:
+
+```ts
+import { createDocsArtifacts, createMcpHandler } from "leadtype/mcp";
+import index from "./generated/docs-search-index.json" with { type: "json" };
+import content from "./generated/docs-search-content.json" with { type: "json" };
+import manifest from "./generated/agent-readability.json" with { type: "json" };
+import { readMarkdown } from "./markdown"; // your own (urlPath → Markdown) reader
+
+const artifacts = createDocsArtifacts({ index, content, manifest, readMarkdown });
+export const POST = createMcpHandler({ artifacts });
+```
+
+You own where the bytes come from: `index`/`content`/`manifest` are the bundled
+JSON, and `readMarkdown` resolves a page's Markdown however your deploy allows
+(static file, KV, bundled string). `search-docs` ranks over the index;
+`get-page` calls your `readMarkdown`.
+
+## Tools
+
+| Tool | Input | Returns |
+| --- | --- | --- |
+| `search-docs` | `query: string`, `limit?: number` (default 5, max 50) | Ranked `{ title, urlPath, snippet }[]` |
+| `get-page` | `urlPath: string` (e.g. a `search-docs` result, with or without `.md`) | Full page Markdown |
+| `list-pages` *(opt-in)* | — | `{ title, urlPath, groups }[]` for every page |
+
+Expose a different set with `tools` (CLI: `--tools search-docs,get-page,list-pages`;
+API: `createMcpHandler({ tools: [...] })`). The default is `search-docs` +
+`get-page` — the consensus minimal set.
+
+## The SDK is an optional dependency
+
+The MCP server is built on `@modelcontextprotocol/sdk` (v1.x), declared as an
+**optional peer dependency** and imported lazily only when a server actually
+runs. It stays out of installs that never touch MCP. If it's missing when you
+start a server, you get an actionable `bun add @modelcontextprotocol/sdk`
+message instead of a module-not-found crash — so install it alongside any app
+that mounts `createMcpHandler` or runs `leadtype mcp`.
+
+## MCP server vs. bash tools
+
+This page is about a **standalone server** other clients connect to. If instead
+you're building *your own* AI app and want the model to explore docs inside that
+app, use the in-process [bash tools](/docs/search/agent-tools) — same index, no
+server, no transport.

@@ -5,6 +5,9 @@ related:
   - title: "Stream AI answers"
     href: "/docs/search/ai-answers"
     description: "Pre-retrieve chunks and stream a grounded answer instead."
+  - title: "MCP server"
+    href: "/docs/reference/mcp"
+    description: "Expose the same docs to external MCP clients instead of your own app."
   - title: "Search reference"
     href: "/docs/reference/search"
     description: "createDocsBashTool / createDocsBashTools signatures."
@@ -75,3 +78,4 @@ content)` returns the `/docs` file map the adapters are built on.
 - The filesystem is read-only and sandboxed: `ls`/`cat`/`find`/`grep`/`rg` only. No network, no execution, no writes.
 - It's the same `index` + `content` from [Add search](/docs/search/add-search) — no extra build step.
 - Tool-driven exploration costs more tokens and round-trips than a single grounded answer; default to AI answers and escalate to tools when the task is genuinely multi-step.
+- These tools run **in-process inside your own AI app**. To expose docs to *external* clients (Claude Desktop, Cursor, a hosted endpoint) instead, run the [MCP server](/docs/reference/mcp) — same index, standalone process.

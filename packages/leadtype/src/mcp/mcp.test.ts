@@ -1,0 +1,264 @@
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { beforeAll, describe, expect, it } from "vitest";
+import type {
+  AgentReadabilityManifest,
+  AgentReadabilityPage,
+} from "../llm/readability";
+import {
+  createDocsSearchIndex,
+  type DocsSearchDocument,
+  type DocsSearchIndex,
+} from "../search/index";
+import { type DocsArtifacts, loadDocsArtifacts } from "./artifacts";
+import { createDocsMcpServer } from "./server";
+import { defineDocsTools } from "./tools";
+
+const QUICKSTART_MARKDOWN = `# Quickstart
+
+Install the package and run leadtype generate.
+`;
+
+const docs: DocsSearchDocument[] = [
+  {
+    id: "quickstart",
+    title: "Quickstart",
+    description: "Install and configure the package.",
+    urlPath: "/docs/guides/quickstart",
+    absoluteUrl: "https://leadtype.dev/docs/guides/quickstart",
+    relativePath: "guides/quickstart",
+    content:
+      "# Quickstart\n\nInstall the package. Use CommandTabs to install with pnpm.",
+  },
+  {
+    id: "tabs",
+    title: "Tabs",
+    description: "Interactive tab controls.",
+    urlPath: "/docs/components/tabs",
+    absoluteUrl: "https://leadtype.dev/docs/components/tabs",
+    relativePath: "components/tabs",
+    content: "# Tabs\n\nPanels can be changed with arrow keys.",
+  },
+];
+
+function pageFor(doc: DocsSearchDocument): AgentReadabilityPage {
+  return {
+    title: doc.title,
+    description: doc.description ?? "",
+    urlPath: doc.urlPath,
+    absoluteUrl: doc.absoluteUrl,
+    markdownUrlPath: `${doc.urlPath}.md`,
+    markdownAbsoluteUrl: `${doc.absoluteUrl}.md`,
+    relativePath: doc.relativePath,
+    groups: doc.relativePath.split("/").slice(0, -1),
+    lastModified: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+function buildManifest(): AgentReadabilityManifest {
+  return {
+    version: 1,
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    baseUrl: "https://leadtype.dev",
+    product: { name: "Leadtype", summary: "Docs pipeline tooling." },
+    pages: docs.map(pageFor),
+    navigation: { groups: [], ungrouped: [], unknown: [] },
+    files: {
+      robotsTxt: "/robots.txt",
+      sitemapMd: "/sitemap.md",
+      sitemapXml: "/sitemap.xml",
+    },
+  };
+}
+
+function buildArtifacts(): DocsArtifacts {
+  const index: DocsSearchIndex = createDocsSearchIndex(docs);
+  return {
+    index,
+    manifest: buildManifest(),
+    baseDir: "/virtual",
+    // Map the markdown mirror by canonical urlPath.
+    readMarkdown: (target) =>
+      target.urlPath === "/docs/guides/quickstart" ? QUICKSTART_MARKDOWN : null,
+  };
+}
+
+function textOf(result: {
+  content: { type: string; text?: string }[];
+}): string {
+  return result.content
+    .filter((block) => block.type === "text")
+    .map((block) => block.text ?? "")
+    .join("\n");
+}
+
+describe("defineDocsTools", () => {
+  const artifacts = buildArtifacts();
+
+  it("exposes search-docs and get-page by default (not list-pages)", () => {
+    const names = defineDocsTools(artifacts).map((tool) => tool.name);
+    expect(names).toEqual(["search-docs", "get-page"]);
+  });
+
+  it("includes list-pages only when requested and drops unknown/dupes", () => {
+    const names = defineDocsTools(artifacts, {
+      tools: ["list-pages", "search-docs", "search-docs"],
+    }).map((tool) => tool.name);
+    expect(names).toEqual(["list-pages", "search-docs"]);
+  });
+
+  it("search-docs returns ranked { title, urlPath, snippet } hits", async () => {
+    const [search] = defineDocsTools(artifacts, { tools: ["search-docs"] });
+    const result = await search.handler({ query: "quickstart" });
+    expect(result.isError).toBeFalsy();
+    const hits = JSON.parse(textOf(result)) as {
+      title: string;
+      urlPath: string;
+      snippet: string;
+    }[];
+    expect(hits[0].urlPath).toBe("/docs/guides/quickstart");
+    expect(hits[0]).toHaveProperty("title");
+    expect(hits[0]).toHaveProperty("snippet");
+  });
+
+  it("search-docs rejects an empty query without throwing", async () => {
+    const [search] = defineDocsTools(artifacts, { tools: ["search-docs"] });
+    const result = await search.handler({ query: "   " });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain("Invalid input");
+  });
+
+  it("search-docs honors the limit", async () => {
+    const [search] = defineDocsTools(artifacts, { tools: ["search-docs"] });
+    const result = await search.handler({ query: "docs", limit: 1 });
+    const hits = JSON.parse(textOf(result)) as unknown[];
+    expect(hits.length).toBeLessThanOrEqual(1);
+  });
+
+  it("get-page returns the markdown mirror for a known page", async () => {
+    const [, getPage] = defineDocsTools(artifacts);
+    const result = await getPage.handler({
+      urlPath: "/docs/guides/quickstart",
+    });
+    expect(result.isError).toBeFalsy();
+    expect(textOf(result)).toBe(QUICKSTART_MARKDOWN);
+  });
+
+  it("get-page accepts a .md urlPath and trailing variations", async () => {
+    const [, getPage] = defineDocsTools(artifacts);
+    const result = await getPage.handler({
+      urlPath: "/docs/guides/quickstart.md",
+    });
+    expect(textOf(result)).toBe(QUICKSTART_MARKDOWN);
+  });
+
+  it("get-page errors helpfully for an unknown page", async () => {
+    const [, getPage] = defineDocsTools(artifacts);
+    const result = await getPage.handler({ urlPath: "/docs/nope" });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain("search-docs");
+  });
+
+  it("get-page errors when the mirror is missing on disk", async () => {
+    const [, getPage] = defineDocsTools(artifacts);
+    // /docs/components/tabs is in the manifest but the reader returns null.
+    const result = await getPage.handler({ urlPath: "/docs/components/tabs" });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain("missing on disk");
+  });
+
+  it("list-pages lists every page", async () => {
+    const [listPages] = defineDocsTools(artifacts, { tools: ["list-pages"] });
+    const result = await listPages.handler({});
+    const pages = JSON.parse(textOf(result)) as { urlPath: string }[];
+    expect(pages.map((page) => page.urlPath)).toEqual([
+      "/docs/guides/quickstart",
+      "/docs/components/tabs",
+    ]);
+  });
+});
+
+describe("createDocsMcpServer (in-memory client)", () => {
+  it("lists tools and calls them through the real MCP wiring", async () => {
+    const server = await createDocsMcpServer({ artifacts: buildArtifacts() });
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "0.0.0" });
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+
+    try {
+      const { tools } = await client.listTools();
+      expect(tools.map((tool) => tool.name).sort()).toEqual([
+        "get-page",
+        "search-docs",
+      ]);
+
+      const searchResult = (await client.callTool({
+        name: "search-docs",
+        arguments: { query: "quickstart" },
+      })) as CallToolResult;
+      const hits = JSON.parse(
+        (searchResult.content[0] as { text: string }).text
+      ) as { urlPath: string }[];
+      expect(hits[0].urlPath).toBe("/docs/guides/quickstart");
+
+      const pageResult = (await client.callTool({
+        name: "get-page",
+        arguments: { urlPath: "/docs/guides/quickstart" },
+      })) as CallToolResult;
+      expect((pageResult.content[0] as { text: string }).text).toBe(
+        QUICKSTART_MARKDOWN
+      );
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+});
+
+describe("loadDocsArtifacts (from disk)", () => {
+  let dir: string;
+
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "leadtype-mcp-"));
+    const docsDir = join(dir, "docs");
+    await mkdir(join(docsDir, "guides"), { recursive: true });
+    await writeFile(
+      join(docsDir, "search-index.json"),
+      JSON.stringify(createDocsSearchIndex(docs))
+    );
+    await writeFile(
+      join(docsDir, "agent-readability.json"),
+      JSON.stringify(buildManifest())
+    );
+    await writeFile(
+      join(docsDir, "guides", "quickstart.md"),
+      QUICKSTART_MARKDOWN
+    );
+  });
+
+  it("reads index + manifest and get-page serves the .md from disk", async () => {
+    const artifacts = await loadDocsArtifacts({ artifacts: dir });
+    expect(artifacts.manifest.pages.length).toBe(2);
+
+    const [, getPage] = defineDocsTools(artifacts);
+    const result = await getPage.handler({
+      urlPath: "/docs/guides/quickstart",
+    });
+    // Byte-identical to the file on disk — Q2: the .md mirror is the content source.
+    expect(textOf(result)).toBe(QUICKSTART_MARKDOWN);
+  });
+
+  it("throws a helpful error when artifacts are absent", async () => {
+    await expect(loadDocsArtifacts({ artifacts: tmpdir() })).rejects.toThrow(
+      /search-index\.json/
+    );
+  });
+});

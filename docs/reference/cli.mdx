@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "leadtype init, generate, sync, and lint — flags, exit codes, and JSON output."
+description: "leadtype init, generate, sync, lint, and mcp — flags, exit codes, and JSON output."
 ---
 
 # CLI
@@ -9,7 +9,7 @@ description: "leadtype init, generate, sync, and lint — flags, exit codes, and
 leadtype <command> [options]
 ```
 
-Four commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), and `lint` validates content. Run `leadtype help <command>` for inline usage.
+Five commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), `lint` validates content, and `mcp` serves the generated docs to an MCP client over stdio. Run `leadtype help <command>` for inline usage.
 
 ## init
 
@@ -264,6 +264,25 @@ Default ignored paths: `**/shared/**`, `**/_shared/**`, `**/_partials/**`, `**/n
 
 See [Lint reference](/docs/reference/lint) for the full rule list, schema, and how to plug in custom Valibot schemas via the library API.
 
+## mcp
+
+Serve the generated docs to a local MCP client (Claude Desktop, Cursor, Cline) over stdio. Reads the artifacts `generate` writes — it never builds them. See the [MCP server reference](/docs/reference/mcp) for the hosted-endpoint variant (`createMcpHandler`) and the IDE config snippets.
+
+```bash
+leadtype mcp [options]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--artifacts <dir>` | `./public` | Directory containing the generated `docs/` folder (with `search-index.json` + `agent-readability.json`). Resolved against the process CWD — pass an absolute path in IDE config, where the CWD is unpredictable. |
+| `--package <name>` | — | Serve an installed dependency's bundled docs from `node_modules/<name>` instead of `--artifacts`. The package must ship the search index + manifest (site-mode artifacts); the default `--bundle` output does not yet include them. |
+| `--tools <list>` | `search-docs,get-page` | Comma-separated tools to expose: `search-docs`, `get-page`, `list-pages`. |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` the server ran and the client disconnected, `1` failed to load artifacts (run `leadtype generate` first) or start the server, `2` CLI usage error.
+
+Requires the optional peer dependency `@modelcontextprotocol/sdk`; a missing install surfaces an actionable error. The server reads artifacts only — `get-page` serves the `.md` mirror from disk, so a deleted mirror makes pages unreadable even when search still works. Regenerate to restore it.
+
 ## help
 
 Show usage:
@@ -272,6 +291,7 @@ Show usage:
 leadtype help            # main usage
 leadtype help generate
 leadtype help lint
+leadtype help mcp
 ```
 
 ## Library entry points
@@ -284,5 +304,6 @@ The CLI is a thin wrapper. Every command is also available as a TypeScript API f
 - [`leadtype/search/node`](/docs/reference/search) — `generateDocsSearchFiles`.
 - [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.
 - [`leadtype/remark`](/docs/reference/remark) — `defaultRemarkPlugins` and individual plugins.
+- [`leadtype/mcp`](/docs/reference/mcp) — `createMcpHandler`, `runStdioServer`, `createDocsArtifacts` for the docs MCP server.
 
 Use the CLI for the happy path, the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.

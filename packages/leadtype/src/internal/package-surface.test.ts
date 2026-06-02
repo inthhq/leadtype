@@ -103,6 +103,7 @@ describe("package surface", () => {
       "./sveltekit",
       "./tanstack-start",
       "./lint",
+      "./mcp",
     ] as const;
 
     expect(exportedPaths).toHaveLength(expectedExportedPaths.length);

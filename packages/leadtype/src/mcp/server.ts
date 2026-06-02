@@ -1,0 +1,93 @@
+import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import type { DocsArtifacts } from "./artifacts.js";
+import {
+  type DefineDocsToolsOptions,
+  type DocsToolName,
+  defineDocsTools,
+} from "./tools.js";
+
+const DEFAULT_SERVER_NAME = "leadtype-docs";
+const DEFAULT_SERVER_VERSION = "0.0.0";
+
+const MISSING_SDK_MESSAGE =
+  "leadtype mcp: the optional peer dependency @modelcontextprotocol/sdk is not installed. " +
+  "Install it to run the docs MCP server: `bun add @modelcontextprotocol/sdk`.";
+
+/**
+ * Dynamically imports an MCP SDK module, turning a missing optional peer dependency
+ * into a clear, actionable error (DESIGN.md Q1 — the SDK stays out of every install
+ * and is only required when actually running an MCP server).
+ */
+export async function importSdkModule<T>(specifier: string): Promise<T> {
+  try {
+    return (await import(specifier)) as T;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as { code?: string }).code === "ERR_MODULE_NOT_FOUND"
+    ) {
+      throw new Error(MISSING_SDK_MESSAGE, { cause: error });
+    }
+    throw error;
+  }
+}
+
+export type CreateDocsMcpServerOptions = DefineDocsToolsOptions & {
+  artifacts: DocsArtifacts;
+  serverInfo?: { name?: string; version?: string };
+};
+
+/**
+ * Builds a low-level MCP `Server` that serves the docs tools. We use the low-level
+ * `Server` (not the high-level `McpServer.registerTool`) because in SDK 1.x the typed
+ * `inputSchema` accepts only Zod, while our tool schemas are Valibot + hand-authored
+ * JSON Schema. Tools advertise JSON Schema and validate args with Valibot internally,
+ * so the registry stays Zod-free and the v2 bump is mechanical (DESIGN.md Q1).
+ */
+export async function createDocsMcpServer(
+  options: CreateDocsMcpServerOptions
+): Promise<Server> {
+  const { Server } = await importSdkModule<
+    typeof import("@modelcontextprotocol/sdk/server/index.js")
+  >("@modelcontextprotocol/sdk/server/index.js");
+  const { CallToolRequestSchema, ListToolsRequestSchema } =
+    await importSdkModule<typeof import("@modelcontextprotocol/sdk/types.js")>(
+      "@modelcontextprotocol/sdk/types.js"
+    );
+
+  const tools = defineDocsTools(options.artifacts, options);
+  const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
+
+  const server = new Server(
+    {
+      name: options.serverInfo?.name ?? DEFAULT_SERVER_NAME,
+      version: options.serverInfo?.version ?? DEFAULT_SERVER_VERSION,
+    },
+    { capabilities: { tools: {} } }
+  );
+
+  server.setRequestHandler(ListToolsRequestSchema, () => ({
+    tools: tools.map((tool) => ({
+      name: tool.name,
+      title: tool.title,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    })),
+  }));
+
+  server.setRequestHandler(CallToolRequestSchema, (request) => {
+    const tool = toolsByName.get(request.params.name as DocsToolName);
+    if (!tool) {
+      return Promise.resolve({
+        content: [
+          { type: "text", text: `Unknown tool: ${request.params.name}` },
+        ],
+        isError: true,
+      });
+    }
+    return tool.handler(request.params.arguments ?? {});
+  });
+
+  return server;
+}

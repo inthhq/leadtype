@@ -196,6 +196,7 @@ export default defineDocsConfig({
             "mdx",
             "remark",
             "search",
+            "mcp",
             "i18n",
             "troubleshooting",
           ],
