@@ -15,6 +15,7 @@ import {
   type DocsSearchIndex,
 } from "../search/index";
 import { type DocsArtifacts, loadDocsArtifacts } from "./artifacts";
+import { createMcpHandler } from "./http";
 import { createDocsMcpServer } from "./server";
 import { defineDocsTools } from "./tools";
 
@@ -260,5 +261,33 @@ describe("loadDocsArtifacts (from disk)", () => {
     await expect(loadDocsArtifacts({ artifacts: tmpdir() })).rejects.toThrow(
       /search-index\.json/
     );
+  });
+});
+
+describe("createMcpHandler error handling", () => {
+  it("returns a JSON-RPC 500 (never throws) when artifacts can't load", async () => {
+    const handler = createMcpHandler({ artifacts: tmpdir() });
+    const response = await handler(
+      new Request("https://app.local/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "x", version: "0" },
+          },
+        }),
+      })
+    );
+    expect(response.status).toBe(500);
+    const body = (await response.json()) as { error?: { message?: string } };
+    expect(body.error?.message).toMatch(/search-index\.json/);
   });
 });

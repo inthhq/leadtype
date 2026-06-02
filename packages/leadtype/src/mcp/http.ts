@@ -64,40 +64,46 @@ export function createMcpHandler(
   };
 
   return async (request: Request): Promise<Response> => {
-    let artifacts: DocsArtifacts;
+    // A mounted route must never throw unhandled (→ the host's generic 500).
+    // Any failure — artifacts not generated, the optional SDK peer dep missing,
+    // a transport error — is turned into a clean JSON-RPC error Response.
     try {
-      artifacts = await getArtifacts();
+      let artifacts: DocsArtifacts;
+      try {
+        artifacts = await getArtifacts();
+      } catch (error) {
+        // Reset so a transient failure (e.g. artifacts not generated yet) retries.
+        artifactsPromise = null;
+        throw error;
+      }
+
+      const { WebStandardStreamableHTTPServerTransport } =
+        await importSdkModule<
+          typeof import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js")
+        >("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js");
+
+      const server = await createDocsMcpServer({
+        artifacts,
+        tools: config.tools,
+        serverInfo: config.serverInfo,
+      });
+      const transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+      await server.connect(transport);
+
+      try {
+        // JSON-response mode buffers the full response, so it is safe to close
+        // the per-request server once handleRequest resolves.
+        return await transport.handleRequest(request);
+      } finally {
+        await server.close();
+      }
     } catch (error) {
-      // Reset so a transient failure (e.g. artifacts not generated yet) can retry.
-      artifactsPromise = null;
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to load docs artifacts.";
+        error instanceof Error ? error.message : "MCP request failed.";
       return jsonRpcErrorResponse(message, 500);
-    }
-
-    const { WebStandardStreamableHTTPServerTransport } = await importSdkModule<
-      typeof import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js")
-    >("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js");
-
-    const server = await createDocsMcpServer({
-      artifacts,
-      tools: config.tools,
-      serverInfo: config.serverInfo,
-    });
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-    await server.connect(transport);
-
-    try {
-      // JSON-response mode buffers the full response, so it is safe to close the
-      // per-request server once handleRequest resolves.
-      return await transport.handleRequest(request);
-    } finally {
-      await server.close();
     }
   };
 }
