@@ -22,14 +22,16 @@ available but off by default.) It's a thin adapter over artifacts you already
 build — the search index ranks results, the `.md` mirror supplies pages — so
 there's no new content surface to maintain.
 
-Two delivery shapes, same tools:
+There are **two paths**, same two tools — pick by *who connects*:
 
-- **stdio** (`leadtype mcp`) — a local process an **IDE client** spawns (Claude
-  Desktop, Cursor, Cline).
-- **Streamable HTTP** (`createMcpHandler`) — a request handler **your app
-  mounts** for remote clients.
+- **[Path 1 — in your editor](#path-1-in-your-editor-stdio)** (`leadtype mcp`, stdio): your *own*
+  agent (Cursor, Claude Desktop, Cline) searches your docs while you work.
+- **[Path 2 — a hosted endpoint](#path-2-a-hosted-endpoint-createmcphandler)** (`createMcpHandler`,
+  Streamable HTTP): *other people's* agents connect to `yoursite.com/mcp`.
 
-## Quick start — connect your editor
+Everything else on this page is a variation on one of those two.
+
+## Path 1 — in your editor (stdio)
 
 The common case: give your own editor's agent live search over your docs.
 
@@ -82,37 +84,19 @@ The common case: give your own editor's agent live search over your docs.
 
 That's the whole loop: `leadtype generate` makes the artifacts, `leadtype mcp` serves them over stdio, your editor's agent calls the two tools. Nothing to host. (Want a full client UI to poke at? `npx @modelcontextprotocol/inspector leadtype mcp --artifacts ./public`.)
 
-## Which delivery shape?
+### Variant: a dependency's docs (`--package`)
 
-All three serve the same two tools over the same artifacts — pick by *who connects*:
+Same stdio command, pointed at an installed package instead of a local dir — to read *that
+version's* docs. The package must have been built with `leadtype generate --bundle --mcp` so its
+tarball ships the artifacts (see [Bundle docs into a package](/docs/package-docs/bundle)):
 
-| You want… | Shape | How |
-| --- | --- | --- |
-| Your own editor's agent to search your docs while you work | **stdio** | `leadtype mcp` (the quick start above) |
-| A hosted `/mcp` endpoint other people's agents connect to | **HTTP** | mount [`createMcpHandler`](#hosted-endpoint-createmcphandler) in a route |
-| Consumers of your npm package to get a version-matched docs MCP | **bundle** | `generate --bundle --mcp`; they run `leadtype mcp --package <you>` |
+```bash
+leadtype mcp --package some-installed-lib
+```
 
-Two notes that aren't obvious from the flags:
+> `get-page` reads the `.md` mirror from disk, not the index. If the mirror was deleted, search still works but `get-page` reports the page missing — regenerate to restore it.
 
-- **`get-page` reads the `.md` files from disk**, not the index. If the index exists but the mirror was deleted, search works and `get-page` reports the page missing — regenerate to restore it.
-- **`--package <name>`** serves an installed dependency's bundled docs (built with `leadtype generate --bundle --mcp`) from `node_modules/<name>` — *that version's* docs. See [Bundle docs into a package](/docs/package-docs/bundle).
-
-## When it's worth adding
-
-<Callout variant="info">
-**A docs MCP server earns its keep on large corpora, not small ones.** If your
-whole doc set fits comfortably in an agent's context, `llms-full.txt` already
-hands it everything in one fetch — an MCP server just adds a round-trip. Reach
-for MCP when the docs are large enough that *targeted retrieval* beats dumping
-the corpus: SDK references, multi-product docs, anything an agent should search
-rather than read end-to-end.
-</Callout>
-
-These tools also don't make your *product* agent-callable — they let an agent
-read your *docs*. Function-calling against your API is a separate surface that
-lives in your own backend, not here.
-
-## Hosted endpoint (`createMcpHandler`)
+## Path 2 — a hosted endpoint (`createMcpHandler`)
 
 `createMcpHandler` returns a Web-standard `(Request) => Promise<Response>` you
 mount in your own route. **leadtype never owns the port, hosting, or auth** —
@@ -147,7 +131,7 @@ and edge routes. Artifacts load once and are reused; each request gets a fresh
 server instance so concurrent requests never share state.
 </Callout>
 
-## Edge and bundled hosts (`createDocsArtifacts`)
+### Variant: edge or bundled artifacts (`createDocsArtifacts`)
 
 `createMcpHandler({ artifacts: "./public" })` reads artifacts from disk at
 request time. That's wrong for two common setups: apps that **bundle** the
@@ -170,6 +154,21 @@ You own where the bytes come from: `index`/`content`/`manifest` are the bundled
 JSON, and `readMarkdown` resolves a page's Markdown however your deploy allows
 (static file, KV, bundled string). `search-docs` ranks over the index;
 `get-page` calls your `readMarkdown`.
+
+## When is it worth adding?
+
+<Callout variant="info">
+**A docs MCP server earns its keep on large corpora, not small ones.** If your
+whole doc set fits comfortably in an agent's context, `llms-full.txt` already
+hands it everything in one fetch — an MCP server just adds a round-trip. Reach
+for MCP when the docs are large enough that *targeted retrieval* beats dumping
+the corpus: SDK references, multi-product docs, anything an agent should search
+rather than read end-to-end.
+</Callout>
+
+These tools also don't make your *product* agent-callable — they let an agent
+read your *docs*. Function-calling against your API is a separate surface that
+lives in your own backend, not here.
 
 ## Tools
 
