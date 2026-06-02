@@ -134,6 +134,7 @@ type GenerateResult = {
     llmsTxt?: string;
     searchContent?: string;
     searchIndex?: string;
+    wellKnownLlmsTxt?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavNode[];
@@ -1758,6 +1759,7 @@ export async function runGenerateCommand(
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
           llmsFullTxt: path.join(outDir, "llms-full.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),
+          wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
         },

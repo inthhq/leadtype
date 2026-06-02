@@ -155,7 +155,15 @@ export type MarkdownResponseHeadersConfig = {
   includeUserAgentVary?: boolean;
   /** Override Cache-Control. Pass `null` to omit the header. */
   cacheControl?: string | null;
+  /**
+   * Path to the site's `llms.txt`, advertised via `Link: rel="llms-txt"` and
+   * `X-Llms-Txt` so agents can discover it from any markdown response. Defaults
+   * to `/llms.txt`; pass `null` to omit the discovery headers.
+   */
+  llmsTxtPath?: string | null;
 };
+
+const DEFAULT_LLMS_TXT_PATH = "/llms.txt";
 
 export type EnrichMarkdownFrontmatterConfig = {
   canonicalUrl: string;
@@ -569,11 +577,20 @@ function resolveManifestMarkdownMirrorTarget(
 export function createMarkdownResponseHeaders(
   config: MarkdownResponseHeadersConfig
 ): Record<string, string> {
+  const linkParts = [`<${config.canonicalUrl}>; rel="canonical"`];
+  const llmsTxtPath =
+    config.llmsTxtPath === undefined
+      ? DEFAULT_LLMS_TXT_PATH
+      : config.llmsTxtPath;
   const headers: Record<string, string> = {
     "Content-Type": "text/markdown; charset=utf-8",
     Vary: config.includeUserAgentVary ? "Accept, User-Agent" : "Accept",
-    Link: `<${config.canonicalUrl}>; rel="canonical"`,
   };
+  if (llmsTxtPath !== null) {
+    linkParts.push(`<${llmsTxtPath}>; rel="llms-txt"`);
+    headers["X-Llms-Txt"] = llmsTxtPath;
+  }
+  headers.Link = linkParts.join(", ");
   const cacheControl =
     config.cacheControl === undefined
       ? DEFAULT_CACHE_CONTROL

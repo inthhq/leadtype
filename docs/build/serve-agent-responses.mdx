@@ -181,7 +181,9 @@ The middleware above uses `createAgentMarkdownResponse`. It returns a Web `Respo
 - Direct `.md` URLs such as `/docs/quickstart.md`.
 - `canonical_url` and `last_updated` frontmatter aliases injected automatically.
 - 200 markdown responses for missing docs pages, so agents do not discard the body.
-- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical"`, `Cache-Control: public, max-age=300, must-revalidate`.
+- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical", </llms.txt>; rel="llms-txt"`, `X-Llms-Txt: /llms.txt`, `Cache-Control: public, max-age=300, must-revalidate`.
+
+The `Link: rel="llms-txt"` and `X-Llms-Txt` headers let an agent that fetched any page **discover the site index** without guessing — point them at a different path with `llmsTxtPath: "/docs/llms.txt"`, or drop them with `llmsTxtPath: null`. `leadtype generate` also writes a discovery copy at `/.well-known/llms.txt` (served statically from `public/`), so crawlers that probe the well-known location find it too.
 
 `readMarkdownFile` may be sync or async. In Node/Bun, read from disk. In Cloudflare, fetch from KV/R2 or an asset binding. In Vercel Edge, fetch from the deployment's static asset URL.
 

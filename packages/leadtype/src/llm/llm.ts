@@ -1707,6 +1707,12 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
         transformer.beforeLlmsTxt?.(value, context)
     );
     await writeFile(outputPath, artifact.content);
+    // Publish a discovery copy at the well-known location so agents can find
+    // llms.txt without guessing the root path. Served statically from the
+    // output (public) dir; no route handler needed.
+    const wellKnownPath = path.join(outDir, ".well-known", "llms.txt");
+    await mkdir(path.dirname(wellKnownPath), { recursive: true });
+    await writeFile(wellKnownPath, artifact.content);
   }
 
   if (resolved.length > 0) {

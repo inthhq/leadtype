@@ -108,6 +108,31 @@ describe("generateLlmsTxt", () => {
     ).resolves.toContain("Transformer note.");
   });
 
+  it("publishes a discovery copy at /.well-known/llms.txt", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      product: { name: "Test", summary: "Testing." },
+      groups: [{ slug: "guides", title: "Guides" }],
+    });
+
+    const [root, wellKnown] = await Promise.all([
+      readFile(path.join(outDir, "llms.txt"), "utf8"),
+      readFile(path.join(outDir, ".well-known", "llms.txt"), "utf8"),
+    ]);
+    expect(wellKnown).toBe(root);
+  });
+
   it("renders nested curated nav sections when nav is configured", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");
@@ -1128,7 +1153,8 @@ describe("agent readability helpers", () => {
     ).toEqual({
       "Content-Type": "text/markdown; charset=utf-8",
       Vary: "Accept, User-Agent",
-      Link: '<https://example.com/docs>; rel="canonical"',
+      Link: '<https://example.com/docs>; rel="canonical", </llms.txt>; rel="llms-txt"',
+      "X-Llms-Txt": "/llms.txt",
       "Cache-Control": "public, max-age=300, must-revalidate",
     });
     expect(
@@ -1143,6 +1169,22 @@ describe("agent readability helpers", () => {
         cacheControl: "no-store",
       })["Cache-Control"]
     ).toBe("no-store");
+    // llms.txt discovery headers are omitted when llmsTxtPath is null.
+    const noDiscovery = createMarkdownResponseHeaders({
+      canonicalUrl: "https://example.com/docs",
+      llmsTxtPath: null,
+    });
+    expect(noDiscovery).not.toHaveProperty("X-Llms-Txt");
+    expect(noDiscovery.Link).toBe(
+      '<https://example.com/docs>; rel="canonical"'
+    );
+    // A custom llms.txt path is advertised in both Link and X-Llms-Txt.
+    const customDiscovery = createMarkdownResponseHeaders({
+      canonicalUrl: "https://example.com/docs",
+      llmsTxtPath: "/docs/llms.txt",
+    });
+    expect(customDiscovery["X-Llms-Txt"]).toBe("/docs/llms.txt");
+    expect(customDiscovery.Link).toContain('</docs/llms.txt>; rel="llms-txt"');
   });
 
   it("adds agent-readable frontmatter aliases to markdown", () => {
@@ -1204,8 +1246,9 @@ lastModified: 2026-05-01T12:00:00.000Z
     expect(missingResponse).not.toBeNull();
     expect(missingResponse?.status).toBe(200);
     expect(missingResponse?.headers.get("Link")).toBe(
-      '<http://localhost:3000/missing-page>; rel="canonical"'
+      '<http://localhost:3000/missing-page>; rel="canonical", </llms.txt>; rel="llms-txt"'
     );
+    expect(missingResponse?.headers.get("X-Llms-Txt")).toBe("/llms.txt");
     const missingBody = await missingResponse?.text();
     expect(missingBody).toContain("# Page not found");
 
