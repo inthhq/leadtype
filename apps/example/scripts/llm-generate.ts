@@ -68,6 +68,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
 
 // Agent-skills surface (/.well-known/agent-skills + agent-card). The auto docs-skill
 // points agents at /llms.txt and this app's MCP endpoint (agents.mcp.enabled).
+const cardOrg = docsConfig.agents?.jsonLd?.organization;
 await generateSkillArtifacts({
   outDir,
   srcDir,
@@ -76,6 +77,9 @@ await generateSkillArtifacts({
   skills: docsConfig.agents?.skills,
   mode: "site",
   mcpEnabled: docsConfig.agents?.mcp?.enabled,
+  ...(cardOrg?.name
+    ? { provider: { organization: cardOrg.name, url: cardOrg.url } }
+    : {}),
 });
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps

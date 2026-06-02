@@ -24,8 +24,14 @@ export type GenerateSkillArtifactsConfig = {
   };
   /** `"site"` (default) emits the `.well-known` surface; `"bundle"` emits one `SKILL.md`. */
   mode?: "site" | "bundle";
-  /** Whether a docs MCP server is enabled — changes the docs-skill body. */
+  /** Whether a docs MCP server is enabled — changes the docs-skill body + agent-card url. */
   mcpEnabled?: boolean;
+  /** A2A agent-card `provider` (e.g. the docs maintainers). */
+  provider?: { organization: string; url?: string };
+  /** A2A agent-card `documentationUrl`. Defaults to `${baseUrl}/docs`. */
+  documentationUrl?: string;
+  /** A2A agent-card `version`. Defaults to `1.0.0`. */
+  version?: string;
 };
 
 export type GenerateSkillArtifactsResult = {
@@ -128,6 +134,42 @@ function integrity(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("base64")}`;
 }
 
+/** Build an A2A AgentCard (https://agent2agent.info) describing the skills surface. */
+function buildAgentCard(
+  config: GenerateSkillArtifactsConfig,
+  skills: DocsSkillSpec[]
+): Record<string, unknown> {
+  const baseUrl = config.baseUrl?.replace(/\/+$/, "") ?? "";
+  // The agent's endpoint: the MCP server when enabled, else the docs site.
+  const url = config.mcpEnabled && baseUrl ? `${baseUrl}/mcp` : baseUrl;
+  const documentationUrl =
+    config.documentationUrl ?? (baseUrl ? `${baseUrl}/docs` : undefined);
+  return {
+    name: config.product.name,
+    description: config.product.summary,
+    ...(url ? { url } : {}),
+    version: config.version ?? "1.0.0",
+    ...(config.provider
+      ? {
+          provider: {
+            organization: config.provider.organization,
+            ...(config.provider.url ? { url: config.provider.url } : {}),
+          },
+        }
+      : {}),
+    ...(documentationUrl ? { documentationUrl } : {}),
+    capabilities: { streaming: false, pushNotifications: false },
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/markdown"],
+    skills: skills.map((skill) => ({
+      id: skill.name,
+      name: skill.name,
+      description: skill.description,
+      tags: ["documentation"],
+    })),
+  };
+}
+
 /**
  * Emit the agent-skills surface from `agents.skills`. Site mode writes
  * `/.well-known/agent-skills/index.json` + `<name>/SKILL.md` (+ `agent-card.json`);
@@ -201,21 +243,10 @@ export async function generateSkillArtifacts(
 
   if (config.skills?.agentCard !== false) {
     const cardPath = path.join(outDir, WELL_KNOWN_DIR, "agent-card.json");
-    const baseUrl = config.baseUrl?.replace(/\/+$/, "") ?? "";
-    const card = {
-      name: config.product.name,
-      description: config.product.summary,
-      ...(baseUrl ? { url: baseUrl } : {}),
-      skills: skills.map((s) => ({
-        id: s.name,
-        name: s.name,
-        description: s.description,
-      })),
-      ...(config.mcpEnabled && baseUrl
-        ? { mcp: { url: `${baseUrl}/mcp`, transport: "streamable-http" } }
-        : {}),
-    };
-    await writeFile(cardPath, `${JSON.stringify(card, null, 2)}\n`);
+    await writeFile(
+      cardPath,
+      `${JSON.stringify(buildAgentCard(config, skills), null, 2)}\n`
+    );
     files.push(cardPath);
   }
 

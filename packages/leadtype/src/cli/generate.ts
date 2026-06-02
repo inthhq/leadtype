@@ -1719,6 +1719,7 @@ export async function runGenerateCommand(
       });
       // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
       // Default-on: the auto docs-skill is free and points agents at the docs.
+      const cardOrg = metadata.agents?.jsonLd?.organization;
       const siteSkills = await generateSkillArtifacts({
         outDir,
         srcDir: sourceMirror.srcDir,
@@ -1727,6 +1728,10 @@ export async function runGenerateCommand(
         skills: metadata.agents?.skills,
         mode: "site",
         mcpEnabled: metadata.agents?.mcp?.enabled,
+        // A2A agent-card provider reuses the JSON-LD organization (same entity).
+        ...(cardOrg?.name
+          ? { provider: { organization: cardOrg.name, url: cardOrg.url } }
+          : {}),
       });
       const agentSkillsIndex = siteSkills.files.find((f) =>
         f.endsWith("index.json")

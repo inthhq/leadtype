@@ -29,6 +29,7 @@ describe("generateSkillArtifacts — site mode", () => {
       product,
       mode: "site",
       mcpEnabled: true,
+      provider: { organization: "Acme Inc", url: "https://acme.com" },
     });
 
     expect(result.skills).toEqual(["acme-docs-docs"]);
@@ -54,9 +55,28 @@ describe("generateSkillArtifacts — site mode", () => {
 
     const card = JSON.parse(
       await readFile(join(outDir, ".well-known/agent-card.json"), "utf8")
-    ) as { name: string; mcp?: { url: string }; skills: unknown[] };
+    ) as {
+      name: string;
+      url: string;
+      version: string;
+      provider?: { organization: string; url?: string };
+      documentationUrl?: string;
+      capabilities?: Record<string, boolean>;
+      defaultInputModes: string[];
+      skills: { id: string; tags: string[] }[];
+    };
     expect(card.name).toBe("Acme Docs");
-    expect(card.mcp?.url).toBe("https://acme.dev/mcp");
+    // A2A AgentCard: url is the MCP endpoint when enabled, + required version.
+    expect(card.url).toBe("https://acme.dev/mcp");
+    expect(card.version).toBe("1.0.0");
+    expect(card.provider).toEqual({
+      organization: "Acme Inc",
+      url: "https://acme.com",
+    });
+    expect(card.documentationUrl).toBe("https://acme.dev/docs");
+    expect(card.capabilities).toBeDefined();
+    expect(card.defaultInputModes.length).toBeGreaterThan(0);
+    expect(card.skills[0].tags).toContain("documentation");
   });
 
   it("includes author-declared skills and respects docsSkill: false", async () => {

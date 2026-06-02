@@ -25,7 +25,7 @@ In **site mode** (default), under your output root:
 
 - `/.well-known/agent-skills/index.json` — the discovery manifest: each skill's name, description, path, and a `sha256-…` integrity hash. Clients read this first (progressive disclosure — name + description before the full instructions).
 - `/.well-known/agent-skills/<name>/SKILL.md` — one per skill (agentskills.io frontmatter + Markdown instructions).
-- `/.well-known/agent-card.json` — a minimal A2A agent card listing the skills (and the MCP endpoint, if enabled).
+- `/.well-known/agent-card.json` — an [A2A](https://agent2agent.info/docs/concepts/agentcard/) agent card: `name`, `description`, `url` (your MCP endpoint when enabled, else the site), `version`, `capabilities`, `defaultInputModes`/`defaultOutputModes`, and each skill as `{ id, name, description, tags }`. Its `provider` reuses your `agents.jsonLd.organization` and `documentationUrl` defaults to `<baseUrl>/docs` — so leadtype's own card reads `provider: { organization: "Inth", url: "https://inth.com" }`, `documentationUrl: "https://leadtype.dev/docs"`.
 
 In **bundle mode** (`--bundle`), a single `SKILL.md` ships at the package root next to `AGENTS.md`, so an agent reading `node_modules/<pkg>` finds it on the filesystem the same way it finds `AGENTS.md`.
 
