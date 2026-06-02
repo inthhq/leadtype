@@ -48,6 +48,7 @@ leadtype generate [options]
 | `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeat to merge multiple folders into one generated docs tree. |
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
 | `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full.txt`, search, sitemap, robots, and Agent Readability artifacts. |
+| `--mcp` | off | Bundle mode only. Also emit `docs/search-index.json` + `docs/agent-readability.json` so the published tarball can serve a version-matched docs MCP server (`leadtype mcp --package <name>`). Off by default to keep bundles lean. |
 | `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Site mode only; ignored in `--bundle`. |
 | `--name <name>` | from `docs.config.ts` or `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). Overrides config. |
 | `--summary <text>` | from `docs.config.ts` or `package.json#description` | Product summary written into the index file. Overrides config. |
@@ -122,7 +123,9 @@ That keeps the internal generated copy at `public/docs/changelog/v1.md` for sear
 leadtype generate --bundle --src . --out packages/my-package
 ```
 
-Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, `search-index.json`, `search-content.json`) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/package-docs/bundle).
+Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, sitemap, robots) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/package-docs/bundle).
+
+Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json` into the bundle. These are URL-independent (the MCP server keys on `urlPath` and reads the `.md` mirror), so they work without a `--base-url`. A consumer who installs the package can then run a version-matched docs MCP server with `leadtype mcp --package <name>` — no separate hosting. It's off by default so bundles that don't need MCP stay lean. See the [MCP server reference](/docs/reference/mcp).
 
 ### JSON output shape
 
@@ -275,7 +278,7 @@ leadtype mcp [options]
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--artifacts <dir>` | `./public` | Directory containing the generated `docs/` folder (with `search-index.json` + `agent-readability.json`). Resolved against the process CWD — pass an absolute path in IDE config, where the CWD is unpredictable. |
-| `--package <name>` | — | Serve an installed dependency's bundled docs from `node_modules/<name>` instead of `--artifacts`. The package must ship the search index + manifest (site-mode artifacts); the default `--bundle` output does not yet include them. |
+| `--package <name>` | — | Serve an installed dependency's bundled docs from `node_modules/<name>` instead of `--artifacts`. The package must have been built with `leadtype generate --bundle --mcp` so its tarball ships the search index + manifest. |
 | `--tools <list>` | `search-docs,get-page` | Comma-separated tools to expose: `search-docs`, `get-page`, `list-pages`. |
 | `-h`, `--help` | — | Print usage. |
 

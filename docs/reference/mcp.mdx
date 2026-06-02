@@ -102,6 +102,20 @@ Two more things that aren't obvious from the flags:
   index exists but the `.md` mirror was deleted, search works and `get-page`
   reports the page is missing — regenerate to restore the mirror.
 
+### A dependency's version-matched docs
+
+If a package ships its docs MCP artifacts in its tarball (built with
+`leadtype generate --bundle --mcp`), point at the installed copy instead of a
+local directory:
+
+```bash
+leadtype mcp --package some-installed-lib
+```
+
+This resolves `node_modules/some-installed-lib` and serves *that version's* docs
+— the docs always match the code you actually installed. See
+[Bundle docs into a package](/docs/package-docs/bundle).
+
 ## Hosted endpoint (`createMcpHandler`)
 
 `createMcpHandler` returns a Web-standard `(Request) => Promise<Response>` you

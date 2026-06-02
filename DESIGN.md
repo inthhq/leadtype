@@ -211,7 +211,16 @@ The four open questions, decided (grounded in the current code):
   `enableJsonResponse: true` (no SSE), building a fresh server + transport per request so
   concurrent requests never share transport state.
 
-### Q4 · Bundle-mode MCP → yes, ship it; consequence: bundle emit grows by two derived files
+### Q4 · Bundle-mode MCP → shipped (opt-in `--mcp`)
+
+**Shipped.** `leadtype generate --bundle --mcp` emits `search-index.json` +
+`agent-readability.json` into the tarball, and `leadtype mcp --package <name>`
+serves a dependency's version-matched docs (verified end-to-end + regression test).
+Made it **opt-in** rather than unconditional (a small DX deviation from the original
+resolution below): silently growing every consumer's tarball is a surprise, and the
+flag matches the design's own "`--mcp` to force-emit" note. The artifacts are
+URL-independent, so they need no `--base-url`.
+
 
 - Shipping the stdio server inside the tarball is the strongest version-matching story (a
   consumer gets a docs MCP pinned to their installed version). **Decision: yes.**

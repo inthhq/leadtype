@@ -73,6 +73,13 @@ type GenerateFormat = "json" | "text";
 export type GenerateArgs = {
   baseUrl?: string;
   bundle: boolean;
+  /**
+   * Bundle mode only. Also emit `search-index.json` + `agent-readability.json`
+   * alongside the markdown mirror so the published tarball can serve a
+   * version-matched docs MCP server (`leadtype mcp --package <name>`). Off by
+   * default to keep bundles lean.
+   */
+  mcp: boolean;
   docsDirs: string[];
   enrichGit: boolean;
   exclude: string[];
@@ -202,6 +209,8 @@ By default, runs in site mode and writes:
 With --bundle, runs in package mode and writes:
   AGENTS.md, docs/*.md
   (skips llms.txt, llms-full.txt, and search artifacts — those are website-only)
+  Add --mcp to also emit docs/search-index.json + docs/agent-readability.json
+  so the tarball can serve a version-matched MCP server (leadtype mcp --package).
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
@@ -209,6 +218,7 @@ Options:
                      Use <dir>=<url-prefix> to mount a source outside /docs, e.g. changelog=/changelog.
   --out <dir>        Output root directory (default: public)
   --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
+  --mcp              Bundle mode only: also emit search-index.json + agent-readability.json for a version-matched docs MCP server
   --base-url <url>   Base URL for generated links (site mode)
   --name <name>      Product name for generated index files
   --summary <text>   Product summary for generated index files
@@ -239,6 +249,7 @@ function isGenerateFormat(value: string): value is GenerateFormat {
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
     bundle: false,
+    mcp: false,
     docsDirs: [],
     enrichGit: false,
     exclude: [],
@@ -276,6 +287,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.enrichGit = true;
     } else if (arg === "--bundle") {
       args.bundle = true;
+    } else if (arg === "--mcp") {
+      args.mcp = true;
     } else if (arg === "--sync") {
       syncFlags.push(arg);
       args.syncMode = "auto";
@@ -1583,10 +1596,44 @@ export async function runGenerateCommand(
         locale: i18n?.defaultLocale,
         transformers: metadata.transformers,
       });
+      const bundleFiles: GenerateResult["files"] = {
+        agentsMd: agents.outputPath,
+      };
+      // --mcp: also emit the search index + readability manifest so the tarball
+      // can serve a version-matched docs MCP server (`leadtype mcp --package`).
+      // These are URL-independent (MCP keys on urlPath and reads the .md mirror),
+      // so they work without a --base-url.
+      if (args.mcp) {
+        const search = await generateDocsSearchFiles({
+          outDir,
+          baseUrl: args.baseUrl,
+          mounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          transformers: metadata.transformers,
+        });
+        const agentReadability = await generateAgentReadabilityArtifacts({
+          outDir,
+          baseUrl: args.baseUrl,
+          product,
+          groups,
+          nav: effectiveNav,
+          mounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          i18nManifest,
+          transformers: metadata.transformers,
+        });
+        bundleFiles.searchIndex = search.outputPath;
+        if (search.contentOutputPath) {
+          bundleFiles.searchContent = search.contentOutputPath;
+        }
+        bundleFiles.agentReadabilityManifest = agentReadability.files.manifest;
+      }
       result = {
         docsDir,
         docsDirs,
-        files: { agentsMd: agents.outputPath },
+        files: bundleFiles,
         filters: sourceMirror.filters,
         groups,
         ...(effectiveNav ? { nav: effectiveNav } : {}),
