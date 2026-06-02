@@ -25,6 +25,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./package.json": "./package.json",
     "./mdx": {
       "types": "./dist/mdx/index.d.ts",
       "import": "./dist/mdx/index.js"

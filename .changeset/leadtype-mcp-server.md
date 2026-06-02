@@ -16,4 +16,6 @@ A thin adapter over the existing search index + `.md` mirror, exposing two MCP t
 
 Dogfooded in `apps/example`: a Nitro middleware mounts the server at `POST /mcp`, and `bun run mcp` serves the same docs over stdio.
 
+`leadtype` now exposes `./package.json` in its `exports` map (so `--package leadtype` can be resolved); `resolveBundleArtifactsBase` also falls back to walking up from the package entry for packages that don't. leadtype's own published tarball ships the MCP artifacts, so `leadtype mcp --package leadtype` serves version-matched docs out of the box.
+
 Gate: MCP earns its keep for large corpora / SDK docs where agents want targeted retrieval. For docs that fit in `llms-full.txt`, skip it.

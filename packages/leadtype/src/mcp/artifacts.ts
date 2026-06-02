@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -23,6 +24,7 @@ const DOCS_SUBDIR = "docs";
 const SEARCH_INDEX_FILE = "search-index.json";
 const SEARCH_CONTENT_FILE = "search-content.json";
 const MANIFEST_FILE = "agent-readability.json";
+const MAX_PACKAGE_ROOT_DEPTH = 10;
 
 /**
  * The generated artifacts a docs MCP server reads at runtime. The search index
@@ -144,13 +146,31 @@ export function resolveBundleArtifactsBase(
   fromDir: string = process.cwd()
 ): string {
   const require = createRequire(path.join(fromDir, "package.json"));
+  // Preferred: the package exposes `./package.json` in its exports map.
   try {
-    const pkgJson = require.resolve(`${packageName}/package.json`);
-    return path.dirname(pkgJson);
+    return path.dirname(require.resolve(`${packageName}/package.json`));
   } catch {
-    throw new Error(
-      `leadtype mcp: could not resolve package "${packageName}" from ${fromDir}. ` +
-        "Install it, or pass --artifacts <dir> pointing at a directory with a `docs/` folder."
-    );
+    // Fall through.
   }
+  // Fallback for packages whose `exports` map blocks `./package.json`: resolve
+  // the entry and walk up to the nearest package root.
+  try {
+    let dir = path.dirname(require.resolve(packageName));
+    for (let depth = 0; depth < MAX_PACKAGE_ROOT_DEPTH; depth++) {
+      if (existsSync(path.join(dir, "package.json"))) {
+        return dir;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+  } catch {
+    // Fall through.
+  }
+  throw new Error(
+    `leadtype mcp: could not resolve package "${packageName}" from ${fromDir}. ` +
+      "Install it, or pass --artifacts <dir> pointing at a directory with a `docs/` folder."
+  );
 }

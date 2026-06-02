@@ -4,8 +4,13 @@ import { fileURLToPath } from "node:url";
 import docsConfig from "../../../docs/docs.config";
 import { convertAllMdx } from "../src/convert/index";
 import { logger } from "../src/internal/logger";
-import { generateAgentsMd, resolveDocsNavigation } from "../src/llm/index";
+import {
+  generateAgentReadabilityArtifacts,
+  generateAgentsMd,
+  resolveDocsNavigation,
+} from "../src/llm/index";
 import { defaultRemarkPlugins } from "../src/remark/index";
+import { generateDocsSearchFiles } from "../src/search/node-index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const REPO_ROOT = resolve(PACKAGE_ROOT, "..", "..");
@@ -54,6 +59,18 @@ const { outputPath } = await generateAgentsMd({
   outDir: PACKAGE_ROOT,
   product: docsConfig.product,
   nav: docsConfig.nav,
+});
+
+// Also ship the MCP artifacts (search index + readability manifest) inside the
+// tarball — the `--bundle --mcp` story — so a consumer can run a version-matched
+// docs MCP server over our own docs: `leadtype mcp --package leadtype`.
+// URL-independent, so no base URL is needed.
+await generateDocsSearchFiles({ outDir: PACKAGE_ROOT });
+await generateAgentReadabilityArtifacts({
+  outDir: PACKAGE_ROOT,
+  product: docsConfig.product,
+  nav: docsConfig.nav,
+  jsonLd: docsConfig.agents?.jsonLd,
 });
 
 logger.info({

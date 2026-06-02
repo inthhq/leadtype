@@ -77,6 +77,7 @@ describe("package surface", () => {
   it("matches the documented entry-point list", () => {
     const expectedExportedPaths = [
       ".",
+      "./package.json",
       "./mdx",
       "./fumadocs",
       "./astro",
