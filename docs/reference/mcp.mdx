@@ -29,6 +29,65 @@ Two delivery shapes, same tools:
 - **Streamable HTTP** (`createMcpHandler`) — a request handler **your app
   mounts** for remote clients.
 
+## Quick start — connect your editor
+
+The common case: give your own editor's agent live search over your docs.
+
+<Steps>
+  <Step title="Install the MCP SDK">
+    It's an optional peer dependency — install it in the project that runs the server.
+
+    ```bash
+    bun add @modelcontextprotocol/sdk
+    ```
+  </Step>
+  <Step title="Generate the artifacts">
+    The same `leadtype generate` you run for your docs site writes everything the server reads — `public/docs/search-index.json`, `agent-readability.json`, and the `.md` mirror. The server never builds these; it only reads them.
+
+    ```bash
+    leadtype generate
+    ```
+  </Step>
+  <Step title="Point your editor at the binary">
+    Use an **absolute** `--artifacts` path — the client spawns the binary from an unpredictable working directory.
+
+    <Tabs items={["Cursor", "Claude Desktop"]}>
+      <Tab value="Cursor">
+```json
+// .cursor/mcp.json
+{ "mcpServers": { "my-docs": { "command": "leadtype", "args": ["mcp", "--artifacts", "/abs/path/to/public"] } } }
+```
+      </Tab>
+      <Tab value="Claude Desktop">
+```json
+// claude_desktop_config.json
+{ "mcpServers": { "my-docs": { "command": "leadtype", "args": ["mcp", "--artifacts", "/abs/path/to/public"] } } }
+```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Ask the agent">
+    Restart the client and ask its agent something about your docs — it calls `search-docs`, then `get-page` on the best hit.
+  </Step>
+</Steps>
+
+That's the whole loop: `leadtype generate` makes the artifacts, `leadtype mcp` serves them over stdio, your editor's agent calls the two tools. Nothing to host.
+
+## Which delivery shape?
+
+All three serve the same two tools over the same artifacts — pick by *who connects*:
+
+| You want… | Shape | How |
+| --- | --- | --- |
+| Your own editor's agent to search your docs while you work | **stdio** | `leadtype mcp` (the quick start above) |
+| A hosted `/mcp` endpoint other people's agents connect to | **HTTP** | mount [`createMcpHandler`](#hosted-endpoint-createmcphandler) in a route |
+| Consumers of your npm package to get a version-matched docs MCP | **bundle** | `generate --bundle --mcp`; they run `leadtype mcp --package <you>` |
+
+Two notes that aren't obvious from the flags:
+
+- **`get-page` reads the `.md` files from disk**, not the index. If the index exists but the mirror was deleted, search works and `get-page` reports the page missing — regenerate to restore it.
+- **`--package <name>`** serves an installed dependency's bundled docs (built with `leadtype generate --bundle --mcp`) from `node_modules/<name>` — *that version's* docs. See [Bundle docs into a package](/docs/package-docs/bundle).
+
 ## When it's worth adding
 
 <Callout variant="info">
@@ -43,78 +102,6 @@ rather than read end-to-end.
 These tools also don't make your *product* agent-callable — they let an agent
 read your *docs*. Function-calling against your API is a separate surface that
 lives in your own backend, not here.
-
-## Local IDE clients (`leadtype mcp`)
-
-```bash
-leadtype mcp --artifacts ./public
-```
-
-Reads the artifacts `leadtype generate` writes (`search-index.json`,
-`agent-readability.json`, and the `docs/*.md` mirror) and speaks MCP over
-stdin/stdout until the client disconnects. See the [CLI reference](/docs/reference/cli#mcp)
-for every flag.
-
-Register it with an IDE client by pointing at the command:
-
-<Tabs items={["Claude Desktop", "Cursor"]}>
-  <Tab value="Claude Desktop">
-```json
-// claude_desktop_config.json
-{
-  "mcpServers": {
-    "my-docs": {
-      "command": "leadtype",
-      "args": ["mcp", "--artifacts", "/abs/path/to/your/app/public"]
-    }
-  }
-}
-```
-  </Tab>
-  <Tab value="Cursor">
-```json
-// .cursor/mcp.json
-{
-  "mcpServers": {
-    "my-docs": {
-      "command": "leadtype",
-      "args": ["mcp", "--artifacts", "/abs/path/to/your/app/public"]
-    }
-  }
-}
-```
-  </Tab>
-</Tabs>
-
-<Callout variant="warning">
-**Use an absolute `--artifacts` path in IDE config.** The client spawns the
-binary from an unpredictable working directory, so the default `./public`
-(resolved against the process CWD) usually won't point where you expect.
-</Callout>
-
-Two more things that aren't obvious from the flags:
-
-- **Run `leadtype generate` first.** The server only reads artifacts; it never
-  builds them. Against a directory with no `docs/search-index.json` +
-  `docs/agent-readability.json`, it exits with a "run `leadtype generate`" error
-  rather than starting empty.
-- **`get-page` reads the `.md` files from disk**, not the search index. If the
-  index exists but the `.md` mirror was deleted, search works and `get-page`
-  reports the page is missing — regenerate to restore the mirror.
-
-### A dependency's version-matched docs
-
-If a package ships its docs MCP artifacts in its tarball (built with
-`leadtype generate --bundle --mcp`), point at the installed copy instead of a
-local directory:
-
-```bash
-leadtype mcp --package some-installed-lib
-```
-
-This resolves `node_modules/some-installed-lib` and serves *that version's* docs
-— the docs always match the code you actually installed. See
-[Bundle docs into a package](/docs/package-docs/bundle).
 
 ## Hosted endpoint (`createMcpHandler`)
 
