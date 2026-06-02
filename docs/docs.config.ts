@@ -1,11 +1,23 @@
 import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
+  // The documented product — reused across llms.txt, JSON-LD, and the agent card.
   product: {
     name: "Leadtype",
-    summary:
+    tagline:
       "A docs pipeline that turns one MDX source into a website, agent-readable artifacts, and a search index.",
-    blocks: [
+    homepage: "https://leadtype.dev",
+    docs: "https://leadtype.dev/docs",
+    repository: "https://github.com/inthhq/leadtype",
+    // A library, so the site-level graph emits SoftwareSourceCode.
+    kind: "library",
+    category: "DeveloperApplication",
+  },
+  // Who publishes it → JSON-LD Organization + the agent-card provider.
+  organization: { name: "Inth", url: "https://inth.com" },
+  // The llms.txt body, rendered in order (was `product.blocks`).
+  llms: {
+    sections: [
       {
         type: "markdown",
         heading: "Overview",
@@ -115,7 +127,7 @@ export default defineDocsConfig({
       },
     ],
   },
-  nav: [
+  navigation: [
     {
       title: "Docs",
       children: [
@@ -221,14 +233,6 @@ export default defineDocsConfig({
     },
   ],
   agents: {
-    // leadtype is a library, so the site-level graph emits SoftwareSourceCode.
-    jsonLd: {
-      organization: { name: "Inth", url: "https://inth.com" },
-      software: {
-        isLibrary: true,
-        applicationCategory: "DeveloperApplication",
-      },
-    },
     // Fully crawlable + retrievable; signals "don't train on this" (the default).
     robots: { policy: "balanced" },
     // The example app hosts a docs MCP endpoint, so the docs-skill points agents at it.

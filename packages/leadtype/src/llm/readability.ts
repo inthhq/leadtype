@@ -886,6 +886,8 @@ export type RenderSiteJsonLdOptions = {
     isLibrary?: boolean;
     applicationCategory?: string;
     operatingSystem?: string;
+    /** Source repository URL, emitted as `codeRepository`. */
+    codeRepository?: string;
   };
   /**
    * URL template for the WebSite `SearchAction`, relative to the base URL.
@@ -964,6 +966,9 @@ export function renderSiteJsonLd(
       : {}),
     ...(options.software?.operatingSystem
       ? { operatingSystem: options.software.operatingSystem }
+      : {}),
+    ...(options.software?.codeRepository
+      ? { codeRepository: options.software.codeRepository }
       : {}),
   };
 

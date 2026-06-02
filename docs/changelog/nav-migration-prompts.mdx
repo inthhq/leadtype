@@ -1,11 +1,11 @@
 ---
 title: "Nav migration prompts"
-description: "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned nav."
+description: "Copyable prompts for migrating Leadtype docs from frontmatter groups to config-owned navigation."
 ---
 
 # Nav migration prompts
 
-Leadtype now supports config-owned `nav` as the preferred way to describe
+Leadtype now supports config-owned `navigation` as the preferred way to describe
 top-level docs areas, sidebar structure, and agent-facing document maps. Use these prompts when you
 want a coding agent to migrate an existing docs site from frontmatter-only
 `group` navigation to the new `docs.config.ts` format.
@@ -14,12 +14,12 @@ want a coding agent to migrate an existing docs site from frontmatter-only
 
 `group` is still valid, but it is no longer the best place to express a
 polished navigation. Treat it as taxonomy and compatibility metadata. Put
-intentional navigation in `nav`:
+intentional navigation in `navigation`:
 
 ```ts
 export default defineDocsConfig({
-  product: { name: "My Library", summary: "..." },
-  nav: [
+  product: { name: "My Library", tagline: "..." },
+  navigation: [
     {
       title: "Docs",
       children: [
@@ -46,10 +46,10 @@ sort.
 ## Library docs prompt
 
 <Prompt
-  title="Migrate library docs to config nav"
+  title="Migrate library docs to config navigation"
   description="Use for API libraries, SDKs, packages, and CLIs."
 >
-  You are migrating this docs site to Leadtype's config-owned `nav` API.
+  You are migrating this docs site to Leadtype's config-owned `navigation` API.
 
   Goal:
   - Move curated navigation structure out of page frontmatter and into `docs.config.ts`.
@@ -63,8 +63,8 @@ sort.
   - current generated/sidebar ordering, if a generated `docs-nav.json` or app sidebar exists
 
   Implement:
-  - Add a `nav` array to config.
-  - Use root nav nodes for top-level docs areas like Docs, API Reference, and Changelog when the site has top tabs.
+  - Add a `navigation` array to config.
+  - Use root navigation nodes for top-level docs areas like Docs, API Reference, and Changelog when the site has top tabs.
   - Use section titles that match the current reader-facing sidebar within each top-level docs area.
   - Use `base` for repeated folder prefixes.
   - Use explicit page strings for important entry points like `quickstart`, `installation`, `configuration`, and `cli`.
@@ -75,7 +75,7 @@ sort.
   Prefer this shape:
 
   ```ts
-  nav: [
+  navigation: [
     {
       title: "Get Started",
       pages: ["", "quickstart", "installation"],
@@ -95,33 +95,33 @@ sort.
 
   Validation:
   - Run the docs generation/tests available in the repo.
-  - Confirm `llms.txt`, `AGENTS.md`, Agent Readability navigation, the top nav, and the human sidebar use the same structure.
-  - Confirm no explicit nav page points to a missing MDX file.
+  - Confirm `llms.txt`, `AGENTS.md`, Agent Readability navigation, the top navigation, and the human sidebar use the same structure.
+  - Confirm no explicit navigation page points to a missing MDX file.
   - Summarize any remaining pages that are only included by wildcard.
 </Prompt>
 
 ## UI docs prompt
 
 <Prompt
-  title="Migrate UI docs to config nav"
+  title="Migrate UI docs to config navigation"
   description="Use for component libraries, design systems, and framework-specific docs."
 >
-  You are migrating a UI documentation site to Leadtype's config-owned `nav` API.
+  You are migrating a UI documentation site to Leadtype's config-owned `navigation` API.
 
   Goal:
   - Model the docs IA as product navigation, not as a flat list of frontmatter groups.
   - Keep framework/component/docs URLs stable.
-  - Use root `nav` nodes for top navbar areas such as Frontend, Integrations, Self Host, and Changelog.
+  - Use root `navigation` nodes for top navbar areas such as Frontend, Integrations, Self Host, and Changelog.
   - Use child sections for sidebar areas such as Components, Styling, Hooks, and Examples.
   - Keep `group` as taxonomy/compatibility metadata only.
 
   Inspect:
-  - existing top nav, sidebar UI code, or generated `docs-nav.json`
+  - existing top navigation, sidebar UI code, or generated `docs-nav.json`
   - folders such as `frameworks/*`, `components/*`, `styling/*`, `hooks/*`, `examples/*`, and `guides/*`
   - frontmatter `order` values used to pin important pages
 
   Implement:
-  - Add `nav` to `docs.config.ts` or to the relevant collection in `leadtype.config.ts`.
+  - Add `navigation` to `docs.config.ts` or to the relevant collection in `leadtype.config.ts`.
   - Use `base` at framework or product-area nodes to avoid repeating long paths.
   - Use explicit entries for primary flows like `quickstart`, `overview`, and `installation`.
   - Use wildcard includes for expandable areas like component lists and hook lists.
@@ -130,7 +130,7 @@ sort.
   Prefer this shape:
 
   ```ts
-  nav: [
+  navigation: [
     {
       title: "Frameworks",
       children: [

@@ -35,11 +35,17 @@ export function sharedFiles(name: string, summary: string): InitFile[] {
   const configBody = `import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
+  // \`product\` is the documented thing — reused in llms.txt, JSON-LD, and the agent card.
   product: {
     name: ${JSON.stringify(name)},
-    summary: ${JSON.stringify(summary)},
-    // \`blocks\` is the body of llms.txt and AGENTS.md, rendered in order.
-    blocks: [
+    tagline: ${JSON.stringify(summary)},
+  },
+  // \`navigation\` is the single source of truth for the sidebar, llms.txt, AGENTS.md,
+  // sitemap, and agent-readability metadata.
+  navigation: [{ title: "Start", pages: [""] }],
+  // \`llms.sections\` is the body of llms.txt and AGENTS.md, rendered in order.
+  llms: {
+    sections: [
       {
         type: "links",
         heading: "Best Starting Points",
@@ -53,9 +59,6 @@ export default defineDocsConfig({
       },
     ],
   },
-  // \`nav\` is the single source of truth for the sidebar, llms.txt, AGENTS.md,
-  // sitemap, and agent-readability metadata.
-  nav: [{ title: "Start", pages: [""] }],
 });
 `;
 
@@ -108,7 +111,7 @@ import docsConfig from "../docs/docs.config";
 
 export const source = await createDocsSource({
   contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -208,7 +211,7 @@ import docsConfig from "../../docs/docs.config";
 
 export const source = await createDocsSource({
   contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -284,7 +287,7 @@ let sourcePromise: ReturnType<typeof createDocsSource> | undefined;
 export function getSource() {
   sourcePromise ??= createDocsSource({
     contentDir: path.resolve(process.cwd(), "docs"),
-    nav: docsConfig.nav,
+    nav: docsConfig.navigation,
     baseUrl: ${JSON.stringify(baseUrl)},
   });
   return sourcePromise;
@@ -409,7 +412,7 @@ import docsConfig from "../../docs/docs.config";
 
 export const source = await createDocsSource({
   contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,

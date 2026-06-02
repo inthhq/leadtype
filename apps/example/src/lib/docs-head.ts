@@ -15,7 +15,8 @@ export function createDocsHead(urlPath: string): DocsHead {
 /**
  * The site-level JSON-LD graph (Organization, WebSite + SearchAction,
  * SoftwareSourceCode), emitted once in the root head so the per-page TechArticle
- * `@id` references resolve. Options come from `agents.jsonLd` baked into the manifest.
+ * `@id` references resolve. Options are derived from `organization` + `product` and
+ * baked into the manifest at generate time.
  * TanStack renders a `script:ld+json` meta entry as a JSON-LD script tag.
  */
 export function siteJsonLdMeta(): {

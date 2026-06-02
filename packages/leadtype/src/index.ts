@@ -35,6 +35,7 @@ export {
   type DocsConfig,
   type DocsFrontmatterSchema,
   type DocsGroup,
+  type DocsLlmsConfig,
   type DocsNavIncludeEntry,
   type DocsNavNode,
   type DocsNavPageEntry,
@@ -43,7 +44,10 @@ export {
   defineDocsConfig,
   type LlmsBlock,
   normalizeAgentReadabilityManifest,
+  type OrganizationInfo,
   type ProductInfo,
+  type ResolvedAgentInputs,
+  resolveAgentInputs,
 } from "./llm";
 export {
   type CreateDocsSourceConfig,

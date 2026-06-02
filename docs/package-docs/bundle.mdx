@@ -124,7 +124,7 @@ await convertAllMdx({
 // Fail fast on unknown legacy groups or invalid nav refs so a bad config can't ship.
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
@@ -137,7 +137,7 @@ await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,
   product: docsConfig.product,
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
 });
 ```
 

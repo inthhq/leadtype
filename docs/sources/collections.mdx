@@ -9,7 +9,7 @@ A **collection** is one content set in your docs site: a folder of MDX with a UR
 
 For the recommended task-led setup, start with [Configure docs sources](/docs/sources/configure-sources). This page is the deeper reference for collection fields and behavior.
 
-If your project has a single docs folder, you don't need collections. Use `docs/docs.config.ts` with top-level `nav` for that case.
+If your project has a single docs folder, you don't need collections. Use `docs/docs.config.ts` with top-level `navigation` for that case.
 
 ## When to reach for this
 
@@ -27,7 +27,7 @@ A collection is declared inside `defineDocsConfig` and identified by its map key
 import { defineCollection, defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
-  product: { name: "My Product", summary: "..." },
+  product: { name: "My Product", tagline: "..." },
   collections: {
     docs: defineCollection({ dir: "./docs", prefix: "/docs" }),
   },
@@ -48,7 +48,7 @@ Place this file at the project root (the cwd from which you run `leadtype`). Lea
 | `include` | `string[]` | all `.mdx` files | Glob patterns relative to `dir`. When set, narrows which files the collection contributes. |
 | `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
 | `schema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
-| `nav` | `DocsNavNode[]` | — | Per-collection curated navigation tree. Preferred when you need stable sidebar and agent-map structure. |
+| `navigation` | `DocsNavNode[]` | — | Per-collection curated navigation tree. Preferred when you need stable sidebar and agent-map structure. |
 | `groups` | `DocsGroup[]` | — | Per-collection navigation tree. Slugs must be globally unique across all collections. |
 
 ## Local-only collections
@@ -72,7 +72,7 @@ Two collections that share a `(repository, ref)` pair share one underlying clone
 const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as const;
 
 export default defineDocsConfig({
-  product: { name: "c15t", summary: "..." },
+  product: { name: "c15t", tagline: "..." },
   collections: {
     docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
     changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
@@ -125,16 +125,16 @@ collections: {
 
 `leadtype lint` automatically discovers the project's `leadtype.config.ts`, iterates each collection, and runs lint with the right schema per collection. Violations are prefixed with `[collection:<key>]` so you can see which collection a file came from.
 
-## Per-collection nav
+## Per-collection navigation
 
-Each collection may declare its own curated `nav` tree. Use this when a source owns its own sidebar order and agent-map structure:
+Each collection may declare its own curated `navigation` tree. Use this when a source owns its own sidebar order and agent-map structure:
 
 ```ts
 collections: {
   docs: defineCollection({
     dir: "./docs",
     prefix: "/docs",
-    nav: [
+    navigation: [
       { title: "Start", pages: ["", "quickstart"] },
       { title: "Reference", pages: [{ include: "reference/*" }] },
     ],
@@ -157,7 +157,7 @@ collections: {
 }
 ```
 
-If a collection omits both `nav` and `groups`, leadtype falls back to discovering group slugs from frontmatter — same as it does for the legacy single-folder shape.
+If a collection omits both `navigation` and `groups`, leadtype falls back to discovering group slugs from frontmatter — same as it does for the legacy single-folder shape.
 
 ## Filtering
 

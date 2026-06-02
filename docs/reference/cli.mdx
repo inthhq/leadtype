@@ -78,18 +78,18 @@ import { defineDocsConfig } from "leadtype";
 export default defineDocsConfig({
   product: {
     name: "My Library",
-    summary: "A library that does one thing well.",
+    tagline: "A library that does one thing well.",
   },
-  nav: [
+  navigation: [
     { title: "Get Started", pages: ["", "quickstart"] },
     { title: "Reference", pages: [{ include: "reference/*" }] },
   ],
 });
 ```
 
-The config supplies product metadata, curated nav structure, best starting points, and agent guidance. Legacy `groups` are still supported for fallback navigation and taxonomy. If a page names a legacy group that is not in the loaded config, generation fails in fallback mode.
+The config supplies product metadata, curated navigation structure, best starting points, and agent guidance. Legacy `groups` are still supported for fallback navigation and taxonomy. If a page names a legacy group that is not in the loaded config, generation fails in fallback mode.
 
-If no config file exists, the CLI falls back to `package.json` for product metadata and infers groups from the union of `group:` values across the generated pages. Inferred groups are sorted alphabetically and title-cased. Use `docs.config.ts` `nav` when sidebar order, nested sections, or wildcard includes matter.
+If no config file exists, the CLI falls back to `package.json` for product metadata and infers groups from the union of `group:` values across the generated pages. Inferred groups are sorted alphabetically and title-cased. Use `docs.config.ts` `navigation` when sidebar order, nested sections, or wildcard includes matter.
 
 ### Multiple source folders
 
@@ -178,7 +178,7 @@ await generateLlmsTxt({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
 });
 ```
 

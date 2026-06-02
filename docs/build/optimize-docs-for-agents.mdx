@@ -95,37 +95,50 @@ Pass it through `normalizeAgentReadabilityManifest()` before handing it to a run
 
 Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
 
-## The `agents` config block
+## Configure the agent surface
 
-Everything on the agent surface is configured through one optional `agents` block on `defineDocsConfig` — all keys optional, with zero-config defaults. You add a key only to change a default.
+The agent surface is driven by four top-level blocks in `docs.config.ts`: **`product`** (identity), **`organization`** (who publishes it), **`llms`** (the `llms.txt` body), and **`agents`** (robots / SEO / MCP / skills toggles). Everything beyond the required `product.name` and `product.tagline` is optional with zero-config defaults — add a key only to change one.
 
 ```ts
 import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
-  product: { name: "Acme", summary: "…" },
+  // Identity — authored once, reused in llms.txt, JSON-LD, and the agent card.
+  product: {
+    name: "Acme",
+    tagline: "…",
+    homepage: "https://acme.dev",
+    docs: "https://acme.dev/docs",
+    kind: "library", // -> JSON-LD SoftwareSourceCode (vs default SoftwareApplication)
+    category: "DeveloperApplication",
+  },
+  // Who publishes it -> JSON-LD Organization + agent-card provider.
+  organization: { name: "Acme Inc", url: "https://acme.com" },
+  navigation: [/* … */],
+  // The authored llms.txt body.
+  llms: { sections: [/* markdown + links sections */] },
   agents: {
     robots: { policy: "balanced", signals: { aiTrain: "no" } },
-    jsonLd: {
-      organization: { name: "Acme Inc", url: "https://acme.com" },
-      software: { isLibrary: true, applicationCategory: "DeveloperApplication" },
-    },
     seo: { ogImage: "https://acme.dev/og.png", twitterSite: "@acme", keywords: ["docs"] },
     mcp: { enabled: true },
-    skills: { docsSkill: true, agentCard: true, items: [/* your capability skills */] },
+    agentCard: { enabled: true },
+    skills: { docsSkill: true, items: [/* your capability skills */] },
   },
 });
 ```
 
-| Key | Controls | Default | Reference |
-| --- | --- | --- | --- |
-| `robots` | robots.txt crawler policy + Content-Signals | `balanced` (crawlable, `ai-train=no`) | [below](#control-ai-crawler-access) |
-| `jsonLd` | site-level JSON-LD graph + the agent card's `provider` | per-page JSON-LD always emits; site graph on demand | [Serve agent responses](/docs/build/serve-agent-responses) |
-| `seo` | `og:image` / `twitter` / `keywords` head meta | `og:type` + `twitter:card` always; rest off | [Serve agent responses](/docs/build/serve-agent-responses) |
-| `mcp` | `{ enabled }` — points the docs-skill at your MCP endpoint | off | [MCP server](/docs/reference/mcp) |
-| `skills` | the `/.well-known/agent-skills` surface + agent card | docs-skill + card emit | [Agent skills](/docs/reference/skills) |
+| Block | Controls | Default |
+| --- | --- | --- |
+| `product` | identity (name / tagline / links / kind / category) → llms.txt header, JSON-LD software node, agent card | `name` + `tagline` required |
+| `organization` | publisher → JSON-LD `Organization` + agent-card `provider` | optional |
+| `llms.sections` | the authored `llms.txt` body ([reference](/docs/reference/llm#llmssections)) | empty |
+| `agents.robots` | robots.txt crawler policy + Content-Signals ([below](#control-ai-crawler-access)) | `balanced` (crawlable, `ai-train=no`) |
+| `agents.seo` | `og:image` / `twitter` / `keywords` head meta | `og:type` + `twitter:card` always; rest off |
+| `agents.mcp` | `{ enabled }` — points the docs-skill at your MCP endpoint ([MCP](/docs/reference/mcp)) | off |
+| `agents.agentCard` | `{ enabled, version }` — the `/.well-known/agent-card.json` | emitted |
+| `agents.skills` | the `/.well-known/agent-skills` surface ([skills](/docs/reference/skills)) | docs-skill emits |
 
-Omit `agents` entirely and you still get balanced robots/Content-Signals, the JSON-LD graph, per-page metadata, the auto docs-skill, and the agent card.
+Per-page JSON-LD always emits; the site-level graph is derived from `product` + `organization`. Omit these blocks (beyond the required `product` fields) and you still get balanced robots/Content-Signals, the JSON-LD graph, per-page metadata, the auto docs-skill, and the agent card.
 
 ## Control AI crawler access
 
@@ -135,7 +148,7 @@ By default (`balanced`), `robots.txt` keeps the site fully crawlable and emits a
 import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
-  product: { name: "Acme", summary: "…" },
+  product: { name: "Acme", tagline: "…" },
   agents: {
     robots: {
       policy: "block-training", // balanced · open · block-training · block-ai
@@ -160,13 +173,15 @@ The same stance drives the `Content-Signal` response header on served markdown (
 
 ## Make the index worth reading
 
-`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the `product.blocks` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
+`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the top-level `llms.sections` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
 
 ```ts title="docs/docs.config.ts"
 product: {
   name: "My product",
-  summary: "Developer-first tooling for modern apps.",
-  blocks: [
+  tagline: "Developer-first tooling for modern apps.",
+},
+llms: {
+  sections: [
     { type: "markdown", heading: "Overview", body: "- What it does\n- Who it's for" },
     {
       type: "markdown",
@@ -182,7 +197,7 @@ product: {
 }
 ```
 
-Blocks render in array order. A `links` block and a `markdown` block with a `heading` each become an `## heading` section; a `markdown` block without a `heading` renders its body inline, with no heading. Use `markdown` blocks for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` blocks for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → Content blocks](/docs/reference/llm#content-blocks).
+Sections render in array order. A `links` section and a `markdown` section with a `heading` each become an `## heading` block; a `markdown` section without a `heading` renders its body inline, with no heading. Use `markdown` sections for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` sections for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → llms.sections](/docs/reference/llm#llmssections).
 
 ## Verify locally
 

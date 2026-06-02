@@ -144,31 +144,70 @@ export type LlmsBlock =
   | { type: "markdown"; heading?: string; body: string }
   | { type: "links"; heading: string; links: CuratedLink[] };
 
+/**
+ * Identity of the thing being documented. Reused across `llms.txt`, the
+ * JSON-LD entity graph, and the A2A agent card — author it once. Who *publishes*
+ * the product is a separate concept: see {@link OrganizationInfo}.
+ */
 export type ProductInfo = {
   /** Product display name, e.g. "DSAR SDK". Rendered as the H1. */
   name: string;
-  /** Short one-line summary, rendered as a blockquote under the H1. */
+  /**
+   * One-line description. Rendered as the `llms.txt` blockquote and reused as
+   * the agent-card / JSON-LD description.
+   */
+  tagline: string;
+  /** Canonical product homepage. Agent-card `url` fallback (when no MCP endpoint). */
+  homepage?: string;
+  /** Docs entry point. Agent-card `documentationUrl`. Defaults to `${baseUrl}/docs`. */
+  docs?: string;
+  /** Source repository URL. Emitted as JSON-LD `codeRepository` for libraries. */
+  repository?: string;
+  /**
+   * What the product is. `"library"` emits JSON-LD `SoftwareSourceCode`; anything
+   * else emits `SoftwareApplication`. Defaults to `"app"`.
+   */
+  kind?: "library" | "app";
+  /** JSON-LD `applicationCategory`, e.g. `"DeveloperApplication"`. */
+  category?: string;
+};
+
+/**
+ * Who publishes / maintains the product. Feeds the JSON-LD `Organization` node
+ * and the A2A agent card's `provider`. Distinct from {@link ProductInfo}: the
+ * product is the documented thing, the organization is who stands behind it.
+ */
+export type OrganizationInfo = {
+  /** Publisher name, e.g. "Inth". */
+  name: string;
+  /** Publisher URL, e.g. "https://inth.com". */
+  url?: string;
+  /** Logo URL, emitted as JSON-LD `Organization.logo`. */
+  logo?: string;
+};
+
+/** Authored `llms.txt` body. Sections render after the tagline blockquote, in array order. */
+export type DocsLlmsConfig = {
+  /** Ordered content sections — markdown prose or curated link lists. */
+  sections?: LlmsBlock[];
+};
+
+/**
+ * Internal product shape consumed by the low-level `llms.txt` / `AGENTS.md` /
+ * readability-manifest generators: a name, a one-line summary, and ordered body
+ * sections. The public config ({@link ProductInfo} + {@link DocsLlmsConfig}) is
+ * translated into this at the mapping layer.
+ */
+export type LlmsProductInfo = {
+  name: string;
   summary: string;
-  /**
-   * Ordered content blocks rendered after the summary blockquote. Array order
-   * is file order. When set, this fully describes the body and supersedes the
-   * deprecated `bullets` / `bestStartingPoints` / `agentGuidance` fields.
-   */
+  /** Ordered content blocks rendered after the summary blockquote (config `llms.sections`). */
   blocks?: LlmsBlock[];
-  /**
-   * @deprecated Use `blocks`. Sugar for a `markdown` block titled
-   * "Product Summary" rendered first.
-   */
+  /** @deprecated Use `blocks`. Sugar for a `markdown` block titled "Product Summary". */
   bullets?: string[];
-  /**
-   * @deprecated Use `blocks`. Sugar for a `links` block titled
-   * "Best Starting Points".
-   */
+  /** @deprecated Use `blocks`. Sugar for a `links` block titled "Best Starting Points". */
   bestStartingPoints?: CuratedLink[];
-  /**
-   * @deprecated Use `blocks`. Sugar for a `markdown` block titled
-   * "Agent Guidance" rendered last.
-   */
+  /** @deprecated Use `blocks`. Sugar for a `markdown` block titled "Agent Guidance". */
   agentGuidance?: string;
 };
 
@@ -256,7 +295,7 @@ export type DocsCollection = {
   /** Per-collection navigation tree. */
   groups?: DocsGroup[];
   /** Per-collection curated docs UI and agent navigation tree. */
-  nav?: DocsNavNode[];
+  navigation?: DocsNavNode[];
   /**
    * Custom component flatteners (from `defineComponentFlattener`) declared
    * alongside this collection. Run in the `custom` phase, before the built-in
@@ -283,7 +322,12 @@ export type DocsCollection = {
 export type DocsConfig<
   TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
 > = {
+  /** Identity of the documented product — name, tagline, links. Reused everywhere. */
   product: ProductInfo;
+  /** Who publishes the product. Feeds JSON-LD `Organization` + the agent-card `provider`. */
+  organization?: OrganizationInfo;
+  /** Authored `llms.txt` body (ordered sections). */
+  llms?: DocsLlmsConfig;
   /** Site-wide custom frontmatter schema used by generation/source APIs. */
   frontmatterSchema?: DocsFrontmatterSchema<TFrontmatter>;
   /** Build-time lifecycle hooks for frontmatter, search, and agent artifacts. */
@@ -306,7 +350,7 @@ export type DocsConfig<
    * drives docs UI and agent-facing indexes; `groups` remains fallback
    * taxonomy/navigation metadata.
    */
-  nav?: DocsNavNode[];
+  navigation?: DocsNavNode[];
   /**
    * Multi-source content sets, keyed by collection id. Each collection owns
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
@@ -349,16 +393,22 @@ export type DocsAgentsConfig = {
     /** Override individual Content-Signals beyond the policy preset. */
     signals?: Partial<ContentSignals>;
   };
-  /** Site-level JSON-LD options consumed by `renderSiteJsonLd`. */
-  jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults (og:image, twitter, keywords) for `createDocsHead`. */
   seo?: SeoMeta;
+  /**
+   * The A2A agent card at `/.well-known/agent-card.json`. Its `provider` is the
+   * top-level `organization`; `documentationUrl` is `product.docs`. Emitted by default.
+   */
+  agentCard?: {
+    /** Emit the agent card. Default `true`. */
+    enabled?: boolean;
+    /** Override the card `version`. Defaults to `1.0.0`. */
+    version?: string;
+  };
   /** Skills surface emitted to `/.well-known/agent-skills` (+ bundled `SKILL.md`). */
   skills?: {
     /** Emit the auto "use these docs" skill. Default `true`. */
     docsSkill?: boolean;
-    /** Emit `/.well-known/agent-card.json`. Default `true`. */
-    agentCard?: boolean;
     /** Author-declared skills, emitted alongside (or instead of) the docs-skill. */
     items?: DocsSkillSpec[];
   };
@@ -382,11 +432,79 @@ export function defineCollection(collection: DocsCollection): DocsCollection {
   return collection;
 }
 
+/** Generator inputs derived from the public config's identity blocks. */
+export type ResolvedAgentInputs = {
+  /** Internal product shape for `generateLlmsTxt` / `generateAgentReadabilityArtifacts`. */
+  product: LlmsProductInfo;
+  /** JSON-LD options for `renderSiteJsonLd` (from `organization` + `product` software fields). */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Agent-card `provider` (from `organization`). */
+  provider?: { organization: string; url?: string };
+  /** Agent-card `documentationUrl` (from `product.docs`). */
+  documentationUrl?: string;
+};
+
+/**
+ * Translate the public config's identity blocks ({@link ProductInfo},
+ * {@link OrganizationInfo}, {@link DocsLlmsConfig}) into the inputs the low-level
+ * generators consume. One source of truth for the config → generator mapping,
+ * shared by `leadtype generate` and anyone composing the generators by hand.
+ */
+export function resolveAgentInputs(config: {
+  product: ProductInfo;
+  organization?: OrganizationInfo;
+  llms?: DocsLlmsConfig;
+}): ResolvedAgentInputs {
+  const { product, organization, llms } = config;
+  const hasSoftware =
+    product.kind !== undefined ||
+    product.category !== undefined ||
+    product.repository !== undefined;
+  const software: RenderSiteJsonLdOptions["software"] | undefined = hasSoftware
+    ? {
+        ...(product.kind ? { isLibrary: product.kind === "library" } : {}),
+        ...(product.category ? { applicationCategory: product.category } : {}),
+        ...(product.repository ? { codeRepository: product.repository } : {}),
+      }
+    : undefined;
+  const org = organization
+    ? {
+        ...(organization.name ? { name: organization.name } : {}),
+        ...(organization.url ? { url: organization.url } : {}),
+        ...(organization.logo ? { logo: organization.logo } : {}),
+      }
+    : undefined;
+  const jsonLd: RenderSiteJsonLdOptions | undefined =
+    org || software
+      ? {
+          ...(org ? { organization: org } : {}),
+          ...(software ? { software } : {}),
+        }
+      : undefined;
+  return {
+    product: {
+      name: product.name,
+      summary: product.tagline,
+      ...(llms?.sections ? { blocks: llms.sections } : {}),
+    },
+    ...(jsonLd ? { jsonLd } : {}),
+    ...(organization?.name
+      ? {
+          provider: {
+            organization: organization.name,
+            ...(organization.url ? { url: organization.url } : {}),
+          },
+        }
+      : {}),
+    ...(product.docs ? { documentationUrl: product.docs } : {}),
+  };
+}
+
 export type LlmsTxtConfig = {
   srcDir: string;
   outDir: string;
   baseUrl?: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   /** Group tree from `docs.config.ts`. Used for `/docs/llms.txt` sections. */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
@@ -401,7 +519,7 @@ export type LlmsTxtConfig = {
 export type LLMFullContextConfig = {
   outDir: string;
   baseUrl?: string;
-  product: Pick<ProductInfo, "name">;
+  product: Pick<LlmsProductInfo, "name">;
   /** Group tree from `docs.config.ts`. Preserved for config validation. */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
@@ -415,7 +533,7 @@ export type LLMFullContextConfig = {
 export type AgentReadabilityConfig = {
   outDir: string;
   baseUrl?: string;
-  product: Pick<ProductInfo, "name" | "summary">;
+  product: Pick<LlmsProductInfo, "name" | "summary">;
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
   nav?: DocsNavNode[];
@@ -1455,7 +1573,7 @@ function pagesUnderGroup(
  * `agentGuidance` fields are synthesized into the equivalent block sequence so
  * existing configs emit byte-for-byte identical output.
  */
-function resolveBlocks(product: ProductInfo): LlmsBlock[] {
+function resolveBlocks(product: LlmsProductInfo): LlmsBlock[] {
   if (product.blocks) {
     return product.blocks;
   }
@@ -1506,7 +1624,7 @@ function renderProductBlock(
 }
 
 function renderProductSummary(
-  product: ProductInfo,
+  product: LlmsProductInfo,
   sourceDocs: Map<string, SourceDoc>,
   mounts?: DocsPathMount[]
 ): string {
@@ -1518,7 +1636,7 @@ function renderProductSummary(
 }
 
 function renderDocsSummary(
-  product: ProductInfo,
+  product: LlmsProductInfo,
   resolved: ResolvedGroup[],
   membership: GroupMembership,
   mounts?: DocsPathMount[]
@@ -1599,7 +1717,7 @@ function collectNavigationGroupPages(
 }
 
 function renderDocsNavigationSummary(
-  product: ProductInfo,
+  product: LlmsProductInfo,
   navigation: DocsNavigation,
   mounts?: DocsPathMount[]
 ): string {
@@ -1681,7 +1799,7 @@ function stripLeadingTitleHeading(content: string): string {
 }
 
 function renderFullContextDocument(
-  product: Pick<ProductInfo, "name">,
+  product: Pick<LlmsProductInfo, "name">,
   pages: MarkdownDoc[]
 ): string {
   const links = pages.map((doc) => ({
@@ -2112,7 +2230,7 @@ export type AgentsMdConfig = {
   srcDir: string;
   /** Output root. AGENTS.md is written at `<outDir>/AGENTS.md`. */
   outDir: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   /** Group tree from `docs.config.ts`. Drives section structure. */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */

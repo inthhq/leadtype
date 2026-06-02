@@ -24,8 +24,11 @@ import type {
   DocsConfig,
   DocsFrontmatterSchema,
   DocsGroup,
+  DocsLlmsConfig,
   DocsNavNode,
+  LlmsProductInfo,
   ProductInfo,
+  RenderSiteJsonLdOptions,
 } from "../llm";
 import {
   generateAgentReadabilityArtifacts,
@@ -33,6 +36,7 @@ import {
   generateLLMFullContextFiles,
   generateLlmsTxt,
   generateSkillArtifacts,
+  resolveAgentInputs,
   resolveDocsNavigation,
 } from "../llm";
 import {
@@ -145,7 +149,7 @@ type GenerateResult = {
   mounts: DocsPathMount[];
   mode: "site" | "bundle";
   outDir: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
 };
@@ -195,7 +199,13 @@ type ResolvedGenerateMetadata = {
   groups: DocsGroup[];
   i18n?: DocsConfig["i18n"];
   nav?: DocsNavNode[];
-  product: ProductInfo;
+  product: LlmsProductInfo;
+  /** Derived from `product` + `organization`: JSON-LD options for `renderSiteJsonLd`. */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Derived from `organization`: the agent-card `provider`. */
+  provider?: { organization: string; url?: string };
+  /** Derived from `product.docs`: the agent-card `documentationUrl`. */
+  documentationUrl?: string;
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -392,7 +402,7 @@ function validateProductInfo(value: unknown): ProductInfo | undefined {
   if (!isPlainRecord(value)) {
     return;
   }
-  if (typeof value.name !== "string" || typeof value.summary !== "string") {
+  if (typeof value.name !== "string" || typeof value.tagline !== "string") {
     return;
   }
   return value as ProductInfo;
@@ -548,9 +558,12 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" groups must be an array of { slug, title } entries`
       );
     }
-    if (entry.nav !== undefined && validateDocsNav(entry.nav) === undefined) {
+    if (
+      entry.navigation !== undefined &&
+      validateDocsNav(entry.navigation) === undefined
+    ) {
       throw new Error(
-        `docs config at "${configPath}": collection "${key}" nav must be an array of navigation nodes`
+        `docs config at "${configPath}": collection "${key}" navigation must be an array of navigation nodes`
       );
     }
     if (entry.include !== undefined && !isStringArray(entry.include)) {
@@ -584,13 +597,13 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const product = validateProductInfo(value.product);
   if (!product) {
     throw new Error(
-      `docs config at "${configPath}" must export product.name and product.summary`
+      `docs config at "${configPath}" must export product.name and product.tagline`
     );
   }
 
   const collections = validateCollections(value.collections, configPath);
   const hasGroups = value.groups !== undefined;
-  const hasNav = value.nav !== undefined;
+  const hasNav = value.navigation !== undefined;
 
   if (collections && hasGroups) {
     throw new Error(
@@ -599,7 +612,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
   if (collections && hasNav) {
     throw new Error(
-      `docs config at "${configPath}" sets both "nav" and "collections". Move nav into the relevant collection(s) — top-level nav is for the single-collection shape only.`
+      `docs config at "${configPath}" sets both "navigation" and "collections". Move navigation into the relevant collection(s) — top-level navigation is for the single-collection shape only.`
     );
   }
 
@@ -607,10 +620,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   let nav: DocsNavNode[] | undefined;
   if (collections === undefined) {
     groups = validateDocsGroups(value.groups);
-    nav = validateDocsNav(value.nav);
+    nav = validateDocsNav(value.navigation);
     if (!(groups || nav)) {
       throw new Error(
-        `docs config at "${configPath}" must export groups or nav as an array (or define collections)`
+        `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
       );
     }
     if (hasGroups && !groups) {
@@ -620,7 +633,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     }
     if (hasNav && !nav) {
       throw new Error(
-        `docs config at "${configPath}" must export nav as an array of navigation nodes`
+        `docs config at "${configPath}" must export navigation as an array of navigation nodes`
       );
     }
   }
@@ -634,7 +647,14 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   return {
     ...(collections ? { collections } : {}),
     ...(groups ? { groups } : {}),
-    ...(nav ? { nav } : {}),
+    ...(nav ? { navigation: nav } : {}),
+    ...(value.organization === undefined
+      ? {}
+      : { organization: value.organization as DocsConfig["organization"] }),
+    ...(value.llms === undefined ? {} : { llms: value.llms as DocsLlmsConfig }),
+    ...(value.agents === undefined
+      ? {}
+      : { agents: value.agents as DocsConfig["agents"] }),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -754,7 +774,7 @@ async function readPackageProduct(
   if (args.name && args.summary) {
     return {
       name: args.name,
-      summary: args.summary,
+      tagline: args.summary,
     };
   }
 
@@ -769,7 +789,7 @@ async function readPackageProduct(
 
   const name =
     args.name ?? (typeof packageData.name === "string" ? packageData.name : "");
-  const summary =
+  const tagline =
     args.summary ??
     (typeof packageData.description === "string"
       ? packageData.description
@@ -777,7 +797,7 @@ async function readPackageProduct(
 
   return {
     name: name || "Docs",
-    summary: summary || "Generated documentation.",
+    tagline: tagline || "Generated documentation.",
   };
 }
 
@@ -788,7 +808,7 @@ function applyProductOverrides(
   return {
     ...product,
     name: args.name ?? product.name,
-    summary: args.summary ?? product.summary,
+    tagline: args.summary ?? product.tagline,
   };
 }
 
@@ -876,11 +896,11 @@ function mergeCollectionNav(
   const nav: DocsNavNode[] = [];
   const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
   for (const [key, collection] of Object.entries(collections)) {
-    if (!collection.nav) {
+    if (!collection.navigation) {
       continue;
     }
     const source = sourcesByKey.get(key);
-    for (const node of collection.nav) {
+    for (const node of collection.navigation) {
       nav.push(prefixCollectionNavNode(node, source?.mountPath ?? ""));
     }
   }
@@ -908,6 +928,11 @@ function resolveGenerateMetadata(
           )
         : []),
     ];
+    const agentInputs = resolveAgentInputs({
+      product: applyProductOverrides(loaded.config.product, args),
+      organization: loaded.config.organization,
+      llms: loaded.config.llms,
+    });
     return Promise.resolve({
       configPath: loaded.path,
       flatteners: flatteners.length > 0 ? flatteners : undefined,
@@ -917,8 +942,8 @@ function resolveGenerateMetadata(
       nav:
         collectionNav && collectionNav.length > 0
           ? collectionNav
-          : loaded.config.nav,
-      product: applyProductOverrides(loaded.config.product, args),
+          : loaded.config.navigation,
+      ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
         ? path.resolve(srcDir, loaded.config.typeTableBasePath)
@@ -929,7 +954,7 @@ function resolveGenerateMetadata(
   }
   return readPackageProduct(srcDir, args).then((product) => ({
     groups: [],
-    product,
+    product: resolveAgentInputs({ product }).product,
   }));
 }
 
@@ -1640,7 +1665,9 @@ export async function runGenerateCommand(
       // the author disabled it. Bundle MCP is on only with --mcp.
       const bundleSkills = await generateSkillArtifacts({
         outDir,
-        srcDir: sourceMirror.srcDir,
+        // Skill `bodyPath` resolves against the real source root (`--src`), not
+        // the temp conversion mirror (which only holds the docs tree).
+        srcDir,
         product,
         skills: metadata.agents?.skills,
         mode: "bundle",
@@ -1714,23 +1741,31 @@ export async function runGenerateCommand(
         transformers: metadata.transformers,
         robotsPolicy: metadata.agents?.robots?.policy,
         contentSignals: metadata.agents?.robots?.signals,
-        jsonLd: metadata.agents?.jsonLd,
+        jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
       });
       // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
       // Default-on: the auto docs-skill is free and points agents at the docs.
-      const cardOrg = metadata.agents?.jsonLd?.organization;
       const siteSkills = await generateSkillArtifacts({
         outDir,
-        srcDir: sourceMirror.srcDir,
+        // Skill `bodyPath` resolves against the real source root (`--src`), not
+        // the temp conversion mirror (which only holds the docs tree).
+        srcDir,
         baseUrl: args.baseUrl,
         product,
-        skills: metadata.agents?.skills,
+        skills: {
+          ...metadata.agents?.skills,
+          agentCard: metadata.agents?.agentCard?.enabled,
+        },
         mode: "site",
         mcpEnabled: metadata.agents?.mcp?.enabled,
-        // A2A agent-card provider reuses the JSON-LD organization (same entity).
-        ...(cardOrg?.name
-          ? { provider: { organization: cardOrg.name, url: cardOrg.url } }
+        // Agent-card provider / docs URL derived from `organization` + `product.docs`.
+        ...(metadata.provider ? { provider: metadata.provider } : {}),
+        ...(metadata.documentationUrl
+          ? { documentationUrl: metadata.documentationUrl }
+          : {}),
+        ...(metadata.agents?.agentCard?.version
+          ? { version: metadata.agents.agentCard.version }
           : {}),
       });
       const agentSkillsIndex = siteSkills.files.find((f) =>
@@ -1786,7 +1821,7 @@ export async function runGenerateCommand(
             transformers: metadata.transformers,
             robotsPolicy: metadata.agents?.robots?.policy,
             contentSignals: metadata.agents?.robots?.signals,
-            jsonLd: metadata.agents?.jsonLd,
+            jsonLd: metadata.jsonLd,
             seo: metadata.agents?.seo,
           });
         }

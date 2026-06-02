@@ -278,7 +278,7 @@ describe("leadtype CLI", () => {
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [
     { slug: "zeta", title: "Zeta First" },
@@ -349,7 +349,7 @@ describe("leadtype CLI", () => {
       `import { defineComponentFlattener } from ${JSON.stringify(remarkEntry)};
 
 export default {
-  product: { name: "Flattener Product", summary: "Custom flatteners." },
+  product: { name: "Flattener Product", tagline: "Custom flatteners." },
   groups: [{ slug: "guide", title: "Guide" }],
   flatteners: [
     defineComponentFlattener({
@@ -393,7 +393,7 @@ export default {
       `export default {
   product: {
     name: "Localized Product",
-    summary: "Localized product summary.",
+    tagline: "Localized product summary.",
   },
   groups: [{ slug: "get-started", title: "Get Started" }],
   i18n: {
@@ -484,7 +484,7 @@ export default {
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [{ slug: "guides", title: "Guides" }],
 };`
@@ -570,7 +570,7 @@ export default {
       `export default {
   product: {
     name: "c15t",
-    summary: "Consent tooling docs.",
+    tagline: "Consent tooling docs.",
   },
   groups: [
     { slug: "guides", title: "Guides" },
@@ -774,7 +774,7 @@ description: "First release."
       `export default {
   product: {
     name: "c15t",
-    summary: "Consent tooling docs.",
+    tagline: "Consent tooling docs.",
   },
   groups: [
     { slug: "guides", title: "Guides" },
@@ -893,7 +893,7 @@ Initial release.
     expect(code).toBe(1);
     const error = JSON.parse(capture.stderr) as { error: string };
     expect(error.error).toContain("failed to load docs config");
-    expect(error.error).toContain("product.name and product.summary");
+    expect(error.error).toContain("product.name and product.tagline");
   });
 
   it("fails when a configured docs set references an unknown group", async () => {
@@ -907,7 +907,7 @@ Initial release.
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [{ slug: "guides", title: "Guides" }],
 };`
@@ -941,7 +941,7 @@ Initial release.
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [{ slug: "guides", title: "Guides" }],
   typeTableStrict: true,
@@ -1326,7 +1326,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "Collections Product", summary: "Multi-collection demo." },
+  product: { name: "Collections Product", tagline: "Multi-collection demo." },
   collections: {
     guide: { dir: "./guide", prefix: "/docs" },
     changelog: { dir: "./changelog", prefix: "/changelog" },
@@ -1360,7 +1360,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: { guide: { dir: "./guide", prefix: "/docs" } },
 };`
     );
@@ -1402,7 +1402,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   groups: [{ slug: "g", title: "G" }],
   collections: { guide: { dir: "./guide", prefix: "/docs" } },
 };`
@@ -1433,7 +1433,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   groups: [{ slug: "g", title: "G" }],
 };`
     );
@@ -1451,7 +1451,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: { guide: { dir: "./guide", prefix: "/docs" } },
 };`
     );
@@ -1478,7 +1478,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: {
     guide: { dir: "./guide", prefix: "/docs", include: ["intro.mdx"] },
   },
@@ -1511,7 +1511,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: {
     guide: { dir: "./guide", prefix: "/docs", exclude: ["draft.mdx"] },
   },
@@ -1549,7 +1549,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: {
     guide: { dir: "./guide", prefix: "/docs", exclude: ["draft.mdx"] },
     changelog: { dir: "./changelog", prefix: "/changelog" },
@@ -1581,7 +1581,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: {
     guide: { dir: "./guide", prefix: "/docs", include: "not-an-array" },
   },
@@ -1611,7 +1611,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: { guide: { dir: "./guide", prefix: "/docs" } },
 };`
     );
@@ -1632,7 +1632,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: {
     guide: { repository: "--upload-pack=evil", dir: "docs", prefix: "/docs" },
   },
@@ -1656,7 +1656,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(srcDir, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: {
     guide: {
       repository: "https://github.com/example/repo",
@@ -1687,7 +1687,7 @@ This page is valid, but the output path is not a directory.
     await writeFile(
       path.join(packageRoot, "leadtype.config.ts"),
       `export default {
-  product: { name: "P", summary: "S" },
+  product: { name: "P", tagline: "S" },
   collections: { guide: { dir: "./guide", prefix: "/docs" } },
 };`
     );

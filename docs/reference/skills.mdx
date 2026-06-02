@@ -25,7 +25,7 @@ In **site mode** (default), under your output root:
 
 - `/.well-known/agent-skills/index.json` — the discovery manifest: each skill's name, description, path, and a `sha256-…` integrity hash. Clients read this first (progressive disclosure — name + description before the full instructions).
 - `/.well-known/agent-skills/<name>/SKILL.md` — one per skill (agentskills.io frontmatter + Markdown instructions).
-- `/.well-known/agent-card.json` — an [A2A](https://agent2agent.info/docs/concepts/agentcard/) agent card: `name`, `description`, `url` (your MCP endpoint when enabled, else the site), `version`, `capabilities`, `defaultInputModes`/`defaultOutputModes`, and each skill as `{ id, name, description, tags }`. Its `provider` reuses your `agents.jsonLd.organization` and `documentationUrl` defaults to `<baseUrl>/docs` — so leadtype's own card reads `provider: { organization: "Inth", url: "https://inth.com" }`, `documentationUrl: "https://leadtype.dev/docs"`.
+- `/.well-known/agent-card.json` — an [A2A](https://agent2agent.info/docs/concepts/agentcard/) agent card: `name`, `description`, `url` (your MCP endpoint when enabled, else the site), `version`, `capabilities`, `defaultInputModes`/`defaultOutputModes`, and each skill as `{ id, name, description, tags }`. Its `provider` reuses your top-level `organization` and `documentationUrl` is `product.docs` (default `<baseUrl>/docs`) — so leadtype's own card reads `provider: { organization: "Inth", url: "https://inth.com" }`, `documentationUrl: "https://leadtype.dev/docs"`.
 
 In **bundle mode** (`--bundle`), a single `SKILL.md` ships at the package root next to `AGENTS.md`, so an agent reading `node_modules/<pkg>` finds it on the filesystem the same way it finds `AGENTS.md`.
 
@@ -48,7 +48,7 @@ Add `agents.skills.items` in `docs.config.ts`. Each becomes its own `SKILL.md`:
 import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
-  product: { name: "Acme", summary: "…" },
+  product: { name: "Acme", tagline: "…" },
   agents: {
     skills: {
       items: [
@@ -65,7 +65,7 @@ export default defineDocsConfig({
 });
 ```
 
-`bodyPath` is resolved against your docs source root (the `--src` you pass `generate`). Keep skill bodies *outside* your linted docs content tree — they're build inputs, not pages, so `leadtype lint` would otherwise flag them for missing page frontmatter. A sibling `skills/` directory works well. Set `docsSkill: false` to drop the auto docs-skill (e.g. you wrote a richer one yourself), or `agentCard: false` to skip the A2A card.
+`bodyPath` is resolved against your docs source root (the `--src` you pass `generate`). Keep skill bodies *outside* your linted docs content tree — they're build inputs, not pages, so `leadtype lint` would otherwise flag them for missing page frontmatter. A sibling `skills/` directory works well. Set `docsSkill: false` to drop the auto docs-skill (e.g. you wrote a richer one yourself), or `agents.agentCard.enabled: false` to skip the A2A card.
 
 ## Config
 
@@ -73,11 +73,13 @@ export default defineDocsConfig({
 agents: {
   skills: {
     docsSkill: true,   // auto "use these docs" skill (default true)
-    agentCard: true,   // emit /.well-known/agent-card.json (default true)
     items: [ /* DocsSkillSpec[] */ ],
   },
-  mcp: { enabled: true }, // makes the site docs-skill point at your MCP endpoint
+  agentCard: { enabled: true }, // emit /.well-known/agent-card.json (default true)
+  mcp: { enabled: true },       // makes the site docs-skill point at your MCP endpoint
 }
 ```
+
+The agent card's `provider` comes from the top-level `organization` and its `documentationUrl` from `product.docs` — see [product (identity)](/docs/reference/llm#product-identity).
 
 A `SKILL.md`'s frontmatter follows agentskills.io: `name` and `description` are required; `license`, `compatibility`, `allowed-tools`, and `metadata` are optional.

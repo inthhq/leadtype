@@ -15,6 +15,7 @@ import {
   generateLLMFullContextFiles,
   generateLlmsTxt,
   generateSkillArtifacts,
+  resolveAgentInputs,
   resolveDocsNavigation,
 } from "leadtype/llm";
 import docsConfig from "../../../docs/docs.config";
@@ -35,32 +36,41 @@ const baseUrl =
   process.env.PORTLESS_URL?.trim() ||
   "https://leadtype.dev";
 
+// Translate the one docs.config.ts into low-level generator inputs (the same
+// mapping `leadtype generate` uses): tagline -> summary, llms.sections -> blocks,
+// organization -> JSON-LD + agent-card provider, product.docs -> documentationUrl.
+const agentInputs = resolveAgentInputs({
+  product: docsConfig.product,
+  organization: docsConfig.organization,
+  llms: docsConfig.llms,
+});
+
 await generateLlmsTxt({
   srcDir,
   outDir,
   baseUrl,
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product: agentInputs.product,
+  nav: docsConfig.navigation,
 });
 
 await generateLLMFullContextFiles({
   outDir,
   baseUrl,
-  product: { name: docsConfig.product.name },
-  nav: docsConfig.nav,
+  product: { name: agentInputs.product.name },
+  nav: docsConfig.navigation,
 });
 
 const agentReadability = await generateAgentReadabilityArtifacts({
   outDir,
   baseUrl,
   product: {
-    name: docsConfig.product.name,
-    summary: docsConfig.product.summary,
+    name: agentInputs.product.name,
+    summary: agentInputs.product.summary,
   },
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   // Bake the agent-surface config into the manifest so runtime helpers
   // (renderSiteJsonLd, robots) are config-driven from the one docs.config.ts.
-  jsonLd: docsConfig.agents?.jsonLd,
+  jsonLd: agentInputs.jsonLd,
   robotsPolicy: docsConfig.agents?.robots?.policy,
   contentSignals: docsConfig.agents?.robots?.signals,
   seo: docsConfig.agents?.seo,
@@ -68,17 +78,26 @@ const agentReadability = await generateAgentReadabilityArtifacts({
 
 // Agent-skills surface (/.well-known/agent-skills + agent-card). The auto docs-skill
 // points agents at /llms.txt and this app's MCP endpoint (agents.mcp.enabled).
-const cardOrg = docsConfig.agents?.jsonLd?.organization;
 await generateSkillArtifacts({
   outDir,
   srcDir,
   baseUrl,
-  product: docsConfig.product,
-  skills: docsConfig.agents?.skills,
+  product: {
+    name: agentInputs.product.name,
+    summary: agentInputs.product.summary,
+  },
+  skills: {
+    ...docsConfig.agents?.skills,
+    agentCard: docsConfig.agents?.agentCard?.enabled,
+  },
   mode: "site",
   mcpEnabled: docsConfig.agents?.mcp?.enabled,
-  ...(cardOrg?.name
-    ? { provider: { organization: cardOrg.name, url: cardOrg.url } }
+  ...(agentInputs.provider ? { provider: agentInputs.provider } : {}),
+  ...(agentInputs.documentationUrl
+    ? { documentationUrl: agentInputs.documentationUrl }
+    : {}),
+  ...(docsConfig.agents?.agentCard?.version
+    ? { version: docsConfig.agents.agentCard.version }
     : {}),
 });
 
@@ -88,7 +107,7 @@ await generateSkillArtifacts({
 const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
 });
 
 if (navigation.unknown.length > 0) {

@@ -5,20 +5,35 @@ export default defineDocsConfig({
   flatteners: [regulationFlattener],
   product: {
     name: "Leadtype Dogfood",
-    summary:
+    tagline:
       "A shared documentation fixture used by Leadtype framework examples.",
-    bullets: [
-      "Render one MDX source through multiple frameworks.",
-      "Serve markdown mirrors and llms.txt artifacts.",
-      "Load generated static search JSON without a database.",
+  },
+  llms: {
+    sections: [
+      {
+        type: "markdown",
+        heading: "Overview",
+        body: [
+          "- Render one MDX source through multiple frameworks.",
+          "- Serve markdown mirrors and llms.txt artifacts.",
+          "- Load generated static search JSON without a database.",
+        ].join("\n"),
+      },
+      {
+        type: "links",
+        heading: "Best Starting Points",
+        links: [
+          { urlPath: "/docs" },
+          { urlPath: "/docs/quickstart" },
+          { urlPath: "/docs/search" },
+        ],
+      },
+      {
+        type: "markdown",
+        heading: "Agent Guidance",
+        body: "Start with /docs/llms.txt, then fetch page markdown links before using /llms-full.txt.",
+      },
     ],
-    bestStartingPoints: [
-      { urlPath: "/docs" },
-      { urlPath: "/docs/quickstart" },
-      { urlPath: "/docs/search" },
-    ],
-    agentGuidance:
-      "Start with /docs/llms.txt, then fetch page markdown links before using /llms-full.txt.",
   },
   groups: [
     {

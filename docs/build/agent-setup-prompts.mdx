@@ -42,8 +42,8 @@ When to use which:
   - Whether a `docs.config.ts` or `leadtype.config.ts` already exists.
 
   Implement:
-  - Create `docs/docs.config.ts` with `defineDocsConfig({ product, nav })`. Put real `product.summary` and `product.blocks` (an `## Overview` markdown block and a `Best Starting Points` links block) so `llms.txt` is useful. Use `nav` for structure, not frontmatter `group`.
-  - Create a source loader that calls `createDocsSource({ contentDir, nav: docsConfig.nav, baseUrl })` from `leadtype`.
+  - Create `docs/docs.config.ts` with `defineDocsConfig({ product, navigation })`. Put real `product.tagline` and `llms.sections` (an `## Overview` markdown block and a `Best Starting Points` links block) so `llms.txt` is useful. Use `navigation` for structure, not frontmatter `group`.
+  - Create a source loader that calls `createDocsSource({ contentDir, nav: docsConfig.navigation, baseUrl })` from `leadtype`.
   - Add the docs route and a markdown route using the matching adapter: `leadtype/next`, `leadtype/astro`, `leadtype/nuxt`, or `leadtype/sveltekit`. The markdown route handles `Accept: text/markdown`, AI user-agents, and `.md` URLs via the generated `agent-readability.json` manifest (load it with `normalizeAgentReadabilityManifest`).
   - Render JSON-LD in the docs page head with `createDocsJsonLd` from `leadtype/llm/readability`.
   - Add a `docs:generate` script: `leadtype generate --src . --out <public-or-static> --base-url <url>`. Use `public/` for Next/Astro/Nuxt, `static/` for SvelteKit. Run it in `prebuild`/`predev` so the manifest always exists.
@@ -74,7 +74,7 @@ When to use which:
 
   Implement:
   - Create `leadtype.config.ts` at the repo root using `defineDocsConfig` with a `collections` map. Each collection uses `defineCollection({ repository, ref, cacheDir, dir, prefix })`. Pin `ref` to a reviewed revision; share one `cacheDir` clone across collections of the same repo.
-  - Give each collection its own `nav` (and `schema` if the source uses custom frontmatter).
+  - Give each collection its own `navigation` (and `schema` if the source uses custom frontmatter).
   - Add a generate script that syncs the remote source first: `leadtype generate --src . --out <public-or-static> --base-url <url> --sync`. Use `--refresh` to fast-forward the pinned cache and `--offline` to prove the cache is sufficient (air-gapped CI).
   - Wire the docs route, markdown route, and JSON-LD exactly as for local docs — the runtime side is identical once artifacts exist.
 
@@ -100,7 +100,7 @@ When to use which:
   - The `package.json` `files` array and any existing prepack/build scripts.
 
   Implement:
-  - Ensure a `docs.config.ts` (or `leadtype.config.ts`) describes `product` and `nav`.
+  - Ensure a `docs.config.ts` (or `leadtype.config.ts`) describes `product` and `navigation`.
   - Add a script that runs bundle mode: `leadtype generate --bundle --src . --out .`. This writes `AGENTS.md` at the package root and `docs/*.md` with relative links that still work after install. It skips website-only artifacts (llms.txt, search, sitemap, robots).
   - Run it in `prepack`/`prepublishOnly` so the bundle is fresh on publish.
   - Add `AGENTS.md` and `docs` to the `files` array so they ship in the tarball. If they are gitignored build outputs, that is fine — `files` still includes them at pack time.
