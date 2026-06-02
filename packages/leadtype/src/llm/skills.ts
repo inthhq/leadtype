@@ -182,21 +182,22 @@ export async function generateSkillArtifacts(
 ): Promise<GenerateSkillArtifactsResult> {
   const outDir = path.resolve(config.outDir);
   const mode = config.mode ?? "site";
-  const docsSkillEnabled = config.skills?.docsSkill !== false;
+  const docsSkill =
+    config.skills?.docsSkill === false ? null : buildDocsSkill(config);
 
   const skills: DocsSkillSpec[] = [
-    ...(docsSkillEnabled ? [buildDocsSkill(config)] : []),
+    ...(docsSkill ? [docsSkill] : []),
     ...(config.skills?.items ?? []),
   ];
-  if (skills.length === 0) {
-    return { files: [], skills: [] };
-  }
 
   const files: string[] = [];
 
   if (mode === "bundle") {
-    // One SKILL.md at the package root, next to AGENTS.md (offline-pointing).
-    const [docsSkill] = skills;
+    // The package root SKILL.md (next to AGENTS.md) is the offline docs pointer —
+    // always the auto docs-skill, never a capability skill. Capability `items`
+    // are a site-surface concept (one file each under /.well-known/agent-skills),
+    // not a single root file, so bundle mode ignores them. With `docsSkill: false`
+    // there is nothing to point at, so no SKILL.md is emitted.
     if (!docsSkill) {
       return { files: [], skills: [] };
     }
@@ -204,6 +205,10 @@ export async function generateSkillArtifacts(
     const skillPath = path.join(outDir, "SKILL.md");
     await writeFile(skillPath, renderSkillMd(docsSkill, body));
     return { files: [skillPath], skills: [docsSkill.name] };
+  }
+
+  if (skills.length === 0) {
+    return { files: [], skills: [] };
   }
 
   const skillsRoot = path.join(outDir, WELL_KNOWN_DIR, SKILLS_DIR);

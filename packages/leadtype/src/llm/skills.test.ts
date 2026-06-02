@@ -125,4 +125,22 @@ describe("generateSkillArtifacts — bundle mode", () => {
     expect(skillMd).toContain("./AGENTS.md");
     expect(skillMd).not.toContain("/llms.txt");
   });
+
+  it("emits no SKILL.md when the docs-skill is disabled, ignoring capability items", async () => {
+    const outDir = await tempDir();
+    const result = await generateSkillArtifacts({
+      outDir,
+      product,
+      mode: "bundle",
+      skills: {
+        docsSkill: false,
+        items: [{ name: "deploy", description: "Deploy.", body: "# Deploy\n" }],
+      },
+    });
+    // Bundle's single root SKILL.md is the docs pointer only — a capability
+    // item must never silently take its place.
+    expect(result.files).toEqual([]);
+    expect(result.skills).toEqual([]);
+    await expect(readFile(join(outDir, "SKILL.md"), "utf8")).rejects.toThrow();
+  });
 });

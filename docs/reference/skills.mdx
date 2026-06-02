@@ -27,7 +27,7 @@ In **site mode** (default), under your output root:
 - `/.well-known/agent-skills/<name>/SKILL.md` — one per skill (agentskills.io frontmatter + Markdown instructions).
 - `/.well-known/agent-card.json` — an [A2A](https://agent2agent.info/docs/concepts/agentcard/) agent card: `name`, `description`, `url` (your MCP endpoint when enabled, else the site), `version`, `capabilities`, `defaultInputModes`/`defaultOutputModes`, and each skill as `{ id, name, description, tags }`. Its `provider` reuses your top-level `organization` and `documentationUrl` is `product.docs` (default `<baseUrl>/docs`) — so leadtype's own card reads `provider: { organization: "Inth", url: "https://inth.com" }`, `documentationUrl: "https://leadtype.dev/docs"`.
 
-In **bundle mode** (`--bundle`), a single `SKILL.md` ships at the package root next to `AGENTS.md`, so an agent reading `node_modules/<pkg>` finds it on the filesystem the same way it finds `AGENTS.md`.
+In **bundle mode** (`--bundle`), a single `SKILL.md` ships at the package root next to `AGENTS.md`, so an agent reading `node_modules/<pkg>` finds it on the filesystem the same way it finds `AGENTS.md`. That single file is always the auto docs-skill (the offline docs pointer); capability `items` are a site-only surface and aren't bundled. With `docsSkill: false` there's nothing to point at, so bundle mode emits no `SKILL.md`.
 
 These are static files. leadtype never hosts a skills endpoint or an A2A runtime — your site serves the files, the same as `llms.txt`.
 
