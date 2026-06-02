@@ -8,19 +8,12 @@ import type { DefineDocsToolsOptions } from "./tools.js";
 
 export type CreateMcpHandlerConfig = DefineDocsToolsOptions & {
   /**
-   * Where the docs artifacts come from. A directory string (read from disk, default
-   * `./public`) or a pre-built `DocsArtifacts` (from `createDocsArtifacts`) for hosts
-   * that already bundle the index/manifest or run on an edge runtime without `fs`.
+   * Directory containing the generated `docs/` folder (read from disk at request
+   * time). Defaults to `./public`.
    */
-  artifacts?: string | DocsArtifacts;
+  artifacts?: string;
   serverInfo?: CreateDocsMcpServerOptions["serverInfo"];
 };
-
-function isLoadedArtifacts(
-  artifacts: string | DocsArtifacts | undefined
-): artifacts is DocsArtifacts {
-  return typeof artifacts === "object" && artifacts !== null;
-}
 
 const INTERNAL_ERROR_CODE = -32_603;
 
@@ -56,9 +49,6 @@ export function createMcpHandler(
 ): (request: Request) => Promise<Response> {
   let artifactsPromise: Promise<DocsArtifacts> | null = null;
   const getArtifacts = (): Promise<DocsArtifacts> => {
-    if (isLoadedArtifacts(config.artifacts)) {
-      return Promise.resolve(config.artifacts);
-    }
     artifactsPromise ??= loadDocsArtifacts({ artifacts: config.artifacts });
     return artifactsPromise;
   };

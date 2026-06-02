@@ -128,32 +128,9 @@ the whole transport: a client POSTs a JSON-RPC request and gets one JSON
 response. There are no sessions to track and nothing to keep alive between
 requests, which is exactly what makes the handler safe to drop onto serverless
 and edge routes. Artifacts load once and are reused; each request gets a fresh
-server instance so concurrent requests never share state.
+server instance so concurrent requests never share state. It reads the generated
+artifacts from disk (`<artifacts>/docs/`), so run it where those files exist.
 </Callout>
-
-### Variant: edge or bundled artifacts (`createDocsArtifacts`)
-
-`createMcpHandler({ artifacts: "./public" })` reads artifacts from disk at
-request time. That's wrong for two common setups: apps that **bundle** the
-index/manifest as imports (Vite, edge) and runtimes with **no `fs`** at request
-time (Workers). For those, build the artifacts in memory and pass them
-directly:
-
-```ts
-import { createDocsArtifacts, createMcpHandler } from "leadtype/mcp";
-import index from "./generated/docs-search-index.json" with { type: "json" };
-import content from "./generated/docs-search-content.json" with { type: "json" };
-import manifest from "./generated/agent-readability.json" with { type: "json" };
-import { readMarkdown } from "./markdown"; // your own (urlPath → Markdown) reader
-
-const artifacts = createDocsArtifacts({ index, content, manifest, readMarkdown });
-export const POST = createMcpHandler({ artifacts });
-```
-
-You own where the bytes come from: `index`/`content`/`manifest` are the bundled
-JSON, and `readMarkdown` resolves a page's Markdown however your deploy allows
-(static file, KV, bundled string). `search-docs` ranks over the index;
-`get-page` calls your `readMarkdown`.
 
 ## When is it worth adding?
 

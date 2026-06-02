@@ -38,34 +38,9 @@ export type DocsArtifacts = {
   content?: DocsSearchContentStore;
   manifest: AgentReadabilityManifest;
   readMarkdown: ReadMarkdownFile;
-  /** Resolved base directory, when loaded from disk. Absent for in-memory artifacts. */
-  baseDir?: string;
+  /** Resolved base directory the artifacts were loaded from. */
+  baseDir: string;
 };
-
-export type CreateDocsArtifactsInput = {
-  index: DocsSearchIndex;
-  /** Raw or normalized agent-readability manifest (e.g. a bundled JSON import). */
-  manifest: AgentReadabilityManifest | unknown;
-  content?: DocsSearchContentStore;
-  /** Reads a page's Markdown mirror. The host owns where bytes come from (disk, KV, bundle). */
-  readMarkdown: ReadMarkdownFile;
-};
-
-/**
- * Assembles `DocsArtifacts` from in-memory pieces — for hosts that already bundle the
- * index + manifest (Vite/edge apps) and bring their own Markdown reader, rather than
- * re-reading artifacts from disk. Pair with `createMcpHandler({ artifacts })`.
- */
-export function createDocsArtifacts(
-  input: CreateDocsArtifactsInput
-): DocsArtifacts {
-  return {
-    index: input.index,
-    content: input.content,
-    manifest: normalizeAgentReadabilityManifest(input.manifest),
-    readMarkdown: input.readMarkdown,
-  };
-}
 
 export type LoadDocsArtifactsOptions = {
   /**

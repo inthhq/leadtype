@@ -1,6 +1,4 @@
 export {
-  type CreateDocsArtifactsInput,
-  createDocsArtifacts,
   type DocsArtifacts,
   type LoadDocsArtifactsOptions,
   loadDocsArtifacts,
