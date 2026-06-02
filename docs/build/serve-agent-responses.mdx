@@ -162,21 +162,16 @@ Set `overrides.type` to use a different Schema.org type, and `overrides.breadcru
 
 ### Emit the site-level graph once
 
-The per-page `@id` references resolve against a site-level graph — `Organization`, `WebSite` (with a `SearchAction`), and `SoftwareApplication` (or `SoftwareSourceCode` for libraries). Render it **once**, on your docs home or root layout, with `renderSiteJsonLd`:
+The per-page `@id` references resolve against a site-level graph — `Organization`, `WebSite` (with a `SearchAction`), and `SoftwareApplication` (or `SoftwareSourceCode` for libraries). Render it **once**, on your docs home or root layout, with `renderSiteJsonLd`. The graph is derived from your config's `organization` and `product` (`kind`/`category`/`repository`), baked into the manifest at generate time — so no options are needed:
 
 ```ts
 import agentManifest from "../public/docs/agent-readability.json";
 import { renderSiteJsonLd, stringifyJsonLd } from "leadtype/llm/readability";
 
-const siteJsonLd = stringifyJsonLd(
-  renderSiteJsonLd(agentManifest, {
-    organization: { name: "Acme Inc", url: "https://acme.com" },
-    software: { isLibrary: true, applicationCategory: "DeveloperApplication" },
-  })
-);
+const siteJsonLd = stringifyJsonLd(renderSiteJsonLd(agentManifest));
 ```
 
-It returns a `@graph` with stable `@id`s derived from the manifest's base URL, so the `isPartOf`/`publisher` on every page point back to it. Pass `searchUrlPattern: null` to drop the `SearchAction`, or a custom template (default `/docs?q={search_term_string}`).
+It returns a `@graph` with stable `@id`s derived from the manifest's base URL, so the `isPartOf`/`publisher` on every page point back to it. Pass overrides as a second argument to win over the config — e.g. `renderSiteJsonLd(agentManifest, { searchUrlPattern: null })` drops the `SearchAction` (default template `/docs?q={search_term_string}`).
 
 Also add canonical and markdown alternate links:
 
