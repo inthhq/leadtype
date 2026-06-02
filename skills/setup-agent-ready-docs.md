@@ -16,7 +16,7 @@ Use leadtype to turn an existing MDX/Markdown docs source into a site that AI ag
      product: { name: "Acme", tagline: "One sentence about the product." },
      // Who publishes it → JSON-LD Organization + agent-card provider.
      organization: { name: "Acme Inc", url: "https://acme.com" },
-     navigation: [{ title: "Start", slug: "start", pages: ["/docs/quickstart"] }],
+     navigation: [{ title: "Start", pages: ["quickstart"] }], // docs-root-relative, no /docs prefix
      agents: {
        robots: { policy: "balanced" }, // balanced · open · block-training · block-ai
        seo: { keywords: ["docs", "api"] },
