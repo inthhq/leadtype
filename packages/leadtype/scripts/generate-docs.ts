@@ -7,6 +7,7 @@ import { logger } from "../src/internal/logger";
 import {
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
+  generateSkillArtifacts,
   resolveDocsNavigation,
 } from "../src/llm/index";
 import { defaultRemarkPlugins } from "../src/remark/index";
@@ -22,6 +23,7 @@ const OUT_DOCS_DIR = join(PACKAGE_ROOT, "docs");
 // `llms-full.txt` from earlier (website-mode) builds.
 await rm(OUT_DOCS_DIR, { recursive: true, force: true });
 await rm(join(PACKAGE_ROOT, "AGENTS.md"), { force: true });
+await rm(join(PACKAGE_ROOT, "SKILL.md"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms.txt"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms-full.txt"), { force: true });
 
@@ -71,6 +73,17 @@ await generateAgentReadabilityArtifacts({
   product: docsConfig.product,
   nav: docsConfig.nav,
   jsonLd: docsConfig.agents?.jsonLd,
+});
+
+// Ship the docs-skill SKILL.md next to AGENTS.md so on-disk agents discover it the
+// same way they discover AGENTS.md (offline, version-matched). Bundle MCP is on.
+await generateSkillArtifacts({
+  outDir: PACKAGE_ROOT,
+  srcDir: REPO_ROOT,
+  product: docsConfig.product,
+  skills: docsConfig.agents?.skills,
+  mode: "bundle",
+  mcpEnabled: true,
 });
 
 logger.info({

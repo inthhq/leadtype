@@ -197,6 +197,7 @@ export default defineDocsConfig({
             "remark",
             "search",
             "mcp",
+            "skills",
             "i18n",
             "troubleshooting",
           ],
@@ -223,5 +224,7 @@ export default defineDocsConfig({
     },
     // Fully crawlable + retrievable; signals "don't train on this" (the default).
     robots: { policy: "balanced" },
+    // The example app hosts a docs MCP endpoint, so the docs-skill points agents at it.
+    mcp: { enabled: true },
   },
 });

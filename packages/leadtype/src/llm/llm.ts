@@ -323,8 +323,25 @@ export type DocsConfig<
   agents?: DocsAgentsConfig;
 };
 
+/** A single agent skill (agentskills.io `SKILL.md`). */
+export type DocsSkillSpec = {
+  name: string;
+  description: string;
+  license?: string;
+  compatibility?: string;
+  /** Space- or array-delimited pre-approved tools (rendered as `allowed-tools`). */
+  allowedTools?: string[];
+  metadata?: Record<string, string>;
+  /** Inline Markdown instructions. Use this or `bodyPath`. */
+  body?: string;
+  /** Path to a Markdown instructions file, relative to the docs source root. */
+  bodyPath?: string;
+};
+
 /** Additive `agents` config block. All fields optional; zero-config defaults hold. */
 export type DocsAgentsConfig = {
+  /** Signals that you host a docs MCP endpoint, so the docs-skill points agents at it. */
+  mcp?: { enabled?: boolean };
   robots?: {
     /** Crawler-access stance. Defaults to `balanced`. */
     policy?: RobotsPolicy;
@@ -333,6 +350,15 @@ export type DocsAgentsConfig = {
   };
   /** Site-level JSON-LD options consumed by `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
+  /** Skills surface emitted to `/.well-known/agent-skills` (+ bundled `SKILL.md`). */
+  skills?: {
+    /** Emit the auto "use these docs" skill. Default `true`. */
+    docsSkill?: boolean;
+    /** Emit `/.well-known/agent-card.json`. Default `true`. */
+    agentCard?: boolean;
+    /** Author-declared skills, emitted alongside (or instead of) the docs-skill. */
+    items?: DocsSkillSpec[];
+  };
 };
 
 /**

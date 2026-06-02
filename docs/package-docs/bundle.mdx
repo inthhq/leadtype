@@ -193,6 +193,11 @@ artifacts are URL-independent — they need no `--base-url`. See the
 [MCP server reference](/docs/reference/mcp) for the tools and the hosted-endpoint
 variant.
 
+Bundle mode also ships a `SKILL.md` at the package root, next to `AGENTS.md` — the
+[agent-skills](/docs/reference/skills) format. Its instructions point an agent at the
+bundled `AGENTS.md`/`docs`, so a skills-aware client (Claude Code, Cursor, …) discovers
+your docs from `node_modules/<pkg>` the same way it discovers `AGENTS.md`.
+
 ## When to use this
 
 Use this when **agents should understand the package from the installed dependency itself** — coding agents that don't have web access, IDE assistants, CLI tools, or air-gapped environments.

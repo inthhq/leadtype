@@ -32,6 +32,7 @@ import {
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  generateSkillArtifacts,
   resolveDocsNavigation,
 } from "../llm";
 import {
@@ -135,6 +136,8 @@ type GenerateResult = {
     searchContent?: string;
     searchIndex?: string;
     wellKnownLlmsTxt?: string;
+    skillMd?: string;
+    agentSkills?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavNode[];
@@ -209,7 +212,7 @@ By default, runs in site mode and writes:
   docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
 
 With --bundle, runs in package mode and writes:
-  AGENTS.md, docs/*.md
+  AGENTS.md, SKILL.md, docs/*.md
   (skips llms.txt, llms-full.txt, and search artifacts — those are website-only)
   Add --mcp to also emit docs/search-index.json + docs/agent-readability.json
   so the tarball can serve a version-matched MCP server (leadtype mcp --package).
@@ -1633,6 +1636,19 @@ export async function runGenerateCommand(
         }
         bundleFiles.agentReadabilityManifest = agentReadability.files.manifest;
       }
+      // Ship the docs-skill SKILL.md next to AGENTS.md (offline-pointing), unless
+      // the author disabled it. Bundle MCP is on only with --mcp.
+      const bundleSkills = await generateSkillArtifacts({
+        outDir,
+        srcDir: sourceMirror.srcDir,
+        product,
+        skills: metadata.agents?.skills,
+        mode: "bundle",
+        mcpEnabled: args.mcp,
+      });
+      if (bundleSkills.files[0]) {
+        bundleFiles.skillMd = bundleSkills.files[0];
+      }
       result = {
         docsDir,
         docsDirs,
@@ -1700,6 +1716,20 @@ export async function runGenerateCommand(
         contentSignals: metadata.agents?.robots?.signals,
         jsonLd: metadata.agents?.jsonLd,
       });
+      // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
+      // Default-on: the auto docs-skill is free and points agents at the docs.
+      const siteSkills = await generateSkillArtifacts({
+        outDir,
+        srcDir: sourceMirror.srcDir,
+        baseUrl: args.baseUrl,
+        product,
+        skills: metadata.agents?.skills,
+        mode: "site",
+        mcpEnabled: metadata.agents?.mcp?.enabled,
+      });
+      const agentSkillsIndex = siteSkills.files.find((f) =>
+        f.endsWith("index.json")
+      );
 
       if (i18n) {
         for (const locale of i18n.locales) {
@@ -1768,6 +1798,7 @@ export async function runGenerateCommand(
           llmsFullTxt: path.join(outDir, "llms-full.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),
           wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
+          ...(agentSkillsIndex ? { agentSkills: agentSkillsIndex } : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
         },

@@ -1,0 +1,83 @@
+---
+title: "Agent skills"
+description: "Emit a discoverable SKILL.md surface (agentskills.io) from docs.config.ts — an auto docs-skill plus any you declare — to /.well-known/agent-skills and the package bundle."
+related:
+  - title: "MCP server"
+    href: "/docs/reference/mcp"
+    description: "The docs-skill points agents at the MCP server when it's enabled."
+  - title: "Bundle docs into a package"
+    href: "/docs/package-docs/bundle"
+    description: "In bundle mode the SKILL.md ships next to AGENTS.md."
+  - title: "Optimize docs for agents"
+    href: "/docs/build/optimize-docs-for-agents"
+    description: "The rest of the agent-surface artifacts generate emits."
+---
+
+# Agent skills
+
+leadtype emits a discoverable [`SKILL.md`](https://agentskills.io) surface — the open Agent Skills format (originally Anthropic's, supported by Claude Code, Cursor, Codex, Copilot, Gemini CLI, and others). A skill is a name, a description, and instructions an agent loads on demand; the surface lets a client *discover* yours without installing anything.
+
+It's on by default: every `leadtype generate` emits an auto **docs-skill** that points an agent at your docs. Declare more in `docs.config.ts` when you have real capability skills to expose.
+
+## What gets emitted
+
+In **site mode** (default), under your output root:
+
+- `/.well-known/agent-skills/index.json` — the discovery manifest: each skill's name, description, path, and a `sha256-…` integrity hash. Clients read this first (progressive disclosure — name + description before the full instructions).
+- `/.well-known/agent-skills/<name>/SKILL.md` — one per skill (agentskills.io frontmatter + Markdown instructions).
+- `/.well-known/agent-card.json` — a minimal A2A agent card listing the skills (and the MCP endpoint, if enabled).
+
+In **bundle mode** (`--bundle`), a single `SKILL.md` ships at the package root next to `AGENTS.md`, so an agent reading `node_modules/<pkg>` finds it on the filesystem the same way it finds `AGENTS.md`.
+
+These are static files. leadtype never hosts a skills endpoint or an A2A runtime — your site serves the files, the same as `llms.txt`.
+
+## What is the auto docs-skill?
+
+A `<product>-docs` skill whose instructions are a **pointer to your docs**, adapted to whichever surface exists:
+
+- **Bundle**: read `./AGENTS.md` → the per-topic Markdown in `./docs/` (offline, version-matched).
+- **Site**: read `/llms.txt`, and — when `agents.mcp.enabled` is set — connect the docs MCP server for targeted retrieval.
+
+It stays a thin pointer, not a third copy of the docs; progressive disclosure means an agent loads the body only when a task matches. It describes *reading your docs* — not driving your product's API. Capability skills are yours to declare.
+
+## How do I declare my own skills?
+
+Add `agents.skills.items` in `docs.config.ts`. Each becomes its own `SKILL.md`:
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Acme", summary: "…" },
+  agents: {
+    skills: {
+      items: [
+        {
+          name: "deploy-acme",
+          description: "Deploy an Acme app to production. Use when the user asks to ship or release.",
+          license: "MIT",
+          allowedTools: ["Bash", "Read"],
+          bodyPath: "skills/deploy.md", // or `body: "...inline markdown..."`
+        },
+      ],
+    },
+  },
+});
+```
+
+`bodyPath` is resolved against your docs source root. Set `docsSkill: false` to drop the auto docs-skill (e.g. you wrote a richer one yourself), or `agentCard: false` to skip the A2A card.
+
+## Config
+
+```ts
+agents: {
+  skills: {
+    docsSkill: true,   // auto "use these docs" skill (default true)
+    agentCard: true,   // emit /.well-known/agent-card.json (default true)
+    items: [ /* DocsSkillSpec[] */ ],
+  },
+  mcp: { enabled: true }, // makes the site docs-skill point at your MCP endpoint
+}
+```
+
+A `SKILL.md`'s frontmatter follows agentskills.io: `name` and `description` are required; `license`, `compatibility`, `allowed-tools`, and `metadata` are optional.

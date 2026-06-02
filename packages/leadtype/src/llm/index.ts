@@ -20,6 +20,7 @@ export {
   type AgentsMdConfig,
   type AgentsMdResult,
   type CuratedLink,
+  type DocsAgentsConfig,
   type DocsCollection,
   type DocsConfig,
   type DocsFrontmatterSchema,
@@ -28,6 +29,7 @@ export {
   type DocsNavNode,
   type DocsNavPageEntry,
   type DocsNavSortKey,
+  type DocsSkillSpec,
   type DocsTableOfContentsPage,
   defineCollection,
   defineDocsConfig,
@@ -94,3 +96,8 @@ export {
   slugifyDocsHeading,
   validateJsonLd,
 } from "./readability";
+export {
+  type GenerateSkillArtifactsConfig,
+  type GenerateSkillArtifactsResult,
+  generateSkillArtifacts,
+} from "./skills";

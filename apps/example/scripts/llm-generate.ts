@@ -14,6 +14,7 @@ import {
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  generateSkillArtifacts,
   resolveDocsNavigation,
 } from "leadtype/llm";
 import docsConfig from "../../../docs/docs.config";
@@ -62,6 +63,18 @@ const agentReadability = await generateAgentReadabilityArtifacts({
   jsonLd: docsConfig.agents?.jsonLd,
   robotsPolicy: docsConfig.agents?.robots?.policy,
   contentSignals: docsConfig.agents?.robots?.signals,
+});
+
+// Agent-skills surface (/.well-known/agent-skills + agent-card). The auto docs-skill
+// points agents at /llms.txt and this app's MCP endpoint (agents.mcp.enabled).
+await generateSkillArtifacts({
+  outDir,
+  srcDir,
+  baseUrl,
+  product: docsConfig.product,
+  skills: docsConfig.agents?.skills,
+  mode: "site",
+  mcpEnabled: docsConfig.agents?.mcp?.enabled,
 });
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
