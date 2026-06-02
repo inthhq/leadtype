@@ -196,6 +196,7 @@ type ResolvedGenerateMetadata = {
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
+  agents?: DocsConfig["agents"];
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -920,6 +921,7 @@ function resolveGenerateMetadata(
         ? path.resolve(srcDir, loaded.config.typeTableBasePath)
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
+      agents: loaded.config.agents,
     });
   }
   return readPackageProduct(srcDir, args).then((product) => ({
@@ -1694,6 +1696,8 @@ export async function runGenerateCommand(
         locale: i18n?.defaultLocale,
         i18nManifest,
         transformers: metadata.transformers,
+        robotsPolicy: metadata.agents?.robots?.policy,
+        contentSignals: metadata.agents?.robots?.signals,
       });
 
       if (i18n) {
@@ -1743,6 +1747,8 @@ export async function runGenerateCommand(
             locale: locale.code,
             i18nManifest,
             transformers: metadata.transformers,
+            robotsPolicy: metadata.agents?.robots?.policy,
+            contentSignals: metadata.agents?.robots?.signals,
           });
         }
       }

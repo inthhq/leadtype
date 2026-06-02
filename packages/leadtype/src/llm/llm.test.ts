@@ -905,6 +905,33 @@ describe("generateAgentReadabilityArtifacts", () => {
     );
   });
 
+  it("applies a robotsPolicy + content signals to the emitted robots.txt", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      groups: [{ slug: "get-started", title: "Get Started" }],
+      robotsPolicy: "block-ai",
+      contentSignals: { aiInput: "no" },
+    });
+
+    const robotsTxt = await readFile(result.files.robotsTxt, "utf8");
+    expect(robotsTxt).toContain(
+      "Content-Signal: search=yes, ai-input=no, ai-train=no"
+    );
+    expect(robotsTxt).toContain("User-agent: GPTBot\nDisallow: /");
+    expect(robotsTxt).toContain("User-agent: PerplexityBot\nDisallow: /");
+  });
+
   it("renders helpers that host apps can merge with non-docs pages", () => {
     const pages = [
       {

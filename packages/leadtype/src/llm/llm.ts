@@ -43,11 +43,13 @@ import {
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
+  type ContentSignals,
   type DocsNavigation,
   type DocsNavigationGroup,
   type DocsNavigationPage,
   type DocsTableOfContentsItem,
   type DocsTableOfContentsOptions,
+  type RobotsPolicy,
   renderRobotsTxt,
   renderSitemapMarkdown,
   renderSitemapXml,
@@ -316,6 +318,18 @@ export type DocsConfig<
   typeTableBasePath?: string;
   /** Throw during generation when a referenced type cannot be extracted. */
   typeTableStrict?: boolean;
+  /** Agent-surface options (robots policy / Content-Signals, …). All optional. */
+  agents?: DocsAgentsConfig;
+};
+
+/** Additive `agents` config block. All fields optional; zero-config defaults hold. */
+export type DocsAgentsConfig = {
+  robots?: {
+    /** Crawler-access stance. Defaults to `balanced`. */
+    policy?: RobotsPolicy;
+    /** Override individual Content-Signals beyond the policy preset. */
+    signals?: Partial<ContentSignals>;
+  };
 };
 
 /**
@@ -378,6 +392,10 @@ export type AgentReadabilityConfig = {
   locale?: LocaleCode;
   i18nManifest?: DocsI18nManifest;
   transformers?: DocsTransformer[];
+  /** Crawler-access stance for robots.txt + Content-Signals. Defaults to `balanced`. */
+  robotsPolicy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  contentSignals?: Partial<ContentSignals>;
 };
 
 export type AgentReadabilityResult = {
@@ -2033,6 +2051,8 @@ export async function generateAgentReadabilityArtifacts(
     renderRobotsTxt({
       baseUrl,
       sitemapUrlPath: `${docsUrlPrefix}/sitemap.xml`,
+      policy: config.robotsPolicy,
+      signals: config.contentSignals,
     })
   );
   await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
