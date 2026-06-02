@@ -805,6 +805,26 @@ function buildBreadcrumb(
   };
 }
 
+const REFERENCE_SECTION_PATTERN = /^(reference|api)$/i;
+
+/**
+ * Stable `@id`s for the site-level entities, derived from the base URL. Per-page
+ * JSON-LD references these instead of re-inlining the Organization/WebSite, so an
+ * answer engine can stitch every page into one entity graph (DESIGN.md Phase 4).
+ */
+function jsonLdEntityIds(baseUrl: string): {
+  organization: string;
+  website: string;
+  software: string;
+} {
+  const base = stripTrailingSlashes(baseUrl);
+  return {
+    organization: `${base}/#organization`,
+    website: `${base}/#website`,
+    software: `${base}/#software`,
+  };
+}
+
 export function renderJsonLd(
   page: AgentReadabilityPage,
   manifest: AgentReadabilityManifest
@@ -815,9 +835,15 @@ export function renderJsonLd(
   );
   const breadcrumb = buildBreadcrumb(page, manifest, sections);
   const articleSection = sections.at(0)?.title;
+  const ids = jsonLdEntityIds(manifest.baseUrl);
+  // Reference pages are additionally typed as APIReference so answer engines can
+  // distinguish prose from the API surface.
+  const isApiReference = sections.some((section) =>
+    REFERENCE_SECTION_PATTERN.test(section.slug)
+  );
   return {
     "@context": "https://schema.org",
-    "@type": "TechArticle",
+    "@type": isApiReference ? ["TechArticle", "APIReference"] : "TechArticle",
     headline: page.title,
     name: page.title,
     description: jsonLdPageDescription(page, manifest),
@@ -826,12 +852,94 @@ export function renderJsonLd(
     dateModified: page.lastModified,
     ...(articleSection ? { articleSection } : {}),
     ...(page.locale ? { inLanguage: page.locale } : {}),
-    isPartOf: {
-      "@type": "WebSite",
-      name: manifest.product.name,
-      url: manifest.baseUrl,
-    },
+    // Reference shared @ids instead of inlining the WebSite/Organization. The
+    // site-level graph (renderSiteJsonLd) defines them; emit it once on a root page.
+    isPartOf: { "@id": ids.website },
+    publisher: { "@id": ids.organization },
     breadcrumb,
+  };
+}
+
+export type RenderSiteJsonLdOptions = {
+  organization?: { name?: string; url?: string; logo?: string };
+  software?: {
+    /** Emit `SoftwareSourceCode` instead of `SoftwareApplication` (for libraries). */
+    isLibrary?: boolean;
+    applicationCategory?: string;
+    operatingSystem?: string;
+  };
+  /**
+   * URL template for the WebSite `SearchAction`, relative to the base URL.
+   * Defaults to `/docs?q={search_term_string}`. Pass `null` to omit the action.
+   */
+  searchUrlPattern?: string | null;
+};
+
+const DEFAULT_SEARCH_URL_PATTERN = "/docs?q={search_term_string}";
+
+/**
+ * The site-level entity graph — `Organization`, `WebSite` (+ `SearchAction`), and
+ * `SoftwareApplication`/`SoftwareSourceCode` — emitted once (e.g. on the docs home).
+ * Per-page `renderJsonLd` references these by `@id` (DESIGN.md Phase 4).
+ */
+export function renderSiteJsonLd(
+  manifest: AgentReadabilityManifest,
+  options: RenderSiteJsonLdOptions = {}
+): JsonLdValue {
+  assertManifestVersion(manifest);
+  const base = stripTrailingSlashes(manifest.baseUrl);
+  const ids = jsonLdEntityIds(base);
+
+  const organization: JsonLdValue = {
+    "@type": "Organization",
+    "@id": ids.organization,
+    name: options.organization?.name ?? manifest.product.name,
+    url: options.organization?.url ?? base,
+    ...(options.organization?.logo ? { logo: options.organization.logo } : {}),
+  };
+
+  const website: JsonLdValue = {
+    "@type": "WebSite",
+    "@id": ids.website,
+    name: manifest.product.name,
+    url: base,
+    publisher: { "@id": ids.organization },
+  };
+  const searchUrlPattern =
+    options.searchUrlPattern === undefined
+      ? DEFAULT_SEARCH_URL_PATTERN
+      : options.searchUrlPattern;
+  if (searchUrlPattern !== null) {
+    website.potentialAction = {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${base}${searchUrlPattern}`,
+      },
+      "query-input": "required name=search_term_string",
+    };
+  }
+
+  const software: JsonLdValue = {
+    "@type": options.software?.isLibrary
+      ? "SoftwareSourceCode"
+      : "SoftwareApplication",
+    "@id": ids.software,
+    name: manifest.product.name,
+    description: manifest.product.summary,
+    url: base,
+    publisher: { "@id": ids.organization },
+    ...(options.software?.applicationCategory
+      ? { applicationCategory: options.software.applicationCategory }
+      : {}),
+    ...(options.software?.operatingSystem
+      ? { operatingSystem: options.software.operatingSystem }
+      : {}),
+  };
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [organization, website, software],
   };
 }
 

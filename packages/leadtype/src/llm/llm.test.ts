@@ -28,6 +28,7 @@ import {
   renderJsonLdScript,
   renderMissingMarkdown,
   renderRobotsTxt,
+  renderSiteJsonLd,
   renderSitemapXml,
   resolveMarkdownMirrorTarget,
   stringifyJsonLd,
@@ -1058,11 +1059,9 @@ describe("agent readability helpers", () => {
       url: "https://example.com/docs/quickstart",
       mainEntityOfPage: "https://example.com/docs/quickstart",
       dateModified: "2026-05-01T12:00:00.000Z",
-      isPartOf: {
-        "@type": "WebSite",
-        name: "Leadtype",
-        url: "https://example.com",
-      },
+      // Site entities are referenced by @id, not re-inlined per page.
+      isPartOf: { "@id": "https://example.com/#website" },
+      publisher: { "@id": "https://example.com/#organization" },
     });
     expect(renderJsonLdScript(page, manifest)).toContain(
       '<script type="application/ld+json">'
@@ -1070,6 +1069,106 @@ describe("agent readability helpers", () => {
     expect(renderJsonLdScript(page, manifest)).toContain(
       "Quickstart \\u003cstart\\u003e"
     );
+  });
+
+  it("emits a referenced site-level entity graph", () => {
+    const graph = renderSiteJsonLd(manifest, {
+      organization: { name: "Acme Inc", url: "https://acme.com" },
+      software: { applicationCategory: "DeveloperApplication" },
+    }) as { "@graph": Record<string, unknown>[] };
+
+    const byType = new Map(
+      graph["@graph"].map((node) => [node["@type"], node])
+    );
+    expect(byType.get("Organization")).toMatchObject({
+      "@id": "https://example.com/#organization",
+      name: "Acme Inc",
+      url: "https://acme.com",
+    });
+    expect(byType.get("WebSite")).toMatchObject({
+      "@id": "https://example.com/#website",
+      publisher: { "@id": "https://example.com/#organization" },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          urlTemplate: "https://example.com/docs?q={search_term_string}",
+        },
+      },
+    });
+    expect(byType.get("SoftwareApplication")).toMatchObject({
+      "@id": "https://example.com/#software",
+      applicationCategory: "DeveloperApplication",
+      publisher: { "@id": "https://example.com/#organization" },
+    });
+  });
+
+  it("emits SoftwareSourceCode for libraries and omits the SearchAction on request", () => {
+    const graph = renderSiteJsonLd(manifest, {
+      software: { isLibrary: true },
+      searchUrlPattern: null,
+    }) as { "@graph": Record<string, unknown>[] };
+    const types = graph["@graph"].map((node) => node["@type"]);
+    expect(types).toContain("SoftwareSourceCode");
+    expect(types).not.toContain("SoftwareApplication");
+    const website = graph["@graph"].find((node) => node["@type"] === "WebSite");
+    expect(website).not.toHaveProperty("potentialAction");
+  });
+
+  it("types reference-section pages as APIReference", () => {
+    const refManifest = {
+      version: 1 as const,
+      generatedAt: "2026-05-01T00:00:00.000Z",
+      baseUrl: "https://example.com",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      files: {
+        robotsTxt: "/docs/robots.txt",
+        sitemapMd: "/docs/sitemap.md",
+        sitemapXml: "/docs/sitemap.xml",
+      },
+      navigation: {
+        ungrouped: [],
+        unknown: [],
+        groups: [
+          {
+            slug: "reference",
+            segmentPath: ["reference"],
+            title: "Reference",
+            pages: [
+              {
+                urlPath: "/docs/reference/cli",
+                relativePath: "reference/cli",
+                title: "CLI",
+                description: "",
+                groups: ["reference"],
+                toc: [],
+              },
+            ],
+            children: [],
+          },
+        ],
+      },
+      pages: [
+        {
+          title: "CLI",
+          description: "CLI reference.",
+          urlPath: "/docs/reference/cli",
+          absoluteUrl: "https://example.com/docs/reference/cli",
+          markdownUrlPath: "/docs/reference/cli.md",
+          markdownAbsoluteUrl: "https://example.com/docs/reference/cli.md",
+          relativePath: "reference/cli",
+          groups: ["reference"],
+          lastModified: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const page = refManifest.pages[0];
+    if (!page) {
+      throw new Error("missing test page");
+    }
+    expect(renderJsonLd(page, refManifest)["@type"]).toEqual([
+      "TechArticle",
+      "APIReference",
+    ]);
   });
 
   it("builds a nested breadcrumb trail and articleSection from nav groups", () => {

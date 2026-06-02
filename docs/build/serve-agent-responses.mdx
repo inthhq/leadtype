@@ -128,7 +128,9 @@ const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
 
 Use `createDocsJsonLd()` if your framework has a typed metadata or head API. Use `stringifyJsonLd()` for safe script contents.
 
-The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the page's full position in your `nav` tree — `Docs → Section → Subsection → Page` — and `articleSection` is set to the page's top-level section. Heading-only groups (no landing page) appear as name-only crumbs; ungrouped pages fall back to a simple `Docs → Page` trail.
+The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the page's full position in your `nav` tree — `Docs → Section → Subsection → Page` — and `articleSection` is set to the page's top-level section. Heading-only groups (no landing page) appear as name-only crumbs; ungrouped pages fall back to a simple `Docs → Page` trail. Pages under a `reference`/`api` section are additionally typed `["TechArticle", "APIReference"]` automatically.
+
+`isPartOf` and `publisher` **reference the site-level entities by `@id`** rather than re-inlining a `WebSite`/`Organization` on every page — so an answer engine stitches the whole site into one entity graph. Emit the matching graph once (see below) so those `@id`s resolve.
 
 ```json
 {
@@ -141,11 +143,8 @@ The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the p
   "mainEntityOfPage": "https://leadtype.dev/docs/build/optimize-docs-for-agents",
   "dateModified": "2026-05-29T09:36:07.000Z",
   "articleSection": "Build an Agent-Ready Site",
-  "isPartOf": {
-    "@type": "WebSite",
-    "name": "Leadtype",
-    "url": "https://leadtype.dev"
-  },
+  "isPartOf": { "@id": "https://leadtype.dev/#website" },
+  "publisher": { "@id": "https://leadtype.dev/#organization" },
   "breadcrumb": {
     "@type": "BreadcrumbList",
     "itemListElement": [
@@ -157,7 +156,25 @@ The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the p
 }
 ```
 
-Set `overrides.type` to use a different Schema.org type (e.g. `["TechArticle", "APIReference"]`), and `overrides.breadcrumb` (or `false`) to replace or drop the trail. Anything you pass in `overrides` is merged into the object before it's serialized.
+Set `overrides.type` to use a different Schema.org type, and `overrides.breadcrumb` (or `false`) to replace or drop the trail. Anything you pass in `overrides` is merged into the object before it's serialized.
+
+### Emit the site-level graph once
+
+The per-page `@id` references resolve against a site-level graph — `Organization`, `WebSite` (with a `SearchAction`), and `SoftwareApplication` (or `SoftwareSourceCode` for libraries). Render it **once**, on your docs home or root layout, with `renderSiteJsonLd`:
+
+```ts
+import agentManifest from "../public/docs/agent-readability.json";
+import { renderSiteJsonLd, stringifyJsonLd } from "leadtype/llm/readability";
+
+const siteJsonLd = stringifyJsonLd(
+  renderSiteJsonLd(agentManifest, {
+    organization: { name: "Acme Inc", url: "https://acme.com" },
+    software: { isLibrary: true, applicationCategory: "DeveloperApplication" },
+  })
+);
+```
+
+It returns a `@graph` with stable `@id`s derived from the manifest's base URL, so the `isPartOf`/`publisher` on every page point back to it. Pass `searchUrlPattern: null` to drop the `SearchAction`, or a custom template (default `/docs?q={search_term_string}`).
 
 Also add canonical and markdown alternate links:
 
