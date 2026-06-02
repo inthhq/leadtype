@@ -1,24 +1,31 @@
 ---
-title: "Write for agents"
-description: "Document the non-obvious — error conditions, defaults, ordering constraints, and surprising behavior — not restatements of your types, CLI help, or README."
+title: "Write for agents & GEO"
+description: "Authoring for agents and the answer engines that cite you, in two halves: what to write (the non-obvious, not restatement) and how to structure it (lead with the answer, question-form headings, self-contained sections)."
 related:
   - title: "Evals"
     href: "/docs/concepts/evals"
-    description: "The eval evidence behind the 'document the gotchas' principle."
+    description: "The eval evidence behind 'document the gotchas' and 'lead with the answer'."
   - title: "Optimize docs for agents"
     href: "/docs/build/optimize-docs-for-agents"
     description: "Generate the discovery and attribution files once your content earns its keep."
 ---
 
-# Write for agents
+# Write for agents & GEO
 
-Once your pipeline is wired up, the hard part isn't generating `llms.txt` or markdown mirrors — it's deciding *what to write*. The single highest-leverage authoring rule:
+Once your pipeline is wired up, the hard part isn't generating `llms.txt` or markdown mirrors — it's the content itself. Authoring for agents (and the answer engines that cite them) has two halves:
+
+- **What to write** — document the non-obvious, not restatement.
+- **How to structure it** — so a model can find the answer, quote it correctly, and trust it.
+
+Both are backed by the repo's [evals](/docs/concepts/evals): docs earn their keep by stopping agents from *confidently guessing wrong*, and that only works if the right fact is present **and** structured so the model actually reaches it.
+
+## What to write: the non-obvious
 
 <Callout variant="info">
 **Document the non-obvious.** Error conditions, defaults, ordering constraints, and surprising behavior pay off. Restating what your CLI `--help`, `.d.ts` types, or README already expose adds ~0.
 </Callout>
 
-## Why restatements add nothing
+### Why restatements add nothing
 
 An agent reading your library already has its compiled code, type signatures, and CLI help text in context. A doc page that paraphrases a function signature gives the agent a second copy of something it can already see — no new information, just more tokens to read.
 
@@ -32,7 +39,7 @@ The repo's [evals](/docs/concepts/evals) measured this directly. Per-fixture lif
 
 The mechanism is that docs stop agents from **confidently guessing wrong**. Without the `nav-unknown-group` doc, agents don't say "I don't know" — they assert the *wrong* answer. With it, the confident-wrong rate drops to near zero. The conventional fixtures don't move because the agent could already recover those facts from the package itself.
 
-## The litmus test
+### The litmus test
 
 Before you write a page or paragraph, ask:
 
@@ -41,7 +48,7 @@ Before you write a page or paragraph, ask:
 - **Yes** → skip it, or compress it to a one-line pointer. The package already self-documents it.
 - **No** → write it. This is where the docs earn their keep.
 
-## What counts as non-obvious
+### What counts as non-obvious
 
 <Steps>
   <Step title="Error conditions">
@@ -58,7 +65,7 @@ Before you write a page or paragraph, ask:
   </Step>
 </Steps>
 
-## Write it like a gotcha
+### Write it like a gotcha
 
 Lead with the surprising fact, not the API. Compare:
 
@@ -72,6 +79,57 @@ Lead with the surprising fact, not the API. Compare:
 
 The second version is the one an agent can't reconstruct from the type. It's also the one that prevents a confident wrong answer.
 
-## A note on cost
+### Why it's also cheaper
 
 Documenting the non-obvious doesn't just raise correctness — it makes agent runs cheaper. When the answer is one short doc instead of a fan-out of `grep`/`read`/`list` calls probing your package, agents read fewer tokens and make fewer tool calls. The [evals](/docs/concepts/evals#every-run-gets-cheaper) show every model spent 32–54% fewer tokens with docs present, including frontier models that barely needed them for correctness.
+
+## How to structure for answer engines (GEO)
+
+Generative Engine Optimization (GEO) is SEO for answer engines: ChatGPT, Claude, Perplexity, and AI Overviews don't rank a page — they **retrieve a passage, quote it, and attribute it**. The unit that gets cited is a *section*, not a page. Structure each one so it survives being pulled out on its own.
+
+The same eval mechanism applies: a correct fact the model can't locate, or quotes out of context, still produces a confident wrong answer. Structure is what closes that gap.
+
+### Lead with the answer
+
+Put the answer in the **first sentence** of the section, then explain. Answer engines excerpt the top of a matched passage; if it opens with preamble ("Before we discuss rate limits, it's worth understanding…"), the citation is useless and the model keeps guessing. Cut the runway.
+
+### Phrase headings as the question a user would ask
+
+Models match a user's query against heading text. A heading that mirrors the question wins:
+
+- **Write:** `### How do I rotate an API key?`
+- **Skip:** `### Key management`
+
+Question-form `H2`/`H3`s turn your outline into a set of retrievable answers.
+
+### Make every section self-contained
+
+A model quotes one section without its neighbors, so each must stand alone:
+
+- Define (or link) a term the first time it appears in the section — don't rely on a definition three headings up.
+- Use the **specific noun**, not a pronoun: write "the API key", not "it" or "this value". Once a passage is excerpted, the antecedent is gone.
+- Don't open a section with "As mentioned above" — there is no "above" in a citation.
+
+### Be specific, not vague
+
+Replace adjectives with values. "Flexible and powerful" tells a model nothing it can quote; **"returns a 429 once you exceed 100 requests per minute"** is exactly what it surfaces. Exact status codes, limits, ranges, defaults, and version numbers are what get retrieved and trusted — and they double as the non-obvious facts from the first half.
+
+### Use one term per concept
+
+Pick one name and keep it. Alternating between "API key", "access token", and "credential" for the same thing fragments retrieval (each phrasing matches different queries) and signals inconsistency a model reads as lower trust.
+
+### Keep the heading hierarchy sequential
+
+Go `H2 → H3 → H4` without skipping a level. The heading tree *is* the topic map an engine parses to understand how your concepts nest; a jump from `H2` to `H4` breaks that map. (This page follows its own rule.)
+
+### Label every code block
+
+Tag the language on every fence — ` ```ts ` not bare ` ``` `. The label tells an engine which stack the snippet answers, so it surfaces your TypeScript example for a TypeScript question instead of guessing.
+
+### Describe images in alt text
+
+Answer engines can't see your diagrams. Put the information the image conveys into its alt text — "Pipeline: MDX → convert → llms.txt + search index + markdown mirror", not "diagram". If the alt text is empty, that content simply doesn't exist for an agent.
+
+### Test it
+
+GEO has a tight feedback loop: ask your product's real questions in ChatGPT, Claude, and Perplexity, and check whether your docs are cited, accurate, and recommending the right approach. When they're not, it's usually a structure problem — the fact is there but buried, or quoted without its context.
