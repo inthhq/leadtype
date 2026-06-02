@@ -203,6 +203,12 @@ export type DocsNavNode = {
   base?: string;
   pages?: DocsNavPageEntry[];
   children?: DocsNavNode[];
+  /**
+   * Mark this section "safe to drop for shorter context". Its pages are listed
+   * under a single `## Optional` section in `docs/llms.txt` (the llms.txt spec's
+   * convention for low-priority links) instead of their own heading.
+   */
+  optional?: boolean;
 };
 
 /** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
@@ -423,6 +429,7 @@ type ResolvedGroup = {
   children: ResolvedGroup[];
   base: string;
   pageEntries: DocsNavPageEntry[];
+  optional?: boolean;
 };
 
 function resolveGroups(
@@ -532,6 +539,7 @@ function resolveNavGroups(
       children: [],
       base,
       pageEntries: node.pages ?? [],
+      ...(node.optional ? { optional: true } : {}),
     };
     resolved.children = resolveNavGroups(
       node.children ?? [],
@@ -1526,13 +1534,30 @@ function renderNavigationSummaryGroup(
   return lines;
 }
 
+function collectNavigationGroupPages(
+  group: DocsNavigationGroup
+): DocsNavigationPage[] {
+  const pages = [...group.pages];
+  for (const child of group.children) {
+    pages.push(...collectNavigationGroupPages(child));
+  }
+  return pages;
+}
+
 function renderDocsNavigationSummary(
   product: ProductInfo,
   navigation: DocsNavigation,
   mounts?: DocsPathMount[]
 ): string {
   const renderedSections: string[] = [];
+  const optionalPages: DocsNavigationPage[] = [];
   for (const group of navigation.groups) {
+    // Sections flagged `optional` collapse into a single trailing `## Optional`
+    // section (the llms.txt convention for links safe to drop for shorter context).
+    if (group.optional) {
+      optionalPages.push(...collectNavigationGroupPages(group));
+      continue;
+    }
     renderedSections.push(
       renderNavigationSummaryGroup(group, mounts).join("\n")
     );
@@ -1546,6 +1571,27 @@ function renderDocsNavigationSummary(
         .map((page) => pageToRenderedLink(page, mounts))
         .map(renderLink)
     );
+    renderedSections.push(lines.join("\n"));
+  }
+
+  if (optionalPages.length > 0) {
+    const seen = new Set<string>();
+    const lines = [
+      "## Optional",
+      "",
+      "Lower-priority pages — safe to skip for a shorter context.",
+      "",
+      ...optionalPages
+        .filter((page) => {
+          if (seen.has(page.urlPath)) {
+            return false;
+          }
+          seen.add(page.urlPath);
+          return true;
+        })
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink),
+    ];
     renderedSections.push(lines.join("\n"));
   }
 
@@ -2325,6 +2371,7 @@ function buildNavigationGroupFromNav(
     segmentPath: group.segmentPath,
     title: group.title,
     description: group.description,
+    ...(group.optional ? { optional: true } : {}),
     pages: directPages.map((page) => pageView(page, tocByUrlPath)),
     children: group.children.map((child) =>
       buildNavigationGroupFromNav(

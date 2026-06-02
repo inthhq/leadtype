@@ -99,6 +99,8 @@ export type DocsNavigationGroup = {
   description?: string;
   pages: DocsNavigationPage[];
   children: DocsNavigationGroup[];
+  /** Section is "safe to drop for shorter context" (rendered under `## Optional`). */
+  optional?: boolean;
 };
 
 export type DocsNavigation = {

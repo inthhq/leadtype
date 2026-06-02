@@ -205,6 +205,49 @@ describe("generateLlmsTxt", () => {
     expect(docsSummary.match(/Client Modes/g)).toHaveLength(1);
   });
 
+  it("collapses optional nav sections into a single ## Optional section", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+      {
+        relativePath: "legacy/v1.mdx",
+        frontmatter: "title: Legacy v1\ndescription: Old API.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://example.com",
+      product: { name: "Test", summary: "Testing." },
+      nav: [
+        { title: "Start", pages: ["quickstart"] },
+        { title: "Legacy", base: "legacy", optional: true, pages: ["v1"] },
+      ],
+    });
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("## Optional");
+    // The optional section's own heading is not rendered as a normal section…
+    expect(docsSummary).not.toContain("## Legacy");
+    // …and its page is listed under ## Optional, after the required sections.
+    expect(docsSummary).toContain("](/docs/legacy/v1.md)");
+    expect(docsSummary.indexOf("## Start")).toBeLessThan(
+      docsSummary.indexOf("## Optional")
+    );
+    expect(docsSummary.indexOf("## Optional")).toBeLessThan(
+      docsSummary.indexOf("/docs/legacy/v1.md")
+    );
+  });
+
   it("renders curated docs sections from the group tree and frontmatter", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");

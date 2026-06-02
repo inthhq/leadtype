@@ -43,6 +43,20 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 
 Config `nav` drives `llms.txt` sections, navigation, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `nav`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/concepts/evals) for the benchmark behind that default.
 
+### Optional sections
+
+Mark a nav node `optional: true` to flag it "safe to drop for shorter context". Its pages don't get their own heading in `docs/llms.txt` — they collapse into a single trailing **`## Optional`** section (the [llms.txt](https://llmstxt.org) convention for low-priority links), so an agent under a tight context budget knows what it can skip first.
+
+```ts
+nav: [
+  { title: "Start", pages: ["", "quickstart"] },
+  { title: "Reference", base: "reference", pages: [{ include: "*" }] },
+  { title: "Changelog", base: "changelog", optional: true, pages: [{ include: "*" }] },
+],
+```
+
+The flag applies to the whole subtree, so nested children of an optional node are flattened into `## Optional` too. It affects `docs/llms.txt` only — the website nav, sitemap, and search still list every page normally.
+
 ## ProductInfo
 
 Every generator that writes a top-level index file (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) takes the same `product` object:
