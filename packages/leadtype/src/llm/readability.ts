@@ -822,6 +822,7 @@ function buildBreadcrumb(
 }
 
 const REFERENCE_SECTION_PATTERN = /^(reference|api)$/i;
+const REFERENCE_PATH_PATTERN = /(^|\/)(reference|api)(\/|$)/i;
 
 /**
  * Stable `@id`s for the site-level entities, derived from the base URL. Per-page
@@ -853,10 +854,12 @@ export function renderJsonLd(
   const articleSection = sections.at(0)?.title;
   const ids = jsonLdEntityIds(manifest.baseUrl);
   // Reference pages are additionally typed as APIReference so answer engines can
-  // distinguish prose from the API surface.
-  const isApiReference = sections.some((section) =>
-    REFERENCE_SECTION_PATTERN.test(section.slug)
-  );
+  // distinguish prose from the API surface. Keyed on the page's own path as well as
+  // its nav section, so a /reference/ page stays APIReference even when the sidebar
+  // groups it elsewhere.
+  const isApiReference =
+    REFERENCE_PATH_PATTERN.test(page.relativePath) ||
+    sections.some((section) => REFERENCE_SECTION_PATTERN.test(section.slug));
   return {
     "@context": "https://schema.org",
     "@type": isApiReference ? ["TechArticle", "APIReference"] : "TechArticle",

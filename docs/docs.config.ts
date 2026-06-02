@@ -164,9 +164,18 @@ export default defineDocsConfig({
           ],
         },
         {
-          title: "Search & AI",
+          title: "Search & agents",
           base: "search",
-          pages: ["add-search", "ai-answers", "agent-tools"],
+          // MCP + skills are runtime agent-integration features, not buried API
+          // reference. Listed here (by absolute path; their /reference/* URLs are
+          // unchanged) next to their siblings.
+          pages: [
+            "add-search",
+            "ai-answers",
+            "agent-tools",
+            "/reference/mcp",
+            "/reference/skills",
+          ],
         },
         {
           title: "Docs Sources",
@@ -196,8 +205,6 @@ export default defineDocsConfig({
             "mdx",
             "remark",
             "search",
-            "mcp",
-            "skills",
             "i18n",
             "troubleshooting",
           ],
