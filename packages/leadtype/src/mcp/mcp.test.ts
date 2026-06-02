@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { beforeAll, describe, expect, it } from "vitest";
+import { runMcpCommand } from "../cli/mcp";
 import type {
   AgentReadabilityManifest,
   AgentReadabilityPage,
@@ -261,6 +262,27 @@ describe("loadDocsArtifacts (from disk)", () => {
     await expect(loadDocsArtifacts({ artifacts: tmpdir() })).rejects.toThrow(
       /search-index\.json/
     );
+  });
+
+  it("`leadtype mcp --check` exercises the tools with no client or SDK", async () => {
+    let out = "";
+    const io = {
+      stderr: { write: () => true },
+      stdout: {
+        write: (chunk: string) => {
+          out += chunk;
+          return true;
+        },
+      },
+    };
+    const code = await runMcpCommand(
+      ["--check", "--artifacts", dir, "--query", "quickstart"],
+      io
+    );
+    expect(code).toBe(0);
+    expect(out).toContain("tools: search-docs, get-page");
+    expect(out).toContain("/docs/guides/quickstart");
+    expect(out).toMatch(/get-page\(.*\): \d+ chars/);
   });
 });
 

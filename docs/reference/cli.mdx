@@ -282,9 +282,13 @@ leadtype mcp [options]
 | `--artifacts <dir>` | `./public` | Directory containing the generated `docs/` folder (with `search-index.json` + `agent-readability.json`). Resolved against the process CWD — pass an absolute path in IDE config, where the CWD is unpredictable. |
 | `--package <name>` | — | Serve an installed dependency's bundled docs from `node_modules/<name>` instead of `--artifacts`. The package must have been built with `leadtype generate --bundle --mcp` so its tarball ships the search index + manifest. |
 | `--tools <list>` | `search-docs,get-page` | Comma-separated tools to expose: `search-docs`, `get-page`, `list-pages`. |
+| `--check` | off | Exercise the tools once and print the result, then exit — no MCP client, no SDK, no editor. The fastest way to confirm the server works. |
+| `--query <q>` | product name | Query to run under `--check`. |
 | `-h`, `--help` | — | Print usage. |
 
-Exit codes: `0` the server ran and the client disconnected, `1` failed to load artifacts (run `leadtype generate` first) or start the server, `2` CLI usage error.
+Exit codes: `0` the server ran and the client disconnected (or `--check` succeeded), `1` failed to load artifacts (run `leadtype generate` first) or start the server, `2` CLI usage error.
+
+**Test without a client.** `leadtype mcp --check --query "your term"` loads the artifacts, runs `search-docs` + `get-page` once, and prints what came back — no editor config, no `@modelcontextprotocol/sdk`. For a full MCP client UI, point the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) at it: `npx @modelcontextprotocol/inspector leadtype mcp --artifacts ./public`.
 
 Requires the optional peer dependency `@modelcontextprotocol/sdk`; a missing install surfaces an actionable error. The server reads artifacts only — `get-page` serves the `.md` mirror from disk, so a deleted mirror makes pages unreadable even when search still works. Regenerate to restore it.
 

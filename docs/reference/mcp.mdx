@@ -66,12 +66,21 @@ The common case: give your own editor's agent live search over your docs.
       </Tab>
     </Tabs>
   </Step>
+  <Step title="Verify it works — before touching your editor">
+    Exercise the tools once, with no client and no SDK:
+
+    ```bash
+    leadtype mcp --check --query "getting started"
+    ```
+
+    It prints the tools, the `search-docs` hits, and a `get-page` byte count. If that looks right, the server is good — wire it into your editor next.
+  </Step>
   <Step title="Ask the agent">
     Restart the client and ask its agent something about your docs — it calls `search-docs`, then `get-page` on the best hit.
   </Step>
 </Steps>
 
-That's the whole loop: `leadtype generate` makes the artifacts, `leadtype mcp` serves them over stdio, your editor's agent calls the two tools. Nothing to host.
+That's the whole loop: `leadtype generate` makes the artifacts, `leadtype mcp` serves them over stdio, your editor's agent calls the two tools. Nothing to host. (Want a full client UI to poke at? `npx @modelcontextprotocol/inspector leadtype mcp --artifacts ./public`.)
 
 ## Which delivery shape?
 
