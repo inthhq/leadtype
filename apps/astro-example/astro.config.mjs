@@ -8,10 +8,7 @@ export default defineConfig({
     mdx({
       remarkPlugins: [
         ...createMdxSourcePlugins({
-          typeTableBasePath: path.resolve(
-            process.cwd(),
-            "../../examples/shared-docs"
-          ),
+          typeTableBasePath: path.resolve(process.cwd(), "../.."),
         }),
       ],
     }),

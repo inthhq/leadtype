@@ -1,24 +1,23 @@
 import { resolve } from "node:path";
 import { loader } from "fumadocs-core/source";
 import { fumadocsSource } from "leadtype/fumadocs";
+import docsConfig from "../../../docs/docs.config";
 
 // process.cwd() is the app root when Next runs build/dev.
-const contentDir = resolve(
-  process.cwd(),
-  "..",
-  "..",
-  ".docs-src",
-  "c15t",
-  "docs"
-);
+const repoRoot = resolve(process.cwd(), "..", "..");
+const contentDir = resolve(repoRoot, "docs");
 
 /**
- * fumadocs source backed by leadtype/fumadocs. Walks `.docs-src/c15t/docs`,
- * picks up both `.mdx` pages and the c15t-authored `meta.json` files, and
- * resolves `<include>` / `<ExtractedTypeTable>` at build time via
- * `createMdxSourcePlugins()` (wired in `next.config.mjs`).
+ * fumadocs source backed by leadtype/fumadocs. It reads the repo-root
+ * Leadtype docs, uses the same curated navigation as the other examples, and
+ * resolves `<include>` / `<ExtractedTypeTable>` relative to the repo root.
  */
-const fumadocsSourceResult = await fumadocsSource({ contentDir });
+const fumadocsSourceResult = await fumadocsSource({
+  contentDir,
+  includeMetaJson: false,
+  nav: docsConfig.navigation,
+  typeTableBasePath: repoRoot,
+});
 
 export const source = loader({
   baseUrl: "/docs",

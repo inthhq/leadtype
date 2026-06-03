@@ -6,7 +6,7 @@ export default function HomePage() {
       <p className="eyebrow">Next.js App Router dogfood</p>
       <h1>Leadtype framework example</h1>
       <p>
-        This app renders shared Leadtype docs, serves generated agent artifacts,
+        This app renders the Leadtype docs, serves generated agent artifacts,
         and searches static JSON through <code>leadtype/search/react</code>.
       </p>
       <Link className="button" href="/docs">

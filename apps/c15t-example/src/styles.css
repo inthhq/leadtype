@@ -56,17 +56,30 @@ pre {
   border-bottom: 1px solid #202223;
 }
 
-.inth {
-  font-size: 20px;
-  line-height: 0.72;
+.brand span:last-child {
+  display: grid;
+  gap: 3px;
 }
 
-.divider {
+.brand strong {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.brand small {
+  font-size: 12px;
+  font-weight: 500;
   color: #9c9c9c;
 }
 
-.network {
-  font-size: 21px;
+.mark {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #111111;
+  background: #f4f4f4;
+  border-radius: 6px;
 }
 
 .framework-select,
@@ -174,6 +187,8 @@ button[aria-pressed="true"],
 }
 
 .top-nav a {
+  display: inline-flex;
+  align-items: center;
   height: 48px;
   font-weight: 600;
   color: #9b9b9b;
@@ -194,7 +209,23 @@ button[aria-pressed="true"],
 }
 
 .doc-header {
-  margin-bottom: 40px;
+  margin-bottom: 34px;
+}
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9c9c9c;
+}
+
+.breadcrumbs span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .doc-header span {
@@ -234,12 +265,38 @@ button[aria-pressed="true"],
 
 .doc-content p,
 .doc-content ul,
-.doc-content ol {
+.doc-content ol,
+.doc-content table {
   margin: 16px 0;
 }
 
 .doc-content a {
   color: #60d0c2;
+}
+
+.doc-content h1 {
+  display: none;
+}
+
+.doc-content table {
+  width: 100%;
+  overflow: hidden;
+  border-collapse: collapse;
+  border: 1px solid #2a2d2e;
+  border-radius: 6px;
+}
+
+.doc-content th,
+.doc-content td {
+  padding: 10px 12px;
+  vertical-align: top;
+  text-align: left;
+  border: 1px solid #2a2d2e;
+}
+
+.doc-content th {
+  color: #ffffff;
+  background: #151717;
 }
 
 .doc-content pre {
@@ -257,6 +314,35 @@ button[aria-pressed="true"],
   background: #121414;
   border: 1px solid #2b2e2f;
   border-radius: 4px;
+}
+
+.adjacent-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 56px;
+}
+
+.adjacent-links a {
+  display: grid;
+  gap: 8px;
+  min-height: 96px;
+  padding: 18px;
+  color: #ffffff;
+  background: #101212;
+  border: 1px solid #2c2f30;
+  border-radius: 6px;
+}
+
+.adjacent-links a:last-child {
+  text-align: right;
+}
+
+.adjacent-links span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9c9c9c;
+  text-transform: uppercase;
 }
 
 .right-rail {

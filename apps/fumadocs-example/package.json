@@ -4,14 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup:source": "bun run scripts/setup-source.ts",
-    "docs:generate": "leadtype generate --src ../../.docs-src/c15t --docs-dir docs --out public --base-url http://localhost:3000 --name c15t --summary \"Consent management for modern web apps.\"",
-    "predev": "bun run setup:source",
-    "prebuild": "bun run setup:source",
+    "docs:generate": "leadtype generate --src ../.. --docs-dir docs --out public --base-url http://localhost:3000 --json",
     "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next dev --webpack",
     "build": "bun run --filter leadtype build && bun run docs:generate && next build --webpack",
-    "start": "next start",
-    "check-types": "bun run --filter leadtype build && bun run setup:source && bun run docs:generate && tsgo --noEmit"
+    "start": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next start",
+    "check-types": "bun run --filter leadtype build && bun run docs:generate && tsgo --noEmit"
   },
   "dependencies": {
     "@next/mdx": "^16.2.6",

@@ -91,22 +91,22 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 ## Repo layout
 
 - `packages/leadtype/` — the npm package (CLI + library entry points).
-- `apps/example/` — production docs site and reference template, on TanStack Start.
+- `apps/tanstack/` — production docs site and reference template, on TanStack Start.
 - `docs/` — the source MDX rendered by both this site and the package's bundled docs.
 
 ## Local workflow
 
 ```bash
 bun install
-bun run dev          # build the package, run the pipeline, start the example app
+bun run dev          # build the package, run the pipeline, start the TanStack app
 ```
 
 Pipeline checks:
 
 ```bash
-bun run --filter example pipeline:build
-bun run --filter example pipeline:test
-bun run --filter example test:e2e
+bun run --filter tanstack pipeline:build
+bun run --filter tanstack pipeline:test
+bun run --filter tanstack test:e2e
 ```
 
 ## License

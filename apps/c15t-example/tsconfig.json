@@ -7,7 +7,10 @@
     "noEmit": true,
     "paths": {
       "leadtype": ["../../packages/leadtype/src/index.ts"],
-      "leadtype/remark": ["../../packages/leadtype/src/remark/index.ts"]
+      "leadtype/llm/readability": [
+        "../../packages/leadtype/src/llm/readability.ts"
+      ],
+      "leadtype/navigation": ["../../packages/leadtype/src/navigation/index.ts"]
     },
     "types": ["node", "vite/client"]
   },

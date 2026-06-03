@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 }
 
 export const metadata = {
-  title: "c15t — fumadocs + leadtype",
+  title: "Leadtype — fumadocs example",
   description:
-    "c15t consent-management docs rendered through fumadocs-ui with leadtype as the source layer.",
+    "Leadtype docs rendered through fumadocs-ui with leadtype as the source layer.",
 };

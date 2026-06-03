@@ -213,7 +213,7 @@ Exit codes: `0` all targeted sources are ready, `1` sync failure (clone error, o
 
 ### Cache layout
 
-Each remote collection's clone lives at `<cacheDir>` (default `.leadtype/sources/<repo-slug>@<ref>`, relative to the config dir). Override per collection with `cacheDir` when other tooling needs a stable on-disk path (the c15t example pins `cacheDir: ".docs-src/c15t"` so type-table extraction can find the repo at a known location).
+Each remote collection's clone lives at `<cacheDir>` (default `.leadtype/sources/<repo-slug>@<ref>`, relative to the config dir). Override per collection with `cacheDir` when other tooling needs a stable on-disk path, such as a docs extractor that reads generated fixtures from the cloned repo.
 
 Inside each cacheDir, `leadtype sync` writes a `.leadtype-sync.json` manifest:
 

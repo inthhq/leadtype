@@ -1,12 +1,12 @@
 import path from "node:path";
 import { createDocsSource } from "leadtype";
-import docsConfig from "../../../../examples/shared-docs/docs/docs.config";
+import docsConfig from "../../../../docs/docs.config";
 
-const fixtureRoot = path.resolve(process.cwd(), "../../examples/shared-docs");
+const repoRoot = path.resolve(process.cwd(), "../..");
 
 export const source = await createDocsSource({
-  contentDir: path.join(fixtureRoot, "docs"),
-  groups: docsConfig.groups,
+  contentDir: path.join(repoRoot, "docs"),
+  nav: docsConfig.navigation,
   baseUrl: "http://localhost:4321",
-  typeTableBasePath: fixtureRoot,
+  typeTableBasePath: repoRoot,
 });

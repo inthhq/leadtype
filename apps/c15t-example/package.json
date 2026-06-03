@@ -4,32 +4,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docs:generate": "bun run scripts/generate-artifacts.ts",
+    "docs:generate": "leadtype generate --src ../.. --docs-dir docs --out public --base-url http://localhost:5173 --json",
     "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite dev",
     "build": "bun run --filter leadtype build && bun run docs:generate && vite build",
     "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite preview",
-    "check-types": "tsgo --noEmit"
+    "check-types": "bun run --filter leadtype build && bun run docs:generate && tsgo --noEmit"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
-    "@mdx-js/react": "^3.1.1",
     "@vitejs/plugin-react": "^6.0.1",
     "leadtype": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "streamdown": "^2.5.0",
     "vite": "^8.0.11"
   },
   "devDependencies": {
-    "@mdx-js/rollup": "^3.1.1",
     "@repo/typescript-config": "workspace:*",
-    "@types/mdast": "^4.0.4",
     "@types/node": "^25.6.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript/native-preview": "7.0.0-dev.20260509.2",
-    "remark-frontmatter": "^5.0.0",
-    "remark-gfm": "^4.0.1",
     "typescript": "6.0.3",
     "vite-tsconfig-paths": "^6.1.1"
   }

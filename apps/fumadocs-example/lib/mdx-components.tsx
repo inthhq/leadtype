@@ -9,18 +9,21 @@ import type {
   AccordionItemProps,
   AudienceProps,
   CommandTabsProps,
+  DetailsProps,
+  ExampleProps,
+  MermaidProps,
   PromptProps,
+  TopicSwitcherProps,
   TypeTableProps,
 } from "leadtype/mdx";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentProps, ComponentType, ReactNode } from "react";
 
 /**
  * Map leadtype's custom MDX tag contract onto fumadocs-ui primitives.
  *
  * fumadocs-ui already covers most tags directly (Callout, Card, Steps, Tabs,
  * Files); a few tags need light adapters (Accordion → fumadocs Accordions /
- * Accordion, TypeTable, Audience). c15t-specific tags get pass-through stubs
- * so the docs render without errors.
+ * Accordion, TypeTable, Audience).
  */
 
 // Leadtype Accordion(container)/AccordionItem(item) → fumadocs Accordions/Accordion
@@ -193,7 +196,139 @@ function Prompt({
   );
 }
 
-// c15t-specific components — pass through so MDX compiles without crashing.
+function Mermaid({ chart, children }: MermaidProps) {
+  const source = chart ?? (typeof children === "string" ? children : "");
+  return (
+    <pre data-language="mermaid">
+      <code>{source}</code>
+    </pre>
+  );
+}
+
+function Example({
+  title,
+  description,
+  filename,
+  language = "tsx",
+  code,
+  sourceFiles = [],
+  children,
+}: Omit<ExampleProps, "children"> & { children?: ReactNode }) {
+  return (
+    <div className="my-4 rounded-lg border p-4">
+      {title ? <h3 className="mt-0 font-medium text-base">{title}</h3> : null}
+      {description ? <p className="text-sm opacity-80">{description}</p> : null}
+      {children}
+      {code ? (
+        <>
+          {filename ? <p className="text-xs opacity-70">{filename}</p> : null}
+          <pre data-language={language}>
+            <code>{code}</code>
+          </pre>
+        </>
+      ) : null}
+      {sourceFiles.map((sourceFile) => (
+        <div key={`${sourceFile.filename}:${sourceFile.language ?? "tsx"}`}>
+          <p className="text-xs opacity-70">{sourceFile.filename}</p>
+          <pre data-language={sourceFile.language ?? "tsx"}>
+            <code>{sourceFile.code}</code>
+          </pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TopicSwitcher({ items, label, activeValue }: TopicSwitcherProps) {
+  return (
+    <nav aria-label={label ?? "Topics"} className="my-4 rounded-lg border p-3">
+      {label ? (
+        <p className="mb-2 text-xs uppercase opacity-60">{label}</p>
+      ) : null}
+      <div className="grid gap-2">
+        {items.map((item) => {
+          const isActive = item.current || item.value === activeValue;
+          const content = (
+            <>
+              <span className="font-medium">{item.label ?? item.value}</span>
+              {item.description ? (
+                <span className="block text-sm opacity-70">
+                  {item.description}
+                </span>
+              ) : null}
+            </>
+          );
+          return item.href ? (
+            <a
+              aria-current={isActive ? "page" : undefined}
+              className="rounded-md border px-3 py-2 hover:bg-fd-accent"
+              href={item.href}
+              key={item.value}
+            >
+              {content}
+            </a>
+          ) : (
+            <div className="rounded-md border px-3 py-2" key={item.value}>
+              {content}
+            </div>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+interface SelectorProps {
+  children?: ReactNode;
+  defaultValue?: string;
+  label?: string;
+  options?: Array<{ label: string; value: string }>;
+}
+
+function Selector({
+  children,
+  defaultValue,
+  label,
+  options = [],
+}: SelectorProps) {
+  return (
+    <div className="my-4 rounded-lg border p-3">
+      {label ? <p className="font-medium text-sm">{label}</p> : null}
+      {options.length > 0 ? (
+        <p className="text-xs opacity-70">
+          {options.find((option) => option.value === defaultValue)?.label ??
+            options[0]?.label}
+        </p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+function Details({ children }: DetailsProps & { children?: ReactNode }) {
+  return <details className="my-4 rounded-lg border p-3">{children}</details>;
+}
+
+function Section({ children }: { children?: ReactNode }) {
+  return <>{children}</>;
+}
+
+function Hint({ children }: { children?: ReactNode }) {
+  return <Callout>{children}</Callout>;
+}
+
+function Response({ children }: { children?: ReactNode }) {
+  return <div className="my-4 rounded-lg border p-3">{children}</div>;
+}
+
+function Summary({ children, ...props }: ComponentProps<"summary">) {
+  return (
+    <summary className="cursor-pointer font-medium" {...props}>
+      {children}
+    </summary>
+  );
+}
+
 const Passthrough: ComponentType<{ children?: ReactNode }> = ({ children }) => (
   <>{children}</>
 );
@@ -214,12 +349,23 @@ export const mdxComponents = {
   File,
   Folder,
   TypeTable,
+  AutoTypeTable: TypeTable,
+  ExtractedTypeTable: TypeTable,
   CommandTabs,
-  // c15t's <PackageCommandTabs> alias.
+  // Compatibility aliases for external docs that use the same component map.
   PackageCommandTabs: CommandTabs,
   Prompt,
   Audience,
-  // c15t pass-throughs — these need real implementations for production.
+  Mermaid,
+  Example,
+  TopicSwitcher,
+  Selector,
+  Details,
+  Section,
+  Hint,
+  Response,
+  summary: Summary,
+  // External-doc pass-throughs — root Leadtype docs do not render these.
   ConsentBanner: Passthrough,
   ConsentManager: Passthrough,
   ConsentManagerDialog: Passthrough,
