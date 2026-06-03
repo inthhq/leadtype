@@ -197,7 +197,11 @@ export function remarkResolveTypeTableJsx(
       }
     };
 
-    visitChildren(tree.children);
+    // Some MDX pipelines (e.g. Next's loader) can invoke the transformer with a
+    // root that has no `children`; guard so the plugin no-ops instead of throwing.
+    if (Array.isArray(tree.children)) {
+      visitChildren(tree.children);
+    }
     return tree;
   };
 }

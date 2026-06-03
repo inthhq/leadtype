@@ -30,6 +30,11 @@
       "types": "./dist/mdx/index.d.ts",
       "import": "./dist/mdx/index.js"
     },
+    "./mdx/source": {
+      "types": "./dist/mdx/source.d.ts",
+      "import": "./dist/mdx/source.js",
+      "default": "./dist/mdx/source.js"
+    },
     "./fumadocs": {
       "types": "./dist/fumadocs/index.d.ts",
       "import": "./dist/fumadocs/index.js"
@@ -73,6 +78,10 @@
     "./llm/readability": {
       "types": "./dist/llm/readability.d.ts",
       "import": "./dist/llm/readability.js"
+    },
+    "./navigation": {
+      "types": "./dist/navigation/index.d.ts",
+      "import": "./dist/navigation/index.js"
     },
     "./search": {
       "types": "./dist/search/index.d.ts",

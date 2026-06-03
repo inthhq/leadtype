@@ -1,86 +1,21 @@
-<!-- biome-ignore-all lint/correctness/noUnusedVariables lint/correctness/useHookAtTopLevel: Nuxt auto-imports and Vue template references are resolved by Nuxt. -->
 <script setup lang="ts">
-import {
-  createDocsJsonLd,
-  normalizeAgentReadabilityManifest,
-  stringifyJsonLd,
-} from "leadtype/llm/readability";
-import { useLeadtypeSearch } from "leadtype/search/vue";
 import { computed } from "vue";
-import { createError, useAsyncData, useHead, useRoute } from "#imports";
-import manifestJson from "../../../public/docs/agent-readability.json";
-
-const manifest = normalizeAgentReadabilityManifest(manifestJson);
+import { useRoute } from "#imports";
+// biome-ignore lint/correctness/noUnusedImports: Nuxt dev servers can keep stale auto-import component paths after route refactors.
+import DocsPageShell from "../../components/docs-page-shell.vue";
 
 const route = useRoute();
-interface PageData {
-  markdown: string;
-  markdownUrlPath: string;
-  title: string;
-  urlPath: string;
-}
-let slug = "";
-if (Array.isArray(route.params.slug)) {
-  slug = route.params.slug.join("/");
-} else if (typeof route.params.slug === "string") {
-  slug = route.params.slug;
-}
-const { data: pageData, error } = await useAsyncData<PageData>(
-  `docs:${slug}`,
-  () => $fetch("/api/docs", { query: { slug } })
-);
+const slug = computed(() => {
+  const value = route.params.slug;
 
-if (error.value || !pageData.value) {
-  throw createError({ statusCode: 404, statusMessage: "Page not found" });
-}
+  if (Array.isArray(value)) {
+    return value.join("/");
+  }
 
-const page = computed(() => pageData.value as PageData);
-const docsSearch = useLeadtypeSearch("docs");
-
-const meta = manifest.pages.find(
-  (entry) => entry.urlPath === page.value.urlPath
-);
-const jsonLd = createDocsJsonLd({ urlPath: page.value.urlPath, manifest });
-useHead({
-  link: meta
-    ? [
-        { rel: "canonical", href: meta.absoluteUrl },
-        {
-          rel: "alternate",
-          type: "text/markdown",
-          href: meta.markdownAbsoluteUrl,
-        },
-      ]
-    : [],
-  script: jsonLd
-    ? [{ type: "application/ld+json", innerHTML: stringifyJsonLd(jsonLd) }]
-    : [],
+  return typeof value === "string" ? value : "";
 });
 </script>
 
 <template>
-  <main class="docs-layout">
-    <aside>
-      <a href="/llms.txt">llms.txt</a>
-      <a href="/llms-full.txt">llms-full.txt</a>
-      <a :href="page.markdownUrlPath">Markdown</a>
-    </aside>
-    <article>
-      <section class="search">
-        <input
-          aria-label="Search docs"
-          placeholder="Search docs"
-          @input="docsSearch.search(($event.currentTarget as HTMLInputElement).value)"
-        />
-        <span>{{ docsSearch.status }}</span>
-        <ul>
-          <li v-for="result in docsSearch.results.value" :key="result.id">
-            <a :href="result.urlWithHash">{{ result.title }}</a>
-            <p>{{ result.excerpt }}</p>
-          </li>
-        </ul>
-      </section>
-      <pre class="markdown">{{ page.markdown }}</pre>
-    </article>
-  </main>
+  <component :is="DocsPageShell" :slug="slug" />
 </template>

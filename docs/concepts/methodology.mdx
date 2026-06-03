@@ -1,6 +1,6 @@
 ---
 title: "Methodology"
-description: "Where leadtype fits alongside docs frameworks like Fumadocs and Starlight — the portable content and agent-readability layer you run behind any of them."
+description: "Where leadtype fits alongside custom docs apps and frameworks like Fumadocs and Starlight — the portable content and agent-readability layer underneath the host you choose."
 ---
 
 # Methodology
@@ -21,7 +21,7 @@ artifacts across any framework or repo?" The two compose.
 | **Fumadocs** | A polished React docs framework (Next.js, TanStack Start, React Router, Waku) with first-class UI, search, and `llms.txt` support. |
 | **Starlight** | A batteries-included Astro docs framework with theming, i18n, and a deep plugin ecosystem. |
 | **Mintlify** | A managed docs platform — hosted publishing, search, analytics, and AI, all built in. |
-| **Leadtype** | The portable content + agent-readability layer you run behind any of them. |
+| **Leadtype** | The portable content + agent-readability layer underneath the host you choose — custom app or docs framework. |
 
 Reach for a framework like **Fumadocs** or **Starlight** when the job is shipping
 a polished docs UI — they're built for exactly that. Choose a managed platform
@@ -30,7 +30,8 @@ like **Mintlify** when you want publishing, search, and AI handled for you. Use
 markdown, navigation, search, `llms.txt`, a root `llms-full.txt` fallback, and
 `AGENTS.md` bundles that ship inside your npm tarballs — and keep them identical
 across frameworks and repos. These aren't mutually exclusive: leadtype is
-happiest layered *underneath* a framework you already like.
+happiest underneath a host you control, whether that is a custom docs app or a
+framework you already like.
 
 ## What leadtype owns
 
@@ -52,10 +53,11 @@ happiest layered *underneath* a framework you already like.
 
 ## Pairing with a framework
 
-Leadtype is built to layer on, not replace. Use **Fumadocs** or **Starlight**
-for the UI and run leadtype alongside for one portable pipeline — markdown,
-search, `llms.txt`, root `llms-full.txt`, Agent Readability files, and
-npm-bundled `AGENTS.md` — shared across every framework and package. The
+Leadtype is built to power the docs host, not own the visual shell. Use a custom
+docs app when you want full control, or use **Fumadocs** or **Starlight** for
+the UI and run leadtype alongside for one portable pipeline — markdown, search,
+`llms.txt`, root `llms-full.txt`, Agent Readability files, and npm-bundled
+`AGENTS.md` — shared across every framework and package. The
 [Integrate with Fumadocs](/docs/build/integrate-with-fumadocs) guide is a worked
 example: Fumadocs renders the site, leadtype adds the content and agent layer
 underneath.

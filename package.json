@@ -15,7 +15,7 @@
   "name": "leadtype-monorepo",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --filter=example",
+    "dev": "turbo run dev --filter=tanstack",
     "lint": "turbo run lint",
     "format": "ultracite fix",
     "check-types": "turbo run check-types",

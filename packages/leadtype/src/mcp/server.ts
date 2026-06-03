@@ -26,7 +26,7 @@ const MODULE_NOT_FOUND_MESSAGE = /cannot find (module|package)/i;
 
 export async function importSdkModule<T>(specifier: string): Promise<T> {
   try {
-    return (await import(specifier)) as T;
+    return (await import(/* @vite-ignore */ specifier)) as T;
   } catch (error) {
     const code =
       error instanceof Error && "code" in error

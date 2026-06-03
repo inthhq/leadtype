@@ -229,7 +229,7 @@ export default defineDocsConfig({
       // Lower-priority for agents under a tight context budget: collapses into the
       // `## Optional` section of docs/llms.txt rather than its own heading.
       optional: true,
-      pages: ["nav-migration-prompts"],
+      pages: ["0-2"],
     },
   ],
   agents: {
