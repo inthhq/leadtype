@@ -45,7 +45,7 @@ export default async function DocsPage({
         <SearchBox />
         <nav aria-label="Breadcrumb" className="breadcrumbs">
           {breadcrumbs.map((crumb) => (
-            <a href={crumb.to} key={crumb.to}>
+            <a href={crumb.to} key={`${crumb.to}-${crumb.label}`}>
               {crumb.label}
             </a>
           ))}

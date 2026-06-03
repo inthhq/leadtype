@@ -43,6 +43,7 @@ type MarkdownState =
     };
 
 const frontmatterRegex = /^---\n[\s\S]*?\n---\n?/;
+const fencedCodeBlockRegex = /^```[\s\S]*?^```$/gm;
 const headingRegex = /^#{2,3}\s+(.+)$/gm;
 const markdownExtensionRegex = /\.md$/;
 const trailingSlashRegex = /\/$/;
@@ -68,8 +69,13 @@ function stripFrontmatter(markdown: string) {
   return markdown.replace(frontmatterRegex, "");
 }
 
+function stripFencedCodeBlocks(markdown: string) {
+  return markdown.replace(fencedCodeBlockRegex, "");
+}
+
 function extractHeadings(markdown: string) {
-  return Array.from(markdown.matchAll(headingRegex)).map((match) => {
+  const markdownWithoutCode = stripFencedCodeBlocks(markdown);
+  return Array.from(markdownWithoutCode.matchAll(headingRegex)).map((match) => {
     const text = match[1]?.replace(/`/g, "") ?? "";
     const level = match[0].startsWith("###") ? 3 : 2;
     const id = text

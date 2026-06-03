@@ -20,6 +20,7 @@ const SVG_COLUMN_GAP = 178;
 const SVG_ROW_GAP = 82;
 const SVG_PADDING_X = 44;
 const SVG_PADDING_Y = 34;
+const HASH_MODULUS = 1_000_000_007;
 
 interface HastNode {
   children?: HastNode[];
@@ -68,7 +69,12 @@ function addCanonicalHeadingIds(headingIds: readonly string[] = []) {
 
 function renderMermaidBlocks() {
   return (tree: HastNode) => {
-    visitMermaidParents(tree);
+    let mermaidIndex = 0;
+    visitMermaidParents(tree, (source) => {
+      const markerId = `mermaid-arrow-${hashString(source)}-${mermaidIndex}`;
+      mermaidIndex += 1;
+      return markerId;
+    });
   };
 }
 
@@ -80,7 +86,10 @@ function addHeadingIdAliases() {
   };
 }
 
-function visitMermaidParents(node: HastNode) {
+function visitMermaidParents(
+  node: HastNode,
+  createMarkerId: (source: string) => string
+) {
   if (
     node.properties?.["data-leadtype-mermaid-static"] !== undefined ||
     hasClassName(node, "mermaid-source")
@@ -95,12 +104,15 @@ function visitMermaidParents(node: HastNode) {
         return child;
       }
 
-      return createMermaidDiagramNode(mermaidSource);
+      return createMermaidDiagramNode(
+        mermaidSource,
+        createMarkerId(mermaidSource)
+      );
     });
   }
 
   for (const child of node.children ?? []) {
-    visitMermaidParents(child);
+    visitMermaidParents(child, createMarkerId);
   }
 }
 
@@ -158,7 +170,7 @@ function getMermaidSource(node: HastNode): string | null {
   return getNodeText(code ?? {}).trim();
 }
 
-function createMermaidDiagramNode(source: string): HastNode {
+function createMermaidDiagramNode(source: string, markerId: string): HastNode {
   const diagram = parseMermaidDiagram(source);
   if (!diagram) {
     return createMermaidSourceNode(source);
@@ -173,7 +185,7 @@ function createMermaidDiagramNode(source: string): HastNode {
         tagName: "span",
         type: "element",
       },
-      createMermaidSvgNode(layout),
+      createMermaidSvgNode(layout, markerId),
       createMermaidSourceNode(source),
     ],
     properties: {
@@ -183,6 +195,14 @@ function createMermaidDiagramNode(source: string): HastNode {
     tagName: "figure",
     type: "element",
   };
+}
+
+function hashString(value: string): string {
+  let hash = 0;
+  for (const character of value) {
+    hash = (hash * 31 + character.charCodeAt(0)) % HASH_MODULUS;
+  }
+  return hash.toString(36);
 }
 
 function createMermaidSourceNode(source: string): HastNode {
@@ -261,24 +281,7 @@ function layoutMermaidDiagram(diagram: MermaidDiagram) {
     outgoing.get(edge.from)?.push(edge.to);
   }
 
-  const layers = new Map<string, number>();
-  const queue = Array.from(diagram.nodes.keys()).filter(
-    (nodeId) => (incoming.get(nodeId) ?? 0) === 0
-  );
-  for (const nodeId of queue) {
-    layers.set(nodeId, 0);
-  }
-
-  for (const nodeId of queue) {
-    const sourceLayer = layers.get(nodeId) ?? 0;
-    for (const targetId of outgoing.get(nodeId) ?? []) {
-      layers.set(
-        targetId,
-        Math.max(layers.get(targetId) ?? 0, sourceLayer + 1)
-      );
-      queue.push(targetId);
-    }
-  }
+  const layers = assignMermaidLayers(diagram, incoming, outgoing);
 
   const byLayer = new Map<number, string[]>();
   for (const nodeId of diagram.nodes.keys()) {
@@ -311,6 +314,46 @@ function layoutMermaidDiagram(diagram: MermaidDiagram) {
   return { edges: diagram.edges, height, nodes, width };
 }
 
+function assignMermaidLayers(
+  diagram: MermaidDiagram,
+  incoming: Map<string, number>,
+  outgoing: Map<string, string[]>
+): Map<string, number> {
+  const layers = new Map<string, number>();
+  const roots = Array.from(diagram.nodes.keys()).filter(
+    (nodeId) => (incoming.get(nodeId) ?? 0) === 0
+  );
+  const queue = roots.length > 0 ? roots : Array.from(diagram.nodes.keys());
+  for (const nodeId of queue) {
+    layers.set(nodeId, 0);
+  }
+
+  const visitCounts = new Map<string, number>();
+  while (queue.length > 0) {
+    const nodeId = queue.shift();
+    if (nodeId === undefined) {
+      continue;
+    }
+    const visitCount = (visitCounts.get(nodeId) ?? 0) + 1;
+    visitCounts.set(nodeId, visitCount);
+    if (visitCount > diagram.nodes.size) {
+      continue;
+    }
+
+    const sourceLayer = layers.get(nodeId) ?? 0;
+    for (const targetId of outgoing.get(nodeId) ?? []) {
+      const targetLayer = layers.get(targetId) ?? 0;
+      const nextLayer = Math.max(targetLayer, sourceLayer + 1);
+      if (nextLayer > targetLayer) {
+        layers.set(targetId, nextLayer);
+        queue.push(targetId);
+      }
+    }
+  }
+
+  return layers;
+}
+
 function maxLayerHeight(byLayer: Map<number, string[]>): number {
   return Math.max(
     ...Array.from(byLayer.values()).map(
@@ -320,12 +363,15 @@ function maxLayerHeight(byLayer: Map<number, string[]>): number {
   );
 }
 
-function createMermaidSvgNode(layout: {
-  edges: { from: string; to: string }[];
-  height: number;
-  nodes: MermaidLayoutNode[];
-  width: number;
-}): HastNode {
+function createMermaidSvgNode(
+  layout: {
+    edges: { from: string; to: string }[];
+    height: number;
+    nodes: MermaidLayoutNode[];
+    width: number;
+  },
+  markerId: string
+): HastNode {
   const nodeById = new Map(layout.nodes.map((node) => [node.id, node]));
 
   return {
@@ -344,7 +390,7 @@ function createMermaidSvgNode(layout: {
               },
             ],
             properties: {
-              id: "mermaid-arrow",
+              id: markerId,
               markerHeight: 6,
               markerWidth: 6,
               orient: "auto",
@@ -366,7 +412,7 @@ function createMermaidSvgNode(layout: {
           return [];
         }
 
-        return [createMermaidEdgeNode(from, to)];
+        return [createMermaidEdgeNode(from, to, markerId)];
       }),
       ...layout.nodes.map(createMermaidBoxNode),
     ],
@@ -383,7 +429,8 @@ function createMermaidSvgNode(layout: {
 
 function createMermaidEdgeNode(
   from: MermaidLayoutNode,
-  to: MermaidLayoutNode
+  to: MermaidLayoutNode,
+  markerId: string
 ): HastNode {
   const startX = from.x + SVG_NODE_WIDTH;
   const startY = from.y + SVG_NODE_HEIGHT / 2;
@@ -396,7 +443,7 @@ function createMermaidEdgeNode(
       className: ["mermaid-edge"],
       d: `M ${startX} ${startY} C ${bendX} ${startY}, ${bendX} ${endY}, ${endX} ${endY}`,
       fill: "none",
-      "marker-end": "url(#mermaid-arrow)",
+      "marker-end": `url(#${markerId})`,
       stroke: "var(--muted-foreground)",
       "stroke-width": 1.4,
     },
@@ -521,7 +568,9 @@ function getHeadingAliases(node: HastNode, usedIds: Set<string>): string[] {
     slugWithRemovedPunctuation(textWithoutCode),
   ];
 
-  return aliases.filter((alias) => alias && !usedIds.has(alias));
+  return Array.from(new Set(aliases)).filter(
+    (alias) => alias.length > 0 && !usedIds.has(alias)
+  );
 }
 
 function slugWithPunctuationSeparators(text: string): string {

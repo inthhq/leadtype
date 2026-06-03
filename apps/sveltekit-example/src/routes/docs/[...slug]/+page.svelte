@@ -119,6 +119,19 @@ function handleSearchInput(event: Event) {
     </aside>
 
     <main class="docs-card">
+      {#if breadcrumbs.length > 0}
+        <nav aria-label="Breadcrumb" class="breadcrumbs">
+          {#each breadcrumbs as crumb, index (crumb.to + crumb.label)}
+            <a
+              aria-current={index === breadcrumbs.length - 1
+                ? "page"
+                : undefined}
+              href={crumb.to}>{crumb.label}</a
+            >
+          {/each}
+        </nav>
+      {/if}
+
       <section class="docs-prose">
         {@html data.html}
       </section>

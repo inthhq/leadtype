@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 // Smoke gate for the SvelteKit member of the docs matrix.
 
 test("docs index renders nav + Leadtype content", async ({ request }) => {
-  const html = await (await request.get("/docs")).text();
+  const response = await request.get("/docs");
+  expect(response.status()).toBe(200);
+  const html = await response.text();
   expect(html).toContain('class="docs-sidebar"');
   expect(html).toContain("Leadtype is a");
   expect(html).toContain("one MDX source");

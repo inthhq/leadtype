@@ -19,7 +19,11 @@ const SAFE_URL_SCHEMES = new Set(["http:", "https:", "mailto:"]);
  */
 function safeUrl(raw: string): string | null {
   // Allow root-relative and explicit path-relative URLs unconditionally.
-  if (raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../")) {
+  if (
+    (raw.startsWith("/") && !raw.startsWith("//")) ||
+    raw.startsWith("./") ||
+    raw.startsWith("../")
+  ) {
     return raw;
   }
   try {

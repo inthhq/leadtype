@@ -41,9 +41,9 @@ export function Card({
       data-leadtype-card=""
       data-variant={variant ?? undefined}
       href={href}
+      {...rest}
       rel={isExternal ? "noopener" : undefined}
       target={isExternal ? "_blank" : undefined}
-      {...rest}
     >
       {icon ? <span data-leadtype-card-icon="">{icon}</span> : null}
       {title ? <h3 data-leadtype-card-title="">{title}</h3> : null}

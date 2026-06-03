@@ -303,6 +303,30 @@ pre {
   border-radius: 0.65rem;
 }
 
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1.25rem 1.25rem 0;
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+.breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumbs a:not(:last-child)::after {
+  padding-left: 0.5rem;
+  color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+  content: "/";
+}
+
+.breadcrumbs a[aria-current="page"] {
+  color: var(--foreground);
+}
+
 .docs-prose {
   max-width: none;
   padding: 1.5rem 1.25rem;

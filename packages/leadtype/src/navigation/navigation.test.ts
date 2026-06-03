@@ -62,6 +62,17 @@ function buildManifest(): DocsNavigation {
   };
 }
 
+function buildUngroupedManifest(): DocsNavigation {
+  return {
+    groups: [],
+    ungrouped: [
+      page("/docs", "Overview"),
+      page("/docs/changelog", "Changelog"),
+    ],
+    unknown: [],
+  };
+}
+
 describe("normalizeDocsPath", () => {
   it("strips trailing slash but preserves root", () => {
     expect(normalizeDocsPath("/docs/guides/")).toBe("/docs/guides");
@@ -107,6 +118,29 @@ describe("getSidebarSections", () => {
     const sections = getSidebarSections(buildManifest(), "/unknown");
     expect(sections[0].title).toBe("Guides");
   });
+
+  it("uses ungrouped pages when the active page is ungrouped", () => {
+    const sections = getSidebarSections(buildManifest(), "/docs/changelog");
+    expect(sections).toEqual([
+      {
+        title: "Docs",
+        links: [{ label: "Changelog", to: "/docs/changelog" }],
+      },
+    ]);
+  });
+
+  it("supports manifests with only ungrouped pages", () => {
+    const sections = getSidebarSections(buildUngroupedManifest(), "/docs");
+    expect(sections).toEqual([
+      {
+        title: "Docs",
+        links: [
+          { label: "Overview", to: "/docs" },
+          { label: "Changelog", to: "/docs/changelog" },
+        ],
+      },
+    ]);
+  });
 });
 
 describe("getHeaderTabs", () => {
@@ -124,6 +158,16 @@ describe("getHeaderTabs", () => {
         to: "/docs/reference/cli",
         description: "Reference documentation rendered from the MDX source.",
         groupKey: "docs/reference",
+      },
+    ]);
+  });
+
+  it("emits a docs tab for ungrouped-only manifests", () => {
+    expect(getHeaderTabs(buildUngroupedManifest())).toEqual([
+      {
+        label: "Docs",
+        to: "/docs",
+        description: "Documentation rendered from the MDX source.",
       },
     ]);
   });
@@ -149,6 +193,12 @@ describe("isHeaderTabActive", () => {
     expect(isHeaderTabActive(manifest, "/other", { to: "/playground" })).toBe(
       false
     );
+  });
+
+  it("matches the ungrouped docs tab across ungrouped pages", () => {
+    const manifest = buildUngroupedManifest();
+    const [docsTab] = getHeaderTabs(manifest);
+    expect(isHeaderTabActive(manifest, "/docs/changelog", docsTab)).toBe(true);
   });
 });
 
@@ -181,6 +231,12 @@ describe("getBreadcrumbs", () => {
   it("returns an empty trail for unknown paths", () => {
     expect(getBreadcrumbs(buildManifest(), "/missing")).toEqual([]);
   });
+
+  it("returns the page crumb for ungrouped pages", () => {
+    expect(getBreadcrumbs(buildManifest(), "/docs/changelog")).toEqual([
+      { label: "Changelog", to: "/docs/changelog" },
+    ]);
+  });
 });
 
 describe("getOrderedPages / getAdjacentPages", () => {
@@ -190,6 +246,7 @@ describe("getOrderedPages / getAdjacentPages", () => {
       "/docs/guides/advanced/caching",
       "/docs/guides/advanced/scaling",
       "/docs/reference/cli",
+      "/docs/changelog",
     ]);
   });
 
@@ -208,7 +265,10 @@ describe("getOrderedPages / getAdjacentPages", () => {
     expect(
       getAdjacentPages(manifest, "/docs/guides/intro").previous
     ).toBeNull();
-    expect(getAdjacentPages(manifest, "/docs/reference/cli").next).toBeNull();
+    expect(getAdjacentPages(manifest, "/docs/changelog").next).toBeNull();
+    expect(
+      getAdjacentPages(manifest, "/docs/reference/cli").next?.urlPath
+    ).toBe("/docs/changelog");
     expect(getAdjacentPages(manifest, "/missing")).toEqual({
       previous: null,
       next: null,

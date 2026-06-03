@@ -16,6 +16,7 @@ import type {
 } from "../llm/readability";
 
 const TRAILING_SLASH_PATTERN = /\/$/;
+const UNGROUPED_SECTION_TITLE = "Docs";
 
 export type {
   DocsNavigation,
@@ -94,6 +95,13 @@ function groupContainsPath(
   return group.children.some((child) => groupContainsPath(child, pathname));
 }
 
+function ungroupedContainsPath(
+  manifest: DocsNavigation,
+  pathname: string
+): boolean {
+  return manifest.ungrouped.some((page) => page.urlPath === pathname);
+}
+
 /** The top-level group whose subtree contains `pathname`, if any. */
 export function getActiveGroup(
   manifest: DocsNavigation,
@@ -137,6 +145,23 @@ function sectionsForGroup(group: DocsNavigationGroup): DocsSidebarSection[] {
   );
 }
 
+function sectionsForUngrouped(
+  pages: DocsNavigationPage[]
+): DocsSidebarSection[] {
+  if (pages.length === 0) {
+    return [];
+  }
+  return [
+    {
+      title: UNGROUPED_SECTION_TITLE,
+      links: pages.map((page) => ({
+        label: page.title,
+        to: page.urlPath,
+      })),
+    },
+  ];
+}
+
 /**
  * Sidebar sections for the active surface. Resolves the group that owns
  * `pathname` (falling back to the first group) and flattens it into sections:
@@ -146,13 +171,24 @@ export function getSidebarSections(
   manifest: DocsNavigation,
   pathname: string
 ): DocsSidebarSection[] {
-  const activeGroup = getActiveGroup(manifest, pathname) ?? manifest.groups[0];
-  return activeGroup ? sectionsForGroup(activeGroup) : [];
+  const normalized = normalizeDocsPath(pathname);
+  const activeGroup = getActiveGroup(manifest, normalized);
+  if (activeGroup) {
+    return sectionsForGroup(activeGroup);
+  }
+  if (
+    ungroupedContainsPath(manifest, normalized) ||
+    manifest.groups.length === 0
+  ) {
+    return sectionsForUngrouped(manifest.ungrouped);
+  }
+  const fallbackGroup = manifest.groups[0];
+  return fallbackGroup ? sectionsForGroup(fallbackGroup) : [];
 }
 
 /** Top-level header tabs — one per root docs group. */
 export function getHeaderTabs(manifest: DocsNavigation): DocsHeaderTab[] {
-  return manifest.groups.flatMap((group) => {
+  const groupTabs = manifest.groups.flatMap((group) => {
     const page = firstPageInGroup(group);
     if (!page) {
       return [];
@@ -168,6 +204,19 @@ export function getHeaderTabs(manifest: DocsNavigation): DocsHeaderTab[] {
       },
     ];
   });
+  if (groupTabs.length > 0) {
+    return groupTabs;
+  }
+  const firstUngrouped = manifest.ungrouped[0];
+  return firstUngrouped
+    ? [
+        {
+          label: UNGROUPED_SECTION_TITLE,
+          to: firstUngrouped.urlPath,
+          description: "Documentation rendered from the MDX source.",
+        },
+      ]
+    : [];
 }
 
 /**
@@ -180,11 +229,21 @@ export function isHeaderTabActive(
   pathname: string,
   tab: Pick<DocsHeaderTab, "to" | "groupKey">
 ): boolean {
+  const normalizedPath = normalizeDocsPath(pathname);
+  const normalizedTabPath = normalizeDocsPath(tab.to);
   if (tab.groupKey !== undefined) {
-    const activeGroup = getActiveGroup(manifest, pathname);
+    const activeGroup = getActiveGroup(manifest, normalizedPath);
     return activeGroup ? groupKeyOf(activeGroup) === tab.groupKey : false;
   }
-  return normalizeDocsPath(pathname) === normalizeDocsPath(tab.to);
+  if (normalizedPath === normalizedTabPath) {
+    return true;
+  }
+  const firstUngrouped = manifest.ungrouped[0];
+  return Boolean(
+    firstUngrouped &&
+      normalizedTabPath === normalizeDocsPath(firstUngrouped.urlPath) &&
+      ungroupedContainsPath(manifest, normalizedPath)
+  );
 }
 
 function findPageInGroup(
@@ -262,7 +321,8 @@ export function getBreadcrumbs(
     }
     return crumbs;
   }
-  return [];
+  const page = manifest.ungrouped.find((item) => item.urlPath === normalized);
+  return page ? [{ label: page.title, to: page.urlPath }] : [];
 }
 
 function flattenPagesInOrder(group: DocsNavigationGroup): DocsNavigationPage[] {
@@ -273,7 +333,10 @@ function flattenPagesInOrder(group: DocsNavigationGroup): DocsNavigationPage[] {
 export function getOrderedPages(
   manifest: DocsNavigation
 ): DocsNavigationPage[] {
-  return manifest.groups.flatMap(flattenPagesInOrder);
+  return [
+    ...manifest.groups.flatMap(flattenPagesInOrder),
+    ...manifest.ungrouped,
+  ];
 }
 
 /** The pages immediately before and after `pathname` in reading order. */

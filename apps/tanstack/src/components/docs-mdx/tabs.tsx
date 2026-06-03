@@ -103,7 +103,7 @@ export function Tabs({
     const currentIndex = items.findIndex(
       (item) => normalize(item) === activeValue
     );
-    let nextIndex = currentIndex;
+    let nextIndex: number;
 
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       nextIndex = (currentIndex + 1) % items.length;
@@ -185,6 +185,7 @@ export function Tab({ value, children }: TabProps) {
       hidden={!isActive}
       id={panelId(groupId, normalized, resolvedIndex)}
       role="tabpanel"
+      tabIndex={isActive ? 0 : undefined}
     >
       {children}
     </div>
