@@ -43,6 +43,47 @@ Use explicit page strings for pinned pages. Use `{ include }` entries for the
 rest of a folder. Keep `order` only when included pages need a stable fallback
 sort.
 
+## Upgrade prompt
+
+<Prompt
+  title="Upgrade a docs site to config navigation"
+  description="Give this to a coding agent when upgrading an existing Leadtype site."
+>
+  Upgrade this docs site to Leadtype's config-owned `navigation` API.
+
+  Context:
+  - Leadtype now prefers intentional navigation in `docs.config.ts` or the
+    relevant collection config.
+  - Existing page frontmatter `group` values should remain only as
+    taxonomy/compatibility metadata.
+  - Existing page frontmatter `order` values should remain only when wildcard
+    navigation includes need fallback sorting.
+
+  Tasks:
+  - Inspect the current docs config, docs folders, generated navigation files,
+    and any framework sidebar/header code.
+  - Add or update the config `navigation` array so top-level docs areas, sidebar
+    sections, and agent-facing navigation come from the same source of truth.
+  - Use explicit page entries for important flows such as overview,
+    quickstart, installation, migration, CLI, and API reference pages.
+  - Use `{ include: "*", sort: ["order", "path"] }` or narrower include globs
+    for inventory-like folders such as components, hooks, integrations, and
+    generated reference pages.
+  - Preserve public URLs, markdown mirror paths, search URLs, sitemap entries,
+    and Agent Readability URLs.
+  - Remove only frontmatter or app-sidebar ordering that is made redundant by
+    config navigation. Do not rename or move MDX files unless a broken route
+    requires it.
+
+  Validate:
+  - Run the repo's docs generation, type checks, linting, and tests.
+  - Confirm `llms.txt`, `agent-readability.json`, generated markdown mirrors,
+    the human sidebar, and top navigation agree.
+  - Confirm every explicit navigation entry resolves to an MDX page.
+  - Summarize the final navigation tree and list any pages included only by
+    wildcard rules.
+</Prompt>
+
 ## Library docs prompt
 
 <Prompt
