@@ -1,5 +1,338 @@
 # leadtype
 
+## 0.2.0
+
+### Minor Changes
+
+- e115ca0: Flesh out `/.well-known/agent-card.json` as a proper [A2A](https://agent2agent.info) AgentCard.
+
+  It now emits the standard fields — `name`, `description`, `url` (the MCP endpoint when enabled,
+  else the site), `version`, `capabilities`, `defaultInputModes`/`defaultOutputModes`, and each
+  skill as `{ id, name, description, tags }` — plus `provider` and `documentationUrl`. `provider`
+  reuses the top-level `organization` (same entity) and `documentationUrl` is `product.docs`
+  (default `<baseUrl>/docs`); both are overridable. The previous non-standard `mcp` field is
+  dropped (the MCP endpoint is now the standard `url`).
+
+- e115ca0: Add an agent-skills surface: `/.well-known/agent-skills` + a bundled `SKILL.md` (DESIGN-2.md Phase 3).
+
+  `leadtype generate` now emits a discoverable [`SKILL.md`](https://agentskills.io) surface (the
+  open Agent Skills format used by Claude Code, Cursor, Codex, Copilot, …). Default-on:
+
+  - **Site mode:** `/.well-known/agent-skills/index.json` (discovery manifest with `sha256` integrity)
+    - `<name>/SKILL.md` per skill + a minimal `/.well-known/agent-card.json` (A2A).
+  - **Bundle mode (`--bundle`):** a single `SKILL.md` at the package root, next to `AGENTS.md`.
+
+  The auto **docs-skill** is a thin pointer that adapts to the surface — bundled `AGENTS.md`/`docs`
+  offline, else `/llms.txt` + the MCP server when `agents.mcp.enabled`. Declare capability skills via
+  `agents.skills.items[]` (`name`, `description`, `license?`, `compatibility?`, `allowedTools?`,
+  `body`/`bodyPath`); `docsSkill: false` drops the auto one, `agentCard: false` skips the card. New
+  `generateSkillArtifacts` exported from `leadtype/llm`.
+
+  Dogfooded: `apps/example` emits the site surface (and now scores 100/100 on `leadtype score`);
+  leadtype's own published tarball ships a `SKILL.md`.
+
+- e115ca0: Make `renderSiteJsonLd` config-driven, and bake the JSON-LD options into the manifest.
+
+  The site-level JSON-LD graph is derived from the top-level `organization` (→ `Organization`)
+  and `product` (`kind`/`category`/`repository` → `SoftwareApplication`/`SoftwareSourceCode`),
+  flowing through `generate` → `generateAgentReadabilityArtifacts` → the `agent-readability.json`
+  manifest. `renderSiteJsonLd(manifest, overrides?)` reads it (explicit overrides still win), so a
+  host emits the site graph once with `renderSiteJsonLd(manifest)` — no need to repeat the
+  org/software options at the call site.
+
+  Dogfooded in `apps/example`: the shared `docs.config.ts` sets `organization` + `product.kind:
+"library"` (→ `SoftwareSourceCode`) + `agents.robots`, marks Changelog `optional: true`, and
+  the root layout emits `renderSiteJsonLd(manifest)` so every page's `TechArticle` `@id`
+  references resolve.
+
+- e115ca0: Add the `agents.robots` config block to set the crawler policy from `leadtype.config`.
+
+  ```ts
+  defineDocsConfig({
+    product: { name, summary },
+    agents: {
+      robots: { policy: "block-training", signals: { aiInput: "yes" } },
+    },
+  });
+  ```
+
+  `leadtype generate` reads `agents.robots.{policy,signals}` and threads them into the generated
+  `robots.txt` (and its Content-Signal line). All fields optional — zero-config stays `balanced`.
+  This is the additive `agents` block from the design; further keys (e.g. `jsonLd`) extend it.
+
+- 4042306: Surface the root-`AGENTS.md` pointer as the headline bundle-setup step (closes #66).
+
+  - `leadtype generate --bundle` now prints the consumer-pointer snippet on success (text mode only — `--json` output stays a clean machine record). The snippet is filled in with the package's installable npm name, read from the output package's `package.json` (falling back to the product name), so it works for scoped names too.
+  - `leadtype init` now writes the root-`AGENTS.md` pointer by default, dogfooding the same pattern: it creates `AGENTS.md` if absent, refreshes a marker-delimited (`<!-- leadtype:start -->…<!-- leadtype:end -->`) block in place on re-run, or appends it to an existing file — never overwriting user content. Honors `--dry-run` and is listed in `--json` output. This points the agent helping you set up leadtype at leadtype's own bundled docs.
+  - Docs lead with the pointer as required setup: the `Bundle docs into a package` guide opens with a two-step callout and a dedicated **Point consumers at the bundle** section, the README bundle path spells out the snippet, and the quickstart shows `init` emitting the pointer. All cite the eval result (bundle-read ~29% unprompted → ~90–100% with the pointer).
+
+  Why: bundled docs only pay off when an agent actually reads them, and our evals show agents rarely discover the bundle on their own. The root pointer is the cheapest fix, so we now teach it at the point of use instead of burying it in the docs.
+
+- 8b84f60: Add `collections` config and `leadtype sync` for declarative multi-source docs (closes #42, #44).
+
+  - New `defineCollection({ repository?, ref?, cacheDir?, dir, prefix?, schema?, groups?, include?, exclude? })` helper, and `collections?: Record<string, DocsCollection>` on `DocsConfig`. Local-only collections omit `repository`; remote collections clone the repo at `ref` into `cacheDir` (default `.leadtype/sources/<repo-slug>@<ref>`). Multiple collections sharing a `(repository, ref)` pair share one clone.
+  - New `leadtype sync` command: `--refresh` re-fetches and fast-forwards, `--offline` errors on cache miss, `--repo <pat>` filters by repository URL substring. State tracked in `<cacheDir>/.leadtype-sync.json`.
+  - `leadtype generate` learns `--sync`, `--refresh`, `--offline` (mutually exclusive). Default behavior errors clearly when a remote cache is missing, naming the affected collection(s).
+  - New project-level config: `leadtype.config.{ts,js,mjs,cjs}` looked up in cwd before the legacy per-docs-dir `docs.config.*` path. Setting both top-level `groups` and `collections` is rejected at load.
+  - `leadtype lint` discovers `leadtype.config.ts` automatically and runs lint per collection, applying each collection's `schema` if set. Violations are prefixed with `[collection:<key>]`.
+  - `git`-not-installed surfaces as an actionable message instead of a raw `ENOENT`.
+
+  Legacy projects (single docs folder, top-level `groups` in `docs.config.ts`, `--docs-dir` flags) are unchanged — the legacy code path is byte-identical to before.
+
+  Known limitation: `leadtype sync` has no built-in timeout; a long network stall will hang the process. Track via `Ctrl-C` for now; a configurable per-operation timeout is planned.
+
+- aca9e8f: Add config-driven docs navigation with nested sections, explicit page placement,
+  wildcard includes, and root-relative page references.
+
+  `defineDocsConfig()` and `defineCollection()` now accept `navigation`, which is used by
+  `resolveDocsNavigation()`, `llms.txt`, full-context generation, Agent
+  Readability, `AGENTS.md`, source navigation, and CLI generation. Frontmatter
+  `group` remains supported as taxonomy, validation metadata, and fallback
+  navigation for projects that have not adopted `navigation`.
+
+  This also updates the example docs site and c15t example to dogfood root
+  `navigation` nodes as top-level docs areas, with the active root node's pages and
+  children rendered as sidebar sections.
+
+- e115ca0: Restructure `defineDocsConfig` around three clear concepts: **identity** (`product` + `organization`), **content** (`llms`), and **navigation** — so it's obvious what each field is for and where it ends up.
+
+  **Breaking config changes** (all shipping in this release):
+
+  | Before                                       | After                      |
+  | -------------------------------------------- | -------------------------- |
+  | `product.summary`                            | `product.tagline`          |
+  | `product.blocks`                             | `llms.sections`            |
+  | `nav` (top-level + per-collection)           | `navigation`               |
+  | `agents.jsonLd.organization`                 | top-level `organization`   |
+  | `agents.jsonLd.software.isLibrary`           | `product.kind: "library"`  |
+  | `agents.jsonLd.software.applicationCategory` | `product.category`         |
+  | `agents.skills.agentCard`                    | `agents.agentCard.enabled` |
+
+  `product` is now pure identity (`name`, `tagline`, `homepage`, `docs`, `repository`, `kind`, `category`) reused across `llms.txt`, JSON-LD, and the agent card. `organization` (who publishes the product) feeds the JSON-LD `Organization` node and the agent-card `provider` — resolving the old ambiguity of whether `organization` meant the product or its maintainer. `product.repository` is emitted as JSON-LD `codeRepository`; `product.docs` becomes the agent-card `documentationUrl`.
+
+  New exported helper `resolveAgentInputs(config)` translates the config's identity blocks into the low-level generator inputs (`generateLlmsTxt`, `generateAgentReadabilityArtifacts`, `generateSkillArtifacts`), so code composing those generators by hand shares one mapping with `leadtype generate`.
+
+  Also fixes a latent bug where `leadtype generate` dropped the entire `agents` block during config validation (only the programmatic generator path honored it).
+
+- eba1c1b: Add `defineComponentFlattener` for custom MDX → markdown flattening.
+
+  Components outside the built-in naming contract previously required hand-writing
+  a remark plugin in raw mdast. `defineComponentFlattener({ name, props, toMarkdown })`
+  provides a high-level surface: declare prop coercion (`string`/`number`/`boolean`/`string[]`),
+  receive children both as a flattened markdown string (`content`) and as
+  already-flattened mdast nodes (`childNodes`), and build output with the new `b`
+  builder namespace — or drop to the raw node for full control.
+
+  Custom flatteners are scheduled in a new `custom` phase that runs after include
+  and placeholder resolution but before the built-in flatteners, so
+  `[...defaultRemarkPlugins, myFlattener]` composes correctly regardless of array
+  position. The flattening toolkit (`createJsxComponentProcessor`, node creators,
+  `getAttributeValue`, `parseItemsArray`, `extractNodeText`, …) is now exported
+  from `leadtype/remark` as the escape hatch.
+
+  `defineDocsConfig` and `defineCollection` gain a `flatteners` field, so custom
+  flatteners apply to `leadtype generate` (CLI) output — every generated `.md` and
+  the `llms` artifacts — not just the programmatic `convertAllMdx`/`createDocsSource`
+  path. Top-level and per-collection `flatteners` are merged.
+
+- e115ca0: Add GEO structure checks: `geo:*` lint rules + a `leadtype score` command.
+
+  `leadtype lint` gains three warn-level rules — `geo:heading-skip` (a heading jumps a level),
+  `geo:code-language` (an unlabeled code fence), `geo:image-alt` (an image with no alt text) —
+  the mechanical half of the "Write for agents & GEO" guide.
+
+  New **`leadtype score`** command (and `leadtype/score` → `scoreDocs`) rates the
+  leadtype-addressable agent readiness of a generated build (0–100), mapped to the
+  [ora](https://ora.ai/score) rubric so you can coach toward a high external scan. It scores
+  **Identity** (llms.txt + `.well-known`, search index + manifest, sitemap/robots + Content-Signal,
+  JSON-LD readiness, description coverage, the `geo:*` structure signals) and **Agent Integration**
+  (MCP-ready artifacts, skills surface, offline docs); **Discovery / Auth & Access / User
+  Experience** are shown but excluded with a pointer. It scores what leadtype emits + your doc
+  structure — a local proxy, never live answer-engine ranking. `--json` for CI, `--min` to gate.
+
+- e115ca0: JSON-LD: a referenced site-level entity graph + per-page `@id` references (DESIGN.md Phase 4).
+
+  Per-page `renderJsonLd` now references the site entities by `@id`
+  (`isPartOf: { "@id": ".../#website" }`, `publisher: { "@id": ".../#organization" }`) instead
+  of re-inlining a `WebSite` on every page, and reference/api-section pages are typed
+  `["TechArticle", "APIReference"]` automatically.
+
+  New `renderSiteJsonLd(manifest, options?)` emits the site-level `@graph` once — `Organization`
+  (canonical `@id`), `WebSite` with a `SearchAction`, and `SoftwareApplication` (or
+  `SoftwareSourceCode` for libraries) — so an answer engine builds one entity graph. Options
+  cover the organization name/url/logo, the software category, and the search URL template
+  (`searchUrlPattern: null` to omit). Exported from `leadtype/llm` and `leadtype/llm/readability`.
+
+  Behavior change: per-page JSON-LD `isPartOf` is now an `@id` reference; emit `renderSiteJsonLd`
+  on a root page so it resolves.
+
+- e115ca0: Add `leadtype/mcp` — a docs MCP server (stdio + Streamable HTTP) over the generated artifacts.
+
+  A thin adapter over the existing search index + `.md` mirror, exposing two MCP tools: `search-docs(query, limit?)` (ranked `{ title, urlPath, snippet }`, wraps `searchDocs()`) and `get-page(urlPath)` (full Markdown, read from the `.md` mirror — byte-identical to content negotiation). `list-pages()` is optional, opt in via `tools`.
+
+  - **`leadtype mcp`** — new CLI command. Runs the stdio server for local IDE clients (Claude Desktop, Cursor, Cline) over generated artifacts. `--artifacts <dir>` (default `./public`) or `--package <name>` to serve a dependency's bundled docs; `--tools <list>` to choose tools.
+  - **`leadtype generate --bundle --mcp`** — opt-in flag that also emits `search-index.json` + `agent-readability.json` into the bundle, so a published tarball can serve a version-matched docs MCP server via `leadtype mcp --package <name>`. Off by default to keep bundles lean; the artifacts are URL-independent so they need no `--base-url`.
+  - **`createMcpHandler(config)`** — a Web-standard `(Request) => Promise<Response>` handler the host mounts in its own route (Next, TanStack, SvelteKit, Nuxt, Astro, Workers). Stateless Streamable HTTP with JSON responses; **SSE is not emitted**. The host owns hosting — leadtype stays a layer.
+  - Also exported: `createDocsMcpServer`, `runStdioServer`, `loadDocsArtifacts`, `resolveBundleArtifactsBase`, `defineDocsTools`.
+
+  `@modelcontextprotocol/sdk` (SDK v1.x) is an **optional peer dependency**, imported lazily only when the server runs — it stays out of every install, and a missing install surfaces an actionable error rather than a module-not-found. Tool input schemas are validated with Valibot.
+
+  Dogfooded in `apps/example`: a Nitro middleware mounts the server at `POST /mcp`, and `bun run mcp` serves the same docs over stdio.
+
+  `leadtype` now exposes `./package.json` in its `exports` map (so `--package leadtype` can be resolved); `resolveBundleArtifactsBase` also falls back to walking up from the package entry for packages that don't. leadtype's own published tarball ships the MCP artifacts, so `leadtype mcp --package leadtype` serves version-matched docs out of the box.
+
+  Gate: MCP earns its keep for large corpora / SDK docs where agents want targeted retrieval. For docs that fit in `llms-full.txt`, skip it.
+
+- e923e9f: Add `leadtype/next` framework adapter and formalize the core/adapter boundary.
+
+  `leadtype/next` exposes three server-only helpers for Next.js App Router: `createGenerateStaticParams(...)`, `createLoadPageData(...)`, and `createDocsRouteHandler(...)`. The route handler wraps `createAgentMarkdownResponse` so a docs app can serve raw markdown, handle `Accept: text/markdown` negotiation, and detect AI user agents from a one-line `route.ts`. The companion `leadtype/next/client` subpath exports a `useLeadtypeSearch` React hook plus a framework-free `createSearchClient` factory that lazy-loads `search-index.json` / `search-content.json` and runs BM25 per keystroke.
+
+  `react` is now an optional peer dependency for `leadtype/next/client`. Server-only consumers never pull in React.
+
+  Documents the core/adapter boundary in a new `docs/reference/architecture` page: leadtype core has zero framework runtime deps, adapters live at flat `leadtype/<framework>` subpaths, and **no leadtype package — core or adapter — ever ships rendered DOM**. State primitives (hooks, composables, stores, handler factories) are allowed; `<SearchBox>`-style components are not. The docs also name the planned native adapter shapes for Nuxt, SvelteKit, Astro, TanStack Start, Vue search, and Svelte search without exporting those APIs yet. The boundary is now enforced by tests in `packages/leadtype/src/internal/package-surface.test.ts` that scan import graphs and fail if framework runtimes leak into core or one adapter imports from another.
+
+- e115ca0: Add a JSON-LD validity check to `leadtype lint`, plus an exported `validateJsonLd`.
+
+  `leadtype lint` gains a `jsonld` rule (warn): it renders the identity fields each page's
+  `TechArticle` is built from and structurally validates them, catching the common breakage —
+  a `lastModified`/`last_updated` value that isn't a valid date, which would emit a broken
+  `dateModified`. Broken schema is worse than none.
+
+  `validateJsonLd(value)` is exported from `leadtype/llm` and `leadtype/llm/readability`: a
+  structural validator (not a full Schema.org validator) that checks `@context`, `@type`, `@id`
+  references, `url`, ISO dates, and that article-like nodes carry a headline/name — across a
+  single object or a `@graph`. Returns a list of issues; empty means valid.
+
+- 1670db8: Add `llms.sections` for composing rich, agent-friendly `llms.txt` and `AGENTS.md`.
+
+  The top-level `llms.sections` array fully describes the body after the tagline
+  blockquote. Each `LlmsBlock` is either a `markdown` block (verbatim body under an
+  optional heading — use for an overview, popularity stats, hosting/credibility,
+  community links) or a `links` block (a curated link list resolved against the
+  source docs). Array order is file order, so authors can rename headings and place
+  credibility content wherever indexers read first, without placement flags.
+
+  `leadtype` does no data fetching — author-supplied values (e.g. stars/downloads)
+  can be computed at build time in the config module.
+
+  The example app and leadtype's own docs config now dogfood `llms.sections`, and
+  the docs teach it as the way to author the product index.
+
+- e115ca0: Add llms.txt discovery: `/.well-known/llms.txt` + `Link`/`X-Llms-Txt` response headers.
+
+  `leadtype generate` now also writes a discovery copy of the root `llms.txt` at
+  `/.well-known/llms.txt` (served statically from the output dir), so crawlers that probe
+  the well-known location find the site index without guessing.
+
+  `createMarkdownResponseHeaders` (and therefore `createAgentMarkdownResponse`) now advertise
+  the index on every markdown response via `Link: </llms.txt>; rel="llms-txt"` and
+  `X-Llms-Txt: /llms.txt`. Override the path with `llmsTxtPath` (e.g. `/docs/llms.txt`) or pass
+  `llmsTxtPath: null` to omit the discovery headers. The mandatory `Vary: Accept` and
+  `Content-Type: text/markdown; charset=utf-8` headers are unchanged.
+
+  The generate JSON output reports the new path as `files.wellKnownLlmsTxt`.
+
+- e115ca0: Support an `## Optional` section in `docs/llms.txt` via `optional: true` on a navigation node.
+
+  Mark a navigation section "safe to drop for shorter context" and its pages collapse into a
+  single trailing `## Optional` section in `docs/llms.txt` (the llms.txt convention for
+  low-priority links) instead of getting their own heading. The flag applies to the whole subtree
+  and is deduped by URL; it affects `docs/llms.txt` only — website navigation, sitemap, and
+  search still list every page normally.
+
+  ```ts
+  navigation: [
+    { title: "Reference", base: "reference", pages: [{ include: "*" }] },
+    {
+      title: "Changelog",
+      base: "changelog",
+      optional: true,
+      pages: [{ include: "*" }],
+    },
+  ];
+  ```
+
+- e115ca0: Add `leadtype mcp --check` — test the MCP server with no client, SDK, or editor.
+
+  Wiring up an IDE client just to confirm the docs MCP server returns the right pages was a pain.
+  `leadtype mcp --check [--query "<term>"]` loads the artifacts and exercises the tools directly
+  (reusing the SDK-free tool handlers), printing the exposed tools, the `search-docs` hits, and a
+  `get-page` byte count, then exits 0. No `@modelcontextprotocol/sdk`, no JSON-RPC, no editor
+  config. The usage text also points at `npx @modelcontextprotocol/inspector leadtype mcp …` for a
+  full client UI.
+
+- e115ca0: Add robots.txt AI-policy + Content-Signals (shared with the `Content-Signal` response header).
+
+  `renderRobotsTxt` / `createRobotsTxtResponse` gain a `policy` that models the 2026
+  train-vs-retrieve split and emits a Cloudflare `Content-Signal:` line:
+
+  - `balanced` (default, zero-config) — fully crawlable + retrievable, but signals
+    `ai-train=no`.
+  - `open` — also welcomes training (`ai-train=yes`).
+  - `block-training` — `Disallow: /` for training crawlers (GPTBot, Google-Extended, CCBot,
+    ByteSpider, anthropic-ai, MetaExternalAgent); retrieval crawlers stay allowed.
+  - `block-ai` — `Disallow: /` for every AI crawler; conventional search engines unaffected;
+    signals `ai-input=no, ai-train=no`.
+
+  `signals` overrides individual directives on top of a policy. The same vocabulary now also
+  sets a `Content-Signal` response header on markdown responses (`createMarkdownResponseHeaders`
+  / `createAgentMarkdownResponse`), defaulting to `balanced` — one stance, two emitters. New
+  exports: `ContentSignals`, `RobotsPolicy`, `resolveContentSignals`, `renderContentSignal`.
+
+  Zero-config behavior change: generated `robots.txt` and served markdown responses now carry
+  `Content-Signal: search=yes, ai-input=yes, ai-train=no` by default.
+
+- e115ca0: Add SEO/social head meta + `/.well-known/llms-full.txt` (DESIGN-2.md Phase 4).
+
+  `createDocsHead` now also emits `og:type`, a `twitter:card`, and — from an `agents.seo` config
+  block (baked into the manifest) with optional per-page overrides via its `seo` option —
+  `og:image`/`twitter:image`, `twitter:site`, and `keywords`. leadtype emits the `og:image` URL,
+  not the image (it ships no UI; generating a social card is the host's job). `SeoMeta` type added.
+
+  `leadtype generate` now also writes a discovery copy of `llms-full.txt` at
+  `/.well-known/llms-full.txt`, matching the existing `/.well-known/llms.txt`.
+
+  Dogfooded in `apps/example` via `agents.seo` in the shared `docs.config.ts`.
+
+- 4d23cb9: Tighten the default docs frontmatter metadata contract before launch.
+
+  The default lint schema now uses `status` for editorial page state, accepts
+  string `deprecated` messages, and adds `variants` plus `related` metadata for
+  same-topic equivalents and see-also links. The old page lifecycle fields
+  `deprecatedReason`, `experimental`, `canary`, `new`, `draft`, and
+  `availableIn` are no longer part of the default docs-page schema. Model release
+  channels with config or frontmatter transformers instead of source-authored page
+  status.
+
+### Patch Changes
+
+- e115ca0: Clearer "no generated docs" error from `leadtype mcp` / `score`. It now lists all three fixes —
+  run `leadtype generate`, point `--artifacts <dir>` at a generated `docs/` folder, or pass
+  `--package <name>` for an installed package's bundled docs — and drops the misleading `mcp:`
+  prefix (the loader is shared with `score`).
+- c7fcbf6: Add first-class docs i18n support with locale-aware generation, localized source loading, per-locale search/LLM/readability artifacts, and a new `leadtype/i18n` helper surface. Locale-scoped search generation now uses URL-path document ids to align generated indexes with the source API.
+- e115ca0: `createMcpHandler` never throws unhandled — all failures become a JSON-RPC 500 Response.
+
+  Previously only artifact loading was guarded; a missing optional `@modelcontextprotocol/sdk`
+  peer dep (or any transport error) escaped as an unhandled exception, surfacing as the host's
+  generic 500. Now the whole request path is wrapped, so the client gets a clean JSON-RPC error
+  with the actionable message (e.g. "install @modelcontextprotocol/sdk") instead of an opaque 500. Found by dogfooding the mounted route in `apps/example`'s production build.
+
+- 7dd0f28: Reframe the docs/marketing pitch for bundling around the universal, defensible wins — cost and confident-wrong reduction — instead of raw accuracy (closes #68).
+
+  The eval runs show the accuracy lift is modest and judge-sensitive for frontier models, while two wins hold for _every_ model: bundled docs cut per-run tokens 32–54%, and they stop agents confidently asserting the wrong behavior about your API. The copy now leads with those:
+
+  - The README and docs landing (`index.mdx`) bundle paths, the `Bundle docs into a package` guide, and the package-docs card now lead with "agents run cheaper and stop confidently guessing wrong about your API," with accuracy framed by model tier ("biggest for the small, cheap models most agents run").
+  - The `Evals` page reorders the package-benchmark section to present cost first, then confident-wrong, then accuracy-by-tier (with a confident-wrong table), instead of leading with the accuracy-lift table.
+
+  Docs only — no API or behavior change. The reframed copy reaches consumers through the regenerated bundled docs in the published tarball.
+
+- 844a94d: Default `<ExtractedTypeTable>` and `<AutoTypeTable>` path resolution to the Leadtype source root instead of `process.cwd()/docs`.
+
+  This fixes generated docs for source roots such as `.c15t` or `.leadtype`, where `path="./packages/..."` should resolve against the configured source root. Source-MDX consumers can now pass `typeTableBasePath` / `typeTableStrict` through `createDocsSource()` or use `createMdxSourcePlugins()` for bundler-level configuration. Failed type extraction now emits a visible warning by default and can fail generation in strict mode.
+
+  This changes the bare `mdxSourcePlugins` default for bundler consumers: when Leadtype can see the source MDX file path, it derives the base path from the first `docs` path segment instead of always using `process.cwd()/docs`. Projects that intentionally keep referenced TypeScript files under their docs folder should switch to `createMdxSourcePlugins({ typeTableBasePath: path.resolve(process.cwd(), "docs") })`.
+
 ## 0.1.2
 
 ### Patch Changes
