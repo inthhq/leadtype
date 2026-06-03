@@ -1,0 +1,21 @@
+- generic [ref=e3] [box=0,0,1425,1850]:
+  - banner [ref=e4] [box=0,0,1425,65]:
+    - generic [ref=e5] [box=73,0,1280,64]:
+      - link "Leadtype docs" [ref=e6] [cursor=pointer] [box=97,23,65,18]:
+        - /url: /docs
+      - generic [ref=e7] [box=173,12,1155,40]
+  - generic [ref=e19] [box=0,65,1425,1785]:
+    - complementary [ref=e20] [box=16,93,200,1729]:
+      - generic [ref=e21] [box=16,93,200,120]
+      - generic [ref=e27] [box=16,233,200,120]
+      - generic [ref=e33] [box=16,372,200,487]
+      - generic [ref=e48] [box=16,880,200,185]
+      - generic [ref=e56] [box=16,1085,200,87]
+      - generic [ref=e61] [box=16,1192,200,88]
+      - generic [ref=e65] [box=16,1300,200,120]
+      - generic [ref=e71] [box=16,1439,200,383]
+    - main [ref=e85] [box=240,93,925,1729]:
+      - generic [ref=e86] [box=241,94,923,1469]
+      - navigation "Pagination" [ref=e138] [box=241,1563,923,108]
+    - complementary [ref=e142] [box=1189,93,220,138]:
+      - navigation "On this page" [ref=e143] [box=1189,93,220,138]

@@ -1,0 +1,218 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Leadtype docs" [ref=e6] [cursor=pointer]:
+          - /url: /docs
+          - text: leadtype
+        - generic [ref=e7]:
+          - generic [ref=e8]:
+            - generic [ref=e9]: Search docs
+            - generic [ref=e10]
+          - navigation "Primary" [ref=e14]:
+            - link "View as Markdown" [ref=e15] [cursor=pointer]:
+              - /url: /docs/index.md
+            - link "Docs" [ref=e17] [cursor=pointer]:
+              - /url: /docs
+            - link "Changelog" [ref=e18] [cursor=pointer]:
+              - /url: /docs/changelog/nav-migration-prompts
+    - generic [ref=e19]:
+      - complementary [ref=e20]:
+        - generic [ref=e21]:
+          - heading "Start" [level=2] [ref=e22]
+          - navigation "Start documentation" [ref=e23]:
+            - link "Leadtype" [ref=e24] [cursor=pointer]:
+              - /url: /docs
+            - link "Quickstart" [ref=e25] [cursor=pointer]:
+              - /url: /docs/quickstart
+            - link "How it works" [ref=e26] [cursor=pointer]:
+              - /url: /docs/how-it-works
+        - generic [ref=e27]:
+          - heading "Concepts" [level=2] [ref=e28]
+          - navigation "Concepts documentation" [ref=e29]:
+            - link "Methodology" [ref=e30] [cursor=pointer]:
+              - /url: /docs/concepts/methodology
+            - link "Architecture" [ref=e31] [cursor=pointer]:
+              - /url: /docs/concepts/architecture
+            - link "Evals" [ref=e32] [cursor=pointer]:
+              - /url: /docs/concepts/evals
+        - generic [ref=e33]:
+          - heading "Build an Agent-Ready Site" [level=2] [ref=e34]
+          - navigation "Build an Agent-Ready Site documentation" [ref=e35]:
+            - link "Build an agent-ready docs site" [ref=e36] [cursor=pointer]:
+              - /url: /docs/build/build-a-docs-site
+            - link "Agent setup prompts" [ref=e37] [cursor=pointer]:
+              - /url: /docs/build/agent-setup-prompts
+            - link "Use the source primitive" [ref=e38] [cursor=pointer]:
+              - /url: /docs/build/use-the-source-primitive
+            - link "Generate static artifacts" [ref=e39] [cursor=pointer]:
+              - /url: /docs/build/generate-static-artifacts
+            - link "Optimize docs for agents" [ref=e40] [cursor=pointer]:
+              - /url: /docs/build/optimize-docs-for-agents
+            - link "Serve agent responses" [ref=e41] [cursor=pointer]:
+              - /url: /docs/build/serve-agent-responses
+            - link "Deploy generated artifacts" [ref=e42] [cursor=pointer]:
+              - /url: /docs/build/deploy-generated-artifacts
+            - link "Sync docs across repositories" [ref=e43] [cursor=pointer]:
+              - /url: /docs/build/sync-docs-across-repos
+            - link "Validate in CI" [ref=e44] [cursor=pointer]:
+              - /url: /docs/build/validate-in-ci
+            - link "Localize docs" [ref=e45] [cursor=pointer]:
+              - /url: /docs/build/localize-docs
+            - link "Framework integration matrix" [ref=e46] [cursor=pointer]:
+              - /url: /docs/build/framework-matrix
+            - link "Integrate with Fumadocs" [ref=e47] [cursor=pointer]:
+              - /url: /docs/build/integrate-with-fumadocs
+        - generic [ref=e48]:
+          - heading "Search & agents" [level=2] [ref=e49]
+          - navigation "Search & agents documentation" [ref=e50]:
+            - link "Add search" [ref=e51] [cursor=pointer]:
+              - /url: /docs/search/add-search
+            - link "Stream AI answers" [ref=e52] [cursor=pointer]:
+              - /url: /docs/search/ai-answers
+            - link "Agent search tools" [ref=e53] [cursor=pointer]:
+              - /url: /docs/search/agent-tools
+            - link "MCP server" [ref=e54] [cursor=pointer]:
+              - /url: /docs/reference/mcp
+            - link "Agent skills" [ref=e55] [cursor=pointer]:
+              - /url: /docs/reference/skills
+        - generic [ref=e56]:
+          - heading "Docs Sources" [level=2] [ref=e57]
+          - navigation "Docs Sources documentation" [ref=e58]:
+            - link "Configure docs sources" [ref=e59] [cursor=pointer]:
+              - /url: /docs/sources/configure-sources
+            - link "Collections reference" [ref=e60] [cursor=pointer]:
+              - /url: /docs/sources/collections
+        - generic [ref=e61]:
+          - heading "Package Docs for Agents" [level=2] [ref=e62]
+          - navigation "Package Docs for Agents documentation" [ref=e63]:
+            - link "Bundle docs into a package" [ref=e64] [cursor=pointer]:
+              - /url: /docs/package-docs/bundle
+        - generic [ref=e65]:
+          - heading "Author Content" [level=2] [ref=e66]
+          - navigation "Author Content documentation" [ref=e67]:
+            - link "Write for agents & GEO" [ref=e68] [cursor=pointer]:
+              - /url: /docs/authoring/write-for-agents
+            - link "Frontmatter" [ref=e69] [cursor=pointer]:
+              - /url: /docs/authoring/frontmatter
+            - link "Components" [ref=e70] [cursor=pointer]:
+              - /url: /docs/authoring/components
+        - generic [ref=e71]:
+          - heading "Reference" [level=2] [ref=e72]
+          - navigation "Reference documentation" [ref=e73]:
+            - link "CLI" [ref=e74] [cursor=pointer]:
+              - /url: /docs/reference/cli
+            - link "createDocsSource" [ref=e75] [cursor=pointer]:
+              - /url: /docs/reference/source
+            - link "LLM files" [ref=e76] [cursor=pointer]:
+              - /url: /docs/reference/llm
+            - link "Convert" [ref=e77] [cursor=pointer]:
+              - /url: /docs/reference/convert
+            - link "Lint rules" [ref=e78] [cursor=pointer]:
+              - /url: /docs/reference/lint
+            - link "Frontmatter transformers" [ref=e79] [cursor=pointer]:
+              - /url: /docs/reference/frontmatter-transformers
+            - link "leadtype/mdx" [ref=e80] [cursor=pointer]:
+              - /url: /docs/reference/mdx
+            - link "Remark plugins" [ref=e81] [cursor=pointer]:
+              - /url: /docs/reference/remark
+            - link "Search" [ref=e82] [cursor=pointer]:
+              - /url: /docs/reference/search
+            - link "i18n" [ref=e83] [cursor=pointer]:
+              - /url: /docs/reference/i18n
+            - link "Troubleshooting" [ref=e84] [cursor=pointer]:
+              - /url: /docs/reference/troubleshooting
+      - main [ref=e85]:
+        - generic [ref=e87]:
+          - heading "Leadtype" [level=1] [ref=e88]
+          - paragraph [ref=e89]:
+            - text: Leadtype is a
+            - strong [ref=e90]: docs pipeline
+            - text: "for teams that want one MDX source to serve humans and agents. Write docs once, render them in your app, then generate the files agents need: markdown mirrors,"
+            - code [ref=e91]: llms.txt
+            - text: ", root"
+            - code [ref=e92]: llms-full.txt
+            - text: ", search JSON,"
+            - link "Agent Readability" [ref=e93] [cursor=pointer]:
+              - /url: /docs/how-it-works#vocabulary
+            - text: metadata, and package-bundled
+            - code [ref=e94]: AGENTS.md
+            - text: output.
+          - paragraph [ref=e95]: It is not a docs website framework. Bring your own UI — Next.js, TanStack Start, Nuxt, Astro, SvelteKit, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs it specializes in, layered behind the framework you already use.
+          - figure [ref=e96]:
+            - generic [ref=e97]: mermaid
+            - img "Mermaid flowchart" [ref=e98]
+            - group [ref=e131]
+          - heading "Pick your path" [level=2] [ref=e133]:
+            - link "Pick your path" [ref=e134] [cursor=pointer]:
+              - /url: "#pick-your-path"
+          - paragraph [ref=e135]:
+            - text: You're building a docs
+            - strong [ref=e136]: website
+            - text: —
+            - link "Quickstart" [ref=e137] [cursor=pointer]:
+              - /url: /docs/quickstart
+            - text: — render MDX in your app and generate
+            - code [ref=e138]: llms.txt
+            - text: ", markdown mirrors, search, and discovery files for HTTP agents."
+          - paragraph [ref=e139]:
+            - text: You're shipping docs inside an
+            - strong [ref=e140]: npm package
+            - text: —
+            - link "Bundle docs into a package" [ref=e141] [cursor=pointer]:
+              - /url: /docs/package-docs/bundle
+            - text: — generate an
+            - code [ref=e142]: AGENTS.md
+            - text: plus per-topic markdown that ships in the tarball so coding agents read version-matched docs from
+            - code [ref=e143]: node_modules
+            - text: . Agents that install your package then run cheaper and stop confidently guessing wrong about your API — see the
+            - link "evals" [ref=e144] [cursor=pointer]:
+              - /url: /docs/concepts/evals
+            - text: .
+          - paragraph [ref=e145]:
+            - text: Just want the mental model first? —
+            - link "How it works" [ref=e146] [cursor=pointer]:
+              - /url: /docs/how-it-works
+            - text: — the pipeline, the two output modes, and every artifact named once.
+          - heading "Key terms" [level=2] [ref=e147]:
+            - link "Key terms" [ref=e148] [cursor=pointer]:
+              - /url: "#key-terms"
+          - paragraph [ref=e149]:
+            - text: These show up throughout the docs. The full glossary lives in
+            - link "How it works → Vocabulary" [ref=e150] [cursor=pointer]:
+              - /url: /docs/how-it-works#vocabulary
+            - text: .
+          - list [ref=e151]:
+            - listitem [ref=e152]
+            - listitem [ref=e157]
+            - listitem [ref=e163]
+          - heading "What leadtype produces" [level=2] [ref=e166]:
+            - link "What leadtype produces" [ref=e167] [cursor=pointer]:
+              - /url: "#what-leadtype-produces"
+          - list [ref=e168]:
+            - listitem [ref=e169]
+            - listitem [ref=e171]
+            - listitem [ref=e173]
+            - listitem [ref=e175]
+        - navigation "Pagination" [ref=e177]:
+          - link "Next Quickstart" [ref=e179] [cursor=pointer]:
+            - /url: /docs/quickstart
+            - generic [ref=e180]: Next
+            - text: Quickstart
+      - complementary [ref=e181]:
+        - navigation "On this page" [ref=e182]:
+          - heading "On this page" [level=2] [ref=e183]
+          - list [ref=e184]:
+            - listitem [ref=e185]
+            - listitem [ref=e187]
+            - listitem [ref=e189]
+  - generic:
+    - img
+  - generic [ref=e191]:
+    - button "Toggle Nuxt DevTools" [ref=e192] [cursor=pointer]:
+      - img [ref=e193]
+    - generic "Page load time" [ref=e196]:
+      - generic [ref=e197]: "13"
+      - generic [ref=e198]: ms
+    - button "Toggle Component Inspector" [ref=e200] [cursor=pointer]:
+      - img [ref=e201]
