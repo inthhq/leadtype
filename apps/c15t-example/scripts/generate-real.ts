@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { runGenerateCommand } from "../../../packages/leadtype/src/cli/generate";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
-const OUT_DIR = join(process.cwd(), "public-real");
+const OUT_DIR = join(process.cwd(), "public");
 
 if (!existsSync(join(FIXTURE_DIR, "docs", "docs.config.ts"))) {
   process.stderr.write(

@@ -58,7 +58,7 @@ function normalizeRoute(pathname: string) {
 }
 
 function markdownPathForPage(page: AgentReadabilityPage) {
-  return page.markdownUrlPath ?? `${page.urlPath}.md`;
+  return `/docs/${page.relativePath}.md`;
 }
 
 function pagePathFromMarkdown(markdownPath: string) {
@@ -84,6 +84,22 @@ function extractHeadings(markdown: string) {
       .trim()
       .replace(/\s+/g, "-");
     return { id, level, text };
+  });
+}
+
+function withOccurrenceKeys<T>(
+  items: T[],
+  getBaseKey: (item: T) => string
+): Array<{ item: T; key: string }> {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const baseKey = getBaseKey(item);
+    const occurrence = seen.get(baseKey) ?? 0;
+    seen.set(baseKey, occurrence + 1);
+    return {
+      item,
+      key: occurrence === 0 ? baseKey : `${baseKey}-${occurrence}`,
+    };
   });
 }
 
@@ -138,7 +154,7 @@ function useDocsState() {
           error:
             error instanceof Error
               ? error.message
-              : "Unable to load Leadtype docs manifest.",
+              : "Unable to load c15t docs manifest.",
           status: "error",
         });
       }
@@ -227,10 +243,10 @@ function Link({
 function Brand() {
   return (
     <a className="brand" href="/docs">
-      <span className="mark">L</span>
+      <span className="mark">c</span>
       <span>
-        <strong>Leadtype</strong>
-        <small>Vite React example</small>
+        <strong>c15t</strong>
+        <small>Docs repro</small>
       </span>
     </a>
   );
@@ -252,26 +268,31 @@ function Sidebar({
         <span>Generated docs</span>
         <p>
           This Vite app reads the markdown, navigation, and agent manifest that
-          Leadtype generated from the repository docs.
+          Leadtype generated from the real c15t docs repo.
         </p>
       </div>
       <nav aria-label="Docs sections" className="side-nav">
-        {sections.map((section) => (
-          <section key={section.title}>
-            <h2>{section.title}</h2>
-            {section.links.map((item) => (
-              <Link
-                className={item.to === activePath ? "active" : undefined}
-                isActive={item.to === activePath}
-                key={item.to}
-                onNavigate={onNavigate}
-                to={item.to}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </section>
-        ))}
+        {withOccurrenceKeys(sections, (section) => section.title).map(
+          ({ item: section, key }) => (
+            <section key={key}>
+              <h2>{section.title}</h2>
+              {withOccurrenceKeys(
+                section.links,
+                (item) => `${item.to}-${item.label}`
+              ).map(({ item, key }) => (
+                <Link
+                  className={item.to === activePath ? "active" : undefined}
+                  isActive={item.to === activePath}
+                  key={key}
+                  onNavigate={onNavigate}
+                  to={item.to}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </section>
+          )
+        )}
       </nav>
     </aside>
   );
@@ -289,11 +310,14 @@ function TopNav({
   return (
     <header className="top-nav">
       <nav aria-label="Primary docs groups">
-        {tabs.map((tab) => (
+        {withOccurrenceKeys(
+          tabs,
+          (tab) => `${tab.groupKey ?? tab.to}-${tab.to}`
+        ).map(({ item: tab, key }) => (
           <Link
             className={activePath.startsWith(tab.to) ? "active" : undefined}
             isActive={activePath.startsWith(tab.to)}
-            key={`${tab.groupKey ?? tab.to}-${tab.to}`}
+            key={key}
             onNavigate={onNavigate}
             to={tab.to}
           >
@@ -320,8 +344,11 @@ function Breadcrumbs({
 
   return (
     <nav aria-label="Breadcrumb" className="breadcrumbs">
-      {breadcrumbs.map((crumb, index) => (
-        <span key={`${crumb.to}-${crumb.label}`}>
+      {withOccurrenceKeys(
+        breadcrumbs,
+        (crumb) => `${crumb.to}-${crumb.label}`
+      ).map(({ item: crumb, key }, index) => (
+        <span key={key}>
           {index > 0 ? <span aria-hidden="true">/</span> : null}
           <Link onNavigate={onNavigate} to={crumb.to}>
             {crumb.label}
@@ -347,11 +374,14 @@ function RightRail({
       <nav aria-label="On this page" className="toc">
         <h2>On this page</h2>
         {headings.length > 0 ? (
-          headings.map((heading) => (
+          withOccurrenceKeys(
+            headings,
+            (heading) => `${heading.id}-${heading.text}`
+          ).map(({ item: heading, key }) => (
             <a
               className={heading.level === 3 ? "toc-nested" : undefined}
               href={`#${heading.id}`}
-              key={`${heading.id}-${heading.text}`}
+              key={key}
             >
               {heading.text}
             </a>
@@ -404,7 +434,7 @@ function LoadingState({ status }: { status: AppStatus }) {
         <Brand />
       </aside>
       <main className="not-found">
-        <p>{status === "loading" ? "Loading Leadtype docs..." : "Not found"}</p>
+        <p>{status === "loading" ? "Loading c15t docs..." : "Not found"}</p>
       </main>
     </div>
   );
@@ -486,7 +516,7 @@ export function App() {
           <main className="doc-article">
             <Breadcrumbs breadcrumbs={breadcrumbs} onNavigate={setRoute} />
             <header className="doc-header">
-              <span>Leadtype docs</span>
+              <span>c15t docs</span>
               <h1>{activePage.title}</h1>
               {activePage.description ? <p>{activePage.description}</p> : null}
             </header>
