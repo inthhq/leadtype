@@ -24,3 +24,21 @@ bun run --filter c15t-example dev
 
 The `dev`, `build`, and `check-types` scripts all rebuild the local `leadtype`
 package and regenerate docs artifacts before running Vite.
+
+## Real c15t Repro
+
+Use this app to test Leadtype against the real `c15t/c15t` docs tree, including
+PR branches with source-owned docs config.
+
+```sh
+C15T_REF=leadtype-docs-navigation-main bun run --filter c15t-example setup:real
+C15T_REF=leadtype-docs-navigation-main bun run --filter c15t-example generate:real
+bun run --filter c15t-example test:real
+```
+
+The fixture is cloned into `apps/c15t-example/content-fixtures/c15t/` with both
+`docs/` and `packages/` so `AutoTypeTable` references resolve like they do in
+the source repo. `generate:real` runs the source-config driven `leadtype
+generate` path against `docs/docs.config.ts` and writes artifacts to
+`apps/c15t-example/public-real/`. `test:real` validates the currently checked
+out fixture without fetching a different ref.

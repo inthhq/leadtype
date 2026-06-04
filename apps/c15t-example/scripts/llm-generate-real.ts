@@ -1,24 +1,23 @@
 #!/usr/bin/env bun
 /**
- * Runs the llm generator against real c15t docs so we can inspect
- * /llms.txt and /llms-full.txt.
- *
- * The group tree still demonstrates routing metadata for a multi-surface SDK:
- * agents start with page-level markdown links and use llms-full.txt only when
- * narrower pages are not enough.
- *
- * NOTE: c15t MDX doesn't currently declare `group:` in frontmatter, so the
- * leaves render empty. Run `bun run scripts/inject-real-groups.ts` (TODO)
- * to backfill frontmatter from top-level directories before this script
- * for representative output.
+ * Converts and generates llms.txt artifacts for the real c15t checkout.
  */
 
 import { join } from "node:path";
+import { convertAllMdx } from "leadtype/convert";
 import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = FIXTURE_DIR;
 const OUT_DIR = join(process.cwd(), "public-real2");
+
+await convertAllMdx({
+  srcDir: SRC_DIR,
+  outDir: OUT_DIR,
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  enrichFrontmatterFromGit: true,
+});
 
 await generateLlmsTxt({
   srcDir: SRC_DIR,
@@ -26,7 +25,7 @@ await generateLlmsTxt({
   baseUrl: "https://c15t.com",
   product: {
     name: "c15t",
-    summary: "Open source consent & privacy platform.",
+    summary: "Open source consent and privacy platform.",
     blocks: [
       {
         type: "markdown",
@@ -56,13 +55,13 @@ await generateLlmsTxt({
           slug: "react",
           title: "React",
           description:
-            "React integration — hooks, components, client-mode configuration.",
+            "React integration: hooks, components, client-mode configuration.",
         },
         {
           slug: "next",
           title: "Next.js",
           description:
-            "Next.js integration — App Router, server-side rendering, geolocation.",
+            "Next.js integration: App Router, server-side rendering, geolocation.",
         },
         {
           slug: "javascript",
@@ -81,7 +80,7 @@ await generateLlmsTxt({
           slug: "guides",
           title: "Guides",
           description:
-            "Self-hosting how-to guides — database, caching, edge, observability, policy packs.",
+            "Self-hosting how-to guides: database, caching, edge, observability, policy packs.",
         },
         {
           slug: "api",
@@ -95,13 +94,13 @@ await generateLlmsTxt({
       slug: "integrations",
       title: "Integrations",
       description:
-        "Third-party integrations — analytics, tag managers, ad pixels.",
+        "Third-party integrations: analytics, tag managers, ad pixels.",
     },
     {
       slug: "concepts",
       title: "Concepts",
       description:
-        "Framework-agnostic concepts — glossary, cookie management, consent model.",
+        "Framework-agnostic concepts: glossary, cookie management, consent model.",
     },
   ],
 });

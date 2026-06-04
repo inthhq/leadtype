@@ -15,7 +15,7 @@ const OUT_DIR = join(process.cwd(), "public-real");
 
 if (!existsSync(join(FIXTURE_DIR, "docs", "docs.config.ts"))) {
   process.stderr.write(
-    "content-fixtures/c15t not found — run `bun run setup:real` first.\n"
+    "content-fixtures/c15t not found - run `bun run setup:real` first.\n"
   );
   process.exit(1);
 }

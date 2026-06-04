@@ -1,2 +1,5 @@
 dist
 public
+content-fixtures/
+public-real/
+public-real2/
