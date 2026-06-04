@@ -15,9 +15,9 @@ export function createDocsHead(urlPath: string): DocsHead {
 
 /**
  * The site-level JSON-LD graph (Organization, WebSite + SearchAction,
- * SoftwareSourceCode), emitted once in the root head so the per-page TechArticle
- * `@id` references resolve. Options are derived from `organization` + `product` and
- * baked into the manifest at generate time.
+ * SoftwareApplication + SoftwareSourceCode), emitted once in the root head so
+ * the per-page TechArticle `@id` references resolve. Options are derived from
+ * `organization` + `product` and baked into the manifest at generate time.
  * TanStack Router's typed head API accepts JSON-LD through `scripts`.
  */
 export function siteJsonLdScript(): {
