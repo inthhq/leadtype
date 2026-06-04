@@ -25,8 +25,8 @@
     "changeset": "changeset",
     "version": "changeset version && bun install",
     "version:snapshot": "changeset version --snapshot && bun install",
-    "release": "bun run build && bun scripts/resolve-workspace-deps.ts && changeset publish",
-    "release:snapshot": "bun run build && bun scripts/resolve-workspace-deps.ts && changeset publish --tag snapshot"
+    "release": "bun run --filter leadtype build && bun scripts/resolve-workspace-deps.ts && changeset publish",
+    "release:snapshot": "bun run --filter leadtype build && bun scripts/resolve-workspace-deps.ts && changeset publish --tag snapshot"
   },
   "workspaces": [
     "apps/*",
