@@ -46,6 +46,7 @@ const agentInputs = resolveAgentInputs({
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
@@ -74,7 +75,10 @@ const { outputPath } = await generateAgentsMd({
 // tarball — the `--bundle --mcp` story — so a consumer can run a version-matched
 // docs MCP server over our own docs: `leadtype mcp --package leadtype`.
 // URL-independent, so no base URL is needed.
-await generateDocsSearchFiles({ outDir: PACKAGE_ROOT });
+await generateDocsSearchFiles({
+  outDir: PACKAGE_ROOT,
+  mounts: docsConfig.mounts,
+});
 await generateAgentReadabilityArtifacts({
   outDir: PACKAGE_ROOT,
   product: {
@@ -82,6 +86,7 @@ await generateAgentReadabilityArtifacts({
     summary: agentInputs.product.summary,
   },
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
   jsonLd: agentInputs.jsonLd,
 });
 

@@ -7,6 +7,7 @@ import { copyFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateDocsSearchFiles } from "leadtype/search/node";
+import docsConfig from "../../../docs/docs.config";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
@@ -18,6 +19,7 @@ const generatedContentPath = join(generatedDir, "docs-search-content.json");
 const result = await generateDocsSearchFiles({
   outDir,
   baseUrl: "https://leadtype.dev",
+  mounts: docsConfig.mounts,
 });
 
 await mkdir(generatedDir, { recursive: true });

@@ -4,11 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docs:generate": "leadtype generate --src ../.. --docs-dir docs --out public --base-url http://localhost:5173 --json",
+    "docs:generate": "bun run pipeline:generate-real",
     "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite dev",
     "build": "bun run --filter leadtype build && bun run docs:generate && vite build",
     "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite preview",
-    "check-types": "bun run --filter leadtype build && bun run docs:generate && tsgo --noEmit"
+    "check-types": "bun run --filter leadtype build && tsgo --noEmit",
+    "setup:real": "bun run pipeline:setup-real",
+    "generate:real": "bun run pipeline:generate-real",
+    "test:real": "bun run pipeline:test-real",
+    "llm:real": "bun run pipeline:llm-real",
+    "pipeline:setup-real": "bun run scripts/setup-real-content.ts",
+    "pipeline:generate-real": "bun run pipeline:setup-real && bun run scripts/generate-real.ts",
+    "pipeline:test-real": "bun run scripts/test-real.ts",
+    "pipeline:llm-real": "bun run scripts/llm-generate-real.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",

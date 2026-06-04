@@ -1,5 +1,5 @@
 ---
-import { createGetStaticPaths, createLoadPageData } from "leadtype/astro";
+import { createLoadPageData } from "leadtype/astro";
 import {
   createDocsJsonLd,
   normalizeAgentReadabilityManifest,
@@ -13,13 +13,26 @@ import { source } from "../../lib/source";
 const manifest = normalizeAgentReadabilityManifest(manifestJson);
 const navigation = createDocsNavigation(manifest.navigation);
 
-export const getStaticPaths = createGetStaticPaths({ source });
+export const getStaticPaths = async () => {
+  const pages = await source.listPages();
+  return pages
+    .filter(
+      (page) => page.urlPath === "/docs" || page.urlPath.startsWith("/docs/")
+    )
+    .map((page) => ({
+      params: { slug: page.slug.join("/") || undefined },
+    }));
+};
 
 const loadPageData = createLoadPageData({ source });
 const page = await loadPageData(Astro.params.slug);
 
 if (!page) {
   return Astro.redirect("/docs");
+}
+
+if (!(page.urlPath === "/docs" || page.urlPath.startsWith("/docs/"))) {
+  return Astro.redirect(page.urlPath);
 }
 
 const meta = manifest.pages.find((entry) => entry.urlPath === page.urlPath);
@@ -84,7 +97,13 @@ const markdownUrl =
           <span id="docs-search-status" role="status" aria-live="polite">idle</span>
           <ul id="docs-search-results"></ul>
         </section>
-        <article class="markdown" set:html={markdownHtml} />
+        <article class="markdown">
+          <header>
+            <h1>{page.title}</h1>
+            {page.description && <p>{page.description}</p>}
+          </header>
+          <div set:html={markdownHtml} />
+        </article>
       </div>
     </main>
     <script>

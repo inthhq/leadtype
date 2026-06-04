@@ -10,7 +10,9 @@ function urlPathForSlug(slug: string[] | undefined): string {
 }
 
 export function generateStaticParams(): Array<{ slug: string[] }> {
-  return mdxSlugs.map((slug) => ({ slug: slug === "" ? [] : slug.split("/") }));
+  return mdxSlugs
+    .filter((slug) => !(slug === "changelog" || slug.startsWith("changelog/")))
+    .map((slug) => ({ slug: slug === "" ? [] : slug.split("/") }));
 }
 
 export default async function DocsPage({
@@ -51,6 +53,10 @@ export default async function DocsPage({
           ))}
         </nav>
         <article className="docs-prose">
+          <header>
+            <h1>{page.title}</h1>
+            {page.description ? <p>{page.description}</p> : null}
+          </header>
           <MdxContent />
         </article>
         <nav aria-label="Pagination" className="page-nav">

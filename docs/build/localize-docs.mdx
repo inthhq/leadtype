@@ -7,8 +7,6 @@ related:
     description: "Config fields, URL helpers, and the i18n-manifest.json shape."
 ---
 
-# Localize docs
-
 Leadtype localizes the whole pipeline from one config block: locale-prefixed
 URLs, a per-locale `llms.txt`, `llms-full.txt`, markdown mirror set, search
 index, sitemap, and robots file, plus an `i18n-manifest.json` and
@@ -20,7 +18,7 @@ translation lives under a `/{locale}` prefix.
 ```ts title="docs.config.ts"
 export default defineDocsConfig({
   product: { name: "My library", tagline: "..." },
-  navigation: [{ title: "Start", pages: [""] }],
+  navigation: ["index"],
   i18n: {
     defaultLocale: "en",
     locales: ["en", "zh", { code: "fr", label: "Français" }],

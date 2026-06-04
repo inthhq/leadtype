@@ -3,8 +3,6 @@ title: "LLM files"
 description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
 ---
 
-# LLM files
-
 The `leadtype/llm` entry point produces four flavors of agent-facing output, all derived from the same docs source:
 
 - **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
@@ -49,11 +47,61 @@ Mark a navigation node `optional: true` to flag it "safe to drop for shorter con
 
 ```ts
 navigation: [
-  { title: "Start", pages: ["", "quickstart"] },
+  "index",
+  "quickstart",
   { title: "Reference", base: "reference", pages: [{ include: "*" }] },
   { title: "Changelog", base: "changelog", optional: true, pages: [{ include: "*" }] },
 ],
 ```
+
+Use strings at the top level for pages that should not live under a group. Use `index` for `docs/index.mdx` or a nested `index.mdx` page in navigation. Leadtype strips the `index` segment from the public URL, so top-level `"index"` still links to `/docs`, and `base: "guides", pages: ["index"]` links to `/docs/guides`.
+
+### Framework sections
+
+Use `defineFrameworkNavigation` when several framework docs share the same sections. It expands templates into a normal navigation node, so sidebar generation, `llms.txt`, sitemap output, remote sources, and validation all keep using the existing `navigation` contract.
+
+```ts
+import {
+  defineDocsConfig,
+  defineFrameworkNavigation,
+} from "leadtype";
+
+const frameworkConceptPages = ["consent-management", "consent-banner"];
+const frameworkGuidePages = ["script-loader", "iframe-blocking"];
+
+export default defineDocsConfig({
+  navigation: [
+    defineFrameworkNavigation({
+      title: "Frameworks",
+      base: "frameworks",
+      pages: ["index"],
+      templates: {
+        componentFramework: {
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            { title: "Concepts", pages: frameworkConceptPages },
+            { title: "Guides", pages: frameworkGuidePages },
+          ],
+        },
+      },
+      frameworks: [
+        { title: "React", base: "react", template: "componentFramework" },
+        { title: "Next.js", base: "next", template: "componentFramework" },
+        {
+          title: "JavaScript",
+          base: "javascript",
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            { title: "Guides", pages: ["script-loader", "network-blocker"] },
+          ],
+        },
+      ],
+    }),
+  ],
+});
+```
+
+Framework `base` values are still relative to the parent `base`, so the React quickstart above resolves to `/docs/frameworks/react/quickstart`. A page that starts with `/` still points at the collection root, which keeps shared pages such as `/ai-agents` outside the framework tree.
 
 The flag applies to the whole subtree, so nested children of an optional node are flattened into `## Optional` too. It affects `docs/llms.txt` only — the website sidebar, sitemap, and search still list every page normally.
 
@@ -217,16 +265,22 @@ await generateAgentReadabilityArtifacts({
 
 By default, generated markdown under `<outDir>/docs/` maps to public URLs under `/docs`. Use `mounts` when part of that generated tree should have a different canonical URL, such as a changelog that lives beside docs in the source repo:
 
-```ts
-const mounts = [
-  { pathPrefix: "", urlPrefix: "/docs" },
-  { pathPrefix: "changelog", urlPrefix: "/changelog" },
-];
+```ts title="docs/docs.config.ts"
+export default {
+  product: { name: "My product", tagline: "Developer tools." },
+  navigation: [
+    "index",
+    "quickstart",
+    { title: "Changelog", base: "changelog", optional: true, pages: ["v1"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+};
 ```
 
-With those mounts, `public/docs/quickstart.md` is still `/docs/quickstart.md`, while `public/docs/changelog/v1.md` is described as `/changelog/v1.md` in `llms.txt`, `llms-full.txt`, navigation, sitemap data, Agent Readability metadata, and search metadata.
+With that mount, `public/docs/quickstart.md` is still `/docs/quickstart.md`, while `public/docs/changelog/v1.md` is described as `/changelog/v1.md` in `llms.txt`, `llms-full.txt`, navigation, sitemap data, Agent Readability metadata, and search metadata.
 
-Pass the same `mounts` array to every artifact generator that reads generated markdown:
+Custom build scripts should pass `docsConfig.mounts` to every artifact generator
+that reads generated markdown:
 
 ```ts
 await generateLlmsTxt({
@@ -234,25 +288,25 @@ await generateLlmsTxt({
   outDir: "public",
   product: resolveAgentInputs(docsConfig).product,
   nav: docsConfig.navigation,
-  mounts,
+  mounts: docsConfig.mounts,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   product: { name: docsConfig.product.name },
   nav: docsConfig.navigation,
-  mounts,
+  mounts: docsConfig.mounts,
 });
 
 await generateAgentReadabilityArtifacts({
   outDir: "public",
   product: resolveAgentInputs(docsConfig).product,
   nav: docsConfig.navigation,
-  mounts,
+  mounts: docsConfig.mounts,
 });
 ```
 
-`resolveDocsNavigation` and `resolveDocsTableOfContents` also accept `mounts` so sidebars and page metadata use the same URL paths. If you use the CLI, prefer `--docs-dir changelog=/changelog`; it creates the equivalent mounts and also writes static markdown mirrors at `public/changelog/*.md`.
+`resolveDocsNavigation` and `resolveDocsTableOfContents` also accept `mounts` so sidebars and page metadata use the same URL paths. If you use the CLI with `docs/docs.config.ts`, the config-level mount is loaded automatically and the CLI writes static markdown mirrors at `public/changelog/*.md`. For multiple sibling source folders, use `--docs-dir changelog=/changelog`; it creates the equivalent mount from the command line.
 
 ## generateAgentReadabilityArtifacts
 

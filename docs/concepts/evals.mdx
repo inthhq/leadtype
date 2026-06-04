@@ -3,8 +3,6 @@ title: "Evals"
 description: "How Leadtype measures whether bundling agent docs actually helps coding agents — and how the llms.txt defaults were chosen."
 ---
 
-# Evals
-
 Leadtype treats agent-facing docs as **behavior**, not just files on disk. The repo ships eval harnesses (under `evals/`) that run real coding agents against generated artifacts and grade them with an independent LLM judge.
 
 Read this if you want the evidence behind three claims: that **bundling docs into a package measurably helps coding agents**, that the default `llms.txt` + `llms-full.txt` shape **routes agents most reliably**, and that agents **rarely discover `llms.txt` on their own** unless pointed at it.

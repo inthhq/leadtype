@@ -2,6 +2,7 @@
 
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import type { ComponentType } from "react";
+import { DocsShell } from "@/components/docs-shell";
 import docsPages from "@/generated/docs-pages.json";
 import { createDocsHead } from "@/lib/docs-head";
 
@@ -18,9 +19,7 @@ interface DocsPage {
 }
 
 const pages = docsPages as DocsPage[];
-const pagesByJoinedSlug = new Map(
-  pages.map((page) => [page.slug.join("/"), page])
-);
+const pagesByUrlPath = new Map(pages.map((page) => [page.urlPath, page]));
 
 const TRAILING_SLASH_RE = /\/+$/;
 
@@ -38,12 +37,15 @@ const mdxModules = import.meta.glob<{ default: ComponentType }>(
   { eager: true }
 );
 
-function resolvePage(splat: string | undefined): DocsPage | null {
+function resolvePage(
+  urlPrefix: "/changelog" | "/docs",
+  splat: string | undefined
+): DocsPage | null {
   if (!splat) {
     return null;
   }
   const normalized = splat.replace(TRAILING_SLASH_RE, "");
-  return pagesByJoinedSlug.get(normalized) ?? null;
+  return pagesByUrlPath.get(`${urlPrefix}/${normalized}`) ?? null;
 }
 
 function MissingMdxModule({ urlPath }: { urlPath: string }) {
@@ -57,13 +59,13 @@ function MissingMdxModule({ urlPath }: { urlPath: string }) {
 
 export const Route = createFileRoute("/docs/$")({
   beforeLoad: ({ params }) => {
-    if (!resolvePage(params._splat)) {
+    if (!resolvePage("/docs", params._splat)) {
       throw notFound();
     }
   },
   component: DocsCatchAllRoute,
   head: ({ params }) => {
-    const page = resolvePage(params._splat);
+    const page = resolvePage("/docs", params._splat);
     return page ? createDocsHead(page.urlPath) : {};
   },
 });
@@ -73,7 +75,7 @@ function DocsCatchAllRoute() {
   // beforeLoad throws notFound() for missing pages, so this should always
   // resolve by the time the component renders. The explicit check both
   // narrows the type and surfaces a clear error if the invariant ever breaks.
-  const pageCandidate = resolvePage(_splat);
+  const pageCandidate = resolvePage("/docs", _splat);
   if (!pageCandidate) {
     throw new Error(
       `DocsCatchAllRoute rendered with no resolvable page for splat "${_splat}". beforeLoad should have thrown notFound() — file a bug if you see this.`
@@ -88,5 +90,9 @@ function DocsCatchAllRoute() {
     return <MissingMdxModule urlPath={page.urlPath} />;
   }
 
-  return <MdxComponent />;
+  return (
+    <DocsShell>
+      <MdxComponent />
+    </DocsShell>
+  );
 }

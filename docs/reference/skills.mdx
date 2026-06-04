@@ -13,8 +13,6 @@ related:
     description: "The rest of the agent-surface artifacts generate emits."
 ---
 
-# Agent skills
-
 leadtype emits a discoverable [`SKILL.md`](https://agentskills.io) surface — the open Agent Skills format (originally Anthropic's, supported by Claude Code, Cursor, Codex, Copilot, Gemini CLI, and others). A skill is a name, a description, and instructions an agent loads on demand; the surface lets a client *discover* yours without installing anything.
 
 It's on by default: every `leadtype generate` emits an auto **docs-skill** that points an agent at your docs. Declare more in `docs.config.ts` when you have real capability skills to expose.

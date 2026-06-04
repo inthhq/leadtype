@@ -3,8 +3,6 @@ title: "Integrate with Fumadocs"
 description: "Wire leadtype's content layer into a fumadocs app for nav, search, and includes."
 ---
 
-# Integrate with Fumadocs
-
 Fumadocs owns the docs UI — sidebar, layout, theme, search input, route handlers. Leadtype owns the **content pipeline** — `<include>` expansion, frontmatter resolution, the typed tag contract, and the agent/LLM artifacts. The two pair naturally: fumadocs reads source MDX, leadtype provides the source primitive and the build-time transforms that go through fumadocs's MDX compiler.
 
 This page covers the wiring. For everything fumadocs does after that, see fumadocs's own docs.

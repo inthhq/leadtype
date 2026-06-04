@@ -1,6 +1,6 @@
-import { defineDocsConfig } from "leadtype";
+import type { DocsConfig } from "leadtype";
 
-export default defineDocsConfig({
+const config: DocsConfig = {
   // The documented product — reused across llms.txt, JSON-LD, and the agent card.
   product: {
     name: "Leadtype",
@@ -134,96 +134,90 @@ export default defineDocsConfig({
     ],
   },
   navigation: [
+    "index",
+    "quickstart",
+    "how-it-works",
     {
-      title: "Docs",
+      title: "Concepts",
+      base: "concepts",
+      pages: ["methodology", "architecture", "evals"],
+    },
+    {
+      title: "Build an Agent-Ready Site",
+      base: "build",
       children: [
         {
-          title: "Start",
-          pages: ["", "quickstart", "how-it-works"],
-        },
-        {
-          title: "Concepts",
-          base: "concepts",
-          pages: ["methodology", "architecture", "evals"],
-        },
-        {
-          title: "Build an Agent-Ready Site",
-          base: "build",
-          children: [
-            {
-              title: "Set up",
-              pages: [
-                "sync-docs-across-repos",
-                "build-a-docs-site",
-                "agent-setup-prompts",
-                "use-the-source-primitive",
-              ],
-            },
-            {
-              title: "Generate & serve",
-              pages: [
-                "generate-static-artifacts",
-                "optimize-docs-for-agents",
-                "serve-agent-responses",
-                "deploy-generated-artifacts",
-              ],
-            },
-            {
-              title: "Operate",
-              pages: ["validate-in-ci", "localize-docs"],
-            },
-            {
-              title: "Integrate",
-              pages: ["framework-matrix", "integrate-with-fumadocs"],
-            },
-          ],
-        },
-        {
-          title: "Search & agents",
-          base: "search",
-          // MCP + skills are runtime agent-integration features, not buried API
-          // reference. Listed here (by absolute path; their /reference/* URLs are
-          // unchanged) next to their siblings.
+          title: "Set up",
           pages: [
-            "add-search",
-            "ai-answers",
-            "agent-tools",
-            "/reference/mcp",
-            "/reference/skills",
+            "sync-docs-across-repos",
+            "build-a-docs-site",
+            "agent-setup-prompts",
+            "use-the-source-primitive",
           ],
         },
         {
-          title: "Docs Sources",
-          base: "sources",
-          pages: ["configure-sources", "collections"],
-        },
-        {
-          title: "Package Docs for Agents",
-          base: "package-docs",
-          pages: ["bundle"],
-        },
-        {
-          title: "Author Content",
-          base: "authoring",
-          pages: ["write-for-agents", "frontmatter", "components"],
-        },
-        {
-          title: "Reference",
-          base: "reference",
+          title: "Generate & serve",
           pages: [
-            "cli",
-            "source",
-            "llm",
-            "convert",
-            "lint",
-            "frontmatter-transformers",
-            "mdx",
-            "remark",
-            "search",
-            "i18n",
-            "troubleshooting",
+            "generate-static-artifacts",
+            "optimize-docs-for-agents",
+            "serve-agent-responses",
+            "deploy-generated-artifacts",
           ],
         },
+        {
+          title: "Operate",
+          pages: ["validate-in-ci", "localize-docs"],
+        },
+        {
+          title: "Integrate",
+          pages: ["framework-matrix", "integrate-with-fumadocs"],
+        },
+      ],
+    },
+    {
+      title: "Search & agents",
+      base: "search",
+      // MCP + skills are runtime agent-integration features, not buried API
+      // reference. Listed here (by absolute path; their /reference/* URLs are
+      // unchanged) next to their siblings.
+      pages: [
+        "add-search",
+        "ai-answers",
+        "agent-tools",
+        "/reference/mcp",
+        "/reference/skills",
+      ],
+    },
+    {
+      title: "Docs Sources",
+      base: "sources",
+      pages: ["configure-sources", "collections"],
+    },
+    {
+      title: "Package Docs for Agents",
+      base: "package-docs",
+      pages: ["bundle"],
+    },
+    {
+      title: "Author Content",
+      base: "authoring",
+      pages: ["write-for-agents", "frontmatter", "components"],
+    },
+    {
+      title: "Reference",
+      base: "reference",
+      pages: [
+        "cli",
+        "source",
+        "llm",
+        "convert",
+        "lint",
+        "frontmatter-transformers",
+        "mdx",
+        "remark",
+        "search",
+        "i18n",
+        "troubleshooting",
       ],
     },
     {
@@ -235,6 +229,7 @@ export default defineDocsConfig({
       pages: ["0-2"],
     },
   ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
   agents: {
     // Fully crawlable + retrievable; signals "don't train on this" (the default).
     robots: { policy: "balanced" },
@@ -265,4 +260,6 @@ export default defineDocsConfig({
       ],
     },
   },
-});
+};
+
+export default config;

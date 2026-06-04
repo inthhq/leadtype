@@ -9,3 +9,4 @@
 # `files`); just regenerated alongside the docs/ output.
 /llms.txt
 /llms-full.txt
+/rollup.config-*.mjs

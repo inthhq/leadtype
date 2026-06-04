@@ -7,6 +7,7 @@ const repoRoot = path.resolve(process.cwd(), "../..");
 export const source = await createDocsSource({
   contentDir: path.join(repoRoot, "docs"),
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
   baseUrl: "http://localhost:4321",
   typeTableBasePath: repoRoot,
 });

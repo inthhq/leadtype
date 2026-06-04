@@ -3,8 +3,6 @@ title: "CLI"
 description: "leadtype init, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
 ---
 
-# CLI
-
 ```bash
 leadtype <command> [options]
 ```
@@ -81,7 +79,8 @@ export default defineDocsConfig({
     tagline: "A library that does one thing well.",
   },
   navigation: [
-    { title: "Get Started", pages: ["", "quickstart"] },
+    "index",
+    "quickstart",
     { title: "Reference", pages: [{ include: "reference/*" }] },
   ],
 });
@@ -246,7 +245,7 @@ collections: {
 For a split-repo docs UI, add `sourceConfig: true` to a remote collection. After
 sync, generation loads the source repo's `docs.config.{ts,js,mjs,cjs}` from the
 collection `dir` and inherits source-owned `navigation`, legacy `groups`,
-`frontmatterSchema`, and `flatteners`. Keep site-owned fields such as
+`frontmatterSchema`, `flatteners`, and `mounts`. Keep site-owned fields such as
 `product`, `organization`, `agents`, `llms`, output paths, and framework routes
 in the docs UI repo's `leadtype.config.ts`.
 

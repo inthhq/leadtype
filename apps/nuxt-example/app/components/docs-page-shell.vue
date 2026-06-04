@@ -12,6 +12,7 @@ import { createError, useAsyncData, useHead } from "#imports";
 import manifestJson from "../../public/docs/agent-readability.json";
 
 const props = defineProps<{
+  prefix?: "/changelog" | "/docs";
   slug?: string;
 }>();
 
@@ -24,6 +25,7 @@ type FlatTocItem = DocsTableOfContentsItem & {
 };
 
 interface PageData {
+  description: string;
   markdownUrlPath: string;
   mdc: string;
   title: string;
@@ -32,8 +34,11 @@ interface PageData {
 }
 
 const { data: pageData, error } = await useAsyncData<PageData>(
-  () => `docs:${currentSlug.value}`,
-  () => $fetch("/api/docs", { query: { slug: currentSlug.value } }),
+  () => `docs:${props.prefix ?? "/docs"}:${currentSlug.value}`,
+  () =>
+    $fetch("/api/docs", {
+      query: { prefix: props.prefix ?? "/docs", slug: currentSlug.value },
+    }),
   { watch: [currentSlug] }
 );
 
@@ -181,6 +186,10 @@ useHead(() => ({
 
       <main class="docs-card">
         <section class="docs-prose">
+          <header>
+            <h1>{{ page.title }}</h1>
+            <p v-if="page.description">{{ page.description }}</p>
+          </header>
           <MDC :value="page.mdc" />
         </section>
 

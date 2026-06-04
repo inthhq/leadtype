@@ -3,20 +3,26 @@ title: "Collections reference"
 description: "Detailed defineCollection behavior for multi-source docs: local folders, git repos, filters, schemas, and per-collection navigation."
 ---
 
-# Collections reference
-
-A **collection** is one content set in your docs site: a folder of MDX with a URL prefix, an optional frontmatter schema, and (optionally) a git repository it's cloned from. Use collections when one site needs to combine more than one content set — docs + changelog, multi-framework guides, separate-repo SDK references.
+A **collection** is one content set in your docs site: a folder of MDX with a URL prefix, an optional frontmatter schema, and (optionally) a git repository it's cloned from. Use collections when one site needs to combine more than one content set — separate docs and changelog sources, multi-framework guides, separate-repo SDK references.
 
 For the recommended task-led setup, start with [Configure docs sources](/docs/sources/configure-sources). This page is the deeper reference for collection fields and behavior.
 
-If your project has a single docs folder, you don't need collections. Use `docs/docs.config.ts` with top-level `navigation` for that case.
+If your project has a single docs folder, you don't need collections. Use
+`docs/docs.config.ts` with top-level `navigation` for that case. If one subtree
+inside that folder needs a different public URL, use `mounts` instead of a
+second collection.
 
 ## When to reach for this
 
-- You ship docs from more than one folder and want each at a distinct URL prefix (e.g. `/docs` and `/changelog`).
+- You ship docs from more than one source folder and want each at a distinct URL prefix (e.g. `/docs` and `/changelog`).
 - Your docs source lives in a different repo than your app (e.g. you publish docs for an SDK that's developed elsewhere).
 - You serve content for multiple frameworks under one namespace, each from its own repo (e.g. `/docs/react`, `/docs/swift`, `/docs/kotlin`).
 - Different content sets need different frontmatter schemas (a release-notes schema vs. the standard docs schema).
+
+Do not use collections just to move `docs/changelog/*` to `/changelog/*` when
+the changelog is owned by the same docs tree. Declare
+`mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }]` in the source
+docs config for that.
 
 ## defineCollection
 
@@ -49,8 +55,9 @@ Place this file at the project root (the cwd from which you run `leadtype`). Lea
 | `include` | `string[]` | all `.mdx` files | Glob patterns relative to `dir`. When set, narrows which files the collection contributes. |
 | `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
 | `schema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
-| `navigation` | `DocsNavNode[]` | — | Per-collection curated navigation tree. Preferred when you need stable sidebar and agent-map structure. |
+| `navigation` | `DocsNavEntry[]` | — | Per-collection curated navigation tree. Top-level strings become root pages; objects with `title` become groups. |
 | `groups` | `DocsGroup[]` | — | Legacy/fallback taxonomy (not a second navigation tree) — used when a collection hasn't adopted `navigation`. Slugs must be globally unique across all collections. |
+| `mounts` | `DocsPathMount[]` | — | Optional path-to-URL mounts inside this collection. Use when a subdirectory such as `changelog` should be canonical at `/changelog` while staying in the same source tree. |
 
 ## Local-only collections
 
@@ -118,8 +125,8 @@ export default defineDocsConfig({
 ```
 
 By default Leadtype inherits `navigation`, `groups`, `frontmatterSchema` (as the
-collection `schema`), and `flatteners`. Explicit fields on the docs UI repo's
-collection win over inherited fields.
+collection `schema`), `flatteners`, and `mounts`. Explicit fields on the docs UI
+repo's collection win over inherited fields.
 
 Leadtype does not inherit site-owned fields such as `product`, `organization`,
 `agents`, `llms`, output paths, base URL, or framework routes. Keep those in the
@@ -138,7 +145,13 @@ defineCollection({
   prefix: "/docs",
   sourceConfig: {
     path: "config/docs.config.ts",
-    inherit: ["navigation", "groups", "frontmatterSchema", "flatteners"],
+    inherit: [
+      "navigation",
+      "groups",
+      "frontmatterSchema",
+      "flatteners",
+      "mounts",
+    ],
   },
 });
 ```
@@ -146,6 +159,41 @@ defineCollection({
 If `sourceConfig` is enabled and no config file is found, generation fails with
 the collection key and expected path(s). `leadtype generate --offline` works
 with inherited source config as long as the pinned cache is already present.
+
+### Mounted subtrees in a remote source
+
+When the source repo keeps changelog pages inside the same `docs/` tree, keep it
+as one remote collection and inherit the source-owned mount:
+
+```ts title="source repo: docs/docs.config.ts"
+export default {
+  product: { name: "Acme", tagline: "Docs for Acme SDKs." },
+  navigation: [
+    "index",
+    "quickstart",
+    { title: "Changelog", base: "changelog", optional: true, pages: ["v1"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+};
+```
+
+```ts title="docs UI repo: leadtype.config.ts"
+collections: {
+  docs: defineCollection({
+    repository: "https://github.com/acme/sdk",
+    ref: "f4e3c2d1",
+    cacheDir: ".docs-src/sdk",
+    dir: "docs",
+    prefix: "/docs",
+    sourceConfig: true,
+  }),
+}
+```
+
+That maps `docs/changelog/v1.mdx` to `/changelog/v1` and
+`/changelog/v1.md` while keeping the page in the same remote source collection.
+Use two collections only when the changelog lives in a separate source folder,
+needs its own schema or filters, or is promoted independently from the docs.
 
 ## Multi-repo: framework matrix
 
@@ -200,7 +248,8 @@ collections: {
     dir: "./docs",
     prefix: "/docs",
     navigation: [
-      { title: "Start", pages: ["", "quickstart"] },
+      "index",
+      "quickstart",
       { title: "Reference", pages: [{ include: "reference/*" }] },
     ],
   }),

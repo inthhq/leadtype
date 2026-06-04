@@ -39,7 +39,7 @@ import {
 } from "../internal/docs-url";
 import type {
   DocsGroup,
-  DocsNavNode,
+  DocsNavEntry,
   DocsTableOfContentsItem,
   DocsTableOfContentsOptions,
 } from "../llm";
@@ -112,7 +112,7 @@ export type CreateDocsSourceConfig<
    */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups`. */
-  nav?: DocsNavNode[];
+  nav?: DocsNavEntry[];
   /** Base URL for absolute links (search index, TOC anchors). */
   baseUrl?: string;
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */

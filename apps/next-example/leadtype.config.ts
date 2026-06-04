@@ -24,6 +24,7 @@ export default defineDocsConfig({
       ref: process.env.LEADTYPE_EXAMPLE_SOURCE_REF ?? "main",
       cacheDir: ".leadtype",
       dir: "docs",
+      mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
       prefix: "/docs",
       sourceConfig: true,
     }),

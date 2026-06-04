@@ -1,0 +1,99 @@
+---
+import {
+  createDocsJsonLd,
+  normalizeAgentReadabilityManifest,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
+import { createDocsNavigation } from "leadtype/navigation";
+import manifestJson from "../../../public/docs/agent-readability.json";
+import { renderMarkdown } from "../../lib/markdown";
+import { source } from "../../lib/source";
+
+const manifest = normalizeAgentReadabilityManifest(manifestJson);
+const navigation = createDocsNavigation(manifest.navigation);
+
+export const getStaticPaths = async () => {
+  const pages = await source.listPages();
+  return pages
+    .filter((page) => page.urlPath.startsWith("/changelog/"))
+    .map((page) => ({
+      params: {
+        slug: page.slug.slice(1).join("/"),
+      },
+    }));
+};
+
+const sourceSlug = ["changelog", Astro.params.slug].filter(Boolean).join("/");
+const page = await source.loadPage(sourceSlug);
+
+if (!page) {
+  return Astro.redirect("/docs");
+}
+
+const meta = manifest.pages.find((entry) => entry.urlPath === page.urlPath);
+const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
+const jsonLdScript = jsonLd ? stringifyJsonLd(jsonLd) : null;
+const sidebarSections = navigation.getSidebarSections(page.urlPath);
+const markdownHtml = await renderMarkdown(page.markdown);
+const markdownUrl = `${page.urlPath}.md`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{page.title}</title>
+    {meta && <meta name="description" content={meta.description} />}
+    {meta && <link rel="canonical" href={meta.absoluteUrl} />}
+    {meta && <link rel="alternate" type="text/markdown" href={meta.markdownAbsoluteUrl} />}
+    {jsonLdScript && <script is:inline type="application/ld+json" set:html={jsonLdScript} />}
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Leadtype</a>
+      <nav aria-label="Primary">
+        <a href="/docs">Docs</a>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/docs/search-index.json">Search JSON</a>
+      </nav>
+    </header>
+    <main class="docs-layout">
+      <aside class="docs-sidebar">
+        <div class="agent-links" aria-label="Agent outputs">
+          <a href="/llms.txt">llms.txt</a>
+          <a href="/llms-full.txt">llms-full.txt</a>
+          <a href={markdownUrl}>Markdown</a>
+        </div>
+        {
+          sidebarSections.map((section) => (
+            <section class="sidebar-section">
+              <h2>{section.title}</h2>
+              <ul>
+                {section.links.map((link) => (
+                  <li>
+                    <a
+                      aria-current={link.to === page.urlPath ? "page" : undefined}
+                      href={link.to}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </aside>
+      <div class="docs-main">
+        <article class="markdown">
+          <header>
+            <h1>{page.title}</h1>
+            {page.description && <p>{page.description}</p>}
+          </header>
+          <div set:html={markdownHtml} />
+        </article>
+      </div>
+    </main>
+  </body>
+</html>

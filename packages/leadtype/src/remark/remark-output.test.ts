@@ -140,6 +140,39 @@ describe("remark markdown output", () => {
     }
   });
 
+  it("extracts interface properties with string literal names", async () => {
+    const projectDir = await createTempProject();
+    const previousCwd = process.cwd();
+    try {
+      await writeProjectFile(
+        projectDir,
+        "types.ts",
+        `export interface ThemeCSSVariables {
+  /** Primary brand color. */
+  '--c15t-primary'?: string;
+  /** Surface color. */
+  '--c15t-surface'?: string;
+}`
+      );
+      const sourcePath = await writeProjectFile(
+        projectDir,
+        "docs/reference.mdx",
+        '<AutoTypeTable name="ThemeCSSVariables" path="./types.ts" />'
+      );
+
+      process.chdir(projectDir);
+      const result = await convertMdxToMarkdown(sourcePath, [
+        [remarkTypeTableToMarkdown, {}],
+      ]);
+
+      expect(result.markdown).toContain("--c15t-primary");
+      expect(result.markdown).toContain("Primary brand color.");
+      expect(result.markdown).not.toContain("Could not extract");
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
   it("uses the first docs segment when deriving the fallback type-table base path", () => {
     expect(
       resolveDefaultTypeTableBasePath("/repo/docs/reference/docs/page.mdx")

@@ -3,8 +3,6 @@ title: "Configure docs sources"
 description: "Choose where Leadtype reads MDX from: one local docs folder, multiple mounted folders, or remote git collections pinned to a branch, tag, or commit."
 ---
 
-# Configure docs sources
-
 Leadtype can read from one local docs folder, multiple local folders, or remote
 git repositories. For a small single-repo project, start with one local folder.
 For hosted product docs where the docs UI is separate from the package/source
@@ -16,13 +14,15 @@ source-owned docs config.
 | Shape | Use when | Configure with |
 | --- | --- | --- |
 | One docs folder | Docs live beside the app or package that publishes them. | `docs/docs.config.ts` + `leadtype generate --src .` |
+| One docs folder with mounted subtrees | One source tree owns all content, but a subtree needs a top-level URL such as `/changelog`. | `docs/docs.config.ts` `mounts` |
 | Multiple local folders | Related content lives in sibling folders, such as `docs/` and `changelog/`. | Repeated `--docs-dir` flags |
-| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners. | Docs UI `leadtype.config.ts` with `sourceConfig: true` |
+| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners/mounts. | Docs UI `leadtype.config.ts` with `sourceConfig: true` |
 | Collections | Sources need separate prefixes, filters, schemas, or local/remote acquisition. | Project-level `leadtype.config.ts` |
 
 Use one docs folder when ownership is simple. Use pinned remote collections when
 the docs site is a hub for content owned by another repo, package, framework, or
-release stream.
+release stream. Use `mounts` when the source is still one docs tree and only the
+public URL differs.
 
 ## One local docs folder
 
@@ -57,7 +57,8 @@ export default defineDocsConfig({
     ],
   },
   navigation: [
-    { title: "Start", pages: ["", "quickstart"] },
+    "index",
+    "quickstart",
     { title: "Guides", pages: [{ include: "guides/*" }] },
     { title: "Reference", pages: [{ include: "reference/*" }] },
   ],
@@ -70,7 +71,45 @@ Then generate:
 npx leadtype generate --src . --out public --base-url https://example.com
 ```
 
-This reads `./docs`, writes website artifacts to `public`, and exposes pages under `/docs`.
+This reads `./docs`, writes website artifacts to `public`, and exposes pages under `/docs`. Top-level string entries become root pages instead of groups. Use `index` for `docs/index.mdx`; Leadtype strips `index` from generated URLs so that page still resolves to `/docs`.
+
+### Mount a subtree at a top-level URL
+
+Use `mounts` when a subtree is part of the same docs source but should not live
+under `/docs` publicly. A common example is a changelog kept at
+`docs/changelog/*.mdx` by the same repo and config as the rest of the docs:
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My product",
+    tagline: "Developer tools for modern apps.",
+  },
+  navigation: [
+    "index",
+    "quickstart",
+    {
+      title: "Changelog",
+      base: "changelog",
+      optional: true,
+      pages: ["v1"],
+    },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+});
+```
+
+With that mount, `docs/changelog/v1.mdx` still generates an internal copy at
+`public/docs/changelog/v1.md` for search and runtime helpers, but canonical
+URLs become `/changelog/v1` and `/changelog/v1.md` in `llms.txt`, sitemap data,
+search metadata, and `agent-readability.json`.
+
+Prefer this over a second collection when the changelog shares the same source
+repo, frontmatter schema, navigation ownership, and release process as the docs.
+Use a collection only when the changelog is a separate source or needs separate
+filters, schema, ownership, or remote acquisition.
 
 ## Multiple local folders
 
@@ -116,7 +155,7 @@ export default defineDocsConfig({
     docs: defineCollection({
       dir: "./docs",
       prefix: "/docs",
-      navigation: [{ title: "Start", pages: ["", "quickstart"] }],
+      navigation: ["index", "quickstart"],
     }),
     changelog: defineCollection({
       dir: "./changelog",
@@ -141,13 +180,14 @@ Set `repository` to make a collection remote. Pin `ref` to the version you want:
 
 For the split-repo docs UI shape, add `sourceConfig: true`. After sync,
 Leadtype loads `docs.config.{ts,js,mjs,cjs}` from the remote collection `dir`
-and inherits MDX-owned fields (`navigation`, `groups`, `frontmatterSchema`, and
-`flatteners`) into the collection.
+and inherits MDX-owned fields (`navigation`, `groups`, `frontmatterSchema`,
+`flatteners`, and `mounts`) into the collection.
 
 Keep this ownership split clear:
 
 - Source repo: MDX, navigation/sidebar order, fallback groups, frontmatter schema,
-  and source-specific flatteners.
+  source-specific flatteners, and same-tree mounts such as
+  `docs/changelog` -> `/changelog`.
 - Docs UI repo: source `repository`/`ref`, product identity as rendered by the
   site, organization, agent policy, app shell, output paths, and deployment.
 
@@ -179,6 +219,26 @@ export default defineDocsConfig({
       exclude: ["**/internal/**"],
     }),
   },
+});
+```
+
+If the source repo's `docs/docs.config.ts` declares
+`mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }]`, the docs UI
+repo inherits that mapping through `sourceConfig: true`. A remote page at
+`docs/changelog/v1.mdx` is generated with canonical URLs `/changelog/v1` and
+`/changelog/v1.md`, not `/docs/changelog/v1`.
+
+The docs UI repo can also declare `mounts` directly on the collection when it
+needs to override an older pinned source ref that does not yet include the
+source-owned mount:
+
+```ts title="leadtype.config.ts"
+docs: defineCollection({
+  ...sdkDocs,
+  dir: "docs",
+  prefix: "/docs",
+  sourceConfig: true,
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
 });
 ```
 

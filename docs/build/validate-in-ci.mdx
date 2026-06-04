@@ -3,8 +3,6 @@ title: "Validate in CI"
 description: "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish."
 ---
 
-# Validate in CI
-
 `leadtype lint` reads source MDX, runs the schema and link checks, and exits non-zero on errors. Wire it into CI so docs PRs fail fast on the same rules that would otherwise blow up `leadtype generate` later in the pipeline.
 
 ## What it catches
