@@ -14,8 +14,13 @@ import { promisify } from "node:util";
 
 const REPO = "https://github.com/c15t/c15t.git";
 // C15T_REF=<sha|tag|branch> lets us test a c15t PR branch locally.
-const FIXTURE_REF = process.env.C15T_REF ?? "main";
+const FIXTURE_REF = process.env.C15T_REF ?? "leadtype-docs-navigation-main";
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
+const FRAMEWORK_NAVIGATION_PATCH = join(
+  process.cwd(),
+  "patches",
+  "c15t-docs-config-framework-navigation.patch"
+);
 const SPARSE_PATHS = ["docs", "packages"] as const;
 const execFileAsync = promisify(execFile);
 
@@ -71,4 +76,6 @@ if (existsSync(join(FIXTURE_DIR, ".git"))) {
   await runGit(["-C", FIXTURE_DIR, "reset", "--hard", "FETCH_HEAD"]);
 }
 
+await runGit(["-C", FIXTURE_DIR, "apply", FRAMEWORK_NAVIGATION_PATCH]);
+process.stdout.write("Applied Leadtype framework navigation dogfood patch.\n");
 process.stdout.write("Real c15t content ready.\n");
