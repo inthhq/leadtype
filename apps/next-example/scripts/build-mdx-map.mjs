@@ -1,16 +1,17 @@
-// Build-time MDX bridge for the real leadtype docs.
+// Build-time MDX bridge for the synced leadtype docs.
 //
-// Scans the repo's `/docs` for actual `.mdx` files (not the manifest, which can
+// Scans `.leadtype/docs` for actual `.mdx` files (not the manifest, which can
 // list phantom group-landing pages) and emits an import map keyed by route slug
-// → a dynamic import of the source `.mdx`. `@next/mdx` compiles each at build
-// (next.config.mjs), resolving <ExtractedTypeTable>/<include> via leadtype's
-// source preset. Build-time counterpart to the Vite example's import.meta.glob.
+// → a dynamic import of the synced source `.mdx`. `@next/mdx` compiles each at
+// build (next.config.mjs), resolving <ExtractedTypeTable>/<include> via
+// leadtype's source preset. Build-time counterpart to the Vite example's
+// import.meta.glob.
 
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const appDir = process.cwd();
-const docsDir = path.resolve(appDir, "../../docs");
+const docsDir = path.resolve(appDir, ".leadtype/docs");
 const mapFile = path.join(appDir, "app/generated/docs-mdx-map.ts");
 const INDEX_SUFFIX = /\/index$/;
 
@@ -30,7 +31,7 @@ async function walk(dir, base = "") {
 const relPaths = (await walk(docsDir)).sort();
 const entries = relPaths.map((rel) => {
   const slug = rel === "index" ? "" : rel.replace(INDEX_SUFFIX, "");
-  return [slug, `../../../../docs/${rel}.mdx`];
+  return [slug, `../../.leadtype/docs/${rel}.mdx`];
 });
 
 await mkdir(path.dirname(mapFile), { recursive: true });

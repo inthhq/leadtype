@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docs:generate": "leadtype generate --src ../.. --docs-dir docs --out public --base-url http://localhost:3000 --json",
+    "docs:generate": "bun ../../packages/leadtype/dist/cli.js generate --src . --out public --base-url http://localhost:3000 --sync --json",
     "docs:prepare": "bun run docs:generate && bun run scripts/build-mdx-map.mjs",
-    "dev": "bun run --filter leadtype build && bun run docs:prepare && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run next dev --webpack",
+    "dev": "bun run --filter leadtype build && bun run docs:prepare && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run next dev --turbopack",
     "build": "bun run --filter leadtype build && bun run docs:prepare && next build --webpack",
     "start": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run next start",
     "check-types": "bun run --filter leadtype build && bun run docs:prepare && tsgo --noEmit",

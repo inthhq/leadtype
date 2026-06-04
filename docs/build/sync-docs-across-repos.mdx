@@ -5,7 +5,10 @@ description: "Keep a separate docs UI repository pinned to a reviewed package-do
 
 # Sync docs across repositories
 
-Use this when one repository owns package code and MDX, but another repository owns the rendered docs UI. Start with a remote collection pinned in the docs UI repo, then choose how that pin gets updated.
+Use this when one repository owns package code and MDX, but another repository
+owns the rendered docs UI. Start with a remote collection pinned in the docs UI
+repo, inherit the source-owned docs config, then choose how that pin gets
+updated.
 
 The important part is not `repository_dispatch`. The important part is that the docs UI repo has a durable Leadtype remote collection that says exactly which source revision to render:
 
@@ -16,10 +19,21 @@ defineCollection({
   cacheDir: ".docs-src/sdk",
   dir: "docs",
   prefix: "/docs",
+  sourceConfig: true,
 });
 ```
 
-That remote collection makes docs deploys reproducible. If `1.0.0` is live and `main` is halfway to `2.0.0`, a Vercel, Cloudflare Pages, Netlify, self-hosted CI, or local redeploy still renders the `1.0.0` docs.
+That remote collection makes docs deploys reproducible. If `1.0.0` is live and
+`main` is halfway to `2.0.0`, a Vercel, Cloudflare Pages, Netlify,
+self-hosted CI, or local redeploy still renders the `1.0.0` docs.
+
+The ownership model is intentionally narrow:
+
+- Source repo owns MDX, navigation/sidebar order, fallback groups, frontmatter
+  schema, and source-specific flatteners.
+- Docs UI repo owns product identity as rendered by the site, organization,
+  agent policy, source `repository`/`ref`, output paths, hosting, analytics, and
+  the app shell.
 
 ## Recommended flow
 
@@ -52,26 +66,83 @@ export default defineDocsConfig({
       cacheDir: ".docs-src/sdk",
       dir: "docs",
       prefix: "/docs",
+      sourceConfig: true,
     }),
   },
 });
 ```
+
+With `sourceConfig: true`, the source repo keeps the docs-specific config that
+belongs with the content: `navigation`, legacy `groups`, `frontmatterSchema`,
+and source-specific `flatteners`. The docs UI repo keeps the deployment pin and
+site-owned fields: `repository`, `ref`, `cacheDir`, product identity as rendered
+by the site, organization, agent policy, output directory, base URL, and the app
+shell.
 
 Then sync and generate before the framework build:
 
 ```json title="package.json"
 {
   "scripts": {
-    "docs:sync": "leadtype sync --src .",
-    "docs:generate": "leadtype generate --src . --out public --base-url https://docs.example.com",
-    "build": "bun run docs:sync && bun run docs:generate && next build"
+    "docs:generate": "leadtype generate --src . --out public --base-url https://docs.example.com --sync",
+    "build": "bun run docs:generate && next build"
   }
 }
 ```
 
 Use the same script shape for Astro, Nuxt, SvelteKit, TanStack Start, Vite, or a static file deploy. The framework only needs to render the human docs UI and serve the generated files.
 
+Use `leadtype generate --offline` in CI jobs or local checks that must never
+touch the network. Offline generation still loads the inherited source config
+from the existing cache, and fails if the configured `ref` is not already
+synced.
+
 If the docs UI repo uses the released package at build time, pin that dependency to the same version in the same PR and refresh the lockfile. That pins both the docs content and the package code used to render or generate it.
+
+## How Leadtype dogfoods this
+
+The framework apps in `apps/*` are integration examples. The production
+Leadtype docs site is a separate docs UI app that renders `leadtype.dev` and
+syncs the Leadtype source repository into `.leadtype`.
+
+Before `sourceConfig`, that app needed a custom source file (`leadtype-source.json`),
+a custom clone script, and a custom import of `.leadtype/docs/docs.config.ts` to
+reuse the source-owned navigation. With `sourceConfig: true`, the app can move
+that source ownership into first-class Leadtype config:
+
+```ts title="leadtype.config.ts"
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "Leadtype",
+    tagline:
+      "Framework-neutral docs pipeline tooling for MDX, LLM bundles, and search.",
+    docs: "https://leadtype.dev/docs",
+    repository: "https://github.com/inthhq/leadtype",
+    kind: "library",
+  },
+  organization: {
+    name: "Inth",
+    url: "https://inth.com",
+  },
+  collections: {
+    docs: defineCollection({
+      repository: "https://github.com/inthhq/leadtype",
+      ref: "leadtype@0.1.2",
+      cacheDir: ".leadtype",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    }),
+  },
+});
+```
+
+The source repo keeps `docs/docs.config.ts`, MDX, navigation, groups,
+frontmatter schema, and source-specific flatteners. The Leadtype docs UI app
+keeps the app shell, consent, analytics, search UI, package dependency pin, and
+production source `ref`.
 
 ## Optional automation: open the pin PR
 
@@ -239,12 +310,13 @@ Requirements:
 1. The package/source repo owns MDX and releases packages.
 2. The docs UI repo owns the rendered site.
 3. Production docs must be pinned to an explicit released source revision, not the source repo default branch.
-4. Configure `leadtype.config.ts` in the docs UI repo with a remote Leadtype collection whose `repository` points at the source repo and whose `ref` is pinned to the released commit SHA.
-5. Keep the package version near that config when useful for reviewers, PR titles, dependency pins, or release dashboards.
-6. Run `leadtype sync`, then `leadtype generate`, before the docs UI framework build.
-7. Prefer manual pin PRs as the baseline. If automating, make the source repo dispatch a small payload after publish and make the docs UI repo open a PR that updates the remote collection ref.
-8. Do not make package publish directly deploy production docs unless the project explicitly wants that coupling.
-9. For PR previews, do not update the production pin. Keep preview refs separate.
+4. Configure `leadtype.config.ts` in the docs UI repo with a remote Leadtype collection whose `repository` points at the source repo, whose `ref` is pinned to the released commit SHA, and whose `sourceConfig` is `true`.
+5. Keep source-owned `navigation`, legacy `groups`, `frontmatterSchema`, and `flatteners` in the source repo's `docs/docs.config.ts`.
+6. Keep the package version near that config when useful for reviewers, PR titles, dependency pins, or release dashboards.
+7. Run `leadtype generate --sync` before the docs UI framework build. Use `--offline` only when the cache is already present.
+8. Prefer manual pin PRs as the baseline. If automating, make the source repo dispatch a small payload after publish and make the docs UI repo open a PR that updates the remote collection ref.
+9. Do not make package publish directly deploy production docs unless the project explicitly wants that coupling.
+10. For PR previews, do not update the production pin. Keep preview refs separate.
 
 Return the changed workflows, the remote collection shape, required secrets and variables, and the build scripts needed for the docs UI repo.
 </Prompt>

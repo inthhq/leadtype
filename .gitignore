@@ -35,6 +35,7 @@ dist
 *.tsbuildinfo
 
 # Generated example docs
+apps/*/.leadtype/
 apps/*/public/docs/
 apps/*/public/llms-full.txt
 apps/*/public/llms.txt

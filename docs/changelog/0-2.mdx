@@ -24,6 +24,7 @@ Leadtype 0.2 turns the package from an MDX-to-agent-artifacts pipeline into a po
 - Added top-level `product`, `organization`, `agents`, and `llms.sections` config fields so `llms.txt`, `AGENTS.md`, JSON-LD, robots, the agent card, and generated skills share one identity model.
 - Added config-owned `navigation` with nested sections, explicit pages, wildcard includes, root-relative entries, per-node bases, and `optional: true` sections. Frontmatter `group` still works as taxonomy and fallback metadata, but curated IA should now live in config.
 - Added `collections` and `leadtype sync` for multi-source docs. Collections can read local folders or remote git repositories pinned to a branch, tag, or commit, then generate under separate URL prefixes.
+- Added `sourceConfig: true` for the flagship pinned source docs UI path. A docs UI repo can pin a source/package repo, inherit source-owned `navigation`, legacy `groups`, `frontmatterSchema`, and `flatteners`, then keep product identity, agent policy, deployment, and the app shell in the UI repo.
 - Added first-class docs i18n helpers and locale-aware generation for localized sources, search indexes, LLM files, and Agent Readability artifacts.
 - Added frontmatter transformers and tightened the default frontmatter metadata contract, including stronger linting around JSON-LD validity, link structure, and GEO-oriented docs shape.
 - Added `resolveAgentInputs(config)` so custom scripts can map config identity into lower-level generation APIs the same way the CLI does.
@@ -51,7 +52,7 @@ Leadtype 0.2 turns the package from an MDX-to-agent-artifacts pipeline into a po
 - Add `product` and `organization` metadata before enabling agent surfaces so JSON-LD, AgentCard, skills, and generated docs all describe the same entity.
 - Configure `agents.robots`, `agents.seo`, `agents.mcp`, and `agents.skills` in config instead of duplicating those settings in routes or scripts.
 - For package docs, continue using `leadtype generate --bundle`. Add `--mcp` only when the package should ship the search index and Agent Readability manifest needed for package-local MCP retrieval.
-- For docs spread across repositories, use a root `leadtype.config.ts` with `collections`, pin remote sources to a reviewed ref, and run `leadtype sync` before generation.
+- For docs spread across repositories, use a root `leadtype.config.ts` with `collections`, pin remote sources to a reviewed ref, set `sourceConfig: true` when the source repo owns navigation/schema/flatteners, and run `leadtype generate --sync`.
 - For host integrations you control, wire the runtime route to generated `agent-readability.json`, add markdown response negotiation, render JSON-LD from the manifest, and keep visual components in the host app or docs framework.
 
 ## Upgrade prompt
@@ -72,7 +73,7 @@ Leadtype 0.2 turns the package from an MDX-to-agent-artifacts pipeline into a po
   - Upgrade Leadtype and update scripts to run `leadtype generate` with the correct `--src`, `--out`, `--base-url`, and source mode.
   - Define `product`, `organization`, `llms.sections`, and config-owned `navigation`. Use explicit pages for primary flows and wildcard includes for inventory-like folders.
   - Keep frontmatter `group` only as taxonomy or compatibility metadata. Keep `order` only when wildcard navigation includes need fallback sorting.
-  - If docs come from multiple local or remote sources, create a root `leadtype.config.ts` with `collections`, pin remote refs, add `leadtype sync`, and use `--sync`, `--refresh`, or `--offline` intentionally.
+  - If docs come from multiple local or remote sources, create a root `leadtype.config.ts` with `collections`, pin remote refs, set `sourceConfig: true` when a source repo owns its docs navigation/schema/flatteners, and use `--sync`, `--refresh`, or `--offline` intentionally.
   - Configure `agents.robots`, `agents.seo`, `agents.skills`, and `agents.mcp` where relevant.
   - Update only the host integration you control to load the generated Agent Readability manifest, serve markdown responses for agent requests and `.md` URLs, render JSON-LD/head metadata from Leadtype helpers, and keep all visual UI components owned by the app or docs framework.
   - Add or refresh runtime MDX components for the Leadtype component contract, including `Prompt`, `CommandTabs`, `FileTree`, `Tabs`, `Steps`, `Callout`, and `TypeTable`.
@@ -105,7 +106,7 @@ Leadtype 0.2 turns the package from an MDX-to-agent-artifacts pipeline into a po
   - Move intentional docs IA into config-owned `navigation`. Use nested sections for the product's real information architecture, explicit page entries for primary flows, and wildcard includes for inventory-like folders.
   - Keep frontmatter `group` only as taxonomy or compatibility metadata. Keep `order` only where wildcard includes need fallback sorting.
   - Add or refresh `product`, `organization`, and `llms.sections`. Include an `Overview` markdown section and a `Best Starting Points` links section with concise descriptions that route agents to the right pages.
-  - If the source spans multiple folders or repos, model it with `collections`, `defineCollection`, stable `prefix` values, pinned remote `ref` values, and clear include/exclude filters.
+  - If the source spans multiple folders or repos, model it with `collections`, `defineCollection`, stable `prefix` values, pinned remote `ref` values, `sourceConfig: true` for source-owned docs config, and clear include/exclude filters.
   - Review every important page against the Write for agents & GEO guidance: lead with the answer, phrase H2/H3 headings as user questions where natural, make sections self-contained, use one term per concept, include exact defaults/limits/failure modes, and avoid restating types or CLI help.
   - Fix mechanical GEO issues: no skipped heading levels, every fenced code block has a language, and every meaningful image has alt text.
   - Add or improve frontmatter descriptions, related links, and page titles so `llms.txt`, search snippets, sitemap metadata, and Agent Readability output have useful summaries.

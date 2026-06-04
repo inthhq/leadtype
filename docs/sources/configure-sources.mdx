@@ -5,7 +5,11 @@ description: "Choose where Leadtype reads MDX from: one local docs folder, multi
 
 # Configure docs sources
 
-Leadtype can read from one local docs folder, multiple local folders, or remote git repositories. Start with the simplest shape that matches your docs ownership model, then move to collections when each source needs its own URL prefix, git checkout, filters, or schema.
+Leadtype can read from one local docs folder, multiple local folders, or remote
+git repositories. For a small single-repo project, start with one local folder.
+For hosted product docs where the docs UI is separate from the package/source
+repo, start with a pinned remote collection and inherit the source repo's
+source-owned docs config.
 
 ## Pick the right source shape
 
@@ -13,9 +17,12 @@ Leadtype can read from one local docs folder, multiple local folders, or remote 
 | --- | --- | --- |
 | One docs folder | Docs live beside the app or package that publishes them. | `docs/docs.config.ts` + `leadtype generate --src .` |
 | Multiple local folders | Related content lives in sibling folders, such as `docs/` and `changelog/`. | Repeated `--docs-dir` flags |
-| Collections | Sources need separate prefixes, filters, schemas, or remote git acquisition. | Project-level `leadtype.config.ts` |
+| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners. | Docs UI `leadtype.config.ts` with `sourceConfig: true` |
+| Collections | Sources need separate prefixes, filters, schemas, or local/remote acquisition. | Project-level `leadtype.config.ts` |
 
-Use one docs folder for the GA happy path. Use collections when the docs site is a hub for content owned by more than one repo, package, framework, or release stream.
+Use one docs folder when ownership is simple. Use pinned remote collections when
+the docs site is a hub for content owned by another repo, package, framework, or
+release stream.
 
 ## One local docs folder
 
@@ -132,6 +139,18 @@ When `leadtype.config.ts` defines `collections`, the collection map fully descri
 
 Set `repository` to make a collection remote. Pin `ref` to the version you want: a branch for moving docs, a tag for release docs, or a commit SHA for fully reproducible output.
 
+For the split-repo docs UI shape, add `sourceConfig: true`. After sync,
+Leadtype loads `docs.config.{ts,js,mjs,cjs}` from the remote collection `dir`
+and inherits MDX-owned fields (`navigation`, `groups`, `frontmatterSchema`, and
+`flatteners`) into the collection.
+
+Keep this ownership split clear:
+
+- Source repo: MDX, navigation/sidebar order, fallback groups, frontmatter schema,
+  and source-specific flatteners.
+- Docs UI repo: source `repository`/`ref`, product identity as rendered by the
+  site, organization, agent policy, app shell, output paths, and deployment.
+
 ```ts title="leadtype.config.ts"
 import { defineCollection, defineDocsConfig } from "leadtype";
 
@@ -155,6 +174,7 @@ export default defineDocsConfig({
       ...sdkDocs,
       dir: "docs",
       prefix: "/docs/sdk",
+      sourceConfig: true,
       include: ["quickstart.mdx", "guides/**", "reference/**"],
       exclude: ["**/internal/**"],
     }),

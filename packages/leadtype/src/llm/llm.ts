@@ -257,6 +257,24 @@ export type DocsNavNode = {
 /** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
 export type { DocsFrontmatterSchema } from "../transformers";
 
+export type SourceConfigInheritField =
+  | "navigation"
+  | "groups"
+  | "frontmatterSchema"
+  | "flatteners";
+
+export type SourceConfigInheritance =
+  | true
+  | {
+      /**
+       * Config file path relative to the collection `dir`. Defaults to
+       * `docs.config.{ts,js,mjs,cjs}` in that directory.
+       */
+      path?: string;
+      /** Source-owned fields to inherit. Defaults to all supported fields. */
+      inherit?: SourceConfigInheritField[];
+    };
+
 /**
  * One content set in a multi-source docs site. A collection declares where its
  * MDX comes from (local `dir`, or a remote git `repository` at `ref`), how it
@@ -275,6 +293,12 @@ export type DocsCollection = {
    * Ignored for local-only collections.
    */
   cacheDir?: string;
+  /**
+   * For remote collections, load source-owned docs config from the synced
+   * collection directory after sync and inherit content-owned fields into this
+   * collection.
+   */
+  sourceConfig?: SourceConfigInheritance;
   /**
    * Directory containing the MDX. Relative to the repo root for remote
    * collections, or relative to cwd for local-only collections.

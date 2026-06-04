@@ -38,6 +38,16 @@ const SHA_PATTERN = new RegExp(
 const HTTPS_GIT_URL = /^https?:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/i;
 const SCP_LIKE_GIT_URL = /^(?:[\w.-]+@)?([^:]+):(.+?)(?:\.git)?$/;
 const SAFE_SLUG = /[^a-zA-Z0-9_.-]/g;
+const GIT_REPOSITORY_ENV_KEYS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_QUARANTINE_PATH",
+  "GIT_WORK_TREE",
+] as const;
 
 export function isShaRef(ref: string): boolean {
   return SHA_PATTERN.test(ref);
@@ -57,6 +67,14 @@ export function repositorySlug(repository: string): string {
   }
   const base = (pathPart ?? repository).replace(/\.git$/i, "");
   return base.replace(SAFE_SLUG, "-");
+}
+
+function gitSubprocessEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of GIT_REPOSITORY_ENV_KEYS) {
+    delete env[key];
+  }
+  return env;
 }
 
 export type ResolvedRemoteSource = {
@@ -204,6 +222,7 @@ export const defaultGitRunner: GitRunner = (args, options) =>
   new Promise((resolve, reject) => {
     const child = spawn("git", args, {
       cwd: options?.cwd,
+      env: gitSubprocessEnv(),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";

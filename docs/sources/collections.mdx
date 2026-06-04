@@ -45,6 +45,7 @@ Place this file at the project root (the cwd from which you run `leadtype`). Lea
 | `repository` | `string` | — | `https://` or `git@` URL. Set this to make the collection remote — leadtype clones it on `leadtype sync`. Omit for local collections. |
 | `ref` | `string` | `"main"` | Branch, tag, or commit SHA to check out. SHAs are detected by pattern (7–40 hex chars) and use a full clone + `checkout`; everything else uses `clone --depth 1 --branch`. |
 | `cacheDir` | `string` | `.leadtype/sources/<repo-slug>@<ref>` | Where the clone lives on disk, relative to the config dir. Override this when you want a stable on-disk path for other tooling (e.g. type-table extraction). |
+| `sourceConfig` | `true \| object` | — | Remote collections only. After sync, load source-owned docs config from the collection `dir` and inherit MDX-owned fields into this collection. |
 | `include` | `string[]` | all `.mdx` files | Glob patterns relative to `dir`. When set, narrows which files the collection contributes. |
 | `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
 | `schema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
@@ -82,6 +83,69 @@ export default defineDocsConfig({
 
 This shape is useful when a docs UI repo needs to render and package content
 from one or more product repos.
+
+### Inherit source-owned docs config
+
+When a package/source repo owns both the MDX files and their information
+architecture, set `sourceConfig: true` on the remote collection. This is the
+flagship split-repo docs UI shape: the source repo owns content semantics, and
+the docs UI repo owns deployment.
+
+`leadtype generate --sync` loads `docs.config.{ts,js,mjs,cjs}` from the synced
+collection `dir` after cloning, then treats the source config's MDX-owned fields
+as collection-owned fields:
+
+```ts
+export default defineDocsConfig({
+  product: {
+    name: "Acme",
+    tagline: "Docs for Acme SDKs.",
+  },
+  organization: {
+    name: "Acme",
+  },
+  collections: {
+    docs: defineCollection({
+      repository: "https://github.com/acme/sdk",
+      ref: "f4e3c2d1",
+      cacheDir: ".docs-src/sdk",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    }),
+  },
+});
+```
+
+By default Leadtype inherits `navigation`, `groups`, `frontmatterSchema` (as the
+collection `schema`), and `flatteners`. Explicit fields on the docs UI repo's
+collection win over inherited fields.
+
+Leadtype does not inherit site-owned fields such as `product`, `organization`,
+`agents`, `llms`, output paths, base URL, or framework routes. Keep those in the
+docs UI repo so a reviewed `ref` controls exactly which source content is live,
+while the rendered site keeps its own identity and deployment policy.
+
+Use the object form when the source config has a custom path. `path` is relative
+to the collection `dir`, not the repository root:
+
+```ts
+defineCollection({
+  repository: "https://github.com/acme/sdk",
+  ref: "v1.2.3",
+  cacheDir: ".docs-src/sdk",
+  dir: "docs",
+  prefix: "/docs",
+  sourceConfig: {
+    path: "config/docs.config.ts",
+    inherit: ["navigation", "groups", "frontmatterSchema", "flatteners"],
+  },
+});
+```
+
+If `sourceConfig` is enabled and no config file is found, generation fails with
+the collection key and expected path(s). `leadtype generate --offline` works
+with inherited source config as long as the pinned cache is already present.
 
 ## Multi-repo: framework matrix
 

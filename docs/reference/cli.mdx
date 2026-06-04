@@ -243,6 +243,13 @@ collections: {
 
 …runs exactly one `git clone`, with both collections reading from `<cacheDir>/docs` and `<cacheDir>/changelog`.
 
+For a split-repo docs UI, add `sourceConfig: true` to a remote collection. After
+sync, generation loads the source repo's `docs.config.{ts,js,mjs,cjs}` from the
+collection `dir` and inherits source-owned `navigation`, legacy `groups`,
+`frontmatterSchema`, and `flatteners`. Keep site-owned fields such as
+`product`, `organization`, `agents`, `llms`, output paths, and framework routes
+in the docs UI repo's `leadtype.config.ts`.
+
 ## lint
 
 Validate frontmatter, `meta.json`, and internal links before generation runs.

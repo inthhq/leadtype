@@ -59,6 +59,12 @@ export default defineDocsConfig({
               "Build one rendered docs route, generate agent artifacts, and verify the output.",
           },
           {
+            urlPath: "/docs/build/sync-docs-across-repos",
+            title: "Pinned source docs UI",
+            description:
+              "Recommended hosted-site shape: a docs UI repo pins a source repo, inherits source-owned navigation, and generates reproducible artifacts.",
+          },
+          {
             urlPath: "/docs/how-it-works",
             title: "How it works",
             description:
@@ -147,6 +153,7 @@ export default defineDocsConfig({
             {
               title: "Set up",
               pages: [
+                "sync-docs-across-repos",
                 "build-a-docs-site",
                 "agent-setup-prompts",
                 "use-the-source-primitive",
@@ -163,11 +170,7 @@ export default defineDocsConfig({
             },
             {
               title: "Operate",
-              pages: [
-                "sync-docs-across-repos",
-                "validate-in-ci",
-                "localize-docs",
-              ],
+              pages: ["validate-in-ci", "localize-docs"],
             },
             {
               title: "Integrate",

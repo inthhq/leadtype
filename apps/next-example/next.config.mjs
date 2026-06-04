@@ -1,36 +1,22 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import createMDX from "@next/mdx";
-import { createMdxSourcePlugins } from "leadtype/mdx";
-import remarkFrontmatter from "remark-frontmatter";
-import remarkGfm from "remark-gfm";
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
-// <ExtractedTypeTable path="..."> is resolved relative to the monorepo root.
-const typeTableBasePath = path.resolve(appDir, "../..");
+// <ExtractedTypeTable path="..."> is resolved relative to the synced source.
+const typeTableBasePath = path.resolve(appDir, ".leadtype");
+const stripYamlFrontmatter = path.join(appDir, "remark-strip-yaml.mjs");
 
-/** Drop the parsed frontmatter node — leadtype's source preset expects bodies. */
-function stripYamlFrontmatter() {
-  return (tree) => {
-    if (Array.isArray(tree.children)) {
-      tree.children = tree.children.filter((node) => node.type !== "yaml");
-    }
-    return tree;
-  };
-}
-
-// Build-time MDX with leadtype's source preset (expand <include>, resolve
-// <ExtractedTypeTable>, strip authoring imports). These are function plugins,
-// so the build runs on webpack (`next build --webpack`); the Turbopack-clean
-// path for content without source transforms is `["leadtype/mdx/source", …]`.
+// Build-time MDX with leadtype's source preset. Use string plugin specifiers so
+// Next/Turbopack can serialize loader options across worker boundaries.
 const withMdx = createMDX({
   extension: /\.mdx?$/,
   options: {
     remarkPlugins: [
-      remarkFrontmatter,
+      "remark-frontmatter",
       stripYamlFrontmatter,
-      remarkGfm,
-      ...createMdxSourcePlugins({ typeTableBasePath }),
+      "remark-gfm",
+      ["leadtype/mdx/source", { typeTableBasePath }],
     ],
   },
 });
@@ -38,7 +24,7 @@ const withMdx = createMDX({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ["ts", "tsx", "mdx"],
-  // The docs `.mdx` live in the repo's /docs, outside the app directory.
+  // The docs `.mdx` live in the synced source checkout.
   experimental: { externalDir: true },
 };
 
