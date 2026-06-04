@@ -3,6 +3,8 @@ import "@fontsource-variable/geist-mono";
 import type {
   AgentReadabilityManifest,
   AgentReadabilityPage,
+  DocsNavigationGroup,
+  DocsNavigationPage,
 } from "leadtype/llm/readability";
 import { normalizeAgentReadabilityManifest } from "leadtype/llm/readability";
 import {
@@ -11,6 +13,7 @@ import {
   type DocsBreadcrumb,
   type DocsHeaderTab,
   type DocsNavigationApi,
+  type DocsSidebarLink,
   type DocsSidebarSection,
 } from "leadtype/navigation";
 import type { ReactNode } from "react";
@@ -47,14 +50,23 @@ const fencedCodeBlockRegex = /^```[\s\S]*?^```$/gm;
 const headingRegex = /^#{2,3}\s+(.+)$/gm;
 const markdownExtensionRegex = /\.md$/;
 const trailingSlashRegex = /\/$/;
+const docsPrefix = "/docs/";
+const frameworksRootPath = "/docs/frameworks";
+const frameworkSegmentPattern = /^\/docs\/frameworks\/([^/]+)/;
 
-function normalizeRoute(pathname: string) {
+function normalizeRoute(pathname: string): string {
   if (pathname === "/" || pathname === "") {
     return "/docs";
   }
   return pathname.length > 1
     ? pathname.replace(trailingSlashRegex, "")
     : pathname;
+}
+
+function normalizeInternalHref(href: string): string {
+  const [pathname = href, hash] = href.split("#");
+  const normalized = normalizeRoute(pagePathFromMarkdown(pathname));
+  return hash ? `${normalized}#${hash}` : normalized;
 }
 
 function markdownPathForPage(page: AgentReadabilityPage) {
@@ -101,6 +113,151 @@ function withOccurrenceKeys<T>(
       key: occurrence === 0 ? baseKey : `${baseKey}-${occurrence}`,
     };
   });
+}
+
+function groupContainsPath(
+  group: DocsNavigationGroup,
+  pathname: string
+): boolean {
+  if (group.pages.some((page) => page.urlPath === pathname)) {
+    return true;
+  }
+  return group.children.some((child) => groupContainsPath(child, pathname));
+}
+
+function flattenGroupPages(group: DocsNavigationGroup): DocsSidebarLink[] {
+  const direct = group.pages.map((page) => ({
+    label: page.title,
+    to: page.urlPath,
+  }));
+  const nested = group.children.flatMap(flattenGroupPages);
+  return [...direct, ...nested];
+}
+
+function sectionsForGroup(group: DocsNavigationGroup): DocsSidebarSection[] {
+  const directLinks = group.pages.map((page) => ({
+    label: page.title,
+    to: page.urlPath,
+  }));
+  const directSection =
+    directLinks.length > 0
+      ? [
+          {
+            title: group.title,
+            description: group.description,
+            links: directLinks,
+          },
+        ]
+      : [];
+  const childSections = group.children.map((child) => ({
+    title: child.title,
+    description: child.description,
+    links: flattenGroupPages(child),
+  }));
+
+  return [...directSection, ...childSections].filter(
+    (section) => section.links.length > 0
+  );
+}
+
+function getFrameworksGroup(manifest: AgentReadabilityManifest) {
+  return manifest.navigation.groups.find(
+    (group) => group.segmentPath.join("/") === "frameworks"
+  );
+}
+
+function getActiveFrameworkGroup(
+  manifest: AgentReadabilityManifest,
+  activePath: string
+) {
+  const frameworksGroup = getFrameworksGroup(manifest);
+  if (!frameworksGroup) {
+    return;
+  }
+
+  const frameworkSegment = activePath.match(frameworkSegmentPattern)?.[1];
+
+  if (!frameworkSegment) {
+    return frameworksGroup.children.find((group) =>
+      groupContainsPath(group, activePath)
+    );
+  }
+
+  return frameworksGroup.children.find((group) =>
+    group.segmentPath.includes(frameworkSegment)
+  );
+}
+
+function firstPageInGroup(
+  group: DocsNavigationGroup
+): DocsNavigationPage | undefined {
+  const directPage = group.pages[0];
+  if (directPage) {
+    return directPage;
+  }
+  for (const child of group.children) {
+    const page = firstPageInGroup(child);
+    if (page) {
+      return page;
+    }
+  }
+  return;
+}
+
+function getFrameworkOptions(manifest: AgentReadabilityManifest) {
+  const frameworksGroup = getFrameworksGroup(manifest);
+  if (!frameworksGroup) {
+    return [];
+  }
+
+  return frameworksGroup.children.flatMap((group) => {
+    const page = firstPageInGroup(group);
+    return page
+      ? [
+          {
+            description: group.description ?? page.description,
+            label: group.title,
+            to: page.urlPath,
+          },
+        ]
+      : [];
+  });
+}
+
+function getScopedSidebarSections(
+  manifest: AgentReadabilityManifest,
+  navigation: DocsNavigationApi,
+  activePath: string
+) {
+  const frameworksGroup = getFrameworksGroup(manifest);
+  if (
+    frameworksGroup &&
+    groupContainsPath(frameworksGroup, activePath) &&
+    activePath !== frameworksRootPath
+  ) {
+    const activeFrameworkGroup = getActiveFrameworkGroup(manifest, activePath);
+    return activeFrameworkGroup
+      ? sectionsForGroup(activeFrameworkGroup)
+      : navigation.getSidebarSections(activePath);
+  }
+
+  if (activePath === frameworksRootPath && frameworksGroup) {
+    return [
+      {
+        title: frameworksGroup.title,
+        description: frameworksGroup.description,
+        links: [
+          ...frameworksGroup.pages.map((page) => ({
+            label: page.title,
+            to: page.urlPath,
+          })),
+          ...getFrameworkOptions(manifest),
+        ],
+      },
+    ];
+  }
+
+  return navigation.getSidebarSections(activePath);
 }
 
 function useCurrentRoute() {
@@ -243,7 +400,6 @@ function Link({
 function Brand() {
   return (
     <a className="brand" href="/docs">
-      <span className="mark">c</span>
       <span>
         <strong>c15t</strong>
         <small>Docs repro</small>
@@ -263,14 +419,6 @@ function Sidebar({
 }) {
   return (
     <aside className="sidebar">
-      <Brand />
-      <div className="section-context">
-        <span>Generated docs</span>
-        <p>
-          This Vite app reads the markdown, navigation, and agent manifest that
-          Leadtype generated from the real c15t docs repo.
-        </p>
-      </div>
       <nav aria-label="Docs sections" className="side-nav">
         {withOccurrenceKeys(sections, (section) => section.title).map(
           ({ item: section, key }) => (
@@ -300,23 +448,28 @@ function Sidebar({
 
 function TopNav({
   activePath,
+  manifest,
   onNavigate,
   tabs,
 }: {
   activePath: string;
+  manifest: AgentReadabilityManifest;
   onNavigate: (to: string) => void;
   tabs: DocsHeaderTab[];
 }) {
   return (
     <header className="top-nav">
       <nav aria-label="Primary docs groups">
+        <Brand />
         {withOccurrenceKeys(
           tabs,
           (tab) => `${tab.groupKey ?? tab.to}-${tab.to}`
         ).map(({ item: tab, key }) => (
           <Link
-            className={activePath.startsWith(tab.to) ? "active" : undefined}
-            isActive={activePath.startsWith(tab.to)}
+            className={
+              isTopNavActive(manifest, activePath, tab) ? "active" : undefined
+            }
+            isActive={isTopNavActive(manifest, activePath, tab)}
             key={key}
             onNavigate={onNavigate}
             to={tab.to}
@@ -329,6 +482,21 @@ function TopNav({
       </nav>
     </header>
   );
+}
+
+function isTopNavActive(
+  manifest: AgentReadabilityManifest,
+  activePath: string,
+  tab: DocsHeaderTab
+): boolean {
+  if (!tab.groupKey) {
+    return activePath === tab.to;
+  }
+
+  const activeGroup = manifest.navigation.groups.find((group) =>
+    groupContainsPath(group, activePath)
+  );
+  return activeGroup?.segmentPath.join("/") === tab.groupKey;
 }
 
 function Breadcrumbs({
@@ -356,6 +524,79 @@ function Breadcrumbs({
         </span>
       ))}
     </nav>
+  );
+}
+
+function FrameworkOverview({
+  frameworks,
+  onNavigate,
+}: {
+  frameworks: ReturnType<typeof getFrameworkOptions>;
+  onNavigate: (to: string) => void;
+}) {
+  return (
+    <div className="framework-grid">
+      {frameworks.map((framework) => (
+        <Link
+          className="framework-card"
+          key={framework.to}
+          onNavigate={onNavigate}
+          to={framework.to}
+        >
+          <strong>{framework.label}</strong>
+          <span>{framework.description}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function MarkdownBody({
+  content,
+  onNavigate,
+}: {
+  content: string;
+  onNavigate: (to: string) => void;
+}) {
+  return (
+    <Streamdown
+      components={{
+        a: ({ children, href, node: _node, ...props }) => {
+          if (href?.startsWith(docsPrefix) || href?.startsWith("/changelog")) {
+            return (
+              <a
+                {...props}
+                href={href}
+                onClick={(event) => {
+                  if (
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  ) {
+                    return;
+                  }
+                  event.preventDefault();
+                  onNavigate(normalizeInternalHref(href));
+                }}
+              >
+                {children}
+              </a>
+            );
+          }
+
+          return (
+            <a href={href} rel="noopener" target="_blank" {...props}>
+              {children}
+            </a>
+          );
+        },
+      }}
+      linkSafety={{ enabled: false }}
+      mode="static"
+    >
+      {content}
+    </Streamdown>
   );
 }
 
@@ -412,9 +653,7 @@ function AdjacentLinks({
           <span>Previous</span>
           {adjacent.previous.title}
         </Link>
-      ) : (
-        <span />
-      )}
+      ) : null}
       {adjacent.next ? (
         <Link onNavigate={onNavigate} to={adjacent.next.urlPath}>
           <span>Next</span>
@@ -454,50 +693,47 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-export function App() {
-  const docs = useDocsState();
-  const { route, setRoute } = useCurrentRoute();
-
-  const activePage = useMemo(() => {
-    if (docs.status !== "ready") {
-      return;
-    }
-    return (
+function ReadyDocsApp({
+  docs,
+  route,
+  setRoute,
+}: {
+  docs: Extract<DocsState, { status: "ready" }>;
+  route: string;
+  setRoute: (to: string) => void;
+}) {
+  const activePage = useMemo(
+    () =>
       docs.manifest.pages.find((page) => page.urlPath === route) ??
       docs.manifest.pages.find(
         (page) => pagePathFromMarkdown(markdownPathForPage(page)) === route
       ) ??
-      docs.manifest.pages[0]
-    );
-  }, [docs, route]);
+      docs.manifest.pages[0],
+    [docs, route]
+  );
 
   const markdown = useMarkdown(activePage);
 
   const visibleRoute = activePage?.urlPath ?? route;
-  const sections =
-    docs.status === "ready"
-      ? docs.navigation.getSidebarSections(visibleRoute)
-      : [];
-  const tabs = docs.status === "ready" ? docs.navigation.getHeaderTabs() : [];
-  const breadcrumbs =
-    docs.status === "ready" ? docs.navigation.getBreadcrumbs(visibleRoute) : [];
-  const adjacent =
-    docs.status === "ready"
-      ? docs.navigation.getAdjacentPages(visibleRoute)
-      : { next: null, previous: null };
+  const sections = getScopedSidebarSections(
+    docs.manifest,
+    docs.navigation,
+    visibleRoute
+  );
+  const tabs = docs.navigation.getHeaderTabs();
+  const breadcrumbs = docs.navigation.getBreadcrumbs(visibleRoute);
+  const adjacent = docs.navigation.getAdjacentPages(visibleRoute);
   const markdownPath = activePage
     ? markdownPathForPage(activePage)
     : "/llms.txt";
   const headings =
-    markdown.status === "ready" ? extractHeadings(markdown.content) : [];
-
-  if (docs.status === "loading") {
-    return <LoadingState status="loading" />;
-  }
-
-  if (docs.status === "error") {
-    return <ErrorState message={docs.error} />;
-  }
+    markdown.status === "ready" && visibleRoute !== frameworksRootPath
+      ? extractHeadings(markdown.content)
+      : [];
+  const frameworkOptions = getFrameworkOptions(docs.manifest);
+  const sidebarKey = sections
+    .map((section) => `${section.title}:${section.links[0]?.to ?? ""}`)
+    .join("|");
 
   if (!activePage) {
     return <LoadingState status="ready" />;
@@ -505,14 +741,22 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar
+      <TopNav
         activePath={visibleRoute}
+        manifest={docs.manifest}
         onNavigate={setRoute}
-        sections={sections}
+        tabs={tabs}
       />
       <div className="content-shell">
-        <TopNav activePath={visibleRoute} onNavigate={setRoute} tabs={tabs} />
-        <div className="doc-layout">
+        <div
+          className={headings.length > 0 ? "doc-layout" : "doc-layout no-toc"}
+        >
+          <Sidebar
+            activePath={visibleRoute}
+            key={sidebarKey}
+            onNavigate={setRoute}
+            sections={sections}
+          />
           <main className="doc-article">
             <Breadcrumbs breadcrumbs={breadcrumbs} onNavigate={setRoute} />
             <header className="doc-header">
@@ -525,15 +769,44 @@ export function App() {
                 <p>Loading generated markdown...</p>
               ) : null}
               {markdown.status === "error" ? <p>{markdown.error}</p> : null}
-              {markdown.status === "ready" ? (
-                <Streamdown>{markdown.content}</Streamdown>
+              {visibleRoute === frameworksRootPath ? (
+                <FrameworkOverview
+                  frameworks={frameworkOptions}
+                  onNavigate={setRoute}
+                />
+              ) : null}
+              {markdown.status === "ready" &&
+              visibleRoute !== frameworksRootPath ? (
+                <MarkdownBody
+                  content={markdown.content}
+                  onNavigate={setRoute}
+                />
               ) : null}
             </article>
-            <AdjacentLinks adjacent={adjacent} onNavigate={setRoute} />
+            {visibleRoute === frameworksRootPath ? null : (
+              <AdjacentLinks adjacent={adjacent} onNavigate={setRoute} />
+            )}
           </main>
-          <RightRail headings={headings} markdownPath={markdownPath} />
+          {headings.length > 0 ? (
+            <RightRail headings={headings} markdownPath={markdownPath} />
+          ) : null}
         </div>
       </div>
     </div>
   );
+}
+
+export function App() {
+  const docs = useDocsState();
+  const { route, setRoute } = useCurrentRoute();
+
+  if (docs.status === "loading") {
+    return <LoadingState status="loading" />;
+  }
+
+  if (docs.status === "error") {
+    return <ErrorState message={docs.error} />;
+  }
+
+  return <ReadyDocsApp docs={docs} route={route} setRoute={setRoute} />;
 }
