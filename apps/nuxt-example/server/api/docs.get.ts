@@ -17,7 +17,11 @@ function stripFrontmatter(markdown: string): string {
 export default defineEventHandler(async (event) => {
   const requestUrl = new URL(event.node?.req.url ?? "/", "http://localhost");
   const slug = requestUrl.searchParams.get("slug") ?? "";
-  const urlPath = slug ? `/docs/${slug}` : "/docs";
+  const prefix = requestUrl.searchParams.get("prefix") ?? "/docs";
+  if (!(prefix === "/docs" || prefix === "/changelog")) {
+    throw createError({ statusCode: 400, statusMessage: "Invalid prefix" });
+  }
+  const urlPath = slug ? `${prefix}/${slug}` : prefix;
   const page = manifest.pages.find((entry) => entry.urlPath === urlPath);
   if (!page) {
     throw createError({ statusCode: 404, statusMessage: "Page not found" });
@@ -27,6 +31,7 @@ export default defineEventHandler(async (event) => {
     "utf8"
   );
   return {
+    description: page.description,
     title: page.title,
     urlPath: page.urlPath,
     markdownUrlPath:

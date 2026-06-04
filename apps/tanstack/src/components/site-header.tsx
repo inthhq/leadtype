@@ -34,7 +34,13 @@ const TRAILING_SLASH_PATTERN = /\/$/;
 function markdownHrefForPath(pathname: string): string | null {
   // Normalize first so /docs/ falls into the same bucket as /docs.
   const normalized = pathname.replace(TRAILING_SLASH_PATTERN, "");
-  if (!(normalized === "/docs" || normalized.startsWith("/docs/"))) {
+  if (
+    !(
+      normalized === "/docs" ||
+      normalized.startsWith("/docs/") ||
+      normalized.startsWith("/changelog/")
+    )
+  ) {
     return null;
   }
   if (normalized.endsWith(".md")) {

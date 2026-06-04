@@ -42,7 +42,7 @@ export default defineDocsConfig({
   },
   // \`navigation\` is the single source of truth for the sidebar, llms.txt, AGENTS.md,
   // sitemap, and agent-readability metadata.
-  navigation: [{ title: "Start", pages: [""] }],
+  navigation: ["index"],
   // \`llms.sections\` is the body of llms.txt and AGENTS.md, rendered in order.
   llms: {
     sections: [

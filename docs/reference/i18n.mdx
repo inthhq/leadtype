@@ -10,8 +10,6 @@ related:
     description: "Pass i18n + locale to build a per-locale source."
 ---
 
-# i18n
-
 `leadtype/i18n` adds multi-locale support to the pipeline: locale-prefixed URLs,
 per-locale `llms.txt`/`llms-full.txt`/markdown mirrors/search/sitemaps, an
 `i18n-manifest.json`, and alternate-locale links for HTML heads. Enable it by
@@ -24,7 +22,7 @@ import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
   product: { name: "My library", tagline: "..." },
-  navigation: [{ title: "Start", pages: [""] }],
+  navigation: ["index"],
   i18n: {
     defaultLocale: "en",
     locales: ["en", "zh", { code: "fr", label: "Français", dir: "ltr" }],

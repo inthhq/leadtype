@@ -37,10 +37,12 @@ dist
 # Generated example docs
 apps/*/.leadtype/
 apps/*/public/docs/
+apps/*/public/changelog/
 apps/*/public/llms-full.txt
 apps/*/public/llms.txt
 apps/*/public/.well-known/
 apps/sveltekit-example/static/docs/
+apps/sveltekit-example/static/changelog/
 apps/sveltekit-example/static/llms-full.txt
 apps/sveltekit-example/static/llms.txt
 apps/sveltekit-example/static/.well-known/

@@ -3,8 +3,6 @@ title: "Generate static artifacts"
 description: "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk."
 ---
 
-# Generate static artifacts
-
 Use this path when your runtime needs files on disk — a CDN-only deploy, a static export, a separate agent-only service, or multiple sibling apps sharing one corpus. The `leadtype generate` CLI walks your MDX source and writes a complete set of files into `public/`.
 
 If you'd rather render docs directly from your bundler, see [the source primitive](/docs/build/use-the-source-primitive). For source-shape decisions (multi-folder, remote git, pinned refs), see [Configure docs sources](/docs/sources/configure-sources). For host-specific serving details, see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
@@ -142,10 +140,7 @@ import { generateDocsSearchFiles } from "leadtype/search/node";
 import docsConfig from "../.docs-src/c15t/docs/docs.config";
 
 const sourceRoot = ".docs-src/c15t";
-const mounts = [
-  { pathPrefix: "", urlPrefix: "/docs" },
-  { pathPrefix: "changelog", urlPrefix: "/changelog" },
-];
+const mounts = docsConfig.mounts;
 
 await convertAllMdx({
   srcDir: `${sourceRoot}/docs`,

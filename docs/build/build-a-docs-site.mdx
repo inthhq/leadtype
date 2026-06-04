@@ -3,8 +3,6 @@ title: "Build an agent-ready docs site"
 description: "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata."
 ---
 
-# Build an agent-ready docs site
-
 Leadtype offers two integration shapes for hosted docs. Most sites use both: the [source primitive](/docs/how-it-works#vocabulary) renders human-facing pages, and the CLI writes the agent-facing files during the build.
 
 For production docs where the source package and rendered site live in different
@@ -64,9 +62,9 @@ export default defineDocsConfig({
 
 `sourceConfig: true` loads the source repo's `docs/docs.config.ts` after sync,
 then inherits only content-owned fields into the collection: `navigation`,
-legacy `groups`, `frontmatterSchema`, and `flatteners`. The docs UI repo keeps
-site-owned fields such as `product`, `organization`, `agents`, `llms`,
-`repository`, `ref`, `cacheDir`, output paths, and framework routes.
+legacy `groups`, `frontmatterSchema`, `flatteners`, and `mounts`. The docs UI
+repo keeps site-owned fields such as `product`, `organization`, `agents`,
+`llms`, `repository`, `ref`, `cacheDir`, output paths, and framework routes.
 
 That split keeps releases reproducible without asking the docs UI app to copy
 or import source-owned sidebar/schema code by hand.
@@ -124,7 +122,7 @@ settings together in `docs/docs.config.ts`.
 For a pinned source docs UI, keep two configs:
 
 - Source repo `docs/docs.config.ts`: MDX-owned navigation, fallback groups,
-  frontmatter schema, and flatteners.
+  frontmatter schema, flatteners, and mounts.
 - Docs UI repo `leadtype.config.ts`: product identity as rendered by the site,
   organization, agent policy, source `repository`/`ref`, output paths, and the
   framework app shell.

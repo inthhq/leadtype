@@ -55,6 +55,14 @@ export function DocsShell({ children }: { children: ReactNode }) {
         </aside>
         <main className="min-w-0 rounded-lg border border-border bg-card">
           <section className="docs-prose px-5 py-6 sm:px-7 sm:py-7">
+            {currentPage ? (
+              <header>
+                <h1>{currentPage.title}</h1>
+                {currentPage.description ? (
+                  <p>{currentPage.description}</p>
+                ) : null}
+              </header>
+            ) : null}
             {children}
           </section>
         </main>

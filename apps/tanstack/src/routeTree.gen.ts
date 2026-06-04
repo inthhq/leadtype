@@ -19,6 +19,7 @@ import { Route as SearchVercelRouteImport } from './routes/search/vercel'
 import { Route as SearchTanstackRouteImport } from './routes/search/tanstack'
 import { Route as SearchCloudflareRouteImport } from './routes/search/cloudflare'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as ChangelogSplatRouteImport } from './routes/changelog/$'
 import { Route as ApiDocsSearchRouteImport } from './routes/api/docs/search'
 import { Route as ApiDocsAskRouteImport } from './routes/api/docs/ask'
 import { Route as ApiDocsAskVercelRouteImport } from './routes/api/docs/ask/vercel'
@@ -75,6 +76,11 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const ChangelogSplatRoute = ChangelogSplatRouteImport.update({
+  id: '/changelog/$',
+  path: '/changelog/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDocsSearchRoute = ApiDocsSearchRouteImport.update({
   id: '/api/docs/search',
   path: '/api/docs/search',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRouteWithChildren
+  '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/search/cloudflare': typeof SearchCloudflareRoute
   '/search/tanstack': typeof SearchTanstackRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/playground': typeof PlaygroundRoute
+  '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/search/cloudflare': typeof SearchCloudflareRoute
   '/search/tanstack': typeof SearchTanstackRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRouteRouteWithChildren
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRouteWithChildren
+  '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
   '/search/cloudflare': typeof SearchCloudflareRoute
   '/search/tanstack': typeof SearchTanstackRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/playground'
     | '/search'
+    | '/changelog/$'
     | '/docs/$'
     | '/search/cloudflare'
     | '/search/tanstack'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/playground'
+    | '/changelog/$'
     | '/docs/$'
     | '/search/cloudflare'
     | '/search/tanstack'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/playground'
     | '/search'
+    | '/changelog/$'
     | '/docs/$'
     | '/search/cloudflare'
     | '/search/tanstack'
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   PlaygroundRoute: typeof PlaygroundRoute
   SearchRoute: typeof SearchRouteWithChildren
+  ChangelogSplatRoute: typeof ChangelogSplatRoute
   ApiDocsAskRoute: typeof ApiDocsAskRouteWithChildren
   ApiDocsSearchRoute: typeof ApiDocsSearchRoute
 }
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/docs/$'
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof DocsRouteRoute
+    }
+    '/changelog/$': {
+      id: '/changelog/$'
+      path: '/changelog/$'
+      fullPath: '/changelog/$'
+      preLoaderRoute: typeof ChangelogSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/docs/search': {
       id: '/api/docs/search'
@@ -374,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRouteRoute: DocsRouteRouteWithChildren,
   PlaygroundRoute: PlaygroundRoute,
   SearchRoute: SearchRouteWithChildren,
+  ChangelogSplatRoute: ChangelogSplatRoute,
   ApiDocsAskRoute: ApiDocsAskRouteWithChildren,
   ApiDocsSearchRoute: ApiDocsSearchRoute,
 }

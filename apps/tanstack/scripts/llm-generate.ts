@@ -7,7 +7,8 @@
  * consumers.
  */
 
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -28,6 +29,7 @@ const repoRoot = join(appRoot, "..", "..");
 const srcDir = repoRoot;
 const outDir = join(appRoot, "public");
 const generatedDir = join(appRoot, "src", "generated");
+const LEADING_SLASHES_PATTERN = /^\/+/;
 // Base URL precedence: package-specific override, generic deployment URL,
 // portless local URL, then a stable docs example fallback.
 const baseUrl =
@@ -35,6 +37,28 @@ const baseUrl =
   process.env.BASE_URL?.trim() ||
   process.env.PORTLESS_URL?.trim() ||
   "https://leadtype.dev";
+
+function outputPathForUrlPrefix(urlPrefix: string): string {
+  return urlPrefix.replace(LEADING_SLASHES_PATTERN, "");
+}
+
+async function copyMountedMarkdownMirrors() {
+  for (const mount of docsConfig.mounts ?? []) {
+    const expectedUrlPrefix = mount.pathPrefix
+      ? `/docs/${mount.pathPrefix}`
+      : "/docs";
+    if (mount.urlPrefix === expectedUrlPrefix) {
+      continue;
+    }
+    const sourceDir = join(outDir, "docs", mount.pathPrefix);
+    if (!existsSync(sourceDir)) {
+      continue;
+    }
+    const targetDir = join(outDir, outputPathForUrlPrefix(mount.urlPrefix));
+    await rm(targetDir, { force: true, recursive: true });
+    await cp(sourceDir, targetDir, { recursive: true });
+  }
+}
 
 // Translate the one docs.config.ts into low-level generator inputs (the same
 // mapping `leadtype generate` uses): tagline -> summary, llms.sections -> blocks,
@@ -51,6 +75,7 @@ await generateLlmsTxt({
   baseUrl,
   product: agentInputs.product,
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
 });
 
 await generateLLMFullContextFiles({
@@ -58,6 +83,7 @@ await generateLLMFullContextFiles({
   baseUrl,
   product: { name: agentInputs.product.name },
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
 });
 
 const agentReadability = await generateAgentReadabilityArtifacts({
@@ -68,6 +94,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
     summary: agentInputs.product.summary,
   },
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
   // Bake the agent-surface config into the manifest so runtime helpers
   // (renderSiteJsonLd, robots) are config-driven from the one docs.config.ts.
   jsonLd: agentInputs.jsonLd,
@@ -101,6 +128,8 @@ await generateSkillArtifacts({
     : {}),
 });
 
+await copyMountedMarkdownMirrors();
+
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
 // the docs.config.ts as the single source of truth: the same call resolves
 // the LLM indexes and the in-app sidebar.
@@ -108,6 +137,7 @@ const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
 });
 
 if (navigation.unknown.length > 0) {

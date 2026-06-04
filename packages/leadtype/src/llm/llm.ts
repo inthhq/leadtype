@@ -58,6 +58,7 @@ import {
 } from "./readability";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
+export type { DocsPathMount } from "../internal/docs-url";
 
 const DOCS_DIRNAME = "docs";
 const AGENT_READABILITY_MANIFEST_FILE = "agent-readability.json";
@@ -254,6 +255,13 @@ export type DocsNavNode = {
   optional?: boolean;
 };
 
+/**
+ * Top-level curated navigation entry. Strings and include entries become
+ * ordered root pages (`navigation.ungrouped`); objects with `title` become
+ * grouped navigation sections.
+ */
+export type DocsNavEntry = DocsNavNode | DocsNavPageEntry;
+
 /** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
 export type { DocsFrontmatterSchema } from "../transformers";
 
@@ -261,7 +269,8 @@ export type SourceConfigInheritField =
   | "navigation"
   | "groups"
   | "frontmatterSchema"
-  | "flatteners";
+  | "flatteners"
+  | "mounts";
 
 export type SourceConfigInheritance =
   | true
@@ -319,7 +328,9 @@ export type DocsCollection = {
   /** Per-collection navigation tree. */
   groups?: DocsGroup[];
   /** Per-collection curated docs UI and agent navigation tree. */
-  navigation?: DocsNavNode[];
+  navigation?: DocsNavEntry[];
+  /** Optional path-to-URL mounts for pages inside this collection. */
+  mounts?: DocsPathMount[];
   /**
    * Custom component flatteners (from `defineComponentFlattener`) declared
    * alongside this collection. Run in the `custom` phase, before the built-in
@@ -374,7 +385,9 @@ export type DocsConfig<
    * drives docs UI and agent-facing indexes; `groups` remains fallback
    * taxonomy/navigation metadata.
    */
-  navigation?: DocsNavNode[];
+  navigation?: DocsNavEntry[];
+  /** Optional path-to-URL mounts for pages inside the docs tree. */
+  mounts?: DocsPathMount[];
   /**
    * Multi-source content sets, keyed by collection id. Each collection owns
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
@@ -532,7 +545,7 @@ export type LlmsTxtConfig = {
   /** Group tree from `docs.config.ts`. Used for `/docs/llms.txt` sections. */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
-  nav?: DocsNavNode[];
+  nav?: DocsNavEntry[];
   /** Optional path-to-URL mounts for generated docs, e.g. changelog -> /changelog. */
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
@@ -547,7 +560,7 @@ export type LLMFullContextConfig = {
   /** Group tree from `docs.config.ts`. Preserved for config validation. */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
-  nav?: DocsNavNode[];
+  nav?: DocsNavEntry[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -560,7 +573,7 @@ export type AgentReadabilityConfig = {
   product: Pick<LlmsProductInfo, "name" | "summary">;
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
-  nav?: DocsNavNode[];
+  nav?: DocsNavEntry[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -591,7 +604,7 @@ export type ResolveDocsNavigationConfig = {
   baseUrl?: string;
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
-  nav?: DocsNavNode[];
+  nav?: DocsNavEntry[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -699,6 +712,36 @@ function joinNavPath(base: string, input: string): string {
     return normalizeNavPath(input);
   }
   return normalizeNavPath(path.posix.join(base, input));
+}
+
+type ResolvedNavConfig = {
+  groups: ResolvedGroup[];
+  rootPageEntries: DocsNavPageEntry[];
+};
+
+function isDocsNavNode(entry: DocsNavEntry): entry is DocsNavNode {
+  return (
+    typeof entry === "object" &&
+    entry !== null &&
+    "title" in entry &&
+    typeof entry.title === "string"
+  );
+}
+
+function resolveNavConfig(nav: DocsNavEntry[]): ResolvedNavConfig {
+  const rootPageEntries: DocsNavPageEntry[] = [];
+  const nodes: DocsNavNode[] = [];
+  for (const entry of nav) {
+    if (isDocsNavNode(entry)) {
+      nodes.push(entry);
+    } else {
+      rootPageEntries.push(entry);
+    }
+  }
+  return {
+    groups: resolveNavGroups(nodes),
+    rootPageEntries,
+  };
 }
 
 function resolveNavGroups(
@@ -1532,8 +1575,9 @@ function resolveNavEntryPages(
     const ref = joinNavPath(group.base, entry);
     const doc = docsByRelativePath.get(ref);
     if (!doc) {
+      const scope = group.segmentPath.join("/") || "root";
       throw new Error(
-        `Nav page "${entry}" under "${group.segmentPath.join("/")}" did not match a documentation page.`
+        `Nav page "${entry}" under "${scope}" did not match a documentation page.`
       );
     }
     return [doc];
@@ -1554,7 +1598,8 @@ function resolveNavEntryPages(
     .sort((left, right) => compareNavDocs(left, right, sort));
 
   if (matches.length === 0) {
-    const message = `Nav include "${entry.include}" under "${group.segmentPath.join("/")}" matched no documentation pages.`;
+    const scope = group.segmentPath.join("/") || "root";
+    const message = `Nav include "${entry.include}" under "${scope}" matched no documentation pages.`;
     if (entry.required) {
       throw new Error(message);
     }
@@ -1934,8 +1979,9 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
 
   const sourceDocList = [...sourceDocs.values()];
   const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolvedNav = hasNav ? resolveNavConfig(config.nav ?? []) : undefined;
   const resolved = hasNav
-    ? resolveNavGroups(config.nav ?? [])
+    ? (resolvedNav?.groups ?? [])
     : resolveGroups(config.groups ?? []);
   const membership = hasNav
     ? undefined
@@ -1968,7 +2014,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
     await writeFile(wellKnownPath, artifact.content);
   }
 
-  if (resolved.length > 0) {
+  if (hasNav || resolved.length > 0) {
     const docsLlmsPath =
       i18n && locale && locale !== i18n.defaultLocale
         ? path.join(outDir, DOCS_DIRNAME, locale, "llms.txt")
@@ -1977,7 +2023,14 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
     const docsLlmsContent = hasNav
       ? renderDocsNavigationSummary(
           config.product,
-          buildNavigationFromNav(sourceDocList, resolved, new Map(), locale),
+          buildNavigationFromNav(
+            sourceDocList,
+            resolved,
+            new Map(),
+            locale,
+            [],
+            resolvedNav?.rootPageEntries ?? []
+          ),
           config.mounts
         )
       : renderDocsSummary(
@@ -2037,11 +2090,13 @@ export async function generateLLMFullContextFiles(
 
   let orderedMarkdownDocs = markdownDocs;
   if (config.nav && config.nav.length > 0) {
-    const resolvedNav = resolveNavGroups(config.nav);
+    const resolvedNav = resolveNavConfig(config.nav);
     const navigation = buildNavigationFromMarkdownDocs(
       markdownDocs,
-      resolvedNav,
-      "nav"
+      resolvedNav.groups,
+      "nav",
+      undefined,
+      resolvedNav.rootPageEntries
     );
     orderedMarkdownDocs = orderMarkdownDocsByNavigation(
       markdownDocs,
@@ -2128,7 +2183,8 @@ function buildNavigationFromMarkdownDocs(
   docs: MarkdownDoc[],
   resolved: ResolvedGroup[],
   mode: "groups" | "nav" = "groups",
-  groupsForValidation?: DocsGroup[]
+  groupsForValidation?: DocsGroup[],
+  rootPageEntries: DocsNavPageEntry[] = []
 ): DocsNavigation {
   const tocByUrlPath = new Map(
     docs.map((doc) => [
@@ -2142,7 +2198,8 @@ function buildNavigationFromMarkdownDocs(
       resolved,
       tocByUrlPath,
       docs[0]?.locale,
-      findUnknownGroups(docs, groupsForValidation)
+      findUnknownGroups(docs, groupsForValidation),
+      rootPageEntries
     );
   }
 
@@ -2194,14 +2251,16 @@ export async function generateAgentReadabilityArtifacts(
   }
 
   const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolvedNav = hasNav ? resolveNavConfig(config.nav ?? []) : undefined;
   const resolved = hasNav
-    ? resolveNavGroups(config.nav ?? [])
+    ? (resolvedNav?.groups ?? [])
     : resolveGroups(config.groups ?? []);
   const navigation = buildNavigationFromMarkdownDocs(
     markdownDocs,
     resolved,
     hasNav ? "nav" : "groups",
-    config.groups
+    config.groups,
+    resolvedNav?.rootPageEntries ?? []
   );
   const pages = markdownDocs.map((doc) =>
     toAgentReadabilityPage(doc, baseUrl, config.mounts)
@@ -2269,7 +2328,7 @@ export type AgentsMdConfig = {
   /** Group tree from `docs.config.ts`. Drives section structure. */
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
-  nav?: DocsNavNode[];
+  nav?: DocsNavEntry[];
   /**
    * Subdirectory under `outDir` that holds the converted `.md` files.
    * Used for the relative-path prefix in every link. Default: `docs`.
@@ -2395,8 +2454,9 @@ export async function generateAgentsMd(
   );
   const sourceDocList = [...sourceDocs.values()];
   const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolvedNav = hasNav ? resolveNavConfig(config.nav ?? []) : undefined;
   const resolved = hasNav
-    ? resolveNavGroups(config.nav ?? [])
+    ? (resolvedNav?.groups ?? [])
     : resolveGroups(config.groups ?? []);
   const membership = hasNav
     ? undefined
@@ -2453,7 +2513,9 @@ export async function generateAgentsMd(
       sourceDocList,
       resolved,
       new Map(),
-      config.locale
+      config.locale,
+      [],
+      resolvedNav?.rootPageEntries ?? []
     );
     for (const group of navigation.groups) {
       lines.push(
@@ -2605,10 +2667,41 @@ function buildNavigationFromNav(
   resolved: ResolvedGroup[],
   tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
   locale?: string,
-  unknown: DocsNavigation["unknown"] = []
+  unknown: DocsNavigation["unknown"] = [],
+  rootPageEntries: DocsNavPageEntry[] = []
 ): DocsNavigation {
   const referencedUrlPaths = new Set<string>();
   const docsByRelativePath = createDocsByRelativePath(docs);
+  const rootPages: SourceDoc[] = [];
+  if (rootPageEntries.length > 0) {
+    const rootGroup: ResolvedGroup = {
+      slug: "root",
+      slugKey: "root",
+      title: "Root",
+      segmentPath: [],
+      parent: null,
+      children: [],
+      base: "",
+      pageEntries: rootPageEntries,
+    };
+    const rootSeenUrlPaths = new Set<string>();
+    for (const entry of rootPageEntries) {
+      const pages = resolveNavEntryPages(
+        rootGroup,
+        entry,
+        docs,
+        docsByRelativePath
+      );
+      for (const page of pages) {
+        if (rootSeenUrlPaths.has(page.urlPath)) {
+          continue;
+        }
+        rootSeenUrlPaths.add(page.urlPath);
+        referencedUrlPaths.add(page.urlPath);
+        rootPages.push(page);
+      }
+    }
+  }
   const groups = resolved.map((group) =>
     buildNavigationGroupFromNav(
       group,
@@ -2620,9 +2713,10 @@ function buildNavigationFromNav(
   );
   return {
     groups,
-    ungrouped: docs
-      .filter((doc) => !referencedUrlPaths.has(doc.urlPath))
-      .map((page) => pageView(page, tocByUrlPath)),
+    ungrouped: [
+      ...rootPages,
+      ...docs.filter((doc) => !referencedUrlPaths.has(doc.urlPath)),
+    ].map((page) => pageView(page, tocByUrlPath)),
     unknown,
     ...(locale ? { locale } : {}),
   };
@@ -2679,13 +2773,14 @@ export async function resolveDocsNavigation(
   }
 
   if (config.nav && config.nav.length > 0) {
-    const resolvedNav = resolveNavGroups(config.nav);
+    const resolvedNav = resolveNavConfig(config.nav);
     return buildNavigationFromNav(
       docs,
-      resolvedNav,
+      resolvedNav.groups,
       tocByUrlPath,
       config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
-      findUnknownGroups(docs, config.groups)
+      findUnknownGroups(docs, config.groups),
+      resolvedNav.rootPageEntries
     );
   }
 

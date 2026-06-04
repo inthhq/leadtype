@@ -20,6 +20,7 @@ export async function proxy(request: Request): Promise<Response> {
 export const config = {
   matcher: [
     "/docs/:path((?!.*\\.md$).*)",
+    "/changelog/:path((?!.*\\.md$).*)",
     "/sitemap.xml",
     "/sitemap.md",
     "/robots.txt",

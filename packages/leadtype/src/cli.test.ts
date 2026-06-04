@@ -303,7 +303,7 @@ describe("leadtype CLI", () => {
         searchIndex: string;
       };
       groups: Array<{ slug: string }>;
-      nav?: Array<{ title: string }>;
+      nav?: Array<string | { title: string }>;
       outDir: string;
       search: { docs: number };
     };
@@ -316,7 +316,18 @@ describe("leadtype CLI", () => {
     );
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
     expect(result.files.docsLlmsFullTxt).toBeUndefined();
-    expect(result.nav?.map((group) => group.title)).toContain("Docs");
+    expect(result.nav?.slice(0, 3)).toEqual([
+      "index",
+      "quickstart",
+      "how-it-works",
+    ]);
+    expect(
+      result.nav
+        ?.filter(
+          (entry): entry is { title: string } => typeof entry !== "string"
+        )
+        .map((group) => group.title)
+    ).toEqual(expect.arrayContaining(["Changelog"]));
     expect(result.search.docs).toBeGreaterThan(0);
   });
 
@@ -929,6 +940,88 @@ Initial release.
     );
   });
 
+  it("mounts a docs subdirectory from docs.config.ts", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "c15t",
+    tagline: "Consent tooling docs.",
+  },
+  navigation: [
+    { title: "Docs", pages: ["quickstart"] },
+    { title: "Changelog", base: "changelog", pages: ["v1"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "changelog", "v1.mdx"),
+      `---
+title: "Version 1"
+description: "First release."
+---
+
+# Version 1
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://c15t.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      mounts: Array<{ pathPrefix: string; urlPrefix: string }>;
+    };
+    expect(result.mounts).toEqual([
+      { pathPrefix: "", urlPrefix: "/docs" },
+      { pathPrefix: "changelog", urlPrefix: "/changelog" },
+    ]);
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("](/changelog/v1.md)");
+    expect(docsSummary).not.toContain("](/docs/changelog/v1.md)");
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as { pages: Array<{ markdownUrlPath: string; urlPath: string }> };
+    expect(manifest.pages).toContainEqual(
+      expect.objectContaining({
+        markdownUrlPath: "/changelog/v1.md",
+        urlPath: "/changelog/v1",
+      })
+    );
+  });
+
   it("fails clearly when docs config is invalid", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
@@ -1414,6 +1507,7 @@ This page is valid, but the output path is not a directory.
 export default {
   navigation: [{ title: "Source Navigation", base: "", pages: [""] }],
   groups: [{ slug: "source", title: "Source Group" }],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
   flatteners: [
     defineComponentFlattener({
       name: "RemoteNote",
@@ -1423,6 +1517,8 @@ export default {
 };`,
       "docs/index.mdx":
         '---\ntitle: "Remote Intro"\ngroup: source\n---\n\n<RemoteNote>Inherited flattener.</RemoteNote>\n',
+      "docs/changelog/v1.mdx":
+        '---\ntitle: "v1"\ndescription: "First release."\n---\n\nNotes.\n',
     });
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
@@ -1453,11 +1549,13 @@ export default {
     expect(
       await readFile(path.join(outDir, "docs", "index.md"), "utf8")
     ).toContain("Remote note: Inherited flattener.");
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
     const manifest = await readFile(
       path.join(outDir, "docs", "agent-readability.json"),
       "utf8"
     );
     expect(manifest).toContain("Source Navigation");
+    expect(manifest).toContain('"urlPath": "/changelog/v1"');
 
     const offlineOutDir = await createTempDir();
     const offlineCapture = createCapture();
@@ -1467,6 +1565,9 @@ export default {
     );
     expect(offlineCode).toBe(0);
     expect(existsSync(path.join(offlineOutDir, "docs", "index.md"))).toBe(true);
+    expect(existsSync(path.join(offlineOutDir, "changelog", "v1.md"))).toBe(
+      true
+    );
   });
 
   it("loads sourceConfig.path relative to the collection dir", async () => {

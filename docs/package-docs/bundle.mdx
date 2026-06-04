@@ -3,8 +3,6 @@ title: "Bundle docs into a package"
 description: "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files."
 ---
 
-# Bundle docs into a package
-
 **Why bundle:** coding agents that install your package spend **32–54% fewer tokens** — and generally fewer tool calls — and **stop confidently guessing wrong** about your API. Both wins hold for every model tested, frontier included; raw accuracy also rises, most for the small, cheap models a lot of agents run and marginally for frontier ones ([evals](/docs/concepts/evals)).
 
 Use this path when **you publish a library on npm** and want version-matched docs available without a network request. Run `leadtype generate --bundle` at prepack time, include the output in your published `files`, and every install ships **`AGENTS.md` + per-topic markdown** inside `node_modules/<your-package>/`.

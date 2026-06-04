@@ -35,6 +35,7 @@ const source = await createDocsSource({
   contentDir,
   baseUrl: process.env.BASE_URL?.trim() || "https://leadtype.dev",
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
 });
 
 const pages = await source.listPages();

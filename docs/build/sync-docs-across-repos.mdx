@@ -3,8 +3,6 @@ title: "Sync docs across repositories"
 description: "Keep a separate docs UI repository pinned to a reviewed package-docs source revision."
 ---
 
-# Sync docs across repositories
-
 Use this when one repository owns package code and MDX, but another repository
 owns the rendered docs UI. Start with a remote collection pinned in the docs UI
 repo, inherit the source-owned docs config, then choose how that pin gets
@@ -74,7 +72,8 @@ export default defineDocsConfig({
 
 With `sourceConfig: true`, the source repo keeps the docs-specific config that
 belongs with the content: `navigation`, legacy `groups`, `frontmatterSchema`,
-and source-specific `flatteners`. The docs UI repo keeps the deployment pin and
+source-specific `flatteners`, and same-tree `mounts` such as
+`docs/changelog` -> `/changelog`. The docs UI repo keeps the deployment pin and
 site-owned fields: `repository`, `ref`, `cacheDir`, product identity as rendered
 by the site, organization, agent policy, output directory, base URL, and the app
 shell.
@@ -140,9 +139,9 @@ export default defineDocsConfig({
 ```
 
 The source repo keeps `docs/docs.config.ts`, MDX, navigation, groups,
-frontmatter schema, and source-specific flatteners. The Leadtype docs UI app
-keeps the app shell, consent, analytics, search UI, package dependency pin, and
-production source `ref`.
+frontmatter schema, source-specific flatteners, and mounts. The Leadtype docs UI
+app keeps the app shell, consent, analytics, search UI, package dependency pin,
+and production source `ref`.
 
 ## Optional automation: open the pin PR
 
@@ -311,7 +310,7 @@ Requirements:
 2. The docs UI repo owns the rendered site.
 3. Production docs must be pinned to an explicit released source revision, not the source repo default branch.
 4. Configure `leadtype.config.ts` in the docs UI repo with a remote Leadtype collection whose `repository` points at the source repo, whose `ref` is pinned to the released commit SHA, and whose `sourceConfig` is `true`.
-5. Keep source-owned `navigation`, legacy `groups`, `frontmatterSchema`, and `flatteners` in the source repo's `docs/docs.config.ts`.
+5. Keep source-owned `navigation`, legacy `groups`, `frontmatterSchema`, `flatteners`, and `mounts` in the source repo's `docs/docs.config.ts`.
 6. Keep the package version near that config when useful for reviewers, PR titles, dependency pins, or release dashboards.
 7. Run `leadtype generate --sync` before the docs UI framework build. Use `--offline` only when the cache is already present.
 8. Prefer manual pin PRs as the baseline. If automating, make the source repo dispatch a small payload after publish and make the docs UI repo open a PR that updates the remote collection ref.

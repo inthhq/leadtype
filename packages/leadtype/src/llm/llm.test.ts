@@ -1992,6 +1992,41 @@ describe("extractDocsTableOfContents", () => {
 });
 
 describe("resolveDocsNavigation", () => {
+  it("resolves root page entries as top-level navigation pages", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "index.mdx",
+        frontmatter: "title: Home\ndescription: Overview.",
+      },
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start.",
+      },
+      {
+        relativePath: "guides/index.mdx",
+        frontmatter: "title: Guides\ndescription: Guide overview.",
+      },
+    ]);
+
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      nav: [
+        "index",
+        "quickstart",
+        { title: "Guides", base: "guides", pages: ["index"] },
+      ],
+    });
+
+    expect(nav.ungrouped.map((page) => page.urlPath)).toEqual([
+      "/docs",
+      "/docs/quickstart",
+    ]);
+    expect(nav.groups[0]?.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/guides",
+    ]);
+  });
+
   it("resolves curated nav with inherited base, includes, and root-relative refs", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [

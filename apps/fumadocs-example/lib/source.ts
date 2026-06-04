@@ -16,6 +16,7 @@ const fumadocsSourceResult = await fumadocsSource({
   contentDir,
   includeMetaJson: false,
   nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
   typeTableBasePath: repoRoot,
 });
 

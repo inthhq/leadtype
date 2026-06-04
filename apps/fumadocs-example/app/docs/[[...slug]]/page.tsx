@@ -30,10 +30,6 @@ const mdxOptions = {
 
 type PageParams = Promise<{ slug?: string[] }>;
 
-function toUrlPath(slug: string[]): string {
-  return slug.length > 0 ? `/docs/${slug.join("/")}` : "/docs";
-}
-
 export default async function DocsPageRoute({
   params,
 }: {
@@ -46,7 +42,11 @@ export default async function DocsPageRoute({
     notFound();
   }
 
-  const jsonLd = createDocsJsonLd({ urlPath: toUrlPath(slug), manifest });
+  if (!(page.urlPath === "/docs" || page.urlPath.startsWith("/docs/"))) {
+    notFound();
+  }
+
+  const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
 
   return (
     <DocsPage
@@ -76,7 +76,11 @@ export default async function DocsPageRoute({
 
 export async function generateStaticParams() {
   const pages = await leadtypeSource.listPages();
-  return pages.map((page) => ({ slug: page.slug }));
+  return pages
+    .filter(
+      (page) => page.urlPath === "/docs" || page.urlPath.startsWith("/docs/")
+    )
+    .map((page) => ({ slug: page.slug }));
 }
 
 export async function generateMetadata({
@@ -89,9 +93,7 @@ export async function generateMetadata({
   if (!page) {
     return {};
   }
-  const meta = manifest.pages.find(
-    (entry) => entry.urlPath === toUrlPath(slug)
-  );
+  const meta = manifest.pages.find((entry) => entry.urlPath === page.urlPath);
   return {
     title: `${page.title} — Leadtype docs`,
     description: page.description,
