@@ -277,6 +277,12 @@ export type MdxToMarkdownOptions = {
   transformers?: DocsTransformerOptions["transformers"];
   /** Optional schema used to validate resolved frontmatter before exposing it. */
   frontmatterSchema?: DocsTransformerOptions["frontmatterSchema"];
+  /** Optional path-scoped schemas. The longest matching pathPrefix wins. */
+  frontmatterSchemaByPath?: {
+    filePaths?: string[];
+    pathPrefix: string;
+    schema: DocsTransformerOptions["frontmatterSchema"];
+  }[];
   /** Extra context passed to transformer hooks. */
   transformContext?: DocsTransformerOptions["transformContext"];
 };
@@ -285,6 +291,41 @@ type GitEnrichment = {
   lastModified?: string;
   lastAuthor?: string;
 };
+
+function normalizeRelativePath(value: string): string {
+  return value.split(sep).join("/");
+}
+
+function frontmatterSchemaForFile(
+  filePath: string,
+  srcDir: string,
+  config: MdxToMarkdownOptions
+): DocsTransformerOptions["frontmatterSchema"] {
+  const scopedSchemas = config.frontmatterSchemaByPath ?? [];
+  if (scopedSchemas.length === 0) {
+    return config.frontmatterSchema;
+  }
+  const relativePath = normalizeRelativePath(relative(srcDir, filePath));
+  const match = scopedSchemas
+    .filter((entry) => {
+      if (entry.filePaths) {
+        return entry.filePaths.some(
+          (entryPath) => normalizeRelativePath(entryPath) === relativePath
+        );
+      }
+      const prefix = normalizeRelativePath(entry.pathPrefix).replace(
+        /^\/+|\/+$/g,
+        ""
+      );
+      return (
+        prefix.length > 0 &&
+        (relativePath === prefix || relativePath.startsWith(`${prefix}/`))
+      );
+    })
+    .sort((left, right) => right.pathPrefix.length - left.pathPrefix.length)
+    .at(0);
+  return match?.schema ?? config.frontmatterSchema;
+}
 
 /**
  * Read the last commit's author-date and author-name for a file. Best-effort —
@@ -819,7 +860,11 @@ export async function convertAllMdx(
         remarkPlugins,
         enrichFromGitFlag,
         {
-          frontmatterSchema: config.frontmatterSchema,
+          frontmatterSchema: frontmatterSchemaForFile(
+            mdxFilePath,
+            srcDir,
+            config
+          ),
           transformers: config.transformers,
           transformContext: {
             ...config.transformContext,

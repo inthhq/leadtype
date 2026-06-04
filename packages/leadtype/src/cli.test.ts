@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   mkdir,
@@ -10,15 +11,34 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { glob as fg } from "tinyglobby";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { isDirectRun, runCli } from "./cli";
 
+const execFileAsync = promisify(execFile);
 const tempDirs: string[] = [];
+const gitSourceDirs: string[] = [];
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../.."
 );
+const remarkEntry = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "remark",
+  "index.ts"
+);
+const valibotEntry = fileURLToPath(import.meta.resolve("valibot"));
+const GIT_REPOSITORY_ENV_KEYS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_QUARANTINE_PATH",
+  "GIT_WORK_TREE",
+] as const;
 
 type Capture = {
   stderr: string;
@@ -65,6 +85,18 @@ async function createTempDir(): Promise<string> {
   return dir;
 }
 
+function gitFixtureEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of GIT_REPOSITORY_ENV_KEYS) {
+    delete env[key];
+  }
+  return env;
+}
+
+async function execGitFixture(args: string[], cwd: string): Promise<void> {
+  await execFileAsync("git", args, { cwd, env: gitFixtureEnv() });
+}
+
 async function writeMdxPage(
   srcDir: string,
   relativePath: string,
@@ -86,9 +118,37 @@ ${body}
   );
 }
 
+async function createGitDocsSource(
+  files: Record<string, string>
+): Promise<string> {
+  const sourceDir = await mkdtemp(path.join(tmpdir(), "leadtype-git-source-"));
+  gitSourceDirs.push(sourceDir);
+  for (const [relativePath, content] of Object.entries(files)) {
+    const filePath = path.join(sourceDir, relativePath);
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, content);
+  }
+  await execGitFixture(["init"], sourceDir);
+  await execGitFixture(["branch", "-M", "main"], sourceDir);
+  await execGitFixture(["config", "user.email", "test@example.com"], sourceDir);
+  await execGitFixture(["config", "user.name", "Leadtype Test"], sourceDir);
+  await execGitFixture(["config", "commit.gpgsign", "false"], sourceDir);
+  await execGitFixture(["add", "."], sourceDir);
+  await execGitFixture(["commit", "-m", "Add docs"], sourceDir);
+  return sourceDir;
+}
+
 afterEach(async () => {
   await Promise.all(
     tempDirs.splice(0).map(async (dir) => {
+      await rm(dir, { force: true, recursive: true });
+    })
+  );
+});
+
+afterAll(async () => {
+  await Promise.all(
+    gitSourceDirs.splice(0).map(async (dir) => {
       await rm(dir, { force: true, recursive: true });
     })
   );
@@ -1345,6 +1405,276 @@ This page is valid, but the output path is not a directory.
 
     const llmsTxt = await readFile(path.join(outDir, "llms.txt"), "utf8");
     expect(llmsTxt).toContain("# Collections Product");
+  });
+
+  it("inherits source-owned navigation, groups, and flatteners after sync", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/docs.config.ts": `import { defineComponentFlattener } from ${JSON.stringify(remarkEntry)};
+
+export default {
+  navigation: [{ title: "Source Navigation", base: "", pages: [""] }],
+  groups: [{ slug: "source", title: "Source Group" }],
+  flatteners: [
+    defineComponentFlattener({
+      name: "RemoteNote",
+      toMarkdown: ({ content }) => \`Remote note: \${content}\`,
+    }),
+  ],
+};`,
+      "docs/index.mdx":
+        '---\ntitle: "Remote Intro"\ngroup: source\n---\n\n<RemoteNote>Inherited flattener.</RemoteNote>\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Remote Product", tagline: "Synced docs." },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    },
+  },
+};`
+    );
+
+    const syncCode = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(syncCode).toBe(0);
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Remote note: Inherited flattener.");
+    const manifest = await readFile(
+      path.join(outDir, "docs", "agent-readability.json"),
+      "utf8"
+    );
+    expect(manifest).toContain("Source Navigation");
+
+    const offlineOutDir = await createTempDir();
+    const offlineCapture = createCapture();
+    const offlineCode = await runCli(
+      ["generate", "--src", srcDir, "--out", offlineOutDir, "--offline"],
+      offlineCapture.io
+    );
+    expect(offlineCode).toBe(0);
+    expect(existsSync(path.join(offlineOutDir, "docs", "index.md"))).toBe(true);
+  });
+
+  it("loads sourceConfig.path relative to the collection dir", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/config/source-docs.config.ts": `export default {
+  navigation: [{ title: "Explicit Source Config", base: "", pages: [""] }],
+};`,
+      "docs/index.mdx": '---\ntitle: "Explicit Path"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: { path: "config/source-docs.config.ts" },
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    const manifest = await readFile(
+      path.join(outDir, "docs", "agent-readability.json"),
+      "utf8"
+    );
+    expect(manifest).toContain("Explicit Source Config");
+  });
+
+  it("keeps explicit UI collection fields ahead of inherited source config", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/docs.config.ts": `export default {
+  navigation: [{ title: "Source Navigation", base: "", pages: [""] }],
+  groups: [{ slug: "source", title: "Source Group" }],
+};`,
+      "docs/index.mdx": '---\ntitle: "Override"\ngroup: ui\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+      navigation: [{ title: "UI Navigation", base: "", pages: [""] }],
+      groups: [{ slug: "ui", title: "UI Group" }],
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    const manifest = await readFile(
+      path.join(outDir, "docs", "agent-readability.json"),
+      "utf8"
+    );
+    expect(manifest).toContain("UI Navigation");
+    expect(manifest).not.toContain("Source Navigation");
+  });
+
+  it("fails clearly when sourceConfig is enabled and no source config exists", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Missing Config"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('collection "docs" sourceConfig enabled');
+    expect(capture.stderr).toContain("docs.config.ts");
+  });
+
+  it("uses inherited frontmatterSchema as the collection schema", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/docs.config.ts": `import * as v from ${JSON.stringify(valibotEntry)};
+
+export default {
+  navigation: [{ title: "Schema Source", base: "", pages: [""] }],
+  frontmatterSchema: v.object({
+    title: v.string(),
+    sdkVersion: v.string(),
+  }),
+};`,
+      "docs/index.mdx": '---\ntitle: "Schema Missing"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("Invalid frontmatter");
+    expect(capture.stderr).toContain("sdkVersion");
+  });
+
+  it("does not apply a root collection schema to sibling collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "index.mdx"),
+      '---\ntitle: "SDK Docs"\nsdkVersion: "1.0.0"\n---\n\nBody.\n'
+    );
+    await mkdir(path.join(srcDir, "api"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "api", "index.mdx"),
+      '---\ntitle: "API Docs"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import * as v from ${JSON.stringify(valibotEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      dir: "./docs",
+      prefix: "/docs",
+      schema: v.object({
+        title: v.string(),
+        sdkVersion: v.string(),
+      }),
+    },
+    api: {
+      dir: "./api",
+      prefix: "/api",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "api", "index.md"))).toBe(true);
   });
 
   it("rejects --docs-dir when leadtype.config.ts defines collections", async () => {

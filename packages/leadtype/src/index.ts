@@ -48,6 +48,8 @@ export {
   type ProductInfo,
   type ResolvedAgentInputs,
   resolveAgentInputs,
+  type SourceConfigInheritance,
+  type SourceConfigInheritField,
 } from "./llm";
 export {
   type CreateDocsSourceConfig,

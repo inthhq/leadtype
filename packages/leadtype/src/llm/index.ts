@@ -52,6 +52,8 @@ export {
   resolveAgentInputs,
   resolveDocsNavigation,
   resolveDocsTableOfContents,
+  type SourceConfigInheritance,
+  type SourceConfigInheritField,
   type SourceDoc,
 } from "./llm";
 // Runtime + shared types and helpers.

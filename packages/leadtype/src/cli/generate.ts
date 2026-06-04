@@ -30,6 +30,7 @@ import type {
   OrganizationInfo,
   ProductInfo,
   RenderSiteJsonLdOptions,
+  SourceConfigInheritField,
 } from "../llm";
 import {
   generateAgentReadabilityArtifacts,
@@ -48,6 +49,7 @@ import {
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
+  type ResolvedCollection,
   resolveAllCollections,
   type SyncMode,
   syncCollections,
@@ -62,6 +64,18 @@ const DOCS_CONFIG_FILENAMES = [
   "docs.config.mjs",
   "docs.config.cjs",
 ] as const;
+const SOURCE_CONFIG_INHERIT_FIELDS = new Set<SourceConfigInheritField>([
+  "navigation",
+  "groups",
+  "frontmatterSchema",
+  "flatteners",
+]);
+const DEFAULT_SOURCE_CONFIG_INHERIT: SourceConfigInheritField[] = [
+  "navigation",
+  "groups",
+  "frontmatterSchema",
+  "flatteners",
+];
 const LEADTYPE_CONFIG_FILENAMES = [
   "leadtype.config.ts",
   "leadtype.config.js",
@@ -195,6 +209,7 @@ export type LoadedDocsConfig = {
 
 type ResolvedGenerateMetadata = {
   configPath?: string;
+  collectionFrontmatterSchemas?: CollectionFrontmatterSchema[];
   frontmatterSchema?: DocsFrontmatterSchema;
   flatteners?: PluggableList;
   groups: DocsGroup[];
@@ -211,6 +226,19 @@ type ResolvedGenerateMetadata = {
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
   agents?: DocsConfig["agents"];
+};
+
+type CollectionFrontmatterSchema = {
+  filePaths?: string[];
+  pathPrefix: string;
+  schema: DocsFrontmatterSchema;
+};
+
+type SourceOwnedConfigFields = {
+  flatteners?: PluggableList;
+  frontmatterSchema?: DocsFrontmatterSchema;
+  groups?: DocsGroup[];
+  navigation?: DocsNavNode[];
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -553,6 +581,45 @@ function validateDocsNav(value: unknown): DocsNavNode[] | undefined {
   return value as DocsNavNode[];
 }
 
+function validateSourceConfigInheritance(
+  value: unknown,
+  configPath: string,
+  collectionKey: string
+): void {
+  if (value === undefined || value === true) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": collection "${collectionKey}" sourceConfig must be true or an object`
+    );
+  }
+  if (
+    value.path !== undefined &&
+    (typeof value.path !== "string" || value.path.length === 0)
+  ) {
+    throw new Error(
+      `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.path must be a non-empty string`
+    );
+  }
+  if (value.inherit !== undefined) {
+    if (!isStringArray(value.inherit)) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.inherit must be an array of supported field names`
+      );
+    }
+    for (const field of value.inherit) {
+      if (
+        !SOURCE_CONFIG_INHERIT_FIELDS.has(field as SourceConfigInheritField)
+      ) {
+        throw new Error(
+          `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.inherit contains unsupported field "${field}"`
+        );
+      }
+    }
+  }
+}
+
 function validateCollections(
   value: unknown,
   configPath: string
@@ -610,6 +677,12 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" prefix must be a string`
       );
     }
+    if (entry.sourceConfig !== undefined && entry.repository === undefined) {
+      throw new Error(
+        `docs config at "${configPath}": collection "${key}" sourceConfig is only supported for remote collections`
+      );
+    }
+    validateSourceConfigInheritance(entry.sourceConfig, configPath, key);
     if (
       entry.groups !== undefined &&
       validateDocsGroups(entry.groups) === undefined
@@ -759,6 +832,156 @@ async function importConfigModule(configPath: string): Promise<unknown> {
     default?: unknown;
   };
   return mod.default ?? mod;
+}
+
+function validateSourceOwnedConfigFields(
+  value: unknown,
+  configPath: string,
+  collectionKey: string
+): SourceOwnedConfigFields {
+  if (!isPlainRecord(value)) {
+    throw new Error(`source config at "${configPath}" must export an object`);
+  }
+
+  const groups = validateDocsGroups(value.groups);
+  const navigation = validateDocsNav(value.navigation);
+  if (value.groups !== undefined && !groups) {
+    throw new Error(
+      `source config at "${configPath}" for collection "${collectionKey}" must export groups as an array of { slug, title } entries`
+    );
+  }
+  if (value.navigation !== undefined && !navigation) {
+    throw new Error(
+      `source config at "${configPath}" for collection "${collectionKey}" must export navigation as an array of navigation nodes`
+    );
+  }
+  if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
+    throw new Error(
+      `source config at "${configPath}" for collection "${collectionKey}" must export flatteners as an array of remark plugins`
+    );
+  }
+
+  return {
+    ...(groups ? { groups } : {}),
+    ...(navigation ? { navigation } : {}),
+    ...(value.frontmatterSchema === undefined
+      ? {}
+      : {
+          frontmatterSchema: value.frontmatterSchema as DocsFrontmatterSchema,
+        }),
+    ...(value.flatteners === undefined
+      ? {}
+      : { flatteners: value.flatteners as PluggableList }),
+  };
+}
+
+function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
+  const sourceConfig = entry.collection.sourceConfig;
+  if (!sourceConfig) {
+    return [];
+  }
+  const baseDir = entry.absoluteDir;
+  if (sourceConfig !== true && sourceConfig.path) {
+    if (path.isAbsolute(sourceConfig.path)) {
+      throw new Error(
+        `collection "${entry.key}" sourceConfig.path must be relative to the collection dir`
+      );
+    }
+    const configPath = path.resolve(baseDir, sourceConfig.path);
+    const relativePath = path.relative(baseDir, configPath);
+    if (
+      !relativePath ||
+      relativePath.startsWith("..") ||
+      path.isAbsolute(relativePath)
+    ) {
+      throw new Error(
+        `collection "${entry.key}" sourceConfig.path must stay inside the collection dir`
+      );
+    }
+    return [configPath];
+  }
+  return DOCS_CONFIG_FILENAMES.map((filename) => path.join(baseDir, filename));
+}
+
+function sourceConfigInheritFields(
+  collection: DocsCollection
+): SourceConfigInheritField[] {
+  const sourceConfig = collection.sourceConfig;
+  if (!sourceConfig || sourceConfig === true || !sourceConfig.inherit) {
+    return DEFAULT_SOURCE_CONFIG_INHERIT;
+  }
+  return sourceConfig.inherit;
+}
+
+async function loadCollectionSourceConfig(
+  entry: ResolvedCollection
+): Promise<SourceOwnedConfigFields> {
+  const candidates = resolveSourceConfigPaths(entry);
+  const configPath = candidates.find((candidate) => existsSync(candidate));
+  if (!configPath) {
+    throw new Error(
+      `collection "${entry.key}" sourceConfig enabled but no source config was found. Expected ${candidates.map((candidate) => `"${candidate}"`).join(", ")}.`
+    );
+  }
+
+  try {
+    const imported = await importConfigModule(configPath);
+    return validateSourceOwnedConfigFields(imported, configPath, entry.key);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `failed to load source config for collection "${entry.key}" at "${configPath}": ${message}`
+    );
+  }
+}
+
+function mergeInheritedSourceConfig(
+  collection: DocsCollection,
+  sourceConfig: SourceOwnedConfigFields
+): DocsCollection {
+  const inherit = new Set(sourceConfigInheritFields(collection));
+  return {
+    ...collection,
+    ...(inherit.has("navigation") &&
+    collection.navigation === undefined &&
+    sourceConfig.navigation !== undefined
+      ? { navigation: sourceConfig.navigation }
+      : {}),
+    ...(inherit.has("groups") &&
+    collection.groups === undefined &&
+    sourceConfig.groups !== undefined
+      ? { groups: sourceConfig.groups }
+      : {}),
+    ...(inherit.has("frontmatterSchema") &&
+    collection.schema === undefined &&
+    sourceConfig.frontmatterSchema !== undefined
+      ? { schema: sourceConfig.frontmatterSchema }
+      : {}),
+    ...(inherit.has("flatteners") &&
+    collection.flatteners === undefined &&
+    sourceConfig.flatteners !== undefined
+      ? { flatteners: sourceConfig.flatteners }
+      : {}),
+  };
+}
+
+async function inheritCollectionSourceConfigs(
+  collections: Record<string, DocsCollection>,
+  configDir: string
+): Promise<Record<string, DocsCollection>> {
+  const resolved = resolveAllCollections(collections, configDir);
+  const next: Record<string, DocsCollection> = { ...collections };
+  for (const entry of resolved) {
+    if (!entry.collection.sourceConfig) {
+      continue;
+    }
+    const sourceConfig = await loadCollectionSourceConfig(entry);
+    next[entry.key] = mergeInheritedSourceConfig(
+      entry.collection,
+      sourceConfig
+    );
+  }
+  return next;
 }
 
 async function loadDocsConfigFromDir(
@@ -967,7 +1190,48 @@ function mergeCollectionNav(
   return nav;
 }
 
-function resolveGenerateMetadata(
+async function sourceStagedMdxPaths(
+  source: ResolvedDocsSource
+): Promise<string[]> {
+  const include =
+    source.filters && source.filters.include.length > 0
+      ? source.filters.include
+      : ["**/*.mdx"];
+  const exclude = source.filters?.exclude ?? [];
+  const files = await fg(include, {
+    absolute: false,
+    cwd: source.docsDir,
+    dot: true,
+    expandDirectories: false,
+    ignore: exclude,
+    onlyFiles: true,
+  });
+  return files
+    .filter((file) => file.endsWith(".mdx"))
+    .map((file) => joinDocsRelativePath(source.mountPath, file));
+}
+
+async function resolveCollectionFrontmatterSchemas(
+  collections: Record<string, DocsCollection>,
+  sources: ResolvedDocsSource[]
+): Promise<CollectionFrontmatterSchema[]> {
+  const schemas: CollectionFrontmatterSchema[] = [];
+  const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
+  for (const [key, collection] of Object.entries(collections)) {
+    if (!collection.schema) {
+      continue;
+    }
+    const source = sourcesByKey.get(key);
+    schemas.push({
+      filePaths: source ? await sourceStagedMdxPaths(source) : undefined,
+      pathPrefix: source?.mountPath ?? "",
+      schema: collection.schema,
+    });
+  }
+  return schemas;
+}
+
+async function resolveGenerateMetadata(
   srcDir: string,
   loaded: LoadedDocsConfig | null,
   args: GenerateArgs,
@@ -979,6 +1243,12 @@ function resolveGenerateMetadata(
       : undefined;
     const collectionNav = loaded.config.collections
       ? mergeCollectionNav(loaded.config.collections, docsSources)
+      : undefined;
+    const collectionFrontmatterSchemas = loaded.config.collections
+      ? await resolveCollectionFrontmatterSchemas(
+          loaded.config.collections,
+          docsSources
+        )
       : undefined;
     const flatteners = [
       ...(loaded.config.flatteners ?? []),
@@ -993,8 +1263,12 @@ function resolveGenerateMetadata(
       organization: loaded.config.organization,
       llms: loaded.config.llms,
     });
-    return Promise.resolve({
+    return {
       configPath: loaded.path,
+      collectionFrontmatterSchemas:
+        collectionFrontmatterSchemas && collectionFrontmatterSchemas.length > 0
+          ? collectionFrontmatterSchemas
+          : undefined,
       flatteners: flatteners.length > 0 ? flatteners : undefined,
       frontmatterSchema: loaded.config.frontmatterSchema,
       groups: collectionGroups ?? loaded.config.groups ?? [],
@@ -1010,7 +1284,7 @@ function resolveGenerateMetadata(
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
       agents: loaded.config.agents,
-    });
+    };
   }
   return readPackageProduct(srcDir, args).then((product) => ({
     groups: [],
@@ -1408,7 +1682,9 @@ async function createSourceMirror(
 
   const isDefaultSingleSource =
     sources.length === 1 &&
-    normalizeDocsSourceInput(sources[0]?.input ?? "") === DEFAULT_DOCS_DIR;
+    normalizeDocsSourceInput(sources[0]?.input ?? "") === DEFAULT_DOCS_DIR &&
+    path.resolve(sources[0]?.docsDir ?? "") ===
+      path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
   if (isDefaultSingleSource && !hasFilters) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
@@ -1565,10 +1841,18 @@ export async function runGenerateCommand(
         configDir,
         collections: loadedConfig.config.collections,
       });
-      docsSources = resolveDocsSourcesFromCollections(
+      const collections = await inheritCollectionSourceConfigs(
         loadedConfig.config.collections,
         configDir
       );
+      loadedConfig = {
+        ...loadedConfig,
+        config: {
+          ...loadedConfig.config,
+          collections,
+        },
+      };
+      docsSources = resolveDocsSourcesFromCollections(collections, configDir);
     } else {
       const docsDirsToResolve =
         args.docsDirs.length > 0 ? args.docsDirs : [DEFAULT_DOCS_DIR];
@@ -1671,6 +1955,7 @@ export async function runGenerateCommand(
       }),
       enrichFrontmatterFromGit: args.enrichGit,
       failOnError: typeTableStrict,
+      frontmatterSchemaByPath: metadata.collectionFrontmatterSchemas,
       frontmatterSchema: metadata.frontmatterSchema,
       transformers: metadata.transformers,
     });
