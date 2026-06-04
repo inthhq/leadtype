@@ -1,5 +1,13 @@
 # leadtype
 
+## 0.2.1
+
+### Patch Changes
+
+- ac5f294: Support string-literal property names in `AutoTypeTable` extraction and add a real c15t docs repro pipeline for source-config driven generation.
+- ac5f294: Add mount-aware docs generation for serving source subtrees at top-level URLs and allow root navigation page entries such as `"index"` without wrapping them in a group.
+- ac5f294: Add `defineFrameworkNavigation` for shared framework docs sections.
+
 ## 0.2.0
 
 ### Minor Changes
