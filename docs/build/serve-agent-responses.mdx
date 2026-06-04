@@ -160,7 +160,7 @@ Set `overrides.type` to use a different Schema.org type, and `overrides.breadcru
 
 ### Emit the site-level graph once
 
-The per-page `@id` references resolve against a site-level graph — `Organization`, `WebSite` (with a `SearchAction`), and `SoftwareApplication` (or `SoftwareSourceCode` for libraries). Render it **once**, on your docs home or root layout, with `renderSiteJsonLd`. The graph is derived from your config's `organization` and `product` (`kind`/`category`/`repository`), baked into the manifest at generate time — so no options are needed:
+The per-page `@id` references resolve against a site-level graph — `Organization`, `WebSite` (with a `SearchAction`), and `SoftwareApplication` (plus `SoftwareSourceCode` for libraries). Render it **once**, on your docs home or root layout, with `renderSiteJsonLd`. The graph is derived from your config's `organization` and `product` (`kind`/`category`/`repository`), baked into the manifest at generate time — so no options are needed:
 
 ```ts
 import agentManifest from "../public/docs/agent-readability.json";

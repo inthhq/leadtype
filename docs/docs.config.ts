@@ -9,7 +9,7 @@ const config: DocsConfig = {
     homepage: "https://leadtype.dev",
     docs: "https://leadtype.dev/docs",
     repository: "https://github.com/inthhq/leadtype",
-    // A library, so the site-level graph emits SoftwareSourceCode.
+    // A library, so the site-level graph emits SoftwareApplication + SoftwareSourceCode.
     kind: "library",
     category: "DeveloperApplication",
   },

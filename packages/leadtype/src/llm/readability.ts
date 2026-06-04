@@ -887,7 +887,7 @@ export function renderJsonLd(
 export type RenderSiteJsonLdOptions = {
   organization?: { name?: string; url?: string; logo?: string };
   software?: {
-    /** Emit `SoftwareSourceCode` instead of `SoftwareApplication` (for libraries). */
+    /** Include `SoftwareSourceCode` alongside `SoftwareApplication` for libraries. */
     isLibrary?: boolean;
     applicationCategory?: string;
     operatingSystem?: string;
@@ -905,7 +905,8 @@ const DEFAULT_SEARCH_URL_PATTERN = "/docs?q={search_term_string}";
 
 /**
  * The site-level entity graph — `Organization`, `WebSite` (+ `SearchAction`), and
- * `SoftwareApplication`/`SoftwareSourceCode` — emitted once (e.g. on the docs home).
+ * `SoftwareApplication` (+ `SoftwareSourceCode` for libraries) — emitted once
+ * (e.g. on the docs home).
  * Per-page `renderJsonLd` references these by `@id` (DESIGN.md Phase 4).
  */
 export function renderSiteJsonLd(
@@ -959,7 +960,7 @@ export function renderSiteJsonLd(
 
   const software: JsonLdValue = {
     "@type": options.software?.isLibrary
-      ? "SoftwareSourceCode"
+      ? ["SoftwareApplication", "SoftwareSourceCode"]
       : "SoftwareApplication",
     "@id": ids.software,
     name: manifest.product.name,

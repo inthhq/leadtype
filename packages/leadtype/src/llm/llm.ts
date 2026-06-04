@@ -165,8 +165,9 @@ export type ProductInfo = {
   /** Source repository URL. Emitted as JSON-LD `codeRepository` for libraries. */
   repository?: string;
   /**
-   * What the product is. `"library"` emits JSON-LD `SoftwareSourceCode`; anything
-   * else emits `SoftwareApplication`. Defaults to `"app"`.
+   * What the product is. `"library"` emits JSON-LD `SoftwareApplication` with
+   * `SoftwareSourceCode`; anything else emits `SoftwareApplication`. Defaults to
+   * `"app"`.
    */
   kind?: "library" | "app";
   /** JSON-LD `applicationCategory`, e.g. `"DeveloperApplication"`. */

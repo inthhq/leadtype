@@ -1110,14 +1110,17 @@ describe("agent readability helpers", () => {
     });
   });
 
-  it("emits SoftwareSourceCode for libraries and omits the SearchAction on request", () => {
+  it("emits product-detectable software types for libraries and omits the SearchAction on request", () => {
     const graph = renderSiteJsonLd(manifest, {
       software: { isLibrary: true },
       searchUrlPattern: null,
     }) as { "@graph": Record<string, unknown>[] };
-    const types = graph["@graph"].map((node) => node["@type"]);
+    const types = graph["@graph"].flatMap((node) => {
+      const type = node["@type"];
+      return Array.isArray(type) ? type : [type];
+    });
     expect(types).toContain("SoftwareSourceCode");
-    expect(types).not.toContain("SoftwareApplication");
+    expect(types).toContain("SoftwareApplication");
     const website = graph["@graph"].find((node) => node["@type"] === "WebSite");
     expect(website).not.toHaveProperty("potentialAction");
   });
