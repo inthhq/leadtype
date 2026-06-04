@@ -229,6 +229,7 @@ type ResolvedGenerateMetadata = {
 };
 
 type CollectionFrontmatterSchema = {
+  filePaths?: string[];
   pathPrefix: string;
   schema: DocsFrontmatterSchema;
 };
@@ -1189,10 +1190,31 @@ function mergeCollectionNav(
   return nav;
 }
 
-function resolveCollectionFrontmatterSchemas(
+async function sourceStagedMdxPaths(
+  source: ResolvedDocsSource
+): Promise<string[]> {
+  const include =
+    source.filters && source.filters.include.length > 0
+      ? source.filters.include
+      : ["**/*.mdx"];
+  const exclude = source.filters?.exclude ?? [];
+  const files = await fg(include, {
+    absolute: false,
+    cwd: source.docsDir,
+    dot: true,
+    expandDirectories: false,
+    ignore: exclude,
+    onlyFiles: true,
+  });
+  return files
+    .filter((file) => file.endsWith(".mdx"))
+    .map((file) => joinDocsRelativePath(source.mountPath, file));
+}
+
+async function resolveCollectionFrontmatterSchemas(
   collections: Record<string, DocsCollection>,
   sources: ResolvedDocsSource[]
-): CollectionFrontmatterSchema[] {
+): Promise<CollectionFrontmatterSchema[]> {
   const schemas: CollectionFrontmatterSchema[] = [];
   const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
   for (const [key, collection] of Object.entries(collections)) {
@@ -1201,6 +1223,7 @@ function resolveCollectionFrontmatterSchemas(
     }
     const source = sourcesByKey.get(key);
     schemas.push({
+      filePaths: source ? await sourceStagedMdxPaths(source) : undefined,
       pathPrefix: source?.mountPath ?? "",
       schema: collection.schema,
     });
@@ -1208,7 +1231,7 @@ function resolveCollectionFrontmatterSchemas(
   return schemas;
 }
 
-function resolveGenerateMetadata(
+async function resolveGenerateMetadata(
   srcDir: string,
   loaded: LoadedDocsConfig | null,
   args: GenerateArgs,
@@ -1222,7 +1245,7 @@ function resolveGenerateMetadata(
       ? mergeCollectionNav(loaded.config.collections, docsSources)
       : undefined;
     const collectionFrontmatterSchemas = loaded.config.collections
-      ? resolveCollectionFrontmatterSchemas(
+      ? await resolveCollectionFrontmatterSchemas(
           loaded.config.collections,
           docsSources
         )
@@ -1240,7 +1263,7 @@ function resolveGenerateMetadata(
       organization: loaded.config.organization,
       llms: loaded.config.llms,
     });
-    return Promise.resolve({
+    return {
       configPath: loaded.path,
       collectionFrontmatterSchemas:
         collectionFrontmatterSchemas && collectionFrontmatterSchemas.length > 0
@@ -1261,7 +1284,7 @@ function resolveGenerateMetadata(
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
       agents: loaded.config.agents,
-    });
+    };
   }
   return readPackageProduct(srcDir, args).then((product) => ({
     groups: [],

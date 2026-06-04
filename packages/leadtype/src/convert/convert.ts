@@ -279,6 +279,7 @@ export type MdxToMarkdownOptions = {
   frontmatterSchema?: DocsTransformerOptions["frontmatterSchema"];
   /** Optional path-scoped schemas. The longest matching pathPrefix wins. */
   frontmatterSchemaByPath?: {
+    filePaths?: string[];
     pathPrefix: string;
     schema: DocsTransformerOptions["frontmatterSchema"];
   }[];
@@ -307,14 +308,18 @@ function frontmatterSchemaForFile(
   const relativePath = normalizeRelativePath(relative(srcDir, filePath));
   const match = scopedSchemas
     .filter((entry) => {
+      if (entry.filePaths) {
+        return entry.filePaths.some(
+          (entryPath) => normalizeRelativePath(entryPath) === relativePath
+        );
+      }
       const prefix = normalizeRelativePath(entry.pathPrefix).replace(
         /^\/+|\/+$/g,
         ""
       );
       return (
-        prefix.length === 0 ||
-        relativePath === prefix ||
-        relativePath.startsWith(`${prefix}/`)
+        prefix.length > 0 &&
+        (relativePath === prefix || relativePath.startsWith(`${prefix}/`))
       );
     })
     .sort((left, right) => right.pathPrefix.length - left.pathPrefix.length)

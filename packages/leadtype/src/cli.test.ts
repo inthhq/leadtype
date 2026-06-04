@@ -1630,6 +1630,53 @@ export default {
     expect(capture.stderr).toContain("sdkVersion");
   });
 
+  it("does not apply a root collection schema to sibling collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "index.mdx"),
+      '---\ntitle: "SDK Docs"\nsdkVersion: "1.0.0"\n---\n\nBody.\n'
+    );
+    await mkdir(path.join(srcDir, "api"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "api", "index.mdx"),
+      '---\ntitle: "API Docs"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import * as v from ${JSON.stringify(valibotEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      dir: "./docs",
+      prefix: "/docs",
+      schema: v.object({
+        title: v.string(),
+        sdkVersion: v.string(),
+      }),
+    },
+    api: {
+      dir: "./api",
+      prefix: "/api",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "api", "index.md"))).toBe(true);
+  });
+
   it("rejects --docs-dir when leadtype.config.ts defines collections", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
