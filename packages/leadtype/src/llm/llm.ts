@@ -262,6 +262,57 @@ export type DocsNavNode = {
  */
 export type DocsNavEntry = DocsNavNode | DocsNavPageEntry;
 
+export type FrameworkNavigationTemplate = Pick<
+  DocsNavNode,
+  "children" | "description" | "optional" | "pages"
+>;
+
+export type FrameworkNavigationVariant<TTemplateName extends string = string> =
+  FrameworkNavigationTemplate &
+    Pick<DocsNavNode, "title"> & {
+      /** Framework URL segment relative to the framework root, e.g. "react". */
+      base: string;
+      /** Optional stable group key. */
+      slug?: string;
+      /** Template name to inherit pages/children from. */
+      template?: TTemplateName;
+    };
+
+type FrameworkNavigationConfigBase = Pick<
+  DocsNavNode,
+  "base" | "description" | "optional" | "pages" | "slug" | "title"
+>;
+
+export type FrameworkNavigationConfig<TTemplateName extends string = string> =
+  FrameworkNavigationConfigBase & {
+    /**
+     * Named framework section templates. Variants inherit `pages`, `children`,
+     * `description`, and `optional` from their template unless they override them.
+     */
+    templates?: Record<TTemplateName, FrameworkNavigationTemplate>;
+    /** Ordered framework sections rendered under this navigation node. */
+    frameworks: FrameworkNavigationVariant<TTemplateName>[];
+  };
+
+type FrameworkNavigationConfigWithTemplates<
+  TTemplates extends Record<string, FrameworkNavigationTemplate>,
+> = FrameworkNavigationConfigBase & {
+  /**
+   * Named framework section templates. Variants inherit `pages`, `children`,
+   * `description`, and `optional` from their template unless they override them.
+   */
+  templates: TTemplates;
+  /** Ordered framework sections rendered under this navigation node. */
+  frameworks: FrameworkNavigationVariant<Extract<keyof TTemplates, string>>[];
+};
+
+type FrameworkNavigationConfigWithoutTemplates =
+  FrameworkNavigationConfigBase & {
+    templates?: undefined;
+    /** Ordered framework sections rendered under this navigation node. */
+    frameworks: FrameworkNavigationVariant[];
+  };
+
 /** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
 export type { DocsFrontmatterSchema } from "../transformers";
 
@@ -467,6 +518,80 @@ export function defineDocsConfig<
  */
 export function defineCollection(collection: DocsCollection): DocsCollection {
   return collection;
+}
+
+function compactDocsNavNode(node: DocsNavNode): DocsNavNode {
+  const compacted: DocsNavNode = { title: node.title };
+
+  if (node.slug !== undefined) {
+    compacted.slug = node.slug;
+  }
+  if (node.description !== undefined) {
+    compacted.description = node.description;
+  }
+  if (node.base !== undefined) {
+    compacted.base = node.base;
+  }
+  if (node.pages !== undefined) {
+    compacted.pages = node.pages;
+  }
+  if (node.children !== undefined) {
+    compacted.children = node.children;
+  }
+  if (node.optional !== undefined) {
+    compacted.optional = node.optional;
+  }
+
+  return compacted;
+}
+
+/**
+ * Builds repeated framework navigation from shared templates while returning a
+ * plain {@link DocsNavNode}. Use this when React, Next.js, Vue, JavaScript, or
+ * other framework sections share the same concepts/guides/reference structure.
+ */
+export function defineFrameworkNavigation<
+  const TTemplates extends Record<string, FrameworkNavigationTemplate>,
+>(config: FrameworkNavigationConfigWithTemplates<TTemplates>): DocsNavNode;
+export function defineFrameworkNavigation(
+  config: FrameworkNavigationConfigWithoutTemplates
+): DocsNavNode;
+export function defineFrameworkNavigation(
+  config: FrameworkNavigationConfig
+): DocsNavNode {
+  const templates = config.templates ?? {};
+  const children = config.frameworks.map((framework) => {
+    const template =
+      framework.template === undefined
+        ? undefined
+        : templates[framework.template];
+
+    if (framework.template !== undefined && template === undefined) {
+      throw new Error(
+        `defineFrameworkNavigation: unknown template "${framework.template}" for framework "${framework.title}"`
+      );
+    }
+
+    return compactDocsNavNode({
+      title: framework.title,
+      slug: framework.slug,
+      base: framework.base,
+      description: framework.description ?? template?.description,
+      pages: framework.pages ?? template?.pages,
+      children: framework.children ?? template?.children,
+      optional: framework.optional ?? template?.optional,
+    });
+  });
+
+  return compactDocsNavNode({
+    title: config.title,
+    slug: config.slug,
+    base: config.base,
+    description: config.description,
+    pages: config.pages,
+    children,
+    optional: config.optional,
+  });
 }
 
 /** Generator inputs derived from the public config's identity blocks. */

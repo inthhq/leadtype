@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  defineFrameworkNavigation,
   extractDocsTableOfContents,
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
@@ -1988,6 +1989,107 @@ describe("extractDocsTableOfContents", () => {
 
     expect(toc.map((item) => item.title)).toEqual(["Child"]);
     expect(toc[0]?.children.map((item) => item.title)).toEqual(["Detail"]);
+  });
+});
+
+describe("defineFrameworkNavigation", () => {
+  it("expands framework templates into plain navigation nodes", () => {
+    const nav = defineFrameworkNavigation({
+      title: "Frameworks",
+      base: "frameworks",
+      pages: ["index"],
+      templates: {
+        componentFramework: {
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            {
+              title: "Concepts",
+              pages: ["consent-management", "consent-banner"],
+            },
+            {
+              title: "Guides",
+              pages: ["script-loader", "iframe-blocking"],
+            },
+          ],
+        },
+      },
+      frameworks: [
+        { title: "React", base: "react", template: "componentFramework" },
+        { title: "Next.js", base: "next", template: "componentFramework" },
+        {
+          title: "JavaScript",
+          base: "javascript",
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            {
+              title: "Guides",
+              pages: ["script-loader", "network-blocker"],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(nav).toEqual({
+      title: "Frameworks",
+      base: "frameworks",
+      pages: ["index"],
+      children: [
+        {
+          title: "React",
+          base: "react",
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            {
+              title: "Concepts",
+              pages: ["consent-management", "consent-banner"],
+            },
+            {
+              title: "Guides",
+              pages: ["script-loader", "iframe-blocking"],
+            },
+          ],
+        },
+        {
+          title: "Next.js",
+          base: "next",
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            {
+              title: "Concepts",
+              pages: ["consent-management", "consent-banner"],
+            },
+            {
+              title: "Guides",
+              pages: ["script-loader", "iframe-blocking"],
+            },
+          ],
+        },
+        {
+          title: "JavaScript",
+          base: "javascript",
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            {
+              title: "Guides",
+              pages: ["script-loader", "network-blocker"],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("throws when a framework references an unknown template", () => {
+    expect(() =>
+      defineFrameworkNavigation({
+        title: "Frameworks",
+        base: "frameworks",
+        frameworks: [{ title: "React", base: "react", template: "missing" }],
+      })
+    ).toThrow(
+      'defineFrameworkNavigation: unknown template "missing" for framework "React"'
+    );
   });
 });
 
