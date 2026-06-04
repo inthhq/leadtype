@@ -14,6 +14,7 @@
     "llm": "bun run pipeline:llm",
     "setup:real": "bun run pipeline:setup-real",
     "test:real": "bun run pipeline:test-real",
+    "generate:real": "bun run pipeline:generate-real",
     "bench": "bun run pipeline:bench",
     "pipeline:convert": "bun run scripts/mdx-convert.ts",
     "pipeline:llm": "bun run scripts/llm-generate.ts",
@@ -23,6 +24,7 @@
     "pipeline:test": "bun run scripts/test-pipeline.ts",
     "pipeline:setup-real": "bun run scripts/setup-real-content.ts",
     "pipeline:test-real": "bun run pipeline:setup-real && bun run scripts/test-real.ts",
+    "pipeline:generate-real": "bun run pipeline:setup-real && bun run scripts/generate-real.ts",
     "pipeline:bench": "bun run pipeline:setup-real && bun run scripts/bench.ts",
     "pipeline:convert-real": "bun run scripts/convert-real.ts",
     "pipeline:llm-real": "bun run scripts/llm-generate-real.ts"

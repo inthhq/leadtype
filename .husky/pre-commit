@@ -24,5 +24,6 @@ if [ -n "$STAGED_FILES" ]; then
   echo "✨ Files formatted by Ultracite"
 fi
 
-# Run tests against the final tree that will be committed.
-bun test --pass-with-no-tests || exit $?
+# Run tests against the final tree that will be committed. Real-docs fixtures
+# are ignored by Git, but Bun would still discover downstream repo tests there.
+bun test --pass-with-no-tests --path-ignore-patterns 'apps/tanstack/content-fixtures/**' || exit $?

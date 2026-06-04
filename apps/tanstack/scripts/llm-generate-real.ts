@@ -14,11 +14,20 @@
  */
 
 import { join } from "node:path";
+import { convertAllMdx } from "leadtype/convert";
 import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = FIXTURE_DIR;
 const OUT_DIR = join(process.cwd(), "public-real2");
+
+await convertAllMdx({
+  srcDir: SRC_DIR,
+  outDir: OUT_DIR,
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  enrichFrontmatterFromGit: true,
+});
 
 await generateLlmsTxt({
   srcDir: SRC_DIR,

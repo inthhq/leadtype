@@ -33,3 +33,20 @@ Both build the `leadtype` package, then run `pipeline:build`, then start/build v
 ## Relationship to `leadtype init`
 
 `leadtype init` does **not** scaffold this app — its multi-script pipeline, generated page manifest, and per-provider AI routes are app-specific setup beyond the canonical integration. Follow the docs recipes instead: `use-the-source-primitive` and `integrate-with-fumadocs` under `/docs/build`.
+
+## Real c15t Repro
+
+The TanStack app includes opt-in scripts for testing Leadtype against the real
+`c15t/c15t` docs tree. They clone a sparse fixture into
+`content-fixtures/c15t/`, including both `docs/` and `packages/` so
+`AutoTypeTable` references resolve like they do in the source repo.
+
+```sh
+C15T_REF=leadtype-docs-navigation-main bun run --filter tanstack pipeline:setup-real
+bun run --filter tanstack pipeline:generate-real
+bun run --filter tanstack pipeline:test-real
+```
+
+`pipeline:generate-real` runs the source-config driven `leadtype generate`
+path against `content-fixtures/c15t/docs/docs.config.ts` and writes artifacts to
+`apps/tanstack/public-real/`.

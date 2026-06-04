@@ -464,6 +464,20 @@ function extractPropertyInfo(
   };
 }
 
+function getPropertyNameText(name: ts.PropertyName): string | null {
+  const ts = getTypeScript();
+
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteral(name) ||
+    ts.isNumericLiteral(name)
+  ) {
+    return name.text;
+  }
+
+  return null;
+}
+
 function extractInterfaceProperties(
   interfaceDecl: ts.InterfaceDeclaration,
   checker: ts.TypeChecker,
@@ -475,8 +489,7 @@ function extractInterfaceProperties(
 
   for (const member of interfaceDecl.members) {
     if (ts.isPropertySignature(member)) {
-      const name =
-        member.name && ts.isIdentifier(member.name) ? member.name.text : "";
+      const name = getPropertyNameText(member.name);
       if (name) {
         properties[name] = extractPropertyInfo(
           member,
@@ -509,8 +522,7 @@ function extractClassProperties(
 
   for (const member of classDecl.members) {
     if (ts.isPropertyDeclaration(member) && !isStaticProperty(member)) {
-      const name =
-        member.name && ts.isIdentifier(member.name) ? member.name.text : "";
+      const name = getPropertyNameText(member.name);
       if (name) {
         properties[name] = extractPropertyInfo(member, checker, sourceFile);
       }
