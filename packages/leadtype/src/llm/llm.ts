@@ -9,6 +9,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import type { PluggableList } from "unified";
+import type { DocsFeedConfig } from "../feed";
 import {
   type DocsI18nConfig,
   type DocsI18nManifest,
@@ -440,6 +441,8 @@ export type DocsConfig<
   navigation?: DocsNavEntry[];
   /** Optional path-to-URL mounts for pages inside the docs tree. */
   mounts?: DocsPathMount[];
+  /** Optional RSS/Atom feeds generated from URL-prefixed docs pages. */
+  feeds?: DocsFeedConfig[];
   /**
    * Multi-source content sets, keyed by collection id. Each collection owns
    * its own source acquisition, URL prefix, frontmatter schema, and nav.

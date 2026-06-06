@@ -80,6 +80,7 @@ describe("package surface", () => {
       "./package.json",
       "./mdx",
       "./mdx/source",
+      "./feed",
       "./fumadocs",
       "./astro",
       "./i18n",

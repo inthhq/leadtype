@@ -35,6 +35,10 @@
       "import": "./dist/mdx/source.js",
       "default": "./dist/mdx/source.js"
     },
+    "./feed": {
+      "types": "./dist/feed/index.d.ts",
+      "import": "./dist/feed/index.js"
+    },
     "./fumadocs": {
       "types": "./dist/fumadocs/index.d.ts",
       "import": "./dist/fumadocs/index.js"

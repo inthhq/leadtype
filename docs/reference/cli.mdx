@@ -116,6 +116,45 @@ leadtype generate \
 
 That keeps the internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, also writes a static markdown mirror at `public/changelog/v1.md`, and emits canonical links such as `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
 
+### Configured feeds
+
+Add `feeds` to `docs.config.ts` or `leadtype.config.ts` when a URL-prefixed
+content set should publish RSS or Atom. Feeds are generic: use them for a
+changelog, blog, release notes, news, or any other generated pages selected by
+canonical URL prefix.
+
+```ts
+export default defineDocsConfig({
+  product: {
+    name: "My Library",
+    tagline: "A library that does one thing well.",
+  },
+  navigation: [
+    "index",
+    { title: "Changelog", base: "changelog", pages: [{ include: "*" }] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "My Library Changelog",
+      description: "Release notes and product updates for My Library.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+});
+```
+
+Feeds are site-mode only and require `--base-url` so item links are absolute.
+Entries use generated markdown frontmatter: `title`, `description`, `date`, and
+`draft`. When `date` is missing, Leadtype falls back to generated
+`lastModified`; pages with `draft: true` are excluded.
+
 ### Bundle mode
 
 ```bash
@@ -152,7 +191,13 @@ Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json
     "docsSitemapMd": "/abs/path/.../public/docs/sitemap.md",
     "docsRobotsTxt": "/abs/path/.../public/docs/robots.txt",
     "agentReadabilityManifest": "/abs/path/.../public/docs/agent-readability.json",
-    "agentSkills": "/abs/path/.../public/.well-known/agent-skills/index.json"
+    "agentSkills": "/abs/path/.../public/.well-known/agent-skills/index.json",
+    "feeds": {
+      "changelog": {
+        "rss": "/abs/path/.../public/changelog/rss.xml",
+        "atom": "/abs/path/.../public/changelog/atom.xml"
+      }
+    }
   },
   "search": { /* index stats */ }
 }
@@ -170,6 +215,7 @@ Custom build scripts do not auto-discover config. Import `docs.config.ts` direct
 
 ```ts
 import { generateLlmsTxt } from "leadtype/llm";
+import { generateFeedArtifacts } from "leadtype/feed";
 import docsConfig from "../docs/docs.config";
 
 await generateLlmsTxt({
@@ -178,6 +224,13 @@ await generateLlmsTxt({
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
   nav: docsConfig.navigation,
+});
+
+await generateFeedArtifacts({
+  outDir: "public",
+  baseUrl: "https://leadtype.dev",
+  feeds: docsConfig.feeds,
+  mounts: docsConfig.mounts,
 });
 ```
 
@@ -337,6 +390,7 @@ The CLI is a thin wrapper. Every command is also available as a TypeScript API f
 
 - [`leadtype/convert`](/docs/reference/convert) — `convertAllMdx`, `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`.
 - [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`, `resolveDocsNavigation`.
+- `leadtype/feed` — `generateFeedArtifacts`, `renderRssFeed`, and `renderAtomFeed`.
 - [`leadtype/llm/readability`](/docs/reference/llm#agent-readability-helpers) — JSON-LD, markdown response, frontmatter, and agent request helpers for hosted docs sites.
 - [`leadtype/search/node`](/docs/reference/search) — `generateDocsSearchFiles`.
 - [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.

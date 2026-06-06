@@ -1022,6 +1022,158 @@ description: "First release."
     );
   });
 
+  it("generates configured RSS and Atom feeds from mounted pages", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  navigation: [
+    { title: "Docs", pages: ["quickstart"] },
+    { title: "Changelog", base: "changelog", pages: ["v1", "v2", "draft"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "Feed Product Changelog",
+      description: "Release notes for Feed Product.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/v1.mdx",
+      [
+        'title: "Version 1"',
+        'description: "First release."',
+        "date: 2026-06-01",
+      ].join("\n")
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/v2.mdx",
+      [
+        'title: "Version 2"',
+        'description: "Second release."',
+        "date: 2026-06-02",
+      ].join("\n")
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/draft.mdx",
+      [
+        'title: "Draft release"',
+        'description: "Hidden release."',
+        "date: 2026-06-03",
+        "draft: true",
+      ].join("\n")
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      files: { feeds?: Record<string, { rss?: string; atom?: string }> };
+    };
+    expect(result.files.feeds?.changelog).toEqual({
+      atom: path.join(outDir, "changelog", "atom.xml"),
+      rss: path.join(outDir, "changelog", "rss.xml"),
+    });
+
+    const rss = await readFile(
+      path.join(outDir, "changelog", "rss.xml"),
+      "utf8"
+    );
+    expect(rss).toContain("<rss");
+    expect(rss).toContain("https://example.com/changelog/v2");
+    expect(rss).toContain("https://example.com/changelog/v1");
+    expect(rss).not.toContain("Draft release");
+    expect(rss.indexOf("/changelog/v2")).toBeLessThan(
+      rss.indexOf("/changelog/v1")
+    );
+
+    const atom = await readFile(
+      path.join(outDir, "changelog", "atom.xml"),
+      "utf8"
+    );
+    expect(atom).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(atom).toContain("<id>https://example.com/changelog/v2</id>");
+    expect(atom).not.toContain("Draft release");
+  });
+
+  it("requires --base-url when feeds are configured", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: [
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("configured feeds require --base-url");
+  });
+
   it("fails clearly when docs config is invalid", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

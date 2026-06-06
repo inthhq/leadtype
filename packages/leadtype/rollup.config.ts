@@ -7,6 +7,7 @@ const entries = {
   index: "src/index.ts",
   "mdx/index": "src/mdx/index.ts",
   "mdx/source": "src/mdx/source-plugin.ts",
+  "feed/index": "src/feed/index.ts",
   "fumadocs/index": "src/fumadocs/index.ts",
   "astro/index": "src/astro/index.ts",
   "i18n/index": "src/i18n/index.ts",
