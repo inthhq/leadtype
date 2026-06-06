@@ -233,7 +233,7 @@ const config: DocsConfig = {
   agents: {
     // Fully crawlable + retrievable; signals "don't train on this" (the default).
     robots: { policy: "balanced" },
-    // The example app hosts a docs MCP endpoint, so the docs-skill points agents at it.
+    // The example app hosts a docs MCP endpoint, so leadtype emits discovery metadata for it.
     mcp: { enabled: true },
     // Site-wide SEO defaults emitted on every page head via createDocsHead.
     seo: {

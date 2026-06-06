@@ -30,6 +30,8 @@ export type GenerateSkillArtifactsConfig = {
   mode?: "site" | "bundle";
   /** Whether a docs MCP server is enabled — changes the docs-skill body + agent-card url. */
   mcpEnabled?: boolean;
+  /** Resolved docs MCP endpoint, preferably absolute when `baseUrl` is known. */
+  mcpEndpoint?: string;
   /** A2A agent-card `provider` (e.g. the docs maintainers). */
   provider?: { organization: string; url?: string };
   /** A2A agent-card `documentationUrl`. Defaults to `${baseUrl}/docs`. */
@@ -82,8 +84,13 @@ function buildDocsSkill(config: GenerateSkillArtifactsConfig): DocsSkillSpec {
       "- Every page is also available as Markdown at its `.md` URL."
     );
     if (config.mcpEnabled) {
+      const fallbackEndpoint = config.baseUrl
+        ? `${config.baseUrl.replace(/\/+$/, "")}/mcp`
+        : undefined;
+      const endpointValue = config.mcpEndpoint ?? fallbackEndpoint;
+      const endpoint = endpointValue ? ` at \`${endpointValue}\`` : "";
       lines.push(
-        "- For targeted retrieval, connect the docs MCP server and use its `search-docs` and `get-page` tools."
+        `- For targeted retrieval, connect the docs MCP server${endpoint} and use its \`search-docs\` and \`get-page\` tools.`
       );
     }
   }
@@ -144,8 +151,9 @@ function buildAgentCard(
   skills: DocsSkillSpec[]
 ): Record<string, unknown> {
   const baseUrl = config.baseUrl?.replace(/\/+$/, "") ?? "";
+  const mcpEndpoint = config.mcpEndpoint ?? (baseUrl ? `${baseUrl}/mcp` : "");
   // The agent's endpoint: the MCP server when enabled, else the docs site.
-  const url = config.mcpEnabled && baseUrl ? `${baseUrl}/mcp` : baseUrl;
+  const url = config.mcpEnabled ? mcpEndpoint : baseUrl;
   const documentationUrl =
     config.documentationUrl ?? (baseUrl ? `${baseUrl}/docs` : undefined);
   return {

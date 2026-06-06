@@ -16,6 +16,7 @@ import {
   type DocsSearchIndex,
 } from "../search/index";
 import { type DocsArtifacts, loadDocsArtifacts } from "./artifacts";
+import { createMcpServerCard, resolveMcpServerInfo } from "./card";
 import { createMcpHandler } from "./http";
 import { createDocsMcpServer } from "./server";
 import { defineDocsTools } from "./tools";
@@ -283,6 +284,86 @@ describe("loadDocsArtifacts (from disk)", () => {
     expect(out).toContain("tools: search-docs, get-page");
     expect(out).toContain("/docs/guides/quickstart");
     expect(out).toMatch(/get-page\(.*\): \d+ chars/);
+  });
+});
+
+describe("createMcpServerCard", () => {
+  it("resolves the same default serverInfo the runtime uses", () => {
+    expect(
+      resolveMcpServerInfo({
+        name: "Acme Docs",
+        summary: "Acme docs.",
+      })
+    ).toEqual({
+      name: "acme-docs",
+      version: "1.0.0",
+      description: "Acme docs.",
+    });
+  });
+
+  it("builds the SEP-1649 discovery card for the docs MCP endpoint", () => {
+    const card = createMcpServerCard({
+      baseUrl: "https://leadtype.dev/docs/",
+      product: {
+        name: "Leadtype",
+        summary: "Docs pipeline tooling.",
+      },
+    });
+
+    expect(card).toEqual({
+      $schema:
+        "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
+      version: "1.0",
+      protocolVersion: "2025-06-18",
+      serverInfo: {
+        name: "leadtype-docs",
+        version: "1.0.0",
+        description: "Docs pipeline tooling.",
+      },
+      transport: {
+        type: "streamable-http",
+        endpoint: "https://leadtype.dev/docs/mcp",
+      },
+      capabilities: {
+        tools: {},
+      },
+      authentication: { required: false },
+    });
+  });
+
+  it("honors endpoint, serverInfo, and capability overrides", () => {
+    const card = createMcpServerCard({
+      product: {
+        name: "Acme Docs",
+        summary: "Acme docs.",
+      },
+      config: {
+        endpoint: "api/mcp",
+        serverInfo: {
+          name: "acme-docs",
+          version: "2.3.4",
+          description: "Acme support docs.",
+        },
+        capabilities: {
+          prompts: { listChanged: true },
+        },
+        authentication: {
+          required: true,
+        },
+      },
+    });
+
+    expect(card.serverInfo).toEqual({
+      name: "acme-docs",
+      version: "2.3.4",
+      description: "Acme support docs.",
+    });
+    expect(card.transport.endpoint).toBe("/api/mcp");
+    expect(card.capabilities).toEqual({
+      tools: {},
+      prompts: { listChanged: true },
+    });
+    expect(card.authentication.required).toBe(true);
   });
 });
 

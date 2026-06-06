@@ -132,7 +132,7 @@ export default defineDocsConfig({
 | `llms.sections` | the authored `llms.txt` body ([reference](/docs/reference/llm#llmssections)) | empty |
 | `agents.robots` | robots.txt crawler policy + Content-Signals ([below](#control-ai-crawler-access)) | `balanced` (crawlable, `ai-train=no`) |
 | `agents.seo` | `og:image` / `twitter` / `keywords` head meta | `og:type` + `twitter:card` always; rest off |
-| `agents.mcp` | `{ enabled }` — points the docs-skill at your MCP endpoint ([MCP](/docs/reference/mcp)) | off |
+| `agents.mcp` | `{ enabled, endpoint, serverInfo, authentication }` — emits MCP discovery and points agent surfaces at your MCP endpoint ([MCP](/docs/reference/mcp)) | off |
 | `agents.agentCard` | `{ enabled, version }` — the `/.well-known/agent-card.json` | emitted |
 | `agents.skills` | the `/.well-known/agent-skills` surface ([skills](/docs/reference/skills)) | docs-skill emits |
 

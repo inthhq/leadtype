@@ -44,6 +44,7 @@ import {
   resolveAgentInputs,
   resolveDocsNavigation,
 } from "../llm";
+import { generateMcpServerCard, resolveMcpEndpoint } from "../mcp/card";
 import {
   defaultRemarkPlugins,
   remarkInclude,
@@ -161,6 +162,7 @@ type GenerateResult = {
     wellKnownLlmsTxt?: string;
     skillMd?: string;
     agentSkills?: string;
+    mcpServerCard?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavEntry[];
@@ -2212,6 +2214,12 @@ export async function runGenerateCommand(
         jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
       });
+      const mcpConfig = metadata.agents?.mcp;
+      const mcpEnabled = mcpConfig?.enabled === true;
+      const mcpEndpoint = mcpEnabled
+        ? resolveMcpEndpoint(args.baseUrl, mcpConfig.endpoint)
+        : undefined;
+
       // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
       // Default-on: the auto docs-skill is free and points agents at the docs.
       const siteSkills = await generateSkillArtifacts({
@@ -2226,7 +2234,8 @@ export async function runGenerateCommand(
           agentCard: metadata.agents?.agentCard?.enabled,
         },
         mode: "site",
-        mcpEnabled: metadata.agents?.mcp?.enabled,
+        mcpEnabled,
+        mcpEndpoint,
         // Agent-card provider / docs URL derived from `organization` + `product.docs`.
         ...(metadata.provider ? { provider: metadata.provider } : {}),
         ...(metadata.documentationUrl
@@ -2239,6 +2248,22 @@ export async function runGenerateCommand(
       const agentSkillsIndex = siteSkills.files.find((f) =>
         f.endsWith("index.json")
       );
+      let mcpServerCard:
+        | Awaited<ReturnType<typeof generateMcpServerCard>>
+        | undefined;
+      if (mcpConfig?.enabled === true) {
+        mcpServerCard = await generateMcpServerCard({
+          outDir,
+          baseUrl: args.baseUrl,
+          product,
+          config: {
+            endpoint: mcpConfig.endpoint,
+            serverInfo: mcpConfig.serverInfo,
+            capabilities: mcpConfig.capabilities,
+            authentication: mcpConfig.authentication,
+          },
+        });
+      }
 
       if (i18n) {
         for (const locale of i18n.locales) {
@@ -2309,6 +2334,7 @@ export async function runGenerateCommand(
           llmsTxt: path.join(outDir, "llms.txt"),
           wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
           ...(agentSkillsIndex ? { agentSkills: agentSkillsIndex } : {}),
+          ...(mcpServerCard ? { mcpServerCard: mcpServerCard.outputPath } : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
         },
