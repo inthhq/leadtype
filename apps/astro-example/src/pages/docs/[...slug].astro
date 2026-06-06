@@ -108,11 +108,21 @@ const markdownUrl =
     </main>
     <script>
       import { createSearchClient } from "leadtype/search/client";
+      import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
 
       const input = document.querySelector<HTMLInputElement>("#docs-search");
       const status = document.querySelector("#docs-search-status");
       const results = document.querySelector("#docs-search-results");
       const client = createSearchClient("docs");
+      const webMcpRegistration = registerWebMcpTools(createDocsWebMcpTools());
+
+      globalThis.addEventListener(
+        "pagehide",
+        () => {
+          webMcpRegistration.unregister();
+        },
+        { once: true }
+      );
 
       if (input && status && results) {
         input.addEventListener("input", async () => {

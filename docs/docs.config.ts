@@ -186,6 +186,7 @@ const config: DocsConfig = {
         "ai-answers",
         "agent-tools",
         "/reference/mcp",
+        "/reference/webmcp",
         "/reference/skills",
       ],
     },

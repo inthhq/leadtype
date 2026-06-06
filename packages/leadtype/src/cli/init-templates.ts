@@ -27,6 +27,10 @@ export type FrameworkPlan = {
   outDir: string;
 };
 
+export type BuildPlanOptions = {
+  webmcp?: boolean;
+};
+
 export function isInitFramework(value: string): value is InitFramework {
   return (SUPPORTED_FRAMEWORKS as string[]).includes(value);
 }
@@ -78,12 +82,82 @@ Welcome. This page renders for humans and is mirrored as markdown for agents.
   ];
 }
 
-function nextPlan(baseUrl: string): FrameworkPlan {
+function nextWebMcpFile(): InitFile {
+  return {
+    path: "components/leadtype-webmcp.tsx",
+    contents: `"use client";
+
+import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+import { useEffect } from "react";
+
+export function LeadtypeWebMcp() {
+  useEffect(() => {
+    const registration = registerWebMcpTools(createDocsWebMcpTools());
+    return () => {
+      registration.unregister();
+    };
+  }, []);
+
+  return null;
+}
+`,
+  };
+}
+
+function astroWebMcpScript(): string {
+  return `      <script>
+        import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+
+        const registration = registerWebMcpTools(createDocsWebMcpTools());
+        globalThis.addEventListener("pagehide", () => {
+          registration.unregister();
+        }, { once: true });
+      </script>
+`;
+}
+
+function nuxtWebMcpFile(): InitFile {
+  return {
+    path: "app/plugins/leadtype-webmcp.client.ts",
+    contents: `import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+import { defineNuxtPlugin } from "#app";
+
+export default defineNuxtPlugin(() => {
+  const registration = registerWebMcpTools(createDocsWebMcpTools());
+  globalThis.addEventListener("pagehide", () => {
+    registration.unregister();
+  }, { once: true });
+});
+`,
+  };
+}
+
+function svelteWebMcpHelperFile(): InitFile {
+  return {
+    path: "src/lib/leadtype-webmcp.ts",
+    contents: `import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+
+export function registerLeadtypeWebMcp() {
+  return registerWebMcpTools(createDocsWebMcpTools());
+}
+`,
+  };
+}
+
+function nextPlan(
+  baseUrl: string,
+  options: BuildPlanOptions = {}
+): FrameworkPlan {
+  const webmcpImport = options.webmcp
+    ? 'import { LeadtypeWebMcp } from "../../../components/leadtype-webmcp";\n'
+    : "";
+  const webmcpElement = options.webmcp ? "      <LeadtypeWebMcp />\n" : "";
   return {
     outDir: "public",
     devCommand: "next dev",
     deps: ["next", "react", "react-dom", "@next/mdx", "next-mdx-remote-client"],
     files: [
+      ...(options.webmcp ? [nextWebMcpFile()] : []),
       {
         path: "next.config.mjs",
         contents: `import path from "node:path";
@@ -126,7 +200,7 @@ export const mdxComponents: MDXComponents = {};
       },
       {
         path: "app/docs/[[...slug]]/page.tsx",
-        contents: `import {
+        contents: `${webmcpImport}import {
   createDocsJsonLd,
   normalizeAgentReadabilityManifest,
   stringifyJsonLd,
@@ -162,7 +236,7 @@ export default async function DocsPage({
 
   return (
     <main>
-      {jsonLd ? (
+${webmcpElement}      {jsonLd ? (
         <script type="application/ld+json">{stringifyJsonLd(jsonLd)}</script>
       ) : null}
       <article>
@@ -177,7 +251,11 @@ export default async function DocsPage({
   };
 }
 
-function astroPlan(baseUrl: string): FrameworkPlan {
+function astroPlan(
+  baseUrl: string,
+  options: BuildPlanOptions = {}
+): FrameworkPlan {
+  const webmcpScript = options.webmcp ? astroWebMcpScript() : "";
   return {
     outDir: "public",
     devCommand: "astro dev",
@@ -247,7 +325,7 @@ const markdownHref = page.urlPath === "/docs" ? "/docs/index.md" : \`\${page.url
       <article>
         <pre>{page.markdown}</pre>
       </article>
-    </main>
+${webmcpScript}    </main>
   </body>
 </html>
 `,
@@ -270,12 +348,16 @@ export const HEAD = GET;
   };
 }
 
-function nuxtPlan(baseUrl: string): FrameworkPlan {
+function nuxtPlan(
+  baseUrl: string,
+  options: BuildPlanOptions = {}
+): FrameworkPlan {
   return {
     outDir: "public",
     devCommand: "nuxt dev",
     deps: ["nuxt", "vue"],
     files: [
+      ...(options.webmcp ? [nuxtWebMcpFile()] : []),
       {
         path: "lib/source.ts",
         contents: `import path from "node:path";
@@ -368,7 +450,23 @@ export default defineNuxtConfig({
   };
 }
 
-function sveltekitPlan(baseUrl: string): FrameworkPlan {
+function sveltekitPlan(
+  baseUrl: string,
+  options: BuildPlanOptions = {}
+): FrameworkPlan {
+  const webmcpImport = options.webmcp
+    ? '  import { onMount } from "svelte";\n  import { registerLeadtypeWebMcp } from "$lib/leadtype-webmcp";\n'
+    : "";
+  const webmcpMount = options.webmcp
+    ? `
+  onMount(() => {
+    const registration = registerLeadtypeWebMcp();
+    return () => {
+      registration.unregister();
+    };
+  });
+`
+    : "";
   return {
     outDir: "static",
     devCommand: "vite dev",
@@ -381,6 +479,7 @@ function sveltekitPlan(baseUrl: string): FrameworkPlan {
       "mdsvex",
     ],
     files: [
+      ...(options.webmcp ? [svelteWebMcpHelperFile()] : []),
       {
         path: "svelte.config.js",
         contents: `import path from "node:path";
@@ -449,6 +548,7 @@ export const load: PageServerLoad = async (event) => {
       {
         path: "src/routes/docs/[...slug]/+page.svelte",
         contents: `<script lang="ts">
+${webmcpImport}${webmcpMount}
   let { data } = $props();
 </script>
 
@@ -492,17 +592,18 @@ export function defaultBaseUrl(framework: InitFramework): string {
 
 export function buildPlan(
   framework: InitFramework,
-  baseUrl: string
+  baseUrl: string,
+  options: BuildPlanOptions = {}
 ): FrameworkPlan {
   switch (framework) {
     case "next":
-      return nextPlan(baseUrl);
+      return nextPlan(baseUrl, options);
     case "astro":
-      return astroPlan(baseUrl);
+      return astroPlan(baseUrl, options);
     case "nuxt":
-      return nuxtPlan(baseUrl);
+      return nuxtPlan(baseUrl, options);
     case "sveltekit":
-      return sveltekitPlan(baseUrl);
+      return sveltekitPlan(baseUrl, options);
     default: {
       const exhaustive: never = framework;
       throw new Error(`unhandled framework: ${String(exhaustive)}`);

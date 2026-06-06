@@ -95,5 +95,17 @@ const markdownUrl = `${page.urlPath}.md`;
         </article>
       </div>
     </main>
+    <script>
+      import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+
+      const registration = registerWebMcpTools(createDocsWebMcpTools());
+      globalThis.addEventListener(
+        "pagehide",
+        () => {
+          registration.unregister();
+        },
+        { once: true }
+      );
+    </script>
   </body>
 </html>

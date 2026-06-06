@@ -147,6 +147,10 @@
       "types": "./dist/mcp/index.d.ts",
       "import": "./dist/mcp/index.js"
     },
+    "./webmcp": {
+      "types": "./dist/webmcp/index.d.ts",
+      "import": "./dist/webmcp/index.js"
+    },
     "./score": {
       "types": "./dist/score/index.d.ts",
       "import": "./dist/score/index.js"

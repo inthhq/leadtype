@@ -108,6 +108,7 @@ describe("package surface", () => {
       "./tanstack-start",
       "./lint",
       "./mcp",
+      "./webmcp",
       "./score",
     ] as const;
 

@@ -1,0 +1,79 @@
+---
+title: "WebMCP"
+description: "Register generated docs as browser-side WebMCP tools with document.modelContext / navigator.modelContext — separate from the server MCP endpoint."
+related:
+  - title: "MCP server"
+    href: "/docs/reference/mcp"
+    description: "Server-side MCP over stdio or Streamable HTTP."
+  - title: "Search reference"
+    href: "/docs/reference/search"
+    description: "The generated search artifacts WebMCP docs tools read."
+  - title: "CLI"
+    href: "/docs/reference/cli"
+    description: "Use leadtype init --webmcp to scaffold page-load registration."
+---
+
+WebMCP is a browser API: a page registers JavaScript tools with
+`document.modelContext.registerTool()` (and current scanners also look for
+`navigator.modelContext.registerTool()`). This is **not** the same thing as the
+server MCP endpoint in [`leadtype/mcp`](/docs/reference/mcp). Use WebMCP when a
+browser-based agent is on your page and should call the same read-only docs
+helpers without scraping the DOM.
+
+## Register docs tools
+
+```ts
+import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+
+const registration = registerWebMcpTools(createDocsWebMcpTools());
+
+// Later, if the page/component unloads:
+registration.unregister();
+```
+
+`createDocsWebMcpTools()` registers two read-only tools:
+
+| Tool | Input | Behavior |
+| --- | --- | --- |
+| `search-docs` | `query: string`, `limit?: number` | Reads `/docs/search-index.json` and optional `/docs/search-content.json`, then returns ranked `{ title, urlPath, snippet }` hits. |
+| `get-page` | `urlPath: string` | Fetches the generated Markdown mirror for the page. `/docs` maps to `/docs/index.md`; other paths append `.md`. |
+
+Both tools set `readOnlyHint: true` and `untrustedContentHint: true`.
+
+## Scaffold it
+
+```bash
+leadtype init --framework next --webmcp
+```
+
+`--webmcp` is opt-in because the browser API is experimental. It adds only
+client-side registration glue; it does not install `@modelcontextprotocol/sdk`
+and does not create a server `/mcp` route.
+
+## Options
+
+```ts
+createDocsWebMcpTools({
+  collection: "docs",
+  indexUrl: "/docs/search-index.json",
+  contentUrl: "/docs/search-content.json",
+  limit: 5,
+});
+```
+
+Pass `markdownUrl(urlPath)` when your generated Markdown mirrors live somewhere
+other than the default `.md` URL shape.
+
+## Validate
+
+WebMCP is detected by loading the page in a browser and observing tool
+registration on page load. To check a deployed site with Cloudflare's scanner:
+
+```http
+POST https://isitagentready.com/api/scan
+Content-Type: application/json
+
+{"url": "https://YOUR-SITE.com"}
+```
+
+Look for `checks.discovery.webMcp.status` to be `"pass"`.
