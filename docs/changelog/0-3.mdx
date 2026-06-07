@@ -1,0 +1,57 @@
+---
+title: "Leadtype 0.3"
+description: "Release notes for Leadtype 0.3, focused on RSS and Atom feed generation for changelogs and URL-prefixed docs content."
+date: 2026-06-07
+---
+
+Leadtype 0.3 adds config-driven RSS and Atom feed generation for changelogs,
+release notes, blogs, news, and any generated docs content selected by canonical
+URL prefix.
+
+## Feeds
+
+- Added a `feeds` config field for `docs.config.ts` and `leadtype.config.ts`.
+- Added `leadtype/feed` with `generateFeedArtifacts()`, `renderRssFeed()`, and
+  `renderAtomFeed()` for custom pipelines.
+- Added site-mode generation for configured feeds, with generated paths reported
+  in JSON output under `files.feeds.<id>`.
+- Added RSS 2.0 and Atom output, including XML escaping, control-character
+  stripping, stable Atom entry IDs, absolute canonical links, feed-level author
+  metadata, and newest-first entry sorting.
+- Added support for mounted changelog URLs such as `/changelog`, so feed entries
+  do not have to live under `/docs`.
+
+## Date handling
+
+- Feed entries use stable frontmatter dates. Changelogs and release notes should
+  set an explicit `date` because the publication date is part of the release
+  record.
+- Pages where the feed should represent source edits can use Git-derived
+  `lastModified` by running `leadtype generate --enrich-git`.
+- Generation fails when a selected feed page has no `date` or `lastModified`
+  frontmatter, so feed order does not churn based on CI-generated file mtimes.
+- The default docs lint schema now accepts optional `date` frontmatter, including
+  YAML dates parsed as `Date` values.
+
+## Validation and safety
+
+- Feed generation requires `--base-url` or a deployment URL environment
+  variable so RSS and Atom item links are absolute.
+- Feed output paths must start with `/`, end with `.xml`, resolve inside the
+  output directory, and be unique across all configured feeds.
+- Pages with `draft: true` are excluded from feeds when that field reaches
+  generated markdown.
+- Locale-prefixed generated pages are excluded from root feeds so localized
+  mirrors do not duplicate entries.
+
+## Dogfooding
+
+- The Leadtype docs now publish `/changelog/rss.xml` and
+  `/changelog/atom.xml` from the real changelog.
+- The Next.js, Astro, Nuxt, SvelteKit, and TanStack examples now generate the
+  changelog feeds. Next.js, Nuxt, SvelteKit, and TanStack smoke-test the feed
+  endpoints.
+- The TanStack custom pipeline calls `generateFeedArtifacts()` directly so the
+  lower-level API stays covered outside the CLI.
+- Added a task-focused guide for feed setup, feed date policy, output validation,
+  and verification steps.

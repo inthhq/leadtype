@@ -26,4 +26,12 @@ test("agent surface: llms.txt and markdown mirror are served", async ({
   const mirror = await request.get("/docs/authoring/components.md");
   expect(mirror.status()).toBe(200);
   expect(await mirror.text()).toContain("MDX components");
+
+  const rss = await request.get("/changelog/rss.xml");
+  expect(rss.status()).toBe(200);
+  expect(await rss.text()).toContain("<title>Leadtype Changelog</title>");
+
+  const atom = await request.get("/changelog/atom.xml");
+  expect(atom.status()).toBe(200);
+  expect(await atom.text()).toContain("<title>Leadtype 0.2</title>");
 });

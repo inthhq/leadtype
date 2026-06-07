@@ -39,6 +39,13 @@ const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_QUARANTINE_PATH",
   "GIT_WORK_TREE",
 ] as const;
+const BASE_URL_ENV_KEYS = [
+  "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL",
+  "NEXT_PUBLIC_VERCEL_URL",
+  "VERCEL_URL",
+  "PORTLESS_URL",
+] as const;
 
 type Capture = {
   stderr: string;
@@ -1022,6 +1029,322 @@ description: "First release."
     );
   });
 
+  it("generates configured RSS and Atom feeds from mounted pages", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  navigation: [
+    { title: "Docs", pages: ["quickstart"] },
+    { title: "Changelog", base: "changelog", pages: ["v1", "v2", "draft"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "Feed Product Changelog",
+      description: "Release notes for Feed Product.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/v1.mdx",
+      [
+        'title: "Version 1"',
+        'description: "First release."',
+        "date: 2026-06-01",
+      ].join("\n")
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/v2.mdx",
+      [
+        'title: "Version 2"',
+        'description: "Second release."',
+        "date: 2026-06-02",
+      ].join("\n")
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/draft.mdx",
+      [
+        'title: "Draft release"',
+        'description: "Hidden release."',
+        "date: 2026-06-03",
+        "draft: true",
+      ].join("\n")
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      files: { feeds?: Record<string, { rss?: string; atom?: string }> };
+    };
+    expect(result.files.feeds?.changelog).toEqual({
+      atom: path.join(outDir, "changelog", "atom.xml"),
+      rss: path.join(outDir, "changelog", "rss.xml"),
+    });
+
+    const rss = await readFile(
+      path.join(outDir, "changelog", "rss.xml"),
+      "utf8"
+    );
+    expect(rss).toContain("<rss");
+    expect(rss).toContain("https://example.com/changelog/v2");
+    expect(rss).toContain("https://example.com/changelog/v1");
+    expect(rss).not.toContain("Draft release");
+    expect(rss.indexOf("/changelog/v2")).toBeLessThan(
+      rss.indexOf("/changelog/v1")
+    );
+
+    const atom = await readFile(
+      path.join(outDir, "changelog", "atom.xml"),
+      "utf8"
+    );
+    expect(atom).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(atom).toContain("<name>Feed Product</name>");
+    expect(atom).toContain("<id>https://example.com/changelog/v2</id>");
+    expect(atom).not.toContain("Draft release");
+  });
+
+  it("rejects feed output paths that are not .xml or collide", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+
+    const writeFeedConfig = async (output: string) => {
+      await mkdir(path.join(srcDir, "docs"), { recursive: true });
+      await writeFile(
+        path.join(srcDir, "docs", "docs.config.ts"),
+        `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: ${output},
+};`
+      );
+    };
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    await writeFeedConfig(`[
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/quickstart.md" },
+    },
+  ]`);
+    let capture = createCapture();
+    let code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("must end with");
+
+    await writeFeedConfig(`[
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/feed.xml" },
+    },
+    {
+      id: "duplicate",
+      title: "Duplicate",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/feed.xml" },
+    },
+  ]`);
+    capture = createCapture();
+    code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("output paths must be unique");
+  });
+
+  it("requires --base-url or a deployment URL env var when feeds are configured", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: [
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+        capture.io
+      );
+
+      expect(code).toBe(1);
+      expect(capture.stderr).toContain(
+        "configured feeds require --base-url or a deployment URL env var"
+      );
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("generates configured feeds from env-derived base URLs", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: [
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides\ndate: 2026-06-01'
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      process.env.NEXT_PUBLIC_SITE_URL = "https://docs.example.com";
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      const rss = await readFile(path.join(outDir, "docs", "rss.xml"), "utf8");
+      expect(rss).toContain("https://docs.example.com/docs/quickstart");
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
   it("fails clearly when docs config is invalid", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
@@ -1128,6 +1451,8 @@ description: "First release."
         repoRoot,
         "--out",
         outDir,
+        "--base-url",
+        "https://example.com",
         "--include",
         "build/**",
         "--format",
@@ -1165,6 +1490,8 @@ description: "First release."
         repoRoot,
         "--out",
         outDir,
+        "--base-url",
+        "https://example.com",
         "--include",
         "build/**",
         "--exclude",

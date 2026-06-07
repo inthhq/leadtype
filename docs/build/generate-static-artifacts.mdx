@@ -58,6 +58,9 @@ That command writes:
 - `public/docs/*.md`
 - `public/docs/search-index.json` and `public/docs/search-content.json`
 - `public/docs/sitemap.xml`, `sitemap.md`, `robots.txt`, and `agent-readability.json`
+- configured RSS/Atom feeds, such as `public/changelog/rss.xml`
+
+For the feed-specific configuration and date rules, see [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds).
 
 Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
 
@@ -101,6 +104,36 @@ npx leadtype generate \
 
 That still keeps an internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, but it also writes `public/changelog/v1.md` and emits canonical links such as `/changelog/v1` and `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
 
+Add `feeds` in config when that mounted content should publish RSS or Atom:
+
+```ts title="docs/docs.config.ts"
+export default {
+  product: {
+    name: "My product",
+    tagline: "Developer tools for modern apps.",
+  },
+  navigation: [
+    "index",
+    { title: "Changelog", base: "changelog", pages: [{ include: "*" }] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "My product changelog",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+};
+```
+
+Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes; use `--enrich-git` only when Git-derived `lastModified` is the publication signal you want. See [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds) for the full feed contract.
+
 ## Wire it into the build
 
 Make checkout, lint, and generation run before the framework build:
@@ -135,6 +168,7 @@ import {
   generateLlmsTxt,
   resolveDocsNavigation,
 } from "leadtype/llm";
+import { generateFeedArtifacts } from "leadtype/feed";
 import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 import { generateDocsSearchFiles } from "leadtype/search/node";
 import docsConfig from "../.docs-src/c15t/docs/docs.config";
@@ -180,6 +214,13 @@ await generateAgentReadabilityArtifacts({
   mounts,
 });
 
+await generateFeedArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  feeds: docsConfig.feeds,
+  mounts,
+});
+
 const navigation = await resolveDocsNavigation({
   srcDir: sourceRoot,
   baseUrl: "https://docs.example.com",
@@ -197,3 +238,4 @@ After a clean build, inspect these files:
 - `public/llms-full.txt` — all generated markdown docs in one fallback file
 - `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty search files
 - `public/docs/agent-readability.json` — manifest for markdown responses, JSON-LD, sitemap, and robots helpers
+- configured feed files such as `public/changelog/rss.xml` and `public/changelog/atom.xml`
