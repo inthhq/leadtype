@@ -1,12 +1,25 @@
 ---
 title: "Leadtype 0.3"
-description: "Release notes for Leadtype 0.3, focused on RSS and Atom feed generation for changelogs and URL-prefixed docs content."
+description: "Release notes for Leadtype 0.3, focused on browser-side WebMCP docs tools, RSS and Atom feed generation, and URL-prefixed docs content."
 date: 2026-06-07
 ---
 
-Leadtype 0.3 adds config-driven RSS and Atom feed generation for changelogs,
-release notes, blogs, news, and any generated docs content selected by canonical
-URL prefix.
+Leadtype 0.3 adds browser-side WebMCP docs tools, plus config-driven RSS and
+Atom feed generation for changelogs, release notes, blogs, news, and any
+generated docs content selected by canonical URL prefix.
+
+## Browser WebMCP
+
+- Added `leadtype/webmcp` for registering generated docs as browser-side
+  WebMCP tools with `document.modelContext` or `navigator.modelContext`.
+- Added default `search-docs` and `get-page` tools over the generated search
+  index and Markdown mirror, with bounded search limits, page-path validation,
+  and default known-page checks.
+- Added React, Vue, and Svelte lifecycle helpers so host apps can register and
+  clean up docs tools from framework-owned client entry points.
+- Added `leadtype init --webmcp` scaffolding for framework examples.
+- Documented the distinction between browser WebMCP and the server-side
+  `leadtype/mcp` endpoint.
 
 ## Feeds
 
