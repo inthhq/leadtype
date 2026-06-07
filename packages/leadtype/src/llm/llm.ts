@@ -484,12 +484,6 @@ export type DocsAgentsConfig = {
       version?: string;
       description?: string;
     };
-    /** Static MCP primitive surface advertised before connection. */
-    capabilities?: {
-      tools?: { listChanged?: boolean };
-      resources?: { subscribe?: boolean; listChanged?: boolean };
-      prompts?: { listChanged?: boolean };
-    };
     /** Whether the advertised MCP endpoint requires authentication. Defaults to public. */
     authentication?: { required?: boolean };
   };

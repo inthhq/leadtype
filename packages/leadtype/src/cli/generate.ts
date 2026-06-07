@@ -2251,7 +2251,7 @@ export async function runGenerateCommand(
       let mcpServerCard:
         | Awaited<ReturnType<typeof generateMcpServerCard>>
         | undefined;
-      if (mcpConfig?.enabled === true) {
+      if (mcpEnabled) {
         mcpServerCard = await generateMcpServerCard({
           outDir,
           baseUrl: args.baseUrl,
@@ -2259,7 +2259,6 @@ export async function runGenerateCommand(
           config: {
             endpoint: mcpConfig.endpoint,
             serverInfo: mcpConfig.serverInfo,
-            capabilities: mcpConfig.capabilities,
             authentication: mcpConfig.authentication,
           },
         });

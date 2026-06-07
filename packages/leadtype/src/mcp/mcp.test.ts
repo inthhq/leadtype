@@ -331,7 +331,7 @@ describe("createMcpServerCard", () => {
     });
   });
 
-  it("honors endpoint, serverInfo, and capability overrides", () => {
+  it("honors endpoint, serverInfo, and authentication overrides", () => {
     const card = createMcpServerCard({
       product: {
         name: "Acme Docs",
@@ -343,9 +343,6 @@ describe("createMcpServerCard", () => {
           name: "acme-docs",
           version: "2.3.4",
           description: "Acme support docs.",
-        },
-        capabilities: {
-          prompts: { listChanged: true },
         },
         authentication: {
           required: true,
@@ -359,10 +356,8 @@ describe("createMcpServerCard", () => {
       description: "Acme support docs.",
     });
     expect(card.transport.endpoint).toBe("/api/mcp");
-    expect(card.capabilities).toEqual({
-      tools: {},
-      prompts: { listChanged: true },
-    });
+    // Capabilities are not configurable — the card always advertises tools only.
+    expect(card.capabilities).toEqual({ tools: {} });
     expect(card.authentication.required).toBe(true);
   });
 });

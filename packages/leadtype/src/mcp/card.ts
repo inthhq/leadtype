@@ -8,27 +8,19 @@ export const DEFAULT_MCP_ENDPOINT_PATH = "/mcp";
 export const MCP_SERVER_CARD_SCHEMA_URL =
   "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json";
 export const MCP_SERVER_CARD_SCHEMA_VERSION = "1.0";
+// Pinned to the protocol revision the docs MCP server targets (see server.ts /
+// http.ts). Bump alongside an SDK upgrade, not independently.
 export const MCP_SERVER_CARD_PROTOCOL_VERSION = "2025-06-18";
 export const DEFAULT_MCP_SERVER_NAME = "leadtype-docs";
 export const DEFAULT_MCP_SERVER_VERSION = "1.0.0";
 
-export type McpServerCardToolsCapability = {
-  listChanged?: boolean;
-};
-
-export type McpServerCardResourcesCapability = {
-  subscribe?: boolean;
-  listChanged?: boolean;
-};
-
-export type McpServerCardPromptsCapability = {
-  listChanged?: boolean;
-};
-
+/**
+ * The docs MCP server only serves tools, so the card always advertises
+ * exactly that — capabilities are not configurable to keep the static card
+ * honest about what the endpoint implements.
+ */
 export type McpServerCardCapabilities = {
-  tools?: McpServerCardToolsCapability;
-  resources?: McpServerCardResourcesCapability;
-  prompts?: McpServerCardPromptsCapability;
+  tools: Record<string, never>;
 };
 
 export type McpServerCardServerInfo = {
@@ -55,7 +47,6 @@ export type McpServerCard = {
 export type McpServerCardConfig = {
   endpoint?: string;
   serverInfo?: Partial<McpServerCardServerInfo>;
-  capabilities?: Partial<McpServerCardCapabilities>;
   authentication?: { required?: boolean };
 };
 
@@ -117,16 +108,6 @@ export function resolveMcpServerInfo(
   };
 }
 
-function resolveCapabilities(
-  capabilities?: Partial<McpServerCardCapabilities>
-): McpServerCardCapabilities {
-  return {
-    tools: capabilities?.tools ?? {},
-    ...(capabilities?.resources ? { resources: capabilities.resources } : {}),
-    ...(capabilities?.prompts ? { prompts: capabilities.prompts } : {}),
-  };
-}
-
 function resolveAuthentication(
   authentication?: McpServerCardConfig["authentication"]
 ): McpServerCard["authentication"] {
@@ -147,7 +128,7 @@ export function createMcpServerCard(
       type: "streamable-http",
       endpoint: resolveMcpEndpoint(options.baseUrl, config?.endpoint),
     },
-    capabilities: resolveCapabilities(config?.capabilities),
+    capabilities: { tools: {} },
     authentication: resolveAuthentication(config?.authentication),
   };
 }
