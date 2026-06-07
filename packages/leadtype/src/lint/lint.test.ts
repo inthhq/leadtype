@@ -370,6 +370,7 @@ date: 2026-06-03
 deprecated: Use /docs/guides/start instead.
 tags: [guides]
 group: get-started
+search: false
 order: 10
 variants:
   - value: next

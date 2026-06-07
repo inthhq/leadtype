@@ -50,6 +50,10 @@ generated docs content selected by canonical URL prefix.
 
 - Feed generation requires `--base-url` or a deployment URL environment
   variable so RSS and Atom item links are absolute.
+- Search generation now treats `shared/` and `_shared/` route segments as
+  internal by default, so template content does not appear as duplicate public
+  search results or answer citations unless a page explicitly sets
+  `search: true`.
 - Feed output paths must start with `/`, end with `.xml`, resolve inside the
   output directory, and be unique across all configured feeds.
 - Pages with `draft: true` are excluded from feeds when that field reaches
