@@ -14,9 +14,10 @@ const semver = v.pipe(
 
 const isoDate = v.pipe(
   v.union([v.string(), v.date()]),
-  v.check((value: Date | string) => !Number.isNaN(new Date(value).getTime()), {
-    message: "Must be an ISO-8601 date or parseable date string",
-  } as never)
+  v.check(
+    (value: Date | string) => !Number.isNaN(new Date(value).getTime()),
+    "Must be an ISO-8601 date or parseable date string"
+  )
 );
 
 const nonEmptyString = v.pipe(v.string(), v.minLength(1, "must not be empty"));

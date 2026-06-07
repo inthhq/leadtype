@@ -227,6 +227,36 @@ describe("generateFeedArtifacts", () => {
     expect(rss).toContain("https://example.com/changelog/v1");
   });
 
+  it("selects the exact prefix page and child pages", async () => {
+    const outDir = await createOutDir();
+    await writeFeedPage(
+      outDir,
+      "changelog/index.md",
+      'title: "Changelog"\ndate: 2026-06-01'
+    );
+    await writeFeedPage(
+      outDir,
+      "changelog/v1.md",
+      'title: "Version 1"\ndate: 2026-06-02'
+    );
+
+    const result = await generateFeedArtifacts({
+      outDir,
+      baseUrl: "https://example.com",
+      feeds: [changelogFeed()],
+      mounts: CHANGELOG_MOUNTS,
+    });
+
+    const { readFile } = await import("node:fs/promises");
+    const rss = await readFile(result.files.changelog?.rss ?? "", "utf8");
+    expect(rss).toContain(
+      '<guid isPermaLink="true">https://example.com/changelog</guid>'
+    );
+    expect(rss).toContain(
+      '<guid isPermaLink="true">https://example.com/changelog/v1</guid>'
+    );
+  });
+
   it("truncates entries to the configured limit, newest first", async () => {
     const outDir = await createOutDir();
     await writeFeedPage(

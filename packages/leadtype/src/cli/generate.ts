@@ -10,6 +10,7 @@ import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
   type DocsPathMount,
+  normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
 } from "../internal/docs-url";
@@ -93,6 +94,31 @@ const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
 const NAV_SORT_VALUES = new Set(["order", "path", "title"]);
 const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
+
+function isLocalBaseUrl(baseUrl: string): boolean {
+  try {
+    const { hostname } = new URL(baseUrl);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "0.0.0.0"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveFeedBaseUrl(baseUrl?: string): string {
+  const resolvedBaseUrl = normalizeBaseUrl(baseUrl);
+  if (baseUrl?.trim() || !isLocalBaseUrl(resolvedBaseUrl)) {
+    return resolvedBaseUrl;
+  }
+
+  throw new Error(
+    "configured feeds require --base-url or a deployment URL env var so RSS and Atom links are absolute"
+  );
+}
 
 type GenerateFormat = "json" | "text";
 
@@ -2266,11 +2292,10 @@ export async function runGenerateCommand(
         srcDir,
       };
     } else {
-      if (metadata.feeds && metadata.feeds.length > 0 && !args.baseUrl) {
-        throw new Error(
-          "configured feeds require --base-url so RSS and Atom links are absolute"
-        );
-      }
+      const feedBaseUrl =
+        metadata.feeds && metadata.feeds.length > 0
+          ? resolveFeedBaseUrl(args.baseUrl)
+          : undefined;
       if (i18n) {
         await copyDefaultLocaleMarkdownAliases(outDir, i18n.defaultLocale);
       }
@@ -2409,7 +2434,7 @@ export async function runGenerateCommand(
       }
       const feeds = await generateFeedArtifacts({
         outDir,
-        baseUrl: args.baseUrl,
+        baseUrl: feedBaseUrl,
         author: product.name,
         feeds: metadata.feeds,
         mounts: effectiveMounts,

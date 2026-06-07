@@ -39,6 +39,13 @@ const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_QUARANTINE_PATH",
   "GIT_WORK_TREE",
 ] as const;
+const BASE_URL_ENV_KEYS = [
+  "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL",
+  "NEXT_PUBLIC_VERCEL_URL",
+  "VERCEL_URL",
+  "PORTLESS_URL",
+] as const;
 
 type Capture = {
   stderr: string;
@@ -1221,10 +1228,13 @@ description: "First release."
     expect(capture.stderr).toContain("output paths must be unique");
   });
 
-  it("requires --base-url when feeds are configured", async () => {
+  it("requires --base-url or a deployment URL env var when feeds are configured", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
     const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
 
     await mkdir(path.join(srcDir, "docs"), { recursive: true });
     await writeFile(
@@ -1252,13 +1262,87 @@ description: "First release."
       'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
     );
 
-    const code = await runCli(
-      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
-      capture.io
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+        capture.io
+      );
+
+      expect(code).toBe(1);
+      expect(capture.stderr).toContain(
+        "configured feeds require --base-url or a deployment URL env var"
+      );
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("generates configured feeds from env-derived base URLs", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
     );
 
-    expect(code).toBe(1);
-    expect(capture.stderr).toContain("configured feeds require --base-url");
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: [
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides\ndate: 2026-06-01'
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      process.env.NEXT_PUBLIC_SITE_URL = "https://docs.example.com";
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      const rss = await readFile(path.join(outDir, "docs", "rss.xml"), "utf8");
+      expect(rss).toContain("https://docs.example.com/docs/quickstart");
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
   });
 
   it("fails clearly when docs config is invalid", async () => {

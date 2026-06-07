@@ -152,16 +152,20 @@ export default defineDocsConfig({
 });
 ```
 
-Feeds are site-mode only and require `--base-url` so item links are absolute.
-Entries use generated markdown frontmatter: `title`, `description`, `date`, and
-`draft`. Every selected page must carry a `date` or `lastModified`-style field
-(add one in frontmatter, or generate `lastModified` with `--enrich-git`);
-generation fails otherwise so feed entries never inherit unstable build-time
-file timestamps. Pages with `draft: true` are excluded. Output paths must end
-in `.xml` and be unique across feeds so a feed can never overwrite another
-generated artifact. A `source.urlPrefix` of `/` selects every generated page;
-otherwise the page at exactly the prefix (the section's listing page) is not
-included as an entry. Atom feeds set the feed-level author from `product.name`.
+Feeds are site-mode only and require a base URL so item links are absolute. Pass
+`--base-url`, or set the same deployment URL environment variables used by the
+rest of site-mode generation, such as `NEXT_PUBLIC_SITE_URL` or Vercel URL
+variables. If neither is set and Leadtype would fall back to an implicit
+localhost URL, feed generation fails instead of publishing accidental local
+links. Entries use generated markdown frontmatter: `title`, `description`,
+`date`, and `draft`. Every selected page must carry a `date` or
+`lastModified`-style field (add one in frontmatter, or generate `lastModified`
+with `--enrich-git`); generation fails otherwise so feed entries never inherit
+unstable build-time file timestamps. Pages with `draft: true` are excluded.
+Output paths must end in `.xml` and be unique across feeds so a feed can never
+overwrite another generated artifact. A `source.urlPrefix` of `/` selects every
+generated page; otherwise the exact prefix page and its child pages are
+selected. Atom feeds set the feed-level author from `product.name`.
 
 ### Bundle mode
 

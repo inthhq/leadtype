@@ -71,7 +71,11 @@ Leadtype fails generation when a selected feed page has no stable date. It does 
 
 ## Which pages become feed entries?
 
-`source.urlPrefix` selects generated pages by canonical URL. A prefix of `/changelog` selects `/changelog/v1`, `/changelog/v2`, and other child pages; it does not include the page at exactly `/changelog`, which is usually a listing page. A prefix of `/` selects every generated page.
+`source.urlPrefix` selects generated pages by canonical URL. A prefix of
+`/changelog` selects `/changelog`, `/changelog/v1`, `/changelog/v2`, and other
+child pages. Use page frontmatter, source filters, or a deeper prefix if the
+section listing page should not become a feed entry. A prefix of `/` selects
+every generated page.
 
 Pages with `draft: true` are excluded. Entries are sorted newest first and capped at `limit` when set; otherwise Leadtype includes the latest 20 entries.
 

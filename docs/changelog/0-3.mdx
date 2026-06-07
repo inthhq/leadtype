@@ -35,7 +35,8 @@ URL prefix.
 
 ## Validation and safety
 
-- Feed generation requires `--base-url` so RSS and Atom item links are absolute.
+- Feed generation requires `--base-url` or a deployment URL environment
+  variable so RSS and Atom item links are absolute.
 - Feed output paths must start with `/`, end with `.xml`, resolve inside the
   output directory, and be unique across all configured feeds.
 - Pages with `draft: true` are excluded from feeds when that field reaches
@@ -47,10 +48,10 @@ URL prefix.
 
 - The Leadtype docs now publish `/changelog/rss.xml` and
   `/changelog/atom.xml` from the real changelog.
-- The Next.js, Astro, Nuxt, SvelteKit, and TanStack examples now generate and
-  smoke-test the changelog feeds.
+- The Next.js, Astro, Nuxt, SvelteKit, and TanStack examples now generate the
+  changelog feeds. Next.js, Nuxt, SvelteKit, and TanStack smoke-test the feed
+  endpoints.
 - The TanStack custom pipeline calls `generateFeedArtifacts()` directly so the
   lower-level API stays covered outside the CLI.
 - Added a task-focused guide for feed setup, feed date policy, output validation,
   and verification steps.
-

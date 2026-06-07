@@ -140,13 +140,10 @@ function titleFromRelativePath(relativePath: string): string {
 }
 
 function isSelectedByPrefix(urlPath: string, urlPrefix: string): boolean {
-  // The site root selects every page; otherwise require a child of the
-  // prefix (the page at exactly the prefix is the section's listing page,
-  // not an entry).
   if (urlPrefix === "/") {
     return true;
   }
-  return urlPath.startsWith(`${urlPrefix}/`);
+  return urlPath === urlPrefix || urlPath.startsWith(`${urlPrefix}/`);
 }
 
 function compareFeedEntries(left: FeedEntry, right: FeedEntry): number {
