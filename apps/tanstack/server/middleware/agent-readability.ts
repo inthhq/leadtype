@@ -28,13 +28,11 @@ export default defineEventHandler(async (event) => {
 
   switch (pathname) {
     case "/sitemap.xml":
-    case "/docs/sitemap.xml":
       return createSitemapXmlResponse({
         manifest: agentReadabilityManifest,
         requestOrigin,
       });
     case "/sitemap.md":
-    case "/docs/sitemap.md":
       return createSitemapMarkdownResponse({
         manifest: agentReadabilityManifest,
         requestOrigin,
@@ -43,12 +41,6 @@ export default defineEventHandler(async (event) => {
       return createRobotsTxtResponse({
         manifest: agentReadabilityManifest,
         requestOrigin,
-      });
-    case "/docs/robots.txt":
-      return createRobotsTxtResponse({
-        manifest: agentReadabilityManifest,
-        requestOrigin,
-        sitemapUrlPath: "/docs/sitemap.xml",
       });
     default:
       break;

@@ -716,15 +716,17 @@ export type AgentReadabilityConfig = {
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
   seo?: SeoMeta;
+  /** Write origin-root crawler files. Defaults to true for the default locale. */
+  emitRootCrawlerFiles?: boolean;
 };
 
 export type AgentReadabilityResult = {
   manifest: AgentReadabilityManifest;
   files: {
     manifest: string;
-    robotsTxt: string;
-    sitemapMd: string;
-    sitemapXml: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
   };
 };
 
@@ -2363,10 +2365,6 @@ export async function generateAgentReadabilityArtifacts(
     i18n && locale && locale !== i18n.defaultLocale
       ? path.join(outDir, DOCS_DIRNAME, locale)
       : path.join(outDir, DOCS_DIRNAME);
-  const docsUrlPrefix =
-    i18n && locale && locale !== i18n.defaultLocale
-      ? `/docs/${locale}`
-      : "/docs";
   const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
     i18n: config.i18n,
     locale,
@@ -2404,9 +2402,9 @@ export async function generateAgentReadabilityArtifacts(
     pages,
     navigation,
     files: {
-      robotsTxt: `${docsUrlPrefix}/${ROBOTS_FILE}`,
-      sitemapMd: `${docsUrlPrefix}/${SITEMAP_MARKDOWN_FILE}`,
-      sitemapXml: `${docsUrlPrefix}/${SITEMAP_XML_FILE}`,
+      robotsTxt: `/${ROBOTS_FILE}`,
+      sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
     ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
     ...(config.seo ? { seo: config.seo } : {}),
@@ -2414,34 +2412,47 @@ export async function generateAgentReadabilityArtifacts(
 
   const files = {
     manifest: path.join(docsDir, AGENT_READABILITY_MANIFEST_FILE),
-    robotsTxt: path.join(docsDir, ROBOTS_FILE),
-    sitemapMd: path.join(docsDir, SITEMAP_MARKDOWN_FILE),
-    sitemapXml: path.join(docsDir, SITEMAP_XML_FILE),
+    robotsTxt: path.join(outDir, ROBOTS_FILE),
+    sitemapMd: path.join(outDir, SITEMAP_MARKDOWN_FILE),
+    sitemapXml: path.join(outDir, SITEMAP_XML_FILE),
   };
+  const shouldEmitRootCrawlerFiles =
+    config.emitRootCrawlerFiles ??
+    !(i18n && locale && locale !== i18n.defaultLocale);
 
-  await mkdir(docsDir, { recursive: true });
-  await writeFile(files.sitemapXml, renderSitemapXml(pages));
-  await writeFile(
-    files.sitemapMd,
-    renderSitemapMarkdown({
-      product: config.product,
-      navigation,
-      pages,
-    })
-  );
-  await writeFile(
-    files.robotsTxt,
-    renderRobotsTxt({
-      baseUrl,
-      sitemapUrlPath: `${docsUrlPrefix}/sitemap.xml`,
-      policy: config.robotsPolicy,
-      signals: config.contentSignals,
-    })
-  );
+  const sitemapXml = renderSitemapXml(pages);
+  const sitemapMd = renderSitemapMarkdown({
+    product: config.product,
+    navigation,
+    pages,
+  });
+  if (shouldEmitRootCrawlerFiles) {
+    await mkdir(outDir, { recursive: true });
+    await writeFile(files.sitemapXml, sitemapXml);
+    await writeFile(files.sitemapMd, sitemapMd);
+    await writeFile(
+      files.robotsTxt,
+      renderRobotsTxt({
+        baseUrl,
+        sitemapUrlPath: "/sitemap.xml",
+        policy: config.robotsPolicy,
+        signals: config.contentSignals,
+      })
+    );
+  }
   await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
 
   return {
-    files,
+    files: {
+      manifest: files.manifest,
+      ...(shouldEmitRootCrawlerFiles
+        ? {
+            robotsTxt: files.robotsTxt,
+            sitemapMd: files.sitemapMd,
+            sitemapXml: files.sitemapXml,
+          }
+        : {}),
+    },
     manifest,
   };
 }

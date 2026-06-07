@@ -175,9 +175,6 @@ await Promise.all(
     join(outDir, "sitemap.xml"),
     join(outDir, "sitemap.md"),
     join(outDir, "robots.txt"),
-    join(outDir, "docs", "sitemap.xml"),
-    join(outDir, "docs", "sitemap.md"),
-    join(outDir, "docs", "robots.txt"),
   ].map((file) => rm(file, { force: true }))
 );
 

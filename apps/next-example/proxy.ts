@@ -24,8 +24,5 @@ export const config = {
     "/sitemap.xml",
     "/sitemap.md",
     "/robots.txt",
-    "/docs/sitemap.xml",
-    "/docs/sitemap.md",
-    "/docs/robots.txt",
   ],
 };

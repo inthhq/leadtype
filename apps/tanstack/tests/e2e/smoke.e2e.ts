@@ -187,10 +187,7 @@ test("agent readability discovery files are served at the site root", async ({
   expect(xml).toContain("<lastmod>");
 
   const docsSitemapXml = await request.get("/docs/sitemap.xml");
-  expect(docsSitemapXml.ok()).toBe(true);
-  expect(await docsSitemapXml.text()).toContain(
-    `<loc>${requestOrigin}/docs/quickstart</loc>`
-  );
+  expect(docsSitemapXml.ok()).toBe(false);
 
   const sitemapMd = await request.get("/sitemap.md");
   expect(sitemapMd.ok()).toBe(true);

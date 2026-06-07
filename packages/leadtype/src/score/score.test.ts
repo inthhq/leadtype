@@ -26,9 +26,9 @@ const MANIFEST = {
   product: { name: "Acme", summary: "Docs." },
   navigation: { groups: [], ungrouped: [], unknown: [] },
   files: {
-    robotsTxt: "/docs/robots.txt",
-    sitemapMd: "/docs/sitemap.md",
-    sitemapXml: "/docs/sitemap.xml",
+    robotsTxt: "/robots.txt",
+    sitemapMd: "/sitemap.md",
+    sitemapXml: "/sitemap.xml",
   },
   pages: [
     {

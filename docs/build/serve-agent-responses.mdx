@@ -61,19 +61,11 @@ export async function handleDocsRequest(
 
   switch (url.pathname) {
     case "/sitemap.xml":
-    case "/docs/sitemap.xml":
       return createSitemapXmlResponse({ manifest, requestOrigin });
     case "/sitemap.md":
-    case "/docs/sitemap.md":
       return createSitemapMarkdownResponse({ manifest, requestOrigin });
     case "/robots.txt":
       return createRobotsTxtResponse({ manifest, requestOrigin });
-    case "/docs/robots.txt":
-      return createRobotsTxtResponse({
-        manifest,
-        requestOrigin,
-        sitemapUrlPath: "/docs/sitemap.xml",
-      });
     default:
       return createAgentMarkdownResponse({
         urlPath: url.pathname,
@@ -98,8 +90,6 @@ return createSitemapXmlResponse({
 ```
 
 The other generated artifacts — `/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
-
-Keep the docs-scoped versions too (`/docs/sitemap.xml` etc.). Audits and agents may request both `/sitemap.xml` and `/docs/sitemap.xml`, especially when the audited URL is `/docs`.
 
 ## 2. Add JSON-LD to docs pages
 

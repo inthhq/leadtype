@@ -77,7 +77,7 @@ const PAGES: DocsPage[] = [
 
 Install Leadtype in a docs project, author MDX under docs/, and run leadtype generate.
 
-Website mode writes /llms.txt, /docs/llms.txt, /llms-full.txt, markdown mirrors under /docs/*.md, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, docs/agent-readability.json, docs/search-index.json, and docs/search-content.json.
+Website mode writes /llms.txt, /docs/llms.txt, /llms-full.txt, markdown mirrors under /docs/*.md, /sitemap.xml, /sitemap.md, /robots.txt, docs/agent-readability.json, docs/search-index.json, and docs/search-content.json.
 
 Bundle mode is different. leadtype generate --bundle writes AGENTS.md and docs/*.md for npm packages, with relative links that work inside node_modules.`,
   },
@@ -135,7 +135,7 @@ Use website mode when a docs site should expose HTTP-discoverable agent files. T
 
 For agent requests, serve markdown when Accept asks for text/markdown or when a known AI user agent requests a docs page. Keep /llms.txt, /llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json as static artifacts.
 
-Good verification checks include fetching /llms.txt, fetching a docs page with Accept: text/markdown, checking /docs/sitemap.xml, and confirming /robots.txt allows /llms.txt.`,
+Good verification checks include fetching /llms.txt, fetching a docs page with Accept: text/markdown, checking /sitemap.xml, and confirming /robots.txt allows /llms.txt.`,
   },
   {
     path: "docs/package-docs/bundle.md",
