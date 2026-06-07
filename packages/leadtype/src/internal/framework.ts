@@ -18,11 +18,7 @@ export type ReadMarkdownFile = (
 
 export type AgentArtifactHandlerConfig = {
   manifest: AgentReadabilityManifest;
-  /**
-   * Public route prefix where generated docs artifacts are mounted.
-   *
-   * @defaultValue `"/docs"`
-   */
+  /** @deprecated Sitemap and robots artifacts are served at the origin root. */
   artifactBasePath?: string;
   publicDir?: string;
   readMarkdownFile?: ReadMarkdownFile;
@@ -119,10 +115,6 @@ function getArtifactResponse(
 ): Response | null {
   const url = new URL(request.url);
   const requestOrigin = url.origin;
-  const artifactBasePath = normalizeUrlPath(config.artifactBasePath ?? "/docs");
-  const scopedSitemapXmlPath = joinUrlPath(artifactBasePath, "sitemap.xml");
-  const scopedSitemapMdPath = joinUrlPath(artifactBasePath, "sitemap.md");
-  const scopedRobotsPath = joinUrlPath(artifactBasePath, "robots.txt");
   switch (url.pathname) {
     case "/sitemap.xml":
       return createSitemapXmlResponse({
@@ -143,31 +135,8 @@ function getArtifactResponse(
         cacheControl: config.cacheControl,
       });
     default:
-      break;
+      return null;
   }
-  if (url.pathname === scopedSitemapXmlPath) {
-    return createSitemapXmlResponse({
-      manifest: config.manifest,
-      requestOrigin,
-      cacheControl: config.cacheControl,
-    });
-  }
-  if (url.pathname === scopedSitemapMdPath) {
-    return createSitemapMarkdownResponse({
-      manifest: config.manifest,
-      requestOrigin,
-      cacheControl: config.cacheControl,
-    });
-  }
-  if (url.pathname === scopedRobotsPath) {
-    return createRobotsTxtResponse({
-      manifest: config.manifest,
-      requestOrigin,
-      sitemapUrlPath: scopedSitemapXmlPath,
-      cacheControl: config.cacheControl,
-    });
-  }
-  return null;
 }
 
 export function createAgentArtifactHandler(

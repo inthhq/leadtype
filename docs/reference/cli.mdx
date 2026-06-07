@@ -27,6 +27,7 @@ leadtype init [options]
 | `--force` | off | Overwrite files that already exist. Without it, existing files are skipped. |
 | `--dry-run` | off | Print the file plan without writing or generating. |
 | `--no-generate` | off | Skip the post-scaffold `leadtype generate` run. |
+| `--webmcp` | off | Add browser-side WebMCP registration for the generated docs tools. This does not create a server MCP route. |
 | `--json` | — | Emit the file plan as JSON and exit (no writes). |
 | `-h`, `--help` | — | Print usage. |
 
@@ -116,6 +117,57 @@ leadtype generate \
 
 That keeps the internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, also writes a static markdown mirror at `public/changelog/v1.md`, and emits canonical links such as `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
 
+### Configured feeds
+
+Add `feeds` to `docs.config.ts` or `leadtype.config.ts` when a URL-prefixed
+content set should publish RSS or Atom. Feeds are generic: use them for a
+changelog, blog, release notes, news, or any other generated pages selected by
+canonical URL prefix.
+
+For a task-focused walkthrough, see [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds).
+
+```ts
+export default defineDocsConfig({
+  product: {
+    name: "My Library",
+    tagline: "A library that does one thing well.",
+  },
+  navigation: [
+    "index",
+    { title: "Changelog", base: "changelog", pages: [{ include: "*" }] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "My Library Changelog",
+      description: "Release notes and product updates for My Library.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+});
+```
+
+Feeds are site-mode only and require a base URL so item links are absolute. Pass
+`--base-url`, or set the same deployment URL environment variables used by the
+rest of site-mode generation, such as `NEXT_PUBLIC_SITE_URL` or Vercel URL
+variables. If neither is set and Leadtype would fall back to an implicit
+localhost URL, feed generation fails instead of publishing accidental local
+links. Entries use generated markdown frontmatter: `title`, `description`,
+`date`, and `draft`. Every selected page must carry a `date` or
+`lastModified`-style field (add one in frontmatter, or generate `lastModified`
+with `--enrich-git`); generation fails otherwise so feed entries never inherit
+unstable build-time file timestamps. Pages with `draft: true` are excluded.
+Output paths must end in `.xml` and be unique across feeds so a feed can never
+overwrite another generated artifact. A `source.urlPrefix` of `/` selects every
+generated page; otherwise the exact prefix page and its child pages are
+selected. Atom feeds set the feed-level author from `product.name`.
+
 ### Bundle mode
 
 ```bash
@@ -148,17 +200,23 @@ Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json
     "llmsFullTxt": "/abs/path/.../public/llms-full.txt",
     "searchIndex": "/abs/path/.../public/docs/search-index.json",
     "searchContent": "/abs/path/.../public/docs/search-content.json",
-    "docsSitemapXml": "/abs/path/.../public/docs/sitemap.xml",
-    "docsSitemapMd": "/abs/path/.../public/docs/sitemap.md",
-    "docsRobotsTxt": "/abs/path/.../public/docs/robots.txt",
+    "sitemapXml": "/abs/path/.../public/sitemap.xml",
+    "sitemapMd": "/abs/path/.../public/sitemap.md",
+    "robotsTxt": "/abs/path/.../public/robots.txt",
     "agentReadabilityManifest": "/abs/path/.../public/docs/agent-readability.json",
-    "agentSkills": "/abs/path/.../public/.well-known/agent-skills/index.json"
+    "agentSkills": "/abs/path/.../public/.well-known/agent-skills/index.json",
+    "feeds": {
+      "changelog": {
+        "rss": "/abs/path/.../public/changelog/rss.xml",
+        "atom": "/abs/path/.../public/changelog/atom.xml"
+      }
+    }
   },
   "search": { /* index stats */ }
 }
 ```
 
-The sitemap and robots files are docs-scoped so the host app can merge them with blog, marketing, changelog, or product pages before serving site-root `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+The root sitemap and robots files are the crawler-facing defaults. Host apps that merge docs pages with blog, marketing, changelog, or product pages can override those root files or use the runtime helpers to serve merged responses.
 
 In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, sitemap, robots, etc.) are absent.
 
@@ -170,6 +228,7 @@ Custom build scripts do not auto-discover config. Import `docs.config.ts` direct
 
 ```ts
 import { generateLlmsTxt } from "leadtype/llm";
+import { generateFeedArtifacts } from "leadtype/feed";
 import docsConfig from "../docs/docs.config";
 
 await generateLlmsTxt({
@@ -178,6 +237,13 @@ await generateLlmsTxt({
   baseUrl: "https://leadtype.dev",
   product: docsConfig.product,
   nav: docsConfig.navigation,
+});
+
+await generateFeedArtifacts({
+  outDir: "public",
+  baseUrl: "https://leadtype.dev",
+  feeds: docsConfig.feeds,
+  mounts: docsConfig.mounts,
 });
 ```
 
@@ -337,6 +403,7 @@ The CLI is a thin wrapper. Every command is also available as a TypeScript API f
 
 - [`leadtype/convert`](/docs/reference/convert) — `convertAllMdx`, `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`.
 - [`leadtype/llm`](/docs/reference/llm) — `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`, `resolveDocsNavigation`.
+- `leadtype/feed` — `generateFeedArtifacts`, `renderRssFeed`, and `renderAtomFeed`.
 - [`leadtype/llm/readability`](/docs/reference/llm#agent-readability-helpers) — JSON-LD, markdown response, frontmatter, and agent request helpers for hosted docs sites.
 - [`leadtype/search/node`](/docs/reference/search) — `generateDocsSearchFiles`.
 - [`leadtype/lint`](/docs/reference/lint) — `lintDocs`.

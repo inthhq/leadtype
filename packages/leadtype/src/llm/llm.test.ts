@@ -843,7 +843,7 @@ describe("generateLLMFullContextFiles", () => {
 });
 
 describe("generateAgentReadabilityArtifacts", () => {
-  it("emits docs-scoped sitemap, robots, and manifest files", async () => {
+  it("emits root sitemap, robots, and docs-scoped manifest files", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
       {
@@ -881,26 +881,42 @@ describe("generateAgentReadabilityArtifacts", () => {
       ],
     });
 
-    expect(existsSync(path.join(projectDir, "docs", "sitemap.xml"))).toBe(true);
-    expect(existsSync(path.join(projectDir, "docs", "sitemap.md"))).toBe(true);
-    expect(existsSync(path.join(projectDir, "docs", "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "docs", "sitemap.xml"))).toBe(
+      false
+    );
+    expect(existsSync(path.join(projectDir, "docs", "sitemap.md"))).toBe(false);
+    expect(existsSync(path.join(projectDir, "docs", "robots.txt"))).toBe(false);
+    expect(existsSync(path.join(projectDir, "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "sitemap.md"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "robots.txt"))).toBe(true);
     expect(
       existsSync(path.join(projectDir, "docs", "agent-readability.json"))
     ).toBe(true);
 
-    const sitemapXml = await readFile(result.files.sitemapXml, "utf8");
+    const sitemapXmlPath = result.files.sitemapXml;
+    const sitemapMdPath = result.files.sitemapMd;
+    const robotsTxtPath = result.files.robotsTxt;
+    expect(sitemapXmlPath).toBe(path.join(projectDir, "sitemap.xml"));
+    expect(sitemapMdPath).toBe(path.join(projectDir, "sitemap.md"));
+    expect(robotsTxtPath).toBe(path.join(projectDir, "robots.txt"));
+    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath)) {
+      throw new Error("Expected root crawler artifacts to be emitted.");
+    }
+
+    const sitemapXml = await readFile(sitemapXmlPath, "utf8");
     expect(sitemapXml).toContain("<urlset");
     expect(sitemapXml).toContain(
       "<loc>https://leadtype.dev/docs/quickstart</loc>"
     );
     expect(sitemapXml).toContain("<lastmod>2026-05-01T12:00:00.000Z</lastmod>");
 
-    const sitemapMd = await readFile(result.files.sitemapMd, "utf8");
+    const sitemapMd = await readFile(sitemapMdPath, "utf8");
     expect(sitemapMd).toContain("## Get Started");
     expect(sitemapMd).toContain("[Quickstart](/docs/quickstart)");
     expect(sitemapMd).toContain("## Reference");
 
-    const robotsTxt = await readFile(result.files.robotsTxt, "utf8");
+    const robotsTxt = await readFile(robotsTxtPath, "utf8");
+    expect(robotsTxt).toContain("Sitemap: https://leadtype.dev/sitemap.xml");
     expect(robotsTxt).toContain("User-agent: GPTBot");
     expect(robotsTxt).toContain("User-agent: ClaudeBot");
     expect(robotsTxt).toContain("Allow: /llms.txt");
@@ -1022,9 +1038,9 @@ describe("agent readability helpers", () => {
     baseUrl: "https://example.com",
     product: { name: "Leadtype", summary: "Docs pipeline." },
     files: {
-      robotsTxt: "/docs/robots.txt",
-      sitemapMd: "/docs/sitemap.md",
-      sitemapXml: "/docs/sitemap.xml",
+      robotsTxt: "/robots.txt",
+      sitemapMd: "/sitemap.md",
+      sitemapXml: "/sitemap.xml",
     },
     navigation: { groups: [], ungrouped: [], unknown: [] },
     pages: [
@@ -1110,14 +1126,17 @@ describe("agent readability helpers", () => {
     });
   });
 
-  it("emits SoftwareSourceCode for libraries and omits the SearchAction on request", () => {
+  it("emits product-detectable software types for libraries and omits the SearchAction on request", () => {
     const graph = renderSiteJsonLd(manifest, {
       software: { isLibrary: true },
       searchUrlPattern: null,
     }) as { "@graph": Record<string, unknown>[] };
-    const types = graph["@graph"].map((node) => node["@type"]);
+    const types = graph["@graph"].flatMap((node) => {
+      const type = node["@type"];
+      return Array.isArray(type) ? type : [type];
+    });
     expect(types).toContain("SoftwareSourceCode");
-    expect(types).not.toContain("SoftwareApplication");
+    expect(types).toContain("SoftwareApplication");
     const website = graph["@graph"].find((node) => node["@type"] === "WebSite");
     expect(website).not.toHaveProperty("potentialAction");
   });
@@ -1161,9 +1180,9 @@ describe("agent readability helpers", () => {
       baseUrl: "https://example.com",
       product: { name: "Leadtype", summary: "Docs pipeline." },
       files: {
-        robotsTxt: "/docs/robots.txt",
-        sitemapMd: "/docs/sitemap.md",
-        sitemapXml: "/docs/sitemap.xml",
+        robotsTxt: "/robots.txt",
+        sitemapMd: "/sitemap.md",
+        sitemapXml: "/sitemap.xml",
       },
       navigation: {
         ungrouped: [],
@@ -1218,9 +1237,9 @@ describe("agent readability helpers", () => {
       baseUrl: "https://example.com",
       product: { name: "Leadtype", summary: "Docs pipeline." },
       files: {
-        robotsTxt: "/docs/robots.txt",
-        sitemapMd: "/docs/sitemap.md",
-        sitemapXml: "/docs/sitemap.xml",
+        robotsTxt: "/robots.txt",
+        sitemapMd: "/sitemap.md",
+        sitemapXml: "/sitemap.xml",
       },
       navigation: {
         ungrouped: [],
@@ -1608,9 +1627,9 @@ describe("agent artifact response helpers", () => {
     baseUrl: "https://leadtype.dev",
     product: { name: "Leadtype", summary: "Docs pipeline." },
     files: {
-      robotsTxt: "/docs/robots.txt",
-      sitemapMd: "/docs/sitemap.md",
-      sitemapXml: "/docs/sitemap.xml",
+      robotsTxt: "/robots.txt",
+      sitemapMd: "/sitemap.md",
+      sitemapXml: "/sitemap.xml",
     },
     navigation: {
       groups: [
@@ -1746,9 +1765,9 @@ describe("createDocsHead", () => {
     baseUrl: "https://leadtype.dev",
     product: { name: "Leadtype", summary: "Docs pipeline." },
     files: {
-      robotsTxt: "/docs/robots.txt",
-      sitemapMd: "/docs/sitemap.md",
-      sitemapXml: "/docs/sitemap.xml",
+      robotsTxt: "/robots.txt",
+      sitemapMd: "/sitemap.md",
+      sitemapXml: "/sitemap.xml",
     },
     navigation: { groups: [], ungrouped: [], unknown: [] },
     pages: [

@@ -46,6 +46,74 @@ describe("generateDocsSearchFiles", () => {
     }
   });
 
+  it("omits shared route documents from generated search files by default", async () => {
+    const root = await mkdtemp(join(tmpdir(), "leadtype-search-shared-"));
+    try {
+      await mkdir(join(root, "docs", "shared", "react"), {
+        recursive: true,
+      });
+      await mkdir(join(root, "docs", "frameworks", "react"), {
+        recursive: true,
+      });
+      await mkdir(join(root, "docs", "changelog", "_shared"), {
+        recursive: true,
+      });
+      await writeFile(
+        join(root, "docs", "shared", "react", "script-loader.md"),
+        [
+          "---",
+          "title: Script loader",
+          "description: Shared template.",
+          "---",
+          "",
+          "# Script loader",
+          "",
+          "Always load the shared script.",
+        ].join("\n")
+      );
+      await writeFile(
+        join(root, "docs", "changelog", "_shared", "release-template.md"),
+        [
+          "---",
+          "title: Release template",
+          "description: Shared changelog template.",
+          "---",
+          "",
+          "# Release template",
+          "",
+          "Shared changelog release notes.",
+        ].join("\n")
+      );
+      await writeFile(
+        join(root, "docs", "frameworks", "react", "script-loader.md"),
+        [
+          "---",
+          "title: Script loader",
+          "description: React guide.",
+          "---",
+          "",
+          "# Script loader",
+          "",
+          "Always load the shared script.",
+        ].join("\n")
+      );
+
+      const result = await generateDocsSearchFiles({
+        baseUrl: "https://leadtype.dev",
+        outDir: root,
+      });
+      const index = JSON.parse(await readFile(result.outputPath, "utf-8")) as {
+        documents: [string, string, string, string][];
+      };
+
+      expect(index.documents.map((document) => document[3])).toEqual([
+        "/docs/frameworks/react/script-loader",
+      ]);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
   it("rejects empty docs directories", async () => {
     const root = await mkdtemp(join(tmpdir(), "leadtype-search-empty-"));
     try {

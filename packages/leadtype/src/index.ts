@@ -5,11 +5,23 @@
 //   - `leadtype/fumadocs` — adapter for fumadocs-core's Source interface
 //   - `leadtype/remark` — agent/LLM flattening plugins
 //   - `leadtype/convert` — MDX → markdown helpers
+//   - `leadtype/feed` — RSS/Atom renderers and artifact generation
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
 //   - `leadtype/search` — search index + per-host adapters
 //   - `leadtype/lint` — frontmatter / meta.json validation
 //   - `leadtype/transformers` — frontmatter schemas + lifecycle hook types
 
+export {
+  type DocsFeedConfig,
+  type FeedEntry,
+  type FeedFormat,
+  type GenerateFeedArtifactsConfig,
+  type GenerateFeedArtifactsResult,
+  generateFeedArtifacts,
+  type RenderFeedConfig,
+  renderAtomFeed,
+  renderRssFeed,
+} from "./feed";
 export {
   type AlternateLocaleLink,
   type DocsI18nConfig,

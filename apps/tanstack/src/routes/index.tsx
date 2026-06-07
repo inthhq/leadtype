@@ -1,17 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { DocsShell } from "@/components/docs-shell";
-import { createDocsHead } from "@/lib/docs-head";
-import DocsIndex from "../../../../docs/index.mdx";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-  component: HomeRoute,
-  head: () => createDocsHead("/docs"),
+  beforeLoad: () => {
+    throw redirect({ to: "/docs" });
+  },
 });
-
-function HomeRoute() {
-  return (
-    <DocsShell>
-      <DocsIndex />
-    </DocsShell>
-  );
-}

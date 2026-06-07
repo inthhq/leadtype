@@ -2,7 +2,6 @@
 
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import type { ComponentType } from "react";
-import { DocsShell } from "@/components/docs-shell";
 import docsPages from "@/generated/docs-pages.json";
 import { createDocsHead } from "@/lib/docs-head";
 
@@ -90,9 +89,5 @@ function DocsCatchAllRoute() {
     return <MissingMdxModule urlPath={page.urlPath} />;
   }
 
-  return (
-    <DocsShell>
-      <MdxComponent />
-    </DocsShell>
-  );
+  return <MdxComponent />;
 }

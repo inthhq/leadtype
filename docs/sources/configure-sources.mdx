@@ -98,13 +98,31 @@ export default defineDocsConfig({
     },
   ],
   mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "My product changelog",
+      description: "Release notes and product updates for My product.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
 });
 ```
 
 With that mount, `docs/changelog/v1.mdx` still generates an internal copy at
 `public/docs/changelog/v1.md` for search and runtime helpers, but canonical
 URLs become `/changelog/v1` and `/changelog/v1.md` in `llms.txt`, sitemap data,
-search metadata, and `agent-readability.json`.
+search metadata, and `agent-readability.json`. The configured feed selects pages
+by the `/changelog` URL prefix and writes `public/changelog/rss.xml` plus
+`public/changelog/atom.xml`.
+
+For feed date rules, output path validation, and verification steps, see
+[Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds).
 
 Prefer this over a second collection when the changelog shares the same source
 repo, frontmatter schema, navigation ownership, and release process as the docs.

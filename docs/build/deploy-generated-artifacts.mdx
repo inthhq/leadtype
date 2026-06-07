@@ -14,7 +14,7 @@ Run `leadtype generate` before your framework build, then serve the output from 
 | Markdown mirrors | `<public>/docs/*.md` | Serve direct `.md` URLs, and optionally use content negotiation for HTML routes. |
 | Search JSON | `<public>/docs/search-index.json` and `search-content.json` | Load from the client, edge function, or server route that powers search. |
 | Manifest | `<public>/docs/agent-readability.json` | Import in route handlers, middleware, and metadata helpers. |
-| Sitemap/robots | `<public>/docs/sitemap.*` and `robots.txt` | Static is fine for one production origin; regenerate responses at runtime for previews and multi-origin deployments. |
+| Sitemap/robots | `<public>/sitemap.*` and `<public>/robots.txt` | Static is fine for one production origin; regenerate responses at runtime for previews and multi-origin deployments. |
 
 Verification is the same everywhere:
 

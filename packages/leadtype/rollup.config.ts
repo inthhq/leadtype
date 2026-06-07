@@ -7,6 +7,7 @@ const entries = {
   index: "src/index.ts",
   "mdx/index": "src/mdx/index.ts",
   "mdx/source": "src/mdx/source-plugin.ts",
+  "feed/index": "src/feed/index.ts",
   "fumadocs/index": "src/fumadocs/index.ts",
   "astro/index": "src/astro/index.ts",
   "i18n/index": "src/i18n/index.ts",
@@ -34,6 +35,10 @@ const entries = {
   "tanstack-start/index": "src/tanstack-start/index.ts",
   "lint/index": "src/lint/index.ts",
   "mcp/index": "src/mcp/index.ts",
+  "webmcp/index": "src/webmcp/index.ts",
+  "webmcp/react": "src/webmcp/react.ts",
+  "webmcp/vue": "src/webmcp/vue.ts",
+  "webmcp/svelte": "src/webmcp/svelte.ts",
   "score/index": "src/score/index.ts",
   cli: "src/cli.ts",
 } as const;

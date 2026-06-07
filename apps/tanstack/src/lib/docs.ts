@@ -2,13 +2,14 @@ import type { DocsNavigation } from "leadtype/llm";
 import {
   createDocsNavigation,
   type DocsSidebarSection,
+  isRouteActive,
 } from "leadtype/navigation";
 import docsNavigation from "@/generated/docs-nav.json";
 
 // Framework-agnostic navigation derivation (sidebar, tabs, active page, prev/
 // next) lives in `leadtype/navigation`. This module only adds the app-specific
-// routes (Recipes, Live Search) and re-exports the bound helpers the TanStack
-// app's components consume.
+// routes (Docs, Recipes, Live Search) and re-exports the bound helpers the
+// TanStack app's components consume.
 const nav = createDocsNavigation(docsNavigation as unknown as DocsNavigation);
 
 export const docsNavigationManifest = nav.manifest;
@@ -17,23 +18,17 @@ export type { DocsSidebarLink, DocsSidebarSection } from "leadtype/navigation";
 
 export interface NavigationRoute {
   description: string;
-  docsGroupKey?: string;
   label: string;
   to: string;
 }
 
-const docsTopNavigationRoutes: NavigationRoute[] = nav
-  .getHeaderTabs()
-  .map((tab) => ({
-    label: tab.label,
-    to: tab.to,
-    description: tab.description,
-    docsGroupKey: tab.groupKey,
-  }));
-
-/** Top-level header nav. Root docs nav nodes become docs surface tabs. */
+/** Top-level header nav. Docs sections stay in the sidebar. */
 export const navigationRoutes: NavigationRoute[] = [
-  ...docsTopNavigationRoutes,
+  {
+    label: "Docs",
+    to: "/docs",
+    description: "Documentation rendered from the MDX source.",
+  },
   {
     label: "Recipes",
     to: "/playground",
@@ -50,14 +45,17 @@ export function isNavigationRouteActive(
   pathname: string,
   route: NavigationRoute
 ): boolean {
-  return nav.isHeaderTabActive(pathname, {
-    to: route.to,
-    groupKey: route.docsGroupKey,
-  });
+  if (route.to === "/docs") {
+    // The Docs tab owns both generated surfaces.
+    return (
+      isRouteActive(pathname, "/docs") || isRouteActive(pathname, "/changelog")
+    );
+  }
+  return isRouteActive(pathname, route.to);
 }
 
 export function getDocsSidebarSections(pathname: string): DocsSidebarSection[] {
-  return nav.getSidebarSections(pathname);
+  return nav.getSidebarSections(pathname, { scope: "all" });
 }
 
 export function findDocsNavigationPage(pathname: string) {

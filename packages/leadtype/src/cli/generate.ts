@@ -6,9 +6,11 @@ import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
+import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
   type DocsPathMount,
+  normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
 } from "../internal/docs-url";
@@ -92,6 +94,32 @@ const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
 const NAV_SORT_VALUES = new Set(["order", "path", "title"]);
+const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
+
+function isLocalBaseUrl(baseUrl: string): boolean {
+  try {
+    const { hostname } = new URL(baseUrl);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "0.0.0.0"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveFeedBaseUrl(baseUrl?: string): string {
+  const resolvedBaseUrl = normalizeBaseUrl(baseUrl);
+  if (baseUrl?.trim() || !isLocalBaseUrl(resolvedBaseUrl)) {
+    return resolvedBaseUrl;
+  }
+
+  throw new Error(
+    "configured feeds require --base-url or a deployment URL env var so RSS and Atom links are absolute"
+  );
+}
 
 type GenerateFormat = "json" | "text";
 
@@ -150,13 +178,14 @@ type GenerateResult = {
   files: {
     agentsMd?: string;
     agentReadabilityManifest?: string;
-    docsRobotsTxt?: string;
-    docsSitemapMd?: string;
-    docsSitemapXml?: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
     i18nManifest?: string;
     docsLlmsTxt?: string;
     llmsFullTxt?: string;
     llmsTxt?: string;
+    feeds?: Record<string, { rss?: string; atom?: string }>;
     searchContent?: string;
     searchIndex?: string;
     wellKnownLlmsTxt?: string;
@@ -229,6 +258,7 @@ type ResolvedGenerateMetadata = {
   /** Derived from `product.docs`: the agent-card `documentationUrl`. */
   documentationUrl?: string;
   mounts?: DocsPathMount[];
+  feeds?: DocsFeedConfig[];
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -256,7 +286,7 @@ Usage:
 
 By default, runs in site mode and writes:
   llms.txt, llms-full.txt, docs/*.md, docs/search-index.json,
-  docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
+  sitemap.xml, sitemap.md, robots.txt
 
 With --bundle, runs in package mode and writes:
   AGENTS.md, SKILL.md, docs/*.md
@@ -526,6 +556,107 @@ function validateDocsMounts(
     }
   }
   return value as DocsPathMount[];
+}
+
+function validateDocsFeeds(
+  value: unknown,
+  configPath: string
+): DocsFeedConfig[] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`docs config at "${configPath}": feeds must be an array`);
+  }
+  const seen = new Set<string>();
+  const seenOutputs = new Set<string>();
+  for (const feed of value) {
+    if (!isPlainRecord(feed)) {
+      throw new Error(
+        `docs config at "${configPath}": feed entries must be objects`
+      );
+    }
+    if (typeof feed.id !== "string" || feed.id.length === 0) {
+      throw new Error(
+        `docs config at "${configPath}": feed entries must set a non-empty id`
+      );
+    }
+    if (seen.has(feed.id)) {
+      throw new Error(
+        `docs config at "${configPath}": duplicate feed id "${feed.id}"`
+      );
+    }
+    seen.add(feed.id);
+    if (typeof feed.title !== "string" || feed.title.length === 0) {
+      throw new Error(
+        `docs config at "${configPath}": feed "${feed.id}" must set a non-empty title`
+      );
+    }
+    if (
+      feed.description !== undefined &&
+      typeof feed.description !== "string"
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": feed "${feed.id}" description must be a string`
+      );
+    }
+    if (
+      !isPlainRecord(feed.source) ||
+      typeof feed.source.urlPrefix !== "string" ||
+      !feed.source.urlPrefix.startsWith("/")
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": feed "${feed.id}" source.urlPrefix must start with "/"`
+      );
+    }
+    if (!Array.isArray(feed.formats) || feed.formats.length === 0) {
+      throw new Error(
+        `docs config at "${configPath}": feed "${feed.id}" formats must be a non-empty array`
+      );
+    }
+    for (const format of feed.formats) {
+      if (typeof format !== "string" || !FEED_FORMAT_VALUES.has(format)) {
+        throw new Error(
+          `docs config at "${configPath}": feed "${feed.id}" formats must contain only "rss" or "atom"`
+        );
+      }
+    }
+    if (!isPlainRecord(feed.output)) {
+      throw new Error(
+        `docs config at "${configPath}": feed "${feed.id}" output must be an object`
+      );
+    }
+    for (const format of feed.formats) {
+      const output = feed.output[format];
+      if (typeof output !== "string" || !output.startsWith("/")) {
+        throw new Error(
+          `docs config at "${configPath}": feed "${feed.id}" output.${format} must start with "/"`
+        );
+      }
+      if (!output.endsWith(".xml")) {
+        throw new Error(
+          `docs config at "${configPath}": feed "${feed.id}" output.${format} must end with ".xml" so feeds cannot overwrite other generated artifacts`
+        );
+      }
+      if (seenOutputs.has(output)) {
+        throw new Error(
+          `docs config at "${configPath}": feed "${feed.id}" output.${format} "${output}" is already used by another feed output; output paths must be unique`
+        );
+      }
+      seenOutputs.add(output);
+    }
+    if (
+      feed.limit !== undefined &&
+      (typeof feed.limit !== "number" ||
+        !Number.isInteger(feed.limit) ||
+        feed.limit <= 0)
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": feed "${feed.id}" limit must be a positive integer`
+      );
+    }
+  }
+  return value as DocsFeedConfig[];
 }
 
 function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
@@ -844,6 +975,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const llms = validateLlmsConfig(value.llms, configPath);
   const agents = validateAgentsConfig(value.agents, configPath);
   const mounts = validateDocsMounts(value.mounts, configPath);
+  const feeds = validateDocsFeeds(value.feeds, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -859,6 +991,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(llms ? { llms } : {}),
     ...(agents ? { agents } : {}),
     ...(mounts ? { mounts } : {}),
+    ...(feeds ? { feeds } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -1391,6 +1524,7 @@ async function resolveGenerateMetadata(
           ? collectionNav
           : loaded.config.navigation,
       mounts: loaded.config.mounts,
+      feeds: loaded.config.feeds,
       ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
@@ -2160,6 +2294,10 @@ export async function runGenerateCommand(
         srcDir,
       };
     } else {
+      const feedBaseUrl =
+        metadata.feeds && metadata.feeds.length > 0
+          ? resolveFeedBaseUrl(args.baseUrl)
+          : undefined;
       if (i18n) {
         await copyDefaultLocaleMarkdownAliases(outDir, i18n.defaultLocale);
       }
@@ -2318,15 +2456,32 @@ export async function runGenerateCommand(
           });
         }
       }
+      const feeds = await generateFeedArtifacts({
+        outDir,
+        baseUrl: feedBaseUrl,
+        author: product.name,
+        feeds: metadata.feeds,
+        mounts: effectiveMounts,
+        i18n: metadata.i18n,
+      });
 
       result = {
         docsDir,
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
-          docsRobotsTxt: agentReadability.files.robotsTxt,
-          docsSitemapMd: agentReadability.files.sitemapMd,
-          docsSitemapXml: agentReadability.files.sitemapXml,
+          ...(agentReadability.files.robotsTxt
+            ? { robotsTxt: agentReadability.files.robotsTxt }
+            : {}),
+          ...(agentReadability.files.sitemapMd
+            ? { sitemapMd: agentReadability.files.sitemapMd }
+            : {}),
+          ...(agentReadability.files.sitemapXml
+            ? { sitemapXml: agentReadability.files.sitemapXml }
+            : {}),
+          ...(Object.keys(feeds.files).length > 0
+            ? { feeds: feeds.files }
+            : {}),
           i18nManifest: i18nManifestPath,
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
           llmsFullTxt: path.join(outDir, "llms-full.txt"),

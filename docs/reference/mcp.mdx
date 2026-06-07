@@ -20,6 +20,10 @@ available but off by default.) It's a thin adapter over artifacts you already
 build — the search index ranks results, the `.md` mirror supplies pages — so
 there's no new content surface to maintain.
 
+This is **server MCP** over stdio or Streamable HTTP. Browser-side WebMCP is a
+different surface: [`leadtype/webmcp`](/docs/reference/webmcp) registers tools
+with `document.modelContext` / `navigator.modelContext` on page load.
+
 There are **two paths**, same two tools — pick by *who connects*:
 
 - **[Path 1 — in your editor](#path-1-in-your-editor-stdio)** (`leadtype mcp`, stdio): your *own*

@@ -16,6 +16,7 @@ import {
   type DocsSidebarLink,
   type DocsSidebarSection,
 } from "leadtype/navigation";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -797,6 +798,8 @@ function ReadyDocsApp({
 }
 
 export function App() {
+  useLeadtypeWebMcp();
+
   const docs = useDocsState();
   const { route, setRoute } = useCurrentRoute();
 

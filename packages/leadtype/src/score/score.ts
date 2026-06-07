@@ -205,7 +205,7 @@ export async function scoreDocs(
     signal(
       "sitemap",
       "sitemap.xml",
-      has("docs", "sitemap.xml") || hasManifest,
+      has("sitemap.xml") || hasManifest,
       1,
       "Emit the sitemap with `leadtype generate`."
     ),

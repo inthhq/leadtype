@@ -5,6 +5,7 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
 import { type ReactNode, useEffect } from "react";
 import { NotFound } from "@/components/not-found";
 import { siteJsonLdScript } from "@/lib/docs-head";
@@ -110,6 +111,11 @@ function getHashScrollOffsetPx(): number {
   return FALLBACK_HASH_SCROLL_OFFSET_PX;
 }
 
+function LeadtypeWebMcp() {
+  useLeadtypeWebMcp();
+  return null;
+}
+
 function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -118,6 +124,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <MDXProvider components={useMDXComponents()}>{children}</MDXProvider>
+        <LeadtypeWebMcp />
         <ScrollToHash />
         <Scripts />
       </body>

@@ -1,6 +1,17 @@
 // Build-time exports.
 
 export {
+  type DocsFeedConfig,
+  type FeedEntry,
+  type FeedFormat,
+  type GenerateFeedArtifactsConfig,
+  type GenerateFeedArtifactsResult,
+  generateFeedArtifacts,
+  type RenderFeedConfig,
+  renderAtomFeed,
+  renderRssFeed,
+} from "../feed";
+export {
   type AlternateLocaleLink,
   type DocsI18nConfig,
   type DocsI18nManifest,
