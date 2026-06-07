@@ -84,10 +84,17 @@ export default defineDocsConfig({
     "quickstart",
     { title: "Reference", pages: [{ include: "reference/*" }] },
   ],
+  git: {
+    ignoredAuthors: ["Docs Automation"],
+  },
 });
 ```
 
 The config supplies product metadata, curated navigation structure, best starting points, and agent guidance. Legacy `groups` are still supported for fallback navigation and taxonomy. If a page names a legacy group that is not in the loaded config, generation fails in fallback mode.
+
+`git.ignoredAuthors` adds project-specific author names that should be skipped
+when `leadtype generate` derives `lastAuthor` from git history. Built-in bot
+detection still applies, and `lastModified` remains tied to the latest commit.
 
 If no config file exists, the CLI falls back to `package.json` for product metadata and infers groups from the union of `group:` values across the generated pages. Inferred groups are sorted alphabetically and title-cased. Use `docs.config.ts` `navigation` when sidebar order, nested sections, or wildcard includes matter.
 

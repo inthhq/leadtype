@@ -456,8 +456,19 @@ export type DocsConfig<
   typeTableBasePath?: string;
   /** Throw during generation when a referenced type cannot be extracted. */
   typeTableStrict?: boolean;
+  /** Git metadata enrichment options. */
+  git?: DocsGitConfig;
   /** Agent-surface options (robots policy / Content-Signals, …). All optional. */
   agents?: DocsAgentsConfig;
+};
+
+export type DocsGitConfig = {
+  /**
+   * Additional git author names to ignore when deriving generated markdown
+   * `lastAuthor`. Matching is case-insensitive and additive with built-in bot
+   * author detection.
+   */
+  ignoredAuthors?: string[];
 };
 
 /** A single agent skill (agentskills.io `SKILL.md`). */

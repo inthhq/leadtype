@@ -35,6 +35,7 @@ export {
   type DocsCollection,
   type DocsConfig,
   type DocsFrontmatterSchema,
+  type DocsGitConfig,
   type DocsGroup,
   type DocsLlmsConfig,
   type DocsNavEntry,

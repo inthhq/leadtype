@@ -273,6 +273,7 @@ type ResolvedGenerateMetadata = {
   documentationUrl?: string;
   mounts?: DocsPathMount[];
   feeds?: DocsFeedConfig[];
+  git?: DocsConfig["git"];
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -940,6 +941,31 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
+function validateGitConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["git"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}": git must be an object`);
+  }
+  if (
+    value.ignoredAuthors !== undefined &&
+    !isStringArray(value.ignoredAuthors)
+  ) {
+    throw new Error(
+      `docs config at "${configPath}": git.ignoredAuthors must be an array of strings`
+    );
+  }
+  return {
+    ...(value.ignoredAuthors === undefined
+      ? {}
+      : { ignoredAuthors: value.ignoredAuthors }),
+  };
+}
+
 function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -993,6 +1019,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const agents = validateAgentsConfig(value.agents, configPath);
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
+  const git = validateGitConfig(value.git, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -1009,6 +1036,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(agents ? { agents } : {}),
     ...(mounts ? { mounts } : {}),
     ...(feeds ? { feeds } : {}),
+    ...(git ? { git } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -1542,6 +1570,7 @@ async function resolveGenerateMetadata(
           : loaded.config.navigation,
       mounts: loaded.config.mounts,
       feeds: loaded.config.feeds,
+      git: loaded.config.git,
       ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
@@ -2285,6 +2314,7 @@ export async function runGenerateCommand(
       failOnError: typeTableStrict,
       frontmatterSchemaByPath: metadata.collectionFrontmatterSchemas,
       frontmatterSchema: metadata.frontmatterSchema,
+      ignoredGitAuthors: metadata.git?.ignoredAuthors,
       gitSourcePath: gitSourcePaths
         ? (filePath) => gitSourcePaths.get(path.resolve(filePath)) ?? filePath
         : undefined,

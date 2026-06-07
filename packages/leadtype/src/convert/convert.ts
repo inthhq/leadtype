@@ -105,9 +105,25 @@ const BOT_AUTHOR_NAMES = new Set([
   "vercel",
 ]);
 
-function isBotAuthor(author: string): boolean {
-  const normalizedAuthor = author.trim().toLowerCase();
+function normalizeGitAuthor(author: string): string {
+  return author.trim().toLowerCase();
+}
+
+function normalizeIgnoredAuthors(
+  ignoredAuthors: readonly string[] | undefined
+): ReadonlySet<string> {
+  return new Set(
+    (ignoredAuthors ?? []).map(normalizeGitAuthor).filter((name) => name)
+  );
+}
+
+function isIgnoredGitAuthor(
+  author: string,
+  ignoredAuthors: ReadonlySet<string>
+): boolean {
+  const normalizedAuthor = normalizeGitAuthor(author);
   return (
+    ignoredAuthors.has(normalizedAuthor) ||
     BOT_AUTHOR_NAMES.has(normalizedAuthor) ||
     normalizedAuthor.includes("[bot]") ||
     normalizedAuthor.endsWith(" bot") ||
@@ -311,6 +327,12 @@ export type MdxToMarkdownOptions = {
    */
   enrichFrontmatterFromGit?: boolean;
   /**
+   * Additional git author names to ignore when deriving generated markdown
+   * `lastAuthor`. Matching is case-insensitive and additive with built-in bot
+   * author detection.
+   */
+  ignoredGitAuthors?: string[];
+  /**
    * Optional resolver for staged conversion inputs. When set, git enrichment
    * runs against the original source file instead of the staged mirror path.
    */
@@ -345,6 +367,7 @@ type ConversionPrepareOptions<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 > = DocsTransformerOptions<TFrontmatter> & {
   gitSourcePath?: (filePath: string) => string | undefined;
+  ignoredGitAuthors?: string[];
 };
 
 function normalizeRelativePath(value: string): string {
@@ -387,7 +410,10 @@ function frontmatterSchemaForFile(
  * Best-effort — returns empty object on any failure (untracked file, no .git,
  * missing binary) so callers never need to handle errors.
  */
-async function enrichFromGit(filePath: string): Promise<GitEnrichment> {
+async function enrichFromGit(
+  filePath: string,
+  ignoredAuthors: readonly string[] | undefined
+): Promise<GitEnrichment> {
   try {
     // Use NUL as separator so author names containing '|' (e.g. "Jane | Co")
     // round-trip correctly.
@@ -406,13 +432,14 @@ async function enrichFromGit(filePath: string): Promise<GitEnrichment> {
     if (lines.length === 0) {
       return {};
     }
+    const ignoredAuthorSet = normalizeIgnoredAuthors(ignoredAuthors);
     const enrichment: GitEnrichment = {};
     for (const [index, line] of lines.entries()) {
       const [iso, author] = line.split("\0");
       if (index === 0 && iso) {
         enrichment.lastModified = iso;
       }
-      if (author && !isBotAuthor(author)) {
+      if (author && !isIgnoredGitAuthor(author, ignoredAuthorSet)) {
         enrichment.lastAuthor = author;
         break;
       }
@@ -541,7 +568,10 @@ async function prepareMdxConversion<
 
   if (enrichFromGitFlag) {
     const gitSourcePath = options.gitSourcePath?.(sourcePath) ?? sourcePath;
-    const enrichment = await enrichFromGit(gitSourcePath);
+    const enrichment = await enrichFromGit(
+      gitSourcePath,
+      options.ignoredGitAuthors
+    );
     resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
   }
 
@@ -864,6 +894,7 @@ export async function writeMdxFileAsMarkdown(
     {
       frontmatterSchema: config.frontmatterSchema,
       gitSourcePath: config.gitSourcePath,
+      ignoredGitAuthors: config.ignoredGitAuthors,
       transformers: config.transformers,
       transformContext: config.transformContext,
     },
@@ -932,6 +963,7 @@ export async function convertAllMdx(
             config
           ),
           gitSourcePath: config.gitSourcePath,
+          ignoredGitAuthors: config.ignoredGitAuthors,
           transformers: config.transformers,
           transformContext: {
             ...config.transformContext,
