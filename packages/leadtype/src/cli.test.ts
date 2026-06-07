@@ -373,6 +373,77 @@ describe("leadtype CLI", () => {
     }
   });
 
+  it("uses the latest non-bot author for git enrichment", async () => {
+    const relativePath = "docs/quickstart.mdx";
+    const srcDir = await createGitDocsSource({
+      [relativePath]: [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "A human wrote this page.",
+      ].join("\n"),
+    });
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeFile(
+      path.join(srcDir, relativePath),
+      [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "Automation touched this page.",
+      ].join("\n")
+    );
+    await execGitFixture(["add", "."], srcDir);
+    await execGitFixture(
+      [
+        "-c",
+        "user.email=codex@example.com",
+        "-c",
+        "user.name=Codex",
+        "commit",
+        "-m",
+        "Automated docs update",
+      ],
+      srcDir
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--include",
+        "quickstart.mdx",
+        "--name",
+        "Git Docs",
+        "--summary",
+        "Docs with git metadata.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("Automation touched this page.");
+    expect(markdown).toContain("lastModified:");
+    expect(markdown).toContain("lastAuthor: Leadtype Test");
+    expect(markdown).not.toContain("lastAuthor: Codex");
+  });
+
   it("skips default git enrichment without failing when no .git metadata exists", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

@@ -72,6 +72,7 @@ const NAME_SEPARATOR_REGEX = /[-_]+/g;
 const LIST_PREFIX_REGEX = /^\d+\.\s/;
 const DEFAULT_SOURCE_DIR = "docs";
 const GENERIC_DOC_NAMES = new Set(["home", "index", "readme"]);
+const GIT_ENRICHMENT_COMMIT_LIMIT = 50;
 const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_COMMON_DIR",
@@ -89,6 +90,30 @@ function gitSubprocessEnv(): NodeJS.ProcessEnv {
     delete env[key];
   }
   return env;
+}
+
+const BOT_AUTHOR_NAMES = new Set([
+  "claude",
+  "claude code",
+  "codex",
+  "dependabot",
+  "github-actions",
+  "github actions",
+  "netlify",
+  "openai codex",
+  "renovate",
+  "vercel",
+]);
+
+function isBotAuthor(author: string): boolean {
+  const normalizedAuthor = author.trim().toLowerCase();
+  return (
+    BOT_AUTHOR_NAMES.has(normalizedAuthor) ||
+    normalizedAuthor.includes("[bot]") ||
+    normalizedAuthor.endsWith(" bot") ||
+    normalizedAuthor.endsWith("-bot") ||
+    normalizedAuthor.endsWith("_bot")
+  );
 }
 
 type RemarkProcessor = ReturnType<typeof remark>;
@@ -278,8 +303,9 @@ export type MdxToMarkdownOptions = {
   remarkPlugins?: PluggableList;
   /**
    * If true, inject `lastModified` (ISO-8601) and `lastAuthor` into the
-   * output frontmatter by running `git log -1` against each source file.
-   * Silently skipped for files that are untracked or when git is unavailable.
+   * output frontmatter from git history. `lastModified` uses the latest file
+   * commit; `lastAuthor` uses the latest non-bot author. Silently skipped for
+   * files that are untracked or when git is unavailable.
    * Requires `fetch-depth: 0` when run in `actions/checkout` — shallow clones
    * return empty git log for files not touched in the single fetched commit.
    */
@@ -357,9 +383,9 @@ function frontmatterSchemaForFile(
 }
 
 /**
- * Read the last commit's author-date and author-name for a file. Best-effort —
- * returns empty object on any failure (untracked file, no .git, missing
- * binary) so callers never need to handle errors.
+ * Read the latest commit date and latest non-bot author-name for a file.
+ * Best-effort — returns empty object on any failure (untracked file, no .git,
+ * missing binary) so callers never need to handle errors.
  */
 async function enrichFromGit(filePath: string): Promise<GitEnrichment> {
   try {
@@ -367,20 +393,29 @@ async function enrichFromGit(filePath: string): Promise<GitEnrichment> {
     // round-trip correctly.
     const { stdout } = await execFileAsync(
       "git",
-      ["log", "-1", "--format=%aI%x00%an", "--", filePath],
+      [
+        "log",
+        `--max-count=${GIT_ENRICHMENT_COMMIT_LIMIT}`,
+        "--format=%aI%x00%an",
+        "--",
+        filePath,
+      ],
       { cwd: dirname(filePath), env: gitSubprocessEnv() }
     );
-    const line = stdout.replace(/\r?\n$/, "");
-    if (!line) {
+    const lines = stdout.trimEnd().split(/\r?\n/).filter(Boolean);
+    if (lines.length === 0) {
       return {};
     }
-    const [iso, author] = line.split("\0");
     const enrichment: GitEnrichment = {};
-    if (iso) {
-      enrichment.lastModified = iso;
-    }
-    if (author) {
-      enrichment.lastAuthor = author;
+    for (const [index, line] of lines.entries()) {
+      const [iso, author] = line.split("\0");
+      if (index === 0 && iso) {
+        enrichment.lastModified = iso;
+      }
+      if (author && !isBotAuthor(author)) {
+        enrichment.lastAuthor = author;
+        break;
+      }
     }
     return enrichment;
   } catch {

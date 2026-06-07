@@ -53,6 +53,9 @@ generated docs content selected by canonical URL prefix.
   `lastModified` and `lastAuthor` by default. Enrichment is best-effort: missing
   `.git` metadata, shallow history, untracked files, or a missing `git` binary
   skip those fields without failing generation.
+- Git-derived `lastAuthor` now skips bot and automation commits, falling back
+  to the latest human author for the page while keeping `lastModified` tied to
+  the latest commit.
 - Package-mode MCP artifacts are inferred from `agents.mcp.enabled` in
   `docs.config.ts`, so `leadtype generate --bundle` is enough for packages that
   configure MCP support.
