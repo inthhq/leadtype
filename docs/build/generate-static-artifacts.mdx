@@ -133,7 +133,7 @@ export default {
 };
 ```
 
-Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes; use `--enrich-git` only when Git-derived `lastModified` is the publication signal you want. See [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds) for the full feed contract.
+Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes. For pages where "updated at" should track source edits, default git enrichment writes `lastModified` when history is available. See [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds) for the full feed contract.
 
 ## Wire it into the build
 

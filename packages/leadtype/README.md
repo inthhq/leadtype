@@ -86,7 +86,7 @@ When working with the `leadtype` library, read
 markdown topic files.
 ```
 
-The website-style outputs (`llms.txt`, root `llms-full.txt`, `search-index.json`) are emitted only in default `leadtype generate` mode. They're served from a hosted docs site, not from the package tarball.
+Website URL artifacts (`llms.txt`, root `llms-full.txt`, sitemap, robots) are emitted only in default `leadtype generate` mode. Package bundles stay filesystem-first; when `docs.config.ts` sets `agents.mcp.enabled`, they also include the local search/readability files needed by `leadtype mcp --package`.
 
 ## License
 

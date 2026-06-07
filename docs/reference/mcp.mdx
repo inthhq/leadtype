@@ -89,8 +89,9 @@ That's the whole loop: `leadtype generate` makes the artifacts, `leadtype mcp` s
 ### Variant: a dependency's docs (`--package`)
 
 Same stdio command, pointed at an installed package instead of a local dir — to read *that
-version's* docs. The package must have been built with `leadtype generate --bundle --mcp` so its
-tarball ships the artifacts (see [Bundle docs into a package](/docs/package-docs/bundle)):
+version's* docs. The package must have been built with `leadtype generate --bundle`, and its
+config should set `agents.mcp.enabled` so the tarball ships the search index and
+manifest (see [Bundle docs into a package](/docs/package-docs/bundle)):
 
 ```bash
 leadtype mcp --package some-installed-lib

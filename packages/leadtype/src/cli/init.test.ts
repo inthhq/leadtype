@@ -131,6 +131,19 @@ describe("runInitCommand", () => {
     }
   });
 
+  it("--webmcp warns that the flag is deprecated", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--webmcp", "--no-generate"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stderr).toContain("--webmcp is deprecated");
+    expect(capture.stderr).toContain("leadtype/webmcp");
+  });
+
   it("--webmcp wires the SvelteKit docs page to the svelte hook", async () => {
     const dir = await createTempDir();
     const capture = createCapture();

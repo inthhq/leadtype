@@ -27,7 +27,7 @@ leadtype init [options]
 | `--force` | off | Overwrite files that already exist. Without it, existing files are skipped. |
 | `--dry-run` | off | Print the file plan without writing or generating. |
 | `--no-generate` | off | Skip the post-scaffold `leadtype generate` run. |
-| `--webmcp` | off | Add browser-side WebMCP registration for the generated docs tools. This does not create a server MCP route. |
+| `--webmcp` | deprecated | Compatibility shortcut that adds browser-side WebMCP registration glue. Prefer registering `leadtype/webmcp` from app code; this flag will be removed in the next major version. |
 | `--json` | — | Emit the file plan as JSON and exit (no writes). |
 | `-h`, `--help` | — | Print usage. |
 
@@ -46,14 +46,14 @@ leadtype generate [options]
 | `--src <dir>` | `.` | Repo or root directory containing the docs folder. |
 | `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeat to merge multiple folders into one generated docs tree. |
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
-| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips `llms.txt`, `llms-full.txt`, search, sitemap, robots, and Agent Readability artifacts. |
-| `--mcp` | off | Bundle mode only. Also emit `docs/search-index.json` + `docs/agent-readability.json` so the published tarball can serve a version-matched docs MCP server (`leadtype mcp --package <name>`). Off by default to keep bundles lean. |
+| `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips URL-anchored site artifacts like `llms.txt`, `llms-full.txt`, sitemap, and robots. |
+| `--mcp` | deprecated | Compatibility shortcut for bundle MCP artifacts. Prefer `agents.mcp.enabled` in `docs.config.ts`; this flag will be removed in the next major version. |
 | `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Site mode only; ignored in `--bundle`. |
 | `--name <name>` | from `docs.config.ts` or `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). Overrides config. |
 | `--summary <text>` | from `docs.config.ts` or `package.json#description` | Product summary written into the index file. Overrides config. |
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
 | `--exclude <glob>` | none | Docs-root-relative glob to exclude. Applied after `--include`. |
-| `--enrich-git` | off | Add `lastModified` and `lastAuthor` to frontmatter from git history. |
+| `--enrich-git` | deprecated | Compatibility flag. Git enrichment now runs by default and skips safely when `.git`, history, or the `git` binary is unavailable. This flag will be removed in the next major version. |
 | `--sync` | off | Collections mode only. Clone any missing remote sources before generating; leave existing caches alone. Mutually exclusive with `--refresh` and `--offline`. |
 | `--refresh` | off | Collections mode only. Re-fetch and fast-forward every remote source's cache. Mutually exclusive with `--sync` and `--offline`. |
 | `--offline` | off | Collections mode only. Never touch the network; error if any remote cache is missing or its `ref` has drifted. Mutually exclusive with `--sync` and `--refresh`. |
@@ -160,8 +160,8 @@ variables. If neither is set and Leadtype would fall back to an implicit
 localhost URL, feed generation fails instead of publishing accidental local
 links. Entries use generated markdown frontmatter: `title`, `description`,
 `date`, and `draft`. Every selected page must carry a `date` or
-`lastModified`-style field (add one in frontmatter, or generate `lastModified`
-with `--enrich-git`); generation fails otherwise so feed entries never inherit
+`lastModified`-style field (add one in frontmatter, or let default git enrichment
+write `lastModified` when history is available); generation fails otherwise so feed entries never inherit
 unstable build-time file timestamps. Pages with `draft: true` are excluded.
 Output paths must end in `.xml` and be unique across feeds so a feed can never
 overwrite another generated artifact. A `source.urlPrefix` of `/` selects every
@@ -176,7 +176,7 @@ leadtype generate --bundle --src . --out packages/my-package
 
 Writes `<out>/AGENTS.md` (relative-link index, agent-discoverable) plus `<out>/docs/*.md` (one per page, group subdirs preserved). Skips every URL-anchored artifact (`llms.txt`, `llms-full.txt`, sitemap, robots) — those are website-only. Use this for npm packages that ship docs alongside the published code; see [Bundle docs into a package](/docs/package-docs/bundle).
 
-Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json` into the bundle. These are URL-independent (the MCP server keys on `urlPath` and reads the `.md` mirror), so they work without a `--base-url`. A consumer who installs the package can then run a version-matched docs MCP server with `leadtype mcp --package <name>` — no separate hosting. It's off by default so bundles that don't need MCP stay lean. See the [MCP server reference](/docs/reference/mcp).
+If `docs.config.ts` sets `agents.mcp.enabled`, bundle mode also emits `docs/search-index.json` + `docs/agent-readability.json`. These are URL-independent (the MCP server keys on `urlPath` and reads the `.md` mirror), so they work without a `--base-url`. A consumer who installs the package can then run a version-matched docs MCP server with `leadtype mcp --package <name>` — no separate hosting. The old `--mcp` shortcut still works for compatibility, but it is deprecated and should not be used in new scripts. See the [MCP server reference](/docs/reference/mcp).
 
 ### JSON output shape
 
@@ -218,7 +218,7 @@ Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json
 
 The root sitemap and robots files are the crawler-facing defaults. Host apps that merge docs pages with blog, marketing, changelog, or product pages can override those root files or use the runtime helpers to serve merged responses.
 
-In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, sitemap, robots, etc.) are absent.
+In `--bundle` mode, `mode` is `"bundle"` and `files` always contains `agentsMd`. URL-anchored site fields (`llmsTxt`, sitemap, robots, etc.) are absent. When MCP is enabled through `agents.mcp.enabled` or `--mcp`, `files` also includes `searchIndex`, `searchContent`, and `agentReadabilityManifest`.
 
 Errors in JSON mode print `{"error": "...", ...}` to stderr.
 
@@ -352,7 +352,7 @@ leadtype mcp [options]
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--artifacts <dir>` | `./public` | Directory containing the generated `docs/` folder (with `search-index.json` + `agent-readability.json`). Resolved against the process CWD — pass an absolute path in IDE config, where the CWD is unpredictable. |
-| `--package <name>` | — | Serve an installed dependency's bundled docs from `node_modules/<name>` instead of `--artifacts`. The package must have been built with `leadtype generate --bundle --mcp` so its tarball ships the search index + manifest. |
+| `--package <name>` | — | Serve an installed dependency's bundled docs from `node_modules/<name>` instead of `--artifacts`. The package must have been built with `leadtype generate --bundle` and `agents.mcp.enabled` so its tarball ships the search index + manifest. |
 | `--tools <list>` | `search-docs,get-page` | Comma-separated tools to expose: `search-docs`, `get-page`, `list-pages`. |
 | `--check` | off | Exercise the tools once and print the result, then exit — no MCP client, no SDK, no editor. The fastest way to confirm the server works. |
 | `--query <q>` | product name | Query to run under `--check`. |

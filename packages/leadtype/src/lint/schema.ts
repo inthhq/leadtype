@@ -58,8 +58,8 @@ export const defaultFrontmatterSchema = v.object({
   // Search visibility. `search: false` excludes a page from public search and
   // answer citations; `search: true` opts `shared`/`_shared` routes back in.
   search: v.optional(v.boolean()),
-  // Stable publication date for feeds. Use `lastModified` via `--enrich-git`
-  // only when the feed should track source edits instead of a fixed publish date.
+  // Stable publication date for feeds. Use generated `lastModified` only when
+  // the feed should track source edits instead of a fixed publish date.
   date: v.optional(isoDate),
   variants: v.optional(v.array(variantEntry)),
   related: v.optional(v.array(relatedEntry)),
@@ -76,8 +76,8 @@ export const defaultFrontmatterSchema = v.object({
   // Layout
   full: v.optional(v.boolean()),
   // Note: `lastModified` and `lastAuthor` are intentionally NOT in this
-  // schema. They are auto-populated during convert via
-  // `enrichFrontmatterFromGit` and should not be hand-authored — the linter
+  // schema. They are auto-populated during generate when git metadata is
+  // available and should not be hand-authored — the linter
   // will flag any source-authored `lastModified` as unknown-field.
 });
 

@@ -66,7 +66,7 @@ This writes:
 
 Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/acme/AGENTS.md` (during local dev) and at `node_modules/acme/AGENTS.md` (after install).
 
-`--bundle` skips `llms.txt`, `llms-full.txt`, and the search index — those are website artifacts that don't make sense offline.
+`--bundle` skips URL-anchored website artifacts such as `llms.txt`, `llms-full.txt`, sitemap, and robots. If your config enables MCP, it still includes the URL-independent retrieval artifacts that `leadtype mcp --package` needs.
 
 ## Filter to package-specific docs
 
@@ -172,11 +172,25 @@ installed package and stay accurate as it updates.
 ## Ship a version-matched MCP server
 
 `AGENTS.md` works when the agent reads files on disk. For agents that prefer
-**targeted retrieval** over a large corpus — search the docs, then fetch one
-page — add `--mcp` to also bundle the search index and readability manifest:
+**targeted retrieval** over a large corpus — search the docs, then fetch one page
+— enable MCP in `docs.config.ts` and keep the package command focused on the
+package output mode:
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "acme",
+    tagline: "Docs for acme.",
+  },
+  navigation: ["index", "quickstart"],
+  agents: { mcp: { enabled: true } },
+});
+```
 
 ```bash
-npx leadtype generate --bundle --mcp --src . --out packages/acme
+npx leadtype generate --bundle --src . --out packages/acme
 ```
 
 A consumer who installs your package then runs a docs MCP server pinned to the
@@ -186,10 +200,10 @@ installed version, with no hosting on your side:
 leadtype mcp --package acme
 ```
 
-It's off by default so bundles that only need `AGENTS.md` stay lean. The emitted
-artifacts are URL-independent — they need no `--base-url`. See the
-[MCP server reference](/docs/reference/mcp) for the tools and the hosted-endpoint
-variant.
+The emitted artifacts are URL-independent — they need no `--base-url`. The old
+`--mcp` shortcut still works for compatibility, but it is deprecated; put MCP
+intent in config for new package scripts. See the [MCP server reference](/docs/reference/mcp)
+for the tools and the hosted-endpoint variant.
 
 Bundle mode also ships a `SKILL.md` at the package root, next to `AGENTS.md` — the
 [agent-skills](/docs/reference/skills) format. Its instructions point an agent at the
@@ -207,6 +221,6 @@ Don't use this if your only goal is a public docs website. For that, see [Build 
 <Cards>
   <Card title="CLI reference" description="Every flag for --bundle and the standard pipeline." href="/docs/reference/cli" />
   <Card title="LLM files" description="The website's llms.txt + llms-full.txt output, side by side with the package's AGENTS.md." href="/docs/reference/llm" />
-  <Card title="MCP server" description="Serve the bundled docs to MCP clients with --bundle --mcp and leadtype mcp --package." href="/docs/reference/mcp" />
+  <Card title="MCP server" description="Serve the bundled docs to MCP clients with agents.mcp.enabled and leadtype mcp --package." href="/docs/reference/mcp" />
   <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/build/validate-in-ci" />
 </Cards>

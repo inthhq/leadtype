@@ -10,7 +10,7 @@ related:
     description: "The generated search artifacts WebMCP docs tools read."
   - title: "CLI"
     href: "/docs/reference/cli"
-    description: "Use leadtype init --webmcp to scaffold page-load registration."
+    description: "CLI flags and deprecation notes."
 ---
 
 WebMCP is a browser API: a page registers JavaScript tools with
@@ -84,15 +84,13 @@ In browsers without WebMCP, registration is a no-op: the result reports
 `supported: false`, and a `console.debug` notice explains this in development
 builds.
 
-## Scaffold it
+## Add it to your app
 
-```bash
-leadtype init --framework next --webmcp
-```
-
-`--webmcp` is opt-in because the browser API is experimental. It adds only
-client-side registration glue; it does not install `@modelcontextprotocol/sdk`
-and does not create a server `/mcp` route.
+Register WebMCP from app code, next to the component or layout that owns your
+docs page. `leadtype init --webmcp` still exists for old setup scripts, but it is
+deprecated and will be removed in the next major version. The browser API is
+experimental; registration is client-side only and does not install
+`@modelcontextprotocol/sdk` or create a server `/mcp` route.
 
 ## Options
 

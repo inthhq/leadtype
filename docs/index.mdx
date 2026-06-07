@@ -12,7 +12,7 @@ It is not a docs website framework. Bring your own host and UI — a custom Next
   site_run["leadtype generate"]
   bundle_run["leadtype generate --bundle"]
   site_out["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md · sitemap<br/>agent-readability.json"]
-  bundle_out["packages/&lt;name&gt;/<br/>AGENTS.md · docs/*.md"]
+  bundle_out["packages/&lt;name&gt;/<br/>AGENTS.md · docs/*.md<br/>MCP files if enabled"]
   humans["Humans<br/>(browser)"]
   http_agents["HTTP agents<br/>(via /llms.txt or<br/>Accept: text/markdown)"]
   search["Search UI<br/>AI answers"]
@@ -39,7 +39,7 @@ Just want the mental model first? — [How it works](/docs/how-it-works) — the
 These show up throughout the docs. The full glossary lives in [How it works → Vocabulary](/docs/how-it-works#vocabulary).
 
 - **Site mode** — the default `leadtype generate`. Writes website artifacts to `public/`: `llms.txt`, markdown mirrors, search index, sitemap, robots, Agent Readability files.
-- **Bundle mode** — `leadtype generate --bundle`. Writes `AGENTS.md` + relative `docs/*.md` into a package directory so coding agents can read them from `node_modules` after install.
+- **Bundle mode** — `leadtype generate --bundle`. Writes `AGENTS.md` + relative `docs/*.md` into a package directory so coding agents can read them from `node_modules` after install. If `agents.mcp.enabled` is set, it also includes package-local MCP retrieval files.
 - **Agent Readability** — the structured discovery and attribution data (`agent-readability.json` + JSON-LD + sitemap + markdown alternate links) that lets agents fetch, identify, and cite docs without scraping HTML.
 
 ## What leadtype produces
