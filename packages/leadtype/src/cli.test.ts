@@ -258,9 +258,12 @@ describe("leadtype CLI", () => {
     expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
       true
     );
-    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "sitemap.md"))).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.md"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
     expect(
       existsSync(path.join(outDir, "docs", "agent-readability.json"))
     ).toBe(true);
@@ -307,7 +310,9 @@ describe("leadtype CLI", () => {
         agentReadabilityManifest: string;
         docsLlmsFullTxt?: string;
         llmsFullTxt: string;
+        robotsTxt: string;
         searchIndex: string;
+        sitemapXml: string;
       };
       groups: Array<{ slug: string }>;
       nav?: Array<string | { title: string }>;
@@ -322,7 +327,13 @@ describe("leadtype CLI", () => {
       path.join(outDir, "docs", "agent-readability.json")
     );
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
+    expect(result.files.robotsTxt).toBe(path.join(outDir, "robots.txt"));
+    expect(result.files.sitemapXml).toBe(path.join(outDir, "sitemap.xml"));
     expect(result.files.docsLlmsFullTxt).toBeUndefined();
+    expect(existsSync(path.join(outDir, "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
     expect(result.nav?.slice(0, 3)).toEqual([
       "index",
       "quickstart",
@@ -1676,13 +1687,13 @@ This page is valid, but the output path is not a directory.
 
     expect(code).toBe(0);
     const result = JSON.parse(capture.stdout) as {
-      files: { agentsMd?: string; docsSitemapXml?: string; llmsTxt?: string };
+      files: { agentsMd?: string; sitemapXml?: string; llmsTxt?: string };
       mode: string;
     };
     expect(result.mode).toBe("bundle");
     expect(result.files.agentsMd).toBe(path.join(outDir, "AGENTS.md"));
     expect(result.files.llmsTxt).toBeUndefined();
-    expect(result.files.docsSitemapXml).toBeUndefined();
+    expect(result.files.sitemapXml).toBeUndefined();
 
     // AGENTS.md exists, has the product header, and uses relative links.
     expect(existsSync(path.join(outDir, "AGENTS.md"))).toBe(true);

@@ -158,7 +158,7 @@ describe("framework adapter route helpers", () => {
     await expect(
       createDocsEndpoint({ manifest, readMarkdownFile })({
         params: { slug: "sitemap" },
-        request: new Request("https://example.com/docs/sitemap.md"),
+        request: new Request("https://example.com/sitemap.md"),
       }).then((response) => response.text())
     ).resolves.toContain("Structured documentation sitemap");
 
@@ -183,11 +183,10 @@ describe("framework adapter route helpers", () => {
     await expect(
       createRequiredNitroDocsHandler({
         manifest,
-        artifactBasePath: "/guide",
       })({
-        request: new Request("https://example.com/guide/robots.txt"),
+        request: new Request("https://example.com/robots.txt"),
       }).then((response) => response.text())
-    ).resolves.toContain("/guide/sitemap.xml");
+    ).resolves.toContain("/sitemap.xml");
   });
 
   it("serves markdown through the Next proxy helper", async () => {

@@ -199,9 +199,9 @@ Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json
     "llmsFullTxt": "/abs/path/.../public/llms-full.txt",
     "searchIndex": "/abs/path/.../public/docs/search-index.json",
     "searchContent": "/abs/path/.../public/docs/search-content.json",
-    "docsSitemapXml": "/abs/path/.../public/docs/sitemap.xml",
-    "docsSitemapMd": "/abs/path/.../public/docs/sitemap.md",
-    "docsRobotsTxt": "/abs/path/.../public/docs/robots.txt",
+    "sitemapXml": "/abs/path/.../public/sitemap.xml",
+    "sitemapMd": "/abs/path/.../public/sitemap.md",
+    "robotsTxt": "/abs/path/.../public/robots.txt",
     "agentReadabilityManifest": "/abs/path/.../public/docs/agent-readability.json",
     "agentSkills": "/abs/path/.../public/.well-known/agent-skills/index.json",
     "feeds": {
@@ -215,7 +215,7 @@ Add `--mcp` to also emit `docs/search-index.json` + `docs/agent-readability.json
 }
 ```
 
-The sitemap and robots files are docs-scoped so the host app can merge them with blog, marketing, changelog, or product pages before serving site-root `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+The root sitemap and robots files are the crawler-facing defaults. Host apps that merge docs pages with blog, marketing, changelog, or product pages can override those root files or use the runtime helpers to serve merged responses.
 
 In `--bundle` mode, `mode` is `"bundle"` and `files` contains only `agentsMd`. Site-only fields (`search`, `llmsTxt`, sitemap, robots, etc.) are absent.
 

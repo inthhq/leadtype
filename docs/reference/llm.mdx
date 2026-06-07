@@ -7,7 +7,7 @@ The `leadtype/llm` entry point produces four flavors of agent-facing output, all
 
 - **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
 - **`generateLLMFullContextFiles`** — root `/llms-full.txt` fallback containing all generated markdown docs. Pairs with `generateLlmsTxt`.
-- **`generateAgentReadabilityArtifacts`** — docs-scoped `sitemap.xml`, `sitemap.md`, `robots.txt`, and JSON manifest data that a host app can merge into site-level files.
+- **`generateAgentReadabilityArtifacts`** — root `sitemap.xml`, `sitemap.md`, `robots.txt`, and docs-scoped JSON manifest data that a host app can merge into site-level files.
 - **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
 
 ```ts
@@ -34,9 +34,8 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 | `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, and root-relative markdown mirror links. |
 | `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and markdown entry links. |
 | `<out>/llms-full.txt` | All generated markdown docs flattened into one fallback file. Use when page-level links are not enough. |
-| `<out>/docs/sitemap.xml` | Docs-scoped XML sitemap with canonical page URLs and `<lastmod>` dates. |
-| `<out>/docs/sitemap.md` | Docs-scoped markdown sitemap with headings and links. |
-| `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
+| `<out>/sitemap.xml` / `<out>/sitemap.md` | Origin-root crawler discovery files with canonical page URLs and docs navigation. |
+| `<out>/robots.txt` | Origin-root crawl policy that points crawlers at `<out>/sitemap.xml`. |
 | `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
 Config `navigation` drives `llms.txt` sections, the sidebar, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `navigation`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/concepts/evals) for the benchmark behind that default.
@@ -313,12 +312,7 @@ await generateAgentReadabilityArtifacts({
 For hosted docs sites that need the Vercel Agent Readability discovery layer without letting leadtype own the whole website:
 
 ```ts
-import {
-  generateAgentReadabilityArtifacts,
-  renderRobotsTxt,
-  renderSitemapMarkdown,
-  renderSitemapXml,
-} from "leadtype/llm";
+import { generateAgentReadabilityArtifacts } from "leadtype/llm";
 
 const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
@@ -327,23 +321,7 @@ const result = await generateAgentReadabilityArtifacts({
 });
 ```
 
-Writes docs-scoped files under `<outDir>/docs/`. The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can then merge `result.manifest.pages` with non-docs routes before serving root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
-
-```ts
-await writeFile("public/sitemap.xml", renderSitemapXml(result.manifest.pages));
-await writeFile(
-  "public/sitemap.md",
-  renderSitemapMarkdown({
-    product: resolveAgentInputs(docsConfig).product,
-    navigation: result.manifest.navigation,
-    pages: result.manifest.pages,
-  })
-);
-await writeFile(
-  "public/robots.txt",
-  renderRobotsTxt({ baseUrl: "https://leadtype.dev" })
-);
-```
+Writes crawler files at the output root (`<outDir>/robots.txt`, `<outDir>/sitemap.xml`, `<outDir>/sitemap.md`). The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can still merge `result.manifest.pages` with non-docs routes before serving custom root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
 
 ## Agent readability helpers
 
@@ -419,8 +397,6 @@ const sitemap = createSitemapXmlResponse({
 const robots = createRobotsTxtResponse({
   manifest,
   requestOrigin: new URL(request.url).origin,
-  // Optional: docs-scoped robots points to /docs/sitemap.xml.
-  sitemapUrlPath: "/docs/sitemap.xml",
 });
 ```
 

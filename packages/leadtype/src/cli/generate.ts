@@ -177,9 +177,9 @@ type GenerateResult = {
   files: {
     agentsMd?: string;
     agentReadabilityManifest?: string;
-    docsRobotsTxt?: string;
-    docsSitemapMd?: string;
-    docsSitemapXml?: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
     i18nManifest?: string;
     docsLlmsTxt?: string;
     llmsFullTxt?: string;
@@ -284,7 +284,7 @@ Usage:
 
 By default, runs in site mode and writes:
   llms.txt, llms-full.txt, docs/*.md, docs/search-index.json,
-  docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
+  sitemap.xml, sitemap.md, robots.txt
 
 With --bundle, runs in package mode and writes:
   AGENTS.md, SKILL.md, docs/*.md
@@ -2446,9 +2446,15 @@ export async function runGenerateCommand(
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
-          docsRobotsTxt: agentReadability.files.robotsTxt,
-          docsSitemapMd: agentReadability.files.sitemapMd,
-          docsSitemapXml: agentReadability.files.sitemapXml,
+          ...(agentReadability.files.robotsTxt
+            ? { robotsTxt: agentReadability.files.robotsTxt }
+            : {}),
+          ...(agentReadability.files.sitemapMd
+            ? { sitemapMd: agentReadability.files.sitemapMd }
+            : {}),
+          ...(agentReadability.files.sitemapXml
+            ? { sitemapXml: agentReadability.files.sitemapXml }
+            : {}),
           ...(Object.keys(feeds.files).length > 0
             ? { feeds: feeds.files }
             : {}),

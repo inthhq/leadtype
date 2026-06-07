@@ -44,6 +44,13 @@ URL prefix.
 - Locale-prefixed generated pages are excluded from root feeds so localized
   mirrors do not duplicate entries.
 
+## Crawler artifacts
+
+- Site-mode generation now writes `robots.txt`, `sitemap.xml`, and `sitemap.md`
+  at the output root only. Nested `/docs` sitemap and robots copies are no
+  longer emitted because crawlers treat the origin-root `robots.txt` as the
+  authoritative policy file.
+
 ## Dogfooding
 
 - The Leadtype docs now publish `/changelog/rss.xml` and

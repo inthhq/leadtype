@@ -43,19 +43,19 @@ npx leadtype generate \
   --summary "One sentence about the product."
 ```
 
-This writes the docs-scoped files under `public/docs/` and the top-level `public/llms.txt`:
+This writes root crawler files, root LLM entry points, and docs artifacts under `public/docs/`:
 
 ```txt
 public/
 ├── llms.txt
 ├── llms-full.txt
+├── sitemap.xml
+├── sitemap.md
+├── robots.txt
 └── docs/
     ├── index.md
     ├── quickstart.md
     ├── llms.txt
-    ├── sitemap.xml
-    ├── sitemap.md
-    ├── robots.txt
     └── agent-readability.json
 ```
 
@@ -69,9 +69,9 @@ The generated `agent-readability.json` manifest is the bridge between build-time
   "product": { "name": "My product", "summary": "One sentence." },
   "navigation": { "groups": [ /* … nav tree … */ ] },
   "files": {
-    "robotsTxt": "docs/robots.txt",
-    "sitemapMd": "docs/sitemap.md",
-    "sitemapXml": "docs/sitemap.xml"
+    "robotsTxt": "/robots.txt",
+    "sitemapMd": "/sitemap.md",
+    "sitemapXml": "/sitemap.xml"
   },
   "pages": [
     {
@@ -88,6 +88,8 @@ The generated `agent-readability.json` manifest is the bridge between build-time
   ]
 }
 ```
+
+Static crawlers should start at root `/robots.txt` and `/sitemap.xml`, which `leadtype generate` writes.
 
 Pass it through `normalizeAgentReadabilityManifest()` before handing it to a runtime helper — that validates the shape and fills defaults.
 
@@ -205,7 +207,6 @@ Start the docs site, then check the URLs agents use:
 curl http://localhost:5173/llms.txt
 curl http://localhost:5173/sitemap.xml
 curl http://localhost:5173/sitemap.md
-curl http://localhost:5173/docs/sitemap.xml
 curl -I -H "Accept: text/markdown" http://localhost:5173/docs/quickstart
 curl http://localhost:5173/docs/quickstart.md
 curl -H "User-Agent: ChatGPT-User" http://localhost:5173/docs/quickstart
@@ -214,7 +215,7 @@ curl -H "User-Agent: ChatGPT-User" http://localhost:5173/docs/quickstart
 Expected results:
 
 - `llms.txt` links point to existing `.md` URLs.
-- Both root and docs-scoped sitemaps resolve.
+- Root sitemap and robots routes resolve.
 - Markdown responses use `Content-Type: text/markdown; charset=utf-8`.
 - Markdown frontmatter contains `canonical_url` and `last_updated`.
 - HTML pages contain one `application/ld+json` script.
@@ -226,13 +227,12 @@ Then run the Vercel Agent Readability audit against the docs entry point:
 npx @vercel/agent-readability audit http://localhost:5173/docs
 ```
 
-If the audit reports broken links from `llms.txt`, check whether your generated URLs use the production `--base-url` while your local audit expects `localhost`. For local dev, serve root and docs-scoped sitemap/robots files from the current request origin, or run the audit against a preview URL that matches `--base-url`.
+If the audit reports broken links from `llms.txt`, check whether your generated URLs use the production `--base-url` while your local audit expects `localhost`. For local dev, serve root sitemap/robots files from the current request origin, or run the audit against a preview URL that matches `--base-url`.
 
 ## Minimal checklist
 
 - Generate `llms.txt`, markdown mirrors, `llms-full.txt`, sitemap, robots, and `agent-readability.json`.
 - Serve root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
-- Keep docs-scoped `/docs/sitemap.xml`, `/docs/sitemap.md`, and `/docs/robots.txt`.
 - Add JSON-LD to every docs HTML page.
 - Add canonical and markdown alternate links to every docs HTML page.
 - Return markdown for agent Accept headers, AI user agents, and `.md` URLs.

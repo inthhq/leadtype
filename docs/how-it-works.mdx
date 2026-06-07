@@ -40,7 +40,7 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
     "Site mode (default)": {
       type: "leadtype generate --out public",
       description:
-        "Writes llms.txt, llms-full.txt, docs/search-index.json, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, docs/agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Next.js, TanStack Start, Nuxt, Astro, or SvelteKit build.",
+        "Writes llms.txt, llms-full.txt, root sitemap/robots files, docs/search-index.json, docs/agent-readability.json, and docs/*.md to a public/ directory your docs website serves. This is what you wire into a Next.js, TanStack Start, Nuxt, Astro, or SvelteKit build.",
     },
     "Bundle mode": {
       type: "leadtype generate --bundle --out packages/foo",
@@ -75,9 +75,9 @@ For the exact stack, see [Remark plugins](/docs/reference/remark). For the compo
         "Site mode only. BM25-ranked inverted index over headings, titles, body, and code. Content is stored separately so the index stays small. Bundle mode skips it — agents reading from disk grep the .md files directly.",
     },
     "Agent Readability": {
-      type: "<out>/docs/sitemap.xml + <out>/docs/sitemap.md + <out>/docs/robots.txt + <out>/docs/agent-readability.json",
+      type: "<out>/sitemap.xml + <out>/robots.txt + <out>/docs/agent-readability.json",
       description:
-        "Site mode only. Docs-scoped discovery files and structured page data. Host apps merge this with blog, marketing, changelog, or product pages before serving root sitemap and robots files.",
+        "Site mode only. Root crawler discovery files and structured docs page data. Host apps can merge this with blog, marketing, changelog, or product pages before serving custom root sitemap and robots files.",
     },
     "Navigation manifest": {
       type: "docs-nav.json (build script)",
