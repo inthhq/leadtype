@@ -267,6 +267,31 @@ describe("leadtype CLI", () => {
     expect(
       existsSync(path.join(outDir, "docs", "agent-readability.json"))
     ).toBe(true);
+    expect(
+      existsSync(path.join(outDir, ".well-known", "mcp", "server-card.json"))
+    ).toBe(true);
+
+    const mcpServerCard = JSON.parse(
+      await readFile(
+        path.join(outDir, ".well-known", "mcp", "server-card.json"),
+        "utf8"
+      )
+    ) as {
+      serverInfo: { name: string; version: string };
+      transport: { endpoint: string; type: string };
+      capabilities: { tools?: Record<string, unknown> };
+    };
+    expect(mcpServerCard.serverInfo).toEqual(
+      expect.objectContaining({
+        name: "leadtype-docs",
+        version: "1.0.0",
+      })
+    );
+    expect(mcpServerCard.transport).toEqual({
+      type: "streamable-http",
+      endpoint: "https://leadtype.dev/leadtype/mcp",
+    });
+    expect(mcpServerCard.capabilities).toEqual({ tools: {} });
 
     const docsSummary = await readFile(
       path.join(outDir, "docs", "llms.txt"),
@@ -310,6 +335,7 @@ describe("leadtype CLI", () => {
         agentReadabilityManifest: string;
         docsLlmsFullTxt?: string;
         llmsFullTxt: string;
+        mcpServerCard: string;
         robotsTxt: string;
         searchIndex: string;
         sitemapXml: string;
@@ -325,6 +351,9 @@ describe("leadtype CLI", () => {
     );
     expect(result.files.agentReadabilityManifest).toBe(
       path.join(outDir, "docs", "agent-readability.json")
+    );
+    expect(result.files.mcpServerCard).toBe(
+      path.join(outDir, ".well-known", "mcp", "server-card.json")
     );
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
     expect(result.files.robotsTxt).toBe(path.join(outDir, "robots.txt"));
@@ -417,6 +446,88 @@ describe("leadtype CLI", () => {
     expect(docsLlmsTxt.indexOf("## Zeta First")).toBeLessThan(
       docsLlmsTxt.indexOf("## Alpha Second")
     );
+  });
+
+  it("uses one MCP discovery config for server-card, agent-card, and docs-skill", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Configured Product",
+    tagline: "Configured product summary.",
+  },
+  navigation: ["quickstart"],
+  agents: {
+    mcp: {
+      enabled: true,
+      endpoint: "/api/mcp",
+      serverInfo: { name: "configured-docs", version: "2.0.0" },
+      authentication: { required: true },
+    },
+  },
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+
+    const serverCard = JSON.parse(
+      await readFile(
+        path.join(outDir, ".well-known", "mcp", "server-card.json"),
+        "utf8"
+      )
+    ) as {
+      authentication: { required: boolean };
+      serverInfo: { name: string; version: string };
+      transport: { endpoint: string };
+    };
+    expect(serverCard.serverInfo).toEqual(
+      expect.objectContaining({ name: "configured-docs", version: "2.0.0" })
+    );
+    expect(serverCard.transport.endpoint).toBe("https://example.com/api/mcp");
+    expect(serverCard.authentication.required).toBe(true);
+
+    const agentCard = JSON.parse(
+      await readFile(
+        path.join(outDir, ".well-known", "agent-card.json"),
+        "utf8"
+      )
+    ) as { url: string };
+    expect(agentCard.url).toBe("https://example.com/api/mcp");
+
+    const skillMd = await readFile(
+      path.join(
+        outDir,
+        ".well-known",
+        "agent-skills",
+        "configured-product-docs",
+        "SKILL.md"
+      ),
+      "utf8"
+    );
+    expect(skillMd).toContain("https://example.com/api/mcp");
   });
 
   it("applies config flatteners to custom components during generate", async () => {

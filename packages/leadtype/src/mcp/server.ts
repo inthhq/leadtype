@@ -1,13 +1,11 @@
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { DocsArtifacts } from "./artifacts.js";
+import { type McpServerCardServerInfo, resolveMcpServerInfo } from "./card.js";
 import {
   type DefineDocsToolsOptions,
   type DocsToolName,
   defineDocsTools,
 } from "./tools.js";
-
-const DEFAULT_SERVER_NAME = "leadtype-docs";
-const DEFAULT_SERVER_VERSION = "0.0.0";
 
 const MISSING_SDK_MESSAGE =
   "leadtype mcp: the optional peer dependency @modelcontextprotocol/sdk is not installed. " +
@@ -45,7 +43,7 @@ export async function importSdkModule<T>(specifier: string): Promise<T> {
 
 export type CreateDocsMcpServerOptions = DefineDocsToolsOptions & {
   artifacts: DocsArtifacts;
-  serverInfo?: { name?: string; version?: string };
+  serverInfo?: Partial<McpServerCardServerInfo>;
 };
 
 /**
@@ -68,12 +66,12 @@ export async function createDocsMcpServer(
 
   const tools = defineDocsTools(options.artifacts, options);
   const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
+  const serverInfo = resolveMcpServerInfo(options.artifacts.manifest.product, {
+    serverInfo: options.serverInfo,
+  });
 
   const server = new Server(
-    {
-      name: options.serverInfo?.name ?? DEFAULT_SERVER_NAME,
-      version: options.serverInfo?.version ?? DEFAULT_SERVER_VERSION,
-    },
+    { name: serverInfo.name, version: serverInfo.version },
     { capabilities: { tools: {} } }
   );
 

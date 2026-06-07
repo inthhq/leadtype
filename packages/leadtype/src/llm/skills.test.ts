@@ -42,6 +42,7 @@ describe("generateSkillArtifacts — site mode", () => {
     expect(skillMd).toContain("description:");
     // MCP enabled → the docs-skill points at the MCP server.
     expect(skillMd).toContain("MCP server");
+    expect(skillMd).toContain("https://acme.dev/mcp");
     expect(skillMd).toContain("/llms.txt");
 
     const index = JSON.parse(
@@ -77,6 +78,29 @@ describe("generateSkillArtifacts — site mode", () => {
     expect(card.capabilities).toBeDefined();
     expect(card.defaultInputModes.length).toBeGreaterThan(0);
     expect(card.skills[0].tags).toContain("documentation");
+  });
+
+  it("uses a custom MCP endpoint in the docs-skill and agent-card", async () => {
+    const outDir = await tempDir();
+    await generateSkillArtifacts({
+      outDir,
+      baseUrl: "https://acme.dev",
+      product,
+      mode: "site",
+      mcpEnabled: true,
+      mcpEndpoint: "https://acme.dev/api/mcp",
+    });
+
+    const skillMd = await readFile(
+      join(outDir, ".well-known/agent-skills/acme-docs-docs/SKILL.md"),
+      "utf8"
+    );
+    expect(skillMd).toContain("https://acme.dev/api/mcp");
+
+    const card = JSON.parse(
+      await readFile(join(outDir, ".well-known/agent-card.json"), "utf8")
+    ) as { url: string };
+    expect(card.url).toBe("https://acme.dev/api/mcp");
   });
 
   it("includes author-declared skills and respects docsSkill: false", async () => {

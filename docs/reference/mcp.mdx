@@ -124,6 +124,59 @@ const handler = createMcpHandler({ artifacts: "./public" });
   </Tab>
 </Tabs>
 
+### Publish the discovery card
+
+When your site hosts MCP, set `agents.mcp.enabled` in `docs.config.ts`.
+`leadtype generate` then writes `/.well-known/mcp/server-card.json` for agent
+discovery. Keep the configured endpoint aligned with the route you mount:
+
+```ts
+// docs/docs.config.ts
+export default {
+  product: {
+    name: "Acme",
+    tagline: "Acme documentation.",
+  },
+  agents: {
+    mcp: {
+      enabled: true,
+      endpoint: "/mcp",
+      serverInfo: { name: "acme-docs", version: "1.0.0" },
+      authentication: { required: false },
+    },
+  },
+};
+```
+
+If you mount somewhere else, configure that path once:
+
+```ts
+// docs/docs.config.ts
+export default {
+  agents: {
+    mcp: {
+      enabled: true,
+      endpoint: "/api/mcp",
+      serverInfo: { name: "acme-docs", version: "1.0.0" },
+    },
+  },
+};
+```
+
+```ts
+// app/api/mcp/route.ts
+import { createMcpHandler } from "leadtype/mcp";
+
+const serverInfo = { name: "acme-docs", version: "1.0.0" };
+
+export const POST = createMcpHandler({ artifacts: "./public", serverInfo });
+```
+
+The same resolved endpoint is also used in the generated agent-card and
+docs-skill, so agents see one consistent MCP location. If your host wraps the
+MCP route in authentication, set `authentication.required: true` so the static
+server card does not advertise a public endpoint.
+
 <Callout variant="info">
 **It runs stateless and returns JSON — it never opens an SSE stream.** That's
 the whole transport: a client POSTs a JSON-RPC request and gets one JSON

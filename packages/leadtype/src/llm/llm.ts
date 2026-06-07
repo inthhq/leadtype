@@ -477,8 +477,20 @@ export type DocsSkillSpec = {
 
 /** Additive `agents` config block. All fields optional; zero-config defaults hold. */
 export type DocsAgentsConfig = {
-  /** Signals that you host a docs MCP endpoint, so the docs-skill points agents at it. */
-  mcp?: { enabled?: boolean };
+  /** Signals that you host a docs MCP endpoint, so leadtype emits MCP discovery surfaces. */
+  mcp?: {
+    enabled?: boolean;
+    /** MCP transport endpoint advertised in the server card. Defaults to `${baseUrl}/mcp` or `/mcp`. */
+    endpoint?: string;
+    /** Server identity advertised in the MCP Server Card. */
+    serverInfo?: {
+      name?: string;
+      version?: string;
+      description?: string;
+    };
+    /** Whether the advertised MCP endpoint requires authentication. Defaults to public. */
+    authentication?: { required?: boolean };
+  };
   robots?: {
     /** Crawler-access stance. Defaults to `balanced`. */
     policy?: RobotsPolicy;
