@@ -41,6 +41,7 @@ const WHITESPACE_PATTERN = /\s+/g;
 const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
 
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
+const SHARED_ROUTE_SEGMENTS = new Set(["shared", "_shared"]);
 const DOCUMENT_ID = 0;
 const DOCUMENT_TITLE = 1;
 const DOCUMENT_DESCRIPTION = 2;
@@ -839,6 +840,32 @@ function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
   );
 }
 
+function pathSegments(input: string): string[] {
+  return input.replaceAll("\\", "/").split("/").filter(Boolean);
+}
+
+function isSharedRoutePath(input: string): boolean {
+  const segments = pathSegments(input);
+  return segments.some((segment) => SHARED_ROUTE_SEGMENTS.has(segment));
+}
+
+function frontmatterSearchSetting(
+  frontmatter: DocsFrontmatter | undefined
+): boolean | undefined {
+  const value = frontmatter?.search;
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function shouldIndexSearchDocument(doc: DocsSearchDocument): boolean {
+  const search = frontmatterSearchSetting(doc.frontmatter);
+  if (search !== undefined) {
+    return search;
+  }
+  return !(
+    isSharedRoutePath(doc.relativePath) || isSharedRoutePath(doc.urlPath)
+  );
+}
+
 export function createDocsSearchIndex(
   markdownDocs: DocsSearchDocument[],
   options: CreateDocsSearchIndexOptions = {}
@@ -863,7 +890,9 @@ export function createDocsSearchIndex(
         | undefined
   );
 
-  for (const [documentIndex, doc] of docs.entries()) {
+  for (const [documentIndex, doc] of docs
+    .filter(shouldIndexSearchDocument)
+    .entries()) {
     const documentId = doc.id ?? `doc-${documentIndex}`;
     const description = doc.description ?? "";
     const entry: DocsSearchDocumentEntry = [
