@@ -224,6 +224,9 @@ export function getSidebarSections(
 export function isRouteActive(pathname: string, route: string): boolean {
   const normalizedPath = normalizeDocsPath(pathname);
   const normalizedRoute = normalizeDocsPath(route);
+  if (normalizedRoute === "/") {
+    return true;
+  }
   return (
     normalizedPath === normalizedRoute ||
     normalizedPath.startsWith(`${normalizedRoute}/`)

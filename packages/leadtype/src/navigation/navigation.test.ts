@@ -183,6 +183,8 @@ describe("isRouteActive", () => {
     expect(isRouteActive("/docs", "/docs")).toBe(true);
     expect(isRouteActive("/docs/guides/intro", "/docs")).toBe(true);
     expect(isRouteActive("/docs/", "/docs")).toBe(true);
+    expect(isRouteActive("/docs", "/")).toBe(true);
+    expect(isRouteActive("/playground", "/")).toBe(true);
   });
 
   it("does not match siblings or prefixes of other segments", () => {

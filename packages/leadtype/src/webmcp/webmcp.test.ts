@@ -387,7 +387,7 @@ describe("createDocsWebMcpTools", () => {
 
   it("derives tool names from non-default collections", () => {
     const tools = createDocsWebMcpTools({
-      collection: "API Reference",
+      collection: "api-reference",
       fetch: vi.fn(),
     });
 
@@ -396,6 +396,14 @@ describe("createDocsWebMcpTools", () => {
       "get-api-reference-page",
     ]);
     expect(tools[0]?.description).toContain("get-api-reference-page");
+  });
+
+  it("rejects unsafe collection ids before building artifact URLs", () => {
+    for (const collection of ["", "/docs", "//evil.example", "docs/../api"]) {
+      expect(() =>
+        createDocsWebMcpTools({ collection, fetch: vi.fn() })
+      ).toThrow(/collection .* is invalid/);
+    }
   });
 });
 

@@ -7,6 +7,7 @@ const DEFAULT_COLLECTION = "docs";
 const DEFAULT_SEARCH_LIMIT = 5;
 const MAX_SEARCH_LIMIT = 25;
 const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
+const COLLECTION_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const COLLECTION_SLUG_INVALID_PATTERN = /[^a-z0-9_.-]+/g;
 const COLLECTION_SLUG_TRIM_PATTERN = /^-+|-+$/g;
 // Backslashes alias to "/" in URL parsing, "?"/"#" smuggle query/fragment, and
@@ -158,6 +159,16 @@ function assertSafeUrlPath(toolName: string, value: string): string {
   return normalized;
 }
 
+function assertSafeCollection(value: string): string {
+  const trimmed = value.trim();
+  if (!COLLECTION_PATTERN.test(trimmed)) {
+    throw new Error(
+      `leadtype/webmcp: collection "${value}" is invalid. Use a generated docs collection id such as "docs" or "api-reference".`
+    );
+  }
+  return trimmed;
+}
+
 function resolveToolNames(collection: string): DocsToolNames {
   if (collection === DEFAULT_COLLECTION) {
     return { search: "search-docs", getPage: "get-page" };
@@ -239,6 +250,11 @@ function resolveFetch(fetchImpl: typeof fetch | undefined): typeof fetch {
   return resolved;
 }
 
+/**
+ * Register WebMCP tools against `document.modelContext` or the legacy
+ * `navigator.modelContext` fallback. The returned handle aborts every
+ * registration made by this call.
+ */
 export function registerWebMcpTools(
   tools: WebMcpTool[],
   options: RegisterWebMcpToolsOptions = {}
@@ -278,10 +294,16 @@ export function registerWebMcpTools(
   };
 }
 
+/**
+ * Create read-only browser WebMCP tools over generated Leadtype search and
+ * markdown artifacts. The default tools are `search-docs` and `get-page`.
+ */
 export function createDocsWebMcpTools(
   options: DocsWebMcpToolsOptions = {}
 ): WebMcpTool[] {
-  const collection = options.collection ?? DEFAULT_COLLECTION;
+  const collection = assertSafeCollection(
+    options.collection ?? DEFAULT_COLLECTION
+  );
   const names = resolveToolNames(collection);
   const markdownUrl =
     options.markdownUrl ?? createDefaultMarkdownUrl(collection);
