@@ -72,6 +72,24 @@ const NAME_SEPARATOR_REGEX = /[-_]+/g;
 const LIST_PREFIX_REGEX = /^\d+\.\s/;
 const DEFAULT_SOURCE_DIR = "docs";
 const GENERIC_DOC_NAMES = new Set(["home", "index", "readme"]);
+const GIT_REPOSITORY_ENV_KEYS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_QUARANTINE_PATH",
+  "GIT_WORK_TREE",
+] as const;
+
+function gitSubprocessEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of GIT_REPOSITORY_ENV_KEYS) {
+    delete env[key];
+  }
+  return env;
+}
 
 type RemarkProcessor = ReturnType<typeof remark>;
 
@@ -350,7 +368,7 @@ async function enrichFromGit(filePath: string): Promise<GitEnrichment> {
     const { stdout } = await execFileAsync(
       "git",
       ["log", "-1", "--format=%aI%x00%an", "--", filePath],
-      { cwd: dirname(filePath) }
+      { cwd: dirname(filePath), env: gitSubprocessEnv() }
     );
     const line = stdout.replace(/\r?\n$/, "");
     if (!line) {
