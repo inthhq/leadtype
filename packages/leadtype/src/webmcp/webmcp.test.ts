@@ -399,7 +399,13 @@ describe("createDocsWebMcpTools", () => {
   });
 
   it("rejects unsafe collection ids before building artifact URLs", () => {
-    for (const collection of ["", "/docs", "//evil.example", "docs/../api"]) {
+    for (const collection of [
+      "",
+      "   ",
+      "/docs",
+      "//evil.example",
+      "docs/../api",
+    ]) {
       expect(() =>
         createDocsWebMcpTools({ collection, fetch: vi.fn() })
       ).toThrow(/collection .* is invalid/);
