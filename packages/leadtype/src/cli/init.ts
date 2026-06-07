@@ -19,6 +19,10 @@ export type { InitFramework } from "./init-templates";
 const DEFAULT_NAME = "My docs";
 const DEFAULT_SUMMARY = "What this project does in one sentence.";
 const RECIPE_URL = "https://leadtype.dev/docs/build/use-the-source-primitive";
+const WEBMCP_FLAG_DEPRECATION_MESSAGE =
+  "--webmcp is deprecated as an init shortcut and will be removed in the next major version";
+const WEBMCP_FLAG_DEPRECATION_HINT =
+  "register leadtype/webmcp from your app code instead; the flag remains for compatibility";
 
 const INIT_USAGE = `leadtype init — scaffold an agent-ready docs integration
 
@@ -35,7 +39,7 @@ Options:
       --force              Overwrite files that already exist.
       --dry-run            Print the file plan without writing anything.
       --no-generate        Skip running \`leadtype generate\` after scaffolding.
-      --webmcp             Register generated docs as browser-side WebMCP tools.
+      --webmcp             Deprecated: scaffold browser-side WebMCP registration.
       --json               Emit the file plan as JSON.
   -h, --help               Show help
 
@@ -389,6 +393,12 @@ export async function runInitCommand(
   if (args.help) {
     io.stdout.write(INIT_USAGE);
     return 0;
+  }
+
+  if (args.webmcp) {
+    io.stderr.write(
+      `Warning: ${WEBMCP_FLAG_DEPRECATION_MESSAGE}\n  → ${WEBMCP_FLAG_DEPRECATION_HINT}\n`
+    );
   }
 
   const projectRoot = path.resolve(args.dir);

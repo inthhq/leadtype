@@ -95,6 +95,14 @@ const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
 const NAV_SORT_VALUES = new Set(["order", "path", "title"]);
 const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
+const MCP_FLAG_DEPRECATION_MESSAGE =
+  "--mcp is deprecated as a generate shortcut and will be removed in the next major version";
+const MCP_FLAG_DEPRECATION_HINT =
+  "set agents.mcp.enabled in docs.config.ts instead; --mcp remains as a compatibility override for now";
+const ENRICH_GIT_FLAG_DEPRECATION_MESSAGE =
+  "--enrich-git is deprecated because git enrichment now runs by default";
+const ENRICH_GIT_FLAG_DEPRECATION_HINT =
+  "remove the flag from generate scripts; enrichment is best-effort and is skipped when git metadata is unavailable";
 
 function isLocalBaseUrl(baseUrl: string): boolean {
   try {
@@ -127,14 +135,19 @@ export type GenerateArgs = {
   baseUrl?: string;
   bundle: boolean;
   /**
-   * Bundle mode only. Also emit `search-index.json` + `agent-readability.json`
-   * alongside the markdown mirror so the published tarball can serve a
-   * version-matched docs MCP server (`leadtype mcp --package <name>`). Off by
-   * default to keep bundles lean.
+   * Deprecated bundle-mode shortcut. Prefer `agents.mcp.enabled` in config;
+   * while this flag exists, it explicitly emits `search-index.json` +
+   * `agent-readability.json` for `leadtype mcp --package <name>`.
    */
   mcp: boolean;
   docsDirs: string[];
+  /**
+   * Generate defaults this to true. Git metadata is best-effort: no `.git`,
+   * shallow history, untracked files, or missing git simply skip enrichment.
+   */
   enrichGit: boolean;
+  /** True only when the deprecated `--enrich-git` flag was explicitly passed. */
+  enrichGitFlag: boolean;
   exclude: string[];
   format: GenerateFormat;
   help: boolean;
@@ -164,6 +177,7 @@ type SourceMirror = {
   cleanup: () => Promise<void>;
   docsDir: string;
   filters: GenerateFilters;
+  gitSourcePaths?: Map<string, string>;
   srcDir: string;
 };
 
@@ -290,9 +304,10 @@ By default, runs in site mode and writes:
 
 With --bundle, runs in package mode and writes:
   AGENTS.md, SKILL.md, docs/*.md
-  (skips llms.txt, llms-full.txt, and search artifacts — those are website-only)
-  Add --mcp to also emit docs/search-index.json + docs/agent-readability.json
-  so the tarball can serve a version-matched MCP server (leadtype mcp --package).
+  (skips URL-anchored site artifacts like llms.txt, llms-full.txt, sitemap, robots)
+  If docs.config.ts sets agents.mcp.enabled, also emits docs/search-index.json
+  + docs/agent-readability.json so the tarball can serve a version-matched MCP
+  server (leadtype mcp --package). --mcp enables the same artifacts without config.
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
@@ -300,13 +315,13 @@ Options:
                      Use <dir>=<url-prefix> to mount a source outside /docs, e.g. changelog=/changelog.
   --out <dir>        Output root directory (default: public)
   --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
-  --mcp              Bundle mode only: also emit search-index.json + agent-readability.json for a version-matched docs MCP server
+  --mcp              Deprecated: bundle-mode shortcut for MCP artifacts. Prefer agents.mcp.enabled in docs.config.ts
   --base-url <url>   Base URL for generated links (site mode)
   --name <name>      Product name for generated index files
   --summary <text>   Product summary for generated index files
   --include <glob>   Include MDX paths matching this docs-root-relative glob
   --exclude <glob>   Exclude MDX paths matching this docs-root-relative glob
-  --enrich-git       Add lastModified and lastAuthor from git history
+  --enrich-git       Deprecated: git enrichment runs by default and skips when git metadata is unavailable
   --sync             Clone missing remote sources before generating (collections mode)
   --refresh          Re-fetch and fast-forward every remote source (collections mode)
   --offline          Fail if any remote source cache is missing or stale; never touch the network
@@ -333,7 +348,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     bundle: false,
     mcp: false,
     docsDirs: [],
-    enrichGit: false,
+    enrichGit: true,
+    enrichGitFlag: false,
     exclude: [],
     format: "text",
     help: false,
@@ -367,6 +383,7 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.exclude.push(readValue(argv, ++i, "--exclude"));
     } else if (arg === "--enrich-git") {
       args.enrichGit = true;
+      args.enrichGitFlag = true;
     } else if (arg === "--bundle") {
       args.bundle = true;
     } else if (arg === "--mcp") {
@@ -1694,7 +1711,8 @@ function joinDocsRelativePath(mountPath: string, relativePath: string): string {
 async function copySourceFiles(
   source: ResolvedDocsSource,
   targetDocsDir: string,
-  relativePaths?: string[]
+  relativePaths?: string[],
+  gitSourcePaths?: Map<string, string>
 ): Promise<void> {
   let files: string[];
   if (relativePaths) {
@@ -1729,6 +1747,7 @@ async function copySourceFiles(
       }
       await mkdir(path.dirname(targetPath), { recursive: true });
       await cp(sourcePath, targetPath);
+      gitSourcePaths?.set(path.resolve(targetPath), sourcePath);
     })
   );
 }
@@ -1736,13 +1755,20 @@ async function copySourceFiles(
 async function copyFilteredSourceFiles(
   sources: ResolvedDocsSource[],
   targetDocsDir: string,
-  filters: GenerateFilters
+  filters: GenerateFilters,
+  gitSourcePaths?: Map<string, string>
 ): Promise<void> {
   const stagingRoot = await mkdtemp(path.join(tmpdir(), "leadtype-sources-"));
   const stagingDocsDir = path.join(stagingRoot, DEFAULT_DOCS_DIR);
+  const stagingGitSourcePaths = new Map<string, string>();
   try {
     for (const source of sources) {
-      await copySourceFiles(source, stagingDocsDir);
+      await copySourceFiles(
+        source,
+        stagingDocsDir,
+        undefined,
+        stagingGitSourcePaths
+      );
     }
 
     const patterns =
@@ -1774,6 +1800,10 @@ async function copyFilteredSourceFiles(
         const targetPath = path.join(targetDocsDir, file);
         await mkdir(path.dirname(targetPath), { recursive: true });
         await cp(sourcePath, targetPath);
+        gitSourcePaths?.set(
+          path.resolve(targetPath),
+          stagingGitSourcePaths.get(path.resolve(sourcePath)) ?? sourcePath
+        );
       })
     );
   } finally {
@@ -1958,13 +1988,19 @@ async function createSourceMirror(
 
   const tempRoot = await mkdtemp(path.join(tmpdir(), "leadtype-generate-"));
   const tempDocsDir = path.join(tempRoot, DEFAULT_DOCS_DIR);
+  const gitSourcePaths = new Map<string, string>();
 
   try {
     if (hasFilters) {
-      await copyFilteredSourceFiles(sources, tempDocsDir, filters);
+      await copyFilteredSourceFiles(
+        sources,
+        tempDocsDir,
+        filters,
+        gitSourcePaths
+      );
     } else {
       for (const source of sources) {
-        await copySourceFiles(source, tempDocsDir);
+        await copySourceFiles(source, tempDocsDir, undefined, gitSourcePaths);
       }
     }
   } catch (error) {
@@ -1978,6 +2014,7 @@ async function createSourceMirror(
     },
     docsDir: tempDocsDir,
     filters,
+    gitSourcePaths,
     srcDir: tempRoot,
   };
 }
@@ -2063,6 +2100,36 @@ export async function runGenerateCommand(
   setLogFormat(args.format === "json" ? "json" : "human");
   setVerbose(args.verbose);
   setLogStreams({ stderr: io.stderr });
+  if (args.mcp) {
+    logger.warn({
+      human: {
+        message: MCP_FLAG_DEPRECATION_MESSAGE,
+        hint: MCP_FLAG_DEPRECATION_HINT,
+      },
+      json: {
+        event: "generate.deprecated_flag",
+        fields: {
+          flag: "--mcp",
+          hint: MCP_FLAG_DEPRECATION_HINT,
+        },
+      },
+    });
+  }
+  if (args.enrichGitFlag) {
+    logger.warn({
+      human: {
+        message: ENRICH_GIT_FLAG_DEPRECATION_MESSAGE,
+        hint: ENRICH_GIT_FLAG_DEPRECATION_HINT,
+      },
+      json: {
+        event: "generate.deprecated_flag",
+        fields: {
+          flag: "--enrich-git",
+          hint: ENRICH_GIT_FLAG_DEPRECATION_HINT,
+        },
+      },
+    });
+  }
 
   const srcDir = path.resolve(args.srcDir);
 
@@ -2178,10 +2245,12 @@ export async function runGenerateCommand(
             groups: await inferGroups(sourceMirror.docsDir),
           }
         : metadata;
+    const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
     const effectiveNav = hasExplicitPathFilters ? undefined : nav;
     const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
+    const gitSourcePaths = sourceMirror.gitSourcePaths;
 
     const localesToValidate = i18n
       ? i18n.locales.map((locale) => locale.code)
@@ -2216,6 +2285,9 @@ export async function runGenerateCommand(
       failOnError: typeTableStrict,
       frontmatterSchemaByPath: metadata.collectionFrontmatterSchemas,
       frontmatterSchema: metadata.frontmatterSchema,
+      gitSourcePath: gitSourcePaths
+        ? (filePath) => gitSourcePaths.get(path.resolve(filePath)) ?? filePath
+        : undefined,
       transformers: metadata.transformers,
     });
 
@@ -2234,11 +2306,10 @@ export async function runGenerateCommand(
       const bundleFiles: GenerateResult["files"] = {
         agentsMd: agents.outputPath,
       };
-      // --mcp: also emit the search index + readability manifest so the tarball
-      // can serve a version-matched docs MCP server (`leadtype mcp --package`).
-      // These are URL-independent (MCP keys on urlPath and reads the .md mirror),
-      // so they work without a --base-url.
-      if (args.mcp) {
+      // Bundle MCP artifacts are inferred from docs.config.ts (`agents.mcp.enabled`)
+      // or explicitly enabled with --mcp. They are URL-independent: MCP keys on
+      // urlPath and reads the .md mirror, so they work without a --base-url.
+      if (bundleMcpEnabled) {
         const search = await generateDocsSearchFiles({
           outDir,
           baseUrl: args.baseUrl,
@@ -2266,7 +2337,7 @@ export async function runGenerateCommand(
         bundleFiles.agentReadabilityManifest = agentReadability.files.manifest;
       }
       // Ship the docs-skill SKILL.md next to AGENTS.md (offline-pointing), unless
-      // the author disabled it. Bundle MCP is on only with --mcp.
+      // the author disabled it.
       const bundleSkills = await generateSkillArtifacts({
         outDir,
         // Skill `bodyPath` resolves against the real source root (`--src`), not
@@ -2275,7 +2346,7 @@ export async function runGenerateCommand(
         product,
         skills: metadata.agents?.skills,
         mode: "bundle",
-        mcpEnabled: args.mcp,
+        mcpEnabled: bundleMcpEnabled,
       });
       if (bundleSkills.files[0]) {
         bundleFiles.skillMd = bundleSkills.files[0];

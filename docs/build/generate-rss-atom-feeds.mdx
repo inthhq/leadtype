@@ -65,7 +65,7 @@ date: 2026-06-03
 ---
 ```
 
-Every page selected by a feed must have either `date` or `lastModified`-style frontmatter. Add `date` by hand for release notes and changelogs. For pages where the feed should track source edits, run `leadtype generate --enrich-git` so Leadtype writes `lastModified` from git history before the feed is rendered.
+Every page selected by a feed must have either `date` or `lastModified`-style frontmatter. Add `date` by hand for release notes and changelogs. For pages where the feed should track source edits, default git enrichment writes `lastModified` from git history before the feed is rendered. If git metadata is unavailable, enrichment is skipped and those pages still need authored dates.
 
 Leadtype fails generation when a selected feed page has no stable date. It does not use generated file mtimes because CI rewrites generated markdown on every build, which would reshuffle the feed even when the source content did not change.
 

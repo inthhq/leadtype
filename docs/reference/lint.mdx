@@ -126,7 +126,7 @@ Required-field failures are reported as `schema` violations — that's the publi
 | `related` | No | array of `{ title, href, description? }` |
 | `full` | No | boolean |
 
-`lastModified` and `lastAuthor` are produced by the converter when `--enrich-git` is set. Don't author them.
+`lastModified` and `lastAuthor` are produced by `leadtype generate` when git metadata is available. Don't author them.
 
 Page `status` is editorial metadata. Release channels such as canary, RC,
 preview, and stable should be modeled in build config or transformers, not in

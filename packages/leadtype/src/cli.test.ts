@@ -306,6 +306,113 @@ describe("leadtype CLI", () => {
     expect(llmsFull).toContain("Methodology");
   });
 
+  it("enriches generated markdown from git by default", async () => {
+    const srcDir = await createGitDocsSource({
+      "docs/quickstart.mdx": [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "Git metadata should be automatic.",
+      ].join("\n"),
+    });
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--include",
+        "quickstart.mdx",
+        "--name",
+        "Git Docs",
+        "--summary",
+        "Docs with git metadata.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("lastModified:");
+    expect(markdown).toContain("lastAuthor: Leadtype Test");
+  });
+
+  it("skips default git enrichment without failing when no .git metadata exists", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      "title: Quickstart\ndescription: Start here."
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "No Git Docs",
+        "--summary",
+        "Docs without git metadata.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).not.toContain("lastModified:");
+    expect(markdown).not.toContain("lastAuthor:");
+  });
+
+  it("warns that --enrich-git is deprecated", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      "title: Quickstart\ndescription: Start here."
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--enrich-git",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "Deprecated Flag Docs",
+        "--summary",
+        "Docs with a deprecated flag.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stderr).toContain("--enrich-git is deprecated");
+    expect(capture.stderr).toContain("runs by default");
+  });
+
   it("prints machine-readable generate output for agents", async () => {
     const outDir = await createTempDir();
     const capture = createCapture();
@@ -1819,12 +1926,17 @@ This page is valid, but the output path is not a directory.
     expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
+    // This repo's docs.config.ts enables agents.mcp, so package bundles include
+    // the URL-independent MCP retrieval artifacts without requiring --mcp.
     expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
-      false
+      true
     );
     expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
-      false
+      true
     );
+    expect(
+      existsSync(path.join(outDir, "docs", "agent-readability.json"))
+    ).toBe(true);
     // .md files should still ship.
     expect(
       existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))

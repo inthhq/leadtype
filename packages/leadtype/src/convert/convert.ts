@@ -267,6 +267,11 @@ export type MdxToMarkdownOptions = {
    */
   enrichFrontmatterFromGit?: boolean;
   /**
+   * Optional resolver for staged conversion inputs. When set, git enrichment
+   * runs against the original source file instead of the staged mirror path.
+   */
+  gitSourcePath?: (filePath: string) => string | undefined;
+  /**
    * Max number of files to convert in parallel. Defaults to
    * `min(cpuCount, 16)` with a floor of 2.
    */
@@ -290,6 +295,12 @@ export type MdxToMarkdownOptions = {
 type GitEnrichment = {
   lastModified?: string;
   lastAuthor?: string;
+};
+
+type ConversionPrepareOptions<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = DocsTransformerOptions<TFrontmatter> & {
+  gitSourcePath?: (filePath: string) => string | undefined;
 };
 
 function normalizeRelativePath(value: string): string {
@@ -433,7 +444,7 @@ async function prepareMdxConversion<
   sourcePath: string,
   remarkPlugins: PluggableList,
   enrichFromGitFlag: boolean,
-  options: DocsTransformerOptions<TFrontmatter>
+  options: ConversionPrepareOptions<TFrontmatter>
 ): Promise<PreparedMdxConversion<TFrontmatter>> {
   const rawInput = await readFile(sourcePath, "utf8");
   const rawPage = await runTransformers(
@@ -476,7 +487,8 @@ async function prepareMdxConversion<
         );
 
   if (enrichFromGitFlag) {
-    const enrichment = await enrichFromGit(sourcePath);
+    const gitSourcePath = options.gitSourcePath?.(sourcePath) ?? sourcePath;
+    const enrichment = await enrichFromGit(gitSourcePath);
     resolvedFrontmatter = applyEnrichment(resolvedFrontmatter, enrichment);
   }
 
@@ -544,7 +556,7 @@ export async function resolveMdxFrontmatter<
   sourcePath: string,
   remarkPlugins: PluggableList = [],
   enrichFromGitFlag = false,
-  options: DocsTransformerOptions<TFrontmatter> = {}
+  options: ConversionPrepareOptions<TFrontmatter> = {}
 ): Promise<ResolvedMdxFrontmatterResult<TFrontmatter>> {
   const prepared = await prepareMdxConversion(
     sourcePath,
@@ -576,7 +588,7 @@ export async function convertMdxFile<
   sourcePath: string,
   remarkPlugins: PluggableList = [],
   enrichFromGitFlag = false,
-  options: DocsTransformerOptions<TFrontmatter> = {}
+  options: ConversionPrepareOptions<TFrontmatter> = {}
 ): Promise<ConvertMdxFileResult<TFrontmatter>> {
   const prepared = await prepareMdxConversion(
     sourcePath,
@@ -664,7 +676,7 @@ export async function convertMdxToMarkdown(
   sourcePath: string,
   remarkPlugins: PluggableList = [],
   enrichFromGitFlag = false,
-  options: DocsTransformerOptions = {}
+  options: ConversionPrepareOptions = {}
 ): Promise<ConvertResult> {
   const result = await convertMdxFile(
     sourcePath,
@@ -715,7 +727,7 @@ async function processMdxFile(
   outDir: string,
   remarkPlugins: PluggableList,
   enrichFromGitFlag: boolean,
-  transformOptions: DocsTransformerOptions,
+  transformOptions: ConversionPrepareOptions,
   writeToStdout = false
 ): Promise<boolean> {
   const resolvedPath = resolve(mdxFilePath);
@@ -798,6 +810,7 @@ export async function writeMdxFileAsMarkdown(
     config.enrichFrontmatterFromGit ?? false,
     {
       frontmatterSchema: config.frontmatterSchema,
+      gitSourcePath: config.gitSourcePath,
       transformers: config.transformers,
       transformContext: config.transformContext,
     },
@@ -865,6 +878,7 @@ export async function convertAllMdx(
             srcDir,
             config
           ),
+          gitSourcePath: config.gitSourcePath,
           transformers: config.transformers,
           transformContext: {
             ...config.transformContext,

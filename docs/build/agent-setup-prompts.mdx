@@ -99,7 +99,7 @@ When to use which:
 
   Implement:
   - Ensure a `docs.config.ts` (or `leadtype.config.ts`) describes `product` and `navigation`.
-  - Add a script that runs bundle mode: `leadtype generate --bundle --src . --out .`. This writes `AGENTS.md` at the package root and `docs/*.md` with relative links that still work after install. It skips website-only artifacts (llms.txt, search, sitemap, robots).
+  - Add a script that runs package mode: `leadtype generate --bundle --src . --out .`. This writes `AGENTS.md` at the package root and `docs/*.md` with relative links that still work after install. It skips URL-anchored website artifacts (`llms.txt`, sitemap, robots). If `docs.config.ts` enables `agents.mcp`, it also ships the local search/readability files for `leadtype mcp --package`.
   - Run it in `prepack`/`prepublishOnly` so the bundle is fresh on publish.
   - Add `AGENTS.md` and `docs` to the `files` array so they ship in the tarball. If they are gitignored build outputs, that is fine — `files` still includes them at pack time.
 

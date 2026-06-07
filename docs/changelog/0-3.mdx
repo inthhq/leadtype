@@ -40,11 +40,26 @@ generated docs content selected by canonical URL prefix.
   set an explicit `date` because the publication date is part of the release
   record.
 - Pages where the feed should represent source edits can use Git-derived
-  `lastModified` by running `leadtype generate --enrich-git`.
+  `lastModified`; `leadtype generate` writes it automatically when git metadata
+  is available.
 - Generation fails when a selected feed page has no `date` or `lastModified`
   frontmatter, so feed order does not churn based on CI-generated file mtimes.
 - The default docs lint schema now accepts optional `date` frontmatter, including
   YAML dates parsed as `Date` values.
+
+## CLI defaults and deprecations
+
+- `leadtype generate` now enriches generated markdown with Git-derived
+  `lastModified` and `lastAuthor` by default. Enrichment is best-effort: missing
+  `.git` metadata, shallow history, untracked files, or a missing `git` binary
+  skip those fields without failing generation.
+- Package-mode MCP artifacts are inferred from `agents.mcp.enabled` in
+  `docs.config.ts`, so `leadtype generate --bundle` is enough for packages that
+  configure MCP support.
+- Deprecated shortcut flags that duplicate config or defaults:
+  `leadtype generate --mcp`, `leadtype generate --enrich-git`, and
+  `leadtype init --webmcp`. They still work for compatibility and print warnings;
+  new docs and scripts should use `docs.config.ts` or explicit app code instead.
 
 ## Validation and safety
 

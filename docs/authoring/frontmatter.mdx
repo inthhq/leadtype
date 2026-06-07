@@ -130,8 +130,8 @@ The default lint schema also accepts:
 
 Use `date` when a page has a stable publication date, such as a changelog or
 release note included in an RSS/Atom feed. `lastModified` and `lastAuthor` are
-filled in automatically when you pass `--enrich-git` to the CLI. Don't author
-them by hand.
+filled in automatically by `leadtype generate` when git metadata is available.
+Don't author them by hand.
 
 Route segments named `shared/` or `_shared/` are treated as internal templates
 for search by default, including mounted sections such as changelog routes. Use

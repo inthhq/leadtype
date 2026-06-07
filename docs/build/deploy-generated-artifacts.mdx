@@ -3,7 +3,7 @@ title: "Deploy generated artifacts"
 description: "Serve Leadtype output on common framework and hosting combinations."
 ---
 
-Run `leadtype generate` before your framework build, then serve the output from the framework's public/static asset directory. Site mode writes web artifacts; `--bundle` writes package docs for npm tarballs and intentionally skips `llms.txt`, `llms-full.txt`, search JSON, sitemap, robots, and [Agent Readability](/docs/how-it-works#vocabulary) files.
+Run `leadtype generate` before your framework build, then serve the output from the framework's public/static asset directory. Site mode writes web artifacts; `--bundle` writes package docs for npm tarballs and intentionally skips URL-anchored site files such as `llms.txt`, `llms-full.txt`, sitemap, and robots. MCP-enabled package bundles still include the local search/readability files needed by `leadtype mcp --package`.
 
 ## Output contract
 
