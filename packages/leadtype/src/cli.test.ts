@@ -321,31 +321,48 @@ describe("leadtype CLI", () => {
     });
     const outDir = await createTempDir();
     const capture = createCapture();
+    const originalGitDir = process.env.GIT_DIR;
+    const originalGitWorkTree = process.env.GIT_WORK_TREE;
 
-    const code = await runCli(
-      [
-        "generate",
-        "--src",
-        srcDir,
-        "--out",
-        outDir,
-        "--include",
-        "quickstart.mdx",
-        "--name",
-        "Git Docs",
-        "--summary",
-        "Docs with git metadata.",
-      ],
-      capture.io
-    );
+    process.env.GIT_DIR = path.join(repoRoot, ".git");
+    process.env.GIT_WORK_TREE = repoRoot;
+    try {
+      const code = await runCli(
+        [
+          "generate",
+          "--src",
+          srcDir,
+          "--out",
+          outDir,
+          "--include",
+          "quickstart.mdx",
+          "--name",
+          "Git Docs",
+          "--summary",
+          "Docs with git metadata.",
+        ],
+        capture.io
+      );
 
-    expect(code).toBe(0);
-    const markdown = await readFile(
-      path.join(outDir, "docs", "quickstart.md"),
-      "utf8"
-    );
-    expect(markdown).toContain("lastModified:");
-    expect(markdown).toContain("lastAuthor: Leadtype Test");
+      expect(code).toBe(0);
+      const markdown = await readFile(
+        path.join(outDir, "docs", "quickstart.md"),
+        "utf8"
+      );
+      expect(markdown).toContain("lastModified:");
+      expect(markdown).toContain("lastAuthor: Leadtype Test");
+    } finally {
+      if (originalGitDir === undefined) {
+        delete process.env.GIT_DIR;
+      } else {
+        process.env.GIT_DIR = originalGitDir;
+      }
+      if (originalGitWorkTree === undefined) {
+        delete process.env.GIT_WORK_TREE;
+      } else {
+        process.env.GIT_WORK_TREE = originalGitWorkTree;
+      }
+    }
   });
 
   it("skips default git enrichment without failing when no .git metadata exists", async () => {
