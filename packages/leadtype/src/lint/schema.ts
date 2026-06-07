@@ -56,7 +56,7 @@ export const defaultFrontmatterSchema = v.object({
   tags: v.optional(v.array(v.string())),
   group: v.optional(v.union([v.string(), v.array(v.string())])),
   // Search visibility. `search: false` excludes a page from public search and
-  // answer citations; `search: true` opts root `shared/` routes back in.
+  // answer citations; `search: true` opts `shared`/`_shared` routes back in.
   search: v.optional(v.boolean()),
   // Stable publication date for feeds. Use `lastModified` via `--enrich-git`
   // only when the feed should track source edits instead of a fixed publish date.
