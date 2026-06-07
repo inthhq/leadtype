@@ -12,6 +12,7 @@ import {
   toDocsUrlPath,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
+import { logger } from "../internal/logger";
 
 const DOCS_DIRNAME = "docs";
 const DEFAULT_FEED_LIMIT = 20;
@@ -24,6 +25,10 @@ const XML_ENTITIES: Record<string, string> = {
   ">": "&gt;",
 };
 const XML_ESCAPE_PATTERN = /["&'<>]/g;
+// XML 1.0 forbids most C0 control characters even as entities; strip them so
+// frontmatter with stray control bytes cannot produce non-well-formed feeds.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control-character stripping
+const XML_ILLEGAL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
 
 export type FeedFormat = "rss" | "atom";
 
@@ -62,6 +67,8 @@ export type FeedEntry = {
 export type RenderFeedConfig = {
   title: string;
   description?: string;
+  /** Feed-level author name. Required by RFC 4287 for valid Atom output. */
+  author?: string;
   siteUrl: string;
   feedUrl: string;
   entries: FeedEntry[];
@@ -71,6 +78,8 @@ export type RenderFeedConfig = {
 export type GenerateFeedArtifactsConfig = {
   outDir: string;
   baseUrl?: string;
+  /** Feed-level author name applied to Atom output (e.g. the product name). */
+  author?: string;
   feeds?: DocsFeedConfig[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
@@ -82,13 +91,14 @@ export type GenerateFeedArtifactsResult = {
 
 type GeneratedFeedPage = FeedEntry & {
   draft: boolean;
+  /** True when the page carries `date` or `lastModified`-style frontmatter. */
+  hasExplicitDate: boolean;
 };
 
 function escapeXml(value: string): string {
-  return value.replace(
-    XML_ESCAPE_PATTERN,
-    (char) => XML_ENTITIES[char] ?? char
-  );
+  return value
+    .replace(XML_ILLEGAL_PATTERN, "")
+    .replace(XML_ESCAPE_PATTERN, (char) => XML_ENTITIES[char] ?? char);
 }
 
 function normalizeDate(value: unknown): string | undefined {
@@ -103,14 +113,12 @@ function normalizeDate(value: unknown): string | undefined {
 }
 
 function readLastModified(
-  frontmatter: Record<string, unknown>,
-  fallback: Date
-): string {
+  frontmatter: Record<string, unknown>
+): string | undefined {
   return (
     normalizeDate(frontmatter.lastModified) ??
     normalizeDate(frontmatter.last_updated) ??
-    normalizeDate(frontmatter.lastUpdated) ??
-    fallback.toISOString()
+    normalizeDate(frontmatter.lastUpdated)
   );
 }
 
@@ -132,6 +140,12 @@ function titleFromRelativePath(relativePath: string): string {
 }
 
 function isSelectedByPrefix(urlPath: string, urlPrefix: string): boolean {
+  // The site root selects every page; otherwise require a child of the
+  // prefix (the page at exactly the prefix is the section's listing page,
+  // not an entry).
+  if (urlPrefix === "/") {
+    return true;
+  }
   return urlPath.startsWith(`${urlPrefix}/`);
 }
 
@@ -163,6 +177,11 @@ function assertValidFeedConfig(feed: DocsFeedConfig): void {
 function resolveOutputPath(outDir: string, outputUrlPath: string): string {
   if (!outputUrlPath.startsWith("/")) {
     throw new Error(`feed output path "${outputUrlPath}" must start with "/"`);
+  }
+  if (!outputUrlPath.endsWith(".xml")) {
+    throw new Error(
+      `feed output path "${outputUrlPath}" must end with ".xml" so feeds cannot overwrite other generated artifacts`
+    );
   }
   const outputPath = path.join(
     outDir,
@@ -210,13 +229,21 @@ async function readGeneratedFeedPages(
     }
     const filePath = path.join(docsDir, file);
     const raw = await readFile(filePath, "utf8");
-    const fileStat = await stat(filePath);
     const parsed = parseFrontmatter(raw);
     const urlPath = toDocsUrlPath(file, mounts);
     const title =
       String(parsed.data.title ?? "").trim() || titleFromRelativePath(file);
-    const updatedAt = readLastModified(parsed.data, fileStat.mtime);
-    const publishedAt = normalizeDate(parsed.data.date) ?? updatedAt;
+    // Frontmatter dates keep feed output deterministic across builds. The
+    // file mtime is a last resort only: in CI every generated file was just
+    // written, so mtime-derived dates would churn the feed on every build.
+    const explicitDate = normalizeDate(parsed.data.date);
+    const explicitModified = readLastModified(parsed.data);
+    const hasExplicitDate = (explicitDate ?? explicitModified) !== undefined;
+    const fallback = hasExplicitDate
+      ? undefined
+      : (await stat(filePath)).mtime.toISOString();
+    const updatedAt = explicitModified ?? explicitDate ?? fallback ?? "";
+    const publishedAt = explicitDate ?? explicitModified ?? fallback ?? "";
     const summary = normalizeDescription(parsed.data.description);
     pages.push({
       id: toAbsoluteUrl(urlPath, baseUrl),
@@ -227,6 +254,7 @@ async function readGeneratedFeedPages(
       publishedAt,
       updatedAt,
       draft: parsed.data.draft === true,
+      hasExplicitDate,
     });
   }
   return pages;
@@ -269,10 +297,15 @@ export function renderRssFeed(config: RenderFeedConfig): string {
 
 export function renderAtomFeed(config: RenderFeedConfig): string {
   const generatedAt = config.generatedAt ?? new Date().toISOString();
-  const updatedAt =
-    config.entries[0]?.updatedAt ??
-    config.entries[0]?.publishedAt ??
-    generatedAt;
+  // Feed-level <updated> is the most recent change across all entries, not
+  // the newest-published entry: an edit to an older entry must bump it.
+  const updatedAt = config.entries.reduce(
+    (latest, entry) => {
+      const candidate = entry.updatedAt || entry.publishedAt;
+      return candidate > latest ? candidate : latest;
+    },
+    config.entries.length > 0 ? "" : generatedAt
+  );
   const entries = config.entries.map((entry) => {
     const summary = entry.summary
       ? `    <summary>${escapeXml(entry.summary)}</summary>\n`
@@ -291,11 +324,22 @@ export function renderAtomFeed(config: RenderFeedConfig): string {
       .join("\n");
   });
 
+  // RFC 4287 requires a feed-level author (or one per entry); without it
+  // strict validators and some readers reject the feed.
+  const author = config.author
+    ? [
+        "  <author>",
+        `    <name>${escapeXml(config.author)}</name>`,
+        "  </author>",
+      ]
+    : [];
+
   return `${[
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<feed xmlns="http://www.w3.org/2005/Atom">',
     `  <id>${escapeXml(config.siteUrl)}</id>`,
     `  <title>${escapeXml(config.title)}</title>`,
+    ...author,
     `  <updated>${escapeXml(updatedAt)}</updated>`,
     `  <link href="${escapeXml(config.siteUrl)}" />`,
     `  <link href="${escapeXml(config.feedUrl)}" rel="self" />`,
@@ -322,17 +366,37 @@ export async function generateFeedArtifacts(
     config.i18n
   );
 
+  const claimedOutputs = new Map<string, string>();
   for (const feed of feeds) {
     assertValidFeedConfig(feed);
     const sourceUrlPrefix = normalizeUrlPrefix(feed.source.urlPrefix);
     const limit = feed.limit ?? DEFAULT_FEED_LIMIT;
-    const entries = pages
-      .filter(
-        (page) =>
-          !page.draft && isSelectedByPrefix(page.urlPath, sourceUrlPrefix)
-      )
-      .sort(compareFeedEntries)
-      .slice(0, limit);
+    const selected = pages.filter(
+      (page) => !page.draft && isSelectedByPrefix(page.urlPath, sourceUrlPrefix)
+    );
+    // Undated pages would inherit build-time mtimes and reshuffle the feed
+    // on every CI run, so they fail loudly instead of churning silently.
+    const undated = selected.filter((page) => !page.hasExplicitDate);
+    if (undated.length > 0) {
+      throw new Error(
+        `feed "${feed.id}": pages selected by "${sourceUrlPrefix}" are missing date or lastModified frontmatter: ${undated
+          .map((page) => page.urlPath)
+          .join(", ")}`
+      );
+    }
+    const entries = selected.sort(compareFeedEntries).slice(0, limit);
+    if (entries.length === 0) {
+      logger.warn({
+        human: {
+          message: `feed "${feed.id}" matched no pages under "${sourceUrlPrefix}"`,
+          hint: "check source.urlPrefix against generated page URLs",
+        },
+        json: {
+          event: "feed.empty",
+          fields: { feed: feed.id, urlPrefix: sourceUrlPrefix },
+        },
+      });
+    }
     const siteUrl = toAbsoluteUrl(sourceUrlPrefix, baseUrl);
     const feedFiles: { rss?: string; atom?: string } = {};
 
@@ -342,6 +406,13 @@ export async function generateFeedArtifacts(
         continue;
       }
       const outputPath = resolveOutputPath(outDir, outputUrlPath);
+      const claimedBy = claimedOutputs.get(outputPath);
+      if (claimedBy) {
+        throw new Error(
+          `feed "${feed.id}" output.${format} "${outputUrlPath}" collides with ${claimedBy}; feed output paths must be unique`
+        );
+      }
+      claimedOutputs.set(outputPath, `feed "${feed.id}" (${format})`);
       const feedUrl = toAbsoluteUrl(outputUrlPath, baseUrl);
       const rendered =
         format === "rss"
@@ -355,6 +426,7 @@ export async function generateFeedArtifacts(
           : renderAtomFeed({
               title: feed.title,
               description: feed.description,
+              author: config.author,
               siteUrl,
               feedUrl,
               entries,

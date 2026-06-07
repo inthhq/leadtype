@@ -1130,8 +1130,95 @@ description: "First release."
       "utf8"
     );
     expect(atom).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(atom).toContain("<name>Feed Product</name>");
     expect(atom).toContain("<id>https://example.com/changelog/v2</id>");
     expect(atom).not.toContain("Draft release");
+  });
+
+  it("rejects feed output paths that are not .xml or collide", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+
+    const writeFeedConfig = async (output: string) => {
+      await mkdir(path.join(srcDir, "docs"), { recursive: true });
+      await writeFile(
+        path.join(srcDir, "docs", "docs.config.ts"),
+        `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: ${output},
+};`
+      );
+    };
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    await writeFeedConfig(`[
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/quickstart.md" },
+    },
+  ]`);
+    let capture = createCapture();
+    let code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("must end with");
+
+    await writeFeedConfig(`[
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/feed.xml" },
+    },
+    {
+      id: "duplicate",
+      title: "Duplicate",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/feed.xml" },
+    },
+  ]`);
+    capture = createCapture();
+    code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("output paths must be unique");
   });
 
   it("requires --base-url when feeds are configured", async () => {

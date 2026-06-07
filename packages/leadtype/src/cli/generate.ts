@@ -541,6 +541,7 @@ function validateDocsFeeds(
     throw new Error(`docs config at "${configPath}": feeds must be an array`);
   }
   const seen = new Set<string>();
+  const seenOutputs = new Set<string>();
   for (const feed of value) {
     if (!isPlainRecord(feed)) {
       throw new Error(
@@ -604,6 +605,17 @@ function validateDocsFeeds(
           `docs config at "${configPath}": feed "${feed.id}" output.${format} must start with "/"`
         );
       }
+      if (!output.endsWith(".xml")) {
+        throw new Error(
+          `docs config at "${configPath}": feed "${feed.id}" output.${format} must end with ".xml" so feeds cannot overwrite other generated artifacts`
+        );
+      }
+      if (seenOutputs.has(output)) {
+        throw new Error(
+          `docs config at "${configPath}": feed "${feed.id}" output.${format} "${output}" is already used by another feed output; output paths must be unique`
+        );
+      }
+      seenOutputs.add(output);
     }
     if (
       feed.limit !== undefined &&
@@ -2398,6 +2410,7 @@ export async function runGenerateCommand(
       const feeds = await generateFeedArtifacts({
         outDir,
         baseUrl: args.baseUrl,
+        author: product.name,
         feeds: metadata.feeds,
         mounts: effectiveMounts,
         i18n: metadata.i18n,
