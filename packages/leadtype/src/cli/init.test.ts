@@ -60,10 +60,12 @@ describe("parseInitArgs", () => {
       "--base-url",
       "https://x.dev",
       "--no-generate",
+      "--webmcp",
     ]);
     expect(args.framework).toBe("astro");
     expect(args.baseUrl).toBe("https://x.dev");
     expect(args.generate).toBe(false);
+    expect(args.webmcp).toBe(true);
   });
 
   it("rejects unsupported frameworks", () => {
@@ -103,6 +105,74 @@ describe("runInitCommand", () => {
     expect(plan.framework).toBe("sveltekit");
     expect(plan.outDir).toBe("static");
     expect(plan.files).toContain("src/routes/docs/[...slug].md/+server.ts");
+  });
+
+  it("--webmcp adds framework-specific browser registration files", async () => {
+    const cases = [
+      {
+        framework: "next",
+        expected: "components/leadtype-webmcp.tsx",
+      },
+      {
+        framework: "nuxt",
+        expected: "app/plugins/leadtype-webmcp.client.ts",
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const dir = await createTempDir();
+      const capture = createCapture();
+      await runInitCommand(
+        ["--dir", dir, "--framework", testCase.framework, "--webmcp", "--json"],
+        capture.io
+      );
+      const plan = JSON.parse(capture.stdout) as { files: string[] };
+      expect(plan.files).toContain(testCase.expected);
+    }
+  });
+
+  it("--webmcp wires the SvelteKit docs page to the svelte hook", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "sveltekit", "--webmcp", "--no-generate"],
+      capture.io
+    );
+
+    const page = await readFile(
+      path.join(dir, "src/routes/docs/[...slug]/+page.svelte"),
+      "utf8"
+    );
+    expect(page).toContain("leadtype/webmcp/svelte");
+    expect(page).toContain("useLeadtypeWebMcp()");
+  });
+
+  it("--webmcp updates Astro's generated docs page in place", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--webmcp", "--no-generate"],
+      capture.io
+    );
+
+    const page = await readFile(
+      path.join(dir, "src/pages/docs/[...slug].astro"),
+      "utf8"
+    );
+    expect(page).toContain("leadtype/webmcp");
+    expect(page).toContain("registerDocsWebMcpTools");
+  });
+
+  it("does not add WebMCP scaffolding unless --webmcp is passed", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--json"],
+      capture.io
+    );
+
+    const plan = JSON.parse(capture.stdout) as { files: string[] };
+    expect(plan.files).not.toContain("components/leadtype-webmcp.tsx");
   });
 
   it("writes framework files to disk", async () => {

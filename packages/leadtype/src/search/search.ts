@@ -1161,6 +1161,13 @@ export function listDocsContentFiles(
   return files;
 }
 
+/** Document records (id, title, urlPath, …) for every page in the index. */
+export function listDocsSearchDocuments(
+  index: DocsSearchIndex
+): DocsSearchDocumentRecord[] {
+  return index.documents.map(documentRecordFromEntry);
+}
+
 export function attachDocsSearchContent(
   index: DocsSearchIndex,
   content: DocsSearchContentStore

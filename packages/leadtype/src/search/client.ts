@@ -1,11 +1,12 @@
 import type {
   DocsSearchContentStore,
+  DocsSearchDocumentRecord,
   DocsSearchIndex,
   DocsSearchResult,
 } from "./search";
-import { searchDocs } from "./search";
+import { listDocsSearchDocuments, searchDocs } from "./search";
 
-export type { DocsSearchResult } from "./search";
+export type { DocsSearchDocumentRecord, DocsSearchResult } from "./search";
 
 /**
  * Options shared by framework-specific search helpers and the vanilla client.
@@ -49,6 +50,11 @@ export type SearchClient = {
    * Load generated search artifacts before the first query.
    */
   preload(): Promise<void>;
+
+  /**
+   * Document records (id, title, urlPath, …) from the loaded search index.
+   */
+  documents(): Promise<DocsSearchDocumentRecord[]>;
 };
 
 type LoadedArtifacts = {
@@ -155,6 +161,10 @@ export function createSearchClient(
     },
     async preload() {
       await loadArtifacts(indexUrl, contentUrl, fetchImpl);
+    },
+    async documents() {
+      const { index } = await loadArtifacts(indexUrl, contentUrl, fetchImpl);
+      return listDocsSearchDocuments(index);
     },
   };
 }

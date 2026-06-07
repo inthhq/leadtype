@@ -35,6 +35,7 @@ Options:
       --force              Overwrite files that already exist.
       --dry-run            Print the file plan without writing anything.
       --no-generate        Skip running \`leadtype generate\` after scaffolding.
+      --webmcp             Register generated docs as browser-side WebMCP tools.
       --json               Emit the file plan as JSON.
   -h, --help               Show help
 
@@ -53,6 +54,7 @@ export type InitArgs = {
   json: boolean;
   name?: string;
   summary?: string;
+  webmcp: boolean;
 };
 
 export type InitIo = {
@@ -72,6 +74,7 @@ export function parseInitArgs(argv: string[]): InitArgs {
     generate: true,
     help: false,
     json: false,
+    webmcp: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -118,6 +121,9 @@ export function parseInitArgs(argv: string[]): InitArgs {
         break;
       case "--no-generate":
         args.generate = false;
+        break;
+      case "--webmcp":
+        args.webmcp = true;
         break;
       case "--json":
         args.json = true;
@@ -401,7 +407,7 @@ export async function runInitCommand(
   const summary = args.summary ?? DEFAULT_SUMMARY;
   const baseUrl = args.baseUrl ?? defaultBaseUrl(framework);
 
-  const plan = buildPlan(framework, baseUrl);
+  const plan = buildPlan(framework, baseUrl, { webmcp: args.webmcp });
   const allFiles = [...sharedFiles(name, summary), ...plan.files];
 
   if (args.json) {

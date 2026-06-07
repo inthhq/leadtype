@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
 const AI_DISABLED_MESSAGE = /AI answers are disabled/i;
+const DOCS_URL = /\/docs$/;
 const REMARK_DOCS_URL = /\/docs\/reference\/remark/;
 const DIGIT_LEADING_HASH_URL = /#1-generate-the-artifacts$/;
 
@@ -10,19 +11,34 @@ async function waitForClientHydration(page: Page): Promise<void> {
   );
 }
 
-test("home renders the developer dashboard with package surfaces", async ({
-  page,
-  request,
-}) => {
-  const response = await request.get("/");
-  const html = await response.text();
+async function installWebMcpMock(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const tools: Array<{
+      execute: (input: Record<string, unknown>, client: object) => unknown;
+      name: string;
+    }> = [];
+    Object.defineProperty(window, "__leadtypeWebMcpTools", {
+      configurable: true,
+      value: tools,
+    });
+    Object.defineProperty(window.navigator, "modelContext", {
+      configurable: true,
+      value: {
+        registerTool(tool: (typeof tools)[number]) {
+          tools.push(tool);
+        },
+      },
+    });
+  });
+}
 
-  expect(html).toContain("Leadtype");
-  expect(html).toContain("One MDX source");
-  expect(html).toContain("application/ld+json");
+test("home redirects to docs", async ({ page, request }) => {
+  const response = await request.get("/");
+
+  expect(response.url()).toMatch(DOCS_URL);
 
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/docs");
   await expect(
     page.getByRole("heading", { name: "Leadtype", exact: true })
   ).toBeVisible();
@@ -326,4 +342,48 @@ test("playground route renders the recipes panel", async ({ page }) => {
   await page.goto("/playground", { waitUntil: "networkidle" });
   await waitForClientHydration(page);
   await expect(page.getByText("Recipes playground")).toBeVisible();
+});
+
+test("registers docs tools with WebMCP on page load", async ({ page }) => {
+  await installWebMcpMock(page);
+  await page.goto("/docs", { waitUntil: "networkidle" });
+  await waitForClientHydration(page);
+
+  await page.waitForFunction(() => {
+    const tools = (
+      window as unknown as {
+        __leadtypeWebMcpTools?: Array<{ name: string }>;
+      }
+    ).__leadtypeWebMcpTools;
+    return tools?.some((tool) => tool.name === "search-docs");
+  });
+
+  const result = await page.evaluate(async () => {
+    const tools = (
+      window as unknown as {
+        __leadtypeWebMcpTools: Array<{
+          execute: (
+            input: Record<string, unknown>,
+            client: object
+          ) => Promise<unknown> | unknown;
+          name: string;
+        }>;
+      }
+    ).__leadtypeWebMcpTools;
+    const search = tools.find((tool) => tool.name === "search-docs");
+    const getPage = tools.find((tool) => tool.name === "get-page");
+    // execute()'s second argument is the WebMCP client (ModelContextClient);
+    // the docs tools never touch it, so an empty stub suffices here.
+    const hits = (await search?.execute({ query: "quickstart" }, {})) as Array<{
+      urlPath: string;
+    }>;
+    const markdown = (await getPage?.execute(
+      { urlPath: hits[0]?.urlPath ?? "" },
+      {}
+    )) as string;
+    return { hits: hits.length, markdown };
+  });
+
+  expect(result.hits).toBeGreaterThan(0);
+  expect(result.markdown).toContain("Quickstart");
 });
