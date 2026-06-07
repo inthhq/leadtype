@@ -16,7 +16,7 @@ import {
   type DocsSidebarLink,
   type DocsSidebarSection,
 } from "leadtype/navigation";
-import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -798,12 +798,7 @@ function ReadyDocsApp({
 }
 
 export function App() {
-  useEffect(() => {
-    const registration = registerWebMcpTools(createDocsWebMcpTools());
-    return () => {
-      registration.unregister();
-    };
-  }, []);
+  useLeadtypeWebMcp();
 
   const docs = useDocsState();
   const { route, setRoute } = useCurrentRoute();

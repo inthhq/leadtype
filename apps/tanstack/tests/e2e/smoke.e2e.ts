@@ -372,6 +372,8 @@ test("registers docs tools with WebMCP on page load", async ({ page }) => {
     ).__leadtypeWebMcpTools;
     const search = tools.find((tool) => tool.name === "search-docs");
     const getPage = tools.find((tool) => tool.name === "get-page");
+    // execute()'s second argument is the WebMCP client (ModelContextClient);
+    // the docs tools never touch it, so an empty stub suffices here.
     const hits = (await search?.execute({ query: "quickstart" }, {})) as Array<{
       urlPath: string;
     }>;

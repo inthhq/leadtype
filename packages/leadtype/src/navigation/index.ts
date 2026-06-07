@@ -162,15 +162,46 @@ function sectionsForUngrouped(
   ];
 }
 
+/** Which groups {@link getSidebarSections} includes. */
+export type DocsSidebarScope = "active" | "all";
+
+export type GetSidebarSectionsOptions = {
+  /**
+   * `"active"` (default) flattens only the group that owns `pathname` — the
+   * tabbed multi-surface layout. `"all"` lists ungrouped pages first, then
+   * every root group — the single-sidebar docs layout.
+   */
+  scope?: DocsSidebarScope;
+};
+
+/**
+ * Every sidebar section across the whole manifest: ungrouped pages first,
+ * then one set of sections per root group. Use for single-sidebar layouts
+ * where the header has one "Docs" link instead of per-group tabs.
+ */
+export function getAllSidebarSections(
+  manifest: DocsNavigation
+): DocsSidebarSection[] {
+  return [
+    ...sectionsForUngrouped(manifest.ungrouped),
+    ...manifest.groups.flatMap(sectionsForGroup),
+  ];
+}
+
 /**
  * Sidebar sections for the active surface. Resolves the group that owns
  * `pathname` (falling back to the first group) and flattens it into sections:
- * the group's direct pages, then one section per child group.
+ * the group's direct pages, then one section per child group. Pass
+ * `{ scope: "all" }` to list every group instead.
  */
 export function getSidebarSections(
   manifest: DocsNavigation,
-  pathname: string
+  pathname: string,
+  options: GetSidebarSectionsOptions = {}
 ): DocsSidebarSection[] {
+  if (options.scope === "all") {
+    return getAllSidebarSections(manifest);
+  }
   const normalized = normalizeDocsPath(pathname);
   const activeGroup = getActiveGroup(manifest, normalized);
   if (activeGroup) {
@@ -184,6 +215,19 @@ export function getSidebarSections(
   }
   const fallbackGroup = manifest.groups[0];
   return fallbackGroup ? sectionsForGroup(fallbackGroup) : [];
+}
+
+/**
+ * Whether `pathname` is `route` or nested beneath it. Use for app-defined
+ * header links that should stay active across a route subtree.
+ */
+export function isRouteActive(pathname: string, route: string): boolean {
+  const normalizedPath = normalizeDocsPath(pathname);
+  const normalizedRoute = normalizeDocsPath(route);
+  return (
+    normalizedPath === normalizedRoute ||
+    normalizedPath.startsWith(`${normalizedRoute}/`)
+  );
 }
 
 /** Top-level header tabs — one per root docs group. */
@@ -359,7 +403,10 @@ export function getAdjacentPages(
 /** Bound navigation helpers for a single manifest. */
 export type DocsNavigationApi = {
   manifest: DocsNavigation;
-  getSidebarSections: (pathname: string) => DocsSidebarSection[];
+  getSidebarSections: (
+    pathname: string,
+    options?: GetSidebarSectionsOptions
+  ) => DocsSidebarSection[];
   getHeaderTabs: () => DocsHeaderTab[];
   getActiveGroup: (pathname: string) => DocsNavigationGroup | undefined;
   findPage: (pathname: string) => DocsNavigationPage | undefined;
@@ -389,7 +436,8 @@ export function createDocsNavigation(
 ): DocsNavigationApi {
   return {
     manifest,
-    getSidebarSections: (pathname) => getSidebarSections(manifest, pathname),
+    getSidebarSections: (pathname, options) =>
+      getSidebarSections(manifest, pathname, options),
     getHeaderTabs: () => getHeaderTabs(manifest),
     getActiveGroup: (pathname) => getActiveGroup(manifest, pathname),
     findPage: (pathname) => findNavigationPage(manifest, pathname),

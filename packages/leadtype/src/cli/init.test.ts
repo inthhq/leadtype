@@ -117,10 +117,6 @@ describe("runInitCommand", () => {
         framework: "nuxt",
         expected: "app/plugins/leadtype-webmcp.client.ts",
       },
-      {
-        framework: "sveltekit",
-        expected: "src/lib/leadtype-webmcp.ts",
-      },
     ] as const;
 
     for (const testCase of cases) {
@@ -133,6 +129,22 @@ describe("runInitCommand", () => {
       const plan = JSON.parse(capture.stdout) as { files: string[] };
       expect(plan.files).toContain(testCase.expected);
     }
+  });
+
+  it("--webmcp wires the SvelteKit docs page to the svelte hook", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "sveltekit", "--webmcp", "--no-generate"],
+      capture.io
+    );
+
+    const page = await readFile(
+      path.join(dir, "src/routes/docs/[...slug]/+page.svelte"),
+      "utf8"
+    );
+    expect(page).toContain("leadtype/webmcp/svelte");
+    expect(page).toContain("useLeadtypeWebMcp()");
   });
 
   it("--webmcp updates Astro's generated docs page in place", async () => {
@@ -148,7 +160,7 @@ describe("runInitCommand", () => {
       "utf8"
     );
     expect(page).toContain("leadtype/webmcp");
-    expect(page).toContain("registerWebMcpTools");
+    expect(page).toContain("registerDocsWebMcpTools");
   });
 
   it("does not add WebMCP scaffolding unless --webmcp is passed", async () => {

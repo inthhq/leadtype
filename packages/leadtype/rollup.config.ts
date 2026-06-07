@@ -36,6 +36,9 @@ const entries = {
   "lint/index": "src/lint/index.ts",
   "mcp/index": "src/mcp/index.ts",
   "webmcp/index": "src/webmcp/index.ts",
+  "webmcp/react": "src/webmcp/react.ts",
+  "webmcp/vue": "src/webmcp/vue.ts",
+  "webmcp/svelte": "src/webmcp/svelte.ts",
   "score/index": "src/score/index.ts",
   cli: "src/cli.ts",
 } as const;

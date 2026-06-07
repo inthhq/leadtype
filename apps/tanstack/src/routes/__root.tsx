@@ -5,7 +5,7 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
 import { type ReactNode, useEffect } from "react";
 import { NotFound } from "@/components/not-found";
 import { siteJsonLdScript } from "@/lib/docs-head";
@@ -112,13 +112,7 @@ function getHashScrollOffsetPx(): number {
 }
 
 function LeadtypeWebMcp() {
-  useEffect(() => {
-    const registration = registerWebMcpTools(createDocsWebMcpTools());
-    return () => {
-      registration.unregister();
-    };
-  }, []);
-
+  useLeadtypeWebMcp();
   return null;
 }
 

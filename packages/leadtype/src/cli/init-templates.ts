@@ -87,17 +87,10 @@ function nextWebMcpFile(): InitFile {
     path: "components/leadtype-webmcp.tsx",
     contents: `"use client";
 
-import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
-import { useEffect } from "react";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
 
 export function LeadtypeWebMcp() {
-  useEffect(() => {
-    const registration = registerWebMcpTools(createDocsWebMcpTools());
-    return () => {
-      registration.unregister();
-    };
-  }, []);
-
+  useLeadtypeWebMcp();
   return null;
 }
 `,
@@ -106,9 +99,9 @@ export function LeadtypeWebMcp() {
 
 function astroWebMcpScript(): string {
   return `      <script>
-        import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+        import { registerDocsWebMcpTools } from "leadtype/webmcp";
 
-        const registration = registerWebMcpTools(createDocsWebMcpTools());
+        const registration = registerDocsWebMcpTools();
         globalThis.addEventListener("pagehide", () => {
           registration.unregister();
         }, { once: true });
@@ -119,27 +112,15 @@ function astroWebMcpScript(): string {
 function nuxtWebMcpFile(): InitFile {
   return {
     path: "app/plugins/leadtype-webmcp.client.ts",
-    contents: `import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+    contents: `import { registerDocsWebMcpTools } from "leadtype/webmcp";
 import { defineNuxtPlugin } from "#app";
 
 export default defineNuxtPlugin(() => {
-  const registration = registerWebMcpTools(createDocsWebMcpTools());
+  const registration = registerDocsWebMcpTools();
   globalThis.addEventListener("pagehide", () => {
     registration.unregister();
   }, { once: true });
 });
-`,
-  };
-}
-
-function svelteWebMcpHelperFile(): InitFile {
-  return {
-    path: "src/lib/leadtype-webmcp.ts",
-    contents: `import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
-
-export function registerLeadtypeWebMcp() {
-  return registerWebMcpTools(createDocsWebMcpTools());
-}
 `,
   };
 }
@@ -455,16 +436,11 @@ function sveltekitPlan(
   options: BuildPlanOptions = {}
 ): FrameworkPlan {
   const webmcpImport = options.webmcp
-    ? '  import { onMount } from "svelte";\n  import { registerLeadtypeWebMcp } from "$lib/leadtype-webmcp";\n'
+    ? '  import { useLeadtypeWebMcp } from "leadtype/webmcp/svelte";\n'
     : "";
   const webmcpMount = options.webmcp
     ? `
-  onMount(() => {
-    const registration = registerLeadtypeWebMcp();
-    return () => {
-      registration.unregister();
-    };
-  });
+  useLeadtypeWebMcp();
 `
     : "";
   return {
@@ -479,7 +455,6 @@ function sveltekitPlan(
       "mdsvex",
     ],
     files: [
-      ...(options.webmcp ? [svelteWebMcpHelperFile()] : []),
       {
         path: "svelte.config.js",
         contents: `import path from "node:path";

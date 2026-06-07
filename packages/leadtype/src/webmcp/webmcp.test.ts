@@ -5,11 +5,21 @@ import {
 } from "../search/index";
 import {
   createDocsWebMcpTools,
+  registerDocsWebMcpTools,
   registerWebMcpTools,
   type WebMcpTool,
 } from "./index";
 
 const docs: DocsSearchDocument[] = [
+  {
+    id: "index",
+    title: "Docs",
+    description: "Leadtype documentation.",
+    urlPath: "/docs",
+    absoluteUrl: "https://leadtype.dev/docs",
+    relativePath: "index",
+    content: "# Docs\n\nWelcome to the documentation.",
+  },
   {
     id: "quickstart",
     title: "Quickstart",
@@ -147,6 +157,41 @@ describe("registerWebMcpTools", () => {
     ).toThrow(/invalid tool name/);
     expect(registrations).toHaveLength(0);
   });
+
+  it("rejects invalid tool definitions even when WebMCP is unavailable", () => {
+    expect(() =>
+      registerWebMcpTools([
+        {
+          name: "bad name",
+          description: "Bad.",
+          execute: () => "",
+        },
+      ])
+    ).toThrow(/invalid tool name/);
+  });
+
+  it("rolls back earlier registrations when a later registerTool throws", () => {
+    const { registrations } = createModelContext();
+    const failingContext = {
+      registerTool: (tool: WebMcpTool, options?: { signal?: AbortSignal }) => {
+        if (registrations.length === 1) {
+          throw new Error("InvalidStateError: duplicate tool name");
+        }
+        registrations.push({ options, tool });
+      },
+    };
+
+    expect(() =>
+      registerWebMcpTools(
+        [
+          { name: "first", description: "First.", execute: () => "" },
+          { name: "second", description: "Second.", execute: () => "" },
+        ],
+        { modelContext: failingContext }
+      )
+    ).toThrow(/duplicate tool name/);
+    expect(registrations[0]?.options?.signal?.aborted).toBe(true);
+  });
 });
 
 describe("createDocsWebMcpTools", () => {
@@ -213,5 +258,163 @@ describe("createDocsWebMcpTools", () => {
     await expect(getPage?.execute({ urlPath: "/docs" }, {})).resolves.toBe(
       "# Docs"
     );
+  });
+
+  it("rejects urlPaths that escape the site's own URL space", async () => {
+    const index = createDocsSearchIndex(docs);
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href === "/docs/search-index.json") {
+        return jsonResponse(index);
+      }
+      if (href === "/docs/search-content.json" && index.content) {
+        return jsonResponse(index.content);
+      }
+      return new Response("owned", { status: 200 });
+    });
+    const getPage = createDocsWebMcpTools({ fetch: fetchMock }).find(
+      (tool) => tool.name === "get-page"
+    );
+
+    const hostileInputs = [
+      "//evil.example/exfil",
+      "/\\evil.example/exfil",
+      "/docs/../private",
+      "/docs/page?x=1",
+      "/docs/page#frag",
+    ];
+    for (const urlPath of hostileInputs) {
+      await expect(getPage?.execute({ urlPath }, {})).rejects.toThrow(
+        /invalid urlPath/
+      );
+    }
+    // Only the search artifacts may have been fetched — never the hostile URL.
+    for (const call of fetchMock.mock.calls) {
+      expect(String(call[0])).toMatch(/^\/docs\/search-/);
+    }
+  });
+
+  it("rejects pages that are not in the search index with a search hint", async () => {
+    const index = createDocsSearchIndex(docs);
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href === "/docs/search-index.json") {
+        return jsonResponse(index);
+      }
+      if (href === "/docs/search-content.json" && index.content) {
+        return jsonResponse(index.content);
+      }
+      return new Response("# Secret", { status: 200 });
+    });
+    const getPage = createDocsWebMcpTools({ fetch: fetchMock }).find(
+      (tool) => tool.name === "get-page"
+    );
+
+    await expect(
+      getPage?.execute({ urlPath: "/docs/not-a-page" }, {})
+    ).rejects.toThrow(/Call search-docs/);
+  });
+
+  it("fails open to syntactic validation when the index is unreachable", async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href === "/docs/quickstart.md") {
+        return new Response("# Quickstart");
+      }
+      return new Response("not found", { status: 404 });
+    });
+    // Distinct artifact URLs sidestep the module-level artifact cache shared
+    // with the other tests.
+    const getPage = createDocsWebMcpTools({
+      fetch: fetchMock,
+      indexUrl: "/unreachable/search-index.json",
+      contentUrl: "/unreachable/search-content.json",
+    }).find((tool) => tool.name === "get-page");
+
+    await expect(
+      getPage?.execute({ urlPath: "/docs/quickstart" }, {})
+    ).resolves.toBe("# Quickstart");
+  });
+
+  it("skips index membership checks when validatePages is false", async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href === "/docs/unindexed.md") {
+        return new Response("# Unindexed");
+      }
+      return new Response("not found", { status: 404 });
+    });
+    const getPage = createDocsWebMcpTools({
+      fetch: fetchMock,
+      validatePages: false,
+    }).find((tool) => tool.name === "get-page");
+
+    await expect(
+      getPage?.execute({ urlPath: "/docs/unindexed" }, {})
+    ).resolves.toBe("# Unindexed");
+    // The index is never consulted.
+    for (const call of fetchMock.mock.calls) {
+      expect(String(call[0])).not.toMatch(/search-index/);
+    }
+  });
+
+  it("clamps the search limit and reports non-positive limits", async () => {
+    const index = createDocsSearchIndex(docs);
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href === "/docs/search-index.json") {
+        return jsonResponse(index);
+      }
+      if (href === "/docs/search-content.json" && index.content) {
+        return jsonResponse(index.content);
+      }
+      return new Response("not found", { status: 404 });
+    });
+    const search = createDocsWebMcpTools({ fetch: fetchMock }).find(
+      (tool) => tool.name === "search-docs"
+    );
+
+    await expect(
+      search?.execute({ query: "docs", limit: 0 }, {})
+    ).rejects.toThrow(/positive integer/);
+    // An oversized limit is clamped instead of rejected.
+    const hits = (await search?.execute(
+      { query: "docs", limit: 10_000 },
+      {}
+    )) as unknown[];
+    expect(Array.isArray(hits)).toBe(true);
+  });
+
+  it("derives tool names from non-default collections", () => {
+    const tools = createDocsWebMcpTools({
+      collection: "API Reference",
+      fetch: vi.fn(),
+    });
+
+    expect(tools.map((tool) => tool.name)).toEqual([
+      "search-api-reference",
+      "get-api-reference-page",
+    ]);
+    expect(tools[0]?.description).toContain("get-api-reference-page");
+  });
+});
+
+describe("registerDocsWebMcpTools", () => {
+  it("creates and registers the docs tools in one call", () => {
+    const { context, registrations } = createModelContext();
+
+    const result = registerDocsWebMcpTools({
+      fetch: vi.fn(),
+      modelContext: context,
+    });
+
+    expect(result.supported).toBe(true);
+    expect(registrations.map((entry) => entry.tool.name)).toEqual([
+      "search-docs",
+      "get-page",
+    ]);
+
+    result.unregister();
+    expect(registrations[0]?.options?.signal?.aborted).toBe(true);
   });
 });

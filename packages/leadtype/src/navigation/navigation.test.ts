@@ -9,11 +9,13 @@ import {
   findNavigationPage,
   getActiveGroup,
   getAdjacentPages,
+  getAllSidebarSections,
   getBreadcrumbs,
   getHeaderTabs,
   getOrderedPages,
   getSidebarSections,
   isHeaderTabActive,
+  isRouteActive,
   normalizeDocsPath,
 } from "./index";
 
@@ -140,6 +142,53 @@ describe("getSidebarSections", () => {
         ],
       },
     ]);
+  });
+
+  it('lists ungrouped pages then every group with scope "all"', () => {
+    const sections = getSidebarSections(buildManifest(), "/docs/guides/intro", {
+      scope: "all",
+    });
+    expect(sections.map((s) => s.title)).toEqual([
+      "Docs",
+      "Guides",
+      "Advanced",
+      "Reference",
+    ]);
+    expect(sections[0].links).toEqual([
+      { label: "Changelog", to: "/docs/changelog" },
+    ]);
+  });
+
+  it('returns the same full sidebar for every path with scope "all"', () => {
+    const manifest = buildManifest();
+    expect(
+      getSidebarSections(manifest, "/docs/reference/cli", { scope: "all" })
+    ).toEqual(
+      getSidebarSections(manifest, "/docs/changelog", { scope: "all" })
+    );
+  });
+});
+
+describe("getAllSidebarSections", () => {
+  it('matches scope "all" output', () => {
+    const manifest = buildManifest();
+    expect(getAllSidebarSections(manifest)).toEqual(
+      getSidebarSections(manifest, "/anything", { scope: "all" })
+    );
+  });
+});
+
+describe("isRouteActive", () => {
+  it("matches the route itself and nested paths", () => {
+    expect(isRouteActive("/docs", "/docs")).toBe(true);
+    expect(isRouteActive("/docs/guides/intro", "/docs")).toBe(true);
+    expect(isRouteActive("/docs/", "/docs")).toBe(true);
+  });
+
+  it("does not match siblings or prefixes of other segments", () => {
+    expect(isRouteActive("/docsearch", "/docs")).toBe(false);
+    expect(isRouteActive("/playground", "/docs")).toBe(false);
+    expect(isRouteActive("/", "/docs")).toBe(false);
   });
 });
 

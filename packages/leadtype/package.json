@@ -151,6 +151,18 @@
       "types": "./dist/webmcp/index.d.ts",
       "import": "./dist/webmcp/index.js"
     },
+    "./webmcp/react": {
+      "types": "./dist/webmcp/react.d.ts",
+      "import": "./dist/webmcp/react.js"
+    },
+    "./webmcp/vue": {
+      "types": "./dist/webmcp/vue.d.ts",
+      "import": "./dist/webmcp/vue.js"
+    },
+    "./webmcp/svelte": {
+      "types": "./dist/webmcp/svelte.d.ts",
+      "import": "./dist/webmcp/svelte.js"
+    },
     "./score": {
       "types": "./dist/score/index.d.ts",
       "import": "./dist/score/index.js"

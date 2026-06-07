@@ -1,15 +1,8 @@
 "use client";
 
-import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
-import { useEffect } from "react";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
 
 export function LeadtypeWebMcp() {
-  useEffect(() => {
-    const registration = registerWebMcpTools(createDocsWebMcpTools());
-    return () => {
-      registration.unregister();
-    };
-  }, []);
-
+  useLeadtypeWebMcp();
   return null;
 }

@@ -44,16 +44,9 @@
       </section>
     </main>
     <script>
-      import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+      import { registerLeadtypeWebMcp } from "../lib/leadtype-webmcp";
 
-      const registration = registerWebMcpTools(createDocsWebMcpTools());
-      globalThis.addEventListener(
-        "pagehide",
-        () => {
-          registration.unregister();
-        },
-        { once: true }
-      );
+      registerLeadtypeWebMcp();
     </script>
   </body>
 </html>

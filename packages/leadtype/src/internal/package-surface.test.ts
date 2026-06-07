@@ -22,6 +22,9 @@ const FRAMEWORK_RUNTIME_DIRECTORIES = [
   "search/react.ts",
   "search/vue.ts",
   "search/svelte.ts",
+  "webmcp/react.ts",
+  "webmcp/vue.ts",
+  "webmcp/svelte.ts",
 ] as const;
 
 // Banned framework runtimes. Adapter directories may import their matching
@@ -109,6 +112,9 @@ describe("package surface", () => {
       "./lint",
       "./mcp",
       "./webmcp",
+      "./webmcp/react",
+      "./webmcp/vue",
+      "./webmcp/svelte",
       "./score",
     ] as const;
 
