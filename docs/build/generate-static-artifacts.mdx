@@ -60,6 +60,8 @@ That command writes:
 - `public/docs/sitemap.xml`, `sitemap.md`, `robots.txt`, and `agent-readability.json`
 - configured RSS/Atom feeds, such as `public/changelog/rss.xml`
 
+For the feed-specific configuration and date rules, see [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds).
+
 Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
 
 ## Multi-source mounting
@@ -129,6 +131,8 @@ export default {
   ],
 };
 ```
+
+Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes; use `--enrich-git` only when Git-derived `lastModified` is the publication signal you want. See [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds) for the full feed contract.
 
 ## Wire it into the build
 

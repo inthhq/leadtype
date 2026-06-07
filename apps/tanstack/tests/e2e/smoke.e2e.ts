@@ -217,6 +217,16 @@ test("agent readability discovery files are served at the site root", async ({
     expect(markdownMirror.ok()).toBe(true);
   }
 
+  const changelogRss = await request.get("/changelog/rss.xml");
+  expect(changelogRss.ok()).toBe(true);
+  expect(await changelogRss.text()).toContain(
+    "<title>Leadtype Changelog</title>"
+  );
+
+  const changelogAtom = await request.get("/changelog/atom.xml");
+  expect(changelogAtom.ok()).toBe(true);
+  expect(await changelogAtom.text()).toContain("<title>Leadtype 0.2</title>");
+
   // /llms-full.txt is an agent artifact, not a markdown mirror — even when
   // an agent asks for markdown the static text file should be returned, not
   // a "Page not found" body.

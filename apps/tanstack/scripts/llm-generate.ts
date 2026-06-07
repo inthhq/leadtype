@@ -11,6 +11,7 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { generateFeedArtifacts } from "leadtype/feed";
 import {
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
@@ -129,6 +130,14 @@ await generateSkillArtifacts({
 });
 
 await copyMountedMarkdownMirrors();
+
+await generateFeedArtifacts({
+  outDir,
+  baseUrl,
+  author: agentInputs.product.name,
+  feeds: docsConfig.feeds,
+  mounts: docsConfig.mounts,
+});
 
 // Build the runtime sidebar manifest. Doing this in the build pipeline keeps
 // the docs.config.ts as the single source of truth: the same call resolves

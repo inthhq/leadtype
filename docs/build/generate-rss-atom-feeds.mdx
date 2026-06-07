@@ -1,0 +1,103 @@
+---
+title: "Generate RSS and Atom feeds"
+description: "Configure Leadtype to emit RSS and Atom feeds for changelogs, blogs, release notes, or any URL-prefixed generated docs content."
+related:
+  - title: "Generate static artifacts"
+    href: "/docs/build/generate-static-artifacts"
+    description: "Run leadtype generate from your build pipeline."
+  - title: "Configure docs sources"
+    href: "/docs/sources/configure-sources"
+    description: "Mount changelog or blog content at a public URL prefix."
+---
+
+Leadtype can generate RSS and Atom feeds from any URL-prefixed set of generated pages by adding `feeds` to your docs config. Use this for changelogs, blogs, release notes, news, or any mounted content that should be syndicated.
+
+## How do I generate a changelog feed?
+
+Add a mount for the changelog route, then add a feed whose `source.urlPrefix` points at that mounted URL. Leadtype reads the generated markdown mirror, filters pages by URL, and writes the feed files into the same public output directory as the rest of `leadtype generate`.
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My product",
+    tagline: "Developer tools for modern apps.",
+  },
+  navigation: [
+    "index",
+    { title: "Changelog", base: "changelog", pages: [{ include: "*" }] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "My product changelog",
+      description: "Release notes and product updates for My product.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+});
+```
+
+Run site-mode generation with a base URL:
+
+```bash
+leadtype generate --src . --out public --base-url https://docs.example.com
+```
+
+That writes `public/changelog/rss.xml` and `public/changelog/atom.xml`. The JSON output includes the generated paths under `files.feeds.<id>`.
+
+## What date should feed entries use?
+
+Changelog entries should use a fixed release date in frontmatter because the published release date is part of the content. Git-derived `lastModified` is useful for blogs or docs pages where "updated at" is the right feed date, but a changelog should not change publication date when someone fixes a typo later.
+
+```mdx title="docs/changelog/v1.mdx"
+---
+title: "Version 1"
+description: "First stable release."
+date: 2026-06-03
+---
+```
+
+Every page selected by a feed must have either `date` or `lastModified`-style frontmatter. Add `date` by hand for release notes and changelogs. For pages where the feed should track source edits, run `leadtype generate --enrich-git` so Leadtype writes `lastModified` from git history before the feed is rendered.
+
+Leadtype fails generation when a selected feed page has no stable date. It does not use generated file mtimes because CI rewrites generated markdown on every build, which would reshuffle the feed even when the source content did not change.
+
+## Which pages become feed entries?
+
+`source.urlPrefix` selects generated pages by canonical URL. A prefix of `/changelog` selects `/changelog/v1`, `/changelog/v2`, and other child pages; it does not include the page at exactly `/changelog`, which is usually a listing page. A prefix of `/` selects every generated page.
+
+Pages with `draft: true` are excluded. Entries are sorted newest first and capped at `limit` when set; otherwise Leadtype includes the latest 20 entries.
+
+## What output paths are allowed?
+
+Feed output paths must start with `/`, end with `.xml`, resolve inside the configured `--out` directory, and be unique across all feeds. This prevents a feed from overwriting generated markdown mirrors, sitemap files, or another feed.
+
+```ts
+feeds: [
+  {
+    id: "blog",
+    title: "Product blog",
+    source: { urlPrefix: "/blog" },
+    formats: ["rss"],
+    output: { rss: "/blog/rss.xml" },
+  },
+];
+```
+
+## How do I verify the feed?
+
+After generation, check the files directly or through the example app that serves the public directory:
+
+```bash
+test -f public/changelog/rss.xml
+test -f public/changelog/atom.xml
+```
+
+The Leadtype example apps dogfood this through the real Leadtype changelog. Their build pipelines run `leadtype generate`, then the smoke tests request `/changelog/rss.xml` and `/changelog/atom.xml` from the served app.

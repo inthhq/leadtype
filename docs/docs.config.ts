@@ -159,6 +159,7 @@ const config: DocsConfig = {
           title: "Generate & serve",
           pages: [
             "generate-static-artifacts",
+            "generate-rss-atom-feeds",
             "optimize-docs-for-agents",
             "serve-agent-responses",
             "deploy-generated-artifacts",
@@ -230,6 +231,19 @@ const config: DocsConfig = {
     },
   ],
   mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "Leadtype Changelog",
+      description: "Release notes and product updates for Leadtype.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
   agents: {
     // Fully crawlable + retrievable; signals "don't train on this" (the default).
     robots: { policy: "balanced" },
