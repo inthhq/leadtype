@@ -39,6 +39,14 @@ const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_QUARANTINE_PATH",
   "GIT_WORK_TREE",
 ] as const;
+const GIT_IDENTITY_ENV_KEYS = [
+  "GIT_AUTHOR_DATE",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_AUTHOR_NAME",
+  "GIT_COMMITTER_DATE",
+  "GIT_COMMITTER_EMAIL",
+  "GIT_COMMITTER_NAME",
+] as const;
 const BASE_URL_ENV_KEYS = [
   "NEXT_PUBLIC_SITE_URL",
   "NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL",
@@ -94,7 +102,7 @@ async function createTempDir(): Promise<string> {
 
 function gitFixtureEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
-  for (const key of GIT_REPOSITORY_ENV_KEYS) {
+  for (const key of [...GIT_REPOSITORY_ENV_KEYS, ...GIT_IDENTITY_ENV_KEYS]) {
     delete env[key];
   }
   return env;
