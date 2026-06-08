@@ -681,6 +681,19 @@ describe("leadtype CLI", () => {
     name: "Configured Product",
     tagline: "Configured product summary.",
   },
+  organization: {
+    name: "Configured Org",
+    url: "https://example.com",
+    sameAs: ["https://github.com/example"],
+    contactPoint: {
+      contactType: "customer support",
+      email: "support@example.com",
+    },
+    address: {
+      addressCountry: "US",
+      addressLocality: "San Francisco",
+    },
+  },
   groups: [
     { slug: "zeta", title: "Zeta First" },
     { slug: "alpha", title: "Alpha Second" },
@@ -729,6 +742,29 @@ describe("leadtype CLI", () => {
     expect(docsLlmsTxt.indexOf("## Zeta First")).toBeLessThan(
       docsLlmsTxt.indexOf("## Alpha Second")
     );
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as {
+      jsonLd?: {
+        organization?: {
+          address?: { addressCountry?: string };
+          contactPoint?: { contactType?: string; email?: string };
+          sameAs?: string[];
+        };
+      };
+    };
+    expect(manifest.jsonLd?.organization).toMatchObject({
+      address: { addressCountry: "US" },
+      contactPoint: {
+        contactType: "customer support",
+        email: "support@example.com",
+      },
+      sameAs: ["https://github.com/example"],
+    });
   });
 
   it("uses one MCP discovery config for server-card, agent-card, and docs-skill", async () => {

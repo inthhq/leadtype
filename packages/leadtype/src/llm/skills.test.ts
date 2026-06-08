@@ -50,7 +50,13 @@ describe("generateSkillArtifacts — site mode", () => {
         join(outDir, ".well-known/agent-skills/index.json"),
         "utf8"
       )
-    ) as { skills: { name: string; integrity: string; path: string }[] };
+    ) as {
+      $schema: string;
+      skills: { name: string; integrity: string; path: string }[];
+    };
+    expect(index.$schema).toBe(
+      "https://schemas.agentskills.io/discovery/0.2.0/schema.json"
+    );
     expect(index.skills[0].name).toBe("acme-docs-docs");
     expect(index.skills[0].integrity).toMatch(/^sha256-/);
 

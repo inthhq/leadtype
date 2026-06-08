@@ -7,6 +7,8 @@ const NON_SLUG_PATTERN = /[^a-z0-9]+/g;
 const EDGE_DASH_PATTERN = /^-+|-+$/g;
 const WELL_KNOWN_DIR = ".well-known";
 const SKILLS_DIR = "agent-skills";
+const DISCOVERY_SCHEMA_URL =
+  "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
 const YAML_NEEDS_QUOTE = /[:#]/;
 // A skill name becomes a `.well-known/agent-skills/<name>/` directory and the
 // agentskills.io identifier, so it must be a safe lowercase slug — never a path
@@ -268,7 +270,15 @@ export async function generateSkillArtifacts(
   const indexPath = path.join(skillsRoot, "index.json");
   await writeFile(
     indexPath,
-    `${JSON.stringify({ version: 1, skills: manifestEntries }, null, 2)}\n`
+    `${JSON.stringify(
+      {
+        $schema: DISCOVERY_SCHEMA_URL,
+        version: 1,
+        skills: manifestEntries,
+      },
+      null,
+      2
+    )}\n`
   );
   files.push(indexPath);
 
