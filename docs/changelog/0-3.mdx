@@ -78,9 +78,9 @@ scaling, validated by a new benchmark against real TanStack-scale docs.
 - Made `searchDocs` latency scale linearly with corpus size. Chunk lookups now
   use a cached map instead of a per-result linear scan, and excerpts are built
   only for results that survive the limit. Ranking is unchanged. On a
-  20,000-chunk corpus this cuts p95 query latency from roughly 665ms to 186ms;
+  20,000-chunk corpus this cuts p95 query latency from roughly 665 ms to 186 ms;
   at the scale of the combined TanStack Router, Start, and Query docs
-  (about 5,000 chunks), median queries run in about 13ms.
+  (about 5,000 chunks), median queries run in about 13 ms.
 - Added a search scalability benchmark (`pipeline:search-bench` in the TanStack
   example) that measures index build time, artifact sizes, parse cost, memory,
   and query latency across real and synthetically grown corpora.
