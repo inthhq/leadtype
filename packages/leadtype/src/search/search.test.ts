@@ -110,6 +110,32 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(results[0]?.title).toBe("Code");
   });
 
+  it("indexes and searches terms that collide with Object.prototype", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "proto",
+          title: "Constructor Patterns",
+          description: "Class constructor usage.",
+          urlPath: "/docs/constructor",
+          absoluteUrl: "https://leadtype.dev/docs/constructor",
+          relativePath: "constructor",
+          content:
+            "# Constructor\n\nCall the constructor before hasOwnProperty checks.\n",
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    // Simulate the client path: a JSON.parse'd index has a normal prototype,
+    // so "constructor" must not resolve to Object.prototype members.
+    const parsed = JSON.parse(JSON.stringify(index)) as typeof index;
+
+    const results = searchDocs(parsed, "constructor");
+
+    expect(results[0]?.title).toBe("Constructor Patterns");
+  });
+
   it("expands queries with synonyms while keeping exact matches first", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

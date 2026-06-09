@@ -410,10 +410,16 @@ function synonymTokensFor(
   token: string,
   synonyms?: Record<string, string[]>
 ): string[] {
-  return [
-    ...(DEFAULT_SYNONYMS[token] ?? []),
-    ...(synonyms?.[token] ?? []),
-  ].flatMap((entry) => tokenize(entry));
+  // hasOwn guards: tokens like "constructor" would otherwise resolve to
+  // Object.prototype members on these plain records.
+  const defaults = Object.hasOwn(DEFAULT_SYNONYMS, token)
+    ? DEFAULT_SYNONYMS[token]
+    : undefined;
+  const custom =
+    synonyms && Object.hasOwn(synonyms, token) ? synonyms[token] : undefined;
+  return [...(defaults ?? []), ...(custom ?? [])].flatMap((entry) =>
+    tokenize(entry)
+  );
 }
 
 function collectWeightedSearchTerms(
@@ -732,16 +738,6 @@ function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
     : 0;
 }
 
-function compareResults(
-  left: DocsSearchResult,
-  right: DocsSearchResult
-): number {
-  if (right.score !== left.score) {
-    return right.score - left.score;
-  }
-  return left.absoluteUrl.localeCompare(right.absoluteUrl);
-}
-
 function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
 }
@@ -827,8 +823,22 @@ function chunkFromEntry(
   };
 }
 
+// Keyed by the chunks array (stable identity after JSON.parse) so repeated
+// lookups stay O(1) instead of scanning every chunk per scored result.
+const chunkIndexCache = new WeakMap<
+  DocsSearchChunkEntry[],
+  Map<string, number>
+>();
+
 function findChunkIndex(index: DocsSearchIndex, chunkId: string): number {
-  return index.chunks.findIndex((entry) => entry[CHUNK_ID] === chunkId);
+  let lookup = chunkIndexCache.get(index.chunks);
+  if (!lookup) {
+    lookup = new Map(
+      index.chunks.map((entry, chunkIndex) => [entry[CHUNK_ID], chunkIndex])
+    );
+    chunkIndexCache.set(index.chunks, lookup);
+  }
+  return lookup.get(chunkId) ?? -1;
 }
 
 function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
@@ -997,7 +1007,9 @@ export function createDocsSearchIndex(
     }
   }
 
-  const terms: Record<string, DocsSearchPosting[]> = {};
+  // Null prototype so terms like "constructor" can't collide with
+  // Object.prototype members during posting accumulation.
+  const terms: Record<string, DocsSearchPosting[]> = Object.create(null);
   for (const [chunkIndex, counts] of chunkTermCounts) {
     const uniqueTerms = new Set<string>();
     addCountEntries(uniqueTerms, counts.title);
@@ -1066,7 +1078,12 @@ export function searchDocs(
   const scores = new Map<string, number>();
   const averageLength = Math.max(index.averageChunkLength, 1);
   for (const { term, weight } of weightedTerms) {
-    const postings = index.terms[term];
+    // hasOwn guard: a JSON.parse'd index has a normal prototype, so a query
+    // term like "constructor" would otherwise resolve to Object.prototype
+    // members instead of postings.
+    const postings = Object.hasOwn(index.terms, term)
+      ? index.terms[term]
+      : undefined;
     if (!postings || postings.length === 0) {
       continue;
     }
@@ -1102,19 +1119,34 @@ export function searchDocs(
   }
 
   const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
-  const results: DocsSearchResult[] = [];
-  const excerptTokens = Array.from(
-    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
-  );
+  const scoredChunks: Array<{ chunk: DocsSearchChunk; score: number }> = [];
   for (const [chunkId, score] of scores) {
     const chunk = readDocsContentChunk(index, chunkId, options.content);
     if (!chunk) {
       continue;
     }
+    scoredChunks.push({
+      chunk,
+      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
+    });
+  }
+  scoredChunks.sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score;
+    }
+    return left.chunk.absoluteUrl.localeCompare(right.chunk.absoluteUrl);
+  });
+
+  // Excerpts are expensive string scans, so build them only for results
+  // that survive the limit.
+  const excerptTokens = Array.from(
+    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
+  );
+  return scoredChunks.slice(0, limit).map(({ chunk, score }) => {
     const excerptText =
       chunk.text ||
       [chunk.title, chunk.description, ...chunk.headingPath].join(" ");
-    results.push({
+    return {
       id: chunk.id,
       documentId: chunk.documentId,
       title: chunk.title,
@@ -1127,11 +1159,9 @@ export function searchDocs(
       anchor: chunk.anchor,
       headingPath: chunk.headingPath,
       excerpt: buildExcerpt(excerptText, excerptTokens),
-      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
-    });
-  }
-
-  return results.sort(compareResults).slice(0, limit);
+      score,
+    };
+  });
 }
 
 export function readDocsContentChunk(

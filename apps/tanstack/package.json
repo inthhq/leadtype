@@ -24,6 +24,7 @@
     "pipeline:setup-real": "bun run scripts/setup-real-content.ts",
     "pipeline:test-real": "bun run pipeline:setup-real && bun run scripts/test-real.ts",
     "pipeline:bench": "bun run pipeline:setup-real && bun run scripts/bench.ts",
+    "pipeline:search-bench": "bun run pipeline:setup-real && bun run scripts/search-bench.ts",
     "pipeline:convert-real": "bun run scripts/convert-real.ts",
     "pipeline:llm-real": "bun run scripts/llm-generate-real.ts"
   },
