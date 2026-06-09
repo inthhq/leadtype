@@ -1816,6 +1816,73 @@ description: "First release."
     expect(error.error).toContain("product.name and product.tagline");
   });
 
+  it("rejects unsupported organization contactPoint fields", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        organization: {
+          name: "Acme Inc",
+          contactPoint: { contactType: "sales", telphone: "+1-555-0100" },
+        },
+        groups: [{ slug: "guides", title: "Guides" }],
+      };`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      "organization.contactPoint.telphone is not a supported field"
+    );
+  });
+
+  it("rejects an empty organization address", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        organization: { name: "Acme Inc", address: {} },
+        groups: [{ slug: "guides", title: "Guides" }],
+      };`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      "organization.address must include at least one field"
+    );
+  });
+
   it("fails when a configured docs set references an unknown group", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

@@ -522,6 +522,32 @@ function validateOptionalStringArrayField(
   }
 }
 
+// Reject keys outside `allowed` — these objects are spread verbatim into the
+// JSON-LD output, so a typo would silently become an invalid Schema.org property.
+function validateKnownKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  fieldPath: string,
+  configPath: string
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) {
+      throw new Error(
+        `docs config at "${configPath}": ${fieldPath}.${key} is not a supported field ` +
+          `(expected one of: ${allowed.join(", ")})`
+      );
+    }
+  }
+}
+
+const POSTAL_ADDRESS_FIELDS = [
+  "streetAddress",
+  "addressLocality",
+  "addressRegion",
+  "postalCode",
+  "addressCountry",
+] as const;
+
 function validatePostalAddress(value: unknown, configPath: string): void {
   if (value === undefined) {
     return;
@@ -531,19 +557,24 @@ function validatePostalAddress(value: unknown, configPath: string): void {
       `docs config at "${configPath}": organization.address must be an object`
     );
   }
-  const fields = [
-    "streetAddress",
-    "addressLocality",
-    "addressRegion",
-    "postalCode",
-    "addressCountry",
-  ];
-  for (const field of fields) {
+  validateKnownKeys(
+    value,
+    POSTAL_ADDRESS_FIELDS,
+    "organization.address",
+    configPath
+  );
+  for (const field of POSTAL_ADDRESS_FIELDS) {
     if (value[field] !== undefined && typeof value[field] !== "string") {
       throw new Error(
         `docs config at "${configPath}": organization.address.${field} must be a string`
       );
     }
+  }
+  if (POSTAL_ADDRESS_FIELDS.every((field) => value[field] === undefined)) {
+    throw new Error(
+      `docs config at "${configPath}": organization.address must include at least one field ` +
+        `(${POSTAL_ADDRESS_FIELDS.join(", ")})`
+    );
   }
 }
 
@@ -563,6 +594,15 @@ function validateStringOrStringArray(
   }
 }
 
+const CONTACT_POINT_FIELDS = [
+  "contactType",
+  "email",
+  "telephone",
+  "url",
+  "areaServed",
+  "availableLanguage",
+] as const;
+
 function validateContactPoint(
   value: unknown,
   configPath: string,
@@ -577,6 +617,7 @@ function validateContactPoint(
       `docs config at "${configPath}": ${fieldPath} must be an object`
     );
   }
+  validateKnownKeys(value, CONTACT_POINT_FIELDS, fieldPath, configPath);
   if (typeof value.contactType !== "string") {
     throw new Error(
       `docs config at "${configPath}": ${fieldPath}.contactType must be a string`

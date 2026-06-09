@@ -14,6 +14,9 @@ const YAML_NEEDS_QUOTE = /[:#]/;
 // agentskills.io identifier, so it must be a safe lowercase slug — never a path
 // fragment that could escape the output dir.
 const SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+// The discovery v0.2.0 spec caps entry descriptions; longer ones make clients
+// drop the entry, so fail at generate time instead.
+const MAX_SKILL_DESCRIPTION_LENGTH = 1024;
 
 export type GenerateSkillArtifactsConfig = {
   /** Output root. Site mode writes under `.well-known/`; bundle mode writes `SKILL.md`. */
@@ -147,6 +150,12 @@ function integrity(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("base64")}`;
 }
 
+// Discovery v0.2.0 digests are `sha256:<hex>`, not the SRI `sha256-<base64>`
+// kept in the legacy `integrity` field.
+function digest(content: string): string {
+  return `sha256:${createHash("sha256").update(content).digest("hex")}`;
+}
+
 /** Build an A2A AgentCard (https://agent2agent.info) describing the skills surface. */
 function buildAgentCard(
   config: GenerateSkillArtifactsConfig,
@@ -241,6 +250,9 @@ export async function generateSkillArtifacts(
   const manifestEntries: {
     name: string;
     description: string;
+    type: "skill-md";
+    url: string;
+    digest: string;
     path: string;
     integrity: string;
   }[] = [];
@@ -250,6 +262,12 @@ export async function generateSkillArtifacts(
       throw new Error(
         `leadtype: invalid skill name "${skill.name}". Skill names must be a lowercase slug ` +
           '(letters, digits, hyphens; starting alphanumeric), e.g. "deploy-acme".'
+      );
+    }
+    if (skill.description.length > MAX_SKILL_DESCRIPTION_LENGTH) {
+      throw new Error(
+        `leadtype: skill "${skill.name}" description is ${skill.description.length} characters; ` +
+          `the Agent Skills discovery format caps descriptions at ${MAX_SKILL_DESCRIPTION_LENGTH}.`
       );
     }
     const body = await resolveBody(skill, config.srcDir);
@@ -262,6 +280,10 @@ export async function generateSkillArtifacts(
     manifestEntries.push({
       name: skill.name,
       description: skill.description,
+      type: "skill-md",
+      url: `./${skill.name}/SKILL.md`,
+      digest: digest(content),
+      // Legacy pre-0.2.0 leadtype fields; the spec ignores unknown keys.
       path: `./${skill.name}/SKILL.md`,
       integrity: integrity(content),
     });
@@ -273,7 +295,6 @@ export async function generateSkillArtifacts(
     `${JSON.stringify(
       {
         $schema: DISCOVERY_SCHEMA_URL,
-        version: 1,
         skills: manifestEntries,
       },
       null,

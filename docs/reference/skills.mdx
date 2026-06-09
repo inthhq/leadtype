@@ -21,7 +21,7 @@ It's on by default: every `leadtype generate` emits an auto **docs-skill** that 
 
 In **site mode** (default), under your output root:
 
-- `/.well-known/agent-skills/index.json` — the discovery manifest: each skill's name, description, path, and a `sha256-…` integrity hash. Clients read this first (progressive disclosure — name + description before the full instructions).
+- `/.well-known/agent-skills/index.json` — the discovery manifest, in the Agent Skills discovery v0.2.0 format (declared via `$schema`): each skill's name, description, `type: "skill-md"`, a relative `url`, and a `sha256:…` hex digest. Entries also carry the pre-0.2.0 leadtype `path` and `sha256-…` `integrity` fields for older consumers. Clients read this first (progressive disclosure — name + description before the full instructions).
 - `/.well-known/agent-skills/<name>/SKILL.md` — one per skill (agentskills.io frontmatter + Markdown instructions).
 - `/.well-known/agent-card.json` — an [A2A](https://agent2agent.info/docs/concepts/agentcard/) agent card: `name`, `description`, `url` (your MCP endpoint when enabled, else the site), `version`, `capabilities`, `defaultInputModes`/`defaultOutputModes`, and each skill as `{ id, name, description, tags }`. Its `provider` reuses your top-level `organization` and `documentationUrl` is `product.docs` (default `<baseUrl>/docs`) — so leadtype's own card reads `provider: { organization: "Inth", url: "https://inth.com" }`, `documentationUrl: "https://leadtype.dev/docs"`.
 

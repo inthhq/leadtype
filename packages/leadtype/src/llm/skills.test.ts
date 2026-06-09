@@ -52,12 +52,30 @@ describe("generateSkillArtifacts — site mode", () => {
       )
     ) as {
       $schema: string;
-      skills: { name: string; integrity: string; path: string }[];
+      version?: number;
+      skills: {
+        name: string;
+        description: string;
+        type: string;
+        url: string;
+        digest: string;
+        integrity: string;
+        path: string;
+      }[];
     };
     expect(index.$schema).toBe(
       "https://schemas.agentskills.io/discovery/0.2.0/schema.json"
     );
+    // Pre-0.2.0 leadtype field — the $schema carries the format version now.
+    expect(index.version).toBeUndefined();
     expect(index.skills[0].name).toBe("acme-docs-docs");
+    expect(index.skills[0].description.length).toBeGreaterThan(0);
+    // Discovery v0.2.0 entry shape: type/url/digest, digest as sha256:<hex>.
+    expect(index.skills[0].type).toBe("skill-md");
+    expect(index.skills[0].url).toBe("./acme-docs-docs/SKILL.md");
+    expect(index.skills[0].digest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    // Legacy leadtype fields kept for pre-0.2.0 consumers.
+    expect(index.skills[0].path).toBe("./acme-docs-docs/SKILL.md");
     expect(index.skills[0].integrity).toMatch(/^sha256-/);
 
     const card = JSON.parse(
@@ -139,6 +157,27 @@ describe("generateSkillArtifacts — site mode", () => {
     expect(skillMd).toContain("license: MIT");
     // agentCard: false → no card.
     expect(result.files.some((f) => f.endsWith("agent-card.json"))).toBe(false);
+  });
+
+  it("rejects a skill description over the discovery cap", async () => {
+    const outDir = await tempDir();
+    await expect(
+      generateSkillArtifacts({
+        outDir,
+        product,
+        mode: "site",
+        skills: {
+          docsSkill: false,
+          items: [
+            {
+              name: "deploy",
+              description: "x".repeat(1025),
+              body: "# Deploy\n",
+            },
+          ],
+        },
+      })
+    ).rejects.toThrow(/caps descriptions at 1024/);
   });
 
   it("rejects an unsafe skill name", async () => {
