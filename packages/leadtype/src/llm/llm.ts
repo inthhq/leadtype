@@ -204,6 +204,8 @@ export type OrganizationInfo = {
   name: string;
   /** Publisher URL, e.g. "https://inth.com". */
   url?: string;
+  /** Organization email address, emitted as JSON-LD `Organization.email`. */
+  email?: string;
   /** Logo URL, emitted as JSON-LD `Organization.logo`. */
   logo?: string;
   /** Entity links that disambiguate the organization, emitted as JSON-LD `sameAs`. */
@@ -685,6 +687,7 @@ export function resolveAgentInputs(config: {
     ? {
         ...(organization.name ? { name: organization.name } : {}),
         ...(organization.url ? { url: organization.url } : {}),
+        ...(organization.email ? { email: organization.email } : {}),
         ...(organization.logo ? { logo: organization.logo } : {}),
         ...(organization.sameAs ? { sameAs: organization.sameAs } : {}),
         ...(organization.contactPoint

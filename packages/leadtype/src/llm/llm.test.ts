@@ -1100,6 +1100,7 @@ describe("agent readability helpers", () => {
       organization: {
         name: "Acme Inc",
         url: "https://acme.com",
+        email: "hello@acme.com",
         sameAs: ["https://github.com/acme", "https://www.linkedin.com/acme"],
         contactPoint: {
           contactType: "customer support",
@@ -1135,6 +1136,7 @@ describe("agent readability helpers", () => {
           telephone: "+1-555-0100",
         },
       ],
+      email: "hello@acme.com",
       name: "Acme Inc",
       sameAs: ["https://github.com/acme", "https://www.linkedin.com/acme"],
       url: "https://acme.com",

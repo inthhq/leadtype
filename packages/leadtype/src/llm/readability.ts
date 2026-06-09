@@ -888,6 +888,7 @@ export type RenderSiteJsonLdOptions = {
   organization?: {
     name?: string;
     url?: string;
+    email?: string;
     logo?: string;
     sameAs?: string[];
     contactPoint?:
@@ -966,6 +967,9 @@ export function renderSiteJsonLd(
     "@id": ids.organization,
     name: options.organization?.name ?? manifest.product.name,
     url: options.organization?.url ?? base,
+    ...(options.organization?.email
+      ? { email: options.organization.email }
+      : {}),
     ...(options.organization?.logo ? { logo: options.organization.logo } : {}),
     ...(options.organization?.sameAs && options.organization.sameAs.length > 0
       ? { sameAs: options.organization.sameAs }

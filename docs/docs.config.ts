@@ -17,10 +17,11 @@ const config: DocsConfig = {
   organization: {
     name: "Inth",
     url: "https://inth.com",
+    email: "support@inth.com",
     sameAs: ["https://github.com/inthhq"],
     contactPoint: {
       contactType: "customer support",
-      email: "hello@inth.com",
+      email: "support@inth.com",
     },
   },
   // The llms.txt body, rendered in order (was `product.blocks`).

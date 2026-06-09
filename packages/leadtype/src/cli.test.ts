@@ -684,6 +684,7 @@ describe("leadtype CLI", () => {
   organization: {
     name: "Configured Org",
     url: "https://example.com",
+    email: "hello@example.com",
     sameAs: ["https://github.com/example"],
     contactPoint: {
       contactType: "customer support",
@@ -753,6 +754,7 @@ describe("leadtype CLI", () => {
         organization?: {
           address?: { addressCountry?: string };
           contactPoint?: { contactType?: string; email?: string };
+          email?: string;
           sameAs?: string[];
         };
       };
@@ -763,6 +765,7 @@ describe("leadtype CLI", () => {
         contactType: "customer support",
         email: "support@example.com",
       },
+      email: "hello@example.com",
       sameAs: ["https://github.com/example"],
     });
   });

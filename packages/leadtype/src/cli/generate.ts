@@ -646,6 +646,7 @@ function validateOrganization(
       `docs config at "${configPath}": organization.url must be a string`
     );
   }
+  validateOptionalStringField(value, "email", configPath);
   validateOptionalStringField(value, "logo", configPath);
   validateOptionalStringArrayField(value, "sameAs", configPath);
   validateContactPoints(value.contactPoint, configPath);

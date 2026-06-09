@@ -145,7 +145,7 @@ The `product` block in `docs.config.ts` is the identity of the documented thing 
 
 Two sibling top-level blocks complete the identity:
 
-- **`organization`** — `{ name, url?, logo?, sameAs?, contactPoint?, address? }`. Who publishes the product. Feeds the JSON-LD `Organization` node and the agent-card `provider`. `sameAs` links disambiguate the brand, `contactPoint` emits Schema.org `ContactPoint` entries (with `contactType` plus `email` or `telephone`), and `address` emits a `PostalAddress` when you have a real business address to publish. Distinct from `product`: the product is the documented thing, the organization is who stands behind it.
+- **`organization`** — `{ name, url?, email?, logo?, sameAs?, contactPoint?, address? }`. Who publishes the product. Feeds the JSON-LD `Organization` node and the agent-card `provider`. `email` publishes a top-level organization contact field, `sameAs` links disambiguate the brand, `contactPoint` emits typed Schema.org `ContactPoint` entries (with `contactType` plus `email` or `telephone`), and `address` emits a `PostalAddress` when you have a real business address to publish. Distinct from `product`: the product is the documented thing, the organization is who stands behind it.
 - **`llms.sections`** — the authored `llms.txt` body (see below).
 
 The low-level generators (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) consume an internal `{ name, summary, blocks }` product shape — not the config `product` directly. `resolveAgentInputs(config)` bridges the two: it maps `product.tagline` → `summary`, `llms.sections` → `blocks`, and `organization` + `product` (`kind`/`category`/`repository`) → JSON-LD and agent-card inputs. `leadtype generate` uses it internally; call it yourself when composing the generators by hand (see "Typical sequence").
@@ -167,10 +167,11 @@ product: {
 organization: {
   name: "Inth",
   url: "https://inth.com",
+  email: "support@inth.com",
   sameAs: ["https://github.com/inthhq"],
   contactPoint: {
     contactType: "customer support",
-    email: "hello@inth.com",
+    email: "support@inth.com",
   },
 },
 llms: {

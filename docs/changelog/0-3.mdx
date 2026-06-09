@@ -70,9 +70,10 @@ generated docs content selected by canonical URL prefix.
 - Agent Skills discovery manifests now include the 0.2.0 `$schema` URL so
   clients validate them as the current discovery format instead of falling back
   to v0.1.0 handling.
-- Organization JSON-LD now supports `sameAs`, `contactPoint`, and `address`
-  fields from `docs.config.ts`, so hosted docs can publish brand-disambiguation
-  links plus Schema.org `ContactPoint` and `PostalAddress` data.
+- Organization JSON-LD now supports `email`, `sameAs`, `contactPoint`, and
+  `address` fields from `docs.config.ts`, so hosted docs can publish direct
+  email contact details, brand-disambiguation links, and Schema.org
+  `ContactPoint`/`PostalAddress` data.
 - Feed generation requires `--base-url` or a deployment URL environment
   variable so RSS and Atom item links are absolute.
 - Search generation now treats `shared/` and `_shared/` route segments as
