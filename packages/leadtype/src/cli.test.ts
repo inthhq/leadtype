@@ -253,7 +253,7 @@ describe("leadtype CLI", () => {
       existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(true);
     expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(true);
@@ -1969,7 +1969,7 @@ description: "First release."
         "--base-url",
         "https://example.com",
         "--include",
-        "build/**",
+        "pipeline/**",
         "--format",
         "json",
       ],
@@ -1980,13 +1980,13 @@ description: "First release."
     const result = JSON.parse(capture.stdout) as {
       filters: { include: string[] };
     };
-    expect(result.filters.include).toEqual(["build/**"]);
+    expect(result.filters.include).toEqual(["pipeline/**"]);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(true);
     expect(
       existsSync(
-        path.join(outDir, "docs", "build", "optimize-docs-for-agents.md")
+        path.join(outDir, "docs", "pipeline", "generate-static-artifacts.md")
       )
     ).toBe(true);
     expect(
@@ -2008,9 +2008,9 @@ description: "First release."
         "--base-url",
         "https://example.com",
         "--include",
-        "build/**",
+        "pipeline/**",
         "--exclude",
-        "build/build-a-docs-site.mdx",
+        "pipeline/build-a-docs-site.mdx",
       ],
       capture.io
     );
@@ -2018,11 +2018,11 @@ description: "First release."
     expect(code).toBe(0);
     expect(
       existsSync(
-        path.join(outDir, "docs", "build", "optimize-docs-for-agents.md")
+        path.join(outDir, "docs", "pipeline", "generate-static-artifacts.md")
       )
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(false);
   });
 
@@ -2056,9 +2056,9 @@ description: "First release."
 
   it("treats a bare directory in --include as matching no MDX files", async () => {
     // tinyglobby expands bare directory names to `dir/**` by default; fast-glob
-    // didn't. With expandDirectories disabled at the call site, `--include build`
+    // didn't. With expandDirectories disabled at the call site, `--include pipeline`
     // should fail the same way `--include nope` does — not silently include
-    // every file under `docs/build/`.
+    // every file under `docs/pipeline/`.
     const outDir = await createTempDir();
     const capture = createCapture();
 
@@ -2070,7 +2070,7 @@ description: "First release."
         "--out",
         outDir,
         "--include",
-        "build",
+        "pipeline",
         "--format",
         "json",
       ],
@@ -2083,7 +2083,7 @@ description: "First release."
       filters: { include: string[] };
     };
     expect(error.error).toContain("No MDX files matched");
-    expect(error.filters.include).toEqual(["build"]);
+    expect(error.filters.include).toEqual(["pipeline"]);
   });
 
   it("rejects invalid generate formats as usage errors", async () => {
@@ -2228,7 +2228,7 @@ This page is valid, but the output path is not a directory.
       existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(true);
   });
 

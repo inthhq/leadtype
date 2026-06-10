@@ -7,7 +7,7 @@ description: "leadtype init, generate, sync, lint, mcp, and score — flags, exi
 leadtype <command> [options]
 ```
 
-Six commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/sources/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
+Six commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
 
 ## init
 
@@ -31,7 +31,7 @@ leadtype init [options]
 | `--json` | — | Emit the file plan as JSON and exit (no writes). |
 | `-h`, `--help` | — | Print usage. |
 
-Exit codes: `0` success, `2` CLI usage error or no framework detected. Existing files are never overwritten unless `--force` is passed. TanStack Start and Fumadocs are not scaffolded by `init` (heavier app-specific setup) — follow their recipes in [Use the source primitive](/docs/build/use-the-source-primitive).
+Exit codes: `0` success, `2` CLI usage error or no framework detected. Existing files are never overwritten unless `--force` is passed. TanStack Start and Fumadocs are not scaffolded by `init` (heavier app-specific setup) — follow their recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive).
 
 ## generate
 
@@ -67,7 +67,7 @@ When the project root has a `leadtype.config.{ts,js,mjs,cjs}` that declares `col
 
 ### Config loading
 
-`leadtype generate` looks for a project-level `leadtype.config.{ts,js,mjs,cjs}` at the directory passed to `--src` (defaults to cwd). If that file exists and defines `collections`, the [collections pipeline](/docs/sources/configure-sources) runs.
+`leadtype generate` looks for a project-level `leadtype.config.{ts,js,mjs,cjs}` at the directory passed to `--src` (defaults to cwd). If that file exists and defines `collections`, the [collections pipeline](/docs/pipeline/configure-sources) runs.
 
 Otherwise — or as a fallback — leadtype loads `docs.config.{ts,js,mjs,cjs}` from each `--docs-dir` (`<src>/<docs-dir>/docs.config.ts`). This is the legacy single-folder shape and is unchanged.
 
@@ -131,7 +131,7 @@ content set should publish RSS or Atom. Feeds are generic: use them for a
 changelog, blog, release notes, news, or any other generated pages selected by
 canonical URL prefix.
 
-For a task-focused walkthrough, see [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds).
+For a task-focused walkthrough, see [Generate RSS and Atom feeds](/docs/pipeline/generate-rss-atom-feeds).
 
 ```ts
 export default defineDocsConfig({
@@ -258,7 +258,7 @@ See [LLM files](/docs/reference/llm) for the rest of the script.
 
 ## sync
 
-Clone or refresh the remote sources declared by [collections](/docs/sources/configure-sources) in a project-level `leadtype.config.{ts,js,mjs,cjs}`. Local-only collections are no-ops.
+Clone or refresh the remote sources declared by [collections](/docs/pipeline/configure-sources) in a project-level `leadtype.config.{ts,js,mjs,cjs}`. Local-only collections are no-ops.
 
 ```bash
 leadtype sync [options]

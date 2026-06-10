@@ -1,0 +1,47 @@
+---
+title: "AEO & Agent Readability overview"
+description: "Every agent-facing artifact leadtype emits, how they map to the agent-readability spec and AEO scoring rubrics, and how to audit a site."
+---
+
+Agents read more docs than humans now. AEO (answer engine optimization) is making sure that when an agent — ChatGPT, Claude, Perplexity, a coding agent in an editor — looks for your product, it finds you, reads clean markdown instead of scraping HTML, attributes you correctly, and can act on what it reads.
+
+Leadtype's agent surface covers that end to end. This page is the map: every artifact, what it does, which guide wires it up.
+
+## The agent surface
+
+| Layer | Artifacts | What they do |
+| --- | --- | --- |
+| **Discovery** | `llms.txt` (+ `/.well-known/llms.txt`), `llms-full.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt` with [Content-Signals](/docs/aeo/optimize-docs-for-agents) | Let agents find your pages and know your crawl/training policy without scraping. |
+| **Content** | Markdown mirrors at `${urlPath}.md` with `canonical_url`/`last_updated` frontmatter, `Accept: text/markdown` content negotiation, agent user-agent detection, missing-page markdown responses | Serve agents clean markdown — cheaper to read, harder to misquote. |
+| **Identity** | JSON-LD entity graph (`Organization`, `WebSite`, `SoftwareApplication`, per-page `TechArticle` + breadcrumbs), SEO meta defaults, `agent-readability.json` manifest | Tell answer engines exactly who publishes what, so they stop hallucinating your positioning. |
+| **Integration** | [Agent skills](/docs/reference/skills) (`/.well-known/agent-skills`), the A2A agent card, a [docs MCP server](/docs/reference/mcp), [WebMCP browser tools](/docs/reference/webmcp), [search agent tools](/docs/search/agent-tools) | Let agents act on your docs: search them, fetch pages, install capabilities. |
+
+All of it derives from one config (`docs.config.ts` — `product`, `organization`, `agents`, `navigation`) and generates at build time. Runtime helpers are opt-in.
+
+## Two entry points
+
+**You have a docs site** — the pipeline emits everything above from your MDX source in one CLI run. Start at [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents), then wire the runtime half with [Serve agent responses](/docs/aeo/serve-agent-responses).
+
+**You don't have a docs tree** — a CMS-backed blog, a marketing site, a data-driven app, or one microfrontend of a larger origin. [`generateAgentArtifacts()`](/docs/aeo/generate-artifacts-without-docs) takes an in-memory page list and emits the same artifact set, no `.mdx` files required.
+
+## How this maps to the scoring rubrics
+
+Two public scanners measure agent readability, and leadtype's output is designed against both:
+
+**[Vercel's agent readability spec](https://vercel.com/kb/guide/agent-readability-spec)** checks discovery files, markdown mirrors with frontmatter, content negotiation (`Accept: text/markdown`, `Vary: Accept`), robots rules that don't block AI crawlers, sitemap `lastmod`, JSON-LD, and missing-page handling. Leadtype's build-time artifacts plus the runtime helpers cover the checklist — including the details scanners actually fail sites on: `canonical_url`/`last_updated` frontmatter, the `Vary: Accept` header, canonical `Link` headers on markdown responses, and 200-with-markdown for missing pages (agents discard 404 bodies).
+
+**[ora.ai's methodology](https://ora.ai/methodology)** scores five lanes. Leadtype's lane is **Identity** (llms.txt format, JSON-LD structure, sitemap/robots configuration, metadata consistency) and most of **Agent Integration** (MCP server readiness). **Auth & Access** — OpenAPI specs, OAuth — is product-side work leadtype can link to but not generate. Set expectations accordingly: leadtype maxes the identity and integration signals; it can't move discovery recall or auth scores by itself.
+
+## Audit your site
+
+Verify against the spec from CI or your terminal:
+
+```bash
+npx @vercel/agent-readability audit https://your-site.com
+```
+
+Add `--json` for machine output and `--min-score 90` to fail a CI job below a threshold. The failed checks link back to spec sections; each one maps to a leadtype feature listed above. For build-time validation of the artifacts themselves, see [Validate in CI](/docs/pipeline/validate-in-ci).
+
+## What the files don't fix
+
+Artifacts get agents to your content; the content still has to answer their questions. [Write for agents](/docs/writing/write-for-agents) covers the one rule that moved the [evals](/docs/concepts/evals): document the non-obvious — defaults, failure modes, decision guidance — not restatements of your types and CLI help.

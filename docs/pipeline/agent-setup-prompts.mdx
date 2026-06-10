@@ -6,13 +6,13 @@ related:
     href: "/docs/reference/cli"
     description: "leadtype init scaffolds the local-docs case directly."
   - title: "Configure docs sources"
-    href: "/docs/sources/configure-sources"
+    href: "/docs/pipeline/configure-sources"
     description: "Local folder, mounted folders, or remote git collections."
 ---
 
 `leadtype init` scaffolds the common case — a greenfield app with a **local
 `docs/` folder**. But docs often live elsewhere: another repository pulled in
-via [collections](/docs/sources/configure-sources), an existing site with its
+via [collections](/docs/pipeline/configure-sources), an existing site with its
 own structure, or a Fumadocs app. For those, hand a coding agent one of the
 prompts below. The agent reads your actual layout and wires Leadtype to fit,
 instead of dropping in a fixed file tree.
@@ -46,7 +46,7 @@ When to use which:
   - Render JSON-LD in the docs page head with `createDocsJsonLd` from `leadtype/llm/readability`.
   - Add a `docs:generate` script: `leadtype generate --src . --out <public-or-static> --base-url <url>`. Use `public/` for Next/Astro/Nuxt, `static/` for SvelteKit. Run it in `prebuild`/`predev` so the manifest always exists.
 
-  Match the patterns in the [Use the source primitive](/docs/build/use-the-source-primitive) recipe for this framework. Do not invent leadtype exports — use only documented ones.
+  Match the patterns in the [Use the source primitive](/docs/pipeline/use-the-source-primitive) recipe for this framework. Do not invent leadtype exports — use only documented ones.
 
   Validation:
   - Run `docs:generate`, then start the app.
@@ -76,7 +76,7 @@ When to use which:
   - Add a generate script that syncs the remote source first: `leadtype generate --src . --out <public-or-static> --base-url <url> --sync`. Use `--refresh` to fast-forward the pinned cache and `--offline` to prove the cache is sufficient (air-gapped CI).
   - Wire the docs route, markdown route, and JSON-LD exactly as for local docs — the runtime side is identical once artifacts exist.
 
-  Reference [Collections](/docs/sources/collections) and [Sync docs across repositories](/docs/build/sync-docs-across-repos) for the config fields and the cross-repo pin-update workflow.
+  Reference [Collections](/docs/pipeline/collections) and [Sync docs across repositories](/docs/pipeline/sync-docs-across-repos) for the config fields and the cross-repo pin-update workflow.
 
   Validation:
   - First run clones the source into `cacheDir` (gitignore it).

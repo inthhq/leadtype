@@ -32,6 +32,8 @@ You're building a docs **website** — [Quickstart](/docs/quickstart) — render
 
 You're shipping docs inside an **npm package** — [Bundle docs into a package](/docs/package-docs/bundle) — generate an `AGENTS.md` plus per-topic markdown that ships in the tarball so coding agents read version-matched docs from `node_modules`. Agents that install your package then run cheaper and stop confidently guessing wrong about your API — see the [evals](/docs/concepts/evals).
 
+You have a site **without a docs tree** — a CMS-backed blog, a marketing site, a data-driven app — [Generate artifacts without a docs tree](/docs/aeo/generate-artifacts-without-docs) — hand `generateAgentArtifacts()` an in-memory page list and get the same agent artifact set, no `.mdx` files required.
+
 Just want the mental model first? — [How it works](/docs/how-it-works) — the pipeline, the two output modes, and every artifact named once.
 
 ## Key terms
@@ -42,23 +44,33 @@ These show up throughout the docs. The full glossary lives in [How it works → 
 - **Bundle mode** — `leadtype generate --bundle`. Writes `AGENTS.md` + relative `docs/*.md` into a package directory so coding agents can read them from `node_modules` after install. If `agents.mcp.enabled` is set, it also includes package-local MCP retrieval files.
 - **Agent Readability** — the structured discovery and attribution data (`agent-readability.json` + JSON-LD + sitemap + markdown alternate links) that lets agents fetch, identify, and cite docs without scraping HTML.
 
-## What leadtype produces
+## What leadtype can do
 
 <Cards>
   <Card
-    title="Rendered docs from MDX"
-    description="createDocsSource() gives your app page loading, navigation, TOC, includes, and search input data without owning your UI."
-    href="/docs/build/use-the-source-primitive"
+    title="Docs pipeline"
+    description="One MDX source — local folders, mounted collections, or remote git repos pinned to a ref — converted, validated, localized, and rendered in your app via createDocsSource() without leadtype owning your UI."
+    href="/docs/pipeline/build-a-docs-site"
   />
   <Card
-    title="Hosted agent artifacts"
-    description="Generate llms.txt, markdown mirrors, llms-full.txt, search JSON, sitemap, robots, and agent-readability.json from one CLI run."
-    href="/docs/build/optimize-docs-for-agents"
+    title="AEO & Agent Readability"
+    description="llms.txt, markdown mirrors with content negotiation, JSON-LD identity, robots Content-Signals, sitemaps, skills, and a docs MCP server — the full agent surface, mapped against the public scoring rubrics."
+    href="/docs/aeo/overview"
   />
   <Card
-    title="Where leadtype fits with Fumadocs, Starlight & co."
-    description="Leadtype is a pipeline, not a website framework. Pair it with a custom docs app or layer it under a docs framework you already like for one portable pipeline across markdown, search, and agent outputs."
-    href="/docs/concepts/methodology"
+    title="Agent artifacts without a docs tree"
+    description="generateAgentArtifacts() emits the same agent surface from an in-memory page list — for CMS blogs, marketing sites, data-driven pages, and microfrontend fragments."
+    href="/docs/aeo/generate-artifacts-without-docs"
+  />
+  <Card
+    title="Writing for agents"
+    description="Frontmatter contracts, agent-safe MDX components, and the content rule that moved the evals: document the non-obvious, not your type signatures."
+    href="/docs/writing/write-for-agents"
+  />
+  <Card
+    title="Search & AI answers"
+    description="A static search index, framework hooks, source-grounded AI answers, and search tools agents can call via WebMCP."
+    href="/docs/search/add-search"
   />
   <Card
     title="Version-matched package docs"
@@ -66,3 +78,5 @@ These show up throughout the docs. The full glossary lives in [How it works → 
     href="/docs/package-docs/bundle"
   />
 </Cards>
+
+Leadtype is a pipeline, not a website framework — it pairs with a custom docs app or layers under Fumadocs, Starlight, and friends. See [Methodology](/docs/concepts/methodology) for where it fits.

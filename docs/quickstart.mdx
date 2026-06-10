@@ -44,12 +44,12 @@ The last line is the [root-`AGENTS.md` pointer](/docs/package-docs/bundle#point-
 Supported targets: `next`, `astro`, `nuxt`, `sveltekit`. Run with `--dry-run`
 to preview the file list, or `--base-url`, `--name`, and `--summary` to seed the
 config. For TanStack Start and Fumadocs (heavier app-specific setup), follow the
-recipes in [Use the source primitive](/docs/build/use-the-source-primitive) and
-[Integrate with Fumadocs](/docs/build/integrate-with-fumadocs).
+recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive) and
+[Integrate with Fumadocs](/docs/integrations/integrate-with-fumadocs).
 
 `init` scaffolds the **local-`docs/`** case. If your docs live in another repo,
 or you're adding Leadtype to an app with an existing structure, hand a coding
-agent one of the [agent setup prompts](/docs/build/agent-setup-prompts) instead
+agent one of the [agent setup prompts](/docs/pipeline/agent-setup-prompts) instead
 — it adapts to your real layout.
 
 That's the whole quickstart if you let the CLI scaffold it. The steps below
@@ -167,32 +167,32 @@ The UI is yours. Leadtype provides page loading, navigation, markdown output, ta
   <Card
     title="Next App Router"
     description="Catch-all route + @next/mdx + createMdxSourcePlugins()."
-    href="/docs/build/use-the-source-primitive#next-app-router"
+    href="/docs/pipeline/use-the-source-primitive#next-app-router"
   />
   <Card
     title="TanStack Start"
     description="@mdx-js/rollup + viteReact + TanStack Router catch-all."
-    href="/docs/build/use-the-source-primitive#tanstack-start"
+    href="/docs/pipeline/use-the-source-primitive#tanstack-start"
   />
   <Card
     title="Nuxt"
     description="@nuxtjs/mdc + createMdxSourcePlugins()."
-    href="/docs/build/use-the-source-primitive#nuxt"
+    href="/docs/pipeline/use-the-source-primitive#nuxt"
   />
   <Card
     title="Astro Content Collections"
     description="@astrojs/mdx + createMdxSourcePlugins(). Compose with Astro's native content schema."
-    href="/docs/build/use-the-source-primitive#astro-content-collections"
+    href="/docs/pipeline/use-the-source-primitive#astro-content-collections"
   />
   <Card
     title="SvelteKit"
     description="mdsvex preprocessor + createMdxSourcePlugins()."
-    href="/docs/build/use-the-source-primitive#sveltekit-mdsvex"
+    href="/docs/pipeline/use-the-source-primitive#sveltekit-mdsvex"
   />
   <Card
     title="Fumadocs"
     description="First-party leadtype/fumadocs adapter — Source interface + meta.json."
-    href="/docs/build/integrate-with-fumadocs"
+    href="/docs/integrations/integrate-with-fumadocs"
   />
 </Cards>
 
@@ -238,15 +238,15 @@ test -s public/docs/search-index.json
 test -s public/docs/agent-readability.json
 ```
 
-Then add runtime handling for markdown responses, sitemap/robots regeneration, and JSON-LD with [Serve agent responses](/docs/build/serve-agent-responses).
+Then add runtime handling for markdown responses, sitemap/robots regeneration, and JSON-LD with [Serve agent responses](/docs/aeo/serve-agent-responses).
 
 ## Common next steps
 
 | Goal | Go to |
 | --- | --- |
-| Compare every hosted-site integration shape | [Build a docs site](/docs/build/build-a-docs-site) |
-| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Serve agent responses](/docs/build/serve-agent-responses) |
+| Compare every hosted-site integration shape | [Build a docs site](/docs/pipeline/build-a-docs-site) |
+| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Serve agent responses](/docs/aeo/serve-agent-responses) |
 | Add local search or source-grounded answers | [Add search](/docs/search/add-search) |
-| Combine local folders, mounted folders, or remote git repos | [Configure docs sources](/docs/sources/configure-sources) |
+| Combine local folders, mounted folders, or remote git repos | [Configure docs sources](/docs/pipeline/configure-sources) |
 | Publish version-matched docs inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
-| Validate frontmatter, links, and nav in CI | [Validate in CI](/docs/build/validate-in-ci) |
+| Validate frontmatter, links, and nav in CI | [Validate in CI](/docs/pipeline/validate-in-ci) |

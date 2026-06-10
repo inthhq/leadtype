@@ -3,9 +3,9 @@ title: "Serve agent responses"
 description: "Wire markdown responses, JSON-LD, sitemap, and robots into your framework using the generated agent-readability.json manifest."
 ---
 
-Serve agents the runtime side of your docs with one middleware: markdown content negotiation, JSON-LD in the page head, and per-request sitemap/robots that advertise the live origin. This wires the discovery files from [Optimize docs for agents](/docs/build/optimize-docs-for-agents) (`agent-readability.json` and friends) into your app's routing and HTML.
+Serve agents the runtime side of your docs with one middleware: markdown content negotiation, JSON-LD in the page head, and per-request sitemap/robots that advertise the live origin. This wires the discovery files from [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents) (`agent-readability.json` and friends) into your app's routing and HTML.
 
-For per-host deploy paths (Next on Vercel, TanStack Start, Nuxt on Cloudflare, etc.), see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
+For per-host deploy paths (Next on Vercel, TanStack Start, Nuxt on Cloudflare, etc.), see [Deploy generated artifacts](/docs/pipeline/deploy-generated-artifacts).
 
 ## 1. Add one middleware
 
@@ -129,8 +129,8 @@ The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the p
   "headline": "Optimize docs for agents",
   "name": "Optimize docs for agents",
   "description": "Generate llms.txt, markdown mirrors, JSON-LD, sitemaps, and robots.",
-  "url": "https://leadtype.dev/docs/build/optimize-docs-for-agents",
-  "mainEntityOfPage": "https://leadtype.dev/docs/build/optimize-docs-for-agents",
+  "url": "https://leadtype.dev/docs/aeo/optimize-docs-for-agents",
+  "mainEntityOfPage": "https://leadtype.dev/docs/aeo/optimize-docs-for-agents",
   "dateModified": "2026-05-29T09:36:07.000Z",
   "articleSection": "Build an Agent-Ready Site",
   "isPartOf": { "@id": "https://leadtype.dev/#website" },
@@ -140,7 +140,7 @@ The default output is a Schema.org `TechArticle`. The `breadcrumb` follows the p
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Docs", "item": "https://leadtype.dev/docs" },
       { "@type": "ListItem", "position": 2, "name": "Build an Agent-Ready Site" },
-      { "@type": "ListItem", "position": 3, "name": "Optimize docs for agents", "item": "https://leadtype.dev/docs/build/optimize-docs-for-agents" }
+      { "@type": "ListItem", "position": 3, "name": "Optimize docs for agents", "item": "https://leadtype.dev/docs/aeo/optimize-docs-for-agents" }
     ]
   }
 }
@@ -219,5 +219,5 @@ Every helper adds `Cache-Control: public, max-age=300, must-revalidate` by defau
 
 ## Where to next
 
-- [Optimize docs for agents](/docs/build/optimize-docs-for-agents) — the artifact-generation half of this story, with the verification checklist.
-- [Deploy generated artifacts](/docs/build/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities (Next on Vercel, TanStack Start, Nuxt on Cloudflare, Astro, SvelteKit).
+- [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents) — the artifact-generation half of this story, with the verification checklist.
+- [Deploy generated artifacts](/docs/pipeline/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities (Next on Vercel, TanStack Start, Nuxt on Cloudflare, Astro, SvelteKit).

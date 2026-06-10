@@ -38,7 +38,7 @@ The website is for humans and HTTP agents. The package-bundled docs are for codi
 
 [`AGENTS.md`](https://agents.md) is the **filesystem convention** that solves this. Tools like Claude Code, OpenAI Codex, Cursor, GitHub Copilot, Aider, Devin, and others can read `AGENTS.md` when working with files on disk. An `AGENTS.md` inside `node_modules/<your-package>/` is the right shape for version-matched package docs: relative links work, no network is required, and the content matches the installed version.
 
-leadtype emits both — `llms.txt` in [website mode](/docs/build/build-a-docs-site) for HTTP-discoverable agents, and `AGENTS.md` in `--bundle` mode for offline filesystem-discoverable agents.
+leadtype emits both — `llms.txt` in [website mode](/docs/pipeline/build-a-docs-site) for HTTP-discoverable agents, and `AGENTS.md` in `--bundle` mode for offline filesystem-discoverable agents.
 
 ## Generate into the package
 
@@ -214,7 +214,7 @@ your docs from `node_modules/<pkg>` the same way it discovers `AGENTS.md`.
 
 Use this when **agents should understand the package from the installed dependency itself** — coding agents that don't have web access, IDE assistants, CLI tools, or air-gapped environments.
 
-Don't use this if your only goal is a public docs website. For that, see [Build a docs site](/docs/build/build-a-docs-site). You can use both — they read the same source MDX, just emit different shapes.
+Don't use this if your only goal is a public docs website. For that, see [Build a docs site](/docs/pipeline/build-a-docs-site). You can use both — they read the same source MDX, just emit different shapes.
 
 ## What's next
 
@@ -222,5 +222,5 @@ Don't use this if your only goal is a public docs website. For that, see [Build 
   <Card title="CLI reference" description="Every flag for --bundle and the standard pipeline." href="/docs/reference/cli" />
   <Card title="LLM files" description="The website's llms.txt + llms-full.txt output, side by side with the package's AGENTS.md." href="/docs/reference/llm" />
   <Card title="MCP server" description="Serve the bundled docs to MCP clients with agents.mcp.enabled and leadtype mcp --package." href="/docs/reference/mcp" />
-  <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/build/validate-in-ci" />
+  <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/pipeline/validate-in-ci" />
 </Cards>

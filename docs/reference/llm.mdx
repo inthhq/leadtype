@@ -354,7 +354,7 @@ await generateAgentArtifacts({
 });
 ```
 
-Set `emitRootCrawlerFiles: false` when the site is one fragment of a larger origin (microfrontends) and the host app owns the root crawler files. See [Generate artifacts without a docs tree](/docs/build/generate-artifacts-without-docs) for page-input fallback rules and the merge story.
+Set `emitRootCrawlerFiles: false` when the site is one fragment of a larger origin (microfrontends) and the host app owns the root crawler files. See [Generate artifacts without a docs tree](/docs/aeo/generate-artifacts-without-docs) for page-input fallback rules and the merge story.
 
 ## Agent readability helpers
 
@@ -502,7 +502,7 @@ createDocsJsonLd({
 
 ### Lower-level helpers
 
-For a step-by-step integration guide, see [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
+For a step-by-step integration guide, see [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents).
 
 | Helper | Use it for |
 | --- | --- |
@@ -611,7 +611,7 @@ Now your top nav and sidebar can import a static manifest with the same nav tree
 
 ## Tables of contents
 
-For the heading slug contract and renderer wiring, see [Use the source primitive](/docs/build/use-the-source-primitive). This section covers the build-time APIs only.
+For the heading slug contract and renderer wiring, see [Use the source primitive](/docs/pipeline/use-the-source-primitive). This section covers the build-time APIs only.
 
 `resolveDocsNavigation` includes a `toc` array on every page by default. The default range is `h2`–`h3`, which keeps page-level `h1` titles out of sidebars.
 

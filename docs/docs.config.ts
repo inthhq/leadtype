@@ -68,7 +68,7 @@ const config: DocsConfig = {
               "Build one rendered docs route, generate agent artifacts, and verify the output.",
           },
           {
-            urlPath: "/docs/build/sync-docs-across-repos",
+            urlPath: "/docs/pipeline/sync-docs-across-repos",
             title: "Pinned source docs UI",
             description:
               "Recommended hosted-site shape: a docs UI repo pins a source repo, inherits source-owned navigation, and generates reproducible artifacts.",
@@ -86,37 +86,55 @@ const config: DocsConfig = {
               "Why leadtype is a pipeline, not a docs framework — and how it pairs with Fumadocs, Starlight, and Mintlify.",
           },
           {
-            urlPath: "/docs/build/build-a-docs-site",
+            urlPath: "/docs/pipeline/build-a-docs-site",
             title: "Build an agent-ready docs site",
             description:
               "Decide between the source primitive and the static artifact CLI for your hosted docs site.",
           },
           {
-            urlPath: "/docs/build/use-the-source-primitive",
+            urlPath: "/docs/pipeline/use-the-source-primitive",
             title: "Use the source primitive",
             description:
               "Wire createDocsSource() into Next, TanStack Start, Nuxt, Astro, or SvelteKit.",
           },
           {
-            urlPath: "/docs/build/generate-static-artifacts",
+            urlPath: "/docs/pipeline/generate-static-artifacts",
             title: "Generate static artifacts",
             description:
               "Run the site-mode CLI from a build pipeline to write llms.txt, markdown mirrors, search, sitemap, and Agent Readability files.",
           },
           {
-            urlPath: "/docs/build/optimize-docs-for-agents",
+            urlPath: "/docs/aeo/overview",
+            title: "AEO & Agent Readability overview",
+            description:
+              "The full agent surface in one map — every artifact leadtype emits, the agent-readability spec coverage, and how to audit your score.",
+          },
+          {
+            urlPath: "/docs/aeo/optimize-docs-for-agents",
             title: "Optimize docs for agents",
             description:
               "Generate the discovery and attribution files; verify them locally.",
           },
           {
-            urlPath: "/docs/build/serve-agent-responses",
+            urlPath: "/docs/aeo/generate-artifacts-without-docs",
+            title: "Agent artifacts without a docs tree",
+            description:
+              "Emit llms.txt, markdown mirrors, sitemaps, and robots.txt from an in-memory page list — CMS blogs, data-driven sites, microfrontends.",
+          },
+          {
+            urlPath: "/docs/writing/write-for-agents",
+            title: "Write for agents",
+            description:
+              "Content guidance: document the non-obvious instead of restating types and CLI help.",
+          },
+          {
+            urlPath: "/docs/aeo/serve-agent-responses",
             title: "Serve agent responses",
             description:
               "Wire markdown content negotiation, JSON-LD, and sitemap/robots regenerators into your framework.",
           },
           {
-            urlPath: "/docs/sources/configure-sources",
+            urlPath: "/docs/pipeline/configure-sources",
             title: "Configure docs sources",
             description:
               "Pick between one folder, multiple mounted folders, or remote git collections pinned to a ref.",
@@ -152,68 +170,68 @@ const config: DocsConfig = {
       pages: ["methodology", "architecture", "evals"],
     },
     {
-      title: "Build an Agent-Ready Site",
-      base: "build",
+      title: "Docs Pipeline",
+      base: "pipeline",
       children: [
         {
-          title: "Set up",
+          title: "Sources",
+          pages: ["configure-sources", "collections", "sync-docs-across-repos"],
+        },
+        {
+          title: "Build",
           pages: [
-            "sync-docs-across-repos",
             "build-a-docs-site",
-            "agent-setup-prompts",
             "use-the-source-primitive",
+            "agent-setup-prompts",
           ],
         },
         {
-          title: "Generate & serve",
+          title: "Generate & operate",
           pages: [
             "generate-static-artifacts",
             "generate-rss-atom-feeds",
-            "optimize-docs-for-agents",
-            "generate-artifacts-without-docs",
-            "serve-agent-responses",
             "deploy-generated-artifacts",
+            "validate-in-ci",
+            "localize-docs",
           ],
         },
-        {
-          title: "Operate",
-          pages: ["validate-in-ci", "localize-docs"],
-        },
-        {
-          title: "Integrate",
-          pages: ["framework-matrix", "integrate-with-fumadocs"],
-        },
       ],
     },
     {
-      title: "Search & agents",
-      base: "search",
-      // MCP + skills are runtime agent-integration features, not buried API
+      title: "AEO & Agent Readability",
+      base: "aeo",
+      // MCP + skills + WebMCP are agent-surface features, not buried API
       // reference. Listed here (by absolute path; their /reference/* URLs are
-      // unchanged) next to their siblings.
+      // unchanged) next to the artifact guides.
       pages: [
-        "add-search",
-        "ai-answers",
-        "agent-tools",
+        "overview",
+        "optimize-docs-for-agents",
+        "generate-artifacts-without-docs",
+        "serve-agent-responses",
+        "/reference/skills",
         "/reference/mcp",
         "/reference/webmcp",
-        "/reference/skills",
       ],
     },
     {
-      title: "Docs Sources",
-      base: "sources",
-      pages: ["configure-sources", "collections"],
+      title: "Writing for Agents",
+      base: "writing",
+      pages: ["write-for-agents", "frontmatter", "components"],
     },
     {
-      title: "Package Docs for Agents",
+      title: "Search & AI Answers",
+      base: "search",
+      pages: ["add-search", "ai-answers", "agent-tools"],
+    },
+    {
+      title: "Package Docs",
       base: "package-docs",
       pages: ["bundle"],
     },
     {
-      title: "Author Content",
-      base: "authoring",
-      pages: ["write-for-agents", "frontmatter", "components"],
+      title: "Integrations",
+      base: "integrations",
+      pages: ["framework-matrix", "integrate-with-fumadocs"],
     },
     {
       title: "Reference",

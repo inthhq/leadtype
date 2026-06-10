@@ -10,7 +10,7 @@
  * The companion `llm-generate.ts` script still emits the on-disk
  * `llms.txt` / `agent-readability.json` artifacts via the older composed
  * APIs. The two paths coexist deliberately — they demonstrate both
- * integration shapes from `/docs/build/build-a-docs-site`.
+ * integration shapes from `/docs/pipeline/build-a-docs-site`.
  */
 
 import { mkdir, writeFile } from "node:fs/promises";

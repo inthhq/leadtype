@@ -40,7 +40,7 @@ This writes into `outDir`:
 - `/llms.txt` (plus the `/.well-known/llms.txt` discovery copy) — product summary, your authored `llms.sections`, and a grouped page map linking every page's `.md` mirror.
 - One markdown mirror per page at `${urlPath}.md` (the root page `/` becomes `/index.md`), with the frontmatter agents need for attribution and staleness checks: `title`, `description`, `canonical_url`, `last_updated`. Mirrors pass the agent-readability frontmatter checks when served statically — no runtime enrichment required.
 - `/sitemap.xml` (with `lastmod`), `/sitemap.md`, and `/robots.txt` with the Content-Signal policy you chose.
-- `/agent-readability.json` — the same manifest shape the docs pipeline emits, written at the site root instead of under `/docs/`. Point the runtime helpers from [Serve agent responses](/docs/build/serve-agent-responses) at it to add `Accept: text/markdown` content negotiation and per-page JSON-LD.
+- `/agent-readability.json` — the same manifest shape the docs pipeline emits, written at the site root instead of under `/docs/`. Point the runtime helpers from [Serve agent responses](/docs/aeo/serve-agent-responses) at it to add `Accept: text/markdown` content negotiation and per-page JSON-LD.
 
 ## Page inputs
 
@@ -70,4 +70,4 @@ The fragment still gets its llms.txt, mirrors, and manifest; the host app owns t
 
 ## When to use the docs pipeline instead
 
-If your content already lives in `.md`/`.mdx` files, use the [static artifact CLI](/docs/build/generate-static-artifacts) — it adds MDX flattening, i18n, transformers, search artifacts, and skills on top of this same output. `generateAgentArtifacts()` is the escape hatch for content that never touches the filesystem.
+If your content already lives in `.md`/`.mdx` files, use the [static artifact CLI](/docs/pipeline/generate-static-artifacts) — it adds MDX flattening, i18n, transformers, search artifacts, and skills on top of this same output. `generateAgentArtifacts()` is the escape hatch for content that never touches the filesystem.
