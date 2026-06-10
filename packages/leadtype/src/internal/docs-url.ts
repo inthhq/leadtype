@@ -106,9 +106,14 @@ export function toDocsUrlPath(
   const normalizedPath = stripIndexSegments(mountedRelativePath);
   const urlPrefix = normalizeUrlPrefix(mount.urlPrefix);
 
-  return normalizedPath.length > 0
-    ? `${urlPrefix}/${normalizedPath}`
-    : urlPrefix;
+  if (normalizedPath.length === 0) {
+    return urlPrefix;
+  }
+  // A root mount (`urlPrefix: "/"`) maps pages onto the site root; joining
+  // with the prefix verbatim would emit `//page`.
+  return urlPrefix === "/"
+    ? `/${normalizedPath}`
+    : `${urlPrefix}/${normalizedPath}`;
 }
 
 export function toMarkdownUrlPath(urlPath: string): string {
@@ -123,7 +128,10 @@ export function toMountedMarkdownUrlPath(
   const stripped = stripIndexSegments(
     resolveDocsPathMount(relativePath, mounts).mountedRelativePath
   );
-  return stripped.length > 0 ? `${urlPath}.md` : `${urlPath}/index.md`;
+  if (stripped.length > 0) {
+    return `${urlPath}.md`;
+  }
+  return urlPath === "/" ? "/index.md" : `${urlPath}/index.md`;
 }
 
 export function toAbsoluteUrl(urlPath: string, baseUrl: string): string {

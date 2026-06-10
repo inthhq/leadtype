@@ -1,0 +1,73 @@
+---
+title: "Generate artifacts without a docs tree"
+description: "Emit llms.txt, markdown mirrors, sitemaps, robots.txt, and the agent-readability manifest from an in-memory page list — no .mdx source files required."
+---
+
+Use this guide when a site has no `.mdx` docs tree but should still be readable by agents: a CMS-backed blog, a data-driven site (benchmarks, changelogs, directories), a marketing site, or a microfrontend that owns one slice of a larger origin.
+
+The docs pipeline reads pages from `.md`/`.mdx` files on disk. `generateAgentArtifacts()` skips that step: you hand it a page list built from any source — a CMS API, a database, a route manifest — and it emits the same artifact set the docs CLI produces.
+
+## Generate the artifact set
+
+Call it from a build script, after your content is available:
+
+```ts
+import { generateAgentArtifacts } from "leadtype/llm";
+
+await generateAgentArtifacts({
+  outDir: "public",
+  baseUrl: "https://cookiebench.com",
+  product: {
+    name: "CookieBench",
+    tagline: "Benchmarks for consent banner performance.",
+  },
+  organization: { name: "Consent.io", url: "https://consent.io" },
+  agents: { robots: { policy: "block-training" } },
+  groups: [{ slug: "benchmarks", title: "Benchmarks" }],
+  pages: benchmarks.map((benchmark) => ({
+    urlPath: `/benchmarks/${benchmark.slug}`,
+    title: benchmark.name,
+    description: benchmark.summary,
+    content: renderMarkdown(benchmark),
+    lastModified: benchmark.updatedAt,
+    groups: ["benchmarks"],
+  })),
+});
+```
+
+This writes into `outDir`:
+
+- `/llms.txt` (plus the `/.well-known/llms.txt` discovery copy) — product summary, your authored `llms.sections`, and a grouped page map linking every page's `.md` mirror.
+- One markdown mirror per page at `${urlPath}.md` (the root page `/` becomes `/index.md`), with the frontmatter agents need for attribution and staleness checks: `title`, `description`, `canonical_url`, `last_updated`. Mirrors pass the agent-readability frontmatter checks when served statically — no runtime enrichment required.
+- `/sitemap.xml` (with `lastmod`), `/sitemap.md`, and `/robots.txt` with the Content-Signal policy you chose.
+- `/agent-readability.json` — the same manifest shape the docs pipeline emits, written at the site root instead of under `/docs/`. Point the runtime helpers from [Serve agent responses](/docs/build/serve-agent-responses) at it to add `Accept: text/markdown` content negotiation and per-page JSON-LD.
+
+## Page inputs
+
+Each page needs a `urlPath` and markdown `content`. Everything else falls back:
+
+- `title` — explicit value, then frontmatter `title:` inside `content`, then the URL slug.
+- `description` — explicit value, then frontmatter `description:`.
+- `lastModified` — explicit `string | Date`, then frontmatter `last_updated:` / `lastModified:`, then the generation time. Pass real content dates when you have them; agents use `last_updated` to judge staleness, and `sitemap.xml` reuses it for `lastmod`.
+- `groups` / `order` — match the `groups` config exactly like frontmatter `group:` and `order:` in the docs pipeline. Ungrouped pages render under `## Other` (or `## Pages` when no groups are configured).
+
+Frontmatter already present in `content` is parsed and stripped — explicit fields win, and the mirror is written with a single normalized frontmatter block.
+
+Duplicate `urlPath`s, paths without a leading `/`, and paths containing `?` or `#` throw before anything is written.
+
+## Microfrontends: merge fragments at the host
+
+Root crawler files (`robots.txt`, `sitemap.xml`, `sitemap.md`) are origin-level — only one app on the domain should serve them. When a blog or docs app deploys under a host app's domain, generate its fragment with:
+
+```ts
+await generateAgentArtifacts({
+  // ...
+  emitRootCrawlerFiles: false,
+});
+```
+
+The fragment still gets its llms.txt, mirrors, and manifest; the host app owns the root files and merges fragment manifests into its own `sitemap.xml` and `llms.txt`. The docs pipeline's artifacts are scoped under `/docs/` for the same reason.
+
+## When to use the docs pipeline instead
+
+If your content already lives in `.md`/`.mdx` files, use the [static artifact CLI](/docs/build/generate-static-artifacts) — it adds MDX flattening, i18n, transformers, search artifacts, and skills on top of this same output. `generateAgentArtifacts()` is the escape hatch for content that never touches the filesystem.

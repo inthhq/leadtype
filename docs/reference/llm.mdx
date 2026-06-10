@@ -332,6 +332,30 @@ const result = await generateAgentReadabilityArtifacts({
 
 Writes crawler files at the output root (`<outDir>/robots.txt`, `<outDir>/sitemap.xml`, `<outDir>/sitemap.md`). The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can still merge `result.manifest.pages` with non-docs routes before serving custom root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
 
+## generateAgentArtifacts
+
+For sites without a `.mdx` docs tree — CMS-backed blogs, data-driven pages, marketing sites. Takes an in-memory page list instead of a source directory and emits the full artifact set: `llms.txt` (+ the `/.well-known/llms.txt` copy), one markdown mirror per page at `${urlPath}.md` with `canonical_url`/`last_updated` frontmatter, `sitemap.xml`, `sitemap.md`, `robots.txt`, and a root-level `agent-readability.json`:
+
+```ts
+import { generateAgentArtifacts } from "leadtype/llm";
+
+await generateAgentArtifacts({
+  outDir: "public",
+  baseUrl: "https://example.com",
+  product: { name: "Example", tagline: "One-line summary." },
+  agents: { robots: { policy: "block-training" } },
+  pages: posts.map((post) => ({
+    urlPath: `/blog/${post.slug}`,
+    title: post.title,
+    description: post.summary,
+    content: post.markdown,
+    lastModified: post.updatedAt,
+  })),
+});
+```
+
+Set `emitRootCrawlerFiles: false` when the site is one fragment of a larger origin (microfrontends) and the host app owns the root crawler files. See [Generate artifacts without a docs tree](/docs/build/generate-artifacts-without-docs) for page-input fallback rules and the merge story.
+
 ## Agent readability helpers
 
 `generateAgentReadabilityArtifacts` gives you the manifest. The runtime helpers turn it into Web `Response` objects your framework can return directly:

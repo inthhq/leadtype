@@ -170,6 +170,7 @@ const config: DocsConfig = {
             "generate-static-artifacts",
             "generate-rss-atom-feeds",
             "optimize-docs-for-agents",
+            "generate-artifacts-without-docs",
             "serve-agent-responses",
             "deploy-generated-artifacts",
           ],
