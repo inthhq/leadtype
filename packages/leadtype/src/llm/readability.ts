@@ -962,6 +962,14 @@ export function renderSiteJsonLd(
   const base = stripTrailingSlashes(manifest.baseUrl);
   const ids = jsonLdEntityIds(base);
 
+  // `[]` is truthy — normalize first so an empty array is omitted like sameAs.
+  const contactPoints = options.organization?.contactPoint
+    ? toArray(options.organization.contactPoint).map((contactPoint) => ({
+        "@type": "ContactPoint",
+        ...contactPoint,
+      }))
+    : [];
+
   const organization: JsonLdValue = {
     "@type": "Organization",
     "@id": ids.organization,
@@ -974,16 +982,7 @@ export function renderSiteJsonLd(
     ...(options.organization?.sameAs && options.organization.sameAs.length > 0
       ? { sameAs: options.organization.sameAs }
       : {}),
-    ...(options.organization?.contactPoint
-      ? {
-          contactPoint: toArray(options.organization.contactPoint).map(
-            (contactPoint) => ({
-              "@type": "ContactPoint",
-              ...contactPoint,
-            })
-          ),
-        }
-      : {}),
+    ...(contactPoints.length > 0 ? { contactPoint: contactPoints } : {}),
     ...(options.organization?.address
       ? {
           address: {

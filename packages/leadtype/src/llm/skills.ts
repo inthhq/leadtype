@@ -234,6 +234,24 @@ export async function generateSkillArtifacts(
 
   const skillsRoot = path.join(outDir, WELL_KNOWN_DIR, SKILLS_DIR);
   const cardPath = path.join(outDir, WELL_KNOWN_DIR, "agent-card.json");
+
+  // Validate every skill before touching the existing surface — a throw after
+  // the rm below would erase the last good output and leave a partial rewrite.
+  for (const skill of skills) {
+    if (!SKILL_NAME_PATTERN.test(skill.name)) {
+      throw new Error(
+        `leadtype: invalid skill name "${skill.name}". Skill names must be a lowercase slug ` +
+          '(letters, digits, hyphens; starting alphanumeric), e.g. "deploy-acme".'
+      );
+    }
+    if (skill.description.length > MAX_SKILL_DESCRIPTION_LENGTH) {
+      throw new Error(
+        `leadtype: skill "${skill.name}" description is ${skill.description.length} characters; ` +
+          `the Agent Skills discovery format caps descriptions at ${MAX_SKILL_DESCRIPTION_LENGTH}.`
+      );
+    }
+  }
+
   // Clear generated artifacts first on every run, so skills/cards the config no
   // longer emits (renamed, removed, or fully disabled) don't linger and keep
   // getting discovered by clients.
@@ -258,18 +276,6 @@ export async function generateSkillArtifacts(
   }[] = [];
 
   for (const skill of skills) {
-    if (!SKILL_NAME_PATTERN.test(skill.name)) {
-      throw new Error(
-        `leadtype: invalid skill name "${skill.name}". Skill names must be a lowercase slug ` +
-          '(letters, digits, hyphens; starting alphanumeric), e.g. "deploy-acme".'
-      );
-    }
-    if (skill.description.length > MAX_SKILL_DESCRIPTION_LENGTH) {
-      throw new Error(
-        `leadtype: skill "${skill.name}" description is ${skill.description.length} characters; ` +
-          `the Agent Skills discovery format caps descriptions at ${MAX_SKILL_DESCRIPTION_LENGTH}.`
-      );
-    }
     const body = await resolveBody(skill, config.srcDir);
     const content = renderSkillMd(skill, body);
     const dir = path.join(skillsRoot, skill.name);

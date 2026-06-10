@@ -1125,8 +1125,11 @@ describe("agent readability helpers", () => {
       "@id": "https://example.com/#organization",
       address: {
         "@type": "PostalAddress",
-        addressCountry: "US",
+        streetAddress: "1 Main Street",
         addressLocality: "San Francisco",
+        addressRegion: "CA",
+        postalCode: "94105",
+        addressCountry: "US",
       },
       contactPoint: [
         {
@@ -1156,6 +1159,16 @@ describe("agent readability helpers", () => {
       applicationCategory: "DeveloperApplication",
       publisher: { "@id": "https://example.com/#organization" },
     });
+  });
+
+  it("omits an empty contactPoint array from Organization JSON-LD", () => {
+    const graph = renderSiteJsonLd(manifest, {
+      organization: { name: "Acme Inc", contactPoint: [] },
+    }) as { "@graph": Record<string, unknown>[] };
+    const organization = graph["@graph"].find(
+      (node) => node["@type"] === "Organization"
+    );
+    expect(organization).not.toHaveProperty("contactPoint");
   });
 
   it("emits product-detectable software types for libraries and omits the SearchAction on request", () => {

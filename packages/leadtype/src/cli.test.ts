@@ -752,7 +752,9 @@ describe("leadtype CLI", () => {
     ) as {
       jsonLd?: {
         organization?: {
-          address?: { addressCountry?: string };
+          name?: string;
+          url?: string;
+          address?: { addressCountry?: string; addressLocality?: string };
           contactPoint?: { contactType?: string; email?: string };
           email?: string;
           sameAs?: string[];
@@ -760,7 +762,9 @@ describe("leadtype CLI", () => {
       };
     };
     expect(manifest.jsonLd?.organization).toMatchObject({
-      address: { addressCountry: "US" },
+      name: "Configured Org",
+      url: "https://example.com",
+      address: { addressCountry: "US", addressLocality: "San Francisco" },
       contactPoint: {
         contactType: "customer support",
         email: "support@example.com",
