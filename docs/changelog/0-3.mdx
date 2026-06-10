@@ -87,6 +87,19 @@ scaling, validated by a new benchmark against real TanStack-scale docs.
 
 ## Validation and safety
 
+- Agent Skills discovery manifests now emit the v0.2.0 format: the `$schema`
+  URL plus per-entry `type: "skill-md"`, a relative `url`, and a `sha256:` hex
+  `digest`, so spec-conformant clients (such as Vercel's `skills` tool) resolve
+  every entry. The pre-0.2.0 leadtype `path`/`integrity` fields are still
+  emitted alongside for older consumers, and skill descriptions over the spec's
+  1024-character cap now fail generation instead of being silently dropped by
+  clients.
+- Organization JSON-LD now supports `email`, `sameAs`, `contactPoint`, and
+  `address` fields from `docs.config.ts`, so hosted docs can publish direct
+  email contact details, brand-disambiguation links, and Schema.org
+  `ContactPoint`/`PostalAddress` data. These objects are emitted verbatim into
+  JSON-LD, so config validation rejects unknown `contactPoint`/`address` keys
+  (catching typos like `telphone`) and empty `address` objects.
 - Feed generation requires `--base-url` or a deployment URL environment
   variable so RSS and Atom item links are absolute.
 - Search generation now treats `shared/` and `_shared/` route segments as

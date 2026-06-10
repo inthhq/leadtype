@@ -175,6 +175,25 @@ export type ProductInfo = {
   category?: string;
 };
 
+export type OrganizationPostalAddress = {
+  streetAddress?: string;
+  addressLocality?: string;
+  addressRegion?: string;
+  postalCode?: string;
+  addressCountry?: string;
+};
+
+export type OrganizationContactPoint = {
+  /** Schema.org contact type, e.g. "customer support", "sales", or "press". */
+  contactType: string;
+  email?: string;
+  /** Phone number, emitted as Schema.org `telephone`. */
+  telephone?: string;
+  url?: string;
+  areaServed?: string | string[];
+  availableLanguage?: string | string[];
+};
+
 /**
  * Who publishes / maintains the product. Feeds the JSON-LD `Organization` node
  * and the A2A agent card's `provider`. Distinct from {@link ProductInfo}: the
@@ -185,8 +204,16 @@ export type OrganizationInfo = {
   name: string;
   /** Publisher URL, e.g. "https://inth.com". */
   url?: string;
+  /** Organization email address, emitted as JSON-LD `Organization.email`. */
+  email?: string;
   /** Logo URL, emitted as JSON-LD `Organization.logo`. */
   logo?: string;
+  /** Entity links that disambiguate the organization, emitted as JSON-LD `sameAs`. */
+  sameAs?: string[];
+  /** Contact details for agent/contact-query discovery, emitted as `ContactPoint`. */
+  contactPoint?: OrganizationContactPoint | OrganizationContactPoint[];
+  /** Business address, emitted as Schema.org `PostalAddress`. */
+  address?: OrganizationPostalAddress;
 };
 
 /** Authored `llms.txt` body. Sections render after the tagline blockquote, in array order. */
@@ -660,7 +687,13 @@ export function resolveAgentInputs(config: {
     ? {
         ...(organization.name ? { name: organization.name } : {}),
         ...(organization.url ? { url: organization.url } : {}),
+        ...(organization.email ? { email: organization.email } : {}),
         ...(organization.logo ? { logo: organization.logo } : {}),
+        ...(organization.sameAs ? { sameAs: organization.sameAs } : {}),
+        ...(organization.contactPoint
+          ? { contactPoint: organization.contactPoint }
+          : {}),
+        ...(organization.address ? { address: organization.address } : {}),
       }
     : undefined;
   const jsonLd: RenderSiteJsonLdOptions | undefined =

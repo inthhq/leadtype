@@ -14,7 +14,16 @@ const config: DocsConfig = {
     category: "DeveloperApplication",
   },
   // Who publishes it → JSON-LD Organization + the agent-card provider.
-  organization: { name: "Inth", url: "https://inth.com" },
+  organization: {
+    name: "Inth",
+    url: "https://inth.com",
+    email: "support@inth.com",
+    sameAs: ["https://github.com/inthhq"],
+    contactPoint: {
+      contactType: "customer support",
+      email: "support@inth.com",
+    },
+  },
   // The llms.txt body, rendered in order (was `product.blocks`).
   llms: {
     sections: [

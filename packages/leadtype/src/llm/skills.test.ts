@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -50,9 +51,36 @@ describe("generateSkillArtifacts — site mode", () => {
         join(outDir, ".well-known/agent-skills/index.json"),
         "utf8"
       )
-    ) as { skills: { name: string; integrity: string; path: string }[] };
+    ) as {
+      $schema: string;
+      version?: number;
+      skills: {
+        name: string;
+        description: string;
+        type: string;
+        url: string;
+        digest: string;
+        integrity: string;
+        path: string;
+      }[];
+    };
+    expect(index.$schema).toBe(
+      "https://schemas.agentskills.io/discovery/0.2.0/schema.json"
+    );
+    // Pre-0.2.0 leadtype field — the $schema carries the format version now.
+    expect(index.version).toBeUndefined();
     expect(index.skills[0].name).toBe("acme-docs-docs");
-    expect(index.skills[0].integrity).toMatch(/^sha256-/);
+    expect(index.skills[0].description.length).toBeGreaterThan(0);
+    // Discovery v0.2.0 entry shape: type/url/digest, digest as sha256:<hex>.
+    // Hashes are computed from the emitted SKILL.md so the test pins both the
+    // encoding and the hashed payload.
+    const hash = () => createHash("sha256").update(skillMd);
+    expect(index.skills[0].type).toBe("skill-md");
+    expect(index.skills[0].url).toBe("./acme-docs-docs/SKILL.md");
+    expect(index.skills[0].digest).toBe(`sha256:${hash().digest("hex")}`);
+    // Legacy leadtype fields kept for pre-0.2.0 consumers.
+    expect(index.skills[0].path).toBe("./acme-docs-docs/SKILL.md");
+    expect(index.skills[0].integrity).toBe(`sha256-${hash().digest("base64")}`);
 
     const card = JSON.parse(
       await readFile(join(outDir, ".well-known/agent-card.json"), "utf8")
@@ -135,6 +163,27 @@ describe("generateSkillArtifacts — site mode", () => {
     expect(result.files.some((f) => f.endsWith("agent-card.json"))).toBe(false);
   });
 
+  it("rejects a skill description over the discovery cap", async () => {
+    const outDir = await tempDir();
+    await expect(
+      generateSkillArtifacts({
+        outDir,
+        product,
+        mode: "site",
+        skills: {
+          docsSkill: false,
+          items: [
+            {
+              name: "deploy",
+              description: "x".repeat(1025),
+              body: "# Deploy\n",
+            },
+          ],
+        },
+      })
+    ).rejects.toThrow(/caps descriptions at 1024/);
+  });
+
   it("rejects an unsafe skill name", async () => {
     const outDir = await tempDir();
     await expect(
@@ -148,6 +197,34 @@ describe("generateSkillArtifacts — site mode", () => {
         },
       })
     ).rejects.toThrow(/invalid skill name/);
+  });
+
+  it("keeps the previous surface intact when validation fails", async () => {
+    const outDir = await tempDir();
+    await generateSkillArtifacts({ outDir, product, mode: "site" });
+
+    // Validation runs before the old surface is cleared, so a bad config must
+    // not erase the last good output or leave a partial rewrite.
+    await expect(
+      generateSkillArtifacts({
+        outDir,
+        product,
+        mode: "site",
+        skills: {
+          items: [
+            { name: "broken", description: "x".repeat(1025), body: "# x\n" },
+          ],
+        },
+      })
+    ).rejects.toThrow(/caps descriptions at 1024/);
+
+    const index = JSON.parse(
+      await readFile(
+        join(outDir, ".well-known/agent-skills/index.json"),
+        "utf8"
+      )
+    ) as { skills: { name: string }[] };
+    expect(index.skills.map((s) => s.name)).toEqual(["acme-docs-docs"]);
   });
 
   it("clears a previously-generated surface when skills are disabled", async () => {

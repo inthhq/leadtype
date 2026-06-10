@@ -7,11 +7,16 @@ const NON_SLUG_PATTERN = /[^a-z0-9]+/g;
 const EDGE_DASH_PATTERN = /^-+|-+$/g;
 const WELL_KNOWN_DIR = ".well-known";
 const SKILLS_DIR = "agent-skills";
+const DISCOVERY_SCHEMA_URL =
+  "https://schemas.agentskills.io/discovery/0.2.0/schema.json";
 const YAML_NEEDS_QUOTE = /[:#]/;
 // A skill name becomes a `.well-known/agent-skills/<name>/` directory and the
 // agentskills.io identifier, so it must be a safe lowercase slug — never a path
 // fragment that could escape the output dir.
 const SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+// The discovery v0.2.0 spec caps entry descriptions; longer ones make clients
+// drop the entry, so fail at generate time instead.
+const MAX_SKILL_DESCRIPTION_LENGTH = 1024;
 
 export type GenerateSkillArtifactsConfig = {
   /** Output root. Site mode writes under `.well-known/`; bundle mode writes `SKILL.md`. */
@@ -145,6 +150,12 @@ function integrity(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("base64")}`;
 }
 
+// Discovery v0.2.0 digests are `sha256:<hex>`, not the SRI `sha256-<base64>`
+// kept in the legacy `integrity` field.
+function digest(content: string): string {
+  return `sha256:${createHash("sha256").update(content).digest("hex")}`;
+}
+
 /** Build an A2A AgentCard (https://agent2agent.info) describing the skills surface. */
 function buildAgentCard(
   config: GenerateSkillArtifactsConfig,
@@ -223,6 +234,24 @@ export async function generateSkillArtifacts(
 
   const skillsRoot = path.join(outDir, WELL_KNOWN_DIR, SKILLS_DIR);
   const cardPath = path.join(outDir, WELL_KNOWN_DIR, "agent-card.json");
+
+  // Validate every skill before touching the existing surface — a throw after
+  // the rm below would erase the last good output and leave a partial rewrite.
+  for (const skill of skills) {
+    if (!SKILL_NAME_PATTERN.test(skill.name)) {
+      throw new Error(
+        `leadtype: invalid skill name "${skill.name}". Skill names must be a lowercase slug ` +
+          '(letters, digits, hyphens; starting alphanumeric), e.g. "deploy-acme".'
+      );
+    }
+    if (skill.description.length > MAX_SKILL_DESCRIPTION_LENGTH) {
+      throw new Error(
+        `leadtype: skill "${skill.name}" description is ${skill.description.length} characters; ` +
+          `the Agent Skills discovery format caps descriptions at ${MAX_SKILL_DESCRIPTION_LENGTH}.`
+      );
+    }
+  }
+
   // Clear generated artifacts first on every run, so skills/cards the config no
   // longer emits (renamed, removed, or fully disabled) don't linger and keep
   // getting discovered by clients.
@@ -239,17 +268,14 @@ export async function generateSkillArtifacts(
   const manifestEntries: {
     name: string;
     description: string;
+    type: "skill-md";
+    url: string;
+    digest: string;
     path: string;
     integrity: string;
   }[] = [];
 
   for (const skill of skills) {
-    if (!SKILL_NAME_PATTERN.test(skill.name)) {
-      throw new Error(
-        `leadtype: invalid skill name "${skill.name}". Skill names must be a lowercase slug ` +
-          '(letters, digits, hyphens; starting alphanumeric), e.g. "deploy-acme".'
-      );
-    }
     const body = await resolveBody(skill, config.srcDir);
     const content = renderSkillMd(skill, body);
     const dir = path.join(skillsRoot, skill.name);
@@ -260,6 +286,10 @@ export async function generateSkillArtifacts(
     manifestEntries.push({
       name: skill.name,
       description: skill.description,
+      type: "skill-md",
+      url: `./${skill.name}/SKILL.md`,
+      digest: digest(content),
+      // Legacy pre-0.2.0 leadtype fields; the spec ignores unknown keys.
       path: `./${skill.name}/SKILL.md`,
       integrity: integrity(content),
     });
@@ -268,7 +298,14 @@ export async function generateSkillArtifacts(
   const indexPath = path.join(skillsRoot, "index.json");
   await writeFile(
     indexPath,
-    `${JSON.stringify({ version: 1, skills: manifestEntries }, null, 2)}\n`
+    `${JSON.stringify(
+      {
+        $schema: DISCOVERY_SCHEMA_URL,
+        skills: manifestEntries,
+      },
+      null,
+      2
+    )}\n`
   );
   files.push(indexPath);
 

@@ -1097,7 +1097,24 @@ describe("agent readability helpers", () => {
 
   it("emits a referenced site-level entity graph", () => {
     const graph = renderSiteJsonLd(manifest, {
-      organization: { name: "Acme Inc", url: "https://acme.com" },
+      organization: {
+        name: "Acme Inc",
+        url: "https://acme.com",
+        email: "hello@acme.com",
+        sameAs: ["https://github.com/acme", "https://www.linkedin.com/acme"],
+        contactPoint: {
+          contactType: "customer support",
+          email: "support@acme.com",
+          telephone: "+1-555-0100",
+        },
+        address: {
+          streetAddress: "1 Main Street",
+          addressLocality: "San Francisco",
+          addressRegion: "CA",
+          postalCode: "94105",
+          addressCountry: "US",
+        },
+      },
       software: { applicationCategory: "DeveloperApplication" },
     }) as { "@graph": Record<string, unknown>[] };
 
@@ -1106,7 +1123,25 @@ describe("agent readability helpers", () => {
     );
     expect(byType.get("Organization")).toMatchObject({
       "@id": "https://example.com/#organization",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "1 Main Street",
+        addressLocality: "San Francisco",
+        addressRegion: "CA",
+        postalCode: "94105",
+        addressCountry: "US",
+      },
+      contactPoint: [
+        {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: "support@acme.com",
+          telephone: "+1-555-0100",
+        },
+      ],
+      email: "hello@acme.com",
       name: "Acme Inc",
+      sameAs: ["https://github.com/acme", "https://www.linkedin.com/acme"],
       url: "https://acme.com",
     });
     expect(byType.get("WebSite")).toMatchObject({
@@ -1124,6 +1159,16 @@ describe("agent readability helpers", () => {
       applicationCategory: "DeveloperApplication",
       publisher: { "@id": "https://example.com/#organization" },
     });
+  });
+
+  it("omits an empty contactPoint array from Organization JSON-LD", () => {
+    const graph = renderSiteJsonLd(manifest, {
+      organization: { name: "Acme Inc", contactPoint: [] },
+    }) as { "@graph": Record<string, unknown>[] };
+    const organization = graph["@graph"].find(
+      (node) => node["@type"] === "Organization"
+    );
+    expect(organization).not.toHaveProperty("contactPoint");
   });
 
   it("emits product-detectable software types for libraries and omits the SearchAction on request", () => {

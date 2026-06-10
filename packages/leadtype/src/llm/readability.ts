@@ -885,7 +885,37 @@ export function renderJsonLd(
 }
 
 export type RenderSiteJsonLdOptions = {
-  organization?: { name?: string; url?: string; logo?: string };
+  organization?: {
+    name?: string;
+    url?: string;
+    email?: string;
+    logo?: string;
+    sameAs?: string[];
+    contactPoint?:
+      | {
+          contactType: string;
+          email?: string;
+          telephone?: string;
+          url?: string;
+          areaServed?: string | string[];
+          availableLanguage?: string | string[];
+        }
+      | Array<{
+          contactType: string;
+          email?: string;
+          telephone?: string;
+          url?: string;
+          areaServed?: string | string[];
+          availableLanguage?: string | string[];
+        }>;
+    address?: {
+      streetAddress?: string;
+      addressLocality?: string;
+      addressRegion?: string;
+      postalCode?: string;
+      addressCountry?: string;
+    };
+  };
   software?: {
     /** Include `SoftwareSourceCode` alongside `SoftwareApplication` for libraries. */
     isLibrary?: boolean;
@@ -902,6 +932,10 @@ export type RenderSiteJsonLdOptions = {
 };
 
 const DEFAULT_SEARCH_URL_PATTERN = "/docs?q={search_term_string}";
+
+function toArray<T>(value: T | T[]): T[] {
+  return Array.isArray(value) ? value : [value];
+}
 
 /**
  * The site-level entity graph — `Organization`, `WebSite` (+ `SearchAction`), and
@@ -928,12 +962,35 @@ export function renderSiteJsonLd(
   const base = stripTrailingSlashes(manifest.baseUrl);
   const ids = jsonLdEntityIds(base);
 
+  // `[]` is truthy — normalize first so an empty array is omitted like sameAs.
+  const contactPoints = options.organization?.contactPoint
+    ? toArray(options.organization.contactPoint).map((contactPoint) => ({
+        "@type": "ContactPoint",
+        ...contactPoint,
+      }))
+    : [];
+
   const organization: JsonLdValue = {
     "@type": "Organization",
     "@id": ids.organization,
     name: options.organization?.name ?? manifest.product.name,
     url: options.organization?.url ?? base,
+    ...(options.organization?.email
+      ? { email: options.organization.email }
+      : {}),
     ...(options.organization?.logo ? { logo: options.organization.logo } : {}),
+    ...(options.organization?.sameAs && options.organization.sameAs.length > 0
+      ? { sameAs: options.organization.sameAs }
+      : {}),
+    ...(contactPoints.length > 0 ? { contactPoint: contactPoints } : {}),
+    ...(options.organization?.address
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            ...options.organization.address,
+          },
+        }
+      : {}),
   };
 
   const website: JsonLdValue = {

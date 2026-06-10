@@ -681,6 +681,20 @@ describe("leadtype CLI", () => {
     name: "Configured Product",
     tagline: "Configured product summary.",
   },
+  organization: {
+    name: "Configured Org",
+    url: "https://example.com",
+    email: "hello@example.com",
+    sameAs: ["https://github.com/example"],
+    contactPoint: {
+      contactType: "customer support",
+      email: "support@example.com",
+    },
+    address: {
+      addressCountry: "US",
+      addressLocality: "San Francisco",
+    },
+  },
   groups: [
     { slug: "zeta", title: "Zeta First" },
     { slug: "alpha", title: "Alpha Second" },
@@ -729,6 +743,35 @@ describe("leadtype CLI", () => {
     expect(docsLlmsTxt.indexOf("## Zeta First")).toBeLessThan(
       docsLlmsTxt.indexOf("## Alpha Second")
     );
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as {
+      jsonLd?: {
+        organization?: {
+          name?: string;
+          url?: string;
+          address?: { addressCountry?: string; addressLocality?: string };
+          contactPoint?: { contactType?: string; email?: string };
+          email?: string;
+          sameAs?: string[];
+        };
+      };
+    };
+    expect(manifest.jsonLd?.organization).toMatchObject({
+      name: "Configured Org",
+      url: "https://example.com",
+      address: { addressCountry: "US", addressLocality: "San Francisco" },
+      contactPoint: {
+        contactType: "customer support",
+        email: "support@example.com",
+      },
+      email: "hello@example.com",
+      sameAs: ["https://github.com/example"],
+    });
   });
 
   it("uses one MCP discovery config for server-card, agent-card, and docs-skill", async () => {
@@ -1775,6 +1818,73 @@ description: "First release."
     const error = JSON.parse(capture.stderr) as { error: string };
     expect(error.error).toContain("failed to load docs config");
     expect(error.error).toContain("product.name and product.tagline");
+  });
+
+  it("rejects unsupported organization contactPoint fields", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        organization: {
+          name: "Acme Inc",
+          contactPoint: { contactType: "sales", telphone: "+1-555-0100" },
+        },
+        groups: [{ slug: "guides", title: "Guides" }],
+      };`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      "organization.contactPoint.telphone is not a supported field"
+    );
+  });
+
+  it("rejects an empty organization address", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        organization: { name: "Acme Inc", address: {} },
+        groups: [{ slug: "guides", title: "Guides" }],
+      };`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      "organization.address must include at least one field"
+    );
   });
 
   it("fails when a configured docs set references an unknown group", async () => {

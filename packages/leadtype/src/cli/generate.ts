@@ -491,6 +491,175 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function validateOptionalStringField(
+  value: Record<string, unknown>,
+  field: string,
+  configPath: string
+): void {
+  if (value[field] !== undefined && typeof value[field] !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": organization.${field} must be a string`
+    );
+  }
+}
+
+function validateOptionalStringArrayField(
+  value: Record<string, unknown>,
+  field: string,
+  configPath: string
+): void {
+  const fieldValue = value[field];
+  if (
+    fieldValue !== undefined &&
+    !(
+      Array.isArray(fieldValue) &&
+      fieldValue.every((item) => typeof item === "string")
+    )
+  ) {
+    throw new Error(
+      `docs config at "${configPath}": organization.${field} must be an array of strings`
+    );
+  }
+}
+
+// Reject keys outside `allowed` — these objects are spread verbatim into the
+// JSON-LD output, so a typo would silently become an invalid Schema.org property.
+function validateKnownKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  fieldPath: string,
+  configPath: string
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) {
+      throw new Error(
+        `docs config at "${configPath}": ${fieldPath}.${key} is not a supported field ` +
+          `(expected one of: ${allowed.join(", ")})`
+      );
+    }
+  }
+}
+
+const POSTAL_ADDRESS_FIELDS = [
+  "streetAddress",
+  "addressLocality",
+  "addressRegion",
+  "postalCode",
+  "addressCountry",
+] as const;
+
+function validatePostalAddress(value: unknown, configPath: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": organization.address must be an object`
+    );
+  }
+  validateKnownKeys(
+    value,
+    POSTAL_ADDRESS_FIELDS,
+    "organization.address",
+    configPath
+  );
+  for (const field of POSTAL_ADDRESS_FIELDS) {
+    if (value[field] !== undefined && typeof value[field] !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": organization.address.${field} must be a string`
+      );
+    }
+  }
+  if (POSTAL_ADDRESS_FIELDS.every((field) => value[field] === undefined)) {
+    throw new Error(
+      `docs config at "${configPath}": organization.address must include at least one field ` +
+        `(${POSTAL_ADDRESS_FIELDS.join(", ")})`
+    );
+  }
+}
+
+function validateStringOrStringArray(
+  value: unknown,
+  fieldPath: string,
+  configPath: string
+): void {
+  if (
+    value !== undefined &&
+    typeof value !== "string" &&
+    !(Array.isArray(value) && value.every((item) => typeof item === "string"))
+  ) {
+    throw new Error(
+      `docs config at "${configPath}": ${fieldPath} must be a string or array of strings`
+    );
+  }
+}
+
+const CONTACT_POINT_FIELDS = [
+  "contactType",
+  "email",
+  "telephone",
+  "url",
+  "areaServed",
+  "availableLanguage",
+] as const;
+
+function validateContactPoint(
+  value: unknown,
+  configPath: string,
+  index?: number
+): void {
+  const fieldPath =
+    index === undefined
+      ? "organization.contactPoint"
+      : `organization.contactPoint[${index}]`;
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": ${fieldPath} must be an object`
+    );
+  }
+  validateKnownKeys(value, CONTACT_POINT_FIELDS, fieldPath, configPath);
+  if (typeof value.contactType !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": ${fieldPath}.contactType must be a string`
+    );
+  }
+  if (value.email === undefined && value.telephone === undefined) {
+    throw new Error(
+      `docs config at "${configPath}": ${fieldPath} must include email or telephone`
+    );
+  }
+  for (const field of ["email", "telephone", "url"]) {
+    if (value[field] !== undefined && typeof value[field] !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": ${fieldPath}.${field} must be a string`
+      );
+    }
+  }
+  validateStringOrStringArray(
+    value.areaServed,
+    `${fieldPath}.areaServed`,
+    configPath
+  );
+  validateStringOrStringArray(
+    value.availableLanguage,
+    `${fieldPath}.availableLanguage`,
+    configPath
+  );
+}
+
+function validateContactPoints(value: unknown, configPath: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const [index, contactPoint] of value.entries()) {
+      validateContactPoint(contactPoint, configPath, index);
+    }
+    return;
+  }
+  validateContactPoint(value, configPath);
+}
+
 function validateProductInfo(value: unknown): ProductInfo | undefined {
   if (!isPlainRecord(value)) {
     return;
@@ -518,6 +687,11 @@ function validateOrganization(
       `docs config at "${configPath}": organization.url must be a string`
     );
   }
+  validateOptionalStringField(value, "email", configPath);
+  validateOptionalStringField(value, "logo", configPath);
+  validateOptionalStringArrayField(value, "sameAs", configPath);
+  validateContactPoints(value.contactPoint, configPath);
+  validatePostalAddress(value.address, configPath);
   return value as OrganizationInfo;
 }
 
