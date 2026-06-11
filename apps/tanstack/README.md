@@ -32,4 +32,4 @@ Both build the `leadtype` package, then run `pipeline:build`, then start/build v
 
 ## Relationship to `leadtype init`
 
-`leadtype init` does **not** scaffold this app — its multi-script pipeline, generated page manifest, and per-provider AI routes are app-specific setup beyond the canonical integration. Follow the docs recipes instead: `use-the-source-primitive` and `integrate-with-fumadocs` under `/docs/build`.
+`leadtype init` does **not** scaffold this app — its multi-script pipeline, generated page manifest, and per-provider AI routes are app-specific setup beyond the canonical integration. Follow the docs recipes instead: `use-the-source-primitive` under `/docs/pipeline` and `integrate-with-fumadocs` under `/docs/integrations`.

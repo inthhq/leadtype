@@ -39,7 +39,7 @@ jobs:
         run: bun install
 
       # Dogfood our own CI feature: lint this repo's docs with the exact
-      # command we recommend in docs/build/validate-in-ci.mdx.
+      # command we recommend in docs/pipeline/validate-in-ci.mdx.
       - name: Validate docs (leadtype lint)
         run: bun x leadtype lint docs --format github --error-unknown --max-warnings 0
 

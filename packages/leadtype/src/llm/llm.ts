@@ -2594,7 +2594,19 @@ function normalizeAgentPageUrlPath(urlPath: string): string {
       `generateAgentArtifacts: page urlPath "${urlPath}" must not contain a query or hash.`
     );
   }
-  return stripTrailingSlashes(normalizeDocsPath(trimmed)) || "/";
+  const normalized = stripTrailingSlashes(normalizeDocsPath(trimmed)) || "/";
+  // The path becomes a file location under outDir; `.`/`..`/empty segments
+  // would let a route escape the output directory.
+  const hasUnsafeSegment = normalized
+    .slice(1)
+    .split("/")
+    .some((segment) => segment === "" || segment === "." || segment === "..");
+  if (normalized !== "/" && hasUnsafeSegment) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must not contain empty, ".", or ".." segments.`
+    );
+  }
+  return normalized;
 }
 
 function toAgentPageMarkdownDoc(

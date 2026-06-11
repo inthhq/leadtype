@@ -51,9 +51,15 @@ const MOVED_DOCS_PATHS = new Map<string, string>([
 ]);
 
 const MARKDOWN_SUFFIX = ".md";
+const TRAILING_SLASHES_PATTERN = /\/+$/;
 
 export default defineEventHandler((event) => {
-  const { pathname } = getRequestURL(event);
+  const { pathname: rawPathname } = getRequestURL(event);
+  // Legacy URLs arrive with trailing slashes too (/docs/build/x/).
+  const pathname =
+    rawPathname !== "/" && rawPathname.endsWith("/")
+      ? rawPathname.replace(TRAILING_SLASHES_PATTERN, "")
+      : rawPathname;
   const isMarkdownMirror = pathname.endsWith(MARKDOWN_SUFFIX);
   const lookupPath = isMarkdownMirror
     ? pathname.slice(0, -MARKDOWN_SUFFIX.length)

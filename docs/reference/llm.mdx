@@ -3,16 +3,18 @@ title: "LLM files"
 description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
 ---
 
-The `leadtype/llm` entry point produces four flavors of agent-facing output, all derived from the same docs source:
+The `leadtype/llm` entry point produces five flavors of agent-facing output — four derived from a docs source tree, plus one that takes pages directly:
 
 - **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
 - **`generateLLMFullContextFiles`** — root `/llms-full.txt` fallback containing all generated markdown docs. Pairs with `generateLlmsTxt`.
 - **`generateAgentReadabilityArtifacts`** — root `sitemap.xml`, `sitemap.md`, `robots.txt`, and docs-scoped JSON manifest data that a host app can merge into site-level files.
 - **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
+- **`generateAgentArtifacts`** — for sites without a docs tree. Takes an in-memory page list (CMS, database, route manifest) and emits the full artifact set in one call.
 
 ```ts
 import {
   extractDocsTableOfContents,
+  generateAgentArtifacts,
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,

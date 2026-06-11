@@ -231,4 +231,20 @@ Body text.`,
       generateAgentArtifacts({ ...baseConfig(outDir), pages: [] })
     ).rejects.toThrow("config.pages is empty");
   });
+
+  it("rejects traversal segments so mirrors cannot escape outDir", async () => {
+    const outDir = await createTempOutDir();
+    const escapePaths = ["/../../escaped", "/a/../b", "/a/./b", "/a//b"];
+    for (const urlPath of escapePaths) {
+      await expect(
+        generateAgentArtifacts({
+          ...baseConfig(outDir),
+          pages: [{ urlPath, title: "Bad", content: "x" }],
+        })
+      ).rejects.toThrow('".." segments');
+    }
+    await expect(
+      readFile(path.join(path.dirname(outDir), "escaped.md"), "utf-8")
+    ).rejects.toThrow();
+  });
 });
