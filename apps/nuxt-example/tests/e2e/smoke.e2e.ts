@@ -32,18 +32,18 @@ test("docs index renders nav + Leadtype content", async ({ request }) => {
 });
 
 test("docs sub-page renders the root docs corpus", async ({ request }) => {
-  const response = await request.get("/docs/authoring/components");
+  const response = await request.get("/docs/writing/components");
   expect(response.status()).toBe(200);
   const html = await response.text();
   expect(html).toContain("MDX components");
-  expect(html).toContain("/docs/authoring/frontmatter");
+  expect(html).toContain("/docs/writing/frontmatter");
 });
 
 test("agent surface: llms.txt and markdown mirror are served", async ({
   request,
 }) => {
   expect((await request.get("/llms.txt")).status()).toBe(200);
-  const mirror = await request.get("/docs/authoring/components.md");
+  const mirror = await request.get("/docs/writing/components.md");
   expect(mirror.status()).toBe(200);
   expect(await mirror.text()).toContain("MDX components");
 

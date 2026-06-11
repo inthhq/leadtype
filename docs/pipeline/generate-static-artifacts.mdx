@@ -5,7 +5,7 @@ description: "Run leadtype generate from your build pipeline to write llms.txt, 
 
 Use this path when your runtime needs files on disk — a CDN-only deploy, a static export, a separate agent-only service, or multiple sibling apps sharing one corpus. The `leadtype generate` CLI walks your MDX source and writes a complete set of files into `public/`.
 
-If you'd rather render docs directly from your bundler, see [the source primitive](/docs/build/use-the-source-primitive). For source-shape decisions (multi-folder, remote git, pinned refs), see [Configure docs sources](/docs/sources/configure-sources). For host-specific serving details, see [Deploy generated artifacts](/docs/build/deploy-generated-artifacts).
+If you'd rather render docs directly from your bundler, see [the source primitive](/docs/pipeline/use-the-source-primitive). For source-shape decisions (multi-folder, remote git, pinned refs), see [Configure docs sources](/docs/pipeline/configure-sources). For host-specific serving details, see [Deploy generated artifacts](/docs/pipeline/deploy-generated-artifacts).
 
 ## The flow
 
@@ -61,7 +61,7 @@ That command writes:
 - `public/docs/agent-readability.json`
 - configured RSS/Atom feeds, such as `public/changelog/rss.xml`
 
-For feed-specific configuration and date rules, see [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds).
+For feed-specific configuration and date rules, see [Generate RSS and Atom feeds](/docs/pipeline/generate-rss-atom-feeds).
 
 Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
 
@@ -133,7 +133,7 @@ export default {
 };
 ```
 
-Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes. For pages where "updated at" should track source edits, default git enrichment writes `lastModified` when history is available. See [Generate RSS and Atom feeds](/docs/build/generate-rss-atom-feeds) for the full feed contract.
+Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes. For pages where "updated at" should track source edits, default git enrichment writes `lastModified` when history is available. See [Generate RSS and Atom feeds](/docs/pipeline/generate-rss-atom-feeds) for the full feed contract.
 
 ## Wire it into the build
 

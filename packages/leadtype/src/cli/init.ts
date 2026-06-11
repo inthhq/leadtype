@@ -18,7 +18,8 @@ export type { InitFramework } from "./init-templates";
 
 const DEFAULT_NAME = "My docs";
 const DEFAULT_SUMMARY = "What this project does in one sentence.";
-const RECIPE_URL = "https://leadtype.dev/docs/build/use-the-source-primitive";
+const RECIPE_URL =
+  "https://leadtype.dev/docs/pipeline/use-the-source-primitive";
 const WEBMCP_FLAG_DEPRECATION_MESSAGE =
   "--webmcp is deprecated as an init shortcut and will be removed in the next major version";
 const WEBMCP_FLAG_DEPRECATION_HINT =

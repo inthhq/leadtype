@@ -26,6 +26,7 @@ export {
   toLocalizedMarkdownUrlPath,
 } from "../i18n";
 export {
+  type AgentPageInput,
   type AgentReadabilityConfig,
   type AgentReadabilityResult,
   type AgentsMdConfig,
@@ -53,6 +54,9 @@ export {
   type FrameworkNavigationConfig,
   type FrameworkNavigationTemplate,
   type FrameworkNavigationVariant,
+  type GenerateAgentArtifactsConfig,
+  type GenerateAgentArtifactsResult,
+  generateAgentArtifacts,
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,

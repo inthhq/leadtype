@@ -134,7 +134,7 @@ test("heading anchors handle inline markup and digit-leading slugs", async ({
   // in-content heading anchor previously called querySelector("#1-...") which
   // throws SyntaxError because CSS idents can't start with a digit, so the
   // scrollIntoView never fired. Now uses getElementById.
-  await page.goto("/docs/build/optimize-docs-for-agents", {
+  await page.goto("/docs/aeo/optimize-docs-for-agents", {
     waitUntil: "networkidle",
   });
   await waitForClientHydration(page);

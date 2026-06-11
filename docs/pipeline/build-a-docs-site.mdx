@@ -78,7 +78,7 @@ or import source-owned sidebar/schema code by hand.
 }
 ```
 
-→ [Sync docs across repositories](/docs/build/sync-docs-across-repos) — pinned
+→ [Sync docs across repositories](/docs/pipeline/sync-docs-across-repos) — pinned
 source promotion flow
 
 ## Source primitive: the common path
@@ -90,8 +90,8 @@ If your docs app compiles MDX through a bundler, use the source primitive. It gi
 - `buildSearchIndex()` returning a static search index
 - `resolveInclude()` for programmatic partial loading
 
-→ [Use the source primitive](/docs/build/use-the-source-primitive) — generic recipe
-→ [Integrate with Fumadocs](/docs/build/integrate-with-fumadocs) — first-party adapter
+→ [Use the source primitive](/docs/pipeline/use-the-source-primitive) — generic recipe
+→ [Integrate with Fumadocs](/docs/integrations/integrate-with-fumadocs) — first-party adapter
 
 ## Static artifacts: the CLI path
 
@@ -103,17 +103,17 @@ If your runtime needs files on disk — for a CDN-only deploy, a static export, 
 - `public/sitemap.xml`, `public/sitemap.md`, `public/robots.txt`
 - `public/docs/agent-readability.json`
 
-→ [Generate static artifacts](/docs/build/generate-static-artifacts) — CLI workflow
+→ [Generate static artifacts](/docs/pipeline/generate-static-artifacts) — CLI workflow
 
 ## Add the cross-cutting features
 
 Whichever path you pick, the same follow-on guides apply:
 
-- [Configure docs sources](/docs/sources/configure-sources) — local folders, mounted folders, and remote git collections
+- [Configure docs sources](/docs/pipeline/configure-sources) — local folders, mounted folders, and remote git collections
 - [Add search](/docs/search/add-search) — local search index + optional source-grounded answers
-- [Optimize docs for agents](/docs/build/optimize-docs-for-agents) — markdown responses, llms.txt, discovery files
-- [Deploy generated artifacts](/docs/build/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities
-- [Validate in CI](/docs/build/validate-in-ci) — lint frontmatter, meta.json, internal links
+- [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents) — markdown responses, llms.txt, discovery files
+- [Deploy generated artifacts](/docs/pipeline/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities
+- [Validate in CI](/docs/pipeline/validate-in-ci) — lint frontmatter, meta.json, internal links
 
 ## Configure ownership
 
@@ -128,6 +128,6 @@ For a pinned source docs UI, keep two configs:
   organization, agent policy, source `repository`/`ref`, output paths, and the
   framework app shell.
 
-See [Frontmatter](/docs/authoring/frontmatter) for the page-level schema, and
-[Configure docs sources](/docs/sources/configure-sources) for the full config
+See [Frontmatter](/docs/writing/frontmatter) for the page-level schema, and
+[Configure docs sources](/docs/pipeline/configure-sources) for the full config
 shape, including multi-folder and remote source setups.

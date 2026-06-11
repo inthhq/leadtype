@@ -5,9 +5,9 @@ description: "Generate llms.txt, markdown mirrors, JSON-LD inputs, sitemaps, rob
 
 Use this guide when you already have a docs site and want agents to find, fetch, attribute, and cite the same content humans read in the browser.
 
-Leadtype generates the files. Your app wires those files into routing and HTML — that runtime side is covered in [Serve agent responses](/docs/build/serve-agent-responses).
+Leadtype generates the files. Your app wires those files into routing and HTML — that runtime side is covered in [Serve agent responses](/docs/aeo/serve-agent-responses).
 
-This guide is about the *plumbing* — the files agents fetch. For the content inside them, [Write for agents](/docs/authoring/write-for-agents) covers the one rule that moved the evals: document the non-obvious, not restatements of your types or CLI help.
+This guide is about the *plumbing* — the files agents fetch. For the content inside them, [Write for agents](/docs/writing/write-for-agents) covers the one rule that moved the evals: document the non-obvious, not restatements of your types or CLI help.
 
 The default output shape is based on the repo's agent evals. See [Evals](/docs/concepts/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
 
@@ -93,7 +93,7 @@ Static crawlers should start at root `/robots.txt` and `/sitemap.xml`, which `le
 
 Pass it through `normalizeAgentReadabilityManifest()` before handing it to a runtime helper — that validates the shape and fills defaults.
 
-Once these files exist, see [Serve agent responses](/docs/build/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
+Once these files exist, see [Serve agent responses](/docs/aeo/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
 
 ## Configure the agent surface
 
@@ -169,7 +169,7 @@ export default defineDocsConfig({
 - **`block-training`** — `Disallow: /` for training crawlers (GPTBot, Google-Extended, CCBot, ByteSpider, anthropic-ai, MetaExternalAgent); retrieval crawlers stay allowed.
 - **`block-ai`** — `Disallow: /` for every AI crawler; conventional search engines are untouched; signals `ai-input=no, ai-train=no`.
 
-The same stance drives the `Content-Signal` response header on served markdown (see [Serve agent responses](/docs/build/serve-agent-responses)), so robots.txt and live responses never disagree. Robots `Disallow` is advisory — pair `block-*` with your CDN/WAF if you need hard enforcement.
+The same stance drives the `Content-Signal` response header on served markdown (see [Serve agent responses](/docs/aeo/serve-agent-responses)), so robots.txt and live responses never disagree. Robots `Disallow` is advisory — pair `block-*` with your CDN/WAF if you need hard enforcement.
 
 ## Make the index worth reading
 
@@ -239,4 +239,4 @@ If the audit reports broken links from `llms.txt`, check whether your generated 
 - Include `canonical_url` and `last_updated` in markdown frontmatter.
 - Return markdown bodies for missing docs pages requested by agents.
 
-For the wiring that satisfies the middleware/JSON-LD/markdown lines of this checklist, see [Serve agent responses](/docs/build/serve-agent-responses).
+For the wiring that satisfies the middleware/JSON-LD/markdown lines of this checklist, see [Serve agent responses](/docs/aeo/serve-agent-responses).

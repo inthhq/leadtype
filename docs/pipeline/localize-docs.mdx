@@ -104,7 +104,7 @@ export function getSource(locale: string) {
 
 Resolve the active locale from the request path with `resolveDocsLocale`, and
 route translated locales under `/docs/{locale}/…` (the default locale stays at
-`/docs/…`). See [Use the source primitive](/docs/build/use-the-source-primitive)
+`/docs/…`). See [Use the source primitive](/docs/pipeline/use-the-source-primitive)
 for the per-framework route shape.
 
 ## 5. Add alternate-locale links
@@ -122,7 +122,7 @@ const alternates = getAlternateLocaleLinks(page, pagesByLocale, docsConfig.i18n)
 
 Render each as `<link rel="alternate" hreflang={locale} href={urlPath} />` in the
 page head, next to the canonical and markdown-alternate links from
-[Serve agent responses](/docs/build/serve-agent-responses).
+[Serve agent responses](/docs/aeo/serve-agent-responses).
 
 ## 6. Verify
 

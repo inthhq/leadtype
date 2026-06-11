@@ -35,4 +35,4 @@ Both commands build the `leadtype` package, generate site artifacts from the roo
 
 ## Relationship to `leadtype init`
 
-`leadtype init` does **not** scaffold this app yet. Follow the `integrate-with-fumadocs` recipe under `/docs/build` for the adapter pattern.
+`leadtype init` does **not** scaffold this app yet. Follow the `integrate-with-fumadocs` recipe under `/docs/integrations` for the adapter pattern.

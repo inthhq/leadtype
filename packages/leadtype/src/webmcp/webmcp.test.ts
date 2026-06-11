@@ -33,9 +33,9 @@ const docs: DocsSearchDocument[] = [
     id: "components",
     title: "Components",
     description: "Render MDX components.",
-    urlPath: "/docs/authoring/components",
-    absoluteUrl: "https://leadtype.dev/docs/authoring/components",
-    relativePath: "authoring/components",
+    urlPath: "/docs/writing/components",
+    absoluteUrl: "https://leadtype.dev/docs/writing/components",
+    relativePath: "writing/components",
     content: "# Components\n\nUse CommandTabs and TypeTable in MDX.",
   },
 ];

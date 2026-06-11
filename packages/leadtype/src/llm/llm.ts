@@ -28,6 +28,7 @@ import {
   normalizeWhitespace as normalizeDescription,
   normalizeDocsPath,
   stripDocsExtension,
+  stripTrailingSlashes,
   toAbsoluteUrl,
   toMarkdownUrlPath,
   toMountedMarkdownUrlPath,
@@ -2508,6 +2509,346 @@ export async function generateAgentReadabilityArtifacts(
             sitemapXml: files.sitemapXml,
           }
         : {}),
+    },
+    manifest,
+  };
+}
+
+/* ---------------- bring-your-own-pages agent artifacts ------------------ */
+
+/**
+ * One page handed to {@link generateAgentArtifacts}. Build these from any
+ * source — a CMS API, a database, a route manifest — instead of `.mdx` files
+ * on disk. The `content` markdown may carry its own frontmatter; explicit
+ * fields here win over frontmatter values.
+ */
+export type AgentPageInput = {
+  /** Canonical HTML route, e.g. `/benchmarks/chrome` or `/`. */
+  urlPath: string;
+  /** Markdown body served as the `.md` mirror. */
+  content: string;
+  /** Page title. Falls back to frontmatter `title:`, then the URL slug. */
+  title?: string;
+  /** One-line summary. Falls back to frontmatter `description:`. */
+  description?: string;
+  /** Last content change. Falls back to frontmatter, then the generation time. */
+  lastModified?: string | Date;
+  /** Group slugs matched against the `groups` config (like frontmatter `group:`). */
+  groups?: string[];
+  /** Order within a group (like frontmatter `order:`). Lower sorts first. */
+  order?: number;
+};
+
+export type GenerateAgentArtifactsConfig = {
+  /** Directory the artifacts are written into (usually the static/public root). */
+  outDir: string;
+  baseUrl?: string;
+  /** Pages to publish. At least one is required. */
+  pages: AgentPageInput[];
+  product: ProductInfo;
+  organization?: OrganizationInfo;
+  /** Authored `llms.txt` sections, rendered after the tagline blockquote. */
+  llms?: DocsLlmsConfig;
+  /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
+  groups?: DocsGroup[];
+  agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  /**
+   * Emit root `/robots.txt`, `/sitemap.xml`, and `/sitemap.md`. Disable when a
+   * host app merges several artifact sets (docs, blog, marketing) and serves
+   * its own root crawler files. Default `true`.
+   */
+  emitRootCrawlerFiles?: boolean;
+};
+
+export type GenerateAgentArtifactsResult = {
+  files: {
+    llmsTxt: string;
+    wellKnownLlmsTxt: string;
+    manifest: string;
+    /** One `.md` mirror per page, mounted at `${urlPath}.md`. */
+    markdown: string[];
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
+  };
+  manifest: AgentReadabilityManifest;
+};
+
+/** Mount that maps page routes 1:1 onto the site root instead of `/docs`. */
+const ROOT_PAGE_MOUNTS: DocsPathMount[] = [{ pathPrefix: "", urlPrefix: "/" }];
+const YAML_QUOTE_PATTERN = /["\\]/g;
+
+function toYamlScalar(value: string): string {
+  return `"${value.replace(YAML_QUOTE_PATTERN, "\\$&")}"`;
+}
+
+function normalizeAgentPageUrlPath(urlPath: string): string {
+  const trimmed = urlPath.trim();
+  if (!trimmed.startsWith("/")) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must start with "/".`
+    );
+  }
+  if (trimmed.includes("?") || trimmed.includes("#")) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must not contain a query or hash.`
+    );
+  }
+  const normalized = stripTrailingSlashes(normalizeDocsPath(trimmed)) || "/";
+  // The path becomes a file location under outDir; `.`/`..`/empty segments
+  // would let a route escape the output directory.
+  const hasUnsafeSegment = normalized
+    .slice(1)
+    .split("/")
+    .some((segment) => segment === "" || segment === "." || segment === "..");
+  if (normalized !== "/" && hasUnsafeSegment) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must not contain empty, ".", or ".." segments.`
+    );
+  }
+  return normalized;
+}
+
+function toAgentPageMarkdownDoc(
+  page: AgentPageInput,
+  baseUrl: string,
+  generatedAt: Date
+): MarkdownDoc {
+  const urlPath = normalizeAgentPageUrlPath(page.urlPath);
+  const relativePath = urlPath === "/" ? "index" : urlPath.slice(1);
+  const parsed = parseFrontmatter(page.content);
+  const title =
+    page.title?.trim() ||
+    String(parsed.data.title ?? "").trim() ||
+    titleize(urlPath.split("/").filter(Boolean).pop() ?? "") ||
+    "Untitled";
+  const description = normalizeDescription(
+    page.description ?? String(parsed.data.description ?? "")
+  );
+  const groups = page.groups
+    ? page.groups.map((group) => group.trim()).filter(Boolean)
+    : normalizeGroupValue(parsed.data.group);
+  const orderRaw = page.order ?? parsed.data.order;
+  const order =
+    typeof orderRaw === "number" && Number.isFinite(orderRaw)
+      ? orderRaw
+      : undefined;
+  const lastModified =
+    normalizeDate(page.lastModified) ??
+    readLastModified(parsed.data, generatedAt);
+
+  return {
+    title,
+    description,
+    urlPath,
+    absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
+    relativePath,
+    groups,
+    ...(order === undefined ? {} : { order }),
+    content: parsed.content.trim(),
+    lastModified,
+  };
+}
+
+/**
+ * Render a `.md` mirror with the frontmatter agents expect for attribution
+ * and staleness checks (`canonical_url`, `last_updated`), so statically hosted
+ * mirrors satisfy the agent-readability spec without runtime enrichment.
+ */
+function renderAgentPageMirror(doc: MarkdownDoc): string {
+  const lines = [
+    "---",
+    `title: ${toYamlScalar(doc.title)}`,
+    ...(doc.description
+      ? [`description: ${toYamlScalar(doc.description)}`]
+      : []),
+    `canonical_url: ${toYamlScalar(doc.absoluteUrl)}`,
+    `last_updated: ${toYamlScalar(doc.lastModified)}`,
+    "---",
+    "",
+    doc.content,
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function renderAgentPagesLlmsTxt(
+  product: LlmsProductInfo,
+  docs: MarkdownDoc[],
+  resolved: ResolvedGroup[]
+): string {
+  const sourceDocs = new Map(docs.map((doc) => [doc.urlPath, doc]));
+  const sections = [
+    renderProductSummary(product, sourceDocs, ROOT_PAGE_MOUNTS),
+  ];
+  const membership = buildGroupMembership(docs, resolved);
+  for (const group of resolved) {
+    const pages = pagesUnderGroup(group, membership);
+    if (pages.length === 0) {
+      continue;
+    }
+    const lines = [`## ${group.title}`];
+    if (group.description) {
+      lines.push("", group.description);
+    }
+    lines.push(
+      "",
+      ...pages
+        .map((page) => pageToRenderedLink(page, ROOT_PAGE_MOUNTS))
+        .map(renderLink)
+    );
+    sections.push(lines.join("\n"));
+  }
+  if (membership.ungrouped.length > 0) {
+    const heading = resolved.length > 0 ? "## Other" : "## Pages";
+    sections.push(
+      [
+        heading,
+        "",
+        ...membership.ungrouped
+          .map((page) => pageToRenderedLink(page, ROOT_PAGE_MOUNTS))
+          .map(renderLink),
+      ].join("\n")
+    );
+  }
+  return `${sections.join("\n\n")}\n`;
+}
+
+/**
+ * Generate the full agent-artifact set (llms.txt, `.md` mirrors, sitemaps,
+ * robots.txt, agent-readability manifest) from an in-memory page list instead
+ * of a docs source tree. This is the bring-your-own-pages entry point for
+ * sites without `.mdx` docs — CMS-backed blogs, marketing pages, data-driven
+ * routes — and for microfrontends contributing one fragment of a larger site
+ * (set `emitRootCrawlerFiles: false` and merge at the host).
+ *
+ * Mirrors are written at `${urlPath}.md` relative to `outDir` (the root page
+ * `/` becomes `/index.md`), so the whole output can be served statically.
+ */
+export async function generateAgentArtifacts(
+  config: GenerateAgentArtifactsConfig
+): Promise<GenerateAgentArtifactsResult> {
+  if (config.pages.length === 0) {
+    throw new Error(
+      "generateAgentArtifacts: config.pages is empty — supply at least one page."
+    );
+  }
+  const outDir = path.resolve(config.outDir);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const generatedAt = new Date();
+
+  const docs: MarkdownDoc[] = [];
+  const byUrlPath = new Map<string, MarkdownDoc>();
+  for (const page of config.pages) {
+    const doc = toAgentPageMarkdownDoc(page, baseUrl, generatedAt);
+    if (byUrlPath.has(doc.urlPath)) {
+      throw new Error(
+        `generateAgentArtifacts: duplicate page route "${doc.urlPath}" — page urlPaths must be unique.`
+      );
+    }
+    byUrlPath.set(doc.urlPath, doc);
+    docs.push(doc);
+  }
+
+  const inputs = resolveAgentInputs({
+    product: config.product,
+    ...(config.organization ? { organization: config.organization } : {}),
+    ...(config.llms ? { llms: config.llms } : {}),
+  });
+  const resolved = resolveGroups(config.groups ?? []);
+  const navigation = buildNavigationFromMarkdownDocs(
+    docs,
+    resolved,
+    "groups",
+    config.groups
+  );
+  const pages = docs.map((doc) =>
+    toAgentReadabilityPage(doc, baseUrl, ROOT_PAGE_MOUNTS)
+  );
+
+  const markdownFiles = await Promise.all(
+    docs.map(async (doc, index) => {
+      const markdownUrlPath =
+        pages[index]?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
+      const filePath = path.join(
+        outDir,
+        ...markdownUrlPath.slice(1).split("/")
+      );
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, renderAgentPageMirror(doc));
+      return filePath;
+    })
+  );
+
+  await mkdir(outDir, { recursive: true });
+  const llmsTxt = renderAgentPagesLlmsTxt(inputs.product, docs, resolved);
+  const llmsTxtPath = path.join(outDir, "llms.txt");
+  await writeFile(llmsTxtPath, llmsTxt);
+  const wellKnownLlmsTxtPath = path.join(outDir, ".well-known", "llms.txt");
+  await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
+  await writeFile(wellKnownLlmsTxtPath, llmsTxt);
+
+  const manifest: AgentReadabilityManifest = {
+    version: 1,
+    generatedAt: generatedAt.toISOString(),
+    baseUrl,
+    product: { name: inputs.product.name, summary: inputs.product.summary },
+    pages,
+    navigation,
+    files: {
+      robotsTxt: `/${ROBOTS_FILE}`,
+      sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `/${SITEMAP_XML_FILE}`,
+    },
+    ...(inputs.jsonLd ? { jsonLd: inputs.jsonLd } : {}),
+    ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
+  };
+  const manifestPath = path.join(outDir, AGENT_READABILITY_MANIFEST_FILE);
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  if (!(config.emitRootCrawlerFiles ?? true)) {
+    return {
+      files: {
+        llmsTxt: llmsTxtPath,
+        wellKnownLlmsTxt: wellKnownLlmsTxtPath,
+        manifest: manifestPath,
+        markdown: markdownFiles,
+      },
+      manifest,
+    };
+  }
+
+  const sitemapXmlPath = path.join(outDir, SITEMAP_XML_FILE);
+  const sitemapMdPath = path.join(outDir, SITEMAP_MARKDOWN_FILE);
+  const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
+  await writeFile(sitemapXmlPath, renderSitemapXml(pages));
+  await writeFile(
+    sitemapMdPath,
+    renderSitemapMarkdown({ product: inputs.product, navigation, pages })
+  );
+  await writeFile(
+    robotsTxtPath,
+    renderRobotsTxt({
+      baseUrl,
+      sitemapUrlPath: "/sitemap.xml",
+      allowPaths: ["/", "/llms.txt", "/sitemap.xml", "/sitemap.md"],
+      ...(config.agents?.robots?.policy
+        ? { policy: config.agents.robots.policy }
+        : {}),
+      ...(config.agents?.robots?.signals
+        ? { signals: config.agents.robots.signals }
+        : {}),
+    })
+  );
+
+  return {
+    files: {
+      llmsTxt: llmsTxtPath,
+      wellKnownLlmsTxt: wellKnownLlmsTxtPath,
+      manifest: manifestPath,
+      markdown: markdownFiles,
+      robotsTxt: robotsTxtPath,
+      sitemapMd: sitemapMdPath,
+      sitemapXml: sitemapXmlPath,
     },
     manifest,
   };

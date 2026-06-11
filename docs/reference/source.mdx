@@ -22,7 +22,7 @@ const navigation = await source.getNavigation();
 const search = await source.buildSearchIndex();
 ```
 
-For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/build/integrate-with-fumadocs) adapter that wraps this primitive.
+For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/integrations/integrate-with-fumadocs) adapter that wraps this primitive.
 
 ## Configuration
 
@@ -167,7 +167,7 @@ export default defineConfig({
 });
 ```
 
-Pair with a TanStack Router catch-all (`src/routes/docs/$.tsx`) that consumes a build-time manifest generated from `createDocsSource().listPages()`. See [Use the source primitive → TanStack Start](/docs/build/use-the-source-primitive#tanstack-start) for the catch-all snippet.
+Pair with a TanStack Router catch-all (`src/routes/docs/$.tsx`) that consumes a build-time manifest generated from `createDocsSource().listPages()`. See [Use the source primitive → TanStack Start](/docs/pipeline/use-the-source-primitive#tanstack-start) for the catch-all snippet.
 
 ### Nuxt
 
@@ -210,7 +210,7 @@ export default {
 
 ### Fumadocs
 
-See the dedicated [Integrate with Fumadocs](/docs/build/integrate-with-fumadocs) page — leadtype ships a first-party `leadtype/fumadocs` adapter.
+See the dedicated [Integrate with Fumadocs](/docs/integrations/integrate-with-fumadocs) page — leadtype ships a first-party `leadtype/fumadocs` adapter.
 
 ### Pattern for any other framework
 

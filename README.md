@@ -27,7 +27,7 @@ leadtype is **not a docs website framework**. Bring your own host and UI — a c
 
 ## Choose your path
 
-- **[Build a docs site](https://leadtype.dev/docs/build/build-a-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
+- **[Build a docs site](https://leadtype.dev/docs/pipeline/build-a-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
 - **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`. Agents that install your package then spend **32–54% fewer tokens** and **stop confidently guessing wrong** about your API — the win is biggest for the small, cheap models most agents run, with a smaller accuracy bump for frontier models ([evals](./FINDINGS.md)).
 
 ## Install
@@ -80,10 +80,10 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 
 - [Quickstart](https://leadtype.dev/docs/quickstart)
 - [How it works](https://leadtype.dev/docs/how-it-works)
-- [Build a docs site](https://leadtype.dev/docs/build/build-a-docs-site)
+- [Build a docs site](https://leadtype.dev/docs/pipeline/build-a-docs-site)
 - [Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)
 - [Add search](https://leadtype.dev/docs/search/add-search)
-- [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
+- [Frontmatter](https://leadtype.dev/docs/writing/frontmatter)
 - [CLI reference](https://leadtype.dev/docs/reference/cli)
 - [Architecture](https://leadtype.dev/docs/concepts/architecture) — core package boundary and framework adapter rules
 - [Methodology](https://leadtype.dev/docs/concepts/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify

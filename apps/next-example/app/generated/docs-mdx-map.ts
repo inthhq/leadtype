@@ -4,21 +4,21 @@ import type { ComponentType } from "react";
 type MdxModule = { default: ComponentType<Record<string, unknown>> };
 
 const mdxModules: Record<string, () => Promise<MdxModule>> = {
-  "authoring/components": () => import("../../.leadtype/docs/authoring/components.mdx"),
-  "authoring/frontmatter": () => import("../../.leadtype/docs/authoring/frontmatter.mdx"),
-  "authoring/write-for-agents": () => import("../../.leadtype/docs/authoring/write-for-agents.mdx"),
-  "build/agent-setup-prompts": () => import("../../.leadtype/docs/build/agent-setup-prompts.mdx"),
-  "build/build-a-docs-site": () => import("../../.leadtype/docs/build/build-a-docs-site.mdx"),
-  "build/deploy-generated-artifacts": () => import("../../.leadtype/docs/build/deploy-generated-artifacts.mdx"),
-  "build/framework-matrix": () => import("../../.leadtype/docs/build/framework-matrix.mdx"),
-  "build/generate-static-artifacts": () => import("../../.leadtype/docs/build/generate-static-artifacts.mdx"),
-  "build/integrate-with-fumadocs": () => import("../../.leadtype/docs/build/integrate-with-fumadocs.mdx"),
-  "build/localize-docs": () => import("../../.leadtype/docs/build/localize-docs.mdx"),
-  "build/optimize-docs-for-agents": () => import("../../.leadtype/docs/build/optimize-docs-for-agents.mdx"),
-  "build/serve-agent-responses": () => import("../../.leadtype/docs/build/serve-agent-responses.mdx"),
-  "build/sync-docs-across-repos": () => import("../../.leadtype/docs/build/sync-docs-across-repos.mdx"),
-  "build/use-the-source-primitive": () => import("../../.leadtype/docs/build/use-the-source-primitive.mdx"),
-  "build/validate-in-ci": () => import("../../.leadtype/docs/build/validate-in-ci.mdx"),
+  "writing/components": () => import("../../.leadtype/docs/writing/components.mdx"),
+  "writing/frontmatter": () => import("../../.leadtype/docs/writing/frontmatter.mdx"),
+  "writing/write-for-agents": () => import("../../.leadtype/docs/writing/write-for-agents.mdx"),
+  "pipeline/agent-setup-prompts": () => import("../../.leadtype/docs/pipeline/agent-setup-prompts.mdx"),
+  "pipeline/build-a-docs-site": () => import("../../.leadtype/docs/pipeline/build-a-docs-site.mdx"),
+  "pipeline/deploy-generated-artifacts": () => import("../../.leadtype/docs/pipeline/deploy-generated-artifacts.mdx"),
+  "integrations/framework-matrix": () => import("../../.leadtype/docs/integrations/framework-matrix.mdx"),
+  "pipeline/generate-static-artifacts": () => import("../../.leadtype/docs/pipeline/generate-static-artifacts.mdx"),
+  "integrations/integrate-with-fumadocs": () => import("../../.leadtype/docs/integrations/integrate-with-fumadocs.mdx"),
+  "pipeline/localize-docs": () => import("../../.leadtype/docs/pipeline/localize-docs.mdx"),
+  "aeo/optimize-docs-for-agents": () => import("../../.leadtype/docs/aeo/optimize-docs-for-agents.mdx"),
+  "aeo/serve-agent-responses": () => import("../../.leadtype/docs/aeo/serve-agent-responses.mdx"),
+  "pipeline/sync-docs-across-repos": () => import("../../.leadtype/docs/pipeline/sync-docs-across-repos.mdx"),
+  "pipeline/use-the-source-primitive": () => import("../../.leadtype/docs/pipeline/use-the-source-primitive.mdx"),
+  "pipeline/validate-in-ci": () => import("../../.leadtype/docs/pipeline/validate-in-ci.mdx"),
   "changelog/0-2": () => import("../../.leadtype/docs/changelog/0-2.mdx"),
   "concepts/architecture": () => import("../../.leadtype/docs/concepts/architecture.mdx"),
   "concepts/evals": () => import("../../.leadtype/docs/concepts/evals.mdx"),
@@ -43,12 +43,12 @@ const mdxModules: Record<string, () => Promise<MdxModule>> = {
   "search/add-search": () => import("../../.leadtype/docs/search/add-search.mdx"),
   "search/agent-tools": () => import("../../.leadtype/docs/search/agent-tools.mdx"),
   "search/ai-answers": () => import("../../.leadtype/docs/search/ai-answers.mdx"),
-  "sources/collections": () => import("../../.leadtype/docs/sources/collections.mdx"),
-  "sources/configure-sources": () => import("../../.leadtype/docs/sources/configure-sources.mdx"),
+  "pipeline/collections": () => import("../../.leadtype/docs/pipeline/collections.mdx"),
+  "pipeline/configure-sources": () => import("../../.leadtype/docs/pipeline/configure-sources.mdx"),
 };
 
 /** Route slugs that have a backing MDX file (drives generateStaticParams). */
-export const mdxSlugs: string[] = ["authoring/components", "authoring/frontmatter", "authoring/write-for-agents", "build/agent-setup-prompts", "build/build-a-docs-site", "build/deploy-generated-artifacts", "build/framework-matrix", "build/generate-static-artifacts", "build/integrate-with-fumadocs", "build/localize-docs", "build/optimize-docs-for-agents", "build/serve-agent-responses", "build/sync-docs-across-repos", "build/use-the-source-primitive", "build/validate-in-ci", "changelog/0-2", "concepts/architecture", "concepts/evals", "concepts/methodology", "how-it-works", "", "package-docs/bundle", "quickstart", "reference/cli", "reference/convert", "reference/frontmatter-transformers", "reference/i18n", "reference/lint", "reference/llm", "reference/mcp", "reference/mdx", "reference/remark", "reference/search", "reference/skills", "reference/source", "reference/troubleshooting", "search/add-search", "search/agent-tools", "search/ai-answers", "sources/collections", "sources/configure-sources"];
+export const mdxSlugs: string[] = ["writing/components", "writing/frontmatter", "writing/write-for-agents", "pipeline/agent-setup-prompts", "pipeline/build-a-docs-site", "pipeline/deploy-generated-artifacts", "integrations/framework-matrix", "pipeline/generate-static-artifacts", "integrations/integrate-with-fumadocs", "pipeline/localize-docs", "aeo/optimize-docs-for-agents", "aeo/serve-agent-responses", "pipeline/sync-docs-across-repos", "pipeline/use-the-source-primitive", "pipeline/validate-in-ci", "changelog/0-2", "concepts/architecture", "concepts/evals", "concepts/methodology", "how-it-works", "", "package-docs/bundle", "quickstart", "reference/cli", "reference/convert", "reference/frontmatter-transformers", "reference/i18n", "reference/lint", "reference/llm", "reference/mcp", "reference/mdx", "reference/remark", "reference/search", "reference/skills", "reference/source", "reference/troubleshooting", "search/add-search", "search/agent-tools", "search/ai-answers", "pipeline/collections", "pipeline/configure-sources"];
 
 export function loadDocsMdx(slug: string[] = []): Promise<MdxModule> | undefined {
   return mdxModules[slug.join("/")]?.();
