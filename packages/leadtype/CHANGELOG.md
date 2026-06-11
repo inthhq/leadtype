@@ -1,5 +1,28 @@
 # leadtype
 
+## 0.3.0
+
+### Minor Changes
+
+- b141edd: Add browser-side WebMCP docs tools, framework lifecycle helpers, and CLI scaffolding.
+- 9bf1f94: Add `generateAgentArtifacts()` to `leadtype/llm` — a bring-your-own-pages entry point that emits the full agent artifact set (llms.txt plus the `.well-known` copy, per-page Markdown mirrors at `${urlPath}.md` with `canonical_url`/`last_updated` frontmatter, sitemap.xml/sitemap.md, robots.txt with Content-Signals, and a root-level agent-readability manifest) from an in-memory page list instead of an `.mdx` docs tree, so CMS-backed blogs, marketing sites, and data-driven pages can publish agent artifacts without the docs pipeline. `emitRootCrawlerFiles: false` supports microfrontend fragments whose host app owns the origin-level crawler files. Root URL mounts (`urlPrefix: "/"`) now resolve correctly instead of emitting `//page` paths.
+- 873c833: Move generate capability toggles toward config-driven defaults. `leadtype generate` now enriches markdown with Git-derived `lastModified` and `lastAuthor` by default, skipping safely when git metadata is unavailable. Bundle-mode MCP artifacts are inferred from `agents.mcp.enabled`, while the legacy `--mcp`, `--enrich-git`, and `init --webmcp` shortcut flags remain supported with deprecation warnings.
+- a223c49: Add config-driven RSS and Atom feed generation for URL-prefixed docs content.
+
+### Patch Changes
+
+- 9bf1f94: Reorganize the docs into capability-led sections (Docs Pipeline, AEO & Agent Readability, Writing for Agents, Search & AI Answers, Package Docs, Integrations) with a new AEO overview page mapping every agent artifact to the agent-readability spec and scoring rubrics. Page URLs moved (`/docs/build/*` and `/docs/sources/*` → `/docs/pipeline|aeo|integrations/*`, `/docs/authoring/*` → `/docs/writing/*`); the bundled AGENTS.md and docs ship the new structure, and leadtype.dev serves 301 redirects from the old paths.
+- 85a8893: Skip bot and automation authors when deriving generated markdown `lastAuthor`, falling back to the latest human commit for the file while preserving `lastModified` from the latest commit. Projects can add repo-specific automation names with `git.ignoredAuthors` in `docs.config.ts`.
+- fa6d9b8: Exclude `shared/` and `_shared/` route segments from public docs search and answer sources by default, with `search: true` as an explicit opt-in for public shared pages.
+- fc23b34: Emit `SoftwareApplication` alongside `SoftwareSourceCode` for library site JSON-LD so product identity checks can recognize documented packages.
+- e61351a: Emit Agent Skills discovery manifests in the v0.2.0 format ($schema plus per-entry type/url/sha256-hex digest, with legacy path/integrity kept for older consumers) and support richer Organization JSON-LD identity fields from docs config — email, sameAs, contactPoint, and address — with fail-loud validation of unknown contactPoint/address keys.
+- 4a61a33: Emit sitemap and robots artifacts at the site root only so generated crawler discovery files are effective without duplicate `/docs` copies.
+- 100e4db: Fix docs search crashes and superlinear query latency on large corpora.
+
+  Indexing a corpus containing terms that collide with `Object.prototype` members (for example a doc mentioning `constructor`) crashed `createDocsSearchIndex`, and querying such a term crashed `searchDocs` on a `JSON.parse`'d index. The term postings record is now built with a null prototype and query-time lookups (including synonym expansion) use `Object.hasOwn` guards.
+
+  `searchDocs` also did a linear chunk scan and built an excerpt for every scored chunk, making query cost O(matched chunks × total chunks). Chunk-id lookups now use a cached map and excerpts are built only for results that survive the limit, with identical ranking. On a 20k-chunk corpus this cuts p95 query latency from ~665 ms to ~186 ms and makes latency scale linearly with corpus size.
+
 ## 0.2.1
 
 ### Patch Changes
