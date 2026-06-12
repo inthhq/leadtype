@@ -1,7 +1,10 @@
+// Static import (not a computed dynamic import) so bundlers and serverless
+// file tracing include the SDK in the deployed bundle — see server.ts. The CLI
+// keeps the SDK optional by importing this module lazily.
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   type CreateDocsMcpServerOptions,
   createDocsMcpServer,
-  importSdkModule,
 } from "./server.js";
 
 /**
@@ -11,9 +14,6 @@ import {
 export async function runStdioServer(
   options: CreateDocsMcpServerOptions
 ): Promise<void> {
-  const { StdioServerTransport } = await importSdkModule<
-    typeof import("@modelcontextprotocol/sdk/server/stdio.js")
-  >("@modelcontextprotocol/sdk/server/stdio.js");
   const server = await createDocsMcpServer(options);
   const transport = new StdioServerTransport();
   await server.connect(transport);

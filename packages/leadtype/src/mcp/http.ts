@@ -1,8 +1,10 @@
+// Static import (not a computed dynamic import) so bundlers and serverless
+// file tracing include the SDK in the deployed bundle — see server.ts.
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { type DocsArtifacts, loadDocsArtifacts } from "./artifacts.js";
 import {
   type CreateDocsMcpServerOptions,
   createDocsMcpServer,
-  importSdkModule,
 } from "./server.js";
 import type { DefineDocsToolsOptions } from "./tools.js";
 
@@ -55,8 +57,8 @@ export function createMcpHandler(
 
   return async (request: Request): Promise<Response> => {
     // A mounted route must never throw unhandled (→ the host's generic 500).
-    // Any failure — artifacts not generated, the optional SDK peer dep missing,
-    // a transport error — is turned into a clean JSON-RPC error Response.
+    // Any failure — artifacts not generated, a transport error — is turned
+    // into a clean JSON-RPC error Response.
     try {
       let artifacts: DocsArtifacts;
       try {
@@ -66,11 +68,6 @@ export function createMcpHandler(
         artifactsPromise = null;
         throw error;
       }
-
-      const { WebStandardStreamableHTTPServerTransport } =
-        await importSdkModule<
-          typeof import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js")
-        >("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js");
 
       const server = await createDocsMcpServer({
         artifacts,

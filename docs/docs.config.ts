@@ -211,6 +211,7 @@ const config: DocsConfig = {
         "/reference/skills",
         "/reference/mcp",
         "/reference/webmcp",
+        "/reference/nlweb",
       ],
     },
     {
@@ -278,6 +279,8 @@ const config: DocsConfig = {
     robots: { policy: "balanced" },
     // The example app hosts a docs MCP endpoint, so leadtype emits discovery metadata for it.
     mcp: { enabled: true },
+    // Dogfood the NLWeb surface: schema feeds + Schemamap directive + /ask discovery.
+    nlweb: { enabled: true },
     // Site-wide SEO defaults emitted on every page head via createDocsHead.
     seo: {
       keywords: [

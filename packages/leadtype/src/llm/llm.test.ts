@@ -111,6 +111,46 @@ describe("generateLlmsTxt", () => {
     ).resolves.toContain("Transformer note.");
   });
 
+  it("appends an Agent Interfaces section when endpoints are configured", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.mdx",
+        frontmatter: "title: Quickstart\ndescription: Start here.",
+      },
+    ]);
+
+    await generateLlmsTxt({
+      srcDir: projectDir,
+      outDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Test", summary: "Testing." },
+      groups: [{ slug: "guides", title: "Guides" }],
+      agentInterfaces: {
+        mcpEndpoint: "https://leadtype.dev/mcp",
+        mcpServerCardUrl:
+          "https://leadtype.dev/.well-known/mcp/server-card.json",
+        askEndpoint: "https://leadtype.dev/ask",
+      },
+    });
+
+    const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llms).toContain("## Agent Interfaces");
+    expect(llms).toContain(
+      "MCP server (Streamable HTTP): https://leadtype.dev/mcp"
+    );
+    expect(llms).toContain(
+      "server card: https://leadtype.dev/.well-known/mcp/server-card.json"
+    );
+    expect(llms).toContain("NLWeb /ask endpoint: https://leadtype.dev/ask");
+    // The well-known discovery copy carries the same section.
+    await expect(
+      readFile(path.join(outDir, ".well-known", "llms.txt"), "utf8")
+    ).resolves.toContain("## Agent Interfaces");
+  });
+
   it("publishes a discovery copy at /.well-known/llms.txt", async () => {
     const projectDir = await createTempProject();
     const outDir = path.join(projectDir, "out");
@@ -981,6 +1021,18 @@ describe("generateAgentReadabilityArtifacts", () => {
         sitemapUrlPath: "/sitemap.xml",
       })
     ).toContain("Sitemap: https://example.com/sitemap.xml");
+  });
+
+  it("adds a Schemamap directive when schemamapUrlPath is set", () => {
+    const robots = renderRobotsTxt({
+      baseUrl: "https://example.com",
+      schemamapUrlPath: "/schema-map.xml",
+    });
+    expect(robots).toContain("Sitemap: https://example.com/sitemap.xml");
+    expect(robots).toContain("Schemamap: https://example.com/schema-map.xml");
+    expect(renderRobotsTxt({ baseUrl: "https://example.com" })).not.toContain(
+      "Schemamap:"
+    );
   });
 
   it("defaults robots.txt to the balanced Content-Signal policy", () => {

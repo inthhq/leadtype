@@ -315,6 +315,25 @@ describe("createMcpServerCard", () => {
         "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
       version: "1.0",
       protocolVersion: "2025-06-18",
+      name: "leadtype-docs",
+      description: "Docs pipeline tooling.",
+      serverUrl: "https://leadtype.dev/docs/mcp",
+      tools: [
+        {
+          name: "search-docs",
+          title: "Search documentation",
+          description:
+            "Search the documentation and return ranked results " +
+            "({ title, urlPath, snippet }). Use get-page to read a full result.",
+        },
+        {
+          name: "get-page",
+          title: "Get a documentation page",
+          description:
+            "Return the full Markdown of one documentation page by its urlPath " +
+            "(e.g. the urlPath from a search-docs result).",
+        },
+      ],
       serverInfo: {
         name: "leadtype-docs",
         version: "1.0.0",

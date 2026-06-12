@@ -218,11 +218,18 @@ API: `createMcpHandler({ tools: [...] })`). The default is `search-docs` +
 ## The SDK is an optional dependency
 
 The MCP server is built on `@modelcontextprotocol/sdk` (v1.x), declared as an
-**optional peer dependency** and imported lazily only when a server actually
-runs. It stays out of installs that never touch MCP. If it's missing when you
-start a server, you get an actionable `bun add @modelcontextprotocol/sdk`
-message instead of a module-not-found crash — so install it alongside any app
-that mounts `createMcpHandler` or runs `leadtype mcp`.
+**optional peer dependency**. It stays out of installs that never touch MCP —
+the CLI only loads it when actually serving (`leadtype generate`, `leadtype
+mcp --check`, and every other command run without it). Install it alongside
+any app that mounts `createMcpHandler` or runs `leadtype mcp`.
+
+The `leadtype/mcp` entry imports the SDK **statically** (not through a dynamic
+specifier). That is deliberate: bundlers and serverless file tracing
+(Vercel/Next output tracing) follow static imports, so the SDK ships inside
+the deployed function automatically. A computed `import(specifier)` would
+resolve fine locally and then 500 in production with the SDK missing from the
+bundle. The trade-off: importing `leadtype/mcp` requires the SDK to be
+installed — which mounting a server required anyway.
 
 ## MCP server vs. bash tools
 

@@ -278,6 +278,8 @@ export type CreateRobotsTxtResponseConfig = {
   requestOrigin?: string;
   /** Path of the sitemap relative to origin. Default: "/sitemap.xml". */
   sitemapUrlPath?: string;
+  /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a `Schemamap:` directive. */
+  schemamapUrlPath?: string;
   /** Allow paths under the User-agent directives. */
   allowPaths?: string[];
   /** Override the AI crawler User-agent list (legacy flat allow-list). */
@@ -373,6 +375,12 @@ export type RenderSitemapMarkdownConfig = {
 export type RenderRobotsTxtConfig = {
   baseUrl?: string;
   sitemapUrlPath?: string;
+  /**
+   * NLWeb schema-map URL path (e.g. `/schema-map.xml`). When set, robots.txt
+   * gains a `Schemamap:` directive pointing natural-language retrieval
+   * systems at the site's schema.org feeds.
+   */
+  schemamapUrlPath?: string;
   allowPaths?: string[];
   /**
    * Legacy: a flat allow-list of crawler user-agents. When set, every listed
@@ -1409,7 +1417,14 @@ export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
     }
   }
 
-  lines.push(`Sitemap: ${sitemapUrl}`, "");
+  lines.push(`Sitemap: ${sitemapUrl}`);
+  if (config.schemamapUrlPath) {
+    const schemamapUrl = baseUrl
+      ? `${baseUrl}${config.schemamapUrlPath}`
+      : config.schemamapUrlPath;
+    lines.push(`Schemamap: ${schemamapUrl}`);
+  }
+  lines.push("");
   return lines.join("\n");
 }
 
@@ -1516,6 +1531,7 @@ export function createRobotsTxtResponse(
     renderRobotsTxt({
       baseUrl,
       sitemapUrlPath: config.sitemapUrlPath,
+      schemamapUrlPath: config.schemamapUrlPath,
       allowPaths: config.allowPaths,
       userAgents: config.userAgents,
       policy: config.policy,

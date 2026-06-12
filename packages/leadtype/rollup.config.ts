@@ -35,6 +35,7 @@ const entries = {
   "tanstack-start/index": "src/tanstack-start/index.ts",
   "lint/index": "src/lint/index.ts",
   "mcp/index": "src/mcp/index.ts",
+  "nlweb/index": "src/nlweb/index.ts",
   "webmcp/index": "src/webmcp/index.ts",
   "webmcp/react": "src/webmcp/react.ts",
   "webmcp/vue": "src/webmcp/vue.ts",
