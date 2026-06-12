@@ -1,4 +1,8 @@
-import { type DocsArtifacts, loadDocsArtifacts } from "../mcp/artifacts.js";
+import {
+  type DocsArtifacts,
+  loadDocsArtifacts,
+  MissingDocsArtifactsError,
+} from "../mcp/artifacts.js";
 import { type DocsSearchResult, searchDocs } from "../search/index.js";
 
 /** The NLWeb protocol revision the handler's `_meta.version` reports. */
@@ -27,6 +31,8 @@ export type NlwebAskResponse = {
     version: string;
     streaming?: boolean;
   };
+  /** Present on `failure` responses. */
+  error?: { message: string };
   results: NlwebResult[];
 };
 
@@ -73,15 +79,13 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function failureResponse(message: string, status: number): Response {
-  return jsonResponse(
-    {
-      query_id: crypto.randomUUID(),
-      _meta: metaFor("failure"),
-      error: { message },
-      results: [],
-    },
-    status
-  );
+  const body: NlwebAskResponse = {
+    query_id: crypto.randomUUID(),
+    _meta: metaFor("failure"),
+    error: { message },
+    results: [],
+  };
+  return jsonResponse(body, status);
 }
 
 function isTruthyFlag(value: unknown): boolean {
@@ -238,9 +242,9 @@ function streamResponse(
           })
         )
       );
-      results.forEach((item, index) => {
+      for (const [index, item] of results.entries()) {
         controller.enqueue(encoder.encode(sseEvent("result", { index, item })));
-      });
+      }
       controller.enqueue(
         encoder.encode(
           sseEvent("complete", {
@@ -288,10 +292,10 @@ export function createAskHandler(
     artifactsPromise ??= loadDocsArtifacts({ artifacts: config.artifacts });
     return artifactsPromise;
   };
-  const limit = Math.min(
-    config.limit ?? DEFAULT_RESULT_LIMIT,
-    MAX_RESULT_LIMIT
-  );
+  const requestedLimit = config.limit ?? DEFAULT_RESULT_LIMIT;
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(Math.floor(requestedLimit), 1), MAX_RESULT_LIMIT)
+    : DEFAULT_RESULT_LIMIT;
 
   return async (request: Request): Promise<Response> => {
     if (request.method === "OPTIONS") {
@@ -346,8 +350,12 @@ export function createAskHandler(
       };
       return jsonResponse(body);
     } catch (error) {
+      // The artifacts-missing message is actionable setup guidance; everything
+      // else stays generic so internals never leak into the response body.
       const message =
-        error instanceof Error ? error.message : "NLWeb request failed.";
+        error instanceof MissingDocsArtifactsError
+          ? error.message
+          : "NLWeb request failed.";
       return failureResponse(message, HTTP_INTERNAL_ERROR);
     }
   };

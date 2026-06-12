@@ -218,10 +218,11 @@ API: `createMcpHandler({ tools: [...] })`). The default is `search-docs` +
 ## The SDK is an optional dependency
 
 The MCP server is built on `@modelcontextprotocol/sdk` (v1.x), declared as an
-**optional peer dependency**. It stays out of installs that never touch MCP —
-the CLI only loads it when actually serving (`leadtype generate`, `leadtype
-mcp --check`, and every other command run without it). Install it alongside
-any app that mounts `createMcpHandler` or runs `leadtype mcp`.
+**optional peer dependency**, so it stays out of installs that never touch
+MCP. The CLI loads it only when it actually serves (`leadtype mcp` without
+`--check`); non-serving commands — `leadtype generate`, `leadtype mcp
+--check`, and everything else — run without the SDK installed. Install it
+alongside any app that mounts `createMcpHandler` or runs `leadtype mcp`.
 
 The `leadtype/mcp` entry imports the SDK **statically** (not through a dynamic
 specifier). That is deliberate: bundlers and serverless file tracing

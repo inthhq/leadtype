@@ -323,15 +323,13 @@ describe("createMcpServerCard", () => {
           name: "search-docs",
           title: "Search documentation",
           description:
-            "Search the documentation and return ranked results " +
-            "({ title, urlPath, snippet }). Use get-page to read a full result.",
+            "Search the documentation and return ranked results ({ title, urlPath, snippet }). Use get-page to read a full result.",
         },
         {
           name: "get-page",
           title: "Get a documentation page",
           description:
-            "Return the full Markdown of one documentation page by its urlPath " +
-            "(e.g. the urlPath from a search-docs result).",
+            "Return the full Markdown of one documentation page by its urlPath (e.g. the urlPath from a search-docs result).",
         },
       ],
       serverInfo: {

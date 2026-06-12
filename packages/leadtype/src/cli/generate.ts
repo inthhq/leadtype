@@ -51,6 +51,7 @@ import {
   MCP_SERVER_CARD_PATH,
   resolveMcpEndpoint,
 } from "../mcp/card";
+import { DEFAULT_DOCS_TOOLS, DOCS_TOOL_NAMES } from "../mcp/tools";
 import {
   DEFAULT_NLWEB_ASK_PATH,
   generateNlwebArtifacts,
@@ -725,6 +726,18 @@ function validateLlmsConfig(
   return value as DocsLlmsConfig;
 }
 
+function validateAgentEndpoint(
+  value: unknown,
+  field: string,
+  configPath: string
+): void {
+  if (value !== undefined && typeof value !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must be a string`
+    );
+  }
+}
+
 function validateAgentsConfig(
   value: unknown,
   configPath: string
@@ -734,6 +747,37 @@ function validateAgentsConfig(
   }
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}": agents must be an object`);
+  }
+  // The mcp/nlweb endpoints reach resolveMcpEndpoint() and the tool names feed
+  // the server card, so malformed values must fail here, not at generate time.
+  const mcp = value.mcp;
+  if (mcp !== undefined) {
+    if (!isPlainRecord(mcp)) {
+      throw new Error(
+        `docs config at "${configPath}": agents.mcp must be an object`
+      );
+    }
+    validateAgentEndpoint(mcp.endpoint, "agents.mcp.endpoint", configPath);
+    if (mcp.tools !== undefined) {
+      const allowed = new Set<string>(DOCS_TOOL_NAMES);
+      if (
+        !Array.isArray(mcp.tools) ||
+        mcp.tools.some((tool) => typeof tool !== "string" || !allowed.has(tool))
+      ) {
+        throw new Error(
+          `docs config at "${configPath}": agents.mcp.tools must be an array of ${DOCS_TOOL_NAMES.join(", ")}`
+        );
+      }
+    }
+  }
+  const nlweb = value.nlweb;
+  if (nlweb !== undefined) {
+    if (!isPlainRecord(nlweb)) {
+      throw new Error(
+        `docs config at "${configPath}": agents.nlweb must be an object`
+      );
+    }
+    validateAgentEndpoint(nlweb.endpoint, "agents.nlweb.endpoint", configPath);
   }
   return value as DocsConfig["agents"];
 }
@@ -2622,6 +2666,9 @@ export async function runGenerateCommand(
                   args.baseUrl,
                   `/${MCP_SERVER_CARD_PATH}`
                 ),
+                // Same subset the server card advertises, so the two
+                // discovery surfaces never disagree about the endpoint.
+                mcpTools: [...new Set(mcpConfig?.tools ?? DEFAULT_DOCS_TOOLS)],
               }
             : {}),
           ...(askEndpoint ? { askEndpoint } : {}),

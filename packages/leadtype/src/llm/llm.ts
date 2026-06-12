@@ -746,6 +746,11 @@ export type LlmsAgentInterfaces = {
   mcpEndpoint?: string;
   /** MCP server card URL. */
   mcpServerCardUrl?: string;
+  /**
+   * Tool names the MCP endpoint exposes. Keep in sync with the server card
+   * (`agents.mcp.tools`); defaults to the standard search-docs + get-page.
+   */
+  mcpTools?: string[];
   /** NLWeb `/ask` endpoint. */
   askEndpoint?: string;
 };
@@ -1922,8 +1927,11 @@ function renderAgentInterfaces(
     const card = agentInterfaces.mcpServerCardUrl
       ? ` (server card: ${agentInterfaces.mcpServerCardUrl})`
       : "";
+    const toolNames = agentInterfaces.mcpTools?.length
+      ? agentInterfaces.mcpTools
+      : ["search-docs", "get-page"];
     bullets.push(
-      `- MCP server (Streamable HTTP): ${agentInterfaces.mcpEndpoint}${card} — search-docs and get-page tools over this documentation.`
+      `- MCP server (Streamable HTTP): ${agentInterfaces.mcpEndpoint}${card} — ${toolNames.join(", ")} tools over this documentation.`
     );
   }
   if (agentInterfaces.askEndpoint) {

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as PlaygroundRouteImport } from './routes/playground'
+import { Route as AskRouteImport } from './routes/ask'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchIndexRouteImport } from './routes/search/index'
@@ -34,6 +35,11 @@ const SearchRoute = SearchRouteImport.update({
 const PlaygroundRoute = PlaygroundRouteImport.update({
   id: '/playground',
   path: '/playground',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AskRoute = AskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRouteRoute = DocsRouteRouteImport.update({
@@ -110,6 +116,7 @@ const ApiDocsAskCloudflareRoute = ApiDocsAskCloudflareRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
+  '/ask': typeof AskRoute
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRouteWithChildren
   '/changelog/$': typeof ChangelogSplatRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
   '/playground': typeof PlaygroundRoute
   '/changelog/$': typeof ChangelogSplatRoute
   '/docs/$': typeof DocsSplatRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
+  '/ask': typeof AskRoute
   '/playground': typeof PlaygroundRoute
   '/search': typeof SearchRouteWithChildren
   '/changelog/$': typeof ChangelogSplatRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/docs'
+    | '/ask'
     | '/playground'
     | '/search'
     | '/changelog/$'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ask'
     | '/playground'
     | '/changelog/$'
     | '/docs/$'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/docs'
+    | '/ask'
     | '/playground'
     | '/search'
     | '/changelog/$'
@@ -218,6 +230,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
+  AskRoute: typeof AskRoute
   PlaygroundRoute: typeof PlaygroundRoute
   SearchRoute: typeof SearchRouteWithChildren
   ChangelogSplatRoute: typeof ChangelogSplatRoute
@@ -239,6 +252,13 @@ declare module '@tanstack/react-router' {
       path: '/playground'
       fullPath: '/playground'
       preLoaderRoute: typeof PlaygroundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ask': {
+      id: '/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -392,6 +412,7 @@ const ApiDocsAskRouteWithChildren = ApiDocsAskRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRouteRoute: DocsRouteRouteWithChildren,
+  AskRoute: AskRoute,
   PlaygroundRoute: PlaygroundRoute,
   SearchRoute: SearchRouteWithChildren,
   ChangelogSplatRoute: ChangelogSplatRoute,
