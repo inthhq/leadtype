@@ -1,5 +1,14 @@
 # leadtype
 
+## 0.3.1
+
+### Patch Changes
+
+- 5fc0f1a: Fix the docs MCP server 500ing in serverless production deployments. `leadtype/mcp` previously loaded `@modelcontextprotocol/sdk` through a variable-specifier dynamic import, which bundlers and serverless file tracing (Vercel/NFT) cannot see — so deployments that resolved the SDK locally shipped functions without it and every `/mcp` request failed with "the optional peer dependency @modelcontextprotocol/sdk is not installed". The SDK is now imported statically by `mcp/server`, `mcp/http`, and `mcp/stdio`, so tracing includes it automatically. Importing `leadtype/mcp` therefore requires the SDK to be installed (it was already required to serve requests); the CLI still runs every non-serving command — including `leadtype mcp --check` — without it by loading the server lazily.
+- 5fc0f1a: Recognize current retrieval AI agents in robots.txt policies and `isAgentUserAgent`: Claude-SearchBot, Claude-User, Perplexity-User, Gemini-Deep-Research, DeepSeekBot, and Meta-ExternalFetcher join the retrieval crawler list, so `block-training` policies keep them allowed and `block-ai` policies actually cover them instead of letting them fall through to the `User-agent: *` group.
+- 5fc0f1a: Add NLWeb support under a new `leadtype/nlweb` entry. `createAskHandler()` mounts a Web-standard NLWeb `/ask` endpoint over the generated docs artifacts — list-mode answers backed by the same search index the docs MCP server uses, returning `{ query_id, _meta, results }` documents (each result carries `url`/`name`/`site`/`score`/`description`/`schema_object`) or SSE `start`/`result`/`complete` events when streaming is requested via `prefer.streaming`, `?streaming=`, or an `Accept: text/event-stream` header. Setting `agents.nlweb.enabled` in the docs config makes `leadtype generate` emit a schema.org JSONL feed at `/feeds/schema.jsonl`, a `/schema-map.xml` listing it, and a `Schemamap:` directive in robots.txt (also available directly via `renderRobotsTxt`/`createRobotsTxtResponse`'s new `schemamapUrlPath`).
+- 5fc0f1a: Richer MCP discovery surface. The generated server card now carries top-level `name`, `description`, `serverUrl`, and `tools[]` (static summaries of the enabled docs tools, configurable via `agents.mcp.tools`) alongside the existing `serverInfo`/`transport` fields, matching what agent-readiness scanners read. `generate` additionally writes a discovery copy of the card to `/.well-known/mcp.json`, and the root `llms.txt` gains an `## Agent Interfaces` section linking the MCP endpoint, its server card, and the NLWeb `/ask` endpoint when those surfaces are enabled.
+
 ## 0.3.0
 
 ### Minor Changes
