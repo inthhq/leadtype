@@ -29,7 +29,7 @@ const ROOT_AGENT_ARTIFACT_PATTERN =
 const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
 const AI_USER_AGENT_PATTERN =
-  /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-web|claudebot|google-extended|gptbot|metaexternalagent|meta-externalagent|mistralbot|oai-searchbot|perplexitybot|youbot)\b/i;
+  /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-searchbot|claude-user|claude-web|claudebot|deepseekbot|gemini-deep-research|google-extended|gptbot|meta-externalagent|meta-externalfetcher|metaexternalagent|mistralbot|oai-searchbot|perplexity-user|perplexitybot|youbot)\b/i;
 // Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
 // fetch a page to answer a live query; training bots gather corpora for model
 // training. Policies treat the two groups differently.
@@ -37,8 +37,14 @@ const RETRIEVAL_AI_CRAWLERS = [
   "OAI-SearchBot",
   "ChatGPT-User",
   "PerplexityBot",
+  "Perplexity-User",
   "ClaudeBot",
+  "Claude-SearchBot",
+  "Claude-User",
   "Claude-Web",
+  "Gemini-Deep-Research",
+  "DeepSeekBot",
+  "Meta-ExternalFetcher",
   "AmazonBot",
   "Bingbot",
   "MistralBot",
