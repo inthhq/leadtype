@@ -275,7 +275,9 @@ const config: DocsConfig = {
     },
   ],
   agents: {
-    // Fully crawlable + retrievable; signals "don't train on this" (the default).
+    // Library default for the repo's own example output. The deployed site's
+    // robots policy is host-owned: the consuming app's leadtype.config.ts
+    // (not this source config) controls it — site controls never inherit.
     robots: { policy: "balanced" },
     // The example app hosts a docs MCP endpoint, so leadtype emits discovery metadata for it.
     mcp: { enabled: true },
