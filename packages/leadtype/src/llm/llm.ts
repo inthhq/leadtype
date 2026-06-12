@@ -529,6 +529,20 @@ export type DocsAgentsConfig = {
     };
     /** Whether the advertised MCP endpoint requires authentication. Defaults to public. */
     authentication?: { required?: boolean };
+    /**
+     * Tools the mounted server exposes, advertised in the server card.
+     * Defaults to `search-docs` + `get-page`.
+     */
+    tools?: ("search-docs" | "get-page" | "list-pages")[];
+  };
+  /**
+   * Signals that your docs serve an NLWeb `/ask` endpoint, so leadtype emits
+   * the schema feed + schema map and adds the robots.txt `Schemamap:` directive.
+   */
+  nlweb?: {
+    enabled?: boolean;
+    /** The `/ask` endpoint path or absolute URL. Defaults to `/ask`. */
+    endpoint?: string;
   };
   robots?: {
     /** Crawler-access stance. Defaults to `balanced`. */
@@ -723,6 +737,24 @@ export function resolveAgentInputs(config: {
   };
 }
 
+/**
+ * Programmatic agent endpoints linked from the root `llms.txt` — referencing
+ * the MCP server there is one of the discovery paths agent scanners accept.
+ */
+export type LlmsAgentInterfaces = {
+  /** MCP Streamable HTTP endpoint (absolute when baseUrl is known). */
+  mcpEndpoint?: string;
+  /** MCP server card URL. */
+  mcpServerCardUrl?: string;
+  /**
+   * Tool names the MCP endpoint exposes. Keep in sync with the server card
+   * (`agents.mcp.tools`); defaults to the standard search-docs + get-page.
+   */
+  mcpTools?: string[];
+  /** NLWeb `/ask` endpoint. */
+  askEndpoint?: string;
+};
+
 export type LlmsTxtConfig = {
   srcDir: string;
   outDir: string;
@@ -737,6 +769,8 @@ export type LlmsTxtConfig = {
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   transformers?: DocsTransformer[];
+  /** Agent endpoints appended to the root llms.txt as `## Agent Interfaces`. */
+  agentInterfaces?: LlmsAgentInterfaces;
 };
 
 export type LLMFullContextConfig = {
@@ -769,6 +803,8 @@ export type AgentReadabilityConfig = {
   robotsPolicy?: RobotsPolicy;
   /** Override individual Content-Signals beyond the policy preset. */
   contentSignals?: Partial<ContentSignals>;
+  /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a robots.txt `Schemamap:` directive. */
+  schemamapUrlPath?: string;
   /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
@@ -1880,15 +1916,46 @@ function renderProductBlock(
   return ["", block.body];
 }
 
+function renderAgentInterfaces(
+  agentInterfaces: LlmsAgentInterfaces | undefined
+): string[] {
+  if (!agentInterfaces) {
+    return [];
+  }
+  const bullets: string[] = [];
+  if (agentInterfaces.mcpEndpoint) {
+    const card = agentInterfaces.mcpServerCardUrl
+      ? ` (server card: ${agentInterfaces.mcpServerCardUrl})`
+      : "";
+    const toolNames = agentInterfaces.mcpTools?.length
+      ? agentInterfaces.mcpTools
+      : ["search-docs", "get-page"];
+    bullets.push(
+      `- MCP server (Streamable HTTP): ${agentInterfaces.mcpEndpoint}${card} — ${toolNames.join(", ")} tools over this documentation.`
+    );
+  }
+  if (agentInterfaces.askEndpoint) {
+    bullets.push(
+      `- NLWeb /ask endpoint: ${agentInterfaces.askEndpoint} — natural-language queries over this documentation, JSON or SSE.`
+    );
+  }
+  if (bullets.length === 0) {
+    return [];
+  }
+  return ["", "## Agent Interfaces", "", ...bullets];
+}
+
 function renderProductSummary(
   product: LlmsProductInfo,
   sourceDocs: Map<string, SourceDoc>,
-  mounts?: DocsPathMount[]
+  mounts?: DocsPathMount[],
+  agentInterfaces?: LlmsAgentInterfaces
 ): string {
   const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
   for (const block of resolveBlocks(product)) {
     sections.push(...renderProductBlock(block, sourceDocs, mounts));
   }
+  sections.push(...renderAgentInterfaces(agentInterfaces));
   return sections.join("\n");
 }
 
@@ -2180,7 +2247,12 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   if (isDefaultLocale) {
     const outputPath = path.join(outDir, "llms.txt");
     const input: DocsLlmsTxtArtifact = {
-      content: renderProductSummary(config.product, sourceDocs, config.mounts),
+      content: renderProductSummary(
+        config.product,
+        sourceDocs,
+        config.mounts,
+        config.agentInterfaces
+      ),
       outputPath,
       kind: "root",
       ...(locale ? { locale } : {}),
@@ -2492,6 +2564,7 @@ export async function generateAgentReadabilityArtifacts(
       renderRobotsTxt({
         baseUrl,
         sitemapUrlPath: "/sitemap.xml",
+        schemamapUrlPath: config.schemamapUrlPath,
         policy: config.robotsPolicy,
         signals: config.contentSignals,
       })

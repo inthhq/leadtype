@@ -3,7 +3,7 @@ import {
   loadDocsArtifacts,
   resolveBundleArtifactsBase,
 } from "../mcp/artifacts";
-import { runStdioServer } from "../mcp/stdio";
+import { isMissingSdkError, MISSING_SDK_MESSAGE } from "../mcp/missing-sdk";
 import {
   DOCS_TOOL_NAMES,
   type DocsToolName,
@@ -182,6 +182,18 @@ export async function runMcpCommand(
     const artifacts = await loadDocsArtifacts({ artifacts: base });
     if (args.check) {
       return await runCheck(artifacts, args, io);
+    }
+    // Loaded lazily so every other CLI command (and `--check` above) runs
+    // without @modelcontextprotocol/sdk installed — stdio.ts imports the SDK
+    // statically, so resolving this module is what requires the peer dep.
+    let runStdioServer: typeof import("../mcp/stdio")["runStdioServer"];
+    try {
+      ({ runStdioServer } = await import("../mcp/stdio"));
+    } catch (error) {
+      if (isMissingSdkError(error)) {
+        throw new Error(MISSING_SDK_MESSAGE, { cause: error });
+      }
+      throw error;
     }
     // stderr only — stdout is the stdio transport's JSON-RPC channel.
     io.stderr.write(

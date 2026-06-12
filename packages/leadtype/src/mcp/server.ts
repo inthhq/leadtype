@@ -1,4 +1,15 @@
-import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+// The SDK is imported statically — NOT through a variable-specifier dynamic
+// import. A computed `import(specifier)` is invisible to bundlers and to
+// serverless file tracing (Vercel/NFT), so deployments that resolved the SDK
+// locally would 500 in production with the artifacts missing from the bundle.
+// Importing `leadtype/mcp` therefore requires @modelcontextprotocol/sdk to be
+// installed; the CLI keeps the SDK optional by loading this module lazily and
+// mapping resolution failures to MISSING_SDK_MESSAGE (see missing-sdk.ts).
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { DocsArtifacts } from "./artifacts.js";
 import { type McpServerCardServerInfo, resolveMcpServerInfo } from "./card.js";
 import {
@@ -6,40 +17,6 @@ import {
   type DocsToolName,
   defineDocsTools,
 } from "./tools.js";
-
-const MISSING_SDK_MESSAGE =
-  "leadtype mcp: the optional peer dependency @modelcontextprotocol/sdk is not installed. " +
-  "Install it to run the docs MCP server: `bun add @modelcontextprotocol/sdk`.";
-
-/**
- * Dynamically imports an MCP SDK module, turning a missing optional peer dependency
- * into a clear, actionable error (DESIGN.md Q1 — the SDK stays out of every install
- * and is only required when actually running an MCP server).
- */
-const MODULE_NOT_FOUND_CODES = new Set([
-  "ERR_MODULE_NOT_FOUND", // Node ESM
-  "MODULE_NOT_FOUND", // Bun / CJS
-]);
-const MODULE_NOT_FOUND_MESSAGE = /cannot find (module|package)/i;
-
-export async function importSdkModule<T>(specifier: string): Promise<T> {
-  try {
-    return (await import(/* @vite-ignore */ specifier)) as T;
-  } catch (error) {
-    const code =
-      error instanceof Error && "code" in error
-        ? (error as { code?: string }).code
-        : undefined;
-    const message = error instanceof Error ? error.message : "";
-    if (
-      (code && MODULE_NOT_FOUND_CODES.has(code)) ||
-      MODULE_NOT_FOUND_MESSAGE.test(message)
-    ) {
-      throw new Error(MISSING_SDK_MESSAGE, { cause: error });
-    }
-    throw error;
-  }
-}
 
 export type CreateDocsMcpServerOptions = DefineDocsToolsOptions & {
   artifacts: DocsArtifacts;
@@ -56,14 +33,6 @@ export type CreateDocsMcpServerOptions = DefineDocsToolsOptions & {
 export async function createDocsMcpServer(
   options: CreateDocsMcpServerOptions
 ): Promise<Server> {
-  const { Server } = await importSdkModule<
-    typeof import("@modelcontextprotocol/sdk/server/index.js")
-  >("@modelcontextprotocol/sdk/server/index.js");
-  const { CallToolRequestSchema, ListToolsRequestSchema } =
-    await importSdkModule<typeof import("@modelcontextprotocol/sdk/types.js")>(
-      "@modelcontextprotocol/sdk/types.js"
-    );
-
   const tools = defineDocsTools(options.artifacts, options);
   const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
   const serverInfo = resolveMcpServerInfo(options.artifacts.manifest.product, {

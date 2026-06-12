@@ -22,6 +22,34 @@ export type DocsToolName = (typeof DOCS_TOOL_NAMES)[number];
 export const DEFAULT_DOCS_TOOLS: DocsToolName[] = ["search-docs", "get-page"];
 
 /**
+ * Static title/description for each tool — the single source for both the
+ * runtime registrations below and build-time surfaces (the MCP server card)
+ * that must describe the tool surface without loading artifacts.
+ */
+export const DOCS_TOOL_SUMMARIES: Record<
+  DocsToolName,
+  { title: string; description: string }
+> = {
+  "search-docs": {
+    title: "Search documentation",
+    description:
+      "Search the documentation and return ranked results " +
+      "({ title, urlPath, snippet }). Use get-page to read a full result.",
+  },
+  "get-page": {
+    title: "Get a documentation page",
+    description:
+      "Return the full Markdown of one documentation page by its urlPath " +
+      "(e.g. the urlPath from a search-docs result).",
+  },
+  "list-pages": {
+    title: "List documentation pages",
+    description:
+      "List all documentation pages with their title, urlPath and groups.",
+  },
+};
+
+/**
  * A single MCP text content block. Mirrors the MCP `CallToolResult` content shape
  * structurally so the registry stays free of any SDK import (keeps the SDK a lazy
  * dependency — DESIGN.md Q1).
@@ -125,10 +153,7 @@ function findPage(
 function createSearchTool(artifacts: DocsArtifacts): DocsTool {
   return {
     name: "search-docs",
-    title: "Search documentation",
-    description:
-      "Search the documentation and return ranked results " +
-      "({ title, urlPath, snippet }). Use get-page to read a full result.",
+    ...DOCS_TOOL_SUMMARIES["search-docs"],
     inputSchema: {
       type: "object",
       properties: {
@@ -163,10 +188,7 @@ function createSearchTool(artifacts: DocsArtifacts): DocsTool {
 function createGetPageTool(artifacts: DocsArtifacts): DocsTool {
   return {
     name: "get-page",
-    title: "Get a documentation page",
-    description:
-      "Return the full Markdown of one documentation page by its urlPath " +
-      "(e.g. the urlPath from a search-docs result).",
+    ...DOCS_TOOL_SUMMARIES["get-page"],
     inputSchema: {
       type: "object",
       properties: {
@@ -220,9 +242,7 @@ function createGetPageTool(artifacts: DocsArtifacts): DocsTool {
 function createListPagesTool(artifacts: DocsArtifacts): DocsTool {
   return {
     name: "list-pages",
-    title: "List documentation pages",
-    description:
-      "List all documentation pages with their title, urlPath and groups.",
+    ...DOCS_TOOL_SUMMARIES["list-pages"],
     inputSchema: {
       type: "object",
       properties: {},

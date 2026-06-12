@@ -29,7 +29,7 @@ const ROOT_AGENT_ARTIFACT_PATTERN =
 const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
 const AI_USER_AGENT_PATTERN =
-  /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-web|claudebot|google-extended|gptbot|metaexternalagent|meta-externalagent|mistralbot|oai-searchbot|perplexitybot|youbot)\b/i;
+  /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-searchbot|claude-user|claude-web|claudebot|deepseekbot|gemini-deep-research|google-extended|gptbot|meta-externalagent|meta-externalfetcher|metaexternalagent|mistralbot|oai-searchbot|perplexity-user|perplexitybot|youbot)\b/i;
 // Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
 // fetch a page to answer a live query; training bots gather corpora for model
 // training. Policies treat the two groups differently.
@@ -37,8 +37,14 @@ const RETRIEVAL_AI_CRAWLERS = [
   "OAI-SearchBot",
   "ChatGPT-User",
   "PerplexityBot",
+  "Perplexity-User",
   "ClaudeBot",
+  "Claude-SearchBot",
+  "Claude-User",
   "Claude-Web",
+  "Gemini-Deep-Research",
+  "DeepSeekBot",
+  "Meta-ExternalFetcher",
   "AmazonBot",
   "Bingbot",
   "MistralBot",
@@ -278,6 +284,8 @@ export type CreateRobotsTxtResponseConfig = {
   requestOrigin?: string;
   /** Path of the sitemap relative to origin. Default: "/sitemap.xml". */
   sitemapUrlPath?: string;
+  /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a `Schemamap:` directive. */
+  schemamapUrlPath?: string;
   /** Allow paths under the User-agent directives. */
   allowPaths?: string[];
   /** Override the AI crawler User-agent list (legacy flat allow-list). */
@@ -373,6 +381,12 @@ export type RenderSitemapMarkdownConfig = {
 export type RenderRobotsTxtConfig = {
   baseUrl?: string;
   sitemapUrlPath?: string;
+  /**
+   * NLWeb schema-map URL path (e.g. `/schema-map.xml`). When set, robots.txt
+   * gains a `Schemamap:` directive pointing natural-language retrieval
+   * systems at the site's schema.org feeds.
+   */
+  schemamapUrlPath?: string;
   allowPaths?: string[];
   /**
    * Legacy: a flat allow-list of crawler user-agents. When set, every listed
@@ -1409,7 +1423,14 @@ export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
     }
   }
 
-  lines.push(`Sitemap: ${sitemapUrl}`, "");
+  lines.push(`Sitemap: ${sitemapUrl}`);
+  if (config.schemamapUrlPath) {
+    const schemamapUrl = baseUrl
+      ? `${baseUrl}${config.schemamapUrlPath}`
+      : config.schemamapUrlPath;
+    lines.push(`Schemamap: ${schemamapUrl}`);
+  }
+  lines.push("");
   return lines.join("\n");
 }
 
@@ -1516,6 +1537,7 @@ export function createRobotsTxtResponse(
     renderRobotsTxt({
       baseUrl,
       sitemapUrlPath: config.sitemapUrlPath,
+      schemamapUrlPath: config.schemamapUrlPath,
       allowPaths: config.allowPaths,
       userAgents: config.userAgents,
       policy: config.policy,

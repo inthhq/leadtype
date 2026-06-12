@@ -46,7 +46,17 @@ import {
   resolveAgentInputs,
   resolveDocsNavigation,
 } from "../llm";
-import { generateMcpServerCard, resolveMcpEndpoint } from "../mcp/card";
+import {
+  generateMcpServerCard,
+  MCP_SERVER_CARD_PATH,
+  resolveMcpEndpoint,
+} from "../mcp/card";
+import { DEFAULT_DOCS_TOOLS, DOCS_TOOL_NAMES } from "../mcp/tools";
+import {
+  DEFAULT_NLWEB_ASK_PATH,
+  generateNlwebArtifacts,
+  NLWEB_SCHEMA_MAP_PATH,
+} from "../nlweb/artifacts";
 import {
   defaultRemarkPlugins,
   remarkInclude,
@@ -206,6 +216,9 @@ type GenerateResult = {
     skillMd?: string;
     agentSkills?: string;
     mcpServerCard?: string;
+    mcpWellKnown?: string;
+    nlwebSchemaFeed?: string;
+    nlwebSchemaMap?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavEntry[];
@@ -713,6 +726,18 @@ function validateLlmsConfig(
   return value as DocsLlmsConfig;
 }
 
+function validateAgentEndpoint(
+  value: unknown,
+  field: string,
+  configPath: string
+): void {
+  if (value !== undefined && typeof value !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must be a string`
+    );
+  }
+}
+
 function validateAgentsConfig(
   value: unknown,
   configPath: string
@@ -722,6 +747,37 @@ function validateAgentsConfig(
   }
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}": agents must be an object`);
+  }
+  // The mcp/nlweb endpoints reach resolveMcpEndpoint() and the tool names feed
+  // the server card, so malformed values must fail here, not at generate time.
+  const mcp = value.mcp;
+  if (mcp !== undefined) {
+    if (!isPlainRecord(mcp)) {
+      throw new Error(
+        `docs config at "${configPath}": agents.mcp must be an object`
+      );
+    }
+    validateAgentEndpoint(mcp.endpoint, "agents.mcp.endpoint", configPath);
+    if (mcp.tools !== undefined) {
+      const allowed = new Set<string>(DOCS_TOOL_NAMES);
+      if (
+        !Array.isArray(mcp.tools) ||
+        mcp.tools.some((tool) => typeof tool !== "string" || !allowed.has(tool))
+      ) {
+        throw new Error(
+          `docs config at "${configPath}": agents.mcp.tools must be an array of ${DOCS_TOOL_NAMES.join(", ")}`
+        );
+      }
+    }
+  }
+  const nlweb = value.nlweb;
+  if (nlweb !== undefined) {
+    if (!isPlainRecord(nlweb)) {
+      throw new Error(
+        `docs config at "${configPath}": agents.nlweb must be an object`
+      );
+    }
+    validateAgentEndpoint(nlweb.endpoint, "agents.nlweb.endpoint", configPath);
   }
   return value as DocsConfig["agents"];
 }
@@ -2578,6 +2634,19 @@ export async function runGenerateCommand(
       }
       await copyMountedMarkdownMirrors(outDir, effectiveMounts);
       const i18nManifestPath = await writeI18nManifest(outDir, i18nManifest);
+      const mcpConfig = metadata.agents?.mcp;
+      const mcpEnabled = mcpConfig?.enabled === true;
+      const mcpEndpoint = mcpEnabled
+        ? resolveMcpEndpoint(args.baseUrl, mcpConfig.endpoint)
+        : undefined;
+      const nlwebConfig = metadata.agents?.nlweb;
+      const nlwebEnabled = nlwebConfig?.enabled === true;
+      const askEndpoint = nlwebEnabled
+        ? resolveMcpEndpoint(
+            args.baseUrl,
+            nlwebConfig.endpoint ?? DEFAULT_NLWEB_ASK_PATH
+          )
+        : undefined;
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
@@ -2589,6 +2658,21 @@ export async function runGenerateCommand(
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
         transformers: metadata.transformers,
+        agentInterfaces: {
+          ...(mcpEndpoint
+            ? {
+                mcpEndpoint,
+                mcpServerCardUrl: resolveMcpEndpoint(
+                  args.baseUrl,
+                  `/${MCP_SERVER_CARD_PATH}`
+                ),
+                // Same subset the server card advertises, so the two
+                // discovery surfaces never disagree about the endpoint.
+                mcpTools: [...new Set(mcpConfig?.tools ?? DEFAULT_DOCS_TOOLS)],
+              }
+            : {}),
+          ...(askEndpoint ? { askEndpoint } : {}),
+        },
       });
 
       await generateLLMFullContextFiles({
@@ -2624,13 +2708,19 @@ export async function runGenerateCommand(
         transformers: metadata.transformers,
         robotsPolicy: metadata.agents?.robots?.policy,
         contentSignals: metadata.agents?.robots?.signals,
+        ...(nlwebEnabled
+          ? { schemamapUrlPath: `/${NLWEB_SCHEMA_MAP_PATH}` }
+          : {}),
         jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
       });
-      const mcpConfig = metadata.agents?.mcp;
-      const mcpEnabled = mcpConfig?.enabled === true;
-      const mcpEndpoint = mcpEnabled
-        ? resolveMcpEndpoint(args.baseUrl, mcpConfig.endpoint)
+      const nlwebArtifacts = nlwebEnabled
+        ? await generateNlwebArtifacts({
+            outDir,
+            baseUrl: args.baseUrl,
+            product,
+            pages: agentReadability.manifest.pages,
+          })
         : undefined;
 
       // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
@@ -2673,6 +2763,7 @@ export async function runGenerateCommand(
             endpoint: mcpConfig.endpoint,
             serverInfo: mcpConfig.serverInfo,
             authentication: mcpConfig.authentication,
+            tools: mcpConfig.tools,
           },
         });
       }
@@ -2764,6 +2855,15 @@ export async function runGenerateCommand(
           wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
           ...(agentSkillsIndex ? { agentSkills: agentSkillsIndex } : {}),
           ...(mcpServerCard ? { mcpServerCard: mcpServerCard.outputPath } : {}),
+          ...(mcpServerCard
+            ? { mcpWellKnown: mcpServerCard.wellKnownPath }
+            : {}),
+          ...(nlwebArtifacts
+            ? {
+                nlwebSchemaFeed: nlwebArtifacts.files.schemaFeed,
+                nlwebSchemaMap: nlwebArtifacts.files.schemaMap,
+              }
+            : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
         },

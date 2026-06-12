@@ -111,6 +111,7 @@ describe("package surface", () => {
       "./tanstack-start",
       "./lint",
       "./mcp",
+      "./nlweb",
       "./webmcp",
       "./webmcp/react",
       "./webmcp/vue",

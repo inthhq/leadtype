@@ -2,8 +2,19 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeBaseUrl } from "../internal/docs-url.js";
 import type { LlmsProductInfo } from "../llm/llm.js";
+import {
+  DEFAULT_DOCS_TOOLS,
+  DOCS_TOOL_SUMMARIES,
+  type DocsToolName,
+} from "./tools.js";
 
 export const MCP_SERVER_CARD_PATH = ".well-known/mcp/server-card.json";
+/**
+ * Discovery copy of the server card. Scanners that look for an MCP surface
+ * probe `/.well-known/mcp.json` (a directory can't also be a file, so the
+ * extensionless `/.well-known/mcp` stays a rewrite concern for hosts).
+ */
+export const MCP_WELL_KNOWN_PATH = ".well-known/mcp.json";
 export const DEFAULT_MCP_ENDPOINT_PATH = "/mcp";
 export const MCP_SERVER_CARD_SCHEMA_URL =
   "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json";
@@ -34,10 +45,26 @@ export type McpServerCardTransport = {
   endpoint: string;
 };
 
+/** One advertised tool: static metadata so agents can preview the surface. */
+export type McpServerCardToolSummary = {
+  name: DocsToolName;
+  title: string;
+  description: string;
+};
+
 export type McpServerCard = {
   $schema: string;
   version: string;
   protocolVersion: string;
+  /**
+   * Top-level identity + endpoint duplicate `serverInfo`/`transport`. Registry
+   * scanners (agentready.org, ora.ai) read flat `name`/`description`/
+   * `serverUrl`/`tools` and mark the card incomplete without them.
+   */
+  name: string;
+  description?: string;
+  serverUrl: string;
+  tools: McpServerCardToolSummary[];
   serverInfo: McpServerCardServerInfo;
   transport: McpServerCardTransport;
   capabilities: McpServerCardCapabilities;
@@ -48,6 +75,8 @@ export type McpServerCardConfig = {
   endpoint?: string;
   serverInfo?: Partial<McpServerCardServerInfo>;
   authentication?: { required?: boolean };
+  /** Tools the mounted server exposes. Defaults to `search-docs` + `get-page`. */
+  tools?: DocsToolName[];
 };
 
 export type GenerateMcpServerCardOptions = {
@@ -114,19 +143,39 @@ function resolveAuthentication(
   return { required: authentication?.required ?? false };
 }
 
+function summarizeTools(tools?: DocsToolName[]): McpServerCardToolSummary[] {
+  const enabled = tools ?? DEFAULT_DOCS_TOOLS;
+  const seen = new Set<DocsToolName>();
+  const summaries: McpServerCardToolSummary[] = [];
+  for (const name of enabled) {
+    if (seen.has(name) || !DOCS_TOOL_SUMMARIES[name]) {
+      continue;
+    }
+    seen.add(name);
+    summaries.push({ name, ...DOCS_TOOL_SUMMARIES[name] });
+  }
+  return summaries;
+}
+
 export function createMcpServerCard(
   options: Omit<GenerateMcpServerCardOptions, "outDir">
 ): McpServerCard {
   const config = options.config;
+  const serverInfo = resolveMcpServerInfo(options.product, config);
+  const endpoint = resolveMcpEndpoint(options.baseUrl, config?.endpoint);
 
   return {
     $schema: MCP_SERVER_CARD_SCHEMA_URL,
     version: MCP_SERVER_CARD_SCHEMA_VERSION,
     protocolVersion: MCP_SERVER_CARD_PROTOCOL_VERSION,
-    serverInfo: resolveMcpServerInfo(options.product, config),
+    name: serverInfo.name,
+    ...(serverInfo.description ? { description: serverInfo.description } : {}),
+    serverUrl: endpoint,
+    tools: summarizeTools(config?.tools),
+    serverInfo,
     transport: {
       type: "streamable-http",
-      endpoint: resolveMcpEndpoint(options.baseUrl, config?.endpoint),
+      endpoint,
     },
     capabilities: { tools: {} },
     authentication: resolveAuthentication(config?.authentication),
@@ -135,10 +184,13 @@ export function createMcpServerCard(
 
 export async function generateMcpServerCard(
   options: GenerateMcpServerCardOptions
-): Promise<{ outputPath: string; card: McpServerCard }> {
+): Promise<{ outputPath: string; wellKnownPath: string; card: McpServerCard }> {
   const outputPath = path.join(options.outDir, MCP_SERVER_CARD_PATH);
+  const wellKnownPath = path.join(options.outDir, MCP_WELL_KNOWN_PATH);
   const card = createMcpServerCard(options);
+  const json = `${JSON.stringify(card, null, 2)}\n`;
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(card, null, 2)}\n`);
-  return { outputPath, card };
+  await writeFile(outputPath, json);
+  await writeFile(wellKnownPath, json);
+  return { outputPath, wellKnownPath, card };
 }

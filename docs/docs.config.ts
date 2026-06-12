@@ -211,6 +211,7 @@ const config: DocsConfig = {
         "/reference/skills",
         "/reference/mcp",
         "/reference/webmcp",
+        "/reference/nlweb",
       ],
     },
     {
@@ -274,10 +275,14 @@ const config: DocsConfig = {
     },
   ],
   agents: {
-    // Fully crawlable + retrievable; signals "don't train on this" (the default).
+    // Library default for the repo's own example output. The deployed site's
+    // robots policy is host-owned: the consuming app's leadtype.config.ts
+    // (not this source config) controls it — site controls never inherit.
     robots: { policy: "balanced" },
     // The example app hosts a docs MCP endpoint, so leadtype emits discovery metadata for it.
     mcp: { enabled: true },
+    // Dogfood the NLWeb surface: schema feeds + Schemamap directive + /ask discovery.
+    nlweb: { enabled: true },
     // Site-wide SEO defaults emitted on every page head via createDocsHead.
     seo: {
       keywords: [

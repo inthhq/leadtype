@@ -61,9 +61,16 @@ async function readOptionalJson<T>(filePath: string): Promise<T | null> {
   }
 }
 
+/**
+ * Thrown when the generated `docs/` artifacts are absent. Handlers match on
+ * this class to surface the actionable setup guidance while keeping every
+ * other error generic in HTTP responses.
+ */
+export class MissingDocsArtifactsError extends Error {}
+
 function missingArtifactError(baseDir: string, file: string): Error {
   const docsDir = path.join(baseDir, DOCS_SUBDIR);
-  return new Error(
+  return new MissingDocsArtifactsError(
     `leadtype: no generated docs at ${docsDir} (missing ${file}). Either:\n` +
       "  • run `leadtype generate` so it writes ./public/docs, then retry; or\n" +
       "  • point `--artifacts <dir>` at a directory that contains a generated `docs/` folder; or\n" +
