@@ -63,7 +63,6 @@ export async function createDocsMcpServer(
     {
       name: serverInfo.name,
       version: serverInfo.version,
-      ...(serverInfo.description ? { description: serverInfo.description } : {}),
     },
     {
       capabilities: { tools: {} },

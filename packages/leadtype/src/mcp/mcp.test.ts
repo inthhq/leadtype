@@ -495,9 +495,10 @@ describe("createMcpHandler error handling", () => {
       })
     );
 
-    expect(await response.text()).toContain(
-      "Read the docs before answering."
-    );
+    const body = (await response.json()) as {
+      result?: { instructions?: string };
+    };
+    expect(body.result?.instructions).toBe("Read the docs before answering.");
   });
 
   it("returns a structured JSON-RPC error for invalid tool input", async () => {
