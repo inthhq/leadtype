@@ -49,6 +49,11 @@ export const DOCS_TOOL_SUMMARIES: Record<
   },
 };
 
+export type DocsToolAnnotations = {
+  readOnlyHint?: boolean;
+  idempotentHint?: boolean;
+};
+
 /**
  * A single MCP text content block. Mirrors the MCP `CallToolResult` content shape
  * structurally so the registry stays free of any SDK import (keeps the SDK a lazy
@@ -56,6 +61,24 @@ export const DOCS_TOOL_SUMMARIES: Record<
  */
 export type McpTextContent = { type: "text"; text: string };
 export type McpToolResult = { content: McpTextContent[]; isError?: boolean };
+
+export class DocsToolInputError extends Error {
+  code = -32_602;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "DocsToolInputError";
+  }
+}
+
+function formatIssueMessage(issues: readonly v.BaseIssue<unknown>[]): string {
+  const issue = issues[0];
+  if (!issue) {
+    return "Invalid input.";
+  }
+  const dotPath = issue.path?.map((segment) => segment.key).join(".");
+  return dotPath ? `${dotPath}: ${issue.message}` : issue.message;
+}
 
 /** A JSON Schema object advertised to clients via `tools/list`. */
 export type JsonSchemaObject = {
@@ -74,9 +97,10 @@ export type DocsTool = {
   name: DocsToolName;
   title: string;
   description: string;
+  annotations?: DocsToolAnnotations;
   /** Advertised to clients. Hand-authored JSON Schema (SDK 1.x typed path is Zod-only). */
   inputSchema: JsonSchemaObject;
-  /** Validates input with Valibot, then runs. Never throws for bad input — returns isError. */
+  /** Validates input with Valibot, then runs. Bad input throws a structured JSON-RPC error. */
   handler: (args: Record<string, unknown>) => Promise<McpToolResult>;
 };
 
@@ -91,15 +115,6 @@ function textResult(text: string, isError = false): McpToolResult {
 
 function jsonResult(value: unknown): McpToolResult {
   return textResult(JSON.stringify(value, null, 2));
-}
-
-function formatIssues(issues: readonly v.BaseIssue<unknown>[]): string {
-  return issues
-    .map((issue) => {
-      const dotPath = issue.path?.map((segment) => segment.key).join(".");
-      return dotPath ? `${dotPath}: ${issue.message}` : issue.message;
-    })
-    .join("; ");
 }
 
 const SearchInput = v.strictObject({
@@ -122,6 +137,10 @@ const GetPageInput = v.strictObject({
 });
 
 const ListPagesInput = v.strictObject({});
+const READ_ONLY_IDEMPOTENT_ANNOTATIONS = {
+  idempotentHint: true,
+  readOnlyHint: true,
+} as const;
 
 function toSearchHit(result: DocsSearchResult) {
   return {
@@ -154,6 +173,7 @@ function createSearchTool(artifacts: DocsArtifacts): DocsTool {
   return {
     name: "search-docs",
     ...DOCS_TOOL_SUMMARIES["search-docs"],
+    annotations: READ_ONLY_IDEMPOTENT_ANNOTATIONS,
     inputSchema: {
       type: "object",
       properties: {
@@ -171,8 +191,8 @@ function createSearchTool(artifacts: DocsArtifacts): DocsTool {
     handler: (args) => {
       const parsed = v.safeParse(SearchInput, args);
       if (!parsed.success) {
-        return Promise.resolve(
-          textResult(`Invalid input: ${formatIssues(parsed.issues)}`, true)
+        throw new DocsToolInputError(
+          `Invalid input: ${formatIssueMessage(parsed.issues)}`
         );
       }
       const { query, limit } = parsed.output;
@@ -189,6 +209,7 @@ function createGetPageTool(artifacts: DocsArtifacts): DocsTool {
   return {
     name: "get-page",
     ...DOCS_TOOL_SUMMARIES["get-page"],
+    annotations: READ_ONLY_IDEMPOTENT_ANNOTATIONS,
     inputSchema: {
       type: "object",
       properties: {
@@ -203,9 +224,8 @@ function createGetPageTool(artifacts: DocsArtifacts): DocsTool {
     handler: async (args) => {
       const parsed = v.safeParse(GetPageInput, args);
       if (!parsed.success) {
-        return textResult(
-          `Invalid input: ${formatIssues(parsed.issues)}`,
-          true
+        throw new DocsToolInputError(
+          `Invalid input: ${formatIssueMessage(parsed.issues)}`
         );
       }
       const page = findPage(artifacts, parsed.output.urlPath);
@@ -243,6 +263,7 @@ function createListPagesTool(artifacts: DocsArtifacts): DocsTool {
   return {
     name: "list-pages",
     ...DOCS_TOOL_SUMMARIES["list-pages"],
+    annotations: READ_ONLY_IDEMPOTENT_ANNOTATIONS,
     inputSchema: {
       type: "object",
       properties: {},
@@ -251,9 +272,7 @@ function createListPagesTool(artifacts: DocsArtifacts): DocsTool {
     handler: (args) => {
       const parsed = v.safeParse(ListPagesInput, args);
       if (!parsed.success) {
-        return Promise.resolve(
-          textResult(`Invalid input: ${formatIssues(parsed.issues)}`, true)
-        );
+        throw new DocsToolInputError("Invalid input: unexpected arguments");
       }
       const pages = artifacts.manifest.pages.map((page) => ({
         title: page.title,

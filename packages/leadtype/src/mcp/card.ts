@@ -38,6 +38,7 @@ export type McpServerCardServerInfo = {
   name: string;
   version: string;
   description?: string;
+  instructions?: string;
 };
 
 export type McpServerCardTransport = {
@@ -50,6 +51,10 @@ export type McpServerCardToolSummary = {
   name: DocsToolName;
   title: string;
   description: string;
+  annotations?: {
+    idempotentHint?: boolean;
+    readOnlyHint?: boolean;
+  };
 };
 
 export type McpServerCard = {
@@ -63,6 +68,7 @@ export type McpServerCard = {
    */
   name: string;
   description?: string;
+  icon?: string;
   serverUrl: string;
   tools: McpServerCardToolSummary[];
   serverInfo: McpServerCardServerInfo;
@@ -75,6 +81,8 @@ export type McpServerCardConfig = {
   endpoint?: string;
   serverInfo?: Partial<McpServerCardServerInfo>;
   authentication?: { required?: boolean };
+  icon?: string;
+  logo?: string;
   /** Tools the mounted server exposes. Defaults to `search-docs` + `get-page`. */
   tools?: DocsToolName[];
 };
@@ -108,6 +116,14 @@ function normalizeEndpoint(endpoint: string): string {
   return endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 }
 
+function createDefaultInstructions(summary: string): string {
+  const trimmedSummary = summary.trim().replace(/[.!?]+$/, "");
+  if (trimmedSummary.length === 0) {
+    return "Search and read the documentation.";
+  }
+  return `Search and read the documentation for ${trimmedSummary}.`;
+}
+
 export function resolveMcpEndpoint(
   baseUrl: string | undefined,
   endpoint?: string
@@ -129,11 +145,14 @@ export function resolveMcpServerInfo(
   config?: McpServerCardConfig
 ): McpServerCardServerInfo {
   const description = config?.serverInfo?.description ?? product.summary;
+  const instructions =
+    config?.serverInfo?.instructions ?? createDefaultInstructions(product.summary);
 
   return {
     name: config?.serverInfo?.name ?? toServerName(product.name),
     version: config?.serverInfo?.version ?? DEFAULT_MCP_SERVER_VERSION,
     ...(description ? { description } : {}),
+    ...(instructions ? { instructions } : {}),
   };
 }
 
@@ -152,9 +171,20 @@ function summarizeTools(tools?: DocsToolName[]): McpServerCardToolSummary[] {
       continue;
     }
     seen.add(name);
-    summaries.push({ name, ...DOCS_TOOL_SUMMARIES[name] });
+    summaries.push({
+      name,
+      ...DOCS_TOOL_SUMMARIES[name],
+      annotations: {
+        idempotentHint: true,
+        readOnlyHint: true,
+      },
+    });
   }
   return summaries;
+}
+
+function resolveCardIcon(config?: McpServerCardConfig): string | undefined {
+  return config?.icon ?? config?.logo;
 }
 
 export function createMcpServerCard(
@@ -163,6 +193,7 @@ export function createMcpServerCard(
   const config = options.config;
   const serverInfo = resolveMcpServerInfo(options.product, config);
   const endpoint = resolveMcpEndpoint(options.baseUrl, config?.endpoint);
+  const icon = resolveCardIcon(config);
 
   return {
     $schema: MCP_SERVER_CARD_SCHEMA_URL,
@@ -170,6 +201,7 @@ export function createMcpServerCard(
     protocolVersion: MCP_SERVER_CARD_PROTOCOL_VERSION,
     name: serverInfo.name,
     ...(serverInfo.description ? { description: serverInfo.description } : {}),
+    ...(icon ? { icon } : {}),
     serverUrl: endpoint,
     tools: summarizeTools(config?.tools),
     serverInfo,
@@ -184,13 +216,20 @@ export function createMcpServerCard(
 
 export async function generateMcpServerCard(
   options: GenerateMcpServerCardOptions
-): Promise<{ outputPath: string; wellKnownPath: string; card: McpServerCard }> {
+): Promise<{
+  outputPath: string;
+  rootPath: string;
+  wellKnownPath: string;
+  card: McpServerCard;
+}> {
   const outputPath = path.join(options.outDir, MCP_SERVER_CARD_PATH);
+  const rootPath = path.join(options.outDir, "mcp.json");
   const wellKnownPath = path.join(options.outDir, MCP_WELL_KNOWN_PATH);
   const card = createMcpServerCard(options);
   const json = `${JSON.stringify(card, null, 2)}\n`;
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, json);
+  await writeFile(rootPath, json);
   await writeFile(wellKnownPath, json);
-  return { outputPath, wellKnownPath, card };
+  return { outputPath, rootPath, wellKnownPath, card };
 }
