@@ -1,10 +1,13 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const JSON_RPC_INVALID_PARAMS = -32_602;
+const JSON_RPC_METHOD_NOT_FOUND = -32_601;
 import { runMcpCommand } from "../cli/mcp";
 import type {
   AgentReadabilityManifest,
@@ -344,6 +347,21 @@ describe("createMcpServerCard", () => {
     );
   });
 
+  it("falls back to logo when icon is not provided", () => {
+    const card = createMcpServerCard({
+      baseUrl: "https://leadtype.dev/docs/",
+      product: {
+        name: "Leadtype",
+        summary: "Docs pipeline tooling.",
+      },
+      config: {
+        logo: "https://leadtype.dev/logo.png",
+      },
+    });
+
+    expect(card.icon).toBe("https://leadtype.dev/logo.png");
+  });
+
   it("builds the SEP-1649 discovery card for the docs MCP endpoint", () => {
     const card = createMcpServerCard({
       baseUrl: "https://leadtype.dev/docs/",
@@ -435,8 +453,22 @@ describe("createMcpServerCard", () => {
 });
 
 describe("createMcpHandler error handling", () => {
+  const createdDirs: string[] = [];
+
+  async function createTrackedArtifactsDir(): Promise<string> {
+    const dir = await createArtifactsDir();
+    createdDirs.push(dir);
+    return dir;
+  }
+
+  afterAll(async () => {
+    await Promise.all(
+      createdDirs.map((dir) => rm(dir, { recursive: true, force: true }))
+    );
+  });
+
   it("returns server instructions during initialize", async () => {
-    const artifacts = await createArtifactsDir();
+    const artifacts = await createTrackedArtifactsDir();
     const handler = createMcpHandler({
       artifacts,
       serverInfo: {
@@ -469,7 +501,7 @@ describe("createMcpHandler error handling", () => {
   });
 
   it("returns a structured JSON-RPC error for invalid tool input", async () => {
-    const artifacts = await createArtifactsDir();
+    const artifacts = await createTrackedArtifactsDir();
     const handler = createMcpHandler({ artifacts });
     const response = await handler(
       new Request("https://app.local/mcp", {
@@ -493,12 +525,12 @@ describe("createMcpHandler error handling", () => {
     const body = (await response.json()) as {
       error?: { code?: number; message?: string };
     };
-    expect(body.error?.code).toBe(-32_602);
+    expect(body.error?.code).toBe(JSON_RPC_INVALID_PARAMS);
     expect(body.error?.message).toContain("Invalid input");
   });
 
   it("returns a structured JSON-RPC error for unknown tools", async () => {
-    const artifacts = await createArtifactsDir();
+    const artifacts = await createTrackedArtifactsDir();
     const handler = createMcpHandler({ artifacts });
     const response = await handler(
       new Request("https://app.local/mcp", {
@@ -522,7 +554,7 @@ describe("createMcpHandler error handling", () => {
     const body = (await response.json()) as {
       error?: { code?: number; message?: string };
     };
-    expect(body.error?.code).toBe(-32_601);
+    expect(body.error?.code).toBe(JSON_RPC_METHOD_NOT_FOUND);
     expect(body.error?.message).toContain("Unknown tool");
   });
 

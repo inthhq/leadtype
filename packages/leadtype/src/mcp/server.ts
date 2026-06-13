@@ -64,9 +64,11 @@ export async function createDocsMcpServer(
       name: serverInfo.name,
       version: serverInfo.version,
       ...(serverInfo.description ? { description: serverInfo.description } : {}),
-      ...(serverInfo.instructions ? { instructions: serverInfo.instructions } : {}),
     },
-    { capabilities: { tools: {} } }
+    {
+      capabilities: { tools: {} },
+      ...(serverInfo.instructions ? { instructions: serverInfo.instructions } : {}),
+    }
   );
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({
