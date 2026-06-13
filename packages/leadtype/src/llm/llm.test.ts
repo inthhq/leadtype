@@ -15,7 +15,10 @@ import {
 } from "./llm";
 import {
   acceptsMarkdownHeader,
+  createAgentDiscoveryHeaders,
+  createAgentDiscoveryLinkHeader,
   createAgentMarkdownResponse,
+  createApiCatalogResponse,
   createDocsHead,
   createDocsJsonLd,
   createMarkdownResponseHeaders,
@@ -930,16 +933,23 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect(existsSync(path.join(projectDir, "sitemap.md"))).toBe(true);
     expect(existsSync(path.join(projectDir, "robots.txt"))).toBe(true);
     expect(
+      existsSync(path.join(projectDir, ".well-known", "api-catalog"))
+    ).toBe(true);
+    expect(
       existsSync(path.join(projectDir, "docs", "agent-readability.json"))
     ).toBe(true);
 
     const sitemapXmlPath = result.files.sitemapXml;
     const sitemapMdPath = result.files.sitemapMd;
     const robotsTxtPath = result.files.robotsTxt;
+    const apiCatalogPath = result.files.apiCatalog;
     expect(sitemapXmlPath).toBe(path.join(projectDir, "sitemap.xml"));
     expect(sitemapMdPath).toBe(path.join(projectDir, "sitemap.md"));
     expect(robotsTxtPath).toBe(path.join(projectDir, "robots.txt"));
-    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath)) {
+    expect(apiCatalogPath).toBe(
+      path.join(projectDir, ".well-known", "api-catalog")
+    );
+    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath && apiCatalogPath)) {
       throw new Error("Expected root crawler artifacts to be emitted.");
     }
 
@@ -959,8 +969,19 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect(robotsTxt).toContain("Sitemap: https://leadtype.dev/sitemap.xml");
     expect(robotsTxt).toContain("User-agent: GPTBot");
     expect(robotsTxt).toContain("User-agent: ClaudeBot");
+    expect(robotsTxt).toContain("User-agent: Amazonbot");
+    expect(robotsTxt).toContain("User-agent: Bytespider");
+    expect(robotsTxt).toContain("User-agent: Applebot-Extended");
     expect(robotsTxt).toContain("Allow: /llms.txt");
     expect(robotsTxt).not.toContain("Disallow: /llms.txt");
+
+    const apiCatalog = JSON.parse(await readFile(apiCatalogPath, "utf8"));
+    expect(apiCatalog.linkset[0]["api-catalog"][0].href).toBe(
+      "https://leadtype.dev/.well-known/api-catalog"
+    );
+    expect(apiCatalog.linkset[0]["service-doc"][0].href).toBe(
+      "https://leadtype.dev/docs/llms.txt"
+    );
 
     expect(result.manifest.pages).toContainEqual(
       expect.objectContaining({
@@ -991,7 +1012,7 @@ describe("generateAgentReadabilityArtifacts", () => {
 
     const robotsTxt = await readFile(result.files.robotsTxt, "utf8");
     expect(robotsTxt).toContain(
-      "Content-Signal: search=yes, ai-input=no, ai-train=no"
+      "Content-Signal: ai-train=no, search=yes, ai-input=no"
     );
     expect(robotsTxt).toContain("User-agent: GPTBot\nDisallow: /");
     expect(robotsTxt).toContain("User-agent: PerplexityBot\nDisallow: /");
@@ -1038,7 +1059,7 @@ describe("generateAgentReadabilityArtifacts", () => {
   it("defaults robots.txt to the balanced Content-Signal policy", () => {
     const robots = renderRobotsTxt({ baseUrl: "https://example.com" });
     expect(robots).toContain(
-      "Content-Signal: search=yes, ai-input=yes, ai-train=no"
+      "Content-Signal: ai-train=no, search=yes, ai-input=yes"
     );
     // Balanced keeps both retrieval and training crawlers crawlable.
     expect(robots).toContain("User-agent: GPTBot"); // training
@@ -1065,7 +1086,7 @@ describe("generateAgentReadabilityArtifacts", () => {
       policy: "block-ai",
     });
     expect(robots).toContain(
-      "Content-Signal: search=yes, ai-input=no, ai-train=no"
+      "Content-Signal: ai-train=no, search=yes, ai-input=no"
     );
     expect(robots).toContain("User-agent: GPTBot\nDisallow: /");
     expect(robots).toContain("User-agent: PerplexityBot\nDisallow: /");
@@ -1078,7 +1099,7 @@ describe("generateAgentReadabilityArtifacts", () => {
       signals: { aiTrain: "yes" },
     });
     expect(robots).toContain(
-      "Content-Signal: search=yes, ai-input=yes, ai-train=yes"
+      "Content-Signal: ai-train=yes, search=yes, ai-input=yes"
     );
   });
 });
@@ -1527,7 +1548,7 @@ describe("agent readability helpers", () => {
       Vary: "Accept, User-Agent",
       Link: '<https://example.com/docs>; rel="canonical", </llms.txt>; rel="llms-txt"',
       "X-Llms-Txt": "/llms.txt",
-      "Content-Signal": "search=yes, ai-input=yes, ai-train=no",
+      "Content-Signal": "ai-train=no, search=yes, ai-input=yes",
       "Cache-Control": "public, max-age=300, must-revalidate",
     });
     // Content-Signal can be customized or omitted.
@@ -1536,7 +1557,7 @@ describe("agent readability helpers", () => {
         canonicalUrl: "https://example.com/docs",
         contentSignal: { search: "yes", aiInput: "no", aiTrain: "no" },
       })["Content-Signal"]
-    ).toBe("search=yes, ai-input=no, ai-train=no");
+    ).toBe("ai-train=no, search=yes, ai-input=no");
     expect(
       createMarkdownResponseHeaders({
         canonicalUrl: "https://example.com/docs",
@@ -1571,6 +1592,30 @@ describe("agent readability helpers", () => {
     });
     expect(customDiscovery["X-Llms-Txt"]).toBe("/docs/llms.txt");
     expect(customDiscovery.Link).toContain('</docs/llms.txt>; rel="llms-txt"');
+  });
+
+  it("builds agent discovery Link headers and API catalog responses", async () => {
+    expect(createAgentDiscoveryLinkHeader()).toBe(
+      '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", </docs/llms.txt>; rel="service-doc"; type="text/plain", </docs/agent-readability.json>; rel="service-desc"; type="application/json", </sitemap.xml>; rel="describedby"; type="application/xml"'
+    );
+    expect(createAgentDiscoveryHeaders()).toEqual({
+      Link: createAgentDiscoveryLinkHeader(),
+    });
+
+    const response = createApiCatalogResponse({
+      manifest,
+      requestOrigin: "http://localhost:5173",
+    });
+    expect(response.headers.get("Content-Type")).toBe(
+      "application/linkset+json; charset=utf-8"
+    );
+    const body = await response.json();
+    expect(body.linkset[0]["api-catalog"][0].href).toBe(
+      "http://localhost:5173/.well-known/api-catalog"
+    );
+    expect(body.linkset[0]["service-desc"][0].href).toBe(
+      "http://localhost:5173/docs/agent-readability.json"
+    );
   });
 
   it("adds agent-readable frontmatter aliases to markdown", () => {
@@ -1835,6 +1880,9 @@ describe("agent artifact response helpers", () => {
     const body = await response.text();
     expect(body).toContain("Sitemap: http://localhost:5173/sitemap.xml");
     expect(body).toContain("User-agent: AmazonBot");
+    expect(body).toContain("User-agent: Amazonbot");
+    expect(body).toContain("User-agent: Bytespider");
+    expect(body).toContain("User-agent: Applebot-Extended");
     expect(body).toContain("User-agent: Bingbot");
   });
 

@@ -11,7 +11,7 @@ Leadtype's agent surface covers that end to end. This page is the map: every art
 
 | Layer | Artifacts | What they do |
 | --- | --- | --- |
-| **Discovery** | `llms.txt` (+ `/.well-known/llms.txt`), `llms-full.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt` with [Content-Signals](/docs/aeo/optimize-docs-for-agents) | Let agents find your pages and know your crawl/training policy without scraping. |
+| **Discovery** | `llms.txt` (+ `/.well-known/llms.txt`), `/.well-known/api-catalog`, `llms-full.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt` with [Content-Signals](/docs/aeo/optimize-docs-for-agents) | Let agents find your pages and know your crawl/training policy without scraping. |
 | **Content** | Markdown mirrors at `${urlPath}.md` with `canonical_url`/`last_updated` frontmatter, `Accept: text/markdown` content negotiation, agent user-agent detection, missing-page markdown responses | Serve agents clean markdown — cheaper to read, harder to misquote. |
 | **Identity** | JSON-LD entity graph (`Organization`, `WebSite`, `SoftwareApplication`, per-page `TechArticle` + breadcrumbs), SEO meta defaults, `agent-readability.json` manifest | Tell answer engines exactly who publishes what, so they stop hallucinating your positioning. |
 | **Integration** | [Agent skills](/docs/reference/skills) (`/.well-known/agent-skills`), the A2A agent card, a [docs MCP server](/docs/reference/mcp), [WebMCP browser tools](/docs/reference/webmcp), [search agent tools](/docs/search/agent-tools) | Let agents act on your docs: search them, fetch pages, install capabilities. |

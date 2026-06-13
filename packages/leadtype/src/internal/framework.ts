@@ -6,6 +6,7 @@ import type {
 } from "../llm/readability";
 import {
   createAgentMarkdownResponse,
+  createApiCatalogResponse,
   createRobotsTxtResponse,
   createSitemapMarkdownResponse,
   createSitemapXmlResponse,
@@ -130,6 +131,12 @@ function getArtifactResponse(
       });
     case "/robots.txt":
       return createRobotsTxtResponse({
+        manifest: config.manifest,
+        requestOrigin,
+        cacheControl: config.cacheControl,
+      });
+    case "/.well-known/api-catalog":
+      return createApiCatalogResponse({
         manifest: config.manifest,
         requestOrigin,
         cacheControl: config.cacheControl,

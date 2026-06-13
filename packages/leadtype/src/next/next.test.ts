@@ -112,6 +112,24 @@ describe("createDocsRouteHandler", () => {
     expect(body).toContain("Page not found");
   });
 
+  it("serves the API catalog well-known route", async () => {
+    const handler = createDocsRouteHandler({
+      manifest: buildManifest(),
+      publicDir,
+    });
+    const response = await handler(
+      new Request("https://example.com/.well-known/api-catalog")
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(
+      "application/linkset+json; charset=utf-8"
+    );
+    const body = await response.json();
+    expect(body.linkset[0]["api-catalog"][0].href).toBe(
+      "https://example.com/.well-known/api-catalog"
+    );
+  });
+
   it("routes through a custom readMarkdownFile when provided", async () => {
     const handler = createDocsRouteHandler({
       manifest: buildManifest(),

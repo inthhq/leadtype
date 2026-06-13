@@ -202,6 +202,7 @@ type GenerateResult = {
   files: {
     agentsMd?: string;
     agentReadabilityManifest?: string;
+    apiCatalog?: string;
     robotsTxt?: string;
     sitemapMd?: string;
     sitemapXml?: string;
@@ -2836,6 +2837,9 @@ export async function runGenerateCommand(
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
+          ...(agentReadability.files.apiCatalog
+            ? { apiCatalog: agentReadability.files.apiCatalog }
+            : {}),
           ...(agentReadability.files.robotsTxt
             ? { robotsTxt: agentReadability.files.robotsTxt }
             : {}),

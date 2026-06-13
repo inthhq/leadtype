@@ -28,6 +28,8 @@ const ROOT_AGENT_ARTIFACT_PATTERN =
   /^\/(?:llms(?:-full)?\.txt|robots\.txt|sitemap\.(?:md|xml))$/;
 const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
+const WELL_KNOWN_AGENT_ARTIFACT_PATTERN =
+  /^\/\.well-known\/(?:api-catalog|llms(?:-full)?\.txt|mcp(?:\.json|\/server-card\.json)?)$/;
 const AI_USER_AGENT_PATTERN =
   /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-searchbot|claude-user|claude-web|claudebot|deepseekbot|gemini-deep-research|google-extended|gptbot|meta-externalagent|meta-externalfetcher|metaexternalagent|mistralbot|oai-searchbot|perplexity-user|perplexitybot|youbot)\b/i;
 // Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
@@ -46,6 +48,7 @@ const RETRIEVAL_AI_CRAWLERS = [
   "DeepSeekBot",
   "Meta-ExternalFetcher",
   "AmazonBot",
+  "Amazonbot",
   "Bingbot",
   "MistralBot",
   "AppleBot",
@@ -56,8 +59,10 @@ const TRAINING_AI_CRAWLERS = [
   "Google-Extended",
   "CCBot",
   "ByteSpider",
+  "Bytespider",
   "anthropic-ai",
   "MetaExternalAgent",
+  "Applebot-Extended",
 ] as const;
 const DEFAULT_CACHE_CONTROL = "public, max-age=300, must-revalidate";
 const SUPPORTED_MANIFEST_VERSION = 1;
@@ -103,9 +108,9 @@ export function resolveContentSignals(
   return { ...ROBOTS_POLICY_SIGNALS[policy], ...overrides };
 }
 
-/** Render the `search=…, ai-input=…, ai-train=…` directive string. */
+/** Render the `ai-train=…, search=…, ai-input=…` directive string. */
 export function renderContentSignal(signals: ContentSignals): string {
-  return `search=${signals.search}, ai-input=${signals.aiInput}, ai-train=${signals.aiTrain}`;
+  return `ai-train=${signals.aiTrain}, search=${signals.search}, ai-input=${signals.aiInput}`;
 }
 
 export type JsonLdValue = Record<string, unknown>;
@@ -180,6 +185,8 @@ export type AgentReadabilityManifest = {
     robotsTxt: string;
     sitemapMd: string;
     sitemapXml: string;
+    /** API catalog linkset advertised from homepage `Link` headers. */
+    apiCatalog?: string;
   };
   /** Site-level JSON-LD options (from `agents.jsonLd`), so `renderSiteJsonLd` is config-driven. */
   jsonLd?: RenderSiteJsonLdOptions;
@@ -270,6 +277,23 @@ export type AgentArtifactResponseConfig = {
   cacheControl?: string | null;
 };
 
+export type AgentDiscoveryLinksConfig = {
+  /** API catalog path. Defaults to `/.well-known/api-catalog`. */
+  apiCatalogPath?: string | null;
+  /** Human/agent-facing service documentation path. Defaults to `/docs/llms.txt`. */
+  serviceDocPath?: string | null;
+  /** Machine-readable service description path. Defaults to `/docs/agent-readability.json`. */
+  serviceDescPath?: string | null;
+  /** Sitemap or equivalent descriptor path. Defaults to `/sitemap.xml`. */
+  describedbyPath?: string | null;
+};
+
+export type RenderApiCatalogConfig = AgentDiscoveryLinksConfig & {
+  manifest: AgentReadabilityManifest;
+  /** Live request origin, e.g. "http://localhost:5173". Falls back to manifest.baseUrl. */
+  requestOrigin?: string;
+};
+
 export type CreateSitemapMarkdownResponseConfig =
   AgentArtifactResponseConfig & {
     /** Optional override for the navigation tree. Defaults to manifest.navigation. */
@@ -294,6 +318,11 @@ export type CreateRobotsTxtResponseConfig = {
   policy?: RobotsPolicy;
   /** Override individual Content-Signals beyond the policy preset. */
   signals?: Partial<ContentSignals>;
+  /** Override Cache-Control. Pass `null` to omit. */
+  cacheControl?: string | null;
+};
+
+export type CreateApiCatalogResponseConfig = RenderApiCatalogConfig & {
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
 };
@@ -600,8 +629,83 @@ export function isAgentReadabilityArtifactPath(urlPath: string): boolean {
   const pathname = normalizeUrlPath(urlPath);
   return (
     ROOT_AGENT_ARTIFACT_PATTERN.test(pathname) ||
-    DOCS_AGENT_ARTIFACT_PATTERN.test(pathname)
+    DOCS_AGENT_ARTIFACT_PATTERN.test(pathname) ||
+    WELL_KNOWN_AGENT_ARTIFACT_PATTERN.test(pathname)
   );
+}
+
+function normalizeDiscoveryPath(pathname: string): string {
+  return normalizeUrlPath(pathname || "/");
+}
+
+function quotedLink(pathname: string, params: Record<string, string>): string {
+  const serializedParams = Object.entries(params)
+    .map(([key, value]) => `${key}="${value}"`)
+    .join("; ");
+  return `<${pathname}>; ${serializedParams}`;
+}
+
+export function createAgentDiscoveryLinkHeader(
+  config: AgentDiscoveryLinksConfig = {}
+): string {
+  const links: string[] = [];
+  const apiCatalogPath =
+    config.apiCatalogPath === undefined
+      ? "/.well-known/api-catalog"
+      : config.apiCatalogPath;
+  const serviceDocPath =
+    config.serviceDocPath === undefined
+      ? "/docs/llms.txt"
+      : config.serviceDocPath;
+  const serviceDescPath =
+    config.serviceDescPath === undefined
+      ? "/docs/agent-readability.json"
+      : config.serviceDescPath;
+  const describedbyPath =
+    config.describedbyPath === undefined
+      ? "/sitemap.xml"
+      : config.describedbyPath;
+
+  if (apiCatalogPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(apiCatalogPath), {
+        rel: "api-catalog",
+        type: "application/linkset+json",
+      })
+    );
+  }
+  if (serviceDocPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(serviceDocPath), {
+        rel: "service-doc",
+        type: "text/plain",
+      })
+    );
+  }
+  if (serviceDescPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(serviceDescPath), {
+        rel: "service-desc",
+        type: "application/json",
+      })
+    );
+  }
+  if (describedbyPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(describedbyPath), {
+        rel: "describedby",
+        type: "application/xml",
+      })
+    );
+  }
+  return links.join(", ");
+}
+
+export function createAgentDiscoveryHeaders(
+  config: AgentDiscoveryLinksConfig = {}
+): Record<string, string> {
+  const link = createAgentDiscoveryLinkHeader(config);
+  return link ? { Link: link } : {};
 }
 
 export function resolveMarkdownMirrorTarget(
@@ -1474,6 +1578,63 @@ function resolveEffectiveBase(
   return requestOrigin
     ? stripTrailingSlashes(requestOrigin)
     : stripTrailingSlashes(manifest.baseUrl);
+}
+
+export function renderApiCatalog(config: RenderApiCatalogConfig): string {
+  assertManifestVersion(config.manifest);
+  const base = resolveEffectiveBase(config.manifest, config.requestOrigin);
+  const apiCatalogPath =
+    config.apiCatalogPath === undefined
+      ? "/.well-known/api-catalog"
+      : config.apiCatalogPath;
+  const serviceDocPath =
+    config.serviceDocPath === undefined
+      ? "/docs/llms.txt"
+      : config.serviceDocPath;
+  const serviceDescPath =
+    config.serviceDescPath === undefined
+      ? "/docs/agent-readability.json"
+      : config.serviceDescPath;
+  const describedbyPath =
+    config.describedbyPath === undefined
+      ? "/sitemap.xml"
+      : config.describedbyPath;
+  const relation = (href: string, type: string) => ({
+    href: toAbsoluteUrl(normalizeDiscoveryPath(href), base),
+    type,
+  });
+  const linkset: Record<string, unknown> = {
+    anchor: `${base}/`,
+  };
+  if (apiCatalogPath !== null) {
+    linkset["api-catalog"] = [
+      relation(apiCatalogPath, "application/linkset+json"),
+    ];
+  }
+  if (serviceDocPath !== null) {
+    linkset["service-doc"] = [relation(serviceDocPath, "text/plain")];
+  }
+  if (serviceDescPath !== null) {
+    linkset["service-desc"] = [relation(serviceDescPath, "application/json")];
+  }
+  if (describedbyPath !== null) {
+    linkset.describedby = [relation(describedbyPath, "application/xml")];
+  }
+  return `${JSON.stringify({ linkset: [linkset] }, null, 2)}\n`;
+}
+
+export function createApiCatalogResponse(
+  config: CreateApiCatalogResponseConfig
+): Response {
+  return new Response(renderApiCatalog(config), {
+    status: 200,
+    headers: attachCacheControl(
+      {
+        "Content-Type": "application/linkset+json; charset=utf-8",
+      },
+      config.cacheControl
+    ),
+  });
 }
 
 export function createSitemapXmlResponse(

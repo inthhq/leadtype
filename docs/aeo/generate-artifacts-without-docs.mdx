@@ -38,6 +38,7 @@ await generateAgentArtifacts({
 This writes into `outDir`:
 
 - `/llms.txt` (plus the `/.well-known/llms.txt` discovery copy) — product summary, your authored `llms.sections`, and a grouped page map linking every page's `.md` mirror.
+- `/.well-known/api-catalog` — a linkset catalog for homepage `Link: rel="api-catalog"` discovery.
 - One markdown mirror per page at `${urlPath}.md` (the root page `/` becomes `/index.md`), with the frontmatter agents need for attribution and staleness checks: `title`, `description`, `canonical_url`, `last_updated`. Mirrors pass the agent-readability frontmatter checks when served statically — no runtime enrichment required.
 - `/sitemap.xml` (with `lastmod`), `/sitemap.md`, and `/robots.txt` with the Content-Signal policy you chose.
 - `/agent-readability.json` — the same manifest shape the docs pipeline emits, written at the site root instead of under `/docs/`. Point the runtime helpers from [Serve agent responses](/docs/aeo/serve-agent-responses) at it to add `Accept: text/markdown` content negotiation and per-page JSON-LD.

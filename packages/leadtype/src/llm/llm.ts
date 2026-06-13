@@ -53,6 +53,7 @@ import {
   type DocsTableOfContentsOptions,
   type RenderSiteJsonLdOptions,
   type RobotsPolicy,
+  renderApiCatalog,
   renderRobotsTxt,
   renderSitemapMarkdown,
   renderSitemapXml,
@@ -64,6 +65,8 @@ export type { DocsPathMount } from "../internal/docs-url";
 
 const DOCS_DIRNAME = "docs";
 const AGENT_READABILITY_MANIFEST_FILE = "agent-readability.json";
+const API_CATALOG_FILE = path.join(".well-known", "api-catalog");
+const API_CATALOG_URL_PATH = "/.well-known/api-catalog";
 const ROBOTS_FILE = "robots.txt";
 const SITEMAP_MARKDOWN_FILE = "sitemap.md";
 const SITEMAP_XML_FILE = "sitemap.xml";
@@ -817,6 +820,7 @@ export type AgentReadabilityResult = {
   manifest: AgentReadabilityManifest;
   files: {
     manifest: string;
+    apiCatalog?: string;
     robotsTxt?: string;
     sitemapMd?: string;
     sitemapXml?: string;
@@ -2531,6 +2535,7 @@ export async function generateAgentReadabilityArtifacts(
     pages,
     navigation,
     files: {
+      apiCatalog: API_CATALOG_URL_PATH,
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
@@ -2541,6 +2546,7 @@ export async function generateAgentReadabilityArtifacts(
 
   const files = {
     manifest: path.join(docsDir, AGENT_READABILITY_MANIFEST_FILE),
+    apiCatalog: path.join(outDir, API_CATALOG_FILE),
     robotsTxt: path.join(outDir, ROBOTS_FILE),
     sitemapMd: path.join(outDir, SITEMAP_MARKDOWN_FILE),
     sitemapXml: path.join(outDir, SITEMAP_XML_FILE),
@@ -2557,6 +2563,8 @@ export async function generateAgentReadabilityArtifacts(
   });
   if (shouldEmitRootCrawlerFiles) {
     await mkdir(outDir, { recursive: true });
+    await mkdir(path.dirname(files.apiCatalog), { recursive: true });
+    await writeFile(files.apiCatalog, renderApiCatalog({ manifest }));
     await writeFile(files.sitemapXml, sitemapXml);
     await writeFile(files.sitemapMd, sitemapMd);
     await writeFile(
@@ -2577,6 +2585,7 @@ export async function generateAgentReadabilityArtifacts(
       manifest: files.manifest,
       ...(shouldEmitRootCrawlerFiles
         ? {
+            apiCatalog: files.apiCatalog,
             robotsTxt: files.robotsTxt,
             sitemapMd: files.sitemapMd,
             sitemapXml: files.sitemapXml,
@@ -2640,6 +2649,7 @@ export type GenerateAgentArtifactsResult = {
     manifest: string;
     /** One `.md` mirror per page, mounted at `${urlPath}.md`. */
     markdown: string[];
+    apiCatalog?: string;
     robotsTxt?: string;
     sitemapMd?: string;
     sitemapXml?: string;
@@ -2868,6 +2878,7 @@ export async function generateAgentArtifacts(
     pages,
     navigation,
     files: {
+      apiCatalog: API_CATALOG_URL_PATH,
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
@@ -2893,6 +2904,9 @@ export async function generateAgentArtifacts(
   const sitemapXmlPath = path.join(outDir, SITEMAP_XML_FILE);
   const sitemapMdPath = path.join(outDir, SITEMAP_MARKDOWN_FILE);
   const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
+  const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
+  await mkdir(path.dirname(apiCatalogPath), { recursive: true });
+  await writeFile(apiCatalogPath, renderApiCatalog({ manifest }));
   await writeFile(sitemapXmlPath, renderSitemapXml(pages));
   await writeFile(
     sitemapMdPath,
@@ -2919,6 +2933,7 @@ export async function generateAgentArtifacts(
       wellKnownLlmsTxt: wellKnownLlmsTxtPath,
       manifest: manifestPath,
       markdown: markdownFiles,
+      apiCatalog: apiCatalogPath,
       robotsTxt: robotsTxtPath,
       sitemapMd: sitemapMdPath,
       sitemapXml: sitemapXmlPath,

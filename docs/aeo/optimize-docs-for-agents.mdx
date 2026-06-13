@@ -17,7 +17,7 @@ An agent-readable docs site has four layers:
 
 <Steps>
   <Step title="Discovery files">
-    `/llms.txt`, `/sitemap.xml`, `/sitemap.md`, and `/robots.txt` tell agents what exists and where to start.
+    `/llms.txt`, `/.well-known/api-catalog`, `/sitemap.xml`, `/sitemap.md`, and `/robots.txt` tell agents what exists and where to start.
   </Step>
   <Step title="Markdown retrieval">
     Each docs page has a markdown mirror at `/docs/page.md`, and agent requests to `/docs/page` can receive markdown instead of HTML.
@@ -47,6 +47,9 @@ This writes root crawler files, root LLM entry points, and docs artifacts under 
 
 ```txt
 public/
+├── .well-known/
+│   ├── api-catalog
+│   └── llms.txt
 ├── llms.txt
 ├── llms-full.txt
 ├── sitemap.xml
@@ -69,6 +72,7 @@ The generated `agent-readability.json` manifest is the bridge between build-time
   "product": { "name": "My product", "summary": "One sentence." },
   "navigation": { "groups": [ /* … nav tree … */ ] },
   "files": {
+    "apiCatalog": "/.well-known/api-catalog",
     "robotsTxt": "/robots.txt",
     "sitemapMd": "/sitemap.md",
     "sitemapXml": "/sitemap.xml"
@@ -89,7 +93,7 @@ The generated `agent-readability.json` manifest is the bridge between build-time
 }
 ```
 
-Static crawlers should start at root `/robots.txt` and `/sitemap.xml`, which `leadtype generate` writes.
+Static crawlers should start at root `/robots.txt` and `/sitemap.xml`, which `leadtype generate` writes. Web Linking-aware agents can start from your homepage `Link` header and follow `rel="api-catalog"` to `/.well-known/api-catalog`.
 
 Pass it through `normalizeAgentReadabilityManifest()` before handing it to a runtime helper — that validates the shape and fills defaults.
 
@@ -142,7 +146,7 @@ Per-page JSON-LD always emits; the site-level graph is derived from `product` + 
 
 ## Control AI crawler access
 
-By default (`balanced`), `robots.txt` keeps the site fully crawlable and emits a [Content-Signals](https://contentsignals.org) line — `Content-Signal: search=yes, ai-input=yes, ai-train=no` — so retrieval is welcome but you signal "don't train on this". Change the stance with the additive `agents.robots` config:
+By default (`balanced`), `robots.txt` keeps the site fully crawlable and emits a [Content-Signals](https://contentsignals.org) line — `Content-Signal: ai-train=no, search=yes, ai-input=yes` — so retrieval is welcome but you signal "don't train on this". Change the stance with the additive `agents.robots` config:
 
 ```ts
 import { defineDocsConfig } from "leadtype";
@@ -166,7 +170,7 @@ export default defineDocsConfig({
 
 - **`balanced`** (default) — crawlable + retrievable; signals `ai-train=no`.
 - **`open`** — also welcomes training (`ai-train=yes`).
-- **`block-training`** — `Disallow: /` for training crawlers (GPTBot, Google-Extended, CCBot, ByteSpider, anthropic-ai, MetaExternalAgent); retrieval crawlers stay allowed.
+- **`block-training`** — `Disallow: /` for training crawlers (GPTBot, Google-Extended, CCBot, ByteSpider/Bytespider, anthropic-ai, MetaExternalAgent, Applebot-Extended); retrieval crawlers stay allowed.
 - **`block-ai`** — `Disallow: /` for every AI crawler; conventional search engines are untouched; signals `ai-input=no, ai-train=no`.
 
 The same stance drives the `Content-Signal` response header on served markdown (see [Serve agent responses](/docs/aeo/serve-agent-responses)), so robots.txt and live responses never disagree. Robots `Disallow` is advisory — pair `block-*` with your CDN/WAF if you need hard enforcement.

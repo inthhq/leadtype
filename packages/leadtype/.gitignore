@@ -12,4 +12,5 @@
 /robots.txt
 /sitemap.md
 /sitemap.xml
+/.well-known/
 /rollup.config-*.mjs

@@ -82,6 +82,14 @@ describe("generateAgentArtifacts", () => {
     expect(robots).toContain(`Sitemap: ${BASE_URL}/sitemap.xml`);
     expect(robots).toContain("Allow: /llms.txt");
 
+    expect(result.files.apiCatalog).toBeDefined();
+    const apiCatalog = JSON.parse(
+      await readFile(result.files.apiCatalog ?? "", "utf-8")
+    );
+    expect(apiCatalog.linkset[0]["api-catalog"][0].href).toBe(
+      `${BASE_URL}/.well-known/api-catalog`
+    );
+
     const sitemapXml = await readFile(result.files.sitemapXml ?? "", "utf-8");
     expect(sitemapXml).toContain(`<loc>${BASE_URL}/benchmarks/chrome</loc>`);
     expect(sitemapXml).toContain("<lastmod>2026-06-01T00:00:00.000Z</lastmod>");
@@ -196,8 +204,12 @@ Body text.`,
     expect(result.files.robotsTxt).toBeUndefined();
     expect(result.files.sitemapMd).toBeUndefined();
     expect(result.files.sitemapXml).toBeUndefined();
+    expect(result.files.apiCatalog).toBeUndefined();
     await expect(
       readFile(path.join(outDir, "robots.txt"), "utf-8")
+    ).rejects.toThrow();
+    await expect(
+      readFile(path.join(outDir, ".well-known", "api-catalog"), "utf-8")
     ).rejects.toThrow();
     await expect(readFile(result.files.llmsTxt, "utf-8")).resolves.toContain(
       "# CookieBench"

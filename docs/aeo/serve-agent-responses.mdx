@@ -19,6 +19,7 @@ import manifestJson from "../public/docs/agent-readability.json" with {
 };
 import {
   createAgentMarkdownResponse,
+  createApiCatalogResponse,
   createRobotsTxtResponse,
   createSitemapMarkdownResponse,
   createSitemapXmlResponse,
@@ -60,6 +61,8 @@ export async function handleDocsRequest(
   const requestOrigin = url.origin;
 
   switch (url.pathname) {
+    case "/.well-known/api-catalog":
+      return createApiCatalogResponse({ manifest, requestOrigin });
     case "/sitemap.xml":
       return createSitemapXmlResponse({ manifest, requestOrigin });
     case "/sitemap.md":
@@ -89,9 +92,27 @@ return createSitemapXmlResponse({
 });
 ```
 
-The other generated artifacts — `/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
+The other generated artifacts — `/llms.txt`, `/.well-known/api-catalog`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
 
-## 2. Add JSON-LD to docs pages
+## 2. Add homepage discovery Link headers
+
+Agents that start at your homepage should not have to guess where the API catalog, service docs, or sitemap live. Add the generated Link header to the homepage response:
+
+```ts
+import { createAgentDiscoveryHeaders } from "leadtype/llm/readability";
+
+const response = new Response(html, {
+  headers: createAgentDiscoveryHeaders(),
+});
+```
+
+The default header advertises:
+
+```http
+Link: </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", </docs/llms.txt>; rel="service-doc"; type="text/plain", </docs/agent-readability.json>; rel="service-desc"; type="application/json", </sitemap.xml>; rel="describedby"; type="application/xml"
+```
+
+## 3. Add JSON-LD to docs pages
 
 Use the manifest entry for the current page and render Schema.org JSON-LD into the HTML head. Defaults cover page identity, canonical URL, last modified time, product site, and breadcrumbs. Add overrides when your site has better author, publisher, image, keywords, or publish-date data.
 
@@ -174,16 +195,16 @@ Also add canonical and markdown alternate links:
 
 The JSON-LD gives agents the page title, description, canonical URL, last modified date, and breadcrumbs without scraping your rendered layout.
 
-## 3. Return markdown to agents
+## 4. Return markdown to agents
 
 The middleware above uses `createAgentMarkdownResponse`. It returns a Web `Response` (or `null` when the path is not an agent-oriented markdown request) and handles:
 
 - `Accept: text/markdown` and `Accept: text/plain` content negotiation (q-values respected).
-- Known AI user-agent headers (GPTBot, ClaudeBot, Bingbot, AmazonBot, MetaExternalAgent, PerplexityBot, MistralBot, AppleBot, ByteSpider, YouBot, …).
+- Known AI user-agent headers (GPTBot, ClaudeBot, Bingbot, AmazonBot/Amazonbot, MetaExternalAgent, PerplexityBot, MistralBot, AppleBot, ByteSpider/Bytespider, Applebot-Extended, YouBot, …).
 - Direct `.md` URLs such as `/docs/quickstart.md`.
 - `canonical_url` and `last_updated` frontmatter aliases injected automatically.
 - 200 markdown responses for missing docs pages, so agents do not discard the body.
-- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical", </llms.txt>; rel="llms-txt"`, `X-Llms-Txt: /llms.txt`, `Content-Signal: search=yes, ai-input=yes, ai-train=no`, `Cache-Control: public, max-age=300, must-revalidate`.
+- `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical", </llms.txt>; rel="llms-txt"`, `X-Llms-Txt: /llms.txt`, `Content-Signal: ai-train=no, search=yes, ai-input=yes`, `Cache-Control: public, max-age=300, must-revalidate`.
 
 The `Link: rel="llms-txt"` and `X-Llms-Txt` headers let an agent that fetched any page **discover the site index** without guessing — point them at a different path with `llmsTxtPath: "/docs/llms.txt"`, or drop them with `llmsTxtPath: null`. `leadtype generate` also writes a discovery copy at `/.well-known/llms.txt` (served statically from `public/`), so crawlers that probe the well-known location find it too.
 
@@ -205,13 +226,13 @@ Put that logic wherever your framework can intercept docs requests before its HT
 
 > **Tip:** if you keep static `sitemap.xml` / `sitemap.md` / `robots.txt` files in your build output, your framework's static handler may serve them before your middleware can rebase URLs to the live origin. Either delete the static copies after the build (so the middleware always runs) or make sure your middleware is registered ahead of static-asset serving.
 
-Do not rewrite `llms.txt`, `sitemap.xml`, `sitemap.md`, `robots.txt`, `llms-full.txt`, or `agent-readability.json` to page markdown. The helper leaves those artifact paths alone.
+Do not rewrite `llms.txt`, `/.well-known/api-catalog`, `sitemap.xml`, `sitemap.md`, `robots.txt`, `llms-full.txt`, or `agent-readability.json` to page markdown. The helper leaves those artifact paths alone.
 
 ### Why the sitemap and robots responses are regenerated, not static
 
 `sitemap.xml`'s `<loc>` requires absolute URLs, and `robots.txt`'s `Sitemap:` directive is conventionally absolute too. So those two files cannot be plain static assets if you want previews and staging to advertise the right origin. The middleware in step 1 already calls `createSitemapXmlResponse`, `createSitemapMarkdownResponse`, and `createRobotsTxtResponse` — each rebuilds from the manifest using the live `requestOrigin`, so preview, staging, and prod all advertise the right URLs without per-environment config.
 
-The other generated files (`/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
+The other generated files (`/llms.txt`, `/.well-known/api-catalog`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
 
 ### Cache-Control and CDN
 

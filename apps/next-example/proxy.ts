@@ -1,4 +1,7 @@
-import { normalizeAgentReadabilityManifest } from "leadtype/llm/readability";
+import {
+  createAgentDiscoveryHeaders,
+  normalizeAgentReadabilityManifest,
+} from "leadtype/llm/readability";
 import { createDocsProxy } from "leadtype/next";
 import { NextResponse } from "next/server";
 import manifestJson from "./public/docs/agent-readability.json";
@@ -12,7 +15,15 @@ const handler = createDocsProxy({ manifest });
 export async function proxy(request: Request): Promise<Response> {
   const response = await handler(request);
   if (response.status === 404) {
-    return NextResponse.next();
+    const next = NextResponse.next();
+    if (new URL(request.url).pathname === "/") {
+      for (const [key, value] of Object.entries(
+        createAgentDiscoveryHeaders()
+      )) {
+        next.headers.set(key, value);
+      }
+    }
+    return next;
   }
   return response;
 }
@@ -24,5 +35,7 @@ export const config = {
     "/sitemap.xml",
     "/sitemap.md",
     "/robots.txt",
+    "/.well-known/api-catalog",
+    "/",
   ],
 };

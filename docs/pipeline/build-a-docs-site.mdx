@@ -98,6 +98,7 @@ If your docs app compiles MDX through a bundler, use the source primitive. It gi
 If your runtime needs files on disk — for a CDN-only deploy, a static export, a separate agent-only service, or to share artifacts across multiple sibling apps — run the CLI. It writes:
 
 - `public/llms.txt` and `public/llms-full.txt`
+- `public/.well-known/api-catalog`
 - `public/docs/*.md` (markdown mirrors)
 - `public/docs/search-index.json` + `search-content.json`
 - `public/sitemap.xml`, `public/sitemap.md`, `public/robots.txt`
