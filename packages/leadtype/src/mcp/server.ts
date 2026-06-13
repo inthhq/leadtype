@@ -13,6 +13,7 @@ import {
 import type { DocsArtifacts } from "./artifacts.js";
 import { type McpServerCardServerInfo, resolveMcpServerInfo } from "./card.js";
 import {
+  DocsToolInputError,
   type DefineDocsToolsOptions,
   type DocsToolName,
   defineDocsTools,
@@ -22,6 +23,25 @@ export type CreateDocsMcpServerOptions = DefineDocsToolsOptions & {
   artifacts: DocsArtifacts;
   serverInfo?: Partial<McpServerCardServerInfo>;
 };
+
+type StructuredJsonRpcError = Error & { code: number };
+
+function createStructuredJsonRpcError(
+  message: string,
+  code: number
+): StructuredJsonRpcError {
+  const error = new Error(message) as StructuredJsonRpcError;
+  error.code = code;
+  return error;
+}
+
+function isStructuredJsonRpcError(error: unknown): error is StructuredJsonRpcError {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "number"
+  );
+}
 
 /**
  * Builds a low-level MCP `Server` that serves the docs tools. We use the low-level
@@ -40,7 +60,12 @@ export async function createDocsMcpServer(
   });
 
   const server = new Server(
-    { name: serverInfo.name, version: serverInfo.version },
+    {
+      name: serverInfo.name,
+      version: serverInfo.version,
+      ...(serverInfo.description ? { description: serverInfo.description } : {}),
+      ...(serverInfo.instructions ? { instructions: serverInfo.instructions } : {}),
+    },
     { capabilities: { tools: {} } }
   );
 
@@ -49,6 +74,7 @@ export async function createDocsMcpServer(
       name: tool.name,
       title: tool.title,
       description: tool.description,
+      ...(tool.annotations ? { annotations: tool.annotations } : {}),
       inputSchema: tool.inputSchema,
     })),
   }));
@@ -56,19 +82,20 @@ export async function createDocsMcpServer(
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const tool = toolsByName.get(request.params.name as DocsToolName);
     if (!tool) {
-      return {
-        content: [
-          { type: "text", text: `Unknown tool: ${request.params.name}` },
-        ],
-        isError: true,
-      };
+      throw createStructuredJsonRpcError(
+        `Unknown tool: ${request.params.name}`,
+        -32_601
+      );
     }
-    // A tool throwing (bad args, I/O failure) should surface as a normal
-    // `isError` tool response, not a request-level exception that breaks the
-    // whole MCP interaction.
     try {
       return await tool.handler(request.params.arguments ?? {});
     } catch (error) {
+      if (error instanceof DocsToolInputError) {
+        throw createStructuredJsonRpcError(error.message, error.code);
+      }
+      if (isStructuredJsonRpcError(error)) {
+        throw error;
+      }
       const message = error instanceof Error ? error.message : String(error);
       return {
         content: [

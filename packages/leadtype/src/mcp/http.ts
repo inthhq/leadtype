@@ -19,15 +19,33 @@ export type CreateMcpHandlerConfig = DefineDocsToolsOptions & {
 
 const INTERNAL_ERROR_CODE = -32_603;
 
-function jsonRpcErrorResponse(message: string, status: number): Response {
+type JsonRpcError = { code?: number; message?: string };
+
+function jsonRpcErrorResponse(
+  message: string,
+  status: number,
+  code: number = INTERNAL_ERROR_CODE
+): Response {
   return new Response(
     JSON.stringify({
       jsonrpc: "2.0",
-      error: { code: INTERNAL_ERROR_CODE, message },
+      error: { code, message },
       id: null,
     }),
     { status, headers: { "content-type": "application/json" } }
   );
+}
+
+function resolveErrorCode(error: unknown): number {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as JsonRpcError).code === "number"
+  ) {
+    return (error as JsonRpcError).code ?? INTERNAL_ERROR_CODE;
+  }
+  return INTERNAL_ERROR_CODE;
 }
 
 /**
@@ -92,7 +110,7 @@ export function createMcpHandler(
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "MCP request failed.";
-      return jsonRpcErrorResponse(message, 500);
+      return jsonRpcErrorResponse(message, 500, resolveErrorCode(error));
     }
   };
 }

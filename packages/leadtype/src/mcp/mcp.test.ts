@@ -90,6 +90,16 @@ function buildArtifacts(): DocsArtifacts {
   };
 }
 
+async function createArtifactsDir(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "leadtype-mcp-handler-"));
+  const docsDir = join(dir, "docs");
+  await mkdir(join(docsDir, "guides"), { recursive: true });
+  await writeFile(join(docsDir, "search-index.json"), JSON.stringify(createDocsSearchIndex(docs)));
+  await writeFile(join(docsDir, "agent-readability.json"), JSON.stringify(buildManifest()));
+  await writeFile(join(docsDir, "guides", "quickstart.md"), QUICKSTART_MARKDOWN);
+  return dir;
+}
+
 function textOf(result: {
   content: { type: string; text?: string }[];
 }): string {
@@ -128,11 +138,11 @@ describe("defineDocsTools", () => {
     expect(hits[0]).toHaveProperty("snippet");
   });
 
-  it("search-docs rejects an empty query without throwing", async () => {
+  it("search-docs rejects an empty query as structured input error", async () => {
     const [search] = defineDocsTools(artifacts, { tools: ["search-docs"] });
-    const result = await search.handler({ query: "   " });
-    expect(result.isError).toBe(true);
-    expect(textOf(result)).toContain("Invalid input");
+    await expect(search.handler({ query: "   " })).rejects.toThrow(
+      "Invalid input"
+    );
   });
 
   it("search-docs honors the limit", async () => {
@@ -202,6 +212,16 @@ describe("createDocsMcpServer (in-memory client)", () => {
         "get-page",
         "search-docs",
       ]);
+      expect(
+        (
+          tools.find((tool) => tool.name === "search-docs") as
+            | { annotations?: { idempotentHint?: boolean; readOnlyHint?: boolean } }
+            | undefined
+        )?.annotations
+      ).toEqual({
+        idempotentHint: true,
+        readOnlyHint: true,
+      });
 
       const searchResult = (await client.callTool({
         name: "search-docs",
@@ -298,7 +318,30 @@ describe("createMcpServerCard", () => {
       name: "acme-docs",
       version: "1.0.0",
       description: "Acme docs.",
+      instructions: "Search and read the documentation for Acme docs.",
     });
+  });
+
+  it("allows overriding the instructions and icon", () => {
+    const card = createMcpServerCard({
+      baseUrl: "https://leadtype.dev/docs/",
+      product: {
+        name: "Leadtype",
+        summary: "Docs pipeline tooling.",
+      },
+      config: {
+        icon: "https://leadtype.dev/icon.png",
+        logo: "https://leadtype.dev/logo.png",
+        serverInfo: {
+          instructions: "Read the docs before answering.",
+        },
+      },
+    });
+
+    expect(card.icon).toBe("https://leadtype.dev/icon.png");
+    expect(card.serverInfo.instructions).toBe(
+      "Read the docs before answering."
+    );
   });
 
   it("builds the SEP-1649 discovery card for the docs MCP endpoint", () => {
@@ -323,19 +366,30 @@ describe("createMcpServerCard", () => {
           name: "search-docs",
           title: "Search documentation",
           description:
-            "Search the documentation and return ranked results ({ title, urlPath, snippet }). Use get-page to read a full result.",
+            "Search the documentation and return ranked results " +
+            "({ title, urlPath, snippet }). Use get-page to read a full result.",
+          annotations: {
+            idempotentHint: true,
+            readOnlyHint: true,
+          },
         },
         {
           name: "get-page",
           title: "Get a documentation page",
           description:
-            "Return the full Markdown of one documentation page by its urlPath (e.g. the urlPath from a search-docs result).",
+            "Return the full Markdown of one documentation page by its urlPath " +
+            "(e.g. the urlPath from a search-docs result).",
+          annotations: {
+            idempotentHint: true,
+            readOnlyHint: true,
+          },
         },
       ],
       serverInfo: {
         name: "leadtype-docs",
         version: "1.0.0",
         description: "Docs pipeline tooling.",
+        instructions: "Search and read the documentation for Docs pipeline tooling.",
       },
       transport: {
         type: "streamable-http",
@@ -371,6 +425,7 @@ describe("createMcpServerCard", () => {
       name: "acme-docs",
       version: "2.3.4",
       description: "Acme support docs.",
+      instructions: "Search and read the documentation for Acme docs.",
     });
     expect(card.transport.endpoint).toBe("/api/mcp");
     // Capabilities are not configurable — the card always advertises tools only.
@@ -380,6 +435,97 @@ describe("createMcpServerCard", () => {
 });
 
 describe("createMcpHandler error handling", () => {
+  it("returns server instructions during initialize", async () => {
+    const artifacts = await createArtifactsDir();
+    const handler = createMcpHandler({
+      artifacts,
+      serverInfo: {
+        instructions: "Read the docs before answering.",
+      },
+    });
+    const response = await handler(
+      new Request("https://app.local/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "x", version: "0" },
+          },
+        }),
+      })
+    );
+
+    expect(await response.text()).toContain(
+      "Read the docs before answering."
+    );
+  });
+
+  it("returns a structured JSON-RPC error for invalid tool input", async () => {
+    const artifacts = await createArtifactsDir();
+    const handler = createMcpHandler({ artifacts });
+    const response = await handler(
+      new Request("https://app.local/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "search-docs",
+            arguments: { query: "   " },
+          },
+        }),
+      })
+    );
+
+    const body = (await response.json()) as {
+      error?: { code?: number; message?: string };
+    };
+    expect(body.error?.code).toBe(-32_602);
+    expect(body.error?.message).toContain("Invalid input");
+  });
+
+  it("returns a structured JSON-RPC error for unknown tools", async () => {
+    const artifacts = await createArtifactsDir();
+    const handler = createMcpHandler({ artifacts });
+    const response = await handler(
+      new Request("https://app.local/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: {
+            name: "not-a-tool",
+            arguments: {},
+          },
+        }),
+      })
+    );
+
+    const body = (await response.json()) as {
+      error?: { code?: number; message?: string };
+    };
+    expect(body.error?.code).toBe(-32_601);
+    expect(body.error?.message).toContain("Unknown tool");
+  });
+
   it("returns a JSON-RPC 500 (never throws) when artifacts can't load", async () => {
     const handler = createMcpHandler({ artifacts: tmpdir() });
     const response = await handler(

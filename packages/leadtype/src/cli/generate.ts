@@ -217,6 +217,7 @@ type GenerateResult = {
     skillMd?: string;
     agentSkills?: string;
     mcpServerCard?: string;
+    mcpJson?: string;
     mcpWellKnown?: string;
     nlwebSchemaFeed?: string;
     nlwebSchemaMap?: string;
@@ -759,6 +760,38 @@ function validateAgentsConfig(
       );
     }
     validateAgentEndpoint(mcp.endpoint, "agents.mcp.endpoint", configPath);
+    if (mcp.icon !== undefined && typeof mcp.icon !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": agents.mcp.icon must be a string`
+      );
+    }
+    if (mcp.logo !== undefined && typeof mcp.logo !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": agents.mcp.logo must be a string`
+      );
+    }
+    if (mcp.serverInfo !== undefined) {
+      if (!isPlainRecord(mcp.serverInfo)) {
+        throw new Error(
+          `docs config at "${configPath}": agents.mcp.serverInfo must be an object`
+        );
+      }
+      for (const field of [
+        "name",
+        "version",
+        "description",
+        "instructions",
+      ] as const) {
+        if (
+          mcp.serverInfo[field] !== undefined &&
+          typeof mcp.serverInfo[field] !== "string"
+        ) {
+          throw new Error(
+            `docs config at "${configPath}": agents.mcp.serverInfo.${field} must be a string`
+          );
+        }
+      }
+    }
     if (mcp.tools !== undefined) {
       const allowed = new Set<string>(DOCS_TOOL_NAMES);
       if (
@@ -2762,6 +2795,8 @@ export async function runGenerateCommand(
           product,
           config: {
             endpoint: mcpConfig.endpoint,
+            icon: mcpConfig.icon,
+            logo: mcpConfig.logo,
             serverInfo: mcpConfig.serverInfo,
             authentication: mcpConfig.authentication,
             tools: mcpConfig.tools,
@@ -2859,6 +2894,7 @@ export async function runGenerateCommand(
           wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
           ...(agentSkillsIndex ? { agentSkills: agentSkillsIndex } : {}),
           ...(mcpServerCard ? { mcpServerCard: mcpServerCard.outputPath } : {}),
+          ...(mcpServerCard ? { mcpJson: mcpServerCard.rootPath } : {}),
           ...(mcpServerCard
             ? { mcpWellKnown: mcpServerCard.wellKnownPath }
             : {}),

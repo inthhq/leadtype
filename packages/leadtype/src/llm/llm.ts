@@ -524,11 +524,16 @@ export type DocsAgentsConfig = {
     enabled?: boolean;
     /** MCP transport endpoint advertised in the server card. Defaults to `${baseUrl}/mcp` or `/mcp`. */
     endpoint?: string;
+    /** Card icon/logo URL advertised to registries and scanners. */
+    icon?: string;
+    /** Alias for `icon` for configs that prefer a semantic logo name. */
+    logo?: string;
     /** Server identity advertised in the MCP Server Card. */
     serverInfo?: {
       name?: string;
       version?: string;
       description?: string;
+      instructions?: string;
     };
     /** Whether the advertised MCP endpoint requires authentication. Defaults to public. */
     authentication?: { required?: boolean };
