@@ -146,7 +146,8 @@ export function resolveMcpServerInfo(
 ): McpServerCardServerInfo {
   const description = config?.serverInfo?.description ?? product.summary;
   const instructions =
-    config?.serverInfo?.instructions ?? createDefaultInstructions(product.summary);
+    config?.serverInfo?.instructions ??
+    createDefaultInstructions(product.summary);
 
   return {
     name: config?.serverInfo?.name ?? toServerName(product.name),
