@@ -178,10 +178,10 @@
 
   Custom flatteners are scheduled in a new `custom` phase that runs after include
   and placeholder resolution but before the built-in flatteners, so
-  `[...defaultMarkdownTransforms, myFlattener]` composes correctly regardless of array
+  `[...defaultRemarkPlugins, myFlattener]` composes correctly regardless of array
   position. The flattening toolkit (`createJsxComponentProcessor`, node creators,
   `getAttributeValue`, `parseItemsArray`, `extractNodeText`, …) is now exported
-  from `leadtype/markdown` as the escape hatch.
+  from `leadtype/remark` as the escape hatch.
 
   `defineDocsConfig` and `defineCollection` gain a `flatteners` field, so custom
   flatteners apply to `leadtype generate` (CLI) output — every generated `.md` and

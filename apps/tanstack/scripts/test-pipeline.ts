@@ -3,9 +3,9 @@
 import { join } from "node:path";
 import { convertMdxToMarkdown } from "leadtype/convert";
 import {
-  defaultMarkdownTransforms,
-  nativeMarkdownComponentsToMarkdown,
-} from "leadtype/markdown";
+  defaultRemarkPlugins,
+  remarkTypeTableToMarkdown,
+} from "leadtype/remark";
 
 const appRoot = process.cwd();
 const repoRoot = join(appRoot, "..", "..");
@@ -16,22 +16,20 @@ const fixturePath = join(
   "guides",
   "extracted-type-table-fixture.mdx"
 );
-type MarkdownTransforms = NonNullable<
-  Parameters<typeof convertMdxToMarkdown>[1]
->;
+type RemarkPlugins = NonNullable<Parameters<typeof convertMdxToMarkdown>[1]>;
 
-const typeTableMarkdownTransform: MarkdownTransforms[number] = [
-  nativeMarkdownComponentsToMarkdown,
-  { typeTable: { basePath: repoRoot } },
+const typeTableRemarkPlugin: RemarkPlugins[number] = [
+  remarkTypeTableToMarkdown,
+  { basePath: repoRoot },
 ];
-const markdownTransforms: MarkdownTransforms = [
-  ...defaultMarkdownTransforms.filter(
-    (plugin) => plugin !== nativeMarkdownComponentsToMarkdown
+const remarkPlugins: RemarkPlugins = [
+  ...defaultRemarkPlugins.filter(
+    (plugin) => plugin !== remarkTypeTableToMarkdown
   ),
-  typeTableMarkdownTransform,
+  typeTableRemarkPlugin,
 ];
 
-const result = await convertMdxToMarkdown(fixturePath, markdownTransforms);
+const result = await convertMdxToMarkdown(fixturePath, remarkPlugins);
 
 if (
   !(

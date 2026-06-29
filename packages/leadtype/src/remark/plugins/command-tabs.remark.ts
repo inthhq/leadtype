@@ -1,13 +1,12 @@
 /** @biome-ignore lint/style/useDefaultSwitchClause: the switch statement is complete */
 /** @biome-ignore lint/nursery/noUnnecessaryConditions: these are packages */
-import type { Root, RootContent } from "mdast";
+import type { Root } from "mdast";
 import type { Transformer } from "unified";
 import {
   createInlineCode,
   createJsxComponentProcessor,
   createTable,
   getAttributeValue,
-  type MdxNode,
 } from "../libs";
 
 type Mode = "run" | "install" | "create";
@@ -53,33 +52,27 @@ function cmdsFor(pm: Pm, pkgCmd: string, mode: Mode): string {
 export function remarkCommandTabsToMarkdown(
   opts: Options = {}
 ): Transformer<Root, Root> {
-  return createJsxComponentProcessor("CommandTabs", (node) =>
-    commandTabsToMarkdown(node, opts)
-  );
-}
-
-export function commandTabsToMarkdown(
-  node: MdxNode,
-  opts: Options = {}
-): RootContent[] {
   const labels = { ...DEFAULT_LABELS, ...(opts.labels ?? {}) };
   const managers = [...(opts.managers ?? DEFAULT_MANAGERS)];
-  const rawCommand = (getAttributeValue(node, "command") ?? "").trim();
-  const rawMode = (getAttributeValue(node, "mode") ?? "run").trim();
-  const mode: Mode =
-    rawMode === "install" || rawMode === "create" ? rawMode : "run";
 
-  if (!rawCommand) {
-    return [];
-  }
+  return createJsxComponentProcessor("CommandTabs", (node) => {
+    const rawCommand = (getAttributeValue(node, "command") ?? "").trim();
+    const rawMode = (getAttributeValue(node, "mode") ?? "run").trim();
+    const mode: Mode =
+      rawMode === "install" || rawMode === "create" ? rawMode : "run";
 
-  // Build table data
-  const headers = [labels.pm, labels.command];
-  const rows = managers.map((pm) => {
-    const cmd = cmdsFor(pm, rawCommand, mode);
-    return [pm, [createInlineCode(cmd)]];
+    if (!rawCommand) {
+      return [];
+    }
+
+    // Build table data
+    const headers = [labels.pm, labels.command];
+    const rows = managers.map((pm) => {
+      const cmd = cmdsFor(pm, rawCommand, mode);
+      return [pm, [createInlineCode(cmd)]];
+    });
+
+    const table = createTable(headers, rows, ["left", "left"]);
+    return [table];
   });
-
-  const table = createTable(headers, rows, ["left", "left"]);
-  return [table];
 }

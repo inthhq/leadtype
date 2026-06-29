@@ -12,7 +12,7 @@
  * It deliberately leaves every other custom tag (`<Callout>`, `<Tabs>`,
  * `<Steps>`, `<Mermaid>`, `<TypeTable>`, …) as JSX so the consumer's runtime
  * components render them. For the flattened-markdown agent pipeline, use
- * `defaultMarkdownTransforms` from `leadtype/markdown` for agent output instead.
+ * `defaultRemarkPlugins` from `leadtype/remark` instead.
  */
 
 import type { PluggableList } from "unified";

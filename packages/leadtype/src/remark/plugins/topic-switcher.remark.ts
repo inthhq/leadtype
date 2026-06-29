@@ -6,7 +6,6 @@ import type {
   Paragraph,
   PhrasingContent,
   Root,
-  RootContent,
 } from "mdast";
 import type { Transformer } from "unified";
 import { SKIP, visit } from "unist-util-visit";
@@ -113,39 +112,29 @@ export function remarkTopicSwitcherToMarkdown(): Transformer<Root, Root> {
           return;
         }
 
-        const result = topicSwitcherToMarkdown(node as MdxNode, sourcePath);
-        if (result.length === 0) {
+        const mdxNode = node as MdxNode;
+        const items = parseItems(getAttributeValue(mdxNode, "items"));
+
+        if (items.length === 0) {
           parent.children.splice(index, 1);
           return [SKIP, index];
         }
-        parent.children.splice(index, 1, ...result);
+
+        const label = normalizeWhitespace(
+          getAttributeValue(mdxNode, "label") ?? "Topics"
+        );
+        const list: List = {
+          type: "list",
+          ordered: false,
+          spread: false,
+          children: items.map((item) => itemToListItem(item, true, sourcePath)),
+        };
+
+        parent.children.splice(index, 1, createParagraph(label), list);
         return SKIP;
       }
     );
 
     return tree;
   };
-}
-
-export function topicSwitcherToMarkdown(
-  node: MdxNode,
-  sourcePath: string
-): RootContent[] {
-  const items = parseItems(getAttributeValue(node, "items"));
-
-  if (items.length === 0) {
-    return [];
-  }
-
-  const label = normalizeWhitespace(
-    getAttributeValue(node, "label") ?? "Topics"
-  );
-  const list: List = {
-    type: "list",
-    ordered: false,
-    spread: false,
-    children: items.map((item) => itemToListItem(item, true, sourcePath)),
-  };
-
-  return [createParagraph(label), list];
 }

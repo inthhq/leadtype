@@ -52,7 +52,7 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 | `leadtype` | `defineDocsConfig` — the config helper. |
 | `leadtype/convert` | MDX-to-markdown conversion. |
 | `leadtype/mdx` | Source-MDX tag types, include helpers, and `createMdxSourcePlugins()`. |
-| `leadtype/markdown` | `defaultMarkdownTransforms` plus individual plugins. |
+| `leadtype/remark` | `defaultRemarkPlugins` plus individual plugins. |
 | `leadtype/llm` | `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`. |
 | `leadtype/search` | Edge-safe search runtime, content readers, request guards. |
 | `leadtype/search/node` | Build-time `generateDocsSearchFiles`. |

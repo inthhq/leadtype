@@ -15,13 +15,18 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
 import type { Code, Root } from "mdast";
-import { mdxToMdast } from "satteri";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import remarkMdx from "remark-mdx";
 import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
 import { logger } from "../../internal/logger";
 
 // Regex patterns defined at top level for performance
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
+
+// Shared processor for parsing included content
+const sharedProcessor = remark().use(remarkMdx).use(remarkGfm);
 
 // Simple frontmatter parser for our build pipeline
 function stripFrontmatterBlock(content: string): { content: string } {
@@ -235,11 +240,6 @@ function replaceTarget(
 
 type ParserLike = { parse: (v: string) => unknown };
 
-const satteriParser: ParserLike = {
-  parse: (value: string) =>
-    mdxToMdast(value, { features: { frontmatter: false, gfm: true } }),
-};
-
 function annotateNestedIncludes(root: Root, baseDir: string | null): void {
   if (!baseDir) {
     return;
@@ -288,7 +288,8 @@ function includeContentAsMarkdown(
   options: { section?: string; parser?: ParserLike; baseDir?: string | null }
 ): void {
   try {
-    const chosenParser = options.parser ?? satteriParser;
+    const chosenParser =
+      options.parser ?? (sharedProcessor as unknown as ParserLike);
     let parsed = chosenParser.parse(bodyContent.trim()) as Root;
 
     if (options.section) {
@@ -548,7 +549,7 @@ async function processIncludeNode(
     ?._processor as { getProcessor?: (kind: string) => unknown } | undefined;
   const parser = hostProcessor?.getProcessor
     ? hostProcessor.getProcessor(ext)
-    : satteriParser;
+    : sharedProcessor;
 
   includeContentAsMarkdown(node, includeFile, resolution.content, {
     baseDir: dirname(resolution.resolvedPath),

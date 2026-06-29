@@ -3,7 +3,6 @@ import type { Transformer } from "unified";
 import {
   createJsxComponentProcessor,
   getAttributeValue,
-  type MdxNode,
   normalizeWhitespace,
 } from "../libs";
 
@@ -30,16 +29,14 @@ function normalizeTarget(value: string | null): string {
   ).toLowerCase();
 }
 
-export function audienceToMarkdown(node: MdxNode): RootContent[] {
-  const target = normalizeTarget(getAttributeValue(node, "target"));
-
-  if (target === TARGET_HUMAN) {
-    return [];
-  }
-
-  return (node.children ?? []) as RootContent[];
-}
-
 export function remarkAudienceToMarkdown(): Transformer<Root, Root> {
-  return createJsxComponentProcessor("Audience", audienceToMarkdown);
+  return createJsxComponentProcessor("Audience", (node) => {
+    const target = normalizeTarget(getAttributeValue(node, "target"));
+
+    if (target === TARGET_HUMAN) {
+      return [];
+    }
+
+    return (node.children ?? []) as RootContent[];
+  });
 }

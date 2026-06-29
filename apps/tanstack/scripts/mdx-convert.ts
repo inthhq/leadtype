@@ -11,30 +11,25 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { convertAllMdx, type MdxToMarkdownOptions } from "leadtype/convert";
 import {
-  defaultMarkdownTransforms,
-  includeMarkdown,
-  nativeMarkdownComponentsToMarkdown,
-} from "leadtype/markdown";
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
+} from "leadtype/remark";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
 const repoRoot = join(appRoot, "..", "..");
 const srcDir = join(repoRoot, "docs");
 const outDir = join(appRoot, "public", "docs");
-const typeTableMarkdownTransform: NonNullable<
-  MdxToMarkdownOptions["markdownTransforms"]
->[number] = [
-  nativeMarkdownComponentsToMarkdown,
-  { typeTable: { basePath: repoRoot } },
-];
-const markdownTransforms: NonNullable<
-  MdxToMarkdownOptions["markdownTransforms"]
-> = [
-  includeMarkdown,
-  ...defaultMarkdownTransforms.filter(
-    (plugin) => plugin !== nativeMarkdownComponentsToMarkdown
+const typeTableRemarkPlugin: NonNullable<
+  MdxToMarkdownOptions["remarkPlugins"]
+>[number] = [remarkTypeTableToMarkdown, { basePath: repoRoot }];
+const remarkPlugins: NonNullable<MdxToMarkdownOptions["remarkPlugins"]> = [
+  remarkInclude,
+  ...defaultRemarkPlugins.filter(
+    (plugin) => plugin !== remarkTypeTableToMarkdown
   ),
-  typeTableMarkdownTransform,
+  typeTableRemarkPlugin,
 ];
 
 if (!existsSync(srcDir)) {
@@ -47,6 +42,6 @@ await rm(outDir, { recursive: true, force: true });
 await convertAllMdx({
   srcDir,
   outDir,
-  markdownTransforms,
+  remarkPlugins,
   enrichFrontmatterFromGit: true,
 });

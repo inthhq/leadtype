@@ -11,7 +11,7 @@ import {
   resolveAgentInputs,
   resolveDocsNavigation,
 } from "../src/llm/index";
-import { defaultMarkdownTransforms } from "../src/markdown/index";
+import { defaultRemarkPlugins } from "../src/remark/index";
 import { generateDocsSearchFiles } from "../src/search/node-index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -31,7 +31,7 @@ await rm(join(PACKAGE_ROOT, "llms-full.txt"), { force: true });
 await convertAllMdx({
   srcDir: SRC_DOCS_DIR,
   outDir: OUT_DOCS_DIR,
-  markdownTransforms: defaultMarkdownTransforms,
+  remarkPlugins: defaultRemarkPlugins,
 });
 
 // Validate group references against docs.config.ts and fail fast on typos —

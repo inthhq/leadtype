@@ -7,7 +7,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "leadtype/convert";
-import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = FIXTURE_DIR;
@@ -17,7 +17,7 @@ await rm(OUT_DIR, { recursive: true, force: true });
 await convertAllMdx({
   srcDir: SRC_DIR,
   outDir: OUT_DIR,
-  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
   enrichFrontmatterFromGit: true,
 });
 process.stdout.write("Conversion done.\n");

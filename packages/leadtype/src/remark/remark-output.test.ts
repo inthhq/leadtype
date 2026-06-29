@@ -4,11 +4,11 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { convertMdxToMarkdown } from "../convert";
 import {
-  defaultMarkdownTransforms,
-  includeMarkdown,
-  typeTableToMarkdown,
+  defaultRemarkPlugins,
+  remarkInclude,
+  remarkTypeTableToMarkdown,
 } from "./index";
-import { resolveDefaultTypeTableBasePath } from "./plugins/type-table";
+import { resolveDefaultTypeTableBasePath } from "./plugins/type-table.remark";
 
 const tempDirs: string[] = [];
 
@@ -66,10 +66,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "1. **Verify it works** Start your development server and confirm:"
@@ -101,7 +98,7 @@ describe("remark markdown output", () => {
 
       process.chdir(projectDir);
       const result = await convertMdxToMarkdown(sourcePath, [
-        [typeTableToMarkdown, {}],
+        [remarkTypeTableToMarkdown, {}],
       ]);
 
       expect(result.markdown).toContain("srcDir");
@@ -131,7 +128,7 @@ describe("remark markdown output", () => {
 
       process.chdir(projectDir);
       const result = await convertMdxToMarkdown(sourcePath, [
-        [typeTableToMarkdown, {}],
+        [remarkTypeTableToMarkdown, {}],
       ]);
 
       expect(result.markdown).toContain("title");
@@ -165,7 +162,7 @@ describe("remark markdown output", () => {
 
       process.chdir(projectDir);
       const result = await convertMdxToMarkdown(sourcePath, [
-        [typeTableToMarkdown, {}],
+        [remarkTypeTableToMarkdown, {}],
       ]);
 
       expect(result.markdown).toContain("--c15t-primary");
@@ -207,10 +204,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "[React](/docs/frameworks/react/quickstart)"
@@ -229,10 +223,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("> ⚠️ **Warning:**");
     expect(result.markdown).toContain("> 📝 **Note:**");
@@ -249,10 +240,7 @@ describe("remark markdown output", () => {
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("title: Frameworks");
   });
@@ -273,8 +261,8 @@ describe("remark markdown output", () => {
     );
 
     const result = await convertMdxToMarkdown(sourcePath, [
-      includeMarkdown,
-      ...defaultMarkdownTransforms,
+      remarkInclude,
+      ...defaultRemarkPlugins,
     ]);
 
     expect(result.markdown).toContain(
@@ -295,10 +283,7 @@ Body
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("href: /docs/frameworks/next/quickstart");
   });
@@ -314,10 +299,7 @@ Body
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("**Can agents read this?**");
     expect(result.markdown).toContain(
@@ -344,10 +326,7 @@ export const components = {
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("**Render MDX**");
     expect(result.markdown).toContain("Preview content survives conversion.");
@@ -381,10 +360,7 @@ export const enabled = true;\`,
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("**support.ts**");
     expect(result.markdown).toContain("```ts");
@@ -416,10 +392,7 @@ export const enabled = true;\`,
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("Framework");
     expect(result.markdown).toContain(
@@ -445,10 +418,7 @@ You are helping wire leadtype into a docs site.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("**Use this with your coding agent**");
     expect(result.markdown).toContain("Copy this into an agent session.");
@@ -483,10 +453,7 @@ You are helping wire leadtype into a docs site.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).not.toContain("Click the robot icon");
     expect(result.markdown).not.toContain(
@@ -516,10 +483,7 @@ You are helping wire leadtype into a docs site.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("```text");
     expect(result.markdown).toContain("public/");
@@ -548,10 +512,7 @@ You are helping wire leadtype into a docs site.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "[Current framework](/docs/frameworks/next/quickstart)"
@@ -576,21 +537,22 @@ You are helping wire leadtype into a docs site.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain(
       "[React](/docs/frameworks/react/quickstart)"
     );
   });
 
-  it("uses native component dispatcher in the default markdown pipeline", () => {
-    const pluginNames = defaultMarkdownTransforms.map((plugin) => plugin.name);
+  it("includes new component plugins in the default remark pipeline", () => {
+    const pluginNames = defaultRemarkPlugins.map((plugin) => plugin.name);
 
-    expect(pluginNames).toContain("nativeMarkdownComponentsToMarkdown");
-    expect(pluginNames).not.toContain("remarkAccordionToMarkdown");
+    expect(pluginNames).toContain("remarkAccordionToMarkdown");
+    expect(pluginNames).toContain("remarkAudienceToMarkdown");
+    expect(pluginNames).toContain("remarkExampleToMarkdown");
+    expect(pluginNames).toContain("remarkFileTreeToMarkdown");
+    expect(pluginNames).toContain("remarkPromptToMarkdown");
+    expect(pluginNames).toContain("remarkTopicSwitcherToMarkdown");
   });
 
   it("preserves non-plain frontmatter values while resolving placeholders", async () => {
@@ -605,10 +567,7 @@ Body
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("publishedAt: 2026-04-19T12:00:00");
     expect(result.markdown).toContain("url: /docs/frameworks/next/quickstart");
@@ -631,10 +590,7 @@ Body
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("description: Intro copy.");
     expect(result.markdown).toContain("Intro copy.");
@@ -655,10 +611,7 @@ Body
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("### Details");
     expect(result.markdown).toContain("Body without a summary.");
@@ -678,10 +631,7 @@ Body
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("### Wrapped Summary");
     expect(result.markdown).toContain("Body text.");
@@ -698,10 +648,7 @@ Body copy.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).not.toContain("first");
     expect(result.markdown).not.toContain("second");
@@ -723,10 +670,7 @@ Body copy.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("Outer copy.");
     expect(result.markdown).toContain("Inner copy.");
@@ -742,10 +686,7 @@ Body copy.
 `
     );
 
-    const result = await convertMdxToMarkdown(
-      sourcePath,
-      defaultMarkdownTransforms
-    );
+    const result = await convertMdxToMarkdown(sourcePath, defaultRemarkPlugins);
 
     expect(result.markdown).toContain("Anchor body.");
     expect(result.markdown).not.toContain('id="types"');

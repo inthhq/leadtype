@@ -29,7 +29,7 @@ function extractSummary(child: RootContent): string | null {
   return extracted.length > 0 ? extracted : null;
 }
 
-export function detailsToMarkdown(node: MdxNode): RootContent[] {
+function toDetailsContent(node: MdxNode): RootContent[] {
   const content: RootContent[] = [];
   let summaryText: string | null = null;
 
@@ -57,6 +57,6 @@ export function detailsToMarkdown(node: MdxNode): RootContent[] {
 
 export function remarkDetailsToMarkdown(): Transformer<Root, Root> {
   return createJsxComponentProcessor("details", (node) =>
-    detailsToMarkdown(node)
+    toDetailsContent(node)
   );
 }

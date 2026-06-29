@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Converts the real c15t fixture with both markdown parsers and requires
+ * Converts the real c15t fixture with both markdown engines and requires
  * byte-identical markdown output. Git enrichment stays off so metadata does not
  * hide parser differences behind timestamps/authors.
  */
@@ -10,11 +10,7 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { convertAllMdx } from "leadtype/convert";
-import {
-  defaultMarkdownTransforms,
-  includeMarkdown,
-  legacyDefaultMarkdownTransforms,
-} from "leadtype/markdown";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 type MarkdownEngine = "remark" | "satteri";
 
@@ -56,12 +52,7 @@ async function convertFixture(
   await convertAllMdx({
     srcDir: SRC_DIR,
     outDir,
-    markdownTransforms: [
-      includeMarkdown,
-      ...(engine === "remark"
-        ? legacyDefaultMarkdownTransforms
-        : defaultMarkdownTransforms),
-    ],
+    remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
     enrichFrontmatterFromGit: false,
     markdownEngine: engine,
     failOnError: true,
@@ -88,7 +79,7 @@ try {
   const satteriFiles = await listMarkdownFiles(satteriOut);
   if (!sameList(remarkFiles, satteriFiles)) {
     throw new Error(
-      `remark=${remarkFiles.length} file(s), satteri=${satteriFiles.length} file(s)`
+      `remark=${remarkFiles.length} file(s), satteri=${satteriFiles.length} file(s)\n`
     );
   }
 

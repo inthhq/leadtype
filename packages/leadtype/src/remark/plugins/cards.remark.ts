@@ -5,7 +5,6 @@ import type {
   Paragraph,
   PhrasingContent,
   Root,
-  RootContent,
 } from "mdast";
 import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
@@ -130,33 +129,21 @@ export function remarkCardsToMarkdown(
           return;
         }
 
-        const result = cardsToMarkdown(node, { withDescriptions });
-        if (result.length === 0) {
+        const links = collectLinksFromContainer(node);
+        if (links.length === 0) {
           parent.children.splice(index, 1);
           return;
         }
-        parent.children.splice(index, 1, ...result);
+
+        const list: List = {
+          type: "list",
+          ordered: false,
+          spread: false,
+          children: links.map((l) => toListItem(l, withDescriptions)),
+        };
+
+        parent.children[index] = list;
       }
     );
   };
-}
-
-export function cardsToMarkdown(
-  node: MdxNode,
-  options: CardsToMarkdownOptions = {}
-): RootContent[] {
-  const { withDescriptions = false } = options;
-  const links = collectLinksFromContainer(node);
-  if (links.length === 0) {
-    return [];
-  }
-
-  const list: List = {
-    type: "list",
-    ordered: false,
-    spread: false,
-    children: links.map((l) => toListItem(l, withDescriptions)),
-  };
-
-  return [list];
 }

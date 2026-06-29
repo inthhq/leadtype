@@ -171,7 +171,7 @@ import {
   resolveDocsNavigation,
 } from "leadtype/llm";
 import { generateFeedArtifacts } from "leadtype/feed";
-import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 import { generateDocsSearchFiles } from "leadtype/search/node";
 import docsConfig from "../.docs-src/c15t/docs/docs.config";
 
@@ -181,7 +181,7 @@ const mounts = docsConfig.mounts;
 await convertAllMdx({
   srcDir: `${sourceRoot}/docs`,
   outDir: "public/docs",
-  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
   enrichFrontmatterFromGit: true,
 });
 

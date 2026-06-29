@@ -28,11 +28,11 @@ const recipes = {
     summary:
       "Use the conversion and remark entry points when agents need plain markdown.",
     imports: `import { convertAllMdx } from "leadtype/convert";
-import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";`,
+import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";`,
     code: `await convertAllMdx({
   srcDir: "content",
   outDir: "public",
-  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
+  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
 });`,
     validation: "bun run --filter tanstack pipeline:build",
   },

@@ -1,10 +1,9 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
-import type { Root } from "mdast";
 import { remark } from "remark";
+import remarkGfm from "remark-gfm";
 import remarkMdx from "remark-mdx";
-import { mdxToMdast } from "satteri";
 import { glob as fg } from "tinyglobby";
 import { visit } from "unist-util-visit";
 import * as v from "valibot";
@@ -19,9 +18,9 @@ import { parseFrontmatter } from "../internal/frontmatter";
 import { validateJsonLd } from "../llm/readability";
 import {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
-  defaultMarkdownTransforms,
-  includeMarkdown,
-} from "../markdown";
+  defaultRemarkPlugins,
+  remarkInclude,
+} from "../remark";
 import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
@@ -277,9 +276,7 @@ function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
 
 function collectMarkdownUrls(markdown: string): UrlCandidate[] {
   const urls = new Set<string>();
-  const tree = mdxToMdast(markdown, {
-    features: { frontmatter: false, gfm: true },
-  }) as Root;
+  const tree = remark().use(remarkGfm).parse(markdown);
   const definitions = new Map<string, string>();
 
   visit(tree, "definition", (node: { identifier?: string; url?: string }) => {
@@ -622,8 +619,8 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
 
     try {
       const converted = await convertMdxToMarkdown(file, [
-        includeMarkdown,
-        ...defaultMarkdownTransforms,
+        remarkInclude,
+        ...defaultRemarkPlugins,
       ]);
       const rendered = parseFrontmatter(converted.markdown);
       const currentFramework = deriveDocContext(file).framework;

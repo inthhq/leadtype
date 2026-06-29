@@ -8,29 +8,26 @@
  *
  * The returned plugin is tagged to run in the `custom` phase — after includes
  * and placeholder resolution, before the built-in flatteners — so it composes
- * correctly with `defaultMarkdownTransforms` no matter where it's placed in the
+ * correctly with `defaultRemarkPlugins` no matter where it's placed in the
  * array. See `internal/remark-phase.ts`.
  */
 
 import type { Root, RootContent } from "mdast";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import remarkMdx from "remark-mdx";
 import type { Plugin } from "unified";
 import type { VFile } from "vfile";
 import { logger } from "../internal/logger";
 import { tagFlattenerNames, tagPhase } from "../internal/remark-phase";
 import { type Builders, b } from "./builders";
-import { builtinMarkdownFlattenerTransforms } from "./default-transforms";
+import { builtinFlattenerPlugins } from "./default-plugins";
 import {
   createJsxComponentProcessor,
   getAttributeValue,
   type MdxNode,
   parseItemsArray,
 } from "./libs";
-import { stringifyMarkdown } from "./stringify";
-import {
-  createMdastTransforms,
-  type LeadtypeMdastTransform,
-  runMdastTransformsSync,
-} from "./transform";
 
 export type PropKind = "string" | "number" | "boolean" | "string[]";
 
@@ -84,34 +81,45 @@ export interface ComponentFlattenerSpec<
   toMarkdown: (ctx: FlattenContext<InferProps<S>>) => FlattenResult;
 }
 
-let subTransforms: LeadtypeMdastTransform[] | null = null;
+type SubProcessor = ReturnType<typeof remark>;
+
+let subProcessor: SubProcessor | null = null;
 
 /**
  * A processor running only the built-in flatteners (no resolve-phase plugins —
  * those already ran on the parent document). Used to flatten a component's
  * children before handing them to `toMarkdown`.
  */
-function getSubTransforms(): LeadtypeMdastTransform[] {
-  if (subTransforms) {
-    return subTransforms;
+function getSubProcessor(): SubProcessor {
+  if (subProcessor) {
+    return subProcessor;
   }
-  subTransforms = createMdastTransforms(builtinMarkdownFlattenerTransforms);
-  return subTransforms;
+  let processor: SubProcessor = remark()
+    .use(remarkMdx)
+    .use(remarkGfm)
+    .data("settings", {
+      tableCellPadding: false,
+      tablePipeAlign: false,
+    } as Record<string, unknown>);
+  for (const plugin of builtinFlattenerPlugins) {
+    // biome-ignore lint/suspicious/noExplicitAny: unified's .use() overloads are too narrow for a dynamic plugin array
+    processor = (processor as any).use(plugin);
+  }
+  subProcessor = processor;
+  return processor;
 }
 
 function flattenChildren(node: MdxNode): {
   content: string;
   childNodes: RootContent[];
 } {
+  const processor = getSubProcessor();
   const root: Root = {
     type: "root",
     children: (node.children ?? []) as RootContent[],
   };
-  const transformed = runMdastTransformsSync(root, getSubTransforms(), {
-    filePath: "",
-    value: "",
-  });
-  const content = stringifyMarkdown(transformed).trim();
+  const transformed = processor.runSync(root) as Root;
+  const content = String(processor.stringify(transformed)).trim();
   return { content, childNodes: transformed.children };
 }
 
@@ -186,7 +194,7 @@ function normalizeResult(result: FlattenResult): RootContent[] {
  * });
  *
  * // leadtype.config.ts
- * markdownTransforms: [...defaultMarkdownTransforms, hint];
+ * remarkPlugins: [...defaultRemarkPlugins, hint];
  * ```
  */
 export function defineComponentFlattener<

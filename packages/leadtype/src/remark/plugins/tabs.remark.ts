@@ -179,15 +179,13 @@ const createReplacement = (sections: TabSection[]): RootContent[] => {
 };
 
 export function remarkTabsToMarkdown(): Transformer<Root, Root> {
-  return createJsxComponentProcessor("Tabs", tabsToMarkdown);
-}
+  return createJsxComponentProcessor("Tabs", (node) => {
+    const sections = extractTabsSections(node);
 
-export function tabsToMarkdown(node: MdxNode): RootContent[] {
-  const sections = extractTabsSections(node);
+    if (sections.length === 0) {
+      return [];
+    }
 
-  if (sections.length === 0) {
-    return [];
-  }
-
-  return createReplacement(sections);
+    return createReplacement(sections);
+  });
 }

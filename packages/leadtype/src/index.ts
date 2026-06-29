@@ -3,7 +3,7 @@
 // pipeline. Specialized surfaces stay on dedicated subpaths:
 //   - `leadtype/mdx` — tag types, source remark preset, include resolver
 //   - `leadtype/fumadocs` — adapter for fumadocs-core's Source interface
-//   - `leadtype/markdown` — agent/LLM flattening plugins
+//   - `leadtype/remark` — agent/LLM flattening plugins
 //   - `leadtype/convert` — MDX → markdown helpers
 //   - `leadtype/feed` — RSS/Atom renderers and artifact generation
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability

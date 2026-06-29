@@ -1,8 +1,8 @@
 /**
- * Phase-ordered markdown transform scheduling.
+ * Phase-ordered remark plugin scheduling.
  *
  * The agent-flattening pipeline must run plugins in a fixed order regardless of
- * the order they appear in a user-supplied `markdownTransforms` array:
+ * the order they appear in a user-supplied `remarkPlugins` array:
  *
  *   resolve  → expand includes, resolve placeholders, strip imports
  *   custom   → custom component flatteners (`defineComponentFlattener`)
@@ -12,7 +12,7 @@
  * Plugins are tagged with a non-enumerable symbol; `sortRemarkPluginsByPhase`
  * does a *stable* partition so relative order within a phase (and the existing
  * behavior of untagged plugins, which default to `flatten`) is preserved. This
- * lets consumers write `[...defaultMarkdownTransforms, myFlattener]` and still get
+ * lets consumers write `[...defaultRemarkPlugins, myFlattener]` and still get
  * correct scheduling.
  */
 

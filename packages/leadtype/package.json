@@ -67,10 +67,6 @@
       "types": "./dist/remark/index.d.ts",
       "import": "./dist/remark/index.js"
     },
-    "./markdown": {
-      "types": "./dist/markdown/index.d.ts",
-      "import": "./dist/markdown/index.js"
-    },
     "./transformers": {
       "types": "./dist/transformers.d.ts",
       "import": "./dist/transformers.js"

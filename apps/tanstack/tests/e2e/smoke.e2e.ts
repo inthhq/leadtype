@@ -80,7 +80,7 @@ test("/docs/reference/remark renders the remark plugin reference", async ({
   const html = await response.text();
 
   expect(html).toContain("Remark");
-  expect(html).toContain("defaultMarkdownTransforms");
+  expect(html).toContain("defaultRemarkPlugins");
   expect(html).toContain("PipelineExampleOptions");
 
   await page.goto("/docs/reference/remark", { waitUntil: "networkidle" });

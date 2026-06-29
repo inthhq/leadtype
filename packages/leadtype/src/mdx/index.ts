@@ -15,7 +15,7 @@
  *     low-level include-resolution helpers, framework-neutral.
  *
  * For the markdown-flattening pipeline used by the LLM/agent outputs, see
- * `leadtype/markdown` instead.
+ * `leadtype/remark` instead.
  */
 
 // Canonical path / URL primitives so source consumers can derive slugs

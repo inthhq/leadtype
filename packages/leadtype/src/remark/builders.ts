@@ -28,7 +28,9 @@ import type {
   TableRow,
   Text,
 } from "mdast";
-import { mdxToMdast } from "satteri";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import remarkMdx from "remark-mdx";
 import {
   createHeading,
   createInlineCode,
@@ -43,14 +45,23 @@ type BlockChild = string | RootContent;
 type BlockChildren = BlockChild | BlockChild[];
 type InlineChildren = string | PhrasingContent[];
 
+function createParseProcessor() {
+  return remark().use(remarkMdx).use(remarkGfm);
+}
+
+let parseProcessor: ReturnType<typeof createParseProcessor> | null = null;
+
 /**
  * Parse a markdown (incl. GFM) string into block-level mdast nodes. Used when a
  * builder receives a string where block content is expected.
  */
 export function parseMarkdown(source: string): RootContent[] {
-  const tree = mdxToMdast(source, {
-    features: { frontmatter: false, gfm: true },
-  }) as Root;
+  if (!parseProcessor) {
+    parseProcessor = createParseProcessor();
+  }
+  const tree = parseProcessor.runSync(
+    parseProcessor.parse(source) as Root
+  ) as Root;
   return tree.children;
 }
 

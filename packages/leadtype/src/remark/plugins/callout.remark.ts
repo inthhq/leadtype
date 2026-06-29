@@ -3,7 +3,6 @@ import type {
   Paragraph,
   PhrasingContent,
   Root,
-  RootContent,
   Strong,
   Text,
 } from "mdast";
@@ -102,46 +101,45 @@ function processCalloutContent(node: MdxNode): string {
   return normalizeWhitespace(processedContent) || "";
 }
 
-export function calloutToMarkdown(node: MdxNode): RootContent[] {
-  const variantLabelAndEmojiResult = variantLabelAndEmoji(
-    getAttributeValue(node, "variant") ?? getAttributeValue(node, "type")
-  );
-  const { emoji, label } = variantLabelAndEmojiResult;
-  const title = (getAttributeValue(node, "title") ?? "").trim() || null;
-  const clean = processCalloutContent(node);
+export const remarkCalloutToMarkdown: Plugin<[], Root> = () => {
+  return createJsxComponentProcessor("Callout", (node) => {
+    const variantLabelAndEmojiResult = variantLabelAndEmoji(
+      getAttributeValue(node, "variant") ?? getAttributeValue(node, "type")
+    );
+    const { emoji, label } = variantLabelAndEmojiResult;
+    const title = (getAttributeValue(node, "title") ?? "").trim() || null;
+    const clean = processCalloutContent(node);
 
-  // Create single paragraph with inline content (like steps component)
-  const paragraphChildren: Array<Text | Strong> = [];
+    // Create single paragraph with inline content (like steps component)
+    const paragraphChildren: Array<Text | Strong> = [];
 
-  // Add emoji and label
-  if (emoji) {
-    paragraphChildren.push(createText(`${emoji} `));
-  }
-  paragraphChildren.push(createStrong(label));
+    // Add emoji and label
+    if (emoji) {
+      paragraphChildren.push(createText(`${emoji} `));
+    }
+    paragraphChildren.push(createStrong(label));
 
-  // Add title if present
-  if (title) {
-    paragraphChildren.push(createText(" "));
-    paragraphChildren.push(createStrong(title));
-  }
+    // Add title if present
+    if (title) {
+      paragraphChildren.push(createText(" "));
+      paragraphChildren.push(createStrong(title));
+    }
 
-  // Add content inline if present
-  if (clean) {
-    paragraphChildren.push(createText(`\n${clean}`));
-  }
+    // Add content inline if present
+    if (clean) {
+      paragraphChildren.push(createText(`\n${clean}`));
+    }
 
-  const paragraph: Paragraph = {
-    type: "paragraph",
-    children: paragraphChildren,
-  };
+    const paragraph: Paragraph = {
+      type: "paragraph",
+      children: paragraphChildren,
+    };
 
-  const blockquote: Blockquote = {
-    type: "blockquote",
-    children: [paragraph],
-  };
+    const blockquote: Blockquote = {
+      type: "blockquote",
+      children: [paragraph],
+    };
 
-  return [blockquote];
-}
-
-export const remarkCalloutToMarkdown: Plugin<[], Root> = () =>
-  createJsxComponentProcessor("Callout", calloutToMarkdown);
+    return [blockquote];
+  });
+};

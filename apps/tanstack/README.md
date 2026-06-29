@@ -25,7 +25,7 @@ Both build the `leadtype` package, then run `pipeline:build`, then start/build v
 
 `pipeline:build` chains four scripts under `scripts/`:
 
-1. `pipeline:convert` (`mdx-convert.ts`) — converts `/docs` MDX to markdown in `public/docs/` via `convertAllMdx` + markdown transforms (`leadtype/convert`, `leadtype/markdown`).
+1. `pipeline:convert` (`mdx-convert.ts`) — converts `/docs` MDX to markdown in `public/docs/` via `convertAllMdx` + remark plugins (`leadtype/convert`, `leadtype/remark`).
 2. `pipeline:llm` (`llm-generate.ts`) — writes `public/llms.txt`, `public/llms-full.txt`, agent-readability artifacts, and `src/generated/docs-nav.json` via `leadtype/llm`.
 3. `pipeline:search` (`search-generate.ts`) — writes the static search index/content via `generateDocsSearchFiles` from `leadtype/search/node`.
 4. `pipeline:source-manifest` (`docs-source-manifest.ts`) — dogfoods `createDocsSource()` to write `src/generated/docs-pages.json`, the manifest the catch-all route binds slugs to MDX modules with.

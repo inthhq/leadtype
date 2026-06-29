@@ -1,4 +1,4 @@
-import type { Code, Root, RootContent } from "mdast";
+import type { Code, Root } from "mdast";
 import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
 import {
@@ -73,21 +73,17 @@ export function remarkMermaidToMarkdown(): Transformer<Root, Root> {
           return;
         }
 
-        const result = mermaidToMarkdown(node as MdxNode);
-        if (result.length === 0) {
+        const value = extractMermaidContent(node);
+
+        // Remove empty Mermaid nodes completely
+        if (!value) {
           parent.children.splice(index, 1);
           return index;
         }
-        parent.children.splice(index, 1, ...result);
+
+        const code = toMermaidCode(value);
+        parent.children[index] = code;
       }
     );
   };
-}
-
-export function mermaidToMarkdown(node: MdxNode): RootContent[] {
-  const value = extractMermaidContent(node);
-  if (!value) {
-    return [];
-  }
-  return [toMermaidCode(value)];
 }

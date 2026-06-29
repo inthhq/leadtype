@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { convertMdxToMarkdown } from "../convert";
-import { defaultMarkdownTransforms } from "./default-transforms";
+import { defaultRemarkPlugins } from "./default-plugins";
 import { defineComponentFlattener } from "./define-flattener";
 
 const tempDirs: string[] = [];
@@ -41,7 +41,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       hint,
     ]);
 
@@ -74,7 +74,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       probe,
     ]);
 
@@ -101,7 +101,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       wrap,
     ]);
 
@@ -130,7 +130,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       panel,
     ]);
 
@@ -157,7 +157,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       hint,
     ]);
 
@@ -179,7 +179,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       tagName,
     ]);
 
@@ -199,7 +199,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       drop,
     ]);
 
@@ -220,7 +220,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       docLink,
     ]);
 
@@ -241,7 +241,7 @@ describe("defineComponentFlattener", () => {
     );
 
     const { markdown } = await convertMdxToMarkdown(sourcePath, [
-      ...defaultMarkdownTransforms,
+      ...defaultRemarkPlugins,
       boom,
     ]);
 

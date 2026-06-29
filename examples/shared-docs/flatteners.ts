@@ -1,4 +1,4 @@
-import { defineComponentFlattener } from "leadtype/markdown";
+import { defineComponentFlattener } from "leadtype/remark";
 
 /**
  * Demonstrates a custom (non-contract) component flattened for agents.
