@@ -188,7 +188,7 @@ function createSearchTool(artifacts: DocsArtifacts): DocsTool {
       required: ["query"],
       additionalProperties: false,
     },
-    handler: (args) => {
+    handler: async (args) => {
       const parsed = v.safeParse(SearchInput, args);
       if (!parsed.success) {
         throw new DocsToolInputError(
@@ -200,7 +200,7 @@ function createSearchTool(artifacts: DocsArtifacts): DocsTool {
         limit: limit ?? DEFAULT_SEARCH_LIMIT,
         content: artifacts.content,
       });
-      return Promise.resolve(jsonResult(results.map(toSearchHit)));
+      return jsonResult(results.map(toSearchHit));
     },
   };
 }
@@ -269,7 +269,7 @@ function createListPagesTool(artifacts: DocsArtifacts): DocsTool {
       properties: {},
       additionalProperties: false,
     },
-    handler: (args) => {
+    handler: async (args) => {
       const parsed = v.safeParse(ListPagesInput, args);
       if (!parsed.success) {
         throw new DocsToolInputError("Invalid input: unexpected arguments");
@@ -279,7 +279,7 @@ function createListPagesTool(artifacts: DocsArtifacts): DocsTool {
         urlPath: page.urlPath,
         groups: page.groups,
       }));
-      return Promise.resolve(jsonResult(pages));
+      return jsonResult(pages);
     },
   };
 }

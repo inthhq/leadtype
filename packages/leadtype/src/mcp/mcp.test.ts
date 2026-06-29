@@ -5,9 +5,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
-const JSON_RPC_INVALID_PARAMS = -32_602;
-const JSON_RPC_METHOD_NOT_FOUND = -32_601;
 import { runMcpCommand } from "../cli/mcp";
 import type {
   AgentReadabilityManifest,
@@ -24,6 +21,8 @@ import { createMcpHandler } from "./http";
 import { createDocsMcpServer } from "./server";
 import { defineDocsTools } from "./tools";
 
+const JSON_RPC_INVALID_PARAMS = -32_602;
+const JSON_RPC_METHOD_NOT_FOUND = -32_601;
 const QUICKSTART_MARKDOWN = `# Quickstart
 
 Install the package and run leadtype generate.
@@ -97,9 +96,18 @@ async function createArtifactsDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "leadtype-mcp-handler-"));
   const docsDir = join(dir, "docs");
   await mkdir(join(docsDir, "guides"), { recursive: true });
-  await writeFile(join(docsDir, "search-index.json"), JSON.stringify(createDocsSearchIndex(docs)));
-  await writeFile(join(docsDir, "agent-readability.json"), JSON.stringify(buildManifest()));
-  await writeFile(join(docsDir, "guides", "quickstart.md"), QUICKSTART_MARKDOWN);
+  await writeFile(
+    join(docsDir, "search-index.json"),
+    JSON.stringify(createDocsSearchIndex(docs))
+  );
+  await writeFile(
+    join(docsDir, "agent-readability.json"),
+    JSON.stringify(buildManifest())
+  );
+  await writeFile(
+    join(docsDir, "guides", "quickstart.md"),
+    QUICKSTART_MARKDOWN
+  );
   return dir;
 }
 
@@ -218,7 +226,12 @@ describe("createDocsMcpServer (in-memory client)", () => {
       expect(
         (
           tools.find((tool) => tool.name === "search-docs") as
-            | { annotations?: { idempotentHint?: boolean; readOnlyHint?: boolean } }
+            | {
+                annotations?: {
+                  idempotentHint?: boolean;
+                  readOnlyHint?: boolean;
+                };
+              }
             | undefined
         )?.annotations
       ).toEqual({
@@ -250,7 +263,7 @@ describe("createDocsMcpServer (in-memory client)", () => {
 });
 
 describe("loadDocsArtifacts (from disk)", () => {
-  let dir: string;
+  let dir = "";
 
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), "leadtype-mcp-"));
@@ -268,6 +281,12 @@ describe("loadDocsArtifacts (from disk)", () => {
       join(docsDir, "guides", "quickstart.md"),
       QUICKSTART_MARKDOWN
     );
+  });
+
+  afterAll(async () => {
+    if (dir) {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("reads index + manifest and get-page serves the .md from disk", async () => {
@@ -407,7 +426,8 @@ describe("createMcpServerCard", () => {
         name: "leadtype-docs",
         version: "1.0.0",
         description: "Docs pipeline tooling.",
-        instructions: "Search and read the documentation for Docs pipeline tooling.",
+        instructions:
+          "Search and read the documentation for Docs pipeline tooling.",
       },
       transport: {
         type: "streamable-http",
