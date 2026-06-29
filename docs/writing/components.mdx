@@ -30,12 +30,12 @@ Runtime registration, heading IDs, and "On this page" sidebars are docs-app conc
 
 ## Reuse shared content
 
-Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `remarkInclude` before the default plugin stack in custom conversion scripts:
+Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `includeMarkdown` before the default plugin stack in custom conversion scripts:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
-remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms];
 ```
 
 Include a whole markdown or MDX partial with `src` or text content:

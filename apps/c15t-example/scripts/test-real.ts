@@ -9,7 +9,7 @@ import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "leadtype/convert";
 import { lintDocs } from "leadtype/lint";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
@@ -54,7 +54,7 @@ const start = Date.now();
 await convertAllMdx({
   srcDir: SRC_DIR,
   outDir: OUT_DIR,
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
   enrichFrontmatterFromGit: true,
 });
 const elapsed = Date.now() - start;

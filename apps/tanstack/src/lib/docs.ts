@@ -75,9 +75,9 @@ export const packageSurfaces: PackageSurface[] = [
     description: "Root export with `defineDocsConfig` and shared types.",
   },
   {
-    importPath: "leadtype/remark",
+    importPath: "leadtype/markdown",
     lifecycle: "build time",
-    description: "remark plugins and `defaultRemarkPlugins`.",
+    description: "markdown transforms and `defaultMarkdownTransforms`.",
   },
   {
     importPath: "leadtype/convert",

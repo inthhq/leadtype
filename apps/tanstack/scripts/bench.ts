@@ -12,12 +12,15 @@ import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "leadtype/convert";
 import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import {
+  defaultMarkdownTransforms,
+  includeMarkdown,
+  legacyDefaultMarkdownTransforms,
+} from "leadtype/markdown";
 
 const DEFAULT_RUNS = 3;
-type BenchMarkdownEngine = "remark" | "satteri";
-
-const MARKDOWN_ENGINES = new Set<BenchMarkdownEngine>(["remark", "satteri"]);
+const MARKDOWN_ENGINES = ["remark", "satteri"] as const;
+type BenchMarkdownEngine = (typeof MARKDOWN_ENGINES)[number];
 const parsedRuns = Number.parseInt(
   process.env.BENCH_RUNS ?? String(DEFAULT_RUNS),
   10
@@ -29,20 +32,22 @@ if (!Number.isInteger(parsedRuns) || parsedRuns < 1) {
   process.exit(2);
 }
 const RUNS = parsedRuns;
+const requestedEngines = process.env.BENCH_ENGINES ?? "remark,satteri";
 const ENGINES: BenchMarkdownEngine[] = [];
-for (const rawEngine of (process.env.BENCH_ENGINES ?? "satteri").split(",")) {
+for (const rawEngine of requestedEngines.split(",")) {
   const engine = rawEngine.trim();
-  if (!engine) {
+  if (engine.length === 0) {
     continue;
   }
-  if (MARKDOWN_ENGINES.has(engine as BenchMarkdownEngine)) {
-    ENGINES.push(engine as BenchMarkdownEngine);
-    continue;
+  if (engine !== "remark" && engine !== "satteri") {
+    process.stderr.write(
+      `BENCH_ENGINES must contain remark,satteri values, got ${JSON.stringify(rawEngine)}\n`
+    );
+    process.exit(2);
   }
-  process.stderr.write(
-    `BENCH_ENGINES must contain only remark,satteri; got ${JSON.stringify(engine)}\n`
-  );
-  process.exit(2);
+  if (!ENGINES.includes(engine)) {
+    ENGINES.push(engine);
+  }
 }
 if (ENGINES.length === 0) {
   process.stderr.write("BENCH_ENGINES must include at least one engine.\n");
@@ -130,12 +135,6 @@ function addTiming(totals: TimingTotals, timing: ConversionTimingSample): void {
   totals.transformMs += timing.transformMs;
 }
 
-function engineOrderForRun(runIndex: number): BenchMarkdownEngine[] {
-  return ENGINES.map(
-    (_, index) => ENGINES[(index + runIndex) % ENGINES.length]
-  ).filter((engine): engine is BenchMarkdownEngine => Boolean(engine));
-}
-
 function recordRun(
   runsByLabel: Map<string, number[]>,
   label: string,
@@ -147,6 +146,13 @@ function recordRun(
     return;
   }
   runsByLabel.set(label, [value]);
+}
+
+function engineOrderForRun(runIndex: number): BenchMarkdownEngine[] {
+  if (ENGINES.length < 2 || runIndex % 2 === 0) {
+    return ENGINES;
+  }
+  return [...ENGINES].reverse();
 }
 
 async function bench(): Promise<Stats[]> {
@@ -161,7 +167,12 @@ async function bench(): Promise<Stats[]> {
         convertAllMdx({
           srcDir: SRC_DIR,
           outDir: CONVERT_OUT_DIR,
-          remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+          markdownTransforms: [
+            includeMarkdown,
+            ...(engine === "remark"
+              ? legacyDefaultMarkdownTransforms
+              : defaultMarkdownTransforms),
+          ],
           enrichFrontmatterFromGit: true,
           markdownEngine: engine,
           onTiming: (timing) => addTiming(timingTotals, timing),
@@ -189,22 +200,22 @@ async function bench(): Promise<Stats[]> {
 
       recordRun(
         runsByLabel,
-        `${engine} parse`,
+        `${engine}:parse`,
         Math.round(timingTotals.parseMs)
       );
       recordRun(
         runsByLabel,
-        `${engine} transform`,
+        `${engine}:transform`,
         Math.round(timingTotals.transformMs)
       );
       recordRun(
         runsByLabel,
-        `${engine} stringify`,
+        `${engine}:stringify`,
         Math.round(timingTotals.stringifyMs)
       );
-      recordRun(runsByLabel, `${engine} convert`, convertMs);
-      recordRun(runsByLabel, `${engine} llm`, llmMs);
-      recordRun(runsByLabel, `${engine} convert+llm`, convertMs + llmMs);
+      recordRun(runsByLabel, `${engine}:convert`, convertMs);
+      recordRun(runsByLabel, `${engine}:llm`, llmMs);
+      recordRun(runsByLabel, `${engine}:convert+llm`, convertMs + llmMs);
 
       process.stdout.write(
         `run ${i + 1}/${RUNS} ${engine}: convert=${convertMs}ms  llm=${llmMs}ms  parse=${Math.round(timingTotals.parseMs)}ms  transform=${Math.round(timingTotals.transformMs)}ms  stringify=${Math.round(timingTotals.stringifyMs)}ms\n`
@@ -235,22 +246,32 @@ function renderTable(stats: Stats[]): string {
 }
 
 function renderSpeedups(stats: Stats[]): string {
-  const byLabel = new Map(stats.map((stat) => [stat.label, median(stat.runs)]));
-  const remarkConvert = byLabel.get("remark convert");
-  const satteriConvert = byLabel.get("satteri convert");
-  const remarkParse = byLabel.get("remark parse");
-  const satteriParse = byLabel.get("satteri parse");
-  if (!(remarkConvert && satteriConvert && remarkParse && satteriParse)) {
+  if (!(ENGINES.includes("remark") && ENGINES.includes("satteri"))) {
     return "";
   }
-
-  const convertSpeedup = (remarkConvert / satteriConvert).toFixed(2);
-  const parseSpeedup = (remarkParse / satteriParse).toFixed(2);
-  return [
-    "",
-    `Median convert speedup: ${convertSpeedup}x (${remarkConvert}ms to ${satteriConvert}ms).`,
-    `Median parse speedup: ${parseSpeedup}x (${remarkParse}ms to ${satteriParse}ms).`,
-  ].join("\n");
+  const byLabel = new Map(stats.map((stat) => [stat.label, median(stat.runs)]));
+  const stages = [
+    "parse",
+    "transform",
+    "stringify",
+    "convert",
+    "llm",
+    "convert+llm",
+  ];
+  const lines = ["\n\n#### Satteri speedup vs remark\n"];
+  for (const stage of stages) {
+    const remark = byLabel.get(`remark:${stage}`);
+    const satteri = byLabel.get(`satteri:${stage}`);
+    if (!(remark && satteri)) {
+      continue;
+    }
+    const speedup = remark / satteri;
+    const delta = remark - satteri;
+    lines.push(
+      `- \`${stage}\`: ${speedup.toFixed(2)}x (${delta >= 0 ? "-" : "+"}${Math.abs(delta)}ms)`
+    );
+  }
+  return lines.join("\n");
 }
 
 async function countMdxFiles(dir: string): Promise<number> {
@@ -277,7 +298,7 @@ async function countMdxFiles(dir: string): Promise<number> {
 const stats = await bench();
 const table = renderTable(stats);
 const mdxCount = await countMdxFiles(SRC_DIR);
-const header = `### leadtype benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), engines: ${ENGINES.join(", ")}, git enrichment on, ${RUNS} runs each.\n\n`;
+const header = `### leadtype benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), engines=${ENGINES.join(",")}, git enrichment on, ${RUNS} runs each.\n\n`;
 const report = header + table + renderSpeedups(stats);
 
 process.stdout.write(`\n${report}\n`);

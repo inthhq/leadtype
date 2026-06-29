@@ -67,13 +67,15 @@ function itemToMarkdown(item: MdxNode, index: number): RootContent[] {
 }
 
 export function remarkAccordionToMarkdown(): Transformer<Root, Root> {
-  return createJsxComponentProcessor("Accordion", (node) => {
-    const items = collectAccordionItems(node);
+  return createJsxComponentProcessor("Accordion", accordionToMarkdown);
+}
 
-    if (items.length === 0) {
-      return [];
-    }
+export function accordionToMarkdown(node: MdxNode): RootContent[] {
+  const items = collectAccordionItems(node);
 
-    return items.flatMap(itemToMarkdown);
-  });
+  if (items.length === 0) {
+    return [];
+  }
+
+  return items.flatMap(itemToMarkdown);
 }

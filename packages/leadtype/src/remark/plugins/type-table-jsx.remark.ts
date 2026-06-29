@@ -14,12 +14,17 @@
 import type { Paragraph, Root, RootContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx";
 import type { VFile } from "vfile";
-import { createText, getAttributeValue, hasName, type MdxNode } from "../libs";
+import {
+  createText,
+  getAttributeValue,
+  hasName,
+  type MdxNode,
+} from "../../markdown/libs";
 import {
   createTypeTableExtractionFailureMessage,
   extractTypeFromFile,
   resolveDefaultTypeTableBasePath,
-} from "./type-table.remark";
+} from "../../markdown/plugins/type-table";
 
 export type RemarkResolveTypeTableJsxOptions = {
   /** Base directory used to resolve relative `path=` attributes. */
