@@ -1,0 +1,15 @@
+---
+title: "Leadtype 0.4"
+description: "Release notes in progress for the next Leadtype minor release."
+---
+
+# Leadtype 0.4
+
+In progress.
+
+Leadtype 0.4 is the next minor release after the 0.3 line. These notes are being written as changes land.
+
+## Conversion performance
+
+- Batched Git frontmatter enrichment during `convertAllMdx`. When `enrichFrontmatterFromGit` is enabled, conversion now reads Git history once for the docs tree and maps results back to each converted file instead of spawning `git log` per file. In a 120-file synthetic docs benchmark, the Git metadata read dropped from ~2.36s of per-file process spawning to ~12ms for the batched read; full conversion with enrichment added ~27ms over no enrichment.
+- Preserved best-effort Git behavior for shallow clones, missing Git, and untracked files. `lastModified` still comes from the latest file commit, while `lastAuthor` now falls back to the latest non-bot author when the newest commit was authored by automation.
