@@ -98,6 +98,7 @@ export const BUILTIN_FLATTENER_COMPONENT_NAMES = [
   "Accordion",
   "AccordionItem",
   "Audience",
+  "AutoTypeTable",
   "Callout",
   "Card",
   "Cards",

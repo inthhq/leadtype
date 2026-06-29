@@ -93,20 +93,19 @@ function fenceFor(value: string): string {
 }
 
 function inlineCode(value: string): string {
-  let normalizedValue = value;
-  if (/\n\s*--/.test(value)) {
-    normalizedValue = value.replace(/\s*\n\s*/g, " ");
-  } else if (!value.includes("\n")) {
-    normalizedValue = value.replace(/\s+/g, " ");
-  }
-  const delimiter = "`";
+  const content = value.replace(/\s*\n\s*/g, " ");
+  const longest = Math.max(
+    0,
+    ...Array.from(content.matchAll(BACKTICK_REGEX), (match) => match[0].length)
+  );
+  const delimiter = repeat("`", longest + 1);
   const needsPadding =
-    normalizedValue.includes("`") ||
-    normalizedValue.startsWith("`") ||
-    normalizedValue.endsWith("`") ||
-    normalizedValue.trim() !== normalizedValue;
+    content.includes("`") ||
+    content.startsWith("`") ||
+    content.endsWith("`") ||
+    content.trim() !== content;
   const padding = needsPadding ? " " : "";
-  return `${delimiter}${padding}${normalizedValue}${padding}${delimiter}`;
+  return `${delimiter}${padding}${content}${padding}${delimiter}`;
 }
 
 function indentLines(value: string, prefix: string): string {
@@ -380,13 +379,21 @@ function stringifyMdxFallback(node: unknown, state: StringifyState): string {
       .filter(Boolean)
       .join(" ");
     const open = attrs ? `<${name} ${attrs}>` : `<${name}>`;
+    const selfClosing = attrs ? `<${name} ${attrs} />` : `<${name} />`;
+    if (node.type === "mdxJsxTextElement") {
+      const children = hasChildren(jsx)
+        ? jsx.children
+            .map((child) => stringifyInline(child as PhrasingContent, state))
+            .join("")
+        : "";
+      return children ? `${open}${children}</${name}>` : selfClosing;
+    }
     const children = hasChildren(jsx)
       ? jsx.children
           .map((child) => stringifyNode(child as MdastNode, state))
           .filter(Boolean)
           .join("\n\n")
       : "";
-    const selfClosing = attrs ? `<${name} ${attrs} />` : `<${name} />`;
     return children ? `${open}\n${children}\n</${name}>` : selfClosing;
   }
   if (hasChildren(node)) {

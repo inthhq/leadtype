@@ -12,15 +12,15 @@ Interactive MDX components like `<Tabs>` or `<Callout>` render fine in a browser
 - A `<Callout>` becomes a blockquote.
 - A `<Tabs>` becomes a stack of bold headings, one per tab.
 - A `<TypeTable>` becomes a markdown table.
-- A `<Mermaid>` becomes a fenced ` ```mermaid ` block — the diagram source survives so other tooling can render it.
+- A `<Mermaid>` becomes a fenced Mermaid code block — the diagram source survives so other tooling can render it.
 
 This means the same content reaches three audiences (humans, agents, search) without you maintaining two copies.
 
 ## The naming contract
 
-The remark pipeline recognizes these names. If your components use the same names, flattening Just Works:
+The markdown transform pipeline recognizes these names. If your components use the same names, flattening Just Works:
 
-`Accordion`, `AccordionItem`, `Audience`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+`Accordion`, `AccordionItem`, `Audience`, `AutoTypeTable`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
 
 If your app uses different names — or a component that has no equivalent above — you have two options: rename to match the contract, or define how it flattens with [`defineComponentFlattener`](/docs/reference/remark#custom-component-flatteners). You declare the component name and a `toMarkdown` function; leadtype handles tree-walking, prop parsing, child flattening, and plugin order for you.
 
@@ -30,7 +30,7 @@ Runtime registration, heading IDs, and "On this page" sidebars are docs-app conc
 
 ## Reuse shared content
 
-Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `includeMarkdown` before the default plugin stack in custom conversion scripts:
+Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `includeMarkdown` before the default transform stack in custom conversion scripts:
 
 ```ts
 import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
@@ -319,7 +319,7 @@ Data-driven preview and source examples. The host component receives code as dat
 
 ### Mermaid
 
-Diagrams authored as plain text. Renders client-side as interactive SVG. Flattening preserves the source as a fenced ` ```mermaid ` block so other tools can render the diagram from the markdown copy.
+Diagrams authored as plain text. Renders client-side as interactive SVG. Flattening preserves the source as a fenced Mermaid code block so other tools can render the diagram from the markdown copy.
 
 ```tsx
 <Mermaid chart={`graph LR

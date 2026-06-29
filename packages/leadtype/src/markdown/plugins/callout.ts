@@ -58,6 +58,21 @@ function variantLabelAndEmoji(raw: string | null): {
   }
 }
 
+function unwrapStringLiteralExpression(value: string): string {
+  const trimmed = value.trim();
+  const quote = trimmed.at(0);
+
+  if (
+    quote &&
+    (quote === '"' || quote === "'" || quote === "`") &&
+    trimmed.endsWith(quote)
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return value;
+}
+
 // Use shared createStrong function from remark-libs
 
 /**
@@ -104,10 +119,17 @@ function processCalloutContent(node: MdxNode): string {
 
 export function calloutToMarkdown(node: MdxNode): RootContent[] {
   const variantLabelAndEmojiResult = variantLabelAndEmoji(
-    getAttributeValue(node, "variant") ?? getAttributeValue(node, "type")
+    unwrapStringLiteralExpression(
+      getAttributeValue(node, "variant") ??
+        getAttributeValue(node, "type") ??
+        ""
+    )
   );
   const { emoji, label } = variantLabelAndEmojiResult;
-  const title = (getAttributeValue(node, "title") ?? "").trim() || null;
+  const title =
+    unwrapStringLiteralExpression(
+      getAttributeValue(node, "title") ?? ""
+    ).trim() || null;
   const clean = processCalloutContent(node);
 
   // Create single paragraph with inline content (like steps component)

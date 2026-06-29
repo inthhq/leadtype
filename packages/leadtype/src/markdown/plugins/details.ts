@@ -56,7 +56,7 @@ export function detailsToMarkdown(node: MdxNode): RootContent[] {
 }
 
 export function remarkDetailsToMarkdown(): Transformer<Root, Root> {
-  return createJsxComponentProcessor("details", (node) =>
+  return createJsxComponentProcessor(["Details", "details"], (node) =>
     detailsToMarkdown(node)
   );
 }

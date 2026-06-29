@@ -70,4 +70,55 @@ describe("stringifyMarkdown", () => {
       "| A | B |\n| :--- | --- |\n| 1 | 2 |\n\n> Quoted\n"
     );
   });
+
+  it("preserves significant inline code content", () => {
+    const tree: Root = {
+      type: "root",
+      children: [
+        {
+          type: "paragraph",
+          children: [
+            { type: "text", value: "Run " },
+            { type: "inlineCode", value: "pnpm  add  pkg" },
+            { type: "text", value: ", then inspect " },
+            { type: "inlineCode", value: "value with `tick`" },
+            { type: "text", value: " and " },
+            { type: "inlineCode", value: " leading and trailing " },
+            { type: "text", value: "." },
+          ],
+        },
+      ],
+    };
+
+    expect(stringifyMarkdown(tree)).toBe(
+      "Run `pnpm  add  pkg`, then inspect `` value with `tick` `` and `  leading and trailing  `.\n"
+    );
+  });
+
+  it("serializes mdxJsxTextElement inline", () => {
+    const tree = {
+      type: "root",
+      children: [
+        {
+          type: "paragraph",
+          children: [
+            { type: "text", value: "Status: " },
+            {
+              type: "mdxJsxTextElement",
+              name: "Badge",
+              attributes: [
+                { type: "mdxJsxAttribute", name: "variant", value: "info" },
+              ],
+              children: [{ type: "text", value: "New" }],
+            },
+            { type: "text", value: "." },
+          ],
+        },
+      ],
+    } as Root;
+
+    expect(stringifyMarkdown(tree)).toBe(
+      'Status: <Badge variant="info">New</Badge>.\n'
+    );
+  });
 });

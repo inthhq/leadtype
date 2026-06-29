@@ -50,6 +50,21 @@ function cmdsFor(pm: Pm, pkgCmd: string, mode: Mode): string {
   return template.replace("{pkg}", pkgCmd);
 }
 
+function unwrapStringLiteralExpression(value: string): string {
+  const trimmed = value.trim();
+  const quote = trimmed.at(0);
+
+  if (
+    quote &&
+    (quote === '"' || quote === "'" || quote === "`") &&
+    trimmed.endsWith(quote)
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return value;
+}
+
 export function remarkCommandTabsToMarkdown(
   opts: Options = {}
 ): Transformer<Root, Root> {
@@ -64,8 +79,12 @@ export function commandTabsToMarkdown(
 ): RootContent[] {
   const labels = { ...DEFAULT_LABELS, ...(opts.labels ?? {}) };
   const managers = [...(opts.managers ?? DEFAULT_MANAGERS)];
-  const rawCommand = (getAttributeValue(node, "command") ?? "").trim();
-  const rawMode = (getAttributeValue(node, "mode") ?? "run").trim();
+  const rawCommand = unwrapStringLiteralExpression(
+    getAttributeValue(node, "command") ?? ""
+  ).trim();
+  const rawMode = unwrapStringLiteralExpression(
+    getAttributeValue(node, "mode") ?? "run"
+  ).trim();
   const mode: Mode =
     rawMode === "install" || rawMode === "create" ? rawMode : "run";
 

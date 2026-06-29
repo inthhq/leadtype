@@ -18,8 +18,8 @@ import {
   includeMarkdown,
   legacyDefaultMarkdownTransforms,
   nativeMarkdownComponentsToMarkdown,
-  typeTableToMarkdown,
 } from "../markdown";
+import { remarkTypeTableToMarkdown } from "../markdown/plugins/type-table";
 import { convertAllMdx, convertMdxFile } from "./convert";
 
 const tempDirs: string[] = [];
@@ -88,9 +88,9 @@ const createLegacyMarkdownTransforms = (
 ): PluggableList => [
   includeMarkdown,
   ...legacyDefaultMarkdownTransforms.filter(
-    (plugin) => plugin !== typeTableToMarkdown
+    (plugin) => plugin !== remarkTypeTableToMarkdown
   ),
-  [typeTableToMarkdown, { basePath: typeTableBasePath }] as Pluggable,
+  [remarkTypeTableToMarkdown, { basePath: typeTableBasePath }] as Pluggable,
 ];
 
 const listFiles = async (dir: string, ext?: string): Promise<string[]> => {

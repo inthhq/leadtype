@@ -61,9 +61,8 @@ Use this when you want to render the output yourself, validate it before writing
 Convert one file and write the output:
 
 ```ts
-await writeMdxFileAsMarkdown({
-  srcPath: "docs/quickstart.mdx",
-  outPath: "public/docs/quickstart.md",
+await writeMdxFileAsMarkdown("docs/quickstart.mdx", {
+  outDir: "public/docs",
   markdownTransforms: defaultMarkdownTransforms,
 });
 ```
@@ -75,9 +74,9 @@ await writeMdxFileAsMarkdown({
 - **Tables and Mermaid blocks are compacted** after rendering so agent output stays clean.
 - **Conversion is concurrent** — there is no global state.
 
-## Pairing with remark plugins
+## Pairing with markdown transforms
 
-In most setups, pair `convertAllMdx` with the default plugin stack and `includeMarkdown` if your docs use partials:
+In most setups, pair `convertAllMdx` with the default transform stack and `includeMarkdown` if your docs use partials:
 
 ```ts
 import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";

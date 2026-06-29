@@ -41,6 +41,7 @@ let __ts: TypeScriptModule | null = null;
 const __tsProgramByRootFile = new Map<
   string,
   {
+    mtimeMs: number;
     program: ts.Program;
     checker: ts.TypeChecker;
     sourceFile: ts.SourceFile;
@@ -48,7 +49,10 @@ const __tsProgramByRootFile = new Map<
 >();
 const __extractedTypeByKey = new Map<
   string,
-  Record<string, ObjectType> | null
+  {
+    mtimeMs: number;
+    value: Record<string, ObjectType> | null;
+  }
 >();
 
 function isMissingTypeScriptError(error: unknown): boolean {
@@ -124,14 +128,17 @@ function getTypeScriptCompilerOptions(): ts.CompilerOptions {
   return compilerOptions;
 }
 
-function getTypeScriptProgramForFile(rootFilePath: string): {
+function getTypeScriptProgramForFile(
+  rootFilePath: string,
+  mtimeMs: number
+): {
   program: ts.Program;
   checker: ts.TypeChecker;
   sourceFile: ts.SourceFile;
 } | null {
   const ts = getTypeScript();
   const cached = __tsProgramByRootFile.get(rootFilePath);
-  if (cached) {
+  if (cached?.mtimeMs === mtimeMs) {
     return cached;
   }
 
@@ -144,7 +151,7 @@ function getTypeScriptProgramForFile(rootFilePath: string): {
   }
   const checker = program.getTypeChecker();
 
-  const value = { program, checker, sourceFile };
+  const value = { mtimeMs, program, checker, sourceFile };
   __tsProgramByRootFile.set(rootFilePath, value);
   return value;
 }
@@ -731,14 +738,15 @@ export function extractTypeFromFile(
       return null;
     }
     const mtimeMs = statSync(resolvedPath).mtimeMs;
-    const cacheKey = `${resolvedPath}\0${typeName}\0${mtimeMs}`;
-    if (__extractedTypeByKey.has(cacheKey)) {
-      return __extractedTypeByKey.get(cacheKey) ?? null;
+    const cacheKey = `${resolvedPath}\0${typeName}`;
+    const cached = __extractedTypeByKey.get(cacheKey);
+    if (cached?.mtimeMs === mtimeMs) {
+      return cached.value;
     }
 
-    const tsProgram = getTypeScriptProgramForFile(resolvedPath);
+    const tsProgram = getTypeScriptProgramForFile(resolvedPath, mtimeMs);
     if (!tsProgram) {
-      __extractedTypeByKey.set(cacheKey, null);
+      __extractedTypeByKey.set(cacheKey, { mtimeMs, value: null });
       return null;
     }
 
@@ -747,7 +755,7 @@ export function extractTypeFromFile(
       typeName,
       tsProgram.checker
     );
-    __extractedTypeByKey.set(cacheKey, extracted);
+    __extractedTypeByKey.set(cacheKey, { mtimeMs, value: extracted });
     return extracted;
   } catch (error) {
     if (

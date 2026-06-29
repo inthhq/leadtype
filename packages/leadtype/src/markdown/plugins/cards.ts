@@ -8,7 +8,7 @@ import type {
   RootContent,
 } from "mdast";
 import type { Transformer } from "unified";
-import { visit } from "unist-util-visit";
+import { SKIP, visit } from "unist-util-visit";
 import {
   extractNodeText,
   getAttributeValue,
@@ -133,9 +133,10 @@ export function remarkCardsToMarkdown(
         const result = cardsToMarkdown(node, { withDescriptions });
         if (result.length === 0) {
           parent.children.splice(index, 1);
-          return;
+          return [SKIP, index];
         }
         parent.children.splice(index, 1, ...result);
+        return [SKIP, index];
       }
     );
   };

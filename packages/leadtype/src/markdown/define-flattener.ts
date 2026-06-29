@@ -99,7 +99,10 @@ function getSubTransforms(): LeadtypeMdastTransform[] {
   return subTransforms;
 }
 
-function flattenChildren(node: MdxNode): {
+function flattenChildren(
+  node: MdxNode,
+  filePath: string
+): {
   content: string;
   childNodes: RootContent[];
 } {
@@ -108,7 +111,7 @@ function flattenChildren(node: MdxNode): {
     children: (node.children ?? []) as RootContent[],
   };
   const transformed = runMdastTransformsSync(root, getSubTransforms(), {
-    filePath: "",
+    filePath,
     value: "",
   });
   const content = stringifyMarkdown(transformed).trim();
@@ -200,14 +203,15 @@ export function defineComponentFlattener<
       (node: MdxNode, _index: number, _parent, file?: VFile) => {
         try {
           const props = coerceProps(node, spec.props) as InferProps<S>;
-          const { content, childNodes } = flattenChildren(node);
+          const filePath = file?.path ?? "";
+          const { content, childNodes } = flattenChildren(node, filePath);
           const result = spec.toMarkdown({
             props,
             content,
             childNodes,
             b,
             node,
-            file: file?.path ?? "",
+            file: filePath,
           });
           return normalizeResult(result);
         } catch (error) {

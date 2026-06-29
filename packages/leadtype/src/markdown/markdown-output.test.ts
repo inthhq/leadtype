@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { convertMdxToMarkdown } from "../convert";
+import { defaultMarkdownTransforms, includeMarkdown } from "./index";
+import { remarkDetailsToMarkdown } from "./plugins/details";
 import {
-  defaultMarkdownTransforms,
-  includeMarkdown,
-  typeTableToMarkdown,
-} from "./index";
-import { resolveDefaultTypeTableBasePath } from "./plugins/type-table";
+  remarkTypeTableToMarkdown,
+  resolveDefaultTypeTableBasePath,
+} from "./plugins/type-table";
 
 const tempDirs: string[] = [];
 
@@ -101,7 +101,7 @@ describe("remark markdown output", () => {
 
       process.chdir(projectDir);
       const result = await convertMdxToMarkdown(sourcePath, [
-        [typeTableToMarkdown, {}],
+        [remarkTypeTableToMarkdown, {}],
       ]);
 
       expect(result.markdown).toContain("srcDir");
@@ -131,7 +131,7 @@ describe("remark markdown output", () => {
 
       process.chdir(projectDir);
       const result = await convertMdxToMarkdown(sourcePath, [
-        [typeTableToMarkdown, {}],
+        [remarkTypeTableToMarkdown, {}],
       ]);
 
       expect(result.markdown).toContain("title");
@@ -165,7 +165,7 @@ describe("remark markdown output", () => {
 
       process.chdir(projectDir);
       const result = await convertMdxToMarkdown(sourcePath, [
-        [typeTableToMarkdown, {}],
+        [remarkTypeTableToMarkdown, {}],
       ]);
 
       expect(result.markdown).toContain("--c15t-primary");
@@ -238,6 +238,26 @@ describe("remark markdown output", () => {
     expect(result.markdown).toContain("> 📝 **Note:**");
     expect(result.markdown).toContain("Be careful.");
     expect(result.markdown).toContain("Background detail.");
+  });
+
+  it("normalizes string-literal expression props in component flatteners", async () => {
+    const sourcePath = await createTempMdxFile(
+      "expression-props.mdx",
+      `<Callout variant={"warning"} title={"Heads up"}>Be careful.</Callout>
+
+<CommandTabs command={"leadtype"} mode={"install"} />
+`
+    );
+
+    const result = await convertMdxToMarkdown(
+      sourcePath,
+      defaultMarkdownTransforms
+    );
+
+    expect(result.markdown).toContain("> ⚠️ **Warning:** **Heads up**");
+    expect(result.markdown).not.toContain('"Heads up"');
+    expect(result.markdown).toContain("`npm install leadtype`");
+    expect(result.markdown).not.toContain('`npm install "leadtype"`');
   });
 
   it("synthesizes section titles for index files", async () => {
@@ -663,6 +683,26 @@ Body
     expect(result.markdown).toContain("### Details");
     expect(result.markdown).toContain("Body without a summary.");
     expect(result.markdown).not.toContain("<details>");
+  });
+
+  it("flattens capitalized Details in the legacy plugin path", async () => {
+    const sourcePath = await createTempMdxFile(
+      "capital-details.mdx",
+      `<Details>
+  <summary>More info</summary>
+
+  Body text.
+</Details>
+`
+    );
+
+    const result = await convertMdxToMarkdown(sourcePath, [
+      remarkDetailsToMarkdown,
+    ]);
+
+    expect(result.markdown).toContain("### More info");
+    expect(result.markdown).toContain("Body text.");
+    expect(result.markdown).not.toContain("<Details>");
   });
 
   it("extracts a <summary> that MDX parses inside a paragraph wrapper", async () => {

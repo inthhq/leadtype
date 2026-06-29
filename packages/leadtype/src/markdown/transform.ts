@@ -1,6 +1,7 @@
 import { performance } from "node:perf_hooks";
 import type { Root } from "mdast";
 import type { Pluggable, PluggableList } from "unified";
+import { unified } from "unified";
 import { VFile } from "vfile";
 import {
   isMarkdownProfileEnabled,
@@ -35,6 +36,31 @@ type PreparedMdastTransform = LeadtypeMdastTransform & {
   profileName?: string;
 };
 
+type PluggablePreset = {
+  plugins?: PluggableList;
+};
+
+function isPluggablePreset(value: unknown): value is PluggablePreset {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "plugins" in value &&
+    Array.isArray((value as PluggablePreset).plugins)
+  );
+}
+
+function expandPluggables(plugins: PluggableList): Pluggable[] {
+  const expanded: Pluggable[] = [];
+  for (const entry of plugins) {
+    if (isPluggablePreset(entry)) {
+      expanded.push(...expandPluggables(entry.plugins ?? []));
+      continue;
+    }
+    expanded.push(entry);
+  }
+  return expanded;
+}
+
 function pluginName(entry: Pluggable): string {
   const plugin = Array.isArray(entry) ? entry[0] : entry;
   if (typeof plugin !== "function") {
@@ -58,7 +84,8 @@ const toTransform = (entry: Pluggable): LeadtypeMdastTransform | null => {
   }
 
   const pluginFactory = plugin as (...args: unknown[]) => unknown;
-  const transformer = pluginFactory(...args);
+  const processor = unified();
+  const transformer = pluginFactory.call(processor, ...args);
   if (!isTransformer(transformer)) {
     return null;
   }
@@ -79,7 +106,7 @@ export function createMdastTransforms(
   plugins: PluggableList = []
 ): LeadtypeMdastTransform[] {
   const transforms: LeadtypeMdastTransform[] = [];
-  for (const entry of sortRemarkPluginsByPhase(plugins)) {
+  for (const entry of sortRemarkPluginsByPhase(expandPluggables(plugins))) {
     const transform = toTransform(entry);
     if (transform) {
       transforms.push(transform);

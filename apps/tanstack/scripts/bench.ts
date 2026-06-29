@@ -262,7 +262,7 @@ function renderSpeedups(stats: Stats[]): string {
   for (const stage of stages) {
     const remark = byLabel.get(`remark:${stage}`);
     const satteri = byLabel.get(`satteri:${stage}`);
-    if (!(remark && satteri)) {
+    if (remark === undefined || satteri === undefined) {
       continue;
     }
     const speedup = remark / satteri;
