@@ -35,7 +35,7 @@ const mdxModules: Record<string, () => Promise<MdxModule>> = {
   "reference/llm": () => import("../../.leadtype/docs/reference/llm.mdx"),
   "reference/mcp": () => import("../../.leadtype/docs/reference/mcp.mdx"),
   "reference/mdx": () => import("../../.leadtype/docs/reference/mdx.mdx"),
-  "reference/remark": () => import("../../.leadtype/docs/reference/remark.mdx"),
+  "reference/markdown": () => import("../../.leadtype/docs/reference/markdown.mdx"),
   "reference/search": () => import("../../.leadtype/docs/reference/search.mdx"),
   "reference/skills": () => import("../../.leadtype/docs/reference/skills.mdx"),
   "reference/source": () => import("../../.leadtype/docs/reference/source.mdx"),
@@ -48,7 +48,7 @@ const mdxModules: Record<string, () => Promise<MdxModule>> = {
 };
 
 /** Route slugs that have a backing MDX file (drives generateStaticParams). */
-export const mdxSlugs: string[] = ["writing/components", "writing/frontmatter", "writing/write-for-agents", "pipeline/agent-setup-prompts", "pipeline/build-a-docs-site", "pipeline/deploy-generated-artifacts", "integrations/framework-matrix", "pipeline/generate-static-artifacts", "integrations/integrate-with-fumadocs", "pipeline/localize-docs", "aeo/optimize-docs-for-agents", "aeo/serve-agent-responses", "pipeline/sync-docs-across-repos", "pipeline/use-the-source-primitive", "pipeline/validate-in-ci", "changelog/0-2", "concepts/architecture", "concepts/evals", "concepts/methodology", "how-it-works", "", "package-docs/bundle", "quickstart", "reference/cli", "reference/convert", "reference/frontmatter-transformers", "reference/i18n", "reference/lint", "reference/llm", "reference/mcp", "reference/mdx", "reference/remark", "reference/search", "reference/skills", "reference/source", "reference/troubleshooting", "search/add-search", "search/agent-tools", "search/ai-answers", "pipeline/collections", "pipeline/configure-sources"];
+export const mdxSlugs: string[] = ["writing/components", "writing/frontmatter", "writing/write-for-agents", "pipeline/agent-setup-prompts", "pipeline/build-a-docs-site", "pipeline/deploy-generated-artifacts", "integrations/framework-matrix", "pipeline/generate-static-artifacts", "integrations/integrate-with-fumadocs", "pipeline/localize-docs", "aeo/optimize-docs-for-agents", "aeo/serve-agent-responses", "pipeline/sync-docs-across-repos", "pipeline/use-the-source-primitive", "pipeline/validate-in-ci", "changelog/0-2", "concepts/architecture", "concepts/evals", "concepts/methodology", "how-it-works", "", "package-docs/bundle", "quickstart", "reference/cli", "reference/convert", "reference/frontmatter-transformers", "reference/i18n", "reference/lint", "reference/llm", "reference/mcp", "reference/mdx", "reference/markdown", "reference/search", "reference/skills", "reference/source", "reference/troubleshooting", "search/add-search", "search/agent-tools", "search/ai-answers", "pipeline/collections", "pipeline/configure-sources"];
 
 export function loadDocsMdx(slug: string[] = []): Promise<MdxModule> | undefined {
   return mdxModules[slug.join("/")]?.();

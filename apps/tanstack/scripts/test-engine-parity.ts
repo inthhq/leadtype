@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * Converts the real c15t fixture with both markdown parsers and requires
- * byte-identical markdown output. Git enrichment stays off so metadata does not
- * hide parser differences behind timestamps/authors.
+ * Converts the real c15t fixture with the native markdown pipeline. When
+ * LEADTYPE_MARKDOWN_BASELINE_DIR points at a pre-cleanup markdown tree, output
+ * must remain byte-identical to that baseline.
  */
 
 import { existsSync } from "node:fs";
@@ -10,16 +10,13 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { convertAllMdx } from "leadtype/convert";
-import {
-  defaultMarkdownTransforms,
-  includeMarkdown,
-  legacyDefaultMarkdownTransforms,
-} from "leadtype/markdown";
-
-type MarkdownEngine = "remark" | "satteri";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
+const BASELINE_DIR =
+  process.env.LEADTYPE_MARKDOWN_BASELINE_DIR ??
+  "/tmp/leadtype-remove-legacy-baseline/c15t-docs";
 
 if (!existsSync(SRC_DIR)) {
   process.stderr.write(
@@ -49,21 +46,12 @@ async function listMarkdownFiles(dir: string): Promise<string[]> {
   return files.sort((left, right) => left.localeCompare(right));
 }
 
-async function convertFixture(
-  engine: MarkdownEngine,
-  outDir: string
-): Promise<void> {
+async function convertFixture(outDir: string): Promise<void> {
   await convertAllMdx({
     srcDir: SRC_DIR,
     outDir,
-    markdownTransforms: [
-      includeMarkdown,
-      ...(engine === "remark"
-        ? legacyDefaultMarkdownTransforms
-        : defaultMarkdownTransforms),
-    ],
+    markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
     enrichFrontmatterFromGit: false,
-    markdownEngine: engine,
     failOnError: true,
   });
 }
@@ -75,35 +63,42 @@ function sameList(left: readonly string[], right: readonly string[]): boolean {
 }
 
 const tempRoot = await mkdtemp(join(tmpdir(), "leadtype-engine-parity-"));
-const remarkOut = join(tempRoot, "remark");
-const satteriOut = join(tempRoot, "satteri");
+const nativeOut = join(tempRoot, "native");
 
 try {
-  process.stdout.write(`Converting c15t docs with remark from ${SRC_DIR}\n`);
-  await convertFixture("remark", remarkOut);
-  process.stdout.write("Converting c15t docs with satteri\n");
-  await convertFixture("satteri", satteriOut);
+  process.stdout.write(
+    `Converting c15t docs with native pipeline from ${SRC_DIR}\n`
+  );
+  await convertFixture(nativeOut);
 
-  const remarkFiles = await listMarkdownFiles(remarkOut);
-  const satteriFiles = await listMarkdownFiles(satteriOut);
-  if (!sameList(remarkFiles, satteriFiles)) {
+  if (!existsSync(BASELINE_DIR)) {
+    const nativeFiles = await listMarkdownFiles(nativeOut);
+    process.stdout.write(
+      `Native conversion passed: ${nativeFiles.length} markdown file(s). Baseline not found at ${BASELINE_DIR}; skipped byte comparison.\n`
+    );
+    process.exit(0);
+  }
+
+  const baselineFiles = await listMarkdownFiles(BASELINE_DIR);
+  const nativeFiles = await listMarkdownFiles(nativeOut);
+  if (!sameList(baselineFiles, nativeFiles)) {
     throw new Error(
-      `remark=${remarkFiles.length} file(s), satteri=${satteriFiles.length} file(s)`
+      `baseline=${baselineFiles.length} file(s), native=${nativeFiles.length} file(s)`
     );
   }
 
-  for (const relativePath of remarkFiles) {
-    const [remarkMarkdown, satteriMarkdown] = await Promise.all([
-      readFile(join(remarkOut, relativePath), "utf8"),
-      readFile(join(satteriOut, relativePath), "utf8"),
+  for (const relativePath of baselineFiles) {
+    const [baselineMarkdown, nativeMarkdown] = await Promise.all([
+      readFile(join(BASELINE_DIR, relativePath), "utf8"),
+      readFile(join(nativeOut, relativePath), "utf8"),
     ]);
-    if (remarkMarkdown !== satteriMarkdown) {
+    if (baselineMarkdown !== nativeMarkdown) {
       throw new Error(`output differs for ${relativePath}`);
     }
   }
 
   process.stdout.write(
-    `Engine parity passed: ${remarkFiles.length} markdown file(s) match.\n`
+    `Native baseline parity passed: ${baselineFiles.length} markdown file(s) match.\n`
   );
 } finally {
   await rm(tempRoot, { recursive: true, force: true });

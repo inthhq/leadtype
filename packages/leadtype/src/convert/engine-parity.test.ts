@@ -16,10 +16,8 @@ import { runCli } from "../cli";
 import {
   defaultMarkdownTransforms,
   includeMarkdown,
-  legacyDefaultMarkdownTransforms,
   nativeMarkdownComponentsToMarkdown,
 } from "../markdown";
-import { remarkTypeTableToMarkdown } from "../markdown/plugins/type-table";
 import { convertAllMdx, convertMdxFile } from "./convert";
 
 const tempDirs: string[] = [];
@@ -83,16 +81,6 @@ const createMarkdownTransforms = (typeTableBasePath: string): PluggableList => [
   ] as Pluggable,
 ];
 
-const createLegacyMarkdownTransforms = (
-  typeTableBasePath: string
-): PluggableList => [
-  includeMarkdown,
-  ...legacyDefaultMarkdownTransforms.filter(
-    (plugin) => plugin !== remarkTypeTableToMarkdown
-  ),
-  [remarkTypeTableToMarkdown, { basePath: typeTableBasePath }] as Pluggable,
-];
-
 const listFiles = async (dir: string, ext?: string): Promise<string[]> => {
   if (!existsSync(dir)) {
     return [];
@@ -118,21 +106,21 @@ const listFiles = async (dir: string, ext?: string): Promise<string[]> => {
 };
 
 const compareTrees = async (
-  remarkDir: string,
-  satteriDir: string,
+  expectedDir: string,
+  actualDir: string,
   ext?: string
 ): Promise<string | undefined> => {
-  const remarkFiles = await listFiles(remarkDir, ext);
-  const satteriFiles = await listFiles(satteriDir, ext);
-  if (JSON.stringify(satteriFiles) !== JSON.stringify(remarkFiles)) {
-    return `file lists differ: remark=${remarkFiles.length}, satteri=${satteriFiles.length}`;
+  const expectedFiles = await listFiles(expectedDir, ext);
+  const actualFiles = await listFiles(actualDir, ext);
+  if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
+    return `file lists differ: expected=${expectedFiles.length}, actual=${actualFiles.length}`;
   }
-  for (const relativePath of remarkFiles) {
-    const [remarkMarkdown, satteriMarkdown] = await Promise.all([
-      readFile(path.join(remarkDir, relativePath), "utf8"),
-      readFile(path.join(satteriDir, relativePath), "utf8"),
+  for (const relativePath of expectedFiles) {
+    const [expectedMarkdown, actualMarkdown] = await Promise.all([
+      readFile(path.join(expectedDir, relativePath), "utf8"),
+      readFile(path.join(actualDir, relativePath), "utf8"),
     ]);
-    if (satteriMarkdown !== remarkMarkdown) {
+    if (actualMarkdown !== expectedMarkdown) {
       return `content differs: ${relativePath}`;
     }
   }
@@ -147,8 +135,8 @@ afterEach(async () => {
   );
 });
 
-describe("markdown engine parity", () => {
-  it("matches legacy remark output for high-value MDX constructs", async () => {
+describe("native markdown output", () => {
+  it("renders high-value MDX constructs through the native pipeline", async () => {
     const projectDir = await createTempProject("leadtype-engine-fixture-");
     await writeProjectFile(
       projectDir,
@@ -197,51 +185,46 @@ import { Demo } from "./demo";
 <AutoTypeTable name="FixtureOptions" path="./types.ts" />
 `
     );
-    const legacyPlugins = createLegacyMarkdownTransforms(projectDir);
     const plugins = createMarkdownTransforms(projectDir);
 
-    const [remarkResult, satteriResult] = await Promise.all([
-      convertMdxFile(sourcePath, legacyPlugins, false, {
-        markdownEngine: "remark",
-      }),
-      convertMdxFile(sourcePath, plugins, false, { markdownEngine: "satteri" }),
-    ]);
+    const result = await convertMdxFile(sourcePath, plugins);
     const defaultResult = await convertMdxFile(sourcePath, plugins);
 
-    expect(satteriResult.frontmatter).toBe(remarkResult.frontmatter);
-    expect(satteriResult.markdown).toBe(remarkResult.markdown);
-    expect(defaultResult.markdown).toBe(satteriResult.markdown);
-    expect(satteriResult.ast.type).toBe("root");
-    expect(satteriResult.ast.children.length).toBe(
-      remarkResult.ast.children.length
+    expect(result.frontmatter).toContain("title: Parity");
+    expect(result.markdown).toContain("# Parity");
+    expect(result.markdown).toContain("> Remember this.");
+    expect(result.markdown).toContain("## Included");
+    expect(result.markdown).toContain(
+      "|enabled|boolean|Whether parity is enabled."
     );
+    expect(result.markdown).not.toContain("<include");
+    expect(result.markdown).not.toContain("hidden comment");
+    expect(defaultResult.markdown).toBe(result.markdown);
+    expect(result.ast.type).toBe("root");
   });
 
-  it("matches legacy remark output across this repo's docs corpus", async () => {
+  it("generates deterministic native output across this repo's docs corpus", async () => {
     const outRoot = await createTempProject("leadtype-engine-corpus-");
-    const remarkOut = path.join(outRoot, "remark");
-    const satteriOut = path.join(outRoot, "satteri");
-    const legacyPlugins = createLegacyMarkdownTransforms(repoRoot);
+    const firstOut = path.join(outRoot, "first");
+    const secondOut = path.join(outRoot, "second");
     const plugins = createMarkdownTransforms(repoRoot);
 
     await convertAllMdx({
       srcDir: path.join(repoRoot, "docs"),
-      outDir: remarkOut,
-      markdownTransforms: legacyPlugins,
+      outDir: firstOut,
+      markdownTransforms: plugins,
       enrichFrontmatterFromGit: false,
-      markdownEngine: "remark",
       failOnError: true,
     });
     await convertAllMdx({
       srcDir: path.join(repoRoot, "docs"),
-      outDir: satteriOut,
+      outDir: secondOut,
       markdownTransforms: plugins,
       enrichFrontmatterFromGit: false,
-      markdownEngine: "satteri",
       failOnError: true,
     });
 
-    await expect(compareTrees(remarkOut, satteriOut, ".md")).resolves.toBe(
+    await expect(compareTrees(firstOut, secondOut, ".md")).resolves.toBe(
       undefined
     );
   });

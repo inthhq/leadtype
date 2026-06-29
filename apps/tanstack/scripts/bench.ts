@@ -12,15 +12,9 @@ import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { convertAllMdx } from "leadtype/convert";
 import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
-import {
-  defaultMarkdownTransforms,
-  includeMarkdown,
-  legacyDefaultMarkdownTransforms,
-} from "leadtype/markdown";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 const DEFAULT_RUNS = 3;
-const MARKDOWN_ENGINES = ["remark", "satteri"] as const;
-type BenchMarkdownEngine = (typeof MARKDOWN_ENGINES)[number];
 const parsedRuns = Number.parseInt(
   process.env.BENCH_RUNS ?? String(DEFAULT_RUNS),
   10
@@ -32,27 +26,6 @@ if (!Number.isInteger(parsedRuns) || parsedRuns < 1) {
   process.exit(2);
 }
 const RUNS = parsedRuns;
-const requestedEngines = process.env.BENCH_ENGINES ?? "remark,satteri";
-const ENGINES: BenchMarkdownEngine[] = [];
-for (const rawEngine of requestedEngines.split(",")) {
-  const engine = rawEngine.trim();
-  if (engine.length === 0) {
-    continue;
-  }
-  if (engine !== "remark" && engine !== "satteri") {
-    process.stderr.write(
-      `BENCH_ENGINES must contain remark,satteri values, got ${JSON.stringify(rawEngine)}\n`
-    );
-    process.exit(2);
-  }
-  if (!ENGINES.includes(engine)) {
-    ENGINES.push(engine);
-  }
-}
-if (ENGINES.length === 0) {
-  process.stderr.write("BENCH_ENGINES must include at least one engine.\n");
-  process.exit(2);
-}
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
 const OUT_DIR = join(process.cwd(), "public-bench");
@@ -148,79 +121,52 @@ function recordRun(
   runsByLabel.set(label, [value]);
 }
 
-function engineOrderForRun(runIndex: number): BenchMarkdownEngine[] {
-  if (ENGINES.length < 2 || runIndex % 2 === 0) {
-    return ENGINES;
-  }
-  return [...ENGINES].reverse();
-}
-
 async function bench(): Promise<Stats[]> {
   const runsByLabel = new Map<string, number[]>();
 
   for (let i = 0; i < RUNS; i++) {
-    for (const engine of engineOrderForRun(i)) {
-      await rm(OUT_DIR, { recursive: true, force: true });
-      const timingTotals = createTimingTotals();
+    await rm(OUT_DIR, { recursive: true, force: true });
+    const timingTotals = createTimingTotals();
 
-      const convertMs = await timed(() =>
-        convertAllMdx({
-          srcDir: SRC_DIR,
-          outDir: CONVERT_OUT_DIR,
-          markdownTransforms: [
-            includeMarkdown,
-            ...(engine === "remark"
-              ? legacyDefaultMarkdownTransforms
-              : defaultMarkdownTransforms),
-          ],
-          enrichFrontmatterFromGit: true,
-          markdownEngine: engine,
-          onTiming: (timing) => addTiming(timingTotals, timing),
-        })
-      );
+    const convertMs = await timed(() =>
+      convertAllMdx({
+        srcDir: SRC_DIR,
+        outDir: CONVERT_OUT_DIR,
+        markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
+        enrichFrontmatterFromGit: true,
+        onTiming: (timing) => addTiming(timingTotals, timing),
+      })
+    );
 
-      const llmMs = await timed(async () => {
-        await generateLlmsTxt({
-          srcDir: SRC_DIR,
-          outDir: OUT_DIR,
-          baseUrl: "https://leadtype.dev",
-          product: {
-            name: "Bench SDK",
-            summary: "Benchmark fixture.",
-          },
-          groups: BENCH_GROUPS,
-        });
-        await generateLLMFullContextFiles({
-          outDir: OUT_DIR,
-          baseUrl: "https://leadtype.dev",
-          product: { name: "Bench SDK" },
-          groups: BENCH_GROUPS,
-        });
+    const llmMs = await timed(async () => {
+      await generateLlmsTxt({
+        srcDir: SRC_DIR,
+        outDir: OUT_DIR,
+        baseUrl: "https://leadtype.dev",
+        product: {
+          name: "Bench SDK",
+          summary: "Benchmark fixture.",
+        },
+        groups: BENCH_GROUPS,
       });
+      await generateLLMFullContextFiles({
+        outDir: OUT_DIR,
+        baseUrl: "https://leadtype.dev",
+        product: { name: "Bench SDK" },
+        groups: BENCH_GROUPS,
+      });
+    });
 
-      recordRun(
-        runsByLabel,
-        `${engine}:parse`,
-        Math.round(timingTotals.parseMs)
-      );
-      recordRun(
-        runsByLabel,
-        `${engine}:transform`,
-        Math.round(timingTotals.transformMs)
-      );
-      recordRun(
-        runsByLabel,
-        `${engine}:stringify`,
-        Math.round(timingTotals.stringifyMs)
-      );
-      recordRun(runsByLabel, `${engine}:convert`, convertMs);
-      recordRun(runsByLabel, `${engine}:llm`, llmMs);
-      recordRun(runsByLabel, `${engine}:convert+llm`, convertMs + llmMs);
+    recordRun(runsByLabel, "parse", Math.round(timingTotals.parseMs));
+    recordRun(runsByLabel, "transform", Math.round(timingTotals.transformMs));
+    recordRun(runsByLabel, "stringify", Math.round(timingTotals.stringifyMs));
+    recordRun(runsByLabel, "convert", convertMs);
+    recordRun(runsByLabel, "llm", llmMs);
+    recordRun(runsByLabel, "convert+llm", convertMs + llmMs);
 
-      process.stdout.write(
-        `run ${i + 1}/${RUNS} ${engine}: convert=${convertMs}ms  llm=${llmMs}ms  parse=${Math.round(timingTotals.parseMs)}ms  transform=${Math.round(timingTotals.transformMs)}ms  stringify=${Math.round(timingTotals.stringifyMs)}ms\n`
-      );
-    }
+    process.stdout.write(
+      `run ${i + 1}/${RUNS}: convert=${convertMs}ms  llm=${llmMs}ms  parse=${Math.round(timingTotals.parseMs)}ms  transform=${Math.round(timingTotals.transformMs)}ms  stringify=${Math.round(timingTotals.stringifyMs)}ms\n`
+    );
   }
 
   await rm(OUT_DIR, { recursive: true, force: true });
@@ -240,35 +186,6 @@ function renderTable(stats: Stats[]): string {
     const series = stat.runs.map((x) => `${x}ms`).join(", ");
     lines.push(
       `| \`${stat.label}\` | ${m}ms | ${min}ms | ${max}ms | ${series} |`
-    );
-  }
-  return lines.join("\n");
-}
-
-function renderSpeedups(stats: Stats[]): string {
-  if (!(ENGINES.includes("remark") && ENGINES.includes("satteri"))) {
-    return "";
-  }
-  const byLabel = new Map(stats.map((stat) => [stat.label, median(stat.runs)]));
-  const stages = [
-    "parse",
-    "transform",
-    "stringify",
-    "convert",
-    "llm",
-    "convert+llm",
-  ];
-  const lines = ["\n\n#### Satteri speedup vs remark\n"];
-  for (const stage of stages) {
-    const remark = byLabel.get(`remark:${stage}`);
-    const satteri = byLabel.get(`satteri:${stage}`);
-    if (remark === undefined || satteri === undefined) {
-      continue;
-    }
-    const delta = remark - satteri;
-    const speedup = satteri === 0 ? "n/a" : `${(remark / satteri).toFixed(2)}x`;
-    lines.push(
-      `- \`${stage}\`: ${speedup} (${delta >= 0 ? "-" : "+"}${Math.abs(delta)}ms)`
     );
   }
   return lines.join("\n");
@@ -298,8 +215,8 @@ async function countMdxFiles(dir: string): Promise<number> {
 const stats = await bench();
 const table = renderTable(stats);
 const mdxCount = await countMdxFiles(SRC_DIR);
-const header = `### leadtype benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), engines=${ENGINES.join(",")}, git enrichment on, ${RUNS} runs each.\n\n`;
-const report = header + table + renderSpeedups(stats);
+const header = `### leadtype benchmark\n\nFixture: c15t docs (${mdxCount} .mdx files), native markdown pipeline, git enrichment on, ${RUNS} run(s).\n\n`;
+const report = header + table;
 
 process.stdout.write(`\n${report}\n`);
 

@@ -1,9 +1,6 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
-export {
-  remarkInclude,
-  remarkInclude as includeMarkdown,
-} from "../remark/plugins/include.remark";
+export { remarkInclude as includeMarkdown } from "../remark/plugins/include.remark";
 export { type Builders, b, parseMarkdown } from "./builders";
 export {
   type NativeMarkdownDispatcherOptions,
@@ -11,12 +8,8 @@ export {
 } from "./component-dispatcher";
 export {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
-  builtinFlattenerPlugins,
   builtinMarkdownFlattenerTransforms,
   defaultMarkdownTransforms,
-  defaultRemarkPlugins,
-  legacyBuiltinMarkdownFlattenerTransforms,
-  legacyDefaultMarkdownTransforms,
 } from "./default-transforms";
 export {
   type ComponentFlattenerSpec,
@@ -54,7 +47,6 @@ export {
 export {
   extractTypeFromFile,
   remarkTypeTableToMarkdown,
-  remarkTypeTableToMarkdown as typeTableToMarkdown,
 } from "./plugins/type-table";
 export { stringifyMarkdown } from "./stringify";
 export {

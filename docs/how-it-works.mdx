@@ -1,6 +1,6 @@
 ---
 title: "How it works"
-description: "The mental model: one MDX source, a remark pipeline, two output modes, three audiences."
+description: "The mental model: one MDX source, a markdown transform pipeline, two output modes, three audiences."
 ---
 
 Leadtype takes one input — a folder of MDX — and produces every shape your docs need to take. This page names every piece so the rest of the docs make sense.
@@ -10,7 +10,7 @@ Leadtype takes one input — a folder of MDX — and produces every shape your d
 <Mermaid chart={`flowchart TB
   src["docs/*.mdx<br/>title · description · group · body"]
   fm["frontmatter parser"]
-  remark["remark plugin stack<br/>(strip imports → flatten components)"]
+  transforms["markdown transforms<br/>(strip imports → flatten components)"]
   groups["group resolver<br/>(nav tree from frontmatter)"]
   md["docs/*.md"]
   site_idx["llms.txt · llms-full.txt<br/>sitemap · robots<br/>(site mode)"]
@@ -18,18 +18,18 @@ Leadtype takes one input — a folder of MDX — and produces every shape your d
   agents_md["AGENTS.md<br/>(--bundle mode only)"]
   nav["navigation manifest<br/>(group → page)"]
   src --> fm
-  fm --> remark
+  fm --> transforms
   fm --> groups
-  remark --> md
+  transforms --> md
   md --> site_idx
   md --> search
   groups --> site_idx
   groups --> agents_md
   groups --> nav`} />
 
-The remark stack is what turns interactive MDX components into agent-readable markdown. JSX gets *flattened* — a `<Callout>` becomes a blockquote, a `<Tabs>` becomes a sequence of bold headings, a `<TypeTable>` becomes a markdown table. The flattened markdown is what every other artifact consumes.
+The markdown transform stack turns interactive MDX components into agent-readable markdown. JSX gets *flattened* — a `<Callout>` becomes a blockquote, a `<Tabs>` becomes a sequence of bold headings, a `<TypeTable>` becomes a markdown table. The flattened markdown is what every other artifact consumes.
 
-For the exact stack, see [Remark plugins](/docs/reference/remark). For the component contract, see [Components](/docs/writing/components).
+For the exact stack, see [Markdown transforms](/docs/reference/markdown). For the component contract, see [Components](/docs/writing/components).
 
 ## Two output modes
 
@@ -166,7 +166,7 @@ A few terms you will see throughout the docs.
 The `leadtype generate` command runs in a fixed order — each stage depends on the previous one's output:
 
 1. **Parse frontmatter** for every `.mdx` under `docs/`.
-2. **Convert** each file through the [default remark stack](/docs/reference/remark) and write `.md` to the output directory (e.g. `public/docs/` in site mode, `<package>/docs/` with `--bundle`).
+2. **Convert** each file through the [default markdown transform stack](/docs/reference/markdown) and write `.md` to the output directory (e.g. `public/docs/` in site mode, `<package>/docs/` with `--bundle`).
 3. **Resolve groups** from frontmatter, validate every page's `group:` matches a known slug.
 4. In **site mode** (default): generate `llms.txt`, root `llms-full.txt`, the BM25 search index, and Agent Readability discovery files from the converted markdown.
 5. With **`--bundle`**: write `AGENTS.md` at the output root with relative `./docs/<topic>.md` links. Skip URL-anchored site files (`llms.txt`, `llms-full.txt`, sitemap, robots). If `docs.config.ts` sets `agents.mcp.enabled`, also write the package-local search index and Agent Readability manifest used by `leadtype mcp --package`.

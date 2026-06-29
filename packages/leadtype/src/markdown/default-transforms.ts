@@ -1,10 +1,10 @@
 /**
  * The built-in markdown transform set, split by scheduling phase.
  *
- * `defaultMarkdownTransforms` keeps its historical order (resolve plugins first,
- * then component flatteners). The split exports let the custom-flattener
- * sub-pipeline reuse exactly the flatten-phase plugins, and let phase tagging
- * live in one place. See `internal/remark-phase.ts` for how phases are ordered.
+ * `defaultMarkdownTransforms` keeps its historical order: resolve transforms
+ * first, then the native component dispatcher. The split exports let the
+ * custom-flattener sub-pipeline reuse exactly the flatten-phase transforms, and
+ * let phase tagging live in one place.
  */
 
 import { tagFlattenerNames, tagPhase } from "../internal/remark-phase";
@@ -27,7 +27,7 @@ import { remarkSectionToMarkdown } from "./plugins/section";
 import { remarkStepsToMarkdown } from "./plugins/steps";
 import { remarkTabsToMarkdown } from "./plugins/tabs";
 import { remarkTopicSwitcherToMarkdown } from "./plugins/topic-switcher";
-import { remarkTypeTableToMarkdown as typeTableToMarkdown } from "./plugins/type-table";
+import { remarkTypeTableToMarkdown } from "./plugins/type-table";
 
 // Resolve-phase plugins run before any flattener: includes are expanded,
 // placeholders resolved, imports stripped. `includeMarkdown` is optional (users
@@ -45,7 +45,7 @@ tagFlattenerNames(remarkDetailsToMarkdown, ["Details", "details"]);
 tagFlattenerNames(remarkMermaidToMarkdown, ["Mermaid"]);
 tagFlattenerNames(remarkCommandTabsToMarkdown, ["CommandTabs"]);
 tagFlattenerNames(remarkTabsToMarkdown, ["Tab", "Tabs"]);
-tagFlattenerNames(typeTableToMarkdown, [
+tagFlattenerNames(remarkTypeTableToMarkdown, [
   "AutoTypeTable",
   "ExtractedTypeTable",
   "TypeTable",
@@ -76,16 +76,13 @@ export const builtinMarkdownFlattenerTransforms = [
   remarkCommandTabsToMarkdown,
   remarkStepsToMarkdown,
   remarkTabsToMarkdown,
-  typeTableToMarkdown,
+  remarkTypeTableToMarkdown,
   remarkAccordionToMarkdown,
   remarkTopicSwitcherToMarkdown,
   remarkFileTreeToMarkdown,
   remarkPromptToMarkdown,
   remarkExampleToMarkdown,
 ];
-
-export const legacyBuiltinMarkdownFlattenerTransforms =
-  builtinMarkdownFlattenerTransforms;
 
 /**
  * Component names the built-in flattener stack recognizes — the tag contract
@@ -121,22 +118,11 @@ export const BUILTIN_FLATTENER_COMPONENT_NAMES = [
 ] as const;
 
 /**
- * Default remark plugins for MDX → Markdown conversion for agent/LLM docs.
- * Order matters: imports are stripped first, then components are flattened
- * into markdown equivalents.
+ * Default transforms for MDX → Markdown conversion for agent/LLM docs.
+ * Order matters: imports are stripped first, then components are flattened by
+ * the native dispatcher.
  */
 export const defaultMarkdownTransforms = [
   ...resolvePlugins,
   nativeMarkdownComponentsToMarkdown,
 ];
-
-export const legacyDefaultMarkdownTransforms = [
-  ...resolvePlugins,
-  ...legacyBuiltinMarkdownFlattenerTransforms,
-];
-
-/** @deprecated Use `builtinMarkdownFlattenerTransforms` from `leadtype/markdown`. */
-export const builtinFlattenerPlugins = builtinMarkdownFlattenerTransforms;
-
-/** @deprecated Use `defaultMarkdownTransforms` from `leadtype/markdown`. */
-export const defaultRemarkPlugins = defaultMarkdownTransforms;

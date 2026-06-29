@@ -90,7 +90,6 @@ describe("package surface", () => {
       "./nuxt",
       "./next",
       "./next/client",
-      "./remark",
       "./markdown",
       "./transformers",
       "./convert",
