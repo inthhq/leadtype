@@ -6,7 +6,15 @@ import path from "node:path";
 import { promisify } from "node:util";
 import * as v from "valibot";
 import { afterEach, describe, expect, it } from "vitest";
-import { convertAllMdx, convertMdxFile } from "./convert";
+import {
+  createIncludeResolutionCache,
+  remarkInclude,
+} from "../remark/plugins/include.remark";
+import {
+  convertAllMdx,
+  convertMdxFile,
+  resolveMdxFrontmatter,
+} from "./convert";
 
 const execFileAsync = promisify(execFile);
 const tempDirs: string[] = [];
@@ -339,6 +347,49 @@ describe("convertMdxFile", () => {
     const result = await convertMdxFile(filePath, [tracerPlugin]);
     expect(pluginRan).toBe(true);
     expect(result.markdown).toContain("# Hi");
+  });
+
+  it("preserves VFile data as an object when no include cache is supplied", async () => {
+    const dir = await createTempProject();
+    const filePath = path.join(dir, "page.mdx");
+    await writeFile(filePath, "# Hi\n\nBody.\n");
+    let sawVFileData = false;
+
+    const dataReaderPlugin =
+      () => (_tree: unknown, file: { data: unknown }) => {
+        expect(file.data).toEqual({});
+        sawVFileData = true;
+      };
+
+    await resolveMdxFrontmatter(filePath, [dataReaderPlugin]);
+
+    expect(sawVFileData).toBe(true);
+  });
+
+  it("shares include cache through VFile data during conversion", async () => {
+    const dir = await createTempProject();
+    const pagePath = path.join(dir, "page.mdx");
+    const partialPath = path.join(dir, "partial.mdx");
+    await writeFile(
+      partialPath,
+      '<section id="one">\nOne\n</section>\n<section id="two">\nTwo\n</section>\n'
+    );
+    await writeFile(
+      pagePath,
+      '# Page\n\n<include src="./partial.mdx#one" />\n\n<include src="./partial.mdx#two" />\n'
+    );
+    const cache = createIncludeResolutionCache();
+
+    const result = await convertMdxFile(pagePath, [remarkInclude], false, {
+      includeResolutionCache: cache,
+    });
+
+    expect(result.markdown).toContain("One");
+    expect(result.markdown).toContain("Two");
+    expect(cache.stats.rawFileReads).toBe(1);
+    expect(cache.stats.rawFileHits).toBe(1);
+    expect(cache.stats.markdownParses).toBe(1);
+    expect(cache.stats.markdownParseHits).toBe(1);
   });
 
   it("validates and exposes transformed custom frontmatter", async () => {

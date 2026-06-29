@@ -44,7 +44,13 @@ export {
   parseItemsArray,
   processContentNode,
 } from "./libs";
-export { remarkInclude } from "./plugins/include.remark";
+export {
+  createIncludeResolutionCache,
+  type IncludeResolutionCache,
+  type IncludeResolutionCacheStats,
+  type RemarkIncludeOptions,
+  remarkInclude,
+} from "./plugins/include.remark";
 export {
   extractTypeFromFile,
   remarkTypeTableToMarkdown,
