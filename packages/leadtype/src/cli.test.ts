@@ -278,6 +278,7 @@ describe("leadtype CLI", () => {
     expect(
       existsSync(path.join(outDir, ".well-known", "mcp", "server-card.json"))
     ).toBe(true);
+    expect(existsSync(path.join(outDir, "mcp.json"))).toBe(true);
 
     const mcpServerCard = JSON.parse(
       await readFile(
@@ -300,6 +301,12 @@ describe("leadtype CLI", () => {
       endpoint: "https://leadtype.dev/leadtype/mcp",
     });
     expect(mcpServerCard.capabilities).toEqual({ tools: {} });
+    expect(mcpServerCard.serverInfo).toEqual(
+      expect.objectContaining({
+        instructions:
+          "Search and read the documentation for Shared MDX conversion, linting, and LLM-doc generation package.",
+      })
+    );
 
     const docsSummary = await readFile(
       path.join(outDir, "docs", "llms.txt"),
@@ -619,6 +626,7 @@ describe("leadtype CLI", () => {
         docsLlmsFullTxt?: string;
         llmsFullTxt: string;
         mcpServerCard: string;
+        mcpJson: string;
         robotsTxt: string;
         searchIndex: string;
         sitemapXml: string;
@@ -638,6 +646,7 @@ describe("leadtype CLI", () => {
     expect(result.files.mcpServerCard).toBe(
       path.join(outDir, ".well-known", "mcp", "server-card.json")
     );
+    expect(result.files.mcpJson).toBe(path.join(outDir, "mcp.json"));
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
     expect(result.files.robotsTxt).toBe(path.join(outDir, "robots.txt"));
     expect(result.files.sitemapXml).toBe(path.join(outDir, "sitemap.xml"));
