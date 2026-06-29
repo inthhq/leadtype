@@ -13,8 +13,8 @@ import {
 import type { DocsArtifacts } from "./artifacts.js";
 import { type McpServerCardServerInfo, resolveMcpServerInfo } from "./card.js";
 import {
-  DocsToolInputError,
   type DefineDocsToolsOptions,
+  DocsToolInputError,
   type DocsToolName,
   defineDocsTools,
 } from "./tools.js";
@@ -35,7 +35,9 @@ function createStructuredJsonRpcError(
   return error;
 }
 
-function isStructuredJsonRpcError(error: unknown): error is StructuredJsonRpcError {
+function isStructuredJsonRpcError(
+  error: unknown
+): error is StructuredJsonRpcError {
   return (
     error instanceof Error &&
     "code" in error &&
@@ -66,7 +68,9 @@ export async function createDocsMcpServer(
     },
     {
       capabilities: { tools: {} },
-      ...(serverInfo.instructions ? { instructions: serverInfo.instructions } : {}),
+      ...(serverInfo.instructions
+        ? { instructions: serverInfo.instructions }
+        : {}),
     }
   );
 
