@@ -1,6 +1,11 @@
+import { performance } from "node:perf_hooks";
 import type { Parent, Root, RootContent } from "mdast";
 import type { Transformer } from "unified";
 import type { VFile } from "vfile";
+import {
+  isMarkdownProfileEnabled,
+  recordMarkdownProfile,
+} from "../internal/markdown-profile";
 import type { MdxNode } from "./libs";
 import { accordionToMarkdown } from "./plugins/accordion";
 import { audienceToMarkdown } from "./plugins/audience";
@@ -165,7 +170,15 @@ function processChild(
     processChildren(node, handlers, minPriority, match.priority, file);
   }
 
+  const profileEnabled = isMarkdownProfileEnabled();
+  const handlerStartedAt = profileEnabled ? performance.now() : 0;
   const replacement = match.handler.process(node, file);
+  if (profileEnabled) {
+    recordMarkdownProfile(
+      `dispatcher:${match.handler.names[0] ?? "unknown"}`,
+      performance.now() - handlerStartedAt
+    );
+  }
   if (!replacement) {
     if (isParent(node)) {
       processChildren(node, handlers, match.priority + 1, maxPriority, file);

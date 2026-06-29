@@ -1,6 +1,11 @@
+import { performance } from "node:perf_hooks";
 import type { Root } from "mdast";
 import type { Pluggable, PluggableList } from "unified";
 import { VFile } from "vfile";
+import {
+  isMarkdownProfileEnabled,
+  recordMarkdownProfile,
+} from "../internal/markdown-profile";
 import {
   getFlattenerNames,
   sortRemarkPluginsByPhase,
@@ -27,7 +32,16 @@ type Transformer<Tree extends Root, Result extends Root> = (
 
 type PreparedMdastTransform = LeadtypeMdastTransform & {
   componentNames?: readonly string[];
+  profileName?: string;
 };
+
+function pluginName(entry: Pluggable): string {
+  const plugin = Array.isArray(entry) ? entry[0] : entry;
+  if (typeof plugin !== "function") {
+    return "anonymous";
+  }
+  return plugin.name || "anonymous";
+}
 
 function createVFile(context: LeadtypeMdastTransformContext): VFile {
   return new VFile({
@@ -56,6 +70,7 @@ const toTransform = (entry: Pluggable): LeadtypeMdastTransform | null => {
   if (componentNames.length > 0) {
     transform.componentNames = componentNames;
   }
+  transform.profileName = pluginName(entry);
 
   return transform;
 };
@@ -117,17 +132,32 @@ export async function runMdastTransforms(
 ): Promise<Root> {
   let current = tree;
   const file = createVFile(context);
+  const profileEnabled = isMarkdownProfileEnabled();
   let componentNames = collectComponentNames(current);
   let componentNamesDirty = false;
   for (const transform of transforms) {
     if (componentNamesDirty) {
+      const scanStartedAt = profileEnabled ? performance.now() : 0;
       componentNames = collectComponentNames(current);
+      if (profileEnabled) {
+        recordMarkdownProfile(
+          "transform:component-name-scan",
+          performance.now() - scanStartedAt
+        );
+      }
       componentNamesDirty = false;
     }
     if (!shouldRunTransform(transform, componentNames)) {
       continue;
     }
+    const transformStartedAt = profileEnabled ? performance.now() : 0;
     const next = await transform(current, context, file);
+    if (profileEnabled) {
+      recordMarkdownProfile(
+        `transform:${(transform as PreparedMdastTransform).profileName ?? "anonymous"}`,
+        performance.now() - transformStartedAt
+      );
+    }
     if (next) {
       current = next;
     }
@@ -152,17 +182,32 @@ export function runMdastTransformsSync(
 ): Root {
   let current = tree;
   const file = createVFile(context);
+  const profileEnabled = isMarkdownProfileEnabled();
   let componentNames = collectComponentNames(current);
   let componentNamesDirty = false;
   for (const transform of transforms) {
     if (componentNamesDirty) {
+      const scanStartedAt = profileEnabled ? performance.now() : 0;
       componentNames = collectComponentNames(current);
+      if (profileEnabled) {
+        recordMarkdownProfile(
+          "transform:component-name-scan",
+          performance.now() - scanStartedAt
+        );
+      }
       componentNamesDirty = false;
     }
     if (!shouldRunTransform(transform, componentNames)) {
       continue;
     }
+    const transformStartedAt = profileEnabled ? performance.now() : 0;
     const next = transform(current, context, file);
+    if (profileEnabled) {
+      recordMarkdownProfile(
+        `transform:${(transform as PreparedMdastTransform).profileName ?? "anonymous"}`,
+        performance.now() - transformStartedAt
+      );
+    }
     if (isPromiseLike(next)) {
       throw new Error("Cannot run async markdown transform in sync context.");
     }

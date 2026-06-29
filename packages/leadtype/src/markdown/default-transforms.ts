@@ -33,6 +33,7 @@ import { remarkTypeTableToMarkdown as typeTableToMarkdown } from "./plugins/type
 // placeholders resolved, imports stripped. `includeMarkdown` is optional (users
 // prepend it) but is tagged here so it still schedules ahead of flatteners.
 tagPhase(includeMarkdown, "resolve");
+tagFlattenerNames(includeMarkdown, ["import", "include-c15t", "include"]);
 tagPhase(remarkRemoveImports, "resolve");
 tagPhase(remarkRemoveJsxComments, "resolve");
 tagPhase(remarkResolveDocPlaceholders, "resolve");

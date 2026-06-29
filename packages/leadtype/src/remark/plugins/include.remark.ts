@@ -11,17 +11,34 @@
  *   remark.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
+import { performance } from "node:perf_hooks";
 import type { Code, Root } from "mdast";
 import { mdxToMdast } from "satteri";
 import type { Transformer } from "unified";
 import { visit } from "unist-util-visit";
 import { logger } from "../../internal/logger";
+import {
+  isMarkdownProfileEnabled,
+  recordMarkdownProfile,
+} from "../../internal/markdown-profile";
 
 // Regex patterns defined at top level for performance
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
+const INCLUDE_CACHE_SEPARATOR = "\0";
+const INCLUDE_TAG_NAMES = new Set(["import", "include-c15t", "include"]);
+const includeContentCache = new Map<string, string>();
+const includePathCache = new Map<string, string>();
+const includeResolutionInflight = new Map<string, Promise<IncludeResolution>>();
+
+type IncludeCandidate = {
+  node: Record<string, unknown>;
+  parent: Record<string, unknown> | null;
+  parentContainer: Record<string, unknown>[] | null;
+  parentIndex: number;
+};
 
 // Simple frontmatter parser for our build pipeline
 function stripFrontmatterBlock(content: string): { content: string } {
@@ -211,13 +228,25 @@ function replaceTarget(
   parent: Record<string, unknown> | null,
   replacement:
     | { type: "root"; children: unknown[] }
-    | { type: "paragraph"; children: unknown[] }
+    | { type: "paragraph"; children: unknown[] },
+  parentLocation?: Pick<IncludeCandidate, "parentContainer" | "parentIndex">
 ) {
   // If the include lives inside a paragraph but the replacement is a root
   // (multiple top-level nodes), splice the replacement children into the
   // grandparent's children in place of the whole paragraph. Previously we
   // mutated the paragraph into `{ type: "root" }`, producing invalid mdast.
   if (parent && isParagraph(parent) && replacement.type === "root") {
+    if (
+      parentLocation?.parentContainer?.[parentLocation.parentIndex] === parent
+    ) {
+      parentLocation.parentContainer.splice(
+        parentLocation.parentIndex,
+        1,
+        ...(replacement.children as Record<string, unknown>[])
+      );
+      return;
+    }
+
     const found = findContainer(tree, parent);
     if (found) {
       found.container.splice(
@@ -245,8 +274,6 @@ function annotateNestedIncludes(root: Root, baseDir: string | null): void {
     return;
   }
 
-  const includeTagNames = ["import", "include-c15t", "include"];
-
   visit(root, (node) => {
     const record = node as unknown as Record<string, unknown>;
     const nodeType = record.type as string | undefined;
@@ -255,7 +282,7 @@ function annotateNestedIncludes(root: Root, baseDir: string | null): void {
     if (
       (nodeType === "mdxJsxFlowElement" || nodeType === "mdxJsxTextElement") &&
       nodeName &&
-      includeTagNames.includes(nodeName)
+      INCLUDE_TAG_NAMES.has(nodeName)
     ) {
       const attributes =
         (record.attributes as Record<string, unknown>[] | undefined) ?? [];
@@ -285,7 +312,11 @@ function includeContentAsMarkdown(
   node: Record<string, unknown>,
   includeFile: string,
   bodyContent: string,
-  options: { section?: string; parser?: ParserLike; baseDir?: string | null }
+  options: {
+    section?: string;
+    parser?: ParserLike;
+    baseDir?: string | null;
+  }
 ): void {
   try {
     const chosenParser = options.parser ?? satteriParser;
@@ -402,6 +433,49 @@ export type IncludeResolution =
       resolvedPath: string;
     };
 
+function includePathCacheKey(
+  file: string,
+  options: ResolveIncludePathOptions
+): string {
+  return [
+    file,
+    options.fromDir,
+    ...(options.basePaths ?? []),
+    options.baseDir ?? "",
+    options.cwd ? "cwd" : "",
+  ].join(INCLUDE_CACHE_SEPARATOR);
+}
+
+function resolveIncludePathCached(
+  file: string,
+  options: ResolveIncludePathOptions
+): string {
+  const cacheKey = includePathCacheKey(file, options);
+  const cached = includePathCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const resolvedPath = resolveIncludePath(file, options);
+  includePathCache.set(cacheKey, resolvedPath);
+  return resolvedPath;
+}
+
+function readIncludeFileCached(resolvedPath: string): string {
+  const cached = includeContentCache.get(resolvedPath);
+  if (cached) {
+    return cached;
+  }
+
+  const profileEnabled = isMarkdownProfileEnabled();
+  const readStartedAt = profileEnabled ? performance.now() : 0;
+  const raw = readFileSync(resolvedPath, "utf8");
+  if (profileEnabled) {
+    recordMarkdownProfile("include:read", performance.now() - readStartedAt);
+  }
+  includeContentCache.set(resolvedPath, raw);
+  return raw;
+}
+
 /**
  * Read the file referenced by an include specifier and classify it as either
  * `markdown` (parse and splice as AST) or `code` (render as a code fence).
@@ -447,18 +521,111 @@ export async function resolveInclude(
   };
 }
 
+async function resolveIncludeInflight(
+  specifier: string,
+  options: ResolveIncludeOptions
+): Promise<IncludeResolution> {
+  const { file, section } = parseIncludeSpecifier(specifier);
+  const profileEnabled = isMarkdownProfileEnabled();
+  const pathStartedAt = profileEnabled ? performance.now() : 0;
+  const resolvedPath = resolveIncludePathCached(file, {
+    fromDir: options.fromDir,
+    basePaths: options.basePaths,
+    baseDir: options.baseDir,
+    cwd: options.cwd,
+  });
+  if (profileEnabled) {
+    recordMarkdownProfile(
+      "include:resolve-path",
+      performance.now() - pathStartedAt
+    );
+  }
+  const isMarkdownFile = file.endsWith(".md") || file.endsWith(".mdx");
+  const asCode = Boolean(options.lang) || !isMarkdownFile;
+  const cacheKey = [
+    resolvedPath,
+    options.lang ?? "",
+    section ?? "",
+    asCode ? "code" : "markdown",
+  ].join(INCLUDE_CACHE_SEPARATOR);
+
+  const cached = includeResolutionInflight.get(cacheKey);
+  if (cached) {
+    return await cached;
+  }
+
+  const pending = (async () => {
+    const raw = readIncludeFileCached(resolvedPath);
+    if (asCode) {
+      return {
+        kind: "code" as const,
+        content: raw,
+        lang: options.lang ?? extname(file).slice(1),
+        resolvedPath,
+      };
+    }
+
+    const { content } = stripFrontmatterBlock(raw);
+    return {
+      kind: "markdown" as const,
+      content,
+      resolvedPath,
+      ...(section ? { section } : {}),
+    };
+  })();
+
+  includeResolutionInflight.set(cacheKey, pending);
+  try {
+    return await pending;
+  } finally {
+    includeResolutionInflight.delete(cacheKey);
+  }
+}
+
 // Check if node is an include node
-function isIncludeNode(
-  node: Record<string, unknown>,
-  tagName: string
-): boolean {
+function isIncludeNode(node: Record<string, unknown>): boolean {
   const nodeType = node.type as string;
   const nodeName = node.name as string;
 
   return (
     (nodeType === "mdxJsxFlowElement" || nodeType === "mdxJsxTextElement") &&
-    nodeName === tagName
+    INCLUDE_TAG_NAMES.has(nodeName)
   );
+}
+
+function collectIncludeCandidates(tree: Root): IncludeCandidate[] {
+  const candidates: IncludeCandidate[] = [];
+
+  function walk(
+    node: Record<string, unknown>,
+    container: Record<string, unknown>[] | null,
+    index: number
+  ): void {
+    const children = node.children as Record<string, unknown>[] | undefined;
+    if (!children) {
+      return;
+    }
+
+    for (let childIndex = 0; childIndex < children.length; childIndex += 1) {
+      const child = children[childIndex];
+      if (!child) {
+        continue;
+      }
+      if (isIncludeNode(child)) {
+        candidates.push({
+          node: child,
+          parent: node,
+          parentContainer: container,
+          parentIndex: index,
+        });
+        continue;
+      }
+      walk(child, children, childIndex);
+    }
+  }
+
+  walk(tree as unknown as Record<string, unknown>, null, -1);
+  return candidates;
 }
 
 // Process a single include node — thin AST adapter around resolveInclude.
@@ -490,15 +657,31 @@ async function processIncludeNode(
 
   const { file: includeFile } = parseIncludeSpecifier(specifier);
 
+  // Register dependency with host compiler (for hot reload / rebuilds). Compiler
+  // integrations must see fresh file contents, so they use uncached resolution.
+  const compiler = (
+    fileData as
+      | { _compiler?: { addDependency?: (p: string) => void } }
+      | undefined
+  )?._compiler;
+  const includeResolver = compiler ? resolveInclude : resolveIncludeInflight;
   let resolution: IncludeResolution;
   try {
-    resolution = await resolveInclude(specifier, {
+    const profileEnabled = isMarkdownProfileEnabled();
+    const resolveStartedAt = profileEnabled ? performance.now() : 0;
+    resolution = await includeResolver(specifier, {
       fromDir: workingDir,
       basePaths,
       baseDir: params.baseDir ?? undefined,
       cwd: "cwd" in params,
       lang: params.lang ?? undefined,
     });
+    if (profileEnabled) {
+      recordMarkdownProfile(
+        "include:resolve",
+        performance.now() - resolveStartedAt
+      );
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn({
@@ -523,12 +706,6 @@ async function processIncludeNode(
     return;
   }
 
-  // Register dependency with host compiler (for hot reload / rebuilds)
-  const compiler = (
-    fileData as
-      | { _compiler?: { addDependency?: (p: string) => void } }
-      | undefined
-  )?._compiler;
   compiler?.addDependency?.(resolution.resolvedPath);
 
   if (resolution.kind === "code") {
@@ -550,18 +727,24 @@ async function processIncludeNode(
     ? hostProcessor.getProcessor(ext)
     : satteriParser;
 
+  const profileEnabled = isMarkdownProfileEnabled();
+  const parseStartedAt = profileEnabled ? performance.now() : 0;
   includeContentAsMarkdown(node, includeFile, resolution.content, {
     baseDir: dirname(resolution.resolvedPath),
     section: resolution.section,
     parser: parser as ParserLike,
   });
+  if (profileEnabled) {
+    recordMarkdownProfile(
+      "include:parse-mutate",
+      performance.now() - parseStartedAt
+    );
+  }
 }
 
 export function remarkInclude(
   basePaths: string[] = []
 ): Transformer<Root, Root> {
-  const TagNames = ["import", "include-c15t", "include"];
-
   return async (tree, file) => {
     const workingDir = file.path ? dirname(file.path) : process.cwd();
 
@@ -576,56 +759,57 @@ export function remarkInclude(
     const MAX_PASSES = 10;
 
     for (let pass = 0; pass < MAX_PASSES; pass += 1) {
-      // Collect candidate includes first (don't kick off work inside the
-      // visitor). We then process them sequentially so replaceTarget
-      // mutations don't race on a shared grandparent — an earlier sibling's
-      // splice would otherwise invalidate a later sibling's findContainer
-      // lookup.
-      type Candidate = {
-        node: Record<string, unknown>;
-        parent: Record<string, unknown> | null;
-      };
-      const candidates: Candidate[] = [];
-
-      visit(tree, (node, _idx, parent) => {
-        const nodeRecord = node as unknown as Record<string, unknown>;
-        const isMatch = TagNames.some((t) => isIncludeNode(nodeRecord, t));
-        if (!isMatch) {
-          return;
-        }
-        candidates.push({
-          node: nodeRecord,
-          parent: (parent as unknown as Record<string, unknown>) ?? null,
-        });
-        // Skip traversing into this node's children; they'll be visited
-        // on the next pass if they still contain includes.
-        return "skip";
-      });
+      const profileEnabled = isMarkdownProfileEnabled();
+      const scanStartedAt = profileEnabled ? performance.now() : 0;
+      const candidates = collectIncludeCandidates(tree);
+      if (profileEnabled) {
+        recordMarkdownProfile(
+          "include:scan",
+          performance.now() - scanStartedAt
+        );
+      }
 
       if (candidates.length === 0) {
         break;
       }
 
-      for (const { node: nodeRecord, parent: parentRecord } of candidates) {
-        // IO-bound processIncludeNode can still run without blocking other
-        // work at the caller level; we only serialize the mutation path.
-        await processIncludeNode(
-          nodeRecord,
-          workingDir,
-          basePaths,
-          (file as unknown as { data?: unknown })?.data
-        );
+      const processedCandidates = await Promise.all(
+        candidates.map(async (candidate) => {
+          await processIncludeNode(
+            candidate.node,
+            workingDir,
+            basePaths,
+            (file as unknown as { data?: unknown })?.data
+          );
+          return candidate;
+        })
+      );
 
+      for (const {
+        node: nodeRecord,
+        parent: parentRecord,
+        parentContainer,
+        parentIndex,
+      } of processedCandidates) {
         const after = nodeRecord as unknown as {
           type?: string;
           children?: unknown[];
         };
 
         if (after.type === "root" && Array.isArray(after.children)) {
-          replaceTarget(tree, nodeRecord, parentRecord, {
-            type: "root",
-            children: after.children,
-          });
+          replaceTarget(
+            tree,
+            nodeRecord,
+            parentRecord,
+            {
+              type: "root",
+              children: after.children,
+            },
+            {
+              parentContainer,
+              parentIndex,
+            }
+          );
         } else if (
           after.type === "paragraph" &&
           Array.isArray(after.children) &&
@@ -634,10 +818,19 @@ export function remarkInclude(
         ) {
           // Avoid nested <p><p>...</p></p> by promoting the included
           // paragraph's children to the parent level.
-          replaceTarget(tree, nodeRecord, parentRecord, {
-            type: "root",
-            children: after.children,
-          });
+          replaceTarget(
+            tree,
+            nodeRecord,
+            parentRecord,
+            {
+              type: "root",
+              children: after.children,
+            },
+            {
+              parentContainer,
+              parentIndex,
+            }
+          );
         }
       }
     }
