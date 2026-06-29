@@ -36,7 +36,7 @@ async function git(
   for (const key of TEST_GIT_REPOSITORY_ENV_KEYS) {
     delete gitEnv[key];
   }
-  await execFileAsync("git", args, {
+  await execFileAsync("git", ["-c", "commit.gpgsign=false", ...args], {
     cwd,
     env: gitEnv,
   });
@@ -156,9 +156,145 @@ describe("convertAllMdx", () => {
     expect(untrackedOutput).not.toContain("lastModified:");
     expect(untrackedOutput).not.toContain("lastAuthor:");
   });
+
+  it("enriches staged files from separate source repositories", async () => {
+    const projectDir = await createTempProject();
+    const stagedDir = path.join(projectDir, "staged");
+    const outputDir = path.join(projectDir, "public");
+    const sourceOneDir = path.join(projectDir, "source-one");
+    const sourceTwoDir = path.join(projectDir, "source-two");
+    const sourceOneFile = path.join(sourceOneDir, "docs", "alpha.mdx");
+    const sourceTwoFile = path.join(sourceTwoDir, "docs", "beta.mdx");
+
+    await mkdir(path.dirname(sourceOneFile), { recursive: true });
+    await mkdir(path.dirname(sourceTwoFile), { recursive: true });
+    await mkdir(stagedDir, { recursive: true });
+    await git(sourceOneDir, ["init"]);
+    await git(sourceTwoDir, ["init"]);
+
+    await writeFile(sourceOneFile, "# Alpha\n\nFrom source one.\n");
+    await writeFile(sourceTwoFile, "# Beta\n\nFrom source two.\n");
+    await git(sourceOneDir, ["add", "docs"]);
+    await git(
+      sourceOneDir,
+      ["commit", "-m", "Add alpha"],
+      gitAuthorEnv("Alice", "alice@example.com", "2024-03-01T00:00:00Z")
+    );
+    await git(sourceTwoDir, ["add", "docs"]);
+    await git(
+      sourceTwoDir,
+      ["commit", "-m", "Add beta"],
+      gitAuthorEnv("Bob", "bob@example.com", "2024-04-01T00:00:00Z")
+    );
+
+    await writeFile(
+      path.join(stagedDir, "alpha.mdx"),
+      "# Alpha\n\nFrom source one.\n"
+    );
+    await writeFile(
+      path.join(stagedDir, "beta.mdx"),
+      "# Beta\n\nFrom source two.\n"
+    );
+
+    await convertAllMdx({
+      srcDir: stagedDir,
+      outDir: outputDir,
+      enrichFrontmatterFromGit: true,
+      gitSourcePath(filePath) {
+        return path.basename(filePath) === "alpha.mdx"
+          ? sourceOneFile
+          : sourceTwoFile;
+      },
+    });
+
+    const alphaOutput = await readFile(
+      path.join(outputDir, "alpha.md"),
+      "utf-8"
+    );
+    expect(alphaOutput).toContain("lastAuthor: Alice");
+    expect(alphaOutput).toContain('lastModified: "2024-03-01T00:00:00Z"');
+
+    const betaOutput = await readFile(path.join(outputDir, "beta.md"), "utf-8");
+    expect(betaOutput).toContain("lastAuthor: Bob");
+    expect(betaOutput).toContain('lastModified: "2024-04-01T00:00:00Z"');
+  });
+
+  it("keeps batch author fallback within the per-file commit limit", async () => {
+    const projectDir = await createTempProject();
+    const docsDir = path.join(projectDir, "docs");
+    const outputDir = path.join(projectDir, "public");
+    const filePath = path.join(docsDir, "busy.mdx");
+    const commitLimit = 50;
+    const botCommitCount = commitLimit + 1;
+
+    await mkdir(docsDir, { recursive: true });
+    await git(projectDir, ["init"]);
+    await writeFile(filePath, "# Busy\n\nHuman authored.\n");
+    await git(projectDir, ["add", "docs"]);
+    await git(
+      projectDir,
+      ["commit", "-m", "Add busy doc"],
+      gitAuthorEnv("Alice", "alice@example.com", "2024-01-01T00:00:00Z")
+    );
+
+    for (const index of Array.from(
+      { length: botCommitCount },
+      (_, itemIndex) => itemIndex
+    )) {
+      await writeFile(filePath, `# Busy\n\nBot update ${index}.\n`);
+      await git(projectDir, ["add", "docs/busy.mdx"]);
+      await git(
+        projectDir,
+        ["commit", "-m", `Bot update ${index}`],
+        gitAuthorEnv(
+          "github-actions[bot]",
+          "bot@example.com",
+          new Date(Date.UTC(2024, 1, 1, 0, index + 1)).toISOString()
+        )
+      );
+    }
+
+    await convertAllMdx({
+      srcDir: docsDir,
+      outDir: outputDir,
+      enrichFrontmatterFromGit: true,
+    });
+
+    const output = await readFile(path.join(outputDir, "busy.md"), "utf-8");
+    expect(output).toContain("lastModified:");
+    expect(output).not.toContain("lastAuthor:");
+  });
 });
 
 describe("convertMdxFile", () => {
+  it("enriches nested relative file paths from git", async () => {
+    const projectDir = await createTempProject();
+    const previousCwd = process.cwd();
+    const filePath = path.join(projectDir, "docs", "guides", "page.mdx");
+
+    try {
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await git(projectDir, ["init"]);
+      await writeFile(filePath, "# Page\n\nNested relative path.\n");
+      await git(projectDir, ["add", "docs"]);
+      await git(
+        projectDir,
+        ["commit", "-m", "Add nested page"],
+        gitAuthorEnv("Alice", "alice@example.com", "2024-05-01T00:00:00Z")
+      );
+
+      process.chdir(projectDir);
+      const result = await convertMdxFile("docs/guides/page.mdx", [], true);
+
+      expect(result.frontmatter).toContain("lastAuthor: Alice");
+      expect(result.frontmatter).toContain(
+        'lastModified: "2024-05-01T00:00:00Z"'
+      );
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
   it("returns ast, parsed frontmatter data, and serialized markdown", async () => {
     const dir = await createTempProject();
     const filePath = path.join(dir, "page.mdx");

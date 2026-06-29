@@ -78,6 +78,7 @@ const GIT_ENRICHMENT_COMMIT_LIMIT = 50;
 const GIT_RECORD_SEPARATOR = "\x1e";
 const GIT_FIELD_SEPARATOR = "\0";
 const GIT_LOG_FORMAT = "%x1e%aI%x00%an";
+const GIT_LOG_MAX_BUFFER_BYTES = 128 * 1024 * 1024;
 const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_COMMON_DIR",
@@ -403,6 +404,11 @@ type ConversionPrepareOptions<
   onTiming?: (timing: MdxConversionTiming) => void;
 };
 
+type GitSourceGroup = {
+  gitRoot: string;
+  historyRoot: string;
+};
+
 function isMarkdownEngine(value: string): value is MarkdownEngine {
   return MARKDOWN_ENGINES.has(value);
 }
@@ -608,6 +614,35 @@ function toGitPathspec(
   return normalizeRelativePath(relativePath);
 }
 
+async function groupGitSourcePaths(
+  filePaths: readonly string[]
+): Promise<GitSourceGroup[]> {
+  const groups = new Map<string, string[]>();
+  const gitRootByDirectory = new Map<string, string | undefined>();
+
+  for (const filePath of filePaths) {
+    const canonicalFilePath = await canonicalPath(filePath);
+    const sourceDir = dirname(canonicalFilePath);
+    let gitRoot = gitRootByDirectory.get(sourceDir);
+    if (!gitRootByDirectory.has(sourceDir)) {
+      gitRoot = await findGitRoot(sourceDir);
+      gitRootByDirectory.set(sourceDir, gitRoot);
+    }
+    if (!gitRoot) {
+      continue;
+    }
+
+    const groupFilePaths = groups.get(gitRoot) ?? [];
+    groupFilePaths.push(canonicalFilePath);
+    groups.set(gitRoot, groupFilePaths);
+  }
+
+  return Array.from(groups, ([gitRoot, groupFilePaths]) => ({
+    gitRoot,
+    historyRoot: commonAncestor(groupFilePaths),
+  }));
+}
+
 function parseGitHistory(
   stdout: string,
   gitRoot: string,
@@ -615,6 +650,7 @@ function parseGitHistory(
 ): Map<string, GitEnrichment> {
   const ignoredAuthorSet = normalizeIgnoredAuthors(ignoredAuthors);
   const enrichments = new Map<string, GitEnrichment>();
+  const commitCountsByPath = new Map<string, number>();
 
   for (const record of stdout.split(GIT_RECORD_SEPARATOR)) {
     if (record.length === 0) {
@@ -633,6 +669,12 @@ function parseGitHistory(
       }
 
       const absolutePath = resolve(gitRoot, gitPath);
+      const commitCount = commitCountsByPath.get(absolutePath) ?? 0;
+      if (commitCount >= GIT_ENRICHMENT_COMMIT_LIMIT) {
+        continue;
+      }
+      commitCountsByPath.set(absolutePath, commitCount + 1);
+
       const enrichment = enrichments.get(absolutePath) ?? {};
       if (!enrichment.lastModified) {
         enrichment.lastModified = iso;
@@ -653,56 +695,57 @@ function parseGitHistory(
 
 async function readGitEnrichmentMap(
   filePaths: readonly string[],
-  historyRoot: string,
   ignoredAuthors: readonly string[] | undefined
 ): Promise<Map<string, GitEnrichment>> {
   if (filePaths.length === 0) {
     return new Map();
   }
 
-  const canonicalHistoryRoot = await canonicalPath(historyRoot);
-  const gitRoot = await findGitRoot(canonicalHistoryRoot);
-  if (!gitRoot) {
-    return new Map();
+  const requestedPaths = new Map<string, string>();
+  for (const filePath of filePaths) {
+    const resolvedPath = resolve(filePath);
+    requestedPaths.set(resolvedPath, resolvedPath);
+    requestedPaths.set(await canonicalPath(filePath), resolvedPath);
   }
 
-  const historyPathspec = toGitPathspec(gitRoot, canonicalHistoryRoot);
-  if (!historyPathspec) {
-    return new Map();
-  }
-
-  try {
-    const { stdout } = await execFileAsync(
-      "git",
-      [
-        "log",
-        `--format=${GIT_LOG_FORMAT}`,
-        "--name-only",
-        "-z",
-        "--",
-        historyPathspec,
-      ],
-      { cwd: gitRoot, encoding: "utf8", env: gitSubprocessEnv() }
-    );
-    const requestedPaths = new Map<string, string>();
-    for (const filePath of filePaths) {
-      const resolvedPath = resolve(filePath);
-      requestedPaths.set(resolvedPath, resolvedPath);
-      requestedPaths.set(await canonicalPath(filePath), resolvedPath);
+  const enrichments = new Map<string, GitEnrichment>();
+  const groups = await groupGitSourcePaths(filePaths);
+  for (const { gitRoot, historyRoot } of groups) {
+    const historyPathspec = toGitPathspec(gitRoot, historyRoot);
+    if (!historyPathspec) {
+      continue;
     }
 
-    const parsed = parseGitHistory(stdout, gitRoot, ignoredAuthors);
-    const enrichments = new Map<string, GitEnrichment>();
-    for (const [gitPath, enrichment] of parsed) {
-      const requestedPath = requestedPaths.get(gitPath);
-      if (requestedPath) {
-        enrichments.set(requestedPath, enrichment);
+    try {
+      const { stdout } = await execFileAsync(
+        "git",
+        [
+          "log",
+          `--format=${GIT_LOG_FORMAT}`,
+          "--name-only",
+          "-z",
+          "--",
+          historyPathspec,
+        ],
+        {
+          cwd: gitRoot,
+          encoding: "utf8",
+          env: gitSubprocessEnv(),
+          maxBuffer: GIT_LOG_MAX_BUFFER_BYTES,
+        }
+      );
+      const parsed = parseGitHistory(stdout, gitRoot, ignoredAuthors);
+      for (const [gitPath, enrichment] of parsed) {
+        const requestedPath = requestedPaths.get(gitPath);
+        if (requestedPath) {
+          enrichments.set(requestedPath, enrichment);
+        }
       }
+    } catch {
+      // Keep enrichment best-effort per source repository.
     }
-    return enrichments;
-  } catch {
-    return new Map();
   }
+  return enrichments;
 }
 
 /**
@@ -715,6 +758,7 @@ async function enrichFromGit(
   ignoredAuthors: readonly string[] | undefined
 ): Promise<GitEnrichment> {
   try {
+    const cwd = dirname(resolve(filePath));
     // Use NUL as separator so author names containing '|' (e.g. "Jane | Co")
     // round-trip correctly.
     const { stdout } = await execFileAsync(
@@ -724,9 +768,9 @@ async function enrichFromGit(
         `--max-count=${GIT_ENRICHMENT_COMMIT_LIMIT}`,
         "--format=%aI%x00%an",
         "--",
-        filePath,
+        relative(cwd, resolve(filePath)),
       ],
-      { cwd: dirname(filePath), encoding: "utf8", env: gitSubprocessEnv() }
+      { cwd, encoding: "utf8", env: gitSubprocessEnv() }
     );
     const lines = stdout.trimEnd().split(/\r?\n/).filter(Boolean);
     if (lines.length === 0) {
@@ -1263,11 +1307,7 @@ export async function convertAllMdx(
     (mdxFilePath) => config.gitSourcePath?.(mdxFilePath) ?? mdxFilePath
   );
   const gitEnrichments = enrichFromGitFlag
-    ? await readGitEnrichmentMap(
-        gitSourcePaths,
-        commonAncestor(gitSourcePaths),
-        config.ignoredGitAuthors
-      )
+    ? await readGitEnrichmentMap(gitSourcePaths, config.ignoredGitAuthors)
     : new Map<string, GitEnrichment>();
 
   // Pre-create every output directory in parallel so the per-file workers
