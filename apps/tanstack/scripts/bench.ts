@@ -134,6 +134,7 @@ async function bench(): Promise<Stats[]> {
         outDir: CONVERT_OUT_DIR,
         markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
         enrichFrontmatterFromGit: true,
+        failOnError: true,
         onTiming: (timing) => addTiming(timingTotals, timing),
       })
     );

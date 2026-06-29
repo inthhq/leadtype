@@ -14,13 +14,18 @@ import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
-const BASELINE_DIR =
-  process.env.LEADTYPE_MARKDOWN_BASELINE_DIR ??
-  "/tmp/leadtype-remove-legacy-baseline/c15t-docs";
+const BASELINE_DIR = process.env.LEADTYPE_MARKDOWN_BASELINE_DIR;
 
 if (!existsSync(SRC_DIR)) {
   process.stderr.write(
     "content-fixtures/c15t not found - run `bun run setup:real` first.\n"
+  );
+  process.exit(1);
+}
+
+if (!(BASELINE_DIR && existsSync(BASELINE_DIR))) {
+  process.stderr.write(
+    "LEADTYPE_MARKDOWN_BASELINE_DIR must point to an existing markdown baseline directory.\n"
   );
   process.exit(1);
 }
@@ -70,14 +75,6 @@ try {
     `Converting c15t docs with native pipeline from ${SRC_DIR}\n`
   );
   await convertFixture(nativeOut);
-
-  if (!existsSync(BASELINE_DIR)) {
-    const nativeFiles = await listMarkdownFiles(nativeOut);
-    process.stdout.write(
-      `Native conversion passed: ${nativeFiles.length} markdown file(s). Baseline not found at ${BASELINE_DIR}; skipped byte comparison.\n`
-    );
-    process.exit(0);
-  }
 
   const baselineFiles = await listMarkdownFiles(BASELINE_DIR);
   const nativeFiles = await listMarkdownFiles(nativeOut);

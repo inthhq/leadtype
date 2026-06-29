@@ -33,7 +33,7 @@ import {
 
 ## Why order matters
 
-Imports must go before placeholder resolution, because some placeholders read from imported modules. Placeholder resolution must go before component flatteners, because flatteners assume URLs are final strings, not template literals. The component flatteners run last so each one sees a clean tree.
+Import/export stripping runs first so authoring-only ESM never reaches later markdown output. JSX comments are removed before placeholder resolution so hidden notes cannot feed later transforms. Placeholder resolution runs before `nativeMarkdownComponentsToMarkdown` because built-in and custom flatteners expect final text and URLs, not unresolved doc-context tokens. The native dispatcher runs last so components see the cleaned tree and emit the final markdown shape.
 
 Don't reorder casually. If you need a custom transform to run before a flattener, insert it after placeholder resolution and before the flattener you want to feed. For most custom components, reach for `defineComponentFlattener` instead of hand-ordering a raw transform.
 
