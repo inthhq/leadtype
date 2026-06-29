@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
-import { convertAllMdx, type MarkdownEngine } from "../convert";
+import { convertAllMdx, type MarkdownEngine } from "../convert/convert";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
@@ -391,15 +391,13 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     format: "text",
     help: false,
     include: [],
-    markdownEngine: resolveGenerateMarkdownEngine(
-      process.env.LEADTYPE_MARKDOWN_ENGINE,
-      "LEADTYPE_MARKDOWN_ENGINE"
-    ),
+    markdownEngine: "satteri",
     outDir: DEFAULT_OUT_DIR,
     srcDir: ".",
     syncMode: "missing",
     verbose: false,
   };
+  let markdownEngineFlag = false;
   const syncFlags: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -423,6 +421,7 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg === "--exclude") {
       args.exclude.push(readValue(argv, ++i, "--exclude"));
     } else if (arg === "--markdown-engine") {
+      markdownEngineFlag = true;
       args.markdownEngine = resolveGenerateMarkdownEngine(
         readValue(argv, ++i, "--markdown-engine"),
         "--markdown-engine"
@@ -456,6 +455,13 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg) {
       throw new Error(`unknown option: ${arg}`);
     }
+  }
+
+  if (!(args.help || markdownEngineFlag)) {
+    args.markdownEngine = resolveGenerateMarkdownEngine(
+      process.env.LEADTYPE_MARKDOWN_ENGINE,
+      "LEADTYPE_MARKDOWN_ENGINE"
+    );
   }
 
   const distinctSyncFlags = [...new Set(syncFlags)];

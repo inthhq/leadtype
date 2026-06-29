@@ -407,7 +407,15 @@ function resolveMarkdownEngine(
   explicitEngine?: MarkdownEngine,
   envValue = process.env.LEADTYPE_MARKDOWN_ENGINE
 ): MarkdownEngine {
-  if (explicitEngine) {
+  if (explicitEngine !== undefined) {
+    if (
+      typeof explicitEngine !== "string" ||
+      !isMarkdownEngine(explicitEngine)
+    ) {
+      throw new Error(
+        `markdownEngine must be remark|satteri, got ${String(explicitEngine)}`
+      );
+    }
     return explicitEngine;
   }
   if (!envValue) {
@@ -692,7 +700,7 @@ async function prepareMdxConversion<
       ? frontmatter
       : synthesizeFrontmatter(
           sourcePath,
-          serializeWithTiming(processor, ast, timings)
+          serializeTransformedAst(processor, ast)
         );
 
   if (enrichFromGitFlag) {

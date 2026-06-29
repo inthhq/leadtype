@@ -10,16 +10,14 @@
 import { existsSync } from "node:fs";
 import { appendFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  convertAllMdx,
-  type MarkdownEngine,
-  type MdxConversionTiming,
-} from "leadtype/convert";
+import { convertAllMdx } from "leadtype/convert";
 import { generateLLMFullContextFiles, generateLlmsTxt } from "leadtype/llm";
 import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 
 const DEFAULT_RUNS = 3;
-const MARKDOWN_ENGINES = new Set<MarkdownEngine>(["remark", "satteri"]);
+type BenchMarkdownEngine = "remark" | "satteri";
+
+const MARKDOWN_ENGINES = new Set<BenchMarkdownEngine>(["remark", "satteri"]);
 const parsedRuns = Number.parseInt(
   process.env.BENCH_RUNS ?? String(DEFAULT_RUNS),
   10
@@ -31,14 +29,14 @@ if (!Number.isInteger(parsedRuns) || parsedRuns < 1) {
   process.exit(2);
 }
 const RUNS = parsedRuns;
-const ENGINES: MarkdownEngine[] = [];
+const ENGINES: BenchMarkdownEngine[] = [];
 for (const rawEngine of (process.env.BENCH_ENGINES ?? "satteri").split(",")) {
   const engine = rawEngine.trim();
   if (!engine) {
     continue;
   }
-  if (MARKDOWN_ENGINES.has(engine as MarkdownEngine)) {
-    ENGINES.push(engine as MarkdownEngine);
+  if (MARKDOWN_ENGINES.has(engine as BenchMarkdownEngine)) {
+    ENGINES.push(engine as BenchMarkdownEngine);
     continue;
   }
   process.stderr.write(
@@ -92,6 +90,12 @@ interface TimingTotals {
   transformMs: number;
 }
 
+interface ConversionTimingSample {
+  parseMs: number;
+  stringifyMs: number;
+  transformMs: number;
+}
+
 function median(values: number[]): number {
   // Empty input → 0. Documented so callers don't rely on the nullish
   // coalescing below as implicit fallback handling.
@@ -120,10 +124,16 @@ function createTimingTotals(): TimingTotals {
   };
 }
 
-function addTiming(totals: TimingTotals, timing: MdxConversionTiming): void {
+function addTiming(totals: TimingTotals, timing: ConversionTimingSample): void {
   totals.parseMs += timing.parseMs;
   totals.stringifyMs += timing.stringifyMs;
   totals.transformMs += timing.transformMs;
+}
+
+function engineOrderForRun(runIndex: number): BenchMarkdownEngine[] {
+  return ENGINES.map(
+    (_, index) => ENGINES[(index + runIndex) % ENGINES.length]
+  ).filter((engine): engine is BenchMarkdownEngine => Boolean(engine));
 }
 
 function recordRun(
@@ -143,7 +153,7 @@ async function bench(): Promise<Stats[]> {
   const runsByLabel = new Map<string, number[]>();
 
   for (let i = 0; i < RUNS; i++) {
-    for (const engine of ENGINES) {
+    for (const engine of engineOrderForRun(i)) {
       await rm(OUT_DIR, { recursive: true, force: true });
       const timingTotals = createTimingTotals();
 

@@ -26,7 +26,7 @@ const repoRoot = path.resolve(
   "../../../.."
 );
 
-function createCapture() {
+const createCapture = () => {
   let stdout = "";
   let stderr = "";
   return {
@@ -51,36 +51,34 @@ function createCapture() {
       return stdout;
     },
   };
-}
+};
 
-async function createTempProject(prefix: string): Promise<string> {
+const createTempProject = async (prefix: string): Promise<string> => {
   const dir = await mkdtemp(path.join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
-}
+};
 
-async function writeProjectFile(
+const writeProjectFile = async (
   rootDir: string,
   relativePath: string,
   content: string
-): Promise<string> {
+): Promise<string> => {
   const filePath = path.join(rootDir, relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, content);
   return filePath;
-}
+};
 
-function createRemarkPlugins(typeTableBasePath: string): PluggableList {
-  return [
-    remarkInclude,
-    ...defaultRemarkPlugins.filter(
-      (plugin) => plugin !== remarkTypeTableToMarkdown
-    ),
-    [remarkTypeTableToMarkdown, { basePath: typeTableBasePath }] as Pluggable,
-  ];
-}
+const createRemarkPlugins = (typeTableBasePath: string): PluggableList => [
+  remarkInclude,
+  ...defaultRemarkPlugins.filter(
+    (plugin) => plugin !== remarkTypeTableToMarkdown
+  ),
+  [remarkTypeTableToMarkdown, { basePath: typeTableBasePath }] as Pluggable,
+];
 
-async function listFiles(dir: string, ext?: string): Promise<string[]> {
+const listFiles = async (dir: string, ext?: string): Promise<string[]> => {
   if (!existsSync(dir)) {
     return [];
   }
@@ -102,13 +100,13 @@ async function listFiles(dir: string, ext?: string): Promise<string[]> {
     }
   }
   return files.sort((left, right) => left.localeCompare(right));
-}
+};
 
-async function compareTrees(
+const compareTrees = async (
   remarkDir: string,
   satteriDir: string,
   ext?: string
-): Promise<string | undefined> {
+): Promise<string | undefined> => {
   const remarkFiles = await listFiles(remarkDir, ext);
   const satteriFiles = await listFiles(satteriDir, ext);
   if (JSON.stringify(satteriFiles) !== JSON.stringify(remarkFiles)) {
@@ -124,18 +122,18 @@ async function compareTrees(
     }
   }
   return;
-}
+};
 
-async function readSearchIndexWithoutGeneratedAt(
+const readSearchIndexWithoutGeneratedAt = async (
   filePath: string
-): Promise<Record<string, unknown>> {
+): Promise<Record<string, unknown>> => {
   const index = JSON.parse(await readFile(filePath, "utf8")) as Record<
     string,
     unknown
   >;
   const { generatedAt: _generatedAt, ...stableIndex } = index;
   return stableIndex;
-}
+};
 
 afterEach(async () => {
   await Promise.all(
@@ -146,6 +144,40 @@ afterEach(async () => {
 });
 
 describe("markdown engine parity", () => {
+  it("prints generate help even when the markdown engine env var is invalid", async () => {
+    const previousEngine = process.env.LEADTYPE_MARKDOWN_ENGINE;
+    process.env.LEADTYPE_MARKDOWN_ENGINE = "bogus";
+    try {
+      const capture = createCapture();
+      const code = await runCli(["generate", "--help"], capture.io);
+
+      expect(code).toBe(0);
+      expect(capture.stdout).toContain("--markdown-engine");
+      expect(capture.stderr).toBe("");
+    } finally {
+      if (previousEngine === undefined) {
+        Reflect.deleteProperty(process.env, "LEADTYPE_MARKDOWN_ENGINE");
+      } else {
+        process.env.LEADTYPE_MARKDOWN_ENGINE = previousEngine;
+      }
+    }
+  });
+
+  it("rejects invalid runtime markdown engines", async () => {
+    const projectDir = await createTempProject("leadtype-engine-invalid-");
+    const sourcePath = await writeProjectFile(
+      projectDir,
+      "page.mdx",
+      "# Invalid\n"
+    );
+
+    await expect(
+      convertMdxFile(sourcePath, [], false, {
+        markdownEngine: "bogus" as never,
+      })
+    ).rejects.toThrow("markdownEngine must be remark|satteri");
+  });
+
   it("matches remark output for high-value MDX constructs", async () => {
     const projectDir = await createTempProject("leadtype-engine-fixture-");
     await writeProjectFile(

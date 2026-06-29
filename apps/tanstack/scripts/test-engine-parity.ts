@@ -9,8 +9,10 @@ import { existsSync } from "node:fs";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { convertAllMdx, type MarkdownEngine } from "leadtype/convert";
+import { convertAllMdx } from "leadtype/convert";
 import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+
+type MarkdownEngine = "remark" | "satteri";
 
 const FIXTURE_DIR = join(process.cwd(), "content-fixtures", "c15t");
 const SRC_DIR = join(FIXTURE_DIR, "docs");
@@ -76,11 +78,9 @@ try {
   const remarkFiles = await listMarkdownFiles(remarkOut);
   const satteriFiles = await listMarkdownFiles(satteriOut);
   if (!sameList(remarkFiles, satteriFiles)) {
-    process.stderr.write("FAIL: markdown file lists differ between engines.\n");
-    process.stderr.write(
+    throw new Error(
       `remark=${remarkFiles.length} file(s), satteri=${satteriFiles.length} file(s)\n`
     );
-    process.exit(1);
   }
 
   for (const relativePath of remarkFiles) {
@@ -89,8 +89,7 @@ try {
       readFile(join(satteriOut, relativePath), "utf8"),
     ]);
     if (remarkMarkdown !== satteriMarkdown) {
-      process.stderr.write(`FAIL: output differs for ${relativePath}\n`);
-      process.exit(1);
+      throw new Error(`output differs for ${relativePath}`);
     }
   }
 
