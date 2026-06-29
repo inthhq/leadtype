@@ -45,4 +45,5 @@ jobs:
       - name: Run benchmark
         env:
           BENCH_RUNS: "3"
+          BENCH_ENGINES: "remark,satteri"
         run: cd apps/tanstack && bun run bench

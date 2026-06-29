@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const JSON_RPC_INVALID_PARAMS = -32_602;
 const JSON_RPC_METHOD_NOT_FOUND = -32_601;
+
 import { runMcpCommand } from "../cli/mcp";
 import type {
   AgentReadabilityManifest,
@@ -97,9 +98,18 @@ async function createArtifactsDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "leadtype-mcp-handler-"));
   const docsDir = join(dir, "docs");
   await mkdir(join(docsDir, "guides"), { recursive: true });
-  await writeFile(join(docsDir, "search-index.json"), JSON.stringify(createDocsSearchIndex(docs)));
-  await writeFile(join(docsDir, "agent-readability.json"), JSON.stringify(buildManifest()));
-  await writeFile(join(docsDir, "guides", "quickstart.md"), QUICKSTART_MARKDOWN);
+  await writeFile(
+    join(docsDir, "search-index.json"),
+    JSON.stringify(createDocsSearchIndex(docs))
+  );
+  await writeFile(
+    join(docsDir, "agent-readability.json"),
+    JSON.stringify(buildManifest())
+  );
+  await writeFile(
+    join(docsDir, "guides", "quickstart.md"),
+    QUICKSTART_MARKDOWN
+  );
   return dir;
 }
 
@@ -143,9 +153,9 @@ describe("defineDocsTools", () => {
 
   it("search-docs rejects an empty query as structured input error", async () => {
     const [search] = defineDocsTools(artifacts, { tools: ["search-docs"] });
-    await expect(search.handler({ query: "   " })).rejects.toThrow(
-      "Invalid input"
-    );
+    await expect(
+      Promise.resolve().then(() => search.handler({ query: "   " }))
+    ).rejects.toThrow("Invalid input");
   });
 
   it("search-docs honors the limit", async () => {
@@ -218,7 +228,12 @@ describe("createDocsMcpServer (in-memory client)", () => {
       expect(
         (
           tools.find((tool) => tool.name === "search-docs") as
-            | { annotations?: { idempotentHint?: boolean; readOnlyHint?: boolean } }
+            | {
+                annotations?: {
+                  idempotentHint?: boolean;
+                  readOnlyHint?: boolean;
+                };
+              }
             | undefined
         )?.annotations
       ).toEqual({
@@ -407,7 +422,8 @@ describe("createMcpServerCard", () => {
         name: "leadtype-docs",
         version: "1.0.0",
         description: "Docs pipeline tooling.",
-        instructions: "Search and read the documentation for Docs pipeline tooling.",
+        instructions:
+          "Search and read the documentation for Docs pipeline tooling.",
       },
       transport: {
         type: "streamable-http",

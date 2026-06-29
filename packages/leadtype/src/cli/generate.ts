@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
-import { convertAllMdx } from "../convert";
+import { convertAllMdx, type MarkdownEngine } from "../convert";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
@@ -103,6 +103,7 @@ const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
 const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
+const MARKDOWN_ENGINE_VALUES = new Set(["remark", "satteri"]);
 const NAV_SORT_VALUES = new Set(["order", "path", "title"]);
 const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
 const MCP_FLAG_DEPRECATION_MESSAGE =
@@ -162,6 +163,7 @@ export type GenerateArgs = {
   format: GenerateFormat;
   help: boolean;
   include: string[];
+  markdownEngine: MarkdownEngine;
   name?: string;
   outDir: string;
   srcDir: string;
@@ -337,6 +339,8 @@ Options:
   --summary <text>   Product summary for generated index files
   --include <glob>   Include MDX paths matching this docs-root-relative glob
   --exclude <glob>   Exclude MDX paths matching this docs-root-relative glob
+  --markdown-engine <engine>
+                     Experimental MDX parser engine: remark | satteri (default: satteri)
   --enrich-git       Deprecated: git enrichment runs by default and skips when git metadata is unavailable
   --sync             Clone missing remote sources before generating (collections mode)
   --refresh          Re-fetch and fast-forward every remote source (collections mode)
@@ -359,6 +363,23 @@ function isGenerateFormat(value: string): value is GenerateFormat {
   return FORMAT_VALUES.has(value);
 }
 
+function isMarkdownEngine(value: string): value is MarkdownEngine {
+  return MARKDOWN_ENGINE_VALUES.has(value);
+}
+
+function resolveGenerateMarkdownEngine(
+  value: string | undefined,
+  source: string
+): MarkdownEngine {
+  if (!value) {
+    return "satteri";
+  }
+  if (isMarkdownEngine(value)) {
+    return value;
+  }
+  throw new Error(`${source} must be remark|satteri, got ${value}`);
+}
+
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
     bundle: false,
@@ -370,6 +391,10 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     format: "text",
     help: false,
     include: [],
+    markdownEngine: resolveGenerateMarkdownEngine(
+      process.env.LEADTYPE_MARKDOWN_ENGINE,
+      "LEADTYPE_MARKDOWN_ENGINE"
+    ),
     outDir: DEFAULT_OUT_DIR,
     srcDir: ".",
     syncMode: "missing",
@@ -397,6 +422,11 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.include.push(readValue(argv, ++i, "--include"));
     } else if (arg === "--exclude") {
       args.exclude.push(readValue(argv, ++i, "--exclude"));
+    } else if (arg === "--markdown-engine") {
+      args.markdownEngine = resolveGenerateMarkdownEngine(
+        readValue(argv, ++i, "--markdown-engine"),
+        "--markdown-engine"
+      );
     } else if (arg === "--enrich-git") {
       args.enrichGit = true;
       args.enrichGitFlag = true;
@@ -2574,6 +2604,7 @@ export async function runGenerateCommand(
         typeTableStrict,
         flatteners: metadata.flatteners,
       }),
+      markdownEngine: args.markdownEngine,
       enrichFrontmatterFromGit: args.enrichGit,
       failOnError: typeTableStrict,
       frontmatterSchemaByPath: metadata.collectionFrontmatterSchemas,
