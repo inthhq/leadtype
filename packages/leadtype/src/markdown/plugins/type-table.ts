@@ -30,6 +30,12 @@ type ObjectType = {
 };
 
 type TypeScriptModule = typeof ts;
+type TypeScriptProgramCacheEntry = {
+  dependencies: Array<{ filePath: string; mtimeMs: number }>;
+  program: ts.Program;
+  checker: ts.TypeChecker;
+  sourceFile: ts.SourceFile;
+};
 
 const require = createRequire(import.meta.url);
 const TYPESCRIPT_PACKAGE = "typescript";
@@ -38,19 +44,11 @@ const MISSING_TYPESCRIPT_MESSAGE =
 
 let __tsCompilerOptions: ts.CompilerOptions | null = null;
 let __ts: TypeScriptModule | null = null;
-const __tsProgramByRootFile = new Map<
-  string,
-  {
-    mtimeMs: number;
-    program: ts.Program;
-    checker: ts.TypeChecker;
-    sourceFile: ts.SourceFile;
-  }
->();
+const __tsProgramByRootFile = new Map<string, TypeScriptProgramCacheEntry>();
 const __extractedTypeByKey = new Map<
   string,
   {
-    mtimeMs: number;
+    dependencies: Array<{ filePath: string; mtimeMs: number }>;
     value: Record<string, ObjectType> | null;
   }
 >();
@@ -128,17 +126,47 @@ function getTypeScriptCompilerOptions(): ts.CompilerOptions {
   return compilerOptions;
 }
 
+function programDependenciesAreFresh(
+  dependencies: readonly { filePath: string; mtimeMs: number }[]
+): boolean {
+  for (const dependency of dependencies) {
+    try {
+      if (statSync(dependency.filePath).mtimeMs !== dependency.mtimeMs) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function collectProgramDependencies(
+  program: ts.Program
+): Array<{ filePath: string; mtimeMs: number }> {
+  const dependencies: Array<{ filePath: string; mtimeMs: number }> = [];
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile) {
+      continue;
+    }
+    try {
+      dependencies.push({
+        filePath: sourceFile.fileName,
+        mtimeMs: statSync(sourceFile.fileName).mtimeMs,
+      });
+    } catch {
+      // Virtual files cannot be used to validate freshness.
+    }
+  }
+  return dependencies;
+}
+
 function getTypeScriptProgramForFile(
-  rootFilePath: string,
-  mtimeMs: number
-): {
-  program: ts.Program;
-  checker: ts.TypeChecker;
-  sourceFile: ts.SourceFile;
-} | null {
+  rootFilePath: string
+): TypeScriptProgramCacheEntry | null {
   const ts = getTypeScript();
   const cached = __tsProgramByRootFile.get(rootFilePath);
-  if (cached?.mtimeMs === mtimeMs) {
+  if (cached && programDependenciesAreFresh(cached.dependencies)) {
     return cached;
   }
 
@@ -151,7 +179,12 @@ function getTypeScriptProgramForFile(
   }
   const checker = program.getTypeChecker();
 
-  const value = { mtimeMs, program, checker, sourceFile };
+  const value = {
+    dependencies: collectProgramDependencies(program),
+    program,
+    checker,
+    sourceFile,
+  };
   __tsProgramByRootFile.set(rootFilePath, value);
   return value;
 }
@@ -740,13 +773,16 @@ export function extractTypeFromFile(
     const mtimeMs = statSync(resolvedPath).mtimeMs;
     const cacheKey = `${resolvedPath}\0${typeName}`;
     const cached = __extractedTypeByKey.get(cacheKey);
-    if (cached?.mtimeMs === mtimeMs) {
+    if (cached && programDependenciesAreFresh(cached.dependencies)) {
       return cached.value;
     }
 
-    const tsProgram = getTypeScriptProgramForFile(resolvedPath, mtimeMs);
+    const tsProgram = getTypeScriptProgramForFile(resolvedPath);
     if (!tsProgram) {
-      __extractedTypeByKey.set(cacheKey, { mtimeMs, value: null });
+      __extractedTypeByKey.set(cacheKey, {
+        dependencies: [{ filePath: resolvedPath, mtimeMs }],
+        value: null,
+      });
       return null;
     }
 
@@ -755,7 +791,10 @@ export function extractTypeFromFile(
       typeName,
       tsProgram.checker
     );
-    __extractedTypeByKey.set(cacheKey, { mtimeMs, value: extracted });
+    __extractedTypeByKey.set(cacheKey, {
+      dependencies: tsProgram.dependencies,
+      value: extracted,
+    });
     return extracted;
   } catch (error) {
     if (

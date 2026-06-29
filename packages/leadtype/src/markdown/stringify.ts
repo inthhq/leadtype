@@ -93,7 +93,7 @@ function fenceFor(value: string): string {
 }
 
 function inlineCode(value: string): string {
-  const content = value.replace(/\s*\n\s*/g, " ");
+  const content = value.replace(LINE_BREAK_REGEX, " ");
   const longest = Math.max(
     0,
     ...Array.from(content.matchAll(BACKTICK_REGEX), (match) => match[0].length)

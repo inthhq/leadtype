@@ -84,6 +84,8 @@ describe("stringifyMarkdown", () => {
             { type: "inlineCode", value: "value with `tick`" },
             { type: "text", value: " and " },
             { type: "inlineCode", value: " leading and trailing " },
+            { type: "text", value: " plus " },
+            { type: "inlineCode", value: "a \n b" },
             { type: "text", value: "." },
           ],
         },
@@ -91,7 +93,7 @@ describe("stringifyMarkdown", () => {
     };
 
     expect(stringifyMarkdown(tree)).toBe(
-      "Run `pnpm  add  pkg`, then inspect `` value with `tick` `` and `  leading and trailing  `.\n"
+      "Run `pnpm  add  pkg`, then inspect `` value with `tick` `` and `  leading and trailing  ` plus `a   b`.\n"
     );
   });
 

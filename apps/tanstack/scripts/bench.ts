@@ -265,10 +265,10 @@ function renderSpeedups(stats: Stats[]): string {
     if (remark === undefined || satteri === undefined) {
       continue;
     }
-    const speedup = remark / satteri;
     const delta = remark - satteri;
+    const speedup = satteri === 0 ? "n/a" : `${(remark / satteri).toFixed(2)}x`;
     lines.push(
-      `- \`${stage}\`: ${speedup.toFixed(2)}x (${delta >= 0 ? "-" : "+"}${Math.abs(delta)}ms)`
+      `- \`${stage}\`: ${speedup} (${delta >= 0 ? "-" : "+"}${Math.abs(delta)}ms)`
     );
   }
   return lines.join("\n");

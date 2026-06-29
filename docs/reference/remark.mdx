@@ -9,6 +9,7 @@ The markdown transform stack is what turns interactive MDX into agent-readable m
 import {
   defaultMarkdownTransforms,
   includeMarkdown,
+  legacyDefaultMarkdownTransforms,
   nativeMarkdownComponentsToMarkdown,
 } from "leadtype/markdown";
 ```
@@ -20,44 +21,18 @@ import {
   ri["remarkRemoveImports"]
   rj["remarkRemoveJsxComments"]
   rd["remarkResolveDocPlaceholders"]
-  rau["remarkAudienceToMarkdown"]
-  rs["remarkSectionToMarkdown"]
-  rc["remarkCalloutToMarkdown"]
-  rcd["remarkCardsToMarkdown"]
-  rdt["remarkDetailsToMarkdown"]
-  rm["remarkMermaidToMarkdown"]
-  rct["remarkCommandTabsToMarkdown"]
-  rst["remarkStepsToMarkdown"]
-  rt["remarkTabsToMarkdown"]
-  rtt["nativeMarkdownComponentsToMarkdown"]
-  ra["remarkAccordionToMarkdown"]
-  rts["remarkTopicSwitcherToMarkdown"]
-  rft["remarkFileTreeToMarkdown"]
-  rp["remarkPromptToMarkdown"]
-  re["remarkExampleToMarkdown"]
+  native["nativeMarkdownComponentsToMarkdown"]
   out["clean markdown"]
-  src --> ri --> rj --> rd --> rau --> rs --> rc --> rcd --> rdt --> rm --> rct --> rst --> rt --> rtt --> ra --> rts --> rft --> rp --> re --> out`} />
+  src --> ri --> rj --> rd --> native --> out`} />
 
 `defaultMarkdownTransforms` runs the stack in this order:
 
 1. `remarkRemoveImports` — strip MDX `import` and `export` statements.
 2. `remarkRemoveJsxComments` — strip `{/* ... */}` JSX comments.
 3. `remarkResolveDocPlaceholders` — replace `{framework}` and similar placeholders in URLs.
-4. `remarkAudienceToMarkdown` — include `<Audience target="agent">` and remove `<Audience target="human">`.
-5. `remarkSectionToMarkdown` — flatten `<Section>` containers.
-6. `remarkCalloutToMarkdown` — `<Callout>` → blockquote.
-7. `remarkCardsToMarkdown` — `<Cards>` → bulleted link list.
-8. `remarkDetailsToMarkdown` — flatten `<Details>` blocks.
-9. `remarkMermaidToMarkdown` — `<Mermaid>` → fenced Mermaid code block.
-10. `remarkCommandTabsToMarkdown` — `<CommandTabs>` → markdown table.
-11. `remarkStepsToMarkdown` — `<Steps>` → ordered list.
-12. `remarkTabsToMarkdown` — `<Tabs>` → bold heading per tab.
-13. `nativeMarkdownComponentsToMarkdown` — built-in component dispatcher, including `<TypeTable>` and `<ExtractedTypeTable>` → markdown table.
-14. `remarkAccordionToMarkdown` — `<Accordion>` → flattened sections (open/closed state ignored).
-15. `remarkTopicSwitcherToMarkdown` — `<TopicSwitcher>` → labeled link list.
-16. `remarkFileTreeToMarkdown` — `<FileTree>` → fenced text tree.
-17. `remarkPromptToMarkdown` — `<Prompt>` → fenced prompt code block.
-18. `remarkExampleToMarkdown` — `<Example>` → fenced code block plus body.
+4. `nativeMarkdownComponentsToMarkdown` — single-pass built-in dispatcher for `<Audience>`, `<Section>`, `<Callout>`, `<Cards>`, `<Details>`, `<Mermaid>`, `<CommandTabs>`, `<Steps>`, `<Tabs>`, `<TypeTable>`, `<Accordion>`, `<TopicSwitcher>`, `<FileTree>`, `<Prompt>`, and `<Example>`.
+
+`legacyDefaultMarkdownTransforms` keeps the old per-flattener sequence for parity tests and compatibility paths that need each wrapper separately.
 
 ## Why order matters
 

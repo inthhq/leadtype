@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { Root } from "mdast";
-import type { Pluggable, PluggableList } from "unified";
+import type { Pluggable, PluggableList, Processor } from "unified";
 import { unified } from "unified";
 import { VFile } from "vfile";
 import {
@@ -38,6 +38,7 @@ type PreparedMdastTransform = LeadtypeMdastTransform & {
 
 type PluggablePreset = {
   plugins?: PluggableList;
+  settings?: Record<string, unknown>;
 };
 
 function isPluggablePreset(value: unknown): value is PluggablePreset {
@@ -49,16 +50,18 @@ function isPluggablePreset(value: unknown): value is PluggablePreset {
   );
 }
 
-function expandPluggables(plugins: PluggableList): Pluggable[] {
-  const expanded: Pluggable[] = [];
-  for (const entry of plugins) {
-    if (isPluggablePreset(entry)) {
-      expanded.push(...expandPluggables(entry.plugins ?? []));
-      continue;
-    }
-    expanded.push(entry);
+function applyPresetSettings(
+  processor: Processor,
+  preset: PluggablePreset
+): void {
+  if (!preset.settings) {
+    return;
   }
-  return expanded;
+  const current = processor.data("settings");
+  processor.data("settings", {
+    ...(typeof current === "object" && current !== null ? current : {}),
+    ...preset.settings,
+  });
 }
 
 function pluginName(entry: Pluggable): string {
@@ -76,7 +79,10 @@ function createVFile(context: LeadtypeMdastTransformContext): VFile {
   });
 }
 
-const toTransform = (entry: Pluggable): LeadtypeMdastTransform | null => {
+const toTransform = (
+  entry: Pluggable,
+  processor: Processor
+): LeadtypeMdastTransform | null => {
   const plugin = Array.isArray(entry) ? entry[0] : entry;
   const args = Array.isArray(entry) ? entry.slice(1) : [];
   if (typeof plugin !== "function") {
@@ -84,7 +90,6 @@ const toTransform = (entry: Pluggable): LeadtypeMdastTransform | null => {
   }
 
   const pluginFactory = plugin as (...args: unknown[]) => unknown;
-  const processor = unified();
   const transformer = pluginFactory.call(processor, ...args);
   if (!isTransformer(transformer)) {
     return null;
@@ -106,12 +111,28 @@ export function createMdastTransforms(
   plugins: PluggableList = []
 ): LeadtypeMdastTransform[] {
   const transforms: LeadtypeMdastTransform[] = [];
-  for (const entry of sortRemarkPluginsByPhase(expandPluggables(plugins))) {
-    const transform = toTransform(entry);
-    if (transform) {
-      transforms.push(transform);
+  const processor = unified();
+
+  function addTransforms(entries: PluggableList): void {
+    const leafEntries: Pluggable[] = [];
+    for (const entry of entries) {
+      if (isPluggablePreset(entry)) {
+        applyPresetSettings(processor, entry);
+        addTransforms(entry.plugins ?? []);
+        continue;
+      }
+      leafEntries.push(entry);
+    }
+
+    for (const entry of sortRemarkPluginsByPhase(leafEntries)) {
+      const transform = toTransform(entry, processor);
+      if (transform) {
+        transforms.push(transform);
+      }
     }
   }
+
+  addTransforms(plugins);
   return transforms;
 }
 
