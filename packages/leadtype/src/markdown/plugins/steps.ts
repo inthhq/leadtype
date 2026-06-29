@@ -277,7 +277,7 @@ function processStepsNode(node: MdxNode): ListItem[] {
  * Merge adjacent text nodes and blockquotes in place. Mirrors the small subset
  * of mdast-util-compact behavior that this plugin relies on.
  */
-function compactTree(tree: Root): void {
+export function compactStepTree(tree: Root): void {
   visit(tree, (child, index, parent) => {
     if (
       !parent ||
@@ -309,23 +309,23 @@ function compactTree(tree: Root): void {
 /**
  * Remark plugin to convert Steps JSX elements to numbered markdown lists
  */
-export const remarkStepsToMarkdown: Plugin<[], Root> = () => {
-  return (tree) => {
-    const processor = createJsxComponentProcessor("Steps", (node) => {
-      const items = processStepsNode(node);
+export const remarkStepsToMarkdown: Plugin<[], Root> = () => (tree) => {
+  const processor = createJsxComponentProcessor("Steps", stepsToMarkdown);
 
-      if (items.length === 0) {
-        return [];
-      }
+  processor(tree);
 
-      // Create ordered list - always spread for better readability
-      const list = createOrderedList(items, 1, true);
-      return [list];
-    });
-
-    processor(tree);
-
-    compactTree(tree);
-    return tree;
-  };
+  compactStepTree(tree);
+  return tree;
 };
+
+export function stepsToMarkdown(node: MdxNode): Root["children"] {
+  const items = processStepsNode(node);
+
+  if (items.length === 0) {
+    return [];
+  }
+
+  // Create ordered list - always spread for better readability
+  const list = createOrderedList(items, 1, true);
+  return [list];
+}

@@ -23,7 +23,7 @@ import { cp, mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
 import { convertAllMdx } from "leadtype/convert";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 import {
   createAnswerContext,
   type DocsSearchContentStore,
@@ -124,7 +124,7 @@ async function prepareC15t(docsDir: string): Promise<void> {
   await convertAllMdx({
     srcDir: C15T_SRC,
     outDir: docsDir,
-    remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+    markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
   });
 }
 

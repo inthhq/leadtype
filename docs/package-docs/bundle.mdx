@@ -104,7 +104,7 @@ If you need full control over plugin order or custom validation, run the library
 import { rm } from "node:fs/promises";
 import { convertAllMdx } from "leadtype/convert";
 import { generateAgentsMd, resolveDocsNavigation } from "leadtype/llm";
-import { defaultRemarkPlugins } from "leadtype/remark";
+import { defaultMarkdownTransforms } from "leadtype/markdown";
 import docsConfig from "../../../docs/docs.config";
 
 const REPO_ROOT = `${process.cwd()}/../..`;
@@ -116,7 +116,7 @@ await rm(`${PACKAGE_ROOT}/AGENTS.md`, { force: true });
 await convertAllMdx({
   srcDir: `${REPO_ROOT}/docs`,
   outDir: `${PACKAGE_ROOT}/docs`,
-  remarkPlugins: defaultRemarkPlugins,
+  markdownTransforms: defaultMarkdownTransforms,
 });
 
 // Fail fast on unknown legacy groups or invalid nav refs so a bad config can't ship.

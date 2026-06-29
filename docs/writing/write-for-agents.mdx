@@ -53,7 +53,7 @@ Before you write a page or paragraph, ask:
     The default behavior *and* the rule for choosing otherwise. "Search uses a static BM25 index by default; add embeddings only when…" — a decision boundary no signature encodes.
   </Step>
   <Step title="Ordering and sequencing constraints">
-    What must run before what. "Run `generate` before your app build," "register `remarkInclude` before the default plugin stack" — order that types can't enforce.
+    What must run before what. "Run `generate` before your app build," "register `includeMarkdown` before the default transform stack" — order that types can't enforce.
   </Step>
   <Step title="Surprising behavior">
     Anything that violates a reasonable default expectation — silent fallbacks, values that look interchangeable but aren't, side effects that aren't obvious from the call site.

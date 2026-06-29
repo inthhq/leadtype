@@ -1,16 +1,16 @@
 ---
-title: "Remark plugins"
-description: "The default plugin stack that flattens MDX components into markdown."
+title: "Markdown transforms"
+description: "The default transform stack that flattens MDX components into markdown."
 ---
 
-The remark stack is what turns interactive MDX into agent-readable markdown. Imports get stripped first, placeholders get resolved, then each named component is flattened into a markdown equivalent. Order matters.
+The markdown transform stack is what turns interactive MDX into agent-readable markdown. Imports get stripped first, placeholders get resolved, then each named component is flattened into a markdown equivalent. Order matters.
 
 ```ts
 import {
-  defaultRemarkPlugins,
-  remarkInclude,
-  remarkTypeTableToMarkdown,
-} from "leadtype/remark";
+  defaultMarkdownTransforms,
+  includeMarkdown,
+  nativeMarkdownComponentsToMarkdown,
+} from "leadtype/markdown";
 ```
 
 ## The default stack
@@ -29,7 +29,7 @@ import {
   rct["remarkCommandTabsToMarkdown"]
   rst["remarkStepsToMarkdown"]
   rt["remarkTabsToMarkdown"]
-  rtt["remarkTypeTableToMarkdown"]
+  rtt["nativeMarkdownComponentsToMarkdown"]
   ra["remarkAccordionToMarkdown"]
   rts["remarkTopicSwitcherToMarkdown"]
   rft["remarkFileTreeToMarkdown"]
@@ -38,7 +38,7 @@ import {
   out["clean markdown"]
   src --> ri --> rj --> rd --> rau --> rs --> rc --> rcd --> rdt --> rm --> rct --> rst --> rt --> rtt --> ra --> rts --> rft --> rp --> re --> out`} />
 
-`defaultRemarkPlugins` runs the stack in this order:
+`defaultMarkdownTransforms` runs the stack in this order:
 
 1. `remarkRemoveImports` — strip MDX `import` and `export` statements.
 2. `remarkRemoveJsxComments` — strip `{/* ... */}` JSX comments.
@@ -52,7 +52,7 @@ import {
 10. `remarkCommandTabsToMarkdown` — `<CommandTabs>` → markdown table.
 11. `remarkStepsToMarkdown` — `<Steps>` → ordered list.
 12. `remarkTabsToMarkdown` — `<Tabs>` → bold heading per tab.
-13. `remarkTypeTableToMarkdown` — `<TypeTable>` and `<ExtractedTypeTable>` → markdown table.
+13. `nativeMarkdownComponentsToMarkdown` — built-in component dispatcher, including `<TypeTable>` and `<ExtractedTypeTable>` → markdown table.
 14. `remarkAccordionToMarkdown` — `<Accordion>` → flattened sections (open/closed state ignored).
 15. `remarkTopicSwitcherToMarkdown` — `<TopicSwitcher>` → labeled link list.
 16. `remarkFileTreeToMarkdown` — `<FileTree>` → fenced text tree.
@@ -67,11 +67,11 @@ Don't reorder casually. If you need a custom plugin to run before a flattener (f
 
 ## Custom component flatteners
 
-When a component isn't in the [naming contract](/docs/writing/components#the-naming-contract), `defineComponentFlattener` lets you describe how it flattens without writing a remark plugin by hand:
+When a component isn't in the [naming contract](/docs/writing/components#the-naming-contract), `defineComponentFlattener` lets you describe how it flattens without writing a raw mdast transform by hand:
 
 ```ts
 // flatteners.ts
-import { defineComponentFlattener } from "leadtype/remark";
+import { defineComponentFlattener } from "leadtype/markdown";
 
 export const hint = defineComponentFlattener({
   name: "Hint",
@@ -96,7 +96,7 @@ export default defineDocsConfig({
 });
 ```
 
-`flatteners` is also valid on each entry of `collections`. Generation runs one conversion pass over all pages, so top-level and per-collection lists are merged into one set that matches by component name — a collection's flatteners effectively apply build-wide. If you drive conversion programmatically instead, pass the same plugin to `createDocsSource`/`convertAllMdx` via `remarkPlugins: [...defaultRemarkPlugins, hint]`.
+`flatteners` is also valid on each entry of `collections`. Generation runs one conversion pass over all pages, so top-level and per-collection lists are merged into one set that matches by component name — a collection's flatteners effectively apply build-wide. If you drive conversion programmatically instead, pass the same plugin to `createDocsSource`/`convertAllMdx` via `markdownTransforms: [...defaultMarkdownTransforms, hint]`.
 
 ### Scheduling
 
@@ -123,20 +123,20 @@ If `toMarkdown` throws, the error is logged with the file path and the raw compo
 
 ### Escape hatch
 
-`defineComponentFlattener` is built on the same toolkit the built-in flatteners use, all exported from `leadtype/remark`: `createJsxComponentProcessor`, the node creators (`createBlockquote`, `createTable`, …), `getAttributeValue`, `parseItemsArray`, `extractNodeText`, `processContentNode`, and `hasName`. Use these directly when you want full control over the mdast.
+`defineComponentFlattener` is built on the same toolkit the built-in flatteners use, all exported from `leadtype/markdown`: `createJsxComponentProcessor`, the node creators (`createBlockquote`, `createTable`, …), `getAttributeValue`, `parseItemsArray`, `extractNodeText`, `processContentNode`, and `hasName`. Use these directly when you want full control over the mdast.
 
 > Custom components nested inside **other custom** components only auto-resolve when the outer flattener is listed after the inner one — the child sub-pipeline runs the built-in flatteners, not sibling customs. Built-in ↔ custom nesting works in either direction.
 
 ## Optional plugins
 
-### remarkInclude
+### includeMarkdown
 
 Add this when the source docs use include tags or partial composition:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
-remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms];
 ```
 
 Place it before the default stack so included content expands before any flattener sees it.
@@ -178,31 +178,33 @@ Section extraction currently matches lowercase `<section id="...">` only. A capi
 Relative paths resolve from the including file first. You can also pass base paths to the plugin for shared partial roots:
 
 ```ts
-remarkPlugins: [
-  [remarkInclude, ["docs", "content"]],
-  ...defaultRemarkPlugins,
+markdownTransforms: [
+  [includeMarkdown, ["docs", "content"]],
+  ...defaultMarkdownTransforms,
 ];
 ```
 
 Nested includes are supported. The plugin keeps the included file's directory as `baseDir` for nested relative paths, so a partial can include files next to itself.
 
-`leadtype generate` and `leadtype lint` run `remarkInclude` automatically. Custom conversion scripts must add it explicitly.
+`leadtype generate` and `leadtype lint` run `includeMarkdown` automatically. Custom conversion scripts must add it explicitly.
 
-### remarkTypeTableToMarkdown (with basePath)
+### Type tables with basePath
 
 `<ExtractedTypeTable>` reads a TypeScript file at conversion time. When the file path is relative, Leadtype defaults the base path to the source root inferred from the current MDX file. Override the plugin entry when your conversion script should resolve from a specific root or fail on missing types:
 
 ```ts
 import {
-  defaultRemarkPlugins,
-  remarkTypeTableToMarkdown,
-} from "leadtype/remark";
+  defaultMarkdownTransforms,
+  nativeMarkdownComponentsToMarkdown,
+} from "leadtype/markdown";
 
-const remarkPlugins = [
-  ...defaultRemarkPlugins.filter((p) => p !== remarkTypeTableToMarkdown),
+const markdownTransforms = [
+  ...defaultMarkdownTransforms.filter(
+    (p) => p !== nativeMarkdownComponentsToMarkdown
+  ),
   [
-    remarkTypeTableToMarkdown,
-    { basePath: process.cwd(), strict: true },
+    nativeMarkdownComponentsToMarkdown,
+    { typeTable: { basePath: process.cwd(), strict: true } },
   ],
 ];
 ```
@@ -220,7 +222,7 @@ At conversion time, the plugin reads the file, finds the named type, and emits a
 
 ## Plugin selection rules
 
-- Use `defaultRemarkPlugins` for any agent-facing or LLM output.
-- Add `remarkInclude` when docs are composed from shared fragments.
+- Use `defaultMarkdownTransforms` for any agent-facing or LLM output.
+- Add `includeMarkdown` when docs are composed from shared fragments.
 - Use individual plugins only when you intentionally want to omit a flattener (e.g. you don't use `<TypeTable>` and want to skip its processing cost).
 - If output looks wrong, read the converted `.md` first. The fix is almost never reordering — it's usually a custom plugin between two existing ones.

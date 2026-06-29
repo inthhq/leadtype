@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { normalize, resolve } from "node:path";
 import JSON5 from "json5";
@@ -45,6 +45,10 @@ const __tsProgramByRootFile = new Map<
     checker: ts.TypeChecker;
     sourceFile: ts.SourceFile;
   }
+>();
+const __extractedTypeByKey = new Map<
+  string,
+  Record<string, ObjectType> | null
 >();
 
 function isMissingTypeScriptError(error: unknown): boolean {
@@ -145,7 +149,7 @@ function getTypeScriptProgramForFile(rootFilePath: string): {
   return value;
 }
 
-type TypeTableOptions = {
+export type TypeTableOptions = {
   /** When true, include the description column in the output table. */
   includeDescriptions?: boolean;
   /** When true, include the default value column in the output table. */
@@ -726,17 +730,25 @@ export function extractTypeFromFile(
     if (!existsSync(resolvedPath)) {
       return null;
     }
+    const mtimeMs = statSync(resolvedPath).mtimeMs;
+    const cacheKey = `${resolvedPath}\0${typeName}\0${mtimeMs}`;
+    if (__extractedTypeByKey.has(cacheKey)) {
+      return __extractedTypeByKey.get(cacheKey) ?? null;
+    }
 
     const tsProgram = getTypeScriptProgramForFile(resolvedPath);
     if (!tsProgram) {
+      __extractedTypeByKey.set(cacheKey, null);
       return null;
     }
 
-    return extractPropertiesFromSourceFile(
+    const extracted = extractPropertiesFromSourceFile(
       tsProgram.sourceFile,
       typeName,
       tsProgram.checker
     );
+    __extractedTypeByKey.set(cacheKey, extracted);
+    return extracted;
   } catch (error) {
     if (
       error instanceof Error &&
@@ -983,27 +995,31 @@ function processTypeTableNode(
 
 export const remarkTypeTableToMarkdown = (
   opts: Partial<TypeTableOptions> = {}
-) => {
+) =>
+  createJsxComponentProcessor(
+    ["TypeTable", "ExtractedTypeTable", "AutoTypeTable"],
+    (node, _index, _parent, file) => typeTableToMarkdown(node, opts, file)
+  );
+
+export function typeTableToMarkdown(
+  node: MdxNode,
+  opts: Partial<TypeTableOptions> = {},
+  file?: VFile
+): RootContent[] {
   const defaults: TypeTableOptions = {
     includeDescriptions: true,
     includeDefaults: true,
     includeRequired: true,
     warnOnFailure: true,
   };
-
-  return createJsxComponentProcessor(
-    ["TypeTable", "ExtractedTypeTable", "AutoTypeTable"],
-    (node, _index, _parent, file) => {
-      const resolved = {
-        ...defaults,
-        ...opts,
-        basePath:
-          opts.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file)),
-      };
-      if (isExtractedTypeTableNode(node)) {
-        return processExtractedTypeTableNode(node, resolved);
-      }
-      return processTypeTableNode(node, resolved);
-    }
-  );
-};
+  const resolved = {
+    ...defaults,
+    ...opts,
+    basePath:
+      opts.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file)),
+  };
+  if (isExtractedTypeTableNode(node)) {
+    return processExtractedTypeTableNode(node, resolved);
+  }
+  return processTypeTableNode(node, resolved);
+}
