@@ -257,7 +257,7 @@ const config: DocsConfig = {
       // Lower-priority for agents under a tight context budget: collapses into the
       // `## Optional` section of docs/llms.txt rather than its own heading.
       optional: true,
-      pages: ["0-3", "0-2"],
+      pages: ["0-4", "0-3", "0-2"],
     },
   ],
   mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
