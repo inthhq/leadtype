@@ -25,7 +25,7 @@ Start with `docs/llms.txt`, then open the smallest matching topic page:
 
 - `components.md` for `mdxComponents`, `CommandTabs`, `TypeTable`, `ExtractedTypeTable`, and MDX rendering.
 - `convert.md` for `convertMdxToMarkdown`, `writeMdxFileAsMarkdown`, and `convertAllMdx`.
-- `remark.md` for `defaultRemarkPlugins`, `remarkInclude`, and plugin ordering.
+- `markdown.md` for `defaultMarkdownTransforms`, `includeMarkdown`, and transform ordering.
 - `llm.md` for `generateLlmsTxt`, `generateLLMFullContextFiles`, and topic design.
 - `lint.md` for `lintDocs`, schema overrides, and `leadtype lint`.
 

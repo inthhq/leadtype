@@ -2,8 +2,6 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import type { Root } from "mdast";
-import { remark } from "remark";
-import remarkMdx from "remark-mdx";
 import { mdxToMdast } from "satteri";
 import { glob as fg } from "tinyglobby";
 import { visit } from "unist-util-visit";
@@ -373,7 +371,15 @@ function validateDocUrls(
   return violations;
 }
 
-const mdxComponentParser = remark().use(remarkMdx);
+function parseMdxBody(body: string): Root | null {
+  try {
+    return mdxToMdast(body, {
+      features: { frontmatter: false, gfm: true },
+    }) as Root;
+  } catch {
+    return null;
+  }
+}
 
 type GeoIssue = {
   rule: "geo:code-language" | "geo:heading-skip" | "geo:image-alt";
@@ -389,10 +395,8 @@ type GeoIssue = {
  * exist, so they never block by default.
  */
 function collectGeoIssues(body: string): GeoIssue[] {
-  let tree: ReturnType<typeof mdxComponentParser.parse>;
-  try {
-    tree = mdxComponentParser.parse(body);
-  } catch {
+  const tree = parseMdxBody(body);
+  if (!tree) {
     return []; // parse errors are reported by the link-check path
   }
 
@@ -457,10 +461,8 @@ function collectUnflattenedComponents(
   body: string,
   recognized: Set<string>
 ): { line?: number; name: string }[] {
-  let tree: ReturnType<typeof mdxComponentParser.parse>;
-  try {
-    tree = mdxComponentParser.parse(body);
-  } catch {
+  const tree = parseMdxBody(body);
+  if (!tree) {
     // Parse failures are reported by the markdown link-check path as
     // `parse-error`; don't double-report here.
     return [];

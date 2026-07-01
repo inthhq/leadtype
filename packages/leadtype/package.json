@@ -63,10 +63,6 @@
       "types": "./dist/next/client.d.ts",
       "import": "./dist/next/client.js"
     },
-    "./remark": {
-      "types": "./dist/remark/index.d.ts",
-      "import": "./dist/remark/index.js"
-    },
     "./markdown": {
       "types": "./dist/markdown/index.d.ts",
       "import": "./dist/markdown/index.js"
@@ -196,9 +192,6 @@
     "@types/mdast": "4.0.4",
     "json5": "2.2.3",
     "mdast-util-to-string": "4.0.0",
-    "remark": "15.0.1",
-    "remark-gfm": "4.0.1",
-    "remark-mdx": "3.1.1",
     "satteri": "^0.9.3",
     "tinyglobby": "0.2.16",
     "unified": "11.0.5",

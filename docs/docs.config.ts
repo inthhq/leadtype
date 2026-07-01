@@ -245,7 +245,7 @@ const config: DocsConfig = {
         "lint",
         "frontmatter-transformers",
         "mdx",
-        "remark",
+        "markdown",
         "search",
         "i18n",
         "troubleshooting",

@@ -14,7 +14,6 @@ const entries = {
   "nuxt/index": "src/nuxt/index.ts",
   "next/index": "src/next/index.ts",
   "next/client": "src/next/client.ts",
-  "remark/index": "src/remark/index.ts",
   "markdown/index": "src/markdown/index.ts",
   transformers: "src/transformers.ts",
   "convert/index": "src/convert/index.ts",

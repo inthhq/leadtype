@@ -113,7 +113,7 @@ Optional fields include icon, status, deprecated, tags, variants, related, full,
     path: "docs/authoring/components.md",
     title: "Components",
     description:
-      "MDX component names that the remark pipeline converts into markdown.",
+      "MDX component names that the markdown transform pipeline converts into markdown.",
     group: "authoring",
     content: `# Components
 
