@@ -90,6 +90,8 @@ export type {
   OpenApiSourceConfig,
   OpenApiSourceInput,
   ResolvedOpenApiSourceConfig,
+  StagedOpenApiDocs,
+  StageOpenApiDocsConfig,
 } from "./openapi";
 export {
   type CreateDocsSourceConfig,

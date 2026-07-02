@@ -122,8 +122,51 @@ function TypeTable({
   );
 }
 
+const MAX_SCHEMA_DEPTH = 6;
+
+interface FlattenedSchemaRow {
+  description?: string;
+  name: string;
+  required: boolean;
+  type: string;
+}
+
+// Flatten nested object/array-item properties into dotted rows
+// (`results[].title`) so deep schemas stay fully documented.
+function flattenSchemaRows(
+  properties: ApiSchemaProperty[],
+  prefix = "",
+  depth = 0
+): FlattenedSchemaRow[] {
+  if (depth > MAX_SCHEMA_DEPTH) {
+    return [];
+  }
+  const rows: FlattenedSchemaRow[] = [];
+  for (const property of properties) {
+    const name = `${prefix}${property.name}`;
+    rows.push({
+      description: property.description,
+      name,
+      required: property.required === true,
+      type: formatApiSchemaType(property),
+    });
+    if (property.properties) {
+      rows.push(
+        ...flattenSchemaRows(property.properties, `${name}.`, depth + 1)
+      );
+    }
+    if (property.items?.properties) {
+      rows.push(
+        ...flattenSchemaRows(property.items.properties, `${name}[].`, depth + 1)
+      );
+    }
+  }
+  return rows;
+}
+
 function SchemaRows({ properties = [] }: { properties?: ApiSchemaProperty[] }) {
-  if (properties.length === 0) {
+  const rows = flattenSchemaRows(properties);
+  if (rows.length === 0) {
     return null;
   }
   return (
@@ -138,16 +181,14 @@ function SchemaRows({ properties = [] }: { properties?: ApiSchemaProperty[] }) {
           </tr>
         </thead>
         <tbody>
-          {properties.map((property) => (
-            <tr className="border-b last:border-b-0" key={property.name}>
-              <td className="px-4 py-2 font-mono">{property.name}</td>
-              <td className="px-4 py-2 font-mono">
-                {formatApiSchemaType(property)}
-              </td>
+          {rows.map((row) => (
+            <tr className="border-b last:border-b-0" key={row.name}>
+              <td className="px-4 py-2 font-mono">{row.name}</td>
+              <td className="px-4 py-2 font-mono">{row.type}</td>
               <td className="px-4 py-2">
-                {property.required ? "Required" : "Optional"}
+                {row.required ? "Required" : "Optional"}
               </td>
-              <td className="px-4 py-2">{property.description ?? "—"}</td>
+              <td className="px-4 py-2">{row.description ?? "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -284,18 +325,44 @@ function ApiParameters({ title, parameters }: ApiParametersProps) {
   );
 }
 
+function JsonExample({ value }: { value: unknown }) {
+  return (
+    <pre data-language="json">
+      <code>
+        {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
+      </code>
+    </pre>
+  );
+}
+
+function MediaTypeExamples({ media }: { media: ApiMediaType }) {
+  const namedExamples = Object.entries(media.examples ?? {});
+  if (namedExamples.length > 0) {
+    return namedExamples.map(([name, value]) => (
+      <div key={name}>
+        <p className="text-sm opacity-80">
+          Example: <code>{name}</code>
+        </p>
+        <JsonExample value={value} />
+      </div>
+    ));
+  }
+  if (media.example === undefined) {
+    return null;
+  }
+  return <JsonExample value={media.example} />;
+}
+
 function MediaType({ media }: { media: ApiMediaType }) {
   return (
     <div className="my-3">
       <p className="text-sm">
         Content type <code>{media.mediaType}</code>
       </p>
-      <SchemaRows properties={media.schema?.properties} />
-      {media.example === undefined ? null : (
-        <pre data-language="json">
-          <code>{JSON.stringify(media.example, null, 2)}</code>
-        </pre>
-      )}
+      <SchemaRows
+        properties={media.schema?.properties ?? media.schema?.items?.properties}
+      />
+      <MediaTypeExamples media={media} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import type {
   OpenApiRequestBody,
   OpenApiResponse,
   OpenApiSchemaProperty,
+  OpenApiSchemaSummary,
   OpenApiSecurityRequirement,
   OpenApiSecurityScheme,
 } from "../../openapi";
@@ -20,7 +21,10 @@ import {
   createTable,
   createUnorderedList,
   getAttributeValue,
+  type MdxNode,
 } from "../libs";
+
+const MAX_SCHEMA_DEPTH = 6;
 
 function createCodeBlock(value: string, lang: string): Code {
   return { type: "code", lang, value };
@@ -52,18 +56,48 @@ function schemaLabel(
     : (schema.type ?? "");
 }
 
-function schemaRows(
-  properties: OpenApiSchemaProperty[] | undefined
-): (string | ReturnType<typeof createInlineCode>[])[][] {
-  if (!properties || properties.length === 0) {
-    return [];
+type SchemaRow = (string | ReturnType<typeof createInlineCode>[])[];
+
+function appendSchemaRows(
+  rows: SchemaRow[],
+  properties: OpenApiSchemaProperty[],
+  prefix: string,
+  depth: number
+): void {
+  if (depth > MAX_SCHEMA_DEPTH) {
+    return;
   }
-  return properties.map((property) => [
-    [createInlineCode(property.name)],
-    schemaLabel(property),
-    requiredLabel(property.required),
-    property.description ?? "",
-  ]);
+  for (const property of properties) {
+    const name = `${prefix}${property.name}`;
+    rows.push([
+      [createInlineCode(name)],
+      schemaLabel(property),
+      requiredLabel(property.required),
+      property.description ?? "",
+    ]);
+    if (property.properties) {
+      appendSchemaRows(rows, property.properties, `${name}.`, depth + 1);
+    }
+    if (property.items?.properties) {
+      appendSchemaRows(
+        rows,
+        property.items.properties,
+        `${name}[].`,
+        depth + 1
+      );
+    }
+  }
+}
+
+function schemaRows(schema: OpenApiSchemaSummary | undefined): SchemaRow[] {
+  const rows: SchemaRow[] = [];
+  if (schema?.properties) {
+    appendSchemaRows(rows, schema.properties, "", 0);
+  } else if (schema?.items?.properties) {
+    // Root-level arrays: render item fields with an `[]` prefix.
+    appendSchemaRows(rows, schema.items.properties, "[].", 0);
+  }
+  return rows;
 }
 
 function renderParameterTable(parameters: OpenApiParameter[]): RootContent[] {
@@ -83,11 +117,17 @@ function renderParameterTable(parameters: OpenApiParameter[]): RootContent[] {
   ];
 }
 
+function renderJsonExample(value: unknown): Code {
+  const text =
+    typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return createCodeBlock(text, "json");
+}
+
 function renderMediaType(media: OpenApiMediaType): RootContent[] {
   const nodes: RootContent[] = [
     createParagraph(`Content type: ${media.mediaType}`),
   ];
-  const rows = schemaRows(media.schema?.properties);
+  const rows = schemaRows(media.schema);
   if (rows.length > 0) {
     nodes.push(
       createTable(["Property", "Type", "Required", "Description"], rows)
@@ -95,8 +135,13 @@ function renderMediaType(media: OpenApiMediaType): RootContent[] {
   } else if (media.schema) {
     nodes.push(createParagraph(`Schema: ${schemaLabel(media.schema)}`));
   }
-  if (media.example !== undefined) {
-    nodes.push(createCodeBlock(JSON.stringify(media.example, null, 2), "json"));
+  if (media.examples) {
+    for (const [name, value] of Object.entries(media.examples)) {
+      nodes.push(createParagraph(`Example: ${name}`));
+      nodes.push(renderJsonExample(value));
+    }
+  } else if (media.example !== undefined) {
+    nodes.push(renderJsonExample(media.example));
   }
   return nodes;
 }
@@ -155,106 +200,129 @@ function renderResponse(response: OpenApiResponse): RootContent[] {
   return nodes;
 }
 
-export function openApiToMarkdown(): Transformer<Root, Root> {
-  const endpoint = createJsxComponentProcessor("ApiEndpoint", (node) => {
-    const method = (getAttributeValue(node, "method") ?? "").toUpperCase();
-    const apiPath = getAttributeValue(node, "path") ?? "";
-    const operationId = getAttributeValue(node, "operationId");
-    const serverUrl = getAttributeValue(node, "serverUrl");
-    const deprecated = getAttributeValue(node, "deprecated") === "true";
-    const lines = [
-      `${method} ${apiPath}`,
-      operationId ? `Operation ID: ${operationId}` : "",
-      serverUrl ? `Server: ${serverUrl}` : "",
-      deprecated ? "Deprecated: true" : "",
-    ].filter(Boolean);
-    return [createParagraph(lines.join("\n"))];
-  });
+export function apiEndpointToMarkdown(node: MdxNode): RootContent[] {
+  const method = (getAttributeValue(node, "method") ?? "").toUpperCase();
+  const apiPath = getAttributeValue(node, "path") ?? "";
+  const operationId = getAttributeValue(node, "operationId");
+  const serverUrl = getAttributeValue(node, "serverUrl");
+  const deprecated = getAttributeValue(node, "deprecated") === "true";
+  const nodes: RootContent[] = [
+    createCodeBlock(`${method} ${apiPath}`, "http"),
+  ];
+  const details = [
+    serverUrl ? `Server: ${serverUrl}` : "",
+    operationId ? `Operation ID: ${operationId}` : "",
+    deprecated ? "Deprecated: true" : "",
+  ].filter(Boolean);
+  if (details.length > 0) {
+    nodes.push(createParagraph(details.join("\n")));
+  }
+  return nodes;
+}
 
-  const auth = createJsxComponentProcessor("ApiAuth", (node) => {
-    const schemes = parseAttr<OpenApiSecurityScheme[]>(
-      getAttributeValue(node, "schemes"),
-      []
-    );
-    const requirements = parseAttr<OpenApiSecurityRequirement[]>(
-      getAttributeValue(node, "requirements"),
-      []
-    );
-    const nodes: RootContent[] = [];
-    nodes.push(...renderSecurityRequirements(requirements));
-    if (schemes.length > 0) {
-      nodes.push(createHeading(3, "Schemes"));
-      nodes.push(createUnorderedList(schemes.map(renderSecurityScheme)));
-    }
-    return nodes;
-  });
+export function apiAuthToMarkdown(node: MdxNode): RootContent[] {
+  const schemes = parseAttr<OpenApiSecurityScheme[]>(
+    getAttributeValue(node, "schemes"),
+    []
+  );
+  const requirements = parseAttr<OpenApiSecurityRequirement[]>(
+    getAttributeValue(node, "requirements"),
+    []
+  );
+  const nodes: RootContent[] = [];
+  nodes.push(...renderSecurityRequirements(requirements));
+  if (schemes.length > 0) {
+    nodes.push(createHeading(3, "Schemes"));
+    nodes.push(createUnorderedList(schemes.map(renderSecurityScheme)));
+  }
+  return nodes;
+}
 
-  const parameters = createJsxComponentProcessor("ApiParameters", (node) => {
-    const title = getAttributeValue(node, "title");
-    const parsed = parseAttr<OpenApiParameter[]>(
-      getAttributeValue(node, "parameters"),
-      []
-    );
-    const nodes: RootContent[] = [];
-    if (title) {
-      nodes.push(createHeading(3, title));
-    }
-    nodes.push(...renderParameterTable(parsed));
-    return nodes;
-  });
+export function apiParametersToMarkdown(node: MdxNode): RootContent[] {
+  const title = getAttributeValue(node, "title");
+  const parsed = parseAttr<OpenApiParameter[]>(
+    getAttributeValue(node, "parameters"),
+    []
+  );
+  const nodes: RootContent[] = [];
+  if (title) {
+    nodes.push(createHeading(3, title));
+  }
+  nodes.push(...renderParameterTable(parsed));
+  return nodes;
+}
 
-  const requestBody = createJsxComponentProcessor("ApiRequestBody", (node) => {
-    const body = parseAttr<OpenApiRequestBody | null>(
-      getAttributeValue(node, "body"),
-      null
-    );
-    if (!body) {
-      return [createParagraph("No request body.")];
-    }
-    const nodes: RootContent[] = [
-      createHeading(3, "Request Body"),
-      createParagraph(
-        `${requiredLabel(body.required)}${body.description ? ` - ${body.description}` : ""}`
-      ),
-    ];
-    for (const media of body.content) {
-      nodes.push(...renderMediaType(media));
-    }
-    return nodes;
-  });
+export function apiRequestBodyToMarkdown(node: MdxNode): RootContent[] {
+  const body = parseAttr<OpenApiRequestBody | null>(
+    getAttributeValue(node, "body"),
+    null
+  );
+  if (!body) {
+    return [createParagraph("No request body.")];
+  }
+  const nodes: RootContent[] = [
+    createHeading(3, "Request Body"),
+    createParagraph(
+      `${requiredLabel(body.required)}${body.description ? ` - ${body.description}` : ""}`
+    ),
+  ];
+  for (const media of body.content) {
+    nodes.push(...renderMediaType(media));
+  }
+  return nodes;
+}
 
-  const responses = createJsxComponentProcessor("ApiResponses", (node) => {
-    const parsed = parseAttr<OpenApiResponse[]>(
-      getAttributeValue(node, "responses"),
-      []
-    );
-    if (parsed.length === 0) {
-      return [createParagraph("No responses documented.")];
-    }
-    return parsed.flatMap(renderResponse);
-  });
+export function apiResponsesToMarkdown(node: MdxNode): RootContent[] {
+  const parsed = parseAttr<OpenApiResponse[]>(
+    getAttributeValue(node, "responses"),
+    []
+  );
+  if (parsed.length === 0) {
+    return [createParagraph("No responses documented.")];
+  }
+  return parsed.flatMap(renderResponse);
+}
 
-  const codeSamples = createJsxComponentProcessor("ApiCodeSamples", (node) => {
-    const samples = parseAttr<OpenApiCodeSample[]>(
-      getAttributeValue(node, "samples"),
-      []
-    );
-    return renderCodeSamples(samples);
-  });
+export function apiCodeSamplesToMarkdown(node: MdxNode): RootContent[] {
+  const samples = parseAttr<OpenApiCodeSample[]>(
+    getAttributeValue(node, "samples"),
+    []
+  );
+  return renderCodeSamples(samples);
+}
 
-  const tryIt = createJsxComponentProcessor("ApiTryIt", () => [
+export function apiTryItToMarkdown(): RootContent[] {
+  return [
     createParagraph(
       "Interactive API console metadata is available to the docs renderer."
     ),
-  ]);
+  ];
+}
+
+export function openApiToMarkdown(): Transformer<Root, Root> {
+  const processors = [
+    createJsxComponentProcessor("ApiEndpoint", (node) =>
+      apiEndpointToMarkdown(node)
+    ),
+    createJsxComponentProcessor("ApiAuth", (node) => apiAuthToMarkdown(node)),
+    createJsxComponentProcessor("ApiParameters", (node) =>
+      apiParametersToMarkdown(node)
+    ),
+    createJsxComponentProcessor("ApiRequestBody", (node) =>
+      apiRequestBodyToMarkdown(node)
+    ),
+    createJsxComponentProcessor("ApiResponses", (node) =>
+      apiResponsesToMarkdown(node)
+    ),
+    createJsxComponentProcessor("ApiCodeSamples", (node) =>
+      apiCodeSamplesToMarkdown(node)
+    ),
+    createJsxComponentProcessor("ApiTryIt", () => apiTryItToMarkdown()),
+  ];
 
   return (tree) => {
-    endpoint(tree);
-    auth(tree);
-    parameters(tree);
-    requestBody(tree);
-    responses(tree);
-    codeSamples(tree);
-    tryIt(tree);
+    for (const process of processors) {
+      process(tree);
+    }
   };
 }

@@ -74,6 +74,7 @@ import {
 import {
   type DocsOpenApiConfig,
   normalizeOpenApiConfig,
+  validateDocsOpenApiConfig,
   writeOpenApiPages,
 } from "../openapi";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
@@ -1301,10 +1302,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
-  const openapi =
-    value.openapi === undefined
-      ? undefined
-      : (value.openapi as DocsOpenApiConfig);
+  const openapi = validateDocsOpenApiConfig(
+    value.openapi,
+    `docs config at "${configPath}"`
+  );
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(

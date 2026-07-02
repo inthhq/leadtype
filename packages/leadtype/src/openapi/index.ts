@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import YAML from "yaml";
 import { normalizeDocsPath, stripDocsExtension } from "../internal/docs-url";
@@ -26,6 +27,15 @@ const POINTER_ESCAPE_PATTERN = /~[01]/g;
 const NON_ALPHANUMERIC_PATTERN = /[^a-z0-9]+/gi;
 const DUPLICATE_DASH_PATTERN = /-+/g;
 const LEADING_TRAILING_DASH_PATTERN = /^-|-$/g;
+const CODE_FENCE_PATTERN = /^\s{0,3}(`{3,}|~{3,})/;
+const CODE_SPAN_PATTERN = /(`+)([\s\S]*?)\1/g;
+const AUTOLINK_PATTERN = /<(?:[a-z][a-z0-9+.-]*:|www\.)[^\s<>]*>/gi;
+const MDX_UNSAFE_CHARACTER_PATTERN = /[<{}]/g;
+const TRAILING_SLASHES_PATTERN = /\/+$/;
+const JSON_MEDIA_TYPE_PATTERN = /^application\/(?:.+\+)?json/i;
+const BLANK_LINE_PATTERN = /\n\s*\n/;
+const WHITESPACE_RUN_PATTERN = /\s+/g;
+const MAX_EXAMPLE_DEPTH = 6;
 
 export type OpenApiHttpMethod = (typeof HTTP_METHODS)[number];
 
@@ -88,7 +98,10 @@ export type OpenApiSchemaSummary = {
   default?: unknown;
   enum?: unknown[];
   format?: string;
+  example?: unknown;
   properties?: OpenApiSchemaProperty[];
+  /** Item schema for arrays, so nested object items stay renderable. */
+  items?: OpenApiSchemaSummary;
 };
 
 export type OpenApiSchemaProperty = OpenApiSchemaSummary & {
@@ -243,6 +256,72 @@ function titleize(input: string): string {
     .join(" ");
 }
 
+function escapeMdxPlainText(text: string): string {
+  // Preserve CommonMark autolinks (`<https://…>`); escape every other `<`,
+  // `{`, and `}` so arbitrary spec prose cannot open a JSX tag or expression.
+  let output = "";
+  let lastIndex = 0;
+  for (const match of text.matchAll(AUTOLINK_PATTERN)) {
+    const index = match.index ?? 0;
+    output += text
+      .slice(lastIndex, index)
+      .replace(MDX_UNSAFE_CHARACTER_PATTERN, (char) => `\\${char}`);
+    output += match[0];
+    lastIndex = index + match[0].length;
+  }
+  output += text
+    .slice(lastIndex)
+    .replace(MDX_UNSAFE_CHARACTER_PATTERN, (char) => `\\${char}`);
+  return output;
+}
+
+function escapeMdxInline(line: string): string {
+  // Keep inline code spans verbatim; escape only the surrounding prose.
+  let output = "";
+  let lastIndex = 0;
+  for (const match of line.matchAll(CODE_SPAN_PATTERN)) {
+    const index = match.index ?? 0;
+    output += escapeMdxPlainText(line.slice(lastIndex, index));
+    output += match[0];
+    lastIndex = index + match[0].length;
+  }
+  output += escapeMdxPlainText(line.slice(lastIndex));
+  return output;
+}
+
+/**
+ * Make CommonMark text (OpenAPI summaries/descriptions) safe to embed in an
+ * MDX document body. Fenced code blocks, inline code spans, and autolinks are
+ * preserved; `<`, `{`, and `}` in prose are backslash-escaped so they cannot
+ * be parsed as JSX or expressions.
+ */
+export function escapeMarkdownForMdx(input: string): string {
+  const lines = input.split("\n");
+  const output: string[] = [];
+  let openFence: string | null = null;
+  for (const line of lines) {
+    const fenceMatch = line.match(CODE_FENCE_PATTERN);
+    if (openFence) {
+      output.push(line);
+      const closing = fenceMatch?.[1];
+      if (
+        closing?.startsWith(openFence[0] ?? "`") &&
+        closing.length >= openFence.length
+      ) {
+        openFence = null;
+      }
+      continue;
+    }
+    if (fenceMatch?.[1]) {
+      openFence = fenceMatch[1];
+      output.push(line);
+      continue;
+    }
+    output.push(escapeMdxInline(line));
+  }
+  return output.join("\n");
+}
+
 function methodPathSlug(method: OpenApiHttpMethod, apiPath: string): string {
   const pathSlug = apiPath
     .replace(/[{}]/g, "")
@@ -253,7 +332,7 @@ function methodPathSlug(method: OpenApiHttpMethod, apiPath: string): string {
   return slugify(`${method}-${pathSlug || "root"}`);
 }
 
-function escapePointerSegment(segment: string): string {
+function unescapePointerSegment(segment: string): string {
   return segment.replace(POINTER_ESCAPE_PATTERN, (match) => {
     if (match === "~1") {
       return "/";
@@ -269,7 +348,7 @@ function readPointer(document: unknown, pointer: string): unknown {
   const segments = pointer
     .slice(2)
     .split("/")
-    .map((segment) => escapePointerSegment(decodeURIComponent(segment)));
+    .map((segment) => unescapePointerSegment(decodeURIComponent(segment)));
   let current = document;
   for (const segment of segments) {
     if (Array.isArray(current)) {
@@ -423,12 +502,20 @@ function validateOpenApiDocument(
 ): void {
   const version = asString(document.openapi);
   if (!version?.startsWith("3.")) {
+    if (asString(document.swagger)) {
+      throw new Error(
+        `OpenAPI: "${input}" is a Swagger 2.0 document. Convert it to OpenAPI 3.x (e.g. with swagger2openapi) before generating docs.`
+      );
+    }
     throw new Error(
       `OpenAPI: "${input}" must be an OpenAPI 3.x document with an "openapi" field`
     );
   }
-  if (!isRecord(document.paths)) {
-    throw new Error(`OpenAPI: "${input}" must define a paths object`);
+  // OpenAPI 3.1 allows webhooks-only documents; `paths` is optional there.
+  if (!(isRecord(document.paths) || isRecord(document.webhooks))) {
+    throw new Error(
+      `OpenAPI: "${input}" must define a paths (or webhooks) object`
+    );
   }
 }
 
@@ -504,6 +591,22 @@ function schemaTypeFromUnknown(value: unknown): string {
   return isRecord(value) ? schemaType(value) : "unknown";
 }
 
+function expandAllOfSources(
+  value: Record<string, unknown>,
+  depth = 0
+): Record<string, unknown>[] {
+  const sources: Record<string, unknown>[] = [value];
+  if (depth >= MAX_EXAMPLE_DEPTH || !Array.isArray(value.allOf)) {
+    return sources;
+  }
+  for (const member of value.allOf) {
+    if (isRecord(member)) {
+      sources.push(...expandAllOfSources(member, depth + 1));
+    }
+  }
+  return sources;
+}
+
 function summarizeSchema(
   value: unknown,
   required = false
@@ -512,29 +615,43 @@ function summarizeSchema(
     return;
   }
 
-  const requiredNames = new Set(asStringArray(value.required));
-  const properties: OpenApiSchemaProperty[] = [];
-  if (isRecord(value.properties)) {
-    for (const [name, property] of Object.entries(value.properties)) {
-      const summary = summarizeSchema(property, requiredNames.has(name));
-      if (!summary) {
+  // Merge `allOf` members so composed object schemas keep their full
+  // property set (`required` arrays union across members, per OpenAPI).
+  const sources = expandAllOfSources(value);
+  const requiredNames = new Set(
+    sources.flatMap((source) => asStringArray(source.required))
+  );
+  const mergedProperties = new Map<string, OpenApiSchemaProperty>();
+  for (const source of sources) {
+    if (!isRecord(source.properties)) {
+      continue;
+    }
+    for (const [name, property] of Object.entries(source.properties)) {
+      if (mergedProperties.has(name)) {
         continue;
       }
-      properties.push({ name, ...summary });
+      const summary = summarizeSchema(property, requiredNames.has(name));
+      if (summary) {
+        mergedProperties.set(name, { name, ...summary });
+      }
     }
   }
+  const properties = [...mergedProperties.values()];
+  const items = summarizeSchema(value.items);
+  const description = asString(value.description);
+  const format = asString(value.format);
 
   return {
     type: schemaType(value),
-    ...(asString(value.description)
-      ? { description: asString(value.description) }
-      : {}),
+    ...(description ? { description } : {}),
     ...(required ? { required } : {}),
     ...(value.deprecated === true ? { deprecated: true } : {}),
     ...(value.default === undefined ? {} : { default: value.default }),
     ...(Array.isArray(value.enum) ? { enum: value.enum } : {}),
-    ...(asString(value.format) ? { format: asString(value.format) } : {}),
+    ...(format ? { format } : {}),
+    ...(value.example === undefined ? {} : { example: value.example }),
     ...(properties.length > 0 ? { properties } : {}),
+    ...(items ? { items } : {}),
   };
 }
 
@@ -555,19 +672,102 @@ function normalizeParameter(value: unknown): OpenApiParameter | undefined {
   ) {
     return;
   }
+  const description = asString(value.description);
+  const schema = summarizeSchema(value.schema);
   return {
     name,
     in: location,
     required: value.required === true || location === "path",
-    ...(asString(value.description)
-      ? { description: asString(value.description) }
-      : {}),
+    ...(description ? { description } : {}),
     ...(value.deprecated === true ? { deprecated: true } : {}),
-    ...(summarizeSchema(value.schema)
-      ? { schema: summarizeSchema(value.schema) }
-      : {}),
+    ...(schema ? { schema } : {}),
     ...(value.example === undefined ? {} : { example: value.example }),
   };
+}
+
+/**
+ * Build a representative example value from a schema summary. Explicit
+ * `example` / `default` / first `enum` values win; otherwise the value is
+ * synthesized from the type and format, matching what API reference UIs like
+ * Mintlify and Fumadocs render when a spec omits examples.
+ */
+export function buildSchemaExample(
+  schema: OpenApiSchemaSummary | undefined,
+  depth = 0
+): unknown {
+  if (!schema || depth > MAX_EXAMPLE_DEPTH) {
+    return null;
+  }
+  if (schema.example !== undefined) {
+    return schema.example;
+  }
+  if (schema.default !== undefined) {
+    return schema.default;
+  }
+  if (schema.enum && schema.enum.length > 0) {
+    return schema.enum[0];
+  }
+  if (schema.properties && schema.properties.length > 0) {
+    const output: Record<string, unknown> = {};
+    for (const property of schema.properties) {
+      output[property.name] = buildSchemaExample(property, depth + 1);
+    }
+    return output;
+  }
+  if (schema.type.endsWith("[]") || schema.items) {
+    return schema.items ? [buildSchemaExample(schema.items, depth + 1)] : [];
+  }
+  const primary = schema.type.split(" | ")[0] ?? schema.type;
+  switch (primary) {
+    case "string":
+      return exampleStringForFormat(schema.format);
+    case "integer":
+    case "number":
+      return 0;
+    case "boolean":
+      return true;
+    case "null":
+      return null;
+    case "object":
+    case "unknown":
+      return {};
+    default:
+      // Named types (unresolvable/circular refs) fall back to an empty object.
+      return {};
+  }
+}
+
+function exampleStringForFormat(format: string | undefined): string {
+  switch (format) {
+    case "date-time":
+      return "2024-01-15T09:30:00Z";
+    case "date":
+      return "2024-01-15";
+    case "email":
+      return "user@example.com";
+    case "uuid":
+      return "123e4567-e89b-12d3-a456-426614174000";
+    case "uri":
+    case "url":
+      return "https://example.com";
+    case "binary":
+    case "byte":
+      return "<binary>";
+    default:
+      return "string";
+  }
+}
+
+function normalizeExamplesMap(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  // OpenAPI `examples` entries are Example objects — surface their `value`.
+  const output: Record<string, unknown> = {};
+  for (const [name, entry] of Object.entries(value)) {
+    output[name] =
+      isRecord(entry) && entry.value !== undefined ? entry.value : entry;
+  }
+  return output;
 }
 
 function normalizeMediaTypes(content: unknown): OpenApiMediaType[] {
@@ -579,13 +779,25 @@ function normalizeMediaTypes(content: unknown): OpenApiMediaType[] {
     if (!isRecord(value)) {
       continue;
     }
+    const schema = summarizeSchema(value.schema);
+    const examples = isRecord(value.examples)
+      ? normalizeExamplesMap(value.examples)
+      : undefined;
+    const hasNamedExamples = examples && Object.keys(examples).length > 0;
+    // Synthesize an example for JSON media types so every page ships a
+    // concrete payload even when the spec omits one.
+    const example =
+      value.example === undefined &&
+      !hasNamedExamples &&
+      schema &&
+      JSON_MEDIA_TYPE_PATTERN.test(mediaType)
+        ? buildSchemaExample(schema)
+        : value.example;
     mediaTypes.push({
       mediaType,
-      ...(summarizeSchema(value.schema)
-        ? { schema: summarizeSchema(value.schema) }
-        : {}),
-      ...(value.example === undefined ? {} : { example: value.example }),
-      ...(isRecord(value.examples) ? { examples: value.examples } : {}),
+      ...(schema ? { schema } : {}),
+      ...(example === undefined ? {} : { example }),
+      ...(hasNamedExamples ? { examples } : {}),
     });
   }
   return mediaTypes;
@@ -595,11 +807,10 @@ function normalizeRequestBody(value: unknown): OpenApiRequestBody | undefined {
   if (!isRecord(value)) {
     return;
   }
+  const description = asString(value.description);
   return {
     required: value.required === true,
-    ...(asString(value.description)
-      ? { description: asString(value.description) }
-      : {}),
+    ...(description ? { description } : {}),
     content: normalizeMediaTypes(value.content),
   };
 }
@@ -656,22 +867,22 @@ function normalizeSecuritySchemes(
     if (!type) {
       continue;
     }
+    const name = asString(value.name);
+    const location = asString(value.in);
+    const scheme = asString(value.scheme);
+    const bearerFormat = asString(value.bearerFormat);
+    const description = asString(value.description);
+    const openIdConnectUrl = asString(value.openIdConnectUrl);
     normalized.push({
       key,
       type,
-      ...(asString(value.name) ? { name: asString(value.name) } : {}),
-      ...(asString(value.in) ? { in: asString(value.in) } : {}),
-      ...(asString(value.scheme) ? { scheme: asString(value.scheme) } : {}),
-      ...(asString(value.bearerFormat)
-        ? { bearerFormat: asString(value.bearerFormat) }
-        : {}),
-      ...(asString(value.description)
-        ? { description: asString(value.description) }
-        : {}),
+      ...(name ? { name } : {}),
+      ...(location ? { in: location } : {}),
+      ...(scheme ? { scheme } : {}),
+      ...(bearerFormat ? { bearerFormat } : {}),
+      ...(description ? { description } : {}),
       ...(value.flows === undefined ? {} : { flows: value.flows }),
-      ...(asString(value.openIdConnectUrl)
-        ? { openIdConnectUrl: asString(value.openIdConnectUrl) }
-        : {}),
+      ...(openIdConnectUrl ? { openIdConnectUrl } : {}),
     });
   }
   return normalized;
@@ -771,37 +982,114 @@ function shouldIncludeOperation(
   return true;
 }
 
+function sampleParameterValue(parameter: OpenApiParameter): string {
+  const value =
+    parameter.example ??
+    parameter.schema?.example ??
+    parameter.schema?.default ??
+    parameter.schema?.enum?.[0];
+  if (value === undefined) {
+    return `<${parameter.name}>`;
+  }
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+function requiredQueryString(operation: OpenApiOperation): string {
+  const parts = operation.parameters
+    .filter((parameter) => parameter.in === "query" && parameter.required)
+    .map((parameter) => `${parameter.name}=${sampleParameterValue(parameter)}`);
+  return parts.length > 0 ? `?${parts.join("&")}` : "";
+}
+
 function codeSampleUrl(operation: OpenApiOperation): string {
-  const server = operation.serverUrl?.replace(/\/+$/, "") ?? "";
-  return `${server}${operation.path}`;
+  const server =
+    operation.serverUrl?.replace(TRAILING_SLASHES_PATTERN, "") ?? "";
+  return `${server}${operation.path}${requiredQueryString(operation)}`;
+}
+
+function authorizationHeader(scheme: OpenApiSecurityScheme): string[] | null {
+  if (scheme.type === "http" && scheme.scheme === "basic") {
+    return ["Authorization", "Basic <credentials>"];
+  }
+  if (scheme.type === "http") {
+    return ["Authorization", `Bearer <${scheme.bearerFormat ?? "token"}>`];
+  }
+  if (scheme.type === "apiKey" && scheme.name) {
+    if (scheme.in === "header") {
+      return [scheme.name, "<api-key>"];
+    }
+    if (scheme.in === "cookie") {
+      return ["Cookie", `${scheme.name}=<api-key>`];
+    }
+    return null;
+  }
+  if (scheme.type === "oauth2" || scheme.type === "openIdConnect") {
+    return ["Authorization", "Bearer <access-token>"];
+  }
+  return null;
+}
+
+function sampleHeaders(operation: OpenApiOperation): Map<string, string> {
+  const headers = new Map<string, string>();
+  // Auth for the first (preferred) security requirement.
+  const requirement = operation.security[0];
+  if (requirement) {
+    for (const key of Object.keys(requirement)) {
+      const scheme = operation.securitySchemes.find(
+        (candidate) => candidate.key === key
+      );
+      const header = scheme ? authorizationHeader(scheme) : null;
+      if (header && !headers.has(header[0] ?? "")) {
+        headers.set(header[0] ?? "", header[1] ?? "");
+      }
+    }
+  }
+  for (const parameter of operation.parameters) {
+    if (parameter.in !== "header" || parameter.required !== true) {
+      continue;
+    }
+    if (!headers.has(parameter.name)) {
+      headers.set(parameter.name, sampleParameterValue(parameter));
+    }
+  }
+  const mediaType = operation.requestBody?.content[0]?.mediaType;
+  if (mediaType && !headers.has("Content-Type")) {
+    headers.set("Content-Type", mediaType);
+  }
+  return headers;
+}
+
+function sampleRequestBody(operation: OpenApiOperation): unknown {
+  const media = operation.requestBody?.content[0];
+  if (!media) {
+    return;
+  }
+  if (media.example !== undefined) {
+    return media.example;
+  }
+  if (media.schema) {
+    return buildSchemaExample(media.schema);
+  }
+  return;
 }
 
 function buildCurlSample(operation: OpenApiOperation): string {
   const lines = [
     `curl -X ${operation.method.toUpperCase()} "${codeSampleUrl(operation)}"`,
   ];
-  for (const parameter of operation.parameters) {
-    if (parameter.in !== "header" || parameter.required !== true) {
-      continue;
-    }
-    lines.push(`  -H "${parameter.name}: <value>"`);
+  for (const [name, value] of sampleHeaders(operation)) {
+    lines.push(`  -H "${name}: ${value}"`);
   }
-  const mediaType = operation.requestBody?.content[0]?.mediaType;
-  if (mediaType) {
-    lines.push(`  -H "Content-Type: ${mediaType}"`);
-  }
-  if (operation.requestBody) {
-    lines.push("  -d '<request-body>'");
+  const body = sampleRequestBody(operation);
+  if (body !== undefined) {
+    const json = JSON.stringify(body, null, 2).replaceAll("'", "'\\''");
+    lines.push(`  -d '${json}'`);
   }
   return lines.join(" \\\n");
 }
 
 function buildFetchSample(operation: OpenApiOperation): string {
-  const headers: Record<string, string> = {};
-  const mediaType = operation.requestBody?.content[0]?.mediaType;
-  if (mediaType) {
-    headers["Content-Type"] = mediaType;
-  }
+  const headers = Object.fromEntries(sampleHeaders(operation));
   const lines = [
     `const response = await fetch("${codeSampleUrl(operation)}", {`,
     `  method: "${operation.method.toUpperCase()}",`,
@@ -811,11 +1099,41 @@ function buildFetchSample(operation: OpenApiOperation): string {
       `  headers: ${JSON.stringify(headers, null, 2).replaceAll("\n", "\n  ")},`
     );
   }
-  if (operation.requestBody) {
-    lines.push("  body: JSON.stringify({ /* request body */ }),");
+  const body = sampleRequestBody(operation);
+  if (body !== undefined) {
+    const json = JSON.stringify(body, null, 2).replaceAll("\n", "\n  ");
+    lines.push(`  body: JSON.stringify(${json}),`);
   }
   lines.push("});", "const data = await response.json();");
   return lines.join("\n");
+}
+
+function vendorCodeSamples(
+  operation: Record<string, unknown>
+): OpenApiCodeSample[] | undefined {
+  // Redocly-style `x-codeSamples` (also `x-code-samples`) override generated
+  // samples so spec authors can ship hand-written SDK snippets.
+  const raw = operation["x-codeSamples"] ?? operation["x-code-samples"];
+  if (!Array.isArray(raw)) {
+    return;
+  }
+  const samples: OpenApiCodeSample[] = [];
+  for (const entry of raw) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+    const language = asString(entry.lang) ?? asString(entry.language);
+    const code = asString(entry.source);
+    if (!code) {
+      continue;
+    }
+    samples.push({
+      code,
+      label: asString(entry.label) ?? language ?? "Example",
+      language: (language ?? "text").toLowerCase(),
+    });
+  }
+  return samples.length > 0 ? samples : undefined;
 }
 
 function normalizeOperation(
@@ -849,10 +1167,16 @@ function normalizeOperation(
   const selectedSchemeNames = new Set(
     security.flatMap((requirement) => Object.keys(requirement))
   );
-  const securitySchemes = normalizeSecuritySchemes(document).filter(
-    (scheme) =>
-      selectedSchemeNames.size === 0 || selectedSchemeNames.has(scheme.key)
+  // Only ship the schemes this operation's requirements reference. Operations
+  // without security requirements are public — no auth section for them.
+  const securitySchemes = normalizeSecuritySchemes(document).filter((scheme) =>
+    selectedSchemeNames.has(scheme.key)
   );
+
+  const operationId = asString(operation.operationId);
+  const summary = asString(operation.summary);
+  const serverUrl = firstServerUrl(document, operation, config);
+  const requestBody = normalizeRequestBody(operation.requestBody);
 
   const normalized: OpenApiOperation = {
     method,
@@ -866,20 +1190,12 @@ function normalizeOperation(
     security,
     securitySchemes,
     codeSamples: [],
-    ...(asString(operation.operationId)
-      ? { operationId: asString(operation.operationId) }
-      : {}),
-    ...(asString(operation.summary)
-      ? { summary: asString(operation.summary) }
-      : {}),
-    ...(firstServerUrl(document, operation, config)
-      ? { serverUrl: firstServerUrl(document, operation, config) }
-      : {}),
-    ...(normalizeRequestBody(operation.requestBody)
-      ? { requestBody: normalizeRequestBody(operation.requestBody) }
-      : {}),
+    ...(operationId ? { operationId } : {}),
+    ...(summary ? { summary } : {}),
+    ...(serverUrl ? { serverUrl } : {}),
+    ...(requestBody ? { requestBody } : {}),
   };
-  normalized.codeSamples = [
+  normalized.codeSamples = vendorCodeSamples(operation) ?? [
     { code: buildCurlSample(normalized), label: "cURL", language: "bash" },
     { code: buildFetchSample(normalized), label: "JavaScript", language: "ts" },
   ];
@@ -891,9 +1207,14 @@ export function normalizeOpenApiConfig(
   cwd: string
 ): ResolvedOpenApiSourceConfig[] {
   const inputs = Array.isArray(config) ? config : [config];
-  return inputs.map((input) => {
+  return inputs.map((input, index) => {
     const source: OpenApiSourceConfig =
       typeof input === "string" ? { input } : input;
+    if (typeof source.input !== "string" || source.input.trim() === "") {
+      throw new Error(
+        `OpenAPI: config entry ${index} must set "input" to a spec path or URL`
+      );
+    }
     return {
       ...source,
       cwd,
@@ -904,6 +1225,91 @@ export function normalizeOpenApiConfig(
       title: source.title ?? DEFAULT_NAV_TITLE,
     };
   });
+}
+
+/**
+ * Validate an untyped `openapi` block from a loaded docs config. Returns the
+ * typed config, throwing descriptive errors so config typos fail fast.
+ */
+export function validateDocsOpenApiConfig(
+  value: unknown,
+  label: string
+): DocsOpenApiConfig | undefined {
+  if (value === undefined) {
+    return;
+  }
+  const entries = Array.isArray(value) ? value : [value];
+  for (const [index, entry] of entries.entries()) {
+    validateOpenApiEntry(entry, index, label);
+  }
+  return value as DocsOpenApiConfig;
+}
+
+function validateOpenApiEntry(
+  entry: unknown,
+  index: number,
+  label: string
+): void {
+  const where = `${label}: openapi entry ${index}`;
+  if (typeof entry === "string") {
+    if (entry.trim() === "") {
+      throw new Error(`${where} must be a non-empty spec path or URL`);
+    }
+    return;
+  }
+  if (!isRecord(entry)) {
+    throw new Error(`${where} must be a string or { input, … } object`);
+  }
+  if (typeof entry.input !== "string" || entry.input.trim() === "") {
+    throw new Error(`${where} must set "input" to a spec path or URL`);
+  }
+  const stringKeys = ["output", "serverUrl", "description"] as const;
+  for (const key of stringKeys) {
+    if (entry[key] !== undefined && typeof entry[key] !== "string") {
+      throw new Error(`${where}: "${key}" must be a string`);
+    }
+  }
+  if (entry.title !== undefined && typeof entry.title !== "string") {
+    throw new Error(`${where}: "title" must be a string`);
+  }
+  if (
+    entry.group !== undefined &&
+    typeof entry.group !== "string" &&
+    !(
+      Array.isArray(entry.group) &&
+      entry.group.every((item) => typeof item === "string")
+    )
+  ) {
+    throw new Error(`${where}: "group" must be a string or string array`);
+  }
+  if (entry.order !== undefined && typeof entry.order !== "number") {
+    throw new Error(`${where}: "order" must be a number`);
+  }
+  const tagKeys = ["includeTags", "excludeTags"] as const;
+  for (const key of tagKeys) {
+    const tags = entry[key];
+    if (
+      tags !== undefined &&
+      !(Array.isArray(tags) && tags.every((tag) => typeof tag === "string"))
+    ) {
+      throw new Error(`${where}: "${key}" must be a string array`);
+    }
+  }
+  const booleanKeys = ["groupByTags", "includeTryIt"] as const;
+  for (const key of booleanKeys) {
+    if (entry[key] !== undefined && typeof entry[key] !== "boolean") {
+      throw new Error(`${where}: "${key}" must be a boolean`);
+    }
+  }
+  if (
+    entry.slugStrategy !== undefined &&
+    entry.slugStrategy !== "operation-id" &&
+    entry.slugStrategy !== "method-path"
+  ) {
+    throw new Error(
+      `${where}: "slugStrategy" must be "operation-id" or "method-path"`
+    );
+  }
 }
 
 function operationSlug(
@@ -956,6 +1362,18 @@ function yamlString(value: string): string {
   return JSON.stringify(value);
 }
 
+/**
+ * Short, single-line description for frontmatter, nav, and search snippets.
+ * Prefers the operation summary, then the first paragraph of the description.
+ */
+function shortDescription(operation: OpenApiOperation): string {
+  const source =
+    operation.summary ??
+    operation.description.split(BLANK_LINE_PATTERN)[0] ??
+    operation.title;
+  return source.replace(WHITESPACE_RUN_PATTERN, " ").trim();
+}
+
 function renderFrontmatter(
   operation: OpenApiOperation,
   config: ResolvedOpenApiSourceConfig,
@@ -964,7 +1382,7 @@ function renderFrontmatter(
   const lines = [
     "---",
     `title: ${yamlString(operation.title)}`,
-    `description: ${yamlString(operation.description)}`,
+    `description: ${yamlString(shortDescription(operation))}`,
   ];
   if (config.group) {
     lines.push(`group: ${JSON.stringify(config.group)}`);
@@ -1026,20 +1444,21 @@ function renderOperationMdx(
   config: ResolvedOpenApiSourceConfig,
   index: number
 ): string {
+  // No body `#` heading: the docs renderer prints the frontmatter title, and a
+  // second h1 would duplicate it. Description text is CommonMark from the
+  // spec, so escape MDX-significant syntax before embedding it in the body.
   const blocks = [
     renderFrontmatter(operation, config, index),
     "",
-    `# ${operation.title}`,
-    "",
     renderMdxComponent("ApiEndpoint", {
-      deprecated: operation.deprecated,
+      deprecated: operation.deprecated || undefined,
       method: operation.method,
       operationId: operation.operationId,
       path: operation.path,
       serverUrl: operation.serverUrl,
     }),
     "",
-    operation.description,
+    escapeMarkdownForMdx(operation.description),
   ];
 
   if (operation.securitySchemes.length > 0 || operation.security.length > 0) {
@@ -1154,19 +1573,19 @@ function buildGeneratedNav(
 }
 
 export async function generateOpenApiPages(
-  config: ResolvedOpenApiSourceConfig
+  config: ResolvedOpenApiSourceConfig,
+  usedPaths: Set<string> = new Set()
 ): Promise<GenerateOpenApiPagesResult> {
   const document = await loadOpenApiDocument(config.input, config.cwd);
   const candidates = collectOperationCandidates(document).filter((candidate) =>
     shouldIncludeOperation(candidate.operation, config)
   );
-  const usedPaths = new Set<string>();
   const pages: GeneratedOpenApiPage[] = [];
   for (const candidate of candidates) {
     const operation = normalizeOperation(candidate, document, config);
     const relativePath = operationRelativePath(operation, config, usedPaths);
     pages.push({
-      description: operation.description,
+      description: shortDescription(operation),
       filePath: relativePath,
       operation,
       relativePath,
@@ -1191,8 +1610,11 @@ export async function writeOpenApiPages({
 }: WriteOpenApiPagesConfig): Promise<GenerateOpenApiPagesResult> {
   const allPages: GeneratedOpenApiPage[] = [];
   const nav: DocsNavNode[] = [];
+  // One shared set so multiple specs targeting the same output directory get
+  // collision suffixes instead of silently overwriting each other.
+  const usedPaths = new Set<string>();
   for (const config of configs) {
-    const generated = await generateOpenApiPages(config);
+    const generated = await generateOpenApiPages(config, usedPaths);
     for (const [index, page] of generated.pages.entries()) {
       const outputPath = path.join(docsDir, page.relativePath);
       await mkdir(path.dirname(outputPath), { recursive: true });
@@ -1205,4 +1627,53 @@ export async function writeOpenApiPages({
     nav.push(...generated.nav);
   }
   return { nav, pages: allPages };
+}
+
+export type StageOpenApiDocsConfig = {
+  /** Docs source directory to copy before writing generated pages. */
+  contentDir: string;
+  /** OpenAPI config, matching `DocsConfig["openapi"]`. */
+  openapi: DocsOpenApiConfig;
+  /** Base directory for relative `input` paths. Defaults to `contentDir`. */
+  cwd?: string;
+};
+
+export type StagedOpenApiDocs = {
+  /** Temp copy of `contentDir` with generated API pages written into it. */
+  contentDir: string;
+  /** Generated navigation nodes — append to your curated nav. */
+  nav: DocsNavNode[];
+  pages: GeneratedOpenApiPage[];
+  /** Remove the staged copy. Call when the consuming build is done with it. */
+  cleanup: () => Promise<void>;
+};
+
+/**
+ * Stage a docs source directory with generated OpenAPI pages, without
+ * touching the original source. This is the shared building block behind
+ * `createDocsSource({ openapi })` and the package docs build — use it directly
+ * when wiring a custom pipeline.
+ */
+export async function stageOpenApiDocs(
+  config: StageOpenApiDocsConfig
+): Promise<StagedOpenApiDocs> {
+  const sourceDir = path.resolve(config.contentDir);
+  if (!existsSync(sourceDir)) {
+    throw new Error(`OpenAPI: contentDir does not exist at "${sourceDir}"`);
+  }
+  const stagedRoot = await mkdtemp(path.join(tmpdir(), "leadtype-openapi-"));
+  const stagedContentDir = path.join(stagedRoot, path.basename(sourceDir));
+  await cp(sourceDir, stagedContentDir, { recursive: true });
+  const result = await writeOpenApiPages({
+    configs: normalizeOpenApiConfig(config.openapi, config.cwd ?? sourceDir),
+    docsDir: stagedContentDir,
+  });
+  return {
+    cleanup: async () => {
+      await rm(stagedRoot, { force: true, recursive: true });
+    },
+    contentDir: stagedContentDir,
+    nav: result.nav,
+    pages: result.pages,
+  };
 }

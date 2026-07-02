@@ -1,5 +1,4 @@
-import { cp, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import docsConfig from "../../../docs/docs.config";
@@ -13,18 +12,13 @@ import {
   resolveDocsNavigation,
 } from "../src/llm/index";
 import { defaultMarkdownTransforms } from "../src/markdown/index";
-import {
-  normalizeOpenApiConfig,
-  writeOpenApiPages,
-} from "../src/openapi/index";
+import { stageOpenApiDocs } from "../src/openapi/index";
 import { generateDocsSearchFiles } from "../src/search/node-index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const REPO_ROOT = resolve(PACKAGE_ROOT, "..", "..");
 const SRC_DOCS_DIR = join(REPO_ROOT, "docs");
 const OUT_DOCS_DIR = join(PACKAGE_ROOT, "docs");
-const STAGED_ROOT = await mkdtemp(join(tmpdir(), "leadtype-docs-"));
-const STAGED_DOCS_DIR = join(STAGED_ROOT, "docs");
 
 // The output folder is entirely generated and gitignored — safe to nuke.
 // Also clear the package-root AGENTS.md and any leftover `llms.txt` /
@@ -35,23 +29,25 @@ await rm(join(PACKAGE_ROOT, "SKILL.md"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms.txt"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms-full.txt"), { force: true });
 
+// Stage generated OpenAPI pages next to the authored docs (in a temp copy)
+// so they flow through conversion, nav, search, and agent artifacts.
+const staged =
+  docsConfig.openapi === undefined
+    ? undefined
+    : await stageOpenApiDocs({
+        contentDir: SRC_DOCS_DIR,
+        openapi: docsConfig.openapi,
+      });
+const docsDir = staged?.contentDir ?? SRC_DOCS_DIR;
+const srcRoot = staged ? dirname(staged.contentDir) : REPO_ROOT;
+const docsNavigation = [
+  ...(docsConfig.navigation ?? []),
+  ...(staged?.nav ?? []),
+];
+
 try {
-  await cp(SRC_DOCS_DIR, STAGED_DOCS_DIR, { recursive: true });
-
-  const openApiResult =
-    docsConfig.openapi === undefined
-      ? { nav: [], pages: [] }
-      : await writeOpenApiPages({
-          configs: normalizeOpenApiConfig(docsConfig.openapi, SRC_DOCS_DIR),
-          docsDir: STAGED_DOCS_DIR,
-        });
-  const docsNavigation = [
-    ...(docsConfig.navigation ?? []),
-    ...openApiResult.nav,
-  ];
-
   await convertAllMdx({
-    srcDir: STAGED_DOCS_DIR,
+    srcDir: docsDir,
     outDir: OUT_DOCS_DIR,
     markdownTransforms: defaultMarkdownTransforms,
   });
@@ -66,7 +62,7 @@ try {
   });
 
   const navigation = await resolveDocsNavigation({
-    srcDir: STAGED_ROOT,
+    srcDir: srcRoot,
     nav: docsNavigation,
     mounts: docsConfig.mounts,
   });
@@ -87,7 +83,7 @@ try {
   // the bundled `.md` topic, so the docs remain valid after npm install at
   // node_modules/leadtype/ with no URL fetches required.
   const { outputPath } = await generateAgentsMd({
-    srcDir: STAGED_ROOT,
+    srcDir: srcRoot,
     outDir: PACKAGE_ROOT,
     product: agentInputs.product,
     nav: docsNavigation,
@@ -136,5 +132,5 @@ try {
     },
   });
 } finally {
-  await rm(STAGED_ROOT, { recursive: true, force: true });
+  await staged?.cleanup();
 }
