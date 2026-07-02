@@ -2372,7 +2372,19 @@ export async function generateLLMFullContextFiles(
       navigation
     );
   } else {
-    resolveGroups(config.groups ?? []);
+    // Keep parity with the agent-readability manifest: group order applies in
+    // legacy groups mode too, not just under curated nav.
+    const resolved = resolveGroups(config.groups ?? []);
+    const navigation = buildNavigationFromMarkdownDocs(
+      markdownDocs,
+      resolved,
+      "groups",
+      config.groups
+    );
+    orderedMarkdownDocs = orderMarkdownDocsByNavigation(
+      markdownDocs,
+      navigation
+    );
   }
 
   if (!i18n || locale === i18n.defaultLocale) {

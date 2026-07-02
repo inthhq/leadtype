@@ -713,6 +713,49 @@ describe("generateLLMFullContextFiles", () => {
     expect(wellKnownFull).toBe(llmsFull);
   });
 
+  it("orders content by group in legacy groups mode, matching the manifest", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "client-modes.md",
+        frontmatter:
+          "title: Client Modes\ndescription: Modes.\ngroup: concepts\norder: 20",
+        body: "# Client Modes\n\nBody.\n",
+      },
+      {
+        relativePath: "initialization-flow.md",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\ngroup: concepts\norder: 10",
+        body: "# Initialization Flow\n\nBody.\n",
+      },
+      {
+        relativePath: "about.md",
+        frontmatter: "title: About\ndescription: Ungrouped.",
+        body: "# About\n\nBody.\n",
+      },
+    ]);
+
+    await generateLLMFullContextFiles({
+      outDir: projectDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t" },
+      groups: [{ slug: "concepts", title: "Concepts" }],
+    });
+
+    const llmsFull = await readFile(
+      path.join(projectDir, "llms-full.txt"),
+      "utf8"
+    );
+    // Group pages honor `order:` and lead; ungrouped pages trail.
+    const positions = [
+      llmsFull.indexOf("# Initialization Flow"),
+      llmsFull.indexOf("# Client Modes"),
+      llmsFull.indexOf("# About"),
+    ];
+    expect(positions.every((index) => index >= 0)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
   it("inlines a multi-group page only once", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
