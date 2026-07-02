@@ -142,7 +142,14 @@ function renderMediaType(media: OpenApiMediaType): RootContent[] {
       nodes.push(renderJsonExample(value));
     }
   } else if (media.example !== undefined) {
+    nodes.push(createParagraph("Example:"));
     nodes.push(renderJsonExample(media.example));
+  }
+  if (media.rawSchema !== undefined) {
+    // The dereferenced contract, Vercel-docs style: full constraints (enums,
+    // formats, required arrays) for agents and codegen.
+    nodes.push(createParagraph("JSON Schema:"));
+    nodes.push(renderJsonExample(media.rawSchema));
   }
   return nodes;
 }

@@ -73,6 +73,7 @@ export {
 } from "./llm";
 export type {
   DocsOpenApiConfig,
+  GeneratedOpenApiIndexPage,
   GeneratedOpenApiPage,
   GenerateOpenApiPagesResult,
   OpenApiCodeSample,

@@ -2635,7 +2635,7 @@ export async function runGenerateCommand(
     );
     const generatedOpenApi =
       metadata.openapi === undefined
-        ? { nav: [], pages: [] }
+        ? { indexPages: [], nav: [], pages: [] }
         : await writeOpenApiPages({
             configs: normalizeOpenApiConfig(
               metadata.openapi,

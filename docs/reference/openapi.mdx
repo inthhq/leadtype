@@ -67,6 +67,9 @@ The same generated pages are added to the docs navigation used by
 
 Every operation page carries the full request/response contract:
 
+- **Machine-scannable frontmatter** — `method`, `path`, `operationId`,
+  `server`, `apiVersion`, `tags`, and `type: api-reference`, so agents can
+  route to the right endpoint without parsing the body.
 - **Endpoint** — method, path, server URL, operation ID, deprecation.
 - **Authentication** — the operation's security requirements and only the
   schemes those requirements reference.
@@ -75,12 +78,20 @@ Every operation page carries the full request/response contract:
 - **Request body and responses** — property tables plus a JSON example. When
   the spec provides `example`/`examples` they are used verbatim; otherwise a
   representative payload is synthesized from the schema (defaults, enums, and
-  formats included).
+  formats included). The dereferenced **JSON Schema** ships alongside as the
+  precise contract (disable with `includeSchemas: false`).
 - **Code samples** — generated cURL and `fetch` snippets with real example
   bodies, required query parameters, and auth headers derived from the
   security scheme (`Authorization: Bearer <token>`, API-key headers, and so
   on). Specs that define Redocly-style `x-codeSamples` (or `x-code-samples`)
   override the generated snippets with their hand-written ones.
+- **Related links** — every page links back to the generated overview page,
+  plus the machine-readable spec when `input` is a URL.
+
+An **overview page** (`<output>/index.mdx`) is generated per source: the API
+title, description, and version, plus every operation grouped by tag with
+method, path, and summary. It joins the generated navigation as the section
+landing page. Links use the `urlPrefix` option (default `/docs`).
 
 ## Render in a docs app
 
@@ -242,6 +253,8 @@ export default {
 | `serverUrl` | Override the server URL used in examples and try-it metadata. |
 | `slugStrategy` | `"operation-id"` or `"method-path"`. Defaults to `"operation-id"`. |
 | `includeTryIt` | Emit `<ApiTryIt />` metadata for renderers with an API console. Defaults to `false`. |
+| `includeSchemas` | Ship the dereferenced JSON Schema for request/response bodies. Defaults to `true`. |
+| `urlPrefix` | Site prefix for overview and Related links. Defaults to `/docs`. |
 
 ## Library API
 

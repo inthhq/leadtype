@@ -19,6 +19,7 @@ const HTTP_METHODS = [
 
 const DEFAULT_OUTPUT_DIR = "api";
 const DEFAULT_NAV_TITLE = "API Reference";
+const DEFAULT_URL_PREFIX = "/docs";
 const DEFAULT_METHOD_ORDER = new Map<OpenApiHttpMethod, number>(
   HTTP_METHODS.map((method, index) => [method, index])
 );
@@ -73,17 +74,40 @@ export type OpenApiSourceConfig = {
   slugStrategy?: OpenApiSlugStrategy;
   /** Emit an `ApiTryIt` component for renderers that support a native console. */
   includeTryIt?: boolean;
+  /**
+   * Include the dereferenced JSON Schema for request/response bodies on each
+   * page — the full machine-readable contract. Defaults to `true`.
+   */
+  includeSchemas?: boolean;
+  /**
+   * Site URL prefix the docs are served under, used for links on the
+   * generated overview page and Related sections. Defaults to `/docs`
+   * (leadtype's default docs mount).
+   */
+  urlPrefix?: string;
 };
 
 export type ResolvedOpenApiSourceConfig = Required<
   Pick<
     OpenApiSourceConfig,
-    "groupByTags" | "includeTryIt" | "output" | "slugStrategy" | "title"
+    | "groupByTags"
+    | "includeSchemas"
+    | "includeTryIt"
+    | "output"
+    | "slugStrategy"
+    | "title"
+    | "urlPrefix"
   >
 > &
   Omit<
     OpenApiSourceConfig,
-    "groupByTags" | "includeTryIt" | "output" | "slugStrategy" | "title"
+    | "groupByTags"
+    | "includeSchemas"
+    | "includeTryIt"
+    | "output"
+    | "slugStrategy"
+    | "title"
+    | "urlPrefix"
   > & {
     cwd: string;
   };
@@ -121,6 +145,12 @@ export type OpenApiParameter = {
 export type OpenApiMediaType = {
   mediaType: string;
   schema?: OpenApiSchemaSummary;
+  /**
+   * The dereferenced JSON Schema exactly as authored — the full contract
+   * (enums, formats, constraints) for agents and strict clients. Omitted when
+   * `includeSchemas: false`.
+   */
+  rawSchema?: unknown;
   example?: unknown;
   examples?: Record<string, unknown>;
 };
@@ -167,6 +197,8 @@ export type OpenApiOperation = {
   summary?: string;
   tags: string[];
   deprecated: boolean;
+  /** API version from the document's `info.version`. */
+  apiVersion?: string;
   serverUrl?: string;
   parameters: OpenApiParameter[];
   requestBody?: OpenApiRequestBody;
@@ -184,9 +216,20 @@ export type GeneratedOpenApiPage = {
   operation: OpenApiOperation;
 };
 
+export type GeneratedOpenApiIndexPage = {
+  filePath: string;
+  relativePath: string;
+  title: string;
+  description: string;
+  /** Rendered MDX for the overview page. */
+  content: string;
+};
+
 export type GenerateOpenApiPagesResult = {
   pages: GeneratedOpenApiPage[];
   nav: DocsNavNode[];
+  /** Overview page listing every generated operation, one per source. */
+  indexPages: GeneratedOpenApiIndexPage[];
 };
 
 type OperationCandidate = {
@@ -770,7 +813,10 @@ function normalizeExamplesMap(
   return output;
 }
 
-function normalizeMediaTypes(content: unknown): OpenApiMediaType[] {
+function normalizeMediaTypes(
+  content: unknown,
+  includeSchemas = false
+): OpenApiMediaType[] {
   if (!isRecord(content)) {
     return [];
   }
@@ -796,6 +842,9 @@ function normalizeMediaTypes(content: unknown): OpenApiMediaType[] {
     mediaTypes.push({
       mediaType,
       ...(schema ? { schema } : {}),
+      ...(includeSchemas && isRecord(value.schema)
+        ? { rawSchema: value.schema }
+        : {}),
       ...(example === undefined ? {} : { example }),
       ...(hasNamedExamples ? { examples } : {}),
     });
@@ -803,7 +852,10 @@ function normalizeMediaTypes(content: unknown): OpenApiMediaType[] {
   return mediaTypes;
 }
 
-function normalizeRequestBody(value: unknown): OpenApiRequestBody | undefined {
+function normalizeRequestBody(
+  value: unknown,
+  includeSchemas = false
+): OpenApiRequestBody | undefined {
   if (!isRecord(value)) {
     return;
   }
@@ -811,11 +863,14 @@ function normalizeRequestBody(value: unknown): OpenApiRequestBody | undefined {
   return {
     required: value.required === true,
     ...(description ? { description } : {}),
-    content: normalizeMediaTypes(value.content),
+    content: normalizeMediaTypes(value.content, includeSchemas),
   };
 }
 
-function normalizeResponses(value: unknown): OpenApiResponse[] {
+function normalizeResponses(
+  value: unknown,
+  includeSchemas = false
+): OpenApiResponse[] {
   if (!isRecord(value)) {
     return [];
   }
@@ -841,7 +896,7 @@ function normalizeResponses(value: unknown): OpenApiResponse[] {
       status,
       description: asString(response.description) ?? "",
       ...(headers.length > 0 ? { headers } : {}),
-      content: normalizeMediaTypes(response.content),
+      content: normalizeMediaTypes(response.content, includeSchemas),
     });
   }
   return responses.sort((left, right) =>
@@ -1176,7 +1231,11 @@ function normalizeOperation(
   const operationId = asString(operation.operationId);
   const summary = asString(operation.summary);
   const serverUrl = firstServerUrl(document, operation, config);
-  const requestBody = normalizeRequestBody(operation.requestBody);
+  const apiVersion = asString(asRecord(document.info).version);
+  const requestBody = normalizeRequestBody(
+    operation.requestBody,
+    config.includeSchemas
+  );
 
   const normalized: OpenApiOperation = {
     method,
@@ -1186,12 +1245,13 @@ function normalizeOperation(
     tags: asStringArray(operation.tags),
     deprecated: operation.deprecated === true,
     parameters,
-    responses: normalizeResponses(operation.responses),
+    responses: normalizeResponses(operation.responses, config.includeSchemas),
     security,
     securitySchemes,
     codeSamples: [],
     ...(operationId ? { operationId } : {}),
     ...(summary ? { summary } : {}),
+    ...(apiVersion ? { apiVersion } : {}),
     ...(serverUrl ? { serverUrl } : {}),
     ...(requestBody ? { requestBody } : {}),
   };
@@ -1219,12 +1279,23 @@ export function normalizeOpenApiConfig(
       ...source,
       cwd,
       groupByTags: source.groupByTags ?? true,
+      includeSchemas: source.includeSchemas ?? true,
       includeTryIt: source.includeTryIt ?? false,
       output: normalizeOutputPath(source.output),
       slugStrategy: source.slugStrategy ?? "operation-id",
       title: source.title ?? DEFAULT_NAV_TITLE,
+      urlPrefix: normalizeUrlPrefixOption(source.urlPrefix),
     };
   });
+}
+
+function normalizeUrlPrefixOption(input: string | undefined): string {
+  const raw = input?.trim() || DEFAULT_URL_PREFIX;
+  const normalized = normalizeDocsPath(raw).replace(
+    TRAILING_SLASHES_PATTERN,
+    ""
+  );
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
 }
 
 /**
@@ -1263,7 +1334,12 @@ function validateOpenApiEntry(
   if (typeof entry.input !== "string" || entry.input.trim() === "") {
     throw new Error(`${where} must set "input" to a spec path or URL`);
   }
-  const stringKeys = ["output", "serverUrl", "description"] as const;
+  const stringKeys = [
+    "output",
+    "serverUrl",
+    "description",
+    "urlPrefix",
+  ] as const;
   for (const key of stringKeys) {
     if (entry[key] !== undefined && typeof entry[key] !== "string") {
       throw new Error(`${where}: "${key}" must be a string`);
@@ -1295,7 +1371,11 @@ function validateOpenApiEntry(
       throw new Error(`${where}: "${key}" must be a string array`);
     }
   }
-  const booleanKeys = ["groupByTags", "includeTryIt"] as const;
+  const booleanKeys = [
+    "groupByTags",
+    "includeSchemas",
+    "includeTryIt",
+  ] as const;
   for (const key of booleanKeys) {
     if (entry[key] !== undefined && typeof entry[key] !== "boolean") {
       throw new Error(`${where}: "${key}" must be a boolean`);
@@ -1397,7 +1477,27 @@ function renderFrontmatter(
   if (config.order !== undefined) {
     lines.push(`order: ${config.order + index}`);
   }
-  lines.push("generated: true", "source: openapi", "---");
+  // Machine-scannable operation metadata: agents can route to the right
+  // endpoint from frontmatter alone, without parsing the page body.
+  lines.push("generated: true", "source: openapi", "type: api-reference");
+  lines.push(`method: ${yamlString(operation.method)}`);
+  lines.push(`path: ${yamlString(operation.path)}`);
+  if (operation.operationId) {
+    lines.push(`operationId: ${yamlString(operation.operationId)}`);
+  }
+  if (operation.serverUrl) {
+    lines.push(`server: ${yamlString(operation.serverUrl)}`);
+  }
+  if (operation.apiVersion) {
+    lines.push(`apiVersion: ${yamlString(operation.apiVersion)}`);
+  }
+  if (operation.tags.length > 0) {
+    lines.push(`tags: ${JSON.stringify(operation.tags)}`);
+  }
+  if (operation.deprecated) {
+    lines.push("deprecated: true");
+  }
+  lines.push("---");
   return lines.join("\n");
 }
 
@@ -1467,9 +1567,13 @@ function renderOperationMdx(
   ];
 
   // Docs renderers already print the frontmatter description under the title;
-  // only repeat the description in the body when it says more than that.
+  // only repeat the description in the body when it says more than that
+  // (compare whitespace-collapsed so soft-wrapped YAML text doesn't differ).
   const description = operation.description.trim();
-  if (description && description !== shortDescription(operation)) {
+  const collapsedDescription = description
+    .replace(WHITESPACE_RUN_PATTERN, " ")
+    .trim();
+  if (description && collapsedDescription !== shortDescription(operation)) {
     blocks.push("", escapeMarkdownForMdx(description));
   }
 
@@ -1533,7 +1637,83 @@ function renderOperationMdx(
     );
   }
 
+  const related = relatedLinks(config);
+  if (related.length > 0) {
+    blocks.push("", "## Related", "");
+    for (const link of related) {
+      blocks.push(`- ${link}`);
+    }
+  }
+
   return `${blocks.join("\n")}\n`;
+}
+
+function overviewUrlPath(config: ResolvedOpenApiSourceConfig): string {
+  return `${config.urlPrefix}/${stripDocsExtension(config.output)}`;
+}
+
+function relatedLinks(config: ResolvedOpenApiSourceConfig): string[] {
+  const links = [
+    `[${config.title} overview](${overviewUrlPath(config)}): Every operation in this API.`,
+  ];
+  if (/^https?:\/\//i.test(config.input)) {
+    links.push(
+      `[OpenAPI spec](${config.input}): Machine-readable source for this reference.`
+    );
+  }
+  return links;
+}
+
+function renderIndexMdx(
+  pages: GeneratedOpenApiPage[],
+  config: ResolvedOpenApiSourceConfig,
+  document: Record<string, unknown>
+): string {
+  const info = asRecord(document.info);
+  const infoDescription = asString(info.description);
+  const description =
+    config.description ??
+    infoDescription ??
+    `API reference for ${config.title}.`;
+  const version = asString(info.version);
+  const lines = [
+    "---",
+    `title: ${yamlString(config.title)}`,
+    `description: ${yamlString(description)}`,
+    ...(config.group ? [`group: ${JSON.stringify(config.group)}`] : []),
+    "generated: true",
+    "source: openapi",
+    "type: api-reference",
+    ...(version ? [`apiVersion: ${yamlString(version)}`] : []),
+    "---",
+  ];
+  // Docs renderers print the frontmatter description under the title; only
+  // repeat the spec's own description when it adds something beyond that.
+  if (infoDescription && infoDescription !== description) {
+    lines.push("", escapeMarkdownForMdx(infoDescription));
+  }
+  if (version) {
+    lines.push("", `API version: \`${version}\``);
+  }
+
+  const byTag = new Map<string, GeneratedOpenApiPage[]>();
+  for (const page of pages) {
+    const tag = page.operation.tags[0] ?? "Operations";
+    const existing = byTag.get(tag) ?? [];
+    existing.push(page);
+    byTag.set(tag, existing);
+  }
+  for (const [tag, tagPages] of byTag) {
+    lines.push("", `## ${escapeMarkdownForMdx(tag)}`, "");
+    for (const page of tagPages) {
+      const urlPath = `${config.urlPrefix}/${stripDocsExtension(page.relativePath)}`;
+      const label = `\`${page.operation.method.toUpperCase()} ${page.operation.path}\``;
+      lines.push(
+        `- [${escapeMarkdownForMdx(page.title)}](${urlPath}) — ${label}. ${escapeMarkdownForMdx(page.description)}`
+      );
+    }
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 function buildGeneratedNav(
@@ -1549,11 +1729,14 @@ function buildGeneratedNav(
       title: config.title,
       ...(config.description ? { description: config.description } : {}),
       base,
-      pages: pages.map((page) =>
-        stripDocsExtension(
-          path.posix.relative(config.output, page.relativePath)
-        )
-      ),
+      pages: [
+        "index",
+        ...pages.map((page) =>
+          stripDocsExtension(
+            path.posix.relative(config.output, page.relativePath)
+          )
+        ),
+      ],
     };
   }
 
@@ -1569,6 +1752,7 @@ function buildGeneratedNav(
     title: config.title,
     ...(config.description ? { description: config.description } : {}),
     base,
+    pages: ["index"],
     children: [...byTag.entries()].map(([tag, tagPages]) => ({
       title: tag,
       base: slugify(tag),
@@ -1605,7 +1789,28 @@ export async function generateOpenApiPages(
     });
   }
   const nav = buildGeneratedNav(pages, config);
+  const indexPages: GeneratedOpenApiIndexPage[] = [];
+  if (pages.length > 0) {
+    const relativePath = normalizeDocsPath(
+      path.posix.join(config.output, "index.mdx")
+    );
+    if (!usedPaths.has(relativePath.toLowerCase())) {
+      usedPaths.add(relativePath.toLowerCase());
+      const content = renderIndexMdx(pages, config, document);
+      indexPages.push({
+        content,
+        description:
+          config.description ??
+          asString(asRecord(document.info).description) ??
+          `API reference for ${config.title}.`,
+        filePath: relativePath,
+        relativePath,
+        title: config.title,
+      });
+    }
+  }
   return {
+    indexPages,
     pages,
     nav: nav ? [nav] : [],
   };
@@ -1621,6 +1826,7 @@ export async function writeOpenApiPages({
   docsDir,
 }: WriteOpenApiPagesConfig): Promise<GenerateOpenApiPagesResult> {
   const allPages: GeneratedOpenApiPage[] = [];
+  const allIndexPages: GeneratedOpenApiIndexPage[] = [];
   const nav: DocsNavNode[] = [];
   // One shared set so multiple specs targeting the same output directory get
   // collision suffixes instead of silently overwriting each other.
@@ -1636,9 +1842,15 @@ export async function writeOpenApiPages({
       );
       allPages.push({ ...page, filePath: outputPath });
     }
+    for (const indexPage of generated.indexPages) {
+      const outputPath = path.join(docsDir, indexPage.relativePath);
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, indexPage.content);
+      allIndexPages.push({ ...indexPage, filePath: outputPath });
+    }
     nav.push(...generated.nav);
   }
-  return { nav, pages: allPages };
+  return { indexPages: allIndexPages, nav, pages: allPages };
 }
 
 export type StageOpenApiDocsConfig = {
@@ -1656,6 +1868,7 @@ export type StagedOpenApiDocs = {
   /** Generated navigation nodes — append to your curated nav. */
   nav: DocsNavNode[];
   pages: GeneratedOpenApiPage[];
+  indexPages: GeneratedOpenApiIndexPage[];
   /** Remove the staged copy. Call when the consuming build is done with it. */
   cleanup: () => Promise<void>;
 };
@@ -1685,6 +1898,7 @@ export async function stageOpenApiDocs(
       await rm(stagedRoot, { force: true, recursive: true });
     },
     contentDir: stagedContentDir,
+    indexPages: result.indexPages,
     nav: result.nav,
     pages: result.pages,
   };

@@ -11,14 +11,56 @@ components:
       type: http
       scheme: bearer
       description: Optional token for private docs deployments.
+  schemas:
+    SearchResult:
+      type: object
+      required:
+        - title
+        - urlPath
+      properties:
+        title:
+          type: string
+          description: Page or heading title.
+        urlPath:
+          type: string
+          description: Docs URL path for the result.
+        snippet:
+          type: string
+          description: Highlight-ready excerpt from the matched chunk.
+        score:
+          type: number
+          format: float
+          description: BM25 relevance score, higher is more relevant.
+    ApiError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum: [invalid_request, unauthorized, not_found, rate_limited]
+              description: Stable machine-readable error code.
+            message:
+              type: string
+              description: Human-readable explanation of the failure.
 paths:
   /api/docs/search:
     post:
       operationId: searchDocs
       summary: Search docs
-      description: Search a generated Leadtype docs index and return matching docs chunks.
+      description: |
+        Search a generated Leadtype docs index and return matching docs chunks.
+
+        Results are ranked with BM25 over page titles, headings, and body
+        chunks. Use `limit` to bound the response size for agent contexts.
       tags:
-        - Operations
+        - Search
       security:
         - docsToken: []
       requestBody:
@@ -38,9 +80,19 @@ paths:
                   format: int32
                   description: Maximum number of results to return.
                   default: 8
+                scope:
+                  type: string
+                  enum: [all, docs, changelog]
+                  default: all
+                  description: Restrict results to one generated collection.
       responses:
         "200":
           description: Ranked docs search results.
+          headers:
+            X-RateLimit-Remaining:
+              description: Requests remaining in the current window.
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -52,19 +104,91 @@ paths:
                     type: array
                     description: Matching docs chunks ordered by relevance.
                     items:
-                      type: object
-                      required:
-                        - title
-                        - urlPath
-                      properties:
-                        title:
-                          type: string
-                          description: Page or heading title.
-                        urlPath:
-                          type: string
-                          description: Docs URL path for the result.
-                        snippet:
-                          type: string
-                          description: Highlight-ready excerpt from the matched chunk.
+                      $ref: "#/components/schemas/SearchResult"
+              examples:
+                match:
+                  summary: A query with one hit
+                  value:
+                    results:
+                      - title: "Add search"
+                        urlPath: "/docs/search/add-search"
+                        snippet: "Generate a static docs search index…"
+                        score: 12.4
+                empty:
+                  summary: No hits
+                  value:
+                    results: []
         "400":
           description: The request body was malformed or the query was empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: A docs token is required for private deployments.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/docs/pages/{urlPath}:
+    get:
+      operationId: getDocsPage
+      summary: Get a docs page
+      description: |
+        Fetch one generated docs page as agent-readable markdown, including
+        frontmatter. The `urlPath` matches entries returned by search.
+      tags:
+        - Pages
+      security:
+        - docsToken: []
+      parameters:
+        - name: urlPath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL path of the page, e.g. `docs/quickstart`.
+          example: docs/quickstart
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [markdown, html]
+            default: markdown
+          description: Response body format.
+      responses:
+        "200":
+          description: The rendered page.
+          headers:
+            ETag:
+              description: Content hash for cache validation.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - urlPath
+                  - markdown
+                properties:
+                  urlPath:
+                    type: string
+                    description: Canonical docs URL path.
+                  title:
+                    type: string
+                    description: Page title from frontmatter.
+                  markdown:
+                    type: string
+                    description: Flattened agent-readable markdown body.
+                  lastModified:
+                    type: string
+                    format: date-time
+                    description: Last content change, from git history.
+        "404":
+          description: No page exists at the given `urlPath`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"

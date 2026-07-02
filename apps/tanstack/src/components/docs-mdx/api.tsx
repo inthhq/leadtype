@@ -151,6 +151,12 @@ function MediaType({ media }: { media: ApiMediaType }) {
         properties={media.schema?.properties ?? media.schema?.items?.properties}
       />
       <MediaTypeExamples media={media} />
+      {media.rawSchema === undefined ? null : (
+        <details data-leadtype-api-schema="">
+          <summary>JSON Schema</summary>
+          <JsonExample value={media.rawSchema} />
+        </details>
+      )}
     </div>
   );
 }
@@ -311,6 +317,35 @@ export function ApiResponses({ responses }: ApiResponsesProps) {
           {response.content.map((media) => (
             <MediaType key={media.mediaType} media={media} />
           ))}
+          {response.headers && response.headers.length > 0 ? (
+            <>
+              <h4>Headers</h4>
+              <div data-leadtype-api-table="">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {response.headers.map((header) => (
+                      <tr key={header.name}>
+                        <td>
+                          <code>{header.name}</code>
+                        </td>
+                        <td>
+                          <code>{formatSchemaType(header.schema)}</code>
+                        </td>
+                        <td>{header.description ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : null}
         </section>
       ))}
     </div>

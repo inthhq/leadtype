@@ -754,6 +754,14 @@
   @apply w-full;
 }
 
+[data-leadtype-api-schema] {
+  @apply my-3 rounded-lg border border-border bg-card px-4 py-2;
+}
+
+[data-leadtype-api-schema] summary {
+  @apply cursor-pointer text-sm font-medium text-muted-foreground;
+}
+
 [data-leadtype-extracted-type-table] {
   @apply my-6 space-y-4 rounded-lg border border-border bg-card p-4;
 }

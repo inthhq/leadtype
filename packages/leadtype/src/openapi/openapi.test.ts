@@ -120,6 +120,48 @@ describe("OpenAPI page generation", () => {
     expect(page).not.toContain("<ApiTryIt");
     // The docs renderer prints the frontmatter title — no duplicate body h1.
     expect(page).not.toMatch(/^# /m);
+    // Machine-scannable operation metadata in frontmatter.
+    expect(page).toContain("type: api-reference");
+    expect(page).toContain('method: "get"');
+    expect(page).toContain('path: "/access-groups/{id}"');
+    expect(page).toContain('operationId: "readAccessGroup"');
+    expect(page).toContain('apiVersion: "1.0.0"');
+    // Related links back to the generated overview.
+    expect(page).toContain("## Related");
+    expect(page).toContain("(/docs/rest-api)");
+  });
+
+  it("writes an overview index page linking every operation", async () => {
+    const { docsDir, result } = await generateFixturePages(FIXTURE_SPEC);
+    expect(result.indexPages).toHaveLength(1);
+    expect(result.nav[0]?.pages).toContain("index");
+
+    const index = await readFile(
+      path.join(docsDir, "rest-api", "index.mdx"),
+      "utf8"
+    );
+    expect(index).toContain('title: "API Reference"');
+    expect(index).toContain("## Access Groups");
+    expect(index).toContain(
+      "[Reads an access group](/docs/rest-api/access-groups/read-access-group)"
+    );
+    expect(index).toContain("`GET /access-groups/{id}`");
+  });
+
+  it("honors a custom urlPrefix in overview and related links", async () => {
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    await writeFixture(dir, "openapi.yaml", FIXTURE_SPEC);
+    const configs = normalizeOpenApiConfig(
+      { input: "openapi.yaml", output: "rest-api", urlPrefix: "/reference" },
+      dir
+    );
+    const result = await writeOpenApiPages({ configs, docsDir });
+    const index = await readFile(result.indexPages[0]?.filePath ?? "", "utf8");
+    expect(index).toContain("(/reference/rest-api/access-groups/");
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    expect(page).toContain("(/reference/rest-api)");
   });
 
   it("flattens generated pages into agent-readable markdown", async () => {
@@ -138,6 +180,23 @@ describe("OpenAPI page generation", () => {
     expect(converted.markdown).toContain("Authorization: Bearer <token>");
     // Synthesized response example from the schema.
     expect(converted.markdown).toContain('"id": "string"');
+    // The dereferenced JSON Schema ships as the full contract.
+    expect(converted.markdown).toContain("JSON Schema:");
+    expect(converted.markdown).toContain('"required": [');
+  });
+
+  it("omits raw schemas when includeSchemas is false", async () => {
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    await writeFixture(dir, "openapi.yaml", FIXTURE_SPEC);
+    const configs = normalizeOpenApiConfig(
+      { includeSchemas: false, input: "openapi.yaml", output: "rest-api" },
+      dir
+    );
+    const result = await writeOpenApiPages({ configs, docsDir });
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    expect(page).not.toContain("rawSchema");
   });
 
   it("escapes MDX-unsafe CommonMark descriptions", async () => {

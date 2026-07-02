@@ -363,6 +363,12 @@ function MediaType({ media }: { media: ApiMediaType }) {
         properties={media.schema?.properties ?? media.schema?.items?.properties}
       />
       <MediaTypeExamples media={media} />
+      {media.rawSchema === undefined ? null : (
+        <details className="my-2 rounded-lg border p-3 text-sm">
+          <summary className="cursor-pointer font-medium">JSON Schema</summary>
+          <JsonExample value={media.rawSchema} />
+        </details>
+      )}
     </div>
   );
 }
@@ -400,6 +406,43 @@ function ApiCodeSamples({ samples }: ApiCodeSamplesProps) {
   );
 }
 
+function ApiResponseHeaders({
+  headers,
+}: {
+  headers: ApiResponsesProps["responses"][number]["headers"];
+}) {
+  if (!headers || headers.length === 0) {
+    return null;
+  }
+  return (
+    <div className="mt-3">
+      <h4 className="font-medium text-sm">Headers</h4>
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="px-4 py-2">Name</th>
+              <th className="px-4 py-2">Type</th>
+              <th className="px-4 py-2">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {headers.map((header) => (
+              <tr className="border-b last:border-b-0" key={header.name}>
+                <td className="px-4 py-2 font-mono">{header.name}</td>
+                <td className="px-4 py-2 font-mono">
+                  {formatApiSchemaType(header.schema)}
+                </td>
+                <td className="px-4 py-2">{header.description ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ApiResponses({ responses }: ApiResponsesProps) {
   if (responses.length === 0) {
     return null;
@@ -415,6 +458,7 @@ function ApiResponses({ responses }: ApiResponsesProps) {
           {response.content.map((media) => (
             <MediaType key={media.mediaType} media={media} />
           ))}
+          <ApiResponseHeaders headers={response.headers} />
         </section>
       ))}
     </div>

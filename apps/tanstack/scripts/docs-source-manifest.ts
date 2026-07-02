@@ -73,11 +73,25 @@ if (docsConfig.openapi !== undefined) {
     docsDir: openapiDocsDir,
   });
   const MDX_EXTENSION_PATTERN = /\.mdx$/;
-  for (const page of generated.pages) {
+  const INDEX_SEGMENT_PATTERN = /(?:^|\/)index$/;
+  const generatedEntries = [
+    ...generated.pages.map((page) => ({
+      description: page.description,
+      relativePath: page.relativePath,
+      title: page.title,
+    })),
+    ...generated.indexPages.map((page) => ({
+      description: page.description,
+      relativePath: page.relativePath,
+      title: page.title,
+    })),
+  ];
+  for (const page of generatedEntries) {
     const relativePath = page.relativePath.replace(MDX_EXTENSION_PATTERN, "");
+    const urlPath = relativePath.replace(INDEX_SEGMENT_PATTERN, "");
     manifest.push({
-      slug: relativePath.split("/"),
-      urlPath: `/docs/${relativePath}`,
+      slug: urlPath.split("/").filter(Boolean),
+      urlPath: `/docs/${urlPath}`,
       title: page.title,
       description: page.description,
       relativePath,
