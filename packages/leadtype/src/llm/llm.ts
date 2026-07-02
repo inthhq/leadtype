@@ -1,12 +1,5 @@
 import { existsSync } from "node:fs";
-import {
-  mkdir,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import type { PluggableList } from "unified";
 import type { DocsFeedConfig } from "../feed";
@@ -20,6 +13,7 @@ import {
   outputRelativePathForLocale,
   toLocalizedDocsUrlPath,
 } from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
   type DocsPathMount,
@@ -2274,13 +2268,13 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
       (transformer, value, context) =>
         transformer.beforeLlmsTxt?.(value, context)
     );
-    await writeFile(outputPath, artifact.content);
+    await writeFileAtomic(outputPath, artifact.content);
     // Publish a discovery copy at the well-known location so agents can find
     // llms.txt without guessing the root path. Served statically from the
     // output (public) dir; no route handler needed.
     const wellKnownPath = path.join(outDir, ".well-known", "llms.txt");
     await mkdir(path.dirname(wellKnownPath), { recursive: true });
-    await writeFile(wellKnownPath, artifact.content);
+    await writeFileAtomic(wellKnownPath, artifact.content);
   }
 
   if (hasNav || resolved.length > 0) {
@@ -2330,7 +2324,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
       (transformer, value, context) =>
         transformer.beforeLlmsTxt?.(value, context)
     );
-    await writeFile(docsLlmsPath, artifact.content);
+    await writeFileAtomic(docsLlmsPath, artifact.content);
   }
 }
 
@@ -2392,11 +2386,11 @@ export async function generateLLMFullContextFiles(
       (transformer, value, context) =>
         transformer.beforeLlmsFull?.(value, context)
     );
-    await writeFile(outputPath, artifact.content);
+    await writeFileAtomic(outputPath, artifact.content);
     // Discovery copy at the well-known location, alongside .well-known/llms.txt.
     const wellKnownFull = path.join(outDir, ".well-known", "llms-full.txt");
     await mkdir(path.dirname(wellKnownFull), { recursive: true });
-    await writeFile(wellKnownFull, artifact.content);
+    await writeFileAtomic(wellKnownFull, artifact.content);
     return;
   }
 
@@ -2419,7 +2413,7 @@ export async function generateLLMFullContextFiles(
     (transformer, value, context) =>
       transformer.beforeLlmsFull?.(value, context)
   );
-  await writeFile(localeFullPath, artifact.content);
+  await writeFileAtomic(localeFullPath, artifact.content);
 }
 
 function toAgentReadabilityPage(
@@ -2569,10 +2563,10 @@ export async function generateAgentReadabilityArtifacts(
   if (shouldEmitRootCrawlerFiles) {
     await mkdir(outDir, { recursive: true });
     await mkdir(path.dirname(files.apiCatalog), { recursive: true });
-    await writeFile(files.apiCatalog, renderApiCatalog({ manifest }));
-    await writeFile(files.sitemapXml, sitemapXml);
-    await writeFile(files.sitemapMd, sitemapMd);
-    await writeFile(
+    await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    await writeFileAtomic(files.sitemapXml, sitemapXml);
+    await writeFileAtomic(files.sitemapMd, sitemapMd);
+    await writeFileAtomic(
       files.robotsTxt,
       renderRobotsTxt({
         baseUrl,
@@ -2583,7 +2577,10 @@ export async function generateAgentReadabilityArtifacts(
       })
     );
   }
-  await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(
+    files.manifest,
+    `${JSON.stringify(manifest, null, 2)}\n`
+  );
 
   return {
     files: {
@@ -2862,7 +2859,7 @@ export async function generateAgentArtifacts(
         ...markdownUrlPath.slice(1).split("/")
       );
       await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, renderAgentPageMirror(doc));
+      await writeFileAtomic(filePath, renderAgentPageMirror(doc));
       return filePath;
     })
   );
@@ -2870,10 +2867,10 @@ export async function generateAgentArtifacts(
   await mkdir(outDir, { recursive: true });
   const llmsTxt = renderAgentPagesLlmsTxt(inputs.product, docs, resolved);
   const llmsTxtPath = path.join(outDir, "llms.txt");
-  await writeFile(llmsTxtPath, llmsTxt);
+  await writeFileAtomic(llmsTxtPath, llmsTxt);
   const wellKnownLlmsTxtPath = path.join(outDir, ".well-known", "llms.txt");
   await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
-  await writeFile(wellKnownLlmsTxtPath, llmsTxt);
+  await writeFileAtomic(wellKnownLlmsTxtPath, llmsTxt);
 
   const manifest: AgentReadabilityManifest = {
     version: 1,
@@ -2892,7 +2889,7 @@ export async function generateAgentArtifacts(
     ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
   };
   const manifestPath = path.join(outDir, AGENT_READABILITY_MANIFEST_FILE);
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
   if (!(config.emitRootCrawlerFiles ?? true)) {
     return {
@@ -2911,13 +2908,13 @@ export async function generateAgentArtifacts(
   const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
   const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
   await mkdir(path.dirname(apiCatalogPath), { recursive: true });
-  await writeFile(apiCatalogPath, renderApiCatalog({ manifest }));
-  await writeFile(sitemapXmlPath, renderSitemapXml(pages));
-  await writeFile(
+  await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  await writeFileAtomic(sitemapXmlPath, renderSitemapXml(pages));
+  await writeFileAtomic(
     sitemapMdPath,
     renderSitemapMarkdown({ product: inputs.product, navigation, pages })
   );
-  await writeFile(
+  await writeFileAtomic(
     robotsTxtPath,
     renderRobotsTxt({
       baseUrl,
@@ -3210,7 +3207,7 @@ export async function generateAgentsMd(
     (transformer, value, context) =>
       transformer.beforeAgentsMd?.(value, context)
   );
-  await writeFile(outputPath, artifact.content);
+  await writeFileAtomic(outputPath, artifact.content);
   return { outputPath };
 }
 

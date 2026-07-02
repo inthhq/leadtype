@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomic } from "../internal/atomic-fs.js";
 import { normalizeBaseUrl } from "../internal/docs-url.js";
 import type { LlmsProductInfo } from "../llm/llm.js";
 import type { AgentReadabilityPage } from "../llm/readability.js";
@@ -92,8 +93,8 @@ export async function generateNlwebArtifacts(
     toSchemaFeedLine(page, config.product, baseUrl)
   );
   await mkdir(path.dirname(schemaFeed), { recursive: true });
-  await writeFile(schemaFeed, `${lines.join("\n")}\n`);
-  await writeFile(
+  await writeFileAtomic(schemaFeed, `${lines.join("\n")}\n`);
+  await writeFileAtomic(
     schemaMap,
     renderSchemaMapXml(`${baseUrl}/${NLWEB_SCHEMA_FEED_PATH}`)
   );

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -8,6 +8,7 @@ import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
+import { copyFileAtomic, writeFileAtomic } from "../internal/atomic-fs";
 import {
   type DocsPathMount,
   normalizeBaseUrl,
@@ -15,6 +16,10 @@ import {
   normalizeUrlPrefix,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
+import {
+  acquireGenerateLock,
+  type GenerateLock,
+} from "../internal/generate-lock";
 import {
   logger,
   setLogFormat,
@@ -2142,7 +2147,6 @@ async function copyMountedMarkdownMirrors(
           `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
         );
       }
-      await rm(targetDir, { force: true, recursive: true });
       const files = await fg("**/*.md", {
         absolute: false,
         cwd: sourceDir,
@@ -2153,8 +2157,23 @@ async function copyMountedMarkdownMirrors(
           const sourcePath = path.join(sourceDir, file);
           const targetPath = path.join(targetDir, file);
           await mkdir(path.dirname(targetPath), { recursive: true });
-          await cp(sourcePath, targetPath);
+          await copyFileAtomic(sourcePath, targetPath);
         })
+      );
+      // Prune mirror files whose source pages no longer exist. Pruning after
+      // the copy (instead of rm -rf on the whole mirror before it) keeps the
+      // mirror readable throughout — a concurrent reader never sees the
+      // directory disappear mid-generation.
+      const currentFiles = new Set(files);
+      const mirroredFiles = await fg("**/*.md", {
+        absolute: false,
+        cwd: targetDir,
+        onlyFiles: true,
+      });
+      await Promise.all(
+        mirroredFiles
+          .filter((file) => !currentFiles.has(file))
+          .map((file) => rm(path.join(targetDir, file), { force: true }))
       );
     })
   );
@@ -2203,7 +2222,7 @@ async function copyDefaultLocaleMarkdownAliases(
       const sourcePath = path.join(defaultLocaleDir, file);
       const targetPath = path.join(docsDir, file);
       await mkdir(path.dirname(targetPath), { recursive: true });
-      await cp(sourcePath, targetPath);
+      await copyFileAtomic(sourcePath, targetPath);
     })
   );
   await rm(defaultLocaleDir, { force: true, recursive: true });
@@ -2248,7 +2267,7 @@ async function writeI18nManifest(
   }
   const outputPath = path.join(outDir, DEFAULT_DOCS_DIR, "i18n-manifest.json");
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return outputPath;
 }
 
@@ -2510,6 +2529,21 @@ export async function runGenerateCommand(
       );
     }
     return 1;
+  }
+
+  // Serialize concurrent generate runs targeting the same outDir (parallel CI
+  // task graphs commonly fan out lint/typecheck/build, each regenerating docs).
+  // Atomic per-file writes keep individual artifacts readable at all times;
+  // the lock keeps whole runs from interleaving their read-back phases.
+  let generateLock: GenerateLock | undefined;
+  if (process.env.LEADTYPE_NO_LOCK !== "1") {
+    try {
+      generateLock = await acquireGenerateLock(outDir);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      reportFailure(message);
+      return 1;
+    }
   }
 
   let sourceMirror: SourceMirror | undefined;
@@ -2944,6 +2978,7 @@ export async function runGenerateCommand(
     return 1;
   } finally {
     await sourceMirror?.cleanup();
+    await generateLock?.release();
   }
   return 0;
 }

@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { glob as fg } from "tinyglobby";
 import { type DocsI18nConfig, normalizeDocsI18nConfig } from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import {
   type DocsPathMount,
   normalizeBaseUrl,
@@ -429,7 +430,7 @@ export async function generateFeedArtifacts(
               entries,
             });
       await mkdir(path.dirname(outputPath), { recursive: true });
-      await writeFile(outputPath, rendered);
+      await writeFileAtomic(outputPath, rendered);
       feedFiles[format] = outputPath;
     }
     files[feed.id] = feedFiles;

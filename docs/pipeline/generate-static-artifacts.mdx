@@ -158,6 +158,17 @@ npx leadtype lint docs --error-unknown
 npx leadtype generate --src . --out public --base-url https://docs.example.com
 ```
 
+## Concurrent invocation
+
+Parallel task graphs often invoke generation more than once at the same time — lint, typecheck, and build each declaring "docs are generated" as a prerequisite. `leadtype generate` is safe under that pattern:
+
+- **Runs are single-flight per output directory.** A cross-process lock (keyed by the resolved `--out` path, stored under the system temp dir — never inside the output directory) serializes concurrent runs. Later invocations wait for the in-flight run, then regenerate. Locks abandoned by crashed runs are reclaimed automatically after 10 minutes; waiting runs fail loudly after 5 minutes rather than hanging CI.
+- **Every artifact is replaced atomically.** Files are written to a temp sibling and renamed into place, so a sibling build step reading the output directory (`tsc`, `next build`, a dev server watching `public/`) sees the old artifact or the new one — never a truncated file, and never a missing file for pages that still exist.
+
+Set `LEADTYPE_NO_LOCK=1` to skip the lock — for example on network filesystems where directory-based locking is unreliable, or when your task runner already serializes generation.
+
+Even though concurrent runs are safe, they are redundant: each waits its turn and regenerates the same output. If your task graph supports it, prefer a single generation task that lint, typecheck, and build all depend on.
+
 ## Use library APIs for custom pipelines
 
 The CLI is the happy path. Use the library APIs directly when you need custom plugin order, filters, or generated JSON paths. Keep conversion first — LLM files, search, and Agent Readability artifacts read the generated markdown:

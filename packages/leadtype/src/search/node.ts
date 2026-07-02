@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   type DocsI18nConfig,
@@ -9,6 +9,7 @@ import {
   outputRelativePathForLocale,
   toLocalizedDocsUrlPath,
 } from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import {
   type DocsPathMount,
   GENERIC_DOC_TITLES,
@@ -332,10 +333,10 @@ export async function generateDocsSearchFiles(
   const serializedContent = `${JSON.stringify(content)}\n`;
 
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, serialized);
+  await writeFileAtomic(outputPath, serialized);
   if (contentOutputPath) {
     await mkdir(path.dirname(contentOutputPath), { recursive: true });
-    await writeFile(contentOutputPath, serializedContent);
+    await writeFileAtomic(contentOutputPath, serializedContent);
   }
 
   const indexBytes = Buffer.byteLength(serialized, "utf-8");
