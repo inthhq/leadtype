@@ -24,6 +24,7 @@ const repoRoot = join(appRoot, "..", "..");
 const srcDir = join(repoRoot, "docs");
 const outDir = join(appRoot, "public", "docs");
 const openapiDocsDir = join(appRoot, "src", "generated", "openapi-docs");
+const baseUrl = process.env.BASE_URL?.trim() || "https://leadtype.dev";
 const typeTableMarkdownTransform: NonNullable<
   MdxToMarkdownOptions["markdownTransforms"]
 >[number] = [
@@ -62,7 +63,9 @@ await convertAllMdx({
 if (docsConfig.openapi !== undefined) {
   await rm(openapiDocsDir, { force: true, recursive: true });
   await writeOpenApiPages({
-    configs: normalizeOpenApiConfig(docsConfig.openapi, srcDir),
+    configs: normalizeOpenApiConfig(docsConfig.openapi, srcDir, {
+      baseUrl,
+    }),
     docsDir: openapiDocsDir,
   });
   await convertAllMdx({

@@ -148,6 +148,38 @@ describe("OpenAPI page generation", () => {
     expect(index).toContain("`GET /access-groups/{id}`");
   });
 
+  it("stamps canonicalUrl and lastModified when baseUrl is set", async () => {
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    await writeFixture(dir, "openapi.yaml", FIXTURE_SPEC);
+    const configs = normalizeOpenApiConfig(
+      { input: "openapi.yaml", output: "rest-api" },
+      dir,
+      { baseUrl: "https://example.com/" }
+    );
+    const result = await writeOpenApiPages({ configs, docsDir });
+
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    expect(page).toContain(
+      'canonicalUrl: "https://example.com/docs/rest-api/access-groups/read-access-group"'
+    );
+    // Temp fixture is not a git checkout — falls back to the file mtime.
+    expect(page).toMatch(/lastModified: "2\d{3}-/);
+
+    const index = await readFile(result.indexPages[0]?.filePath ?? "", "utf8");
+    expect(index).toContain(
+      'canonicalUrl: "https://example.com/docs/rest-api"'
+    );
+    expect(index).toMatch(/lastModified: "2\d{3}-/);
+  });
+
+  it("omits canonicalUrl without a baseUrl", async () => {
+    const { result } = await generateFixturePages(FIXTURE_SPEC);
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    expect(page).not.toContain("canonicalUrl:");
+  });
+
   it("honors a custom urlPrefix in overview and related links", async () => {
     const dir = await createTempDir();
     const docsDir = path.join(dir, "docs");

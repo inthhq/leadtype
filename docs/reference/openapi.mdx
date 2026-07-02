@@ -69,7 +69,9 @@ Every operation page carries the full request/response contract:
 
 - **Machine-scannable frontmatter** — `method`, `path`, `operationId`,
   `server`, `apiVersion`, `tags`, and `type: api-reference`, so agents can
-  route to the right endpoint without parsing the body.
+  route to the right endpoint without parsing the body. Local specs also get
+  `lastModified` (git commit date, falling back to file mtime), and setting
+  `baseUrl` adds a `canonicalUrl` per page.
 - **Endpoint** — method, path, server URL, operation ID, deprecation.
 - **Authentication** — the operation's security requirements and only the
   schemes those requirements reference.
@@ -255,6 +257,7 @@ export default {
 | `includeTryIt` | Emit `<ApiTryIt />` metadata for renderers with an API console. Defaults to `false`. |
 | `includeSchemas` | Ship the dereferenced JSON Schema for request/response bodies. Defaults to `true`. |
 | `urlPrefix` | Site prefix for overview and Related links. Defaults to `/docs`. |
+| `baseUrl` | Absolute site base URL — adds `canonicalUrl` frontmatter to every generated page. The CLI passes `--base-url` automatically; `createDocsSource` forwards its own `baseUrl`. |
 
 ## Library API
 

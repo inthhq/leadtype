@@ -76,6 +76,7 @@ export type {
   GeneratedOpenApiIndexPage,
   GeneratedOpenApiPage,
   GenerateOpenApiPagesResult,
+  NormalizeOpenApiConfigDefaults,
   OpenApiCodeSample,
   OpenApiHttpMethod,
   OpenApiMediaType,

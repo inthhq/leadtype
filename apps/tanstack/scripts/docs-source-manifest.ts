@@ -32,6 +32,7 @@ const contentDir = join(repoRoot, "docs");
 const generatedDir = join(appRoot, "src", "generated");
 const manifestPath = join(generatedDir, "docs-pages.json");
 const routesDocsDir = join(appRoot, "src", "routes", "docs");
+const baseUrl = process.env.BASE_URL?.trim() || "https://leadtype.dev";
 // Generated OpenAPI MDX lives inside the app (not the authored /docs tree) so
 // Vite's static `import.meta.glob` can compile it. See `pipeline:convert` for
 // the markdown-mirror counterpart.
@@ -39,7 +40,7 @@ const openapiDocsDir = join(generatedDir, "openapi-docs");
 
 const source = await createDocsSource({
   contentDir,
-  baseUrl: process.env.BASE_URL?.trim() || "https://leadtype.dev",
+  baseUrl,
   nav: docsConfig.navigation,
   mounts: docsConfig.mounts,
 });
@@ -69,7 +70,9 @@ const manifest = pages.map((page) => ({
 await rm(openapiDocsDir, { force: true, recursive: true });
 if (docsConfig.openapi !== undefined) {
   const generated = await writeOpenApiPages({
-    configs: normalizeOpenApiConfig(docsConfig.openapi, contentDir),
+    configs: normalizeOpenApiConfig(docsConfig.openapi, contentDir, {
+      baseUrl,
+    }),
     docsDir: openapiDocsDir,
   });
   const MDX_EXTENSION_PATTERN = /\.mdx$/;

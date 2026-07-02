@@ -2639,7 +2639,8 @@ export async function runGenerateCommand(
         : await writeOpenApiPages({
             configs: normalizeOpenApiConfig(
               metadata.openapi,
-              metadata.configPath ? path.dirname(metadata.configPath) : docsDir
+              metadata.configPath ? path.dirname(metadata.configPath) : docsDir,
+              args.baseUrl ? { baseUrl: args.baseUrl } : {}
             ),
             docsDir: sourceMirror.docsDir,
           });

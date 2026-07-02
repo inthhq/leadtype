@@ -409,6 +409,7 @@ export async function createDocsSource<
       contentDir: sourceContentDir,
       cwd: config.openapiCwd,
       openapi: config.openapi,
+      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
     });
     contentDir = staged.contentDir;
     nav = [...(config.nav ?? []), ...staged.nav];

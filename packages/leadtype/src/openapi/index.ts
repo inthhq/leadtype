@@ -1,7 +1,17 @@
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import YAML from "yaml";
 import { normalizeDocsPath, stripDocsExtension } from "../internal/docs-url";
 import type { DocsNavNode } from "../llm";
@@ -85,6 +95,11 @@ export type OpenApiSourceConfig = {
    * (leadtype's default docs mount).
    */
   urlPrefix?: string;
+  /**
+   * Absolute site base URL. When set, generated pages carry a
+   * `canonicalUrl` frontmatter field (`baseUrl` + `urlPrefix` + page path).
+   */
+  baseUrl?: string;
 };
 
 export type ResolvedOpenApiSourceConfig = Required<
@@ -199,6 +214,8 @@ export type OpenApiOperation = {
   deprecated: boolean;
   /** API version from the document's `info.version`. */
   apiVersion?: string;
+  /** Last change to the source spec (git commit date, else file mtime). */
+  lastModified?: string;
   serverUrl?: string;
   parameters: OpenApiParameter[];
   requestBody?: OpenApiRequestBody;
@@ -1262,9 +1279,15 @@ function normalizeOperation(
   return normalized;
 }
 
+export type NormalizeOpenApiConfigDefaults = {
+  /** Fallback `baseUrl` applied to sources that don't set their own. */
+  baseUrl?: string;
+};
+
 export function normalizeOpenApiConfig(
   config: DocsOpenApiConfig,
-  cwd: string
+  cwd: string,
+  defaults: NormalizeOpenApiConfigDefaults = {}
 ): ResolvedOpenApiSourceConfig[] {
   const inputs = Array.isArray(config) ? config : [config];
   return inputs.map((input, index) => {
@@ -1275,9 +1298,14 @@ export function normalizeOpenApiConfig(
         `OpenAPI: config entry ${index} must set "input" to a spec path or URL`
       );
     }
+    const { baseUrl: sourceBaseUrl, ...rest } = source;
+    const baseUrl = (sourceBaseUrl ?? defaults.baseUrl)
+      ?.trim()
+      .replace(TRAILING_SLASHES_PATTERN, "");
     return {
-      ...source,
+      ...rest,
       cwd,
+      ...(baseUrl ? { baseUrl } : {}),
       groupByTags: source.groupByTags ?? true,
       includeSchemas: source.includeSchemas ?? true,
       includeTryIt: source.includeTryIt ?? false,
@@ -1296,6 +1324,42 @@ function normalizeUrlPrefixOption(input: string | undefined): string {
     ""
   );
   return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * Last change date for a local spec file: the file's latest git commit date,
+ * falling back to filesystem mtime outside a repository. Remote specs return
+ * undefined — a fetch date would say nothing about the spec's freshness.
+ */
+async function resolveSpecLastModified(
+  input: string,
+  cwd: string
+): Promise<string | undefined> {
+  if (/^https?:\/\//i.test(input)) {
+    return;
+  }
+  const filePath = path.isAbsolute(input) ? input : path.resolve(cwd, input);
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["log", "-1", "--format=%cI", "--", filePath],
+      { cwd: path.dirname(filePath) }
+    );
+    const iso = stdout.trim();
+    if (iso) {
+      return iso;
+    }
+  } catch {
+    // Not a git checkout (or git unavailable) — fall through to mtime.
+  }
+  try {
+    const stats = await stat(filePath);
+    return stats.mtime.toISOString();
+  } catch {
+    return;
+  }
 }
 
 /**
@@ -1339,6 +1403,7 @@ function validateOpenApiEntry(
     "serverUrl",
     "description",
     "urlPrefix",
+    "baseUrl",
   ] as const;
   for (const key of stringKeys) {
     if (entry[key] !== undefined && typeof entry[key] !== "string") {
@@ -1461,10 +1526,21 @@ function shortDescription(operation: OpenApiOperation): string {
   return `${collapsed.slice(0, MAX_SHORT_DESCRIPTION_LENGTH).trimEnd()}…`;
 }
 
+function canonicalUrlFor(
+  config: ResolvedOpenApiSourceConfig,
+  relativePath: string
+): string | undefined {
+  if (!config.baseUrl) {
+    return;
+  }
+  return `${config.baseUrl}${config.urlPrefix}/${stripDocsExtension(relativePath)}`;
+}
+
 function renderFrontmatter(
   operation: OpenApiOperation,
   config: ResolvedOpenApiSourceConfig,
-  index: number
+  index: number,
+  relativePath: string
 ): string {
   const lines = [
     "---",
@@ -1496,6 +1572,13 @@ function renderFrontmatter(
   }
   if (operation.deprecated) {
     lines.push("deprecated: true");
+  }
+  const canonicalUrl = canonicalUrlFor(config, relativePath);
+  if (canonicalUrl) {
+    lines.push(`canonicalUrl: ${yamlString(canonicalUrl)}`);
+  }
+  if (operation.lastModified) {
+    lines.push(`lastModified: ${yamlString(operation.lastModified)}`);
   }
   lines.push("---");
   return lines.join("\n");
@@ -1549,13 +1632,14 @@ function parameterGroups(operation: OpenApiOperation): Array<{
 function renderOperationMdx(
   operation: OpenApiOperation,
   config: ResolvedOpenApiSourceConfig,
-  index: number
+  index: number,
+  relativePath: string
 ): string {
   // No body `#` heading: the docs renderer prints the frontmatter title, and a
   // second h1 would duplicate it. Description text is CommonMark from the
   // spec, so escape MDX-significant syntax before embedding it in the body.
   const blocks = [
-    renderFrontmatter(operation, config, index),
+    renderFrontmatter(operation, config, index, relativePath),
     "",
     renderMdxComponent("ApiEndpoint", {
       deprecated: operation.deprecated || undefined,
@@ -1667,7 +1751,8 @@ function relatedLinks(config: ResolvedOpenApiSourceConfig): string[] {
 function renderIndexMdx(
   pages: GeneratedOpenApiPage[],
   config: ResolvedOpenApiSourceConfig,
-  document: Record<string, unknown>
+  document: Record<string, unknown>,
+  lastModified: string | undefined
 ): string {
   const info = asRecord(document.info);
   const infoDescription = asString(info.description);
@@ -1676,6 +1761,9 @@ function renderIndexMdx(
     infoDescription ??
     `API reference for ${config.title}.`;
   const version = asString(info.version);
+  const canonicalUrl = config.baseUrl
+    ? `${config.baseUrl}${overviewUrlPath(config)}`
+    : undefined;
   const lines = [
     "---",
     `title: ${yamlString(config.title)}`,
@@ -1685,6 +1773,8 @@ function renderIndexMdx(
     "source: openapi",
     "type: api-reference",
     ...(version ? [`apiVersion: ${yamlString(version)}`] : []),
+    ...(canonicalUrl ? [`canonicalUrl: ${yamlString(canonicalUrl)}`] : []),
+    ...(lastModified ? [`lastModified: ${yamlString(lastModified)}`] : []),
     "---",
   ];
   // Docs renderers print the frontmatter description under the title; only
@@ -1773,12 +1863,16 @@ export async function generateOpenApiPages(
   usedPaths: Set<string> = new Set()
 ): Promise<GenerateOpenApiPagesResult> {
   const document = await loadOpenApiDocument(config.input, config.cwd);
+  const lastModified = await resolveSpecLastModified(config.input, config.cwd);
   const candidates = collectOperationCandidates(document).filter((candidate) =>
     shouldIncludeOperation(candidate.operation, config)
   );
   const pages: GeneratedOpenApiPage[] = [];
   for (const candidate of candidates) {
-    const operation = normalizeOperation(candidate, document, config);
+    const normalized = normalizeOperation(candidate, document, config);
+    const operation = lastModified
+      ? { ...normalized, lastModified }
+      : normalized;
     const relativePath = operationRelativePath(operation, config, usedPaths);
     pages.push({
       description: shortDescription(operation),
@@ -1796,7 +1890,7 @@ export async function generateOpenApiPages(
     );
     if (!usedPaths.has(relativePath.toLowerCase())) {
       usedPaths.add(relativePath.toLowerCase());
-      const content = renderIndexMdx(pages, config, document);
+      const content = renderIndexMdx(pages, config, document, lastModified);
       indexPages.push({
         content,
         description:
@@ -1838,7 +1932,7 @@ export async function writeOpenApiPages({
       await mkdir(path.dirname(outputPath), { recursive: true });
       await writeFile(
         outputPath,
-        renderOperationMdx(page.operation, config, index)
+        renderOperationMdx(page.operation, config, index, page.relativePath)
       );
       allPages.push({ ...page, filePath: outputPath });
     }
@@ -1860,6 +1954,8 @@ export type StageOpenApiDocsConfig = {
   openapi: DocsOpenApiConfig;
   /** Base directory for relative `input` paths. Defaults to `contentDir`. */
   cwd?: string;
+  /** Site base URL for `canonicalUrl` frontmatter on generated pages. */
+  baseUrl?: string;
 };
 
 export type StagedOpenApiDocs = {
@@ -1890,7 +1986,9 @@ export async function stageOpenApiDocs(
   const stagedContentDir = path.join(stagedRoot, path.basename(sourceDir));
   await cp(sourceDir, stagedContentDir, { recursive: true });
   const result = await writeOpenApiPages({
-    configs: normalizeOpenApiConfig(config.openapi, config.cwd ?? sourceDir),
+    configs: normalizeOpenApiConfig(config.openapi, config.cwd ?? sourceDir, {
+      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+    }),
     docsDir: stagedContentDir,
   });
   return {

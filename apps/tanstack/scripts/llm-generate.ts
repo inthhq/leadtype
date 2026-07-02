@@ -26,12 +26,20 @@ import docsConfig from "../../../docs/docs.config";
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
 const repoRoot = join(appRoot, "..", "..");
+// Base URL precedence: package-specific override, generic deployment URL,
+// portless local URL, then a stable docs example fallback.
+const baseUrl =
+  process.env.LEADTYPE_AGENT_BASE_URL?.trim() ||
+  process.env.BASE_URL?.trim() ||
+  process.env.PORTLESS_URL?.trim() ||
+  "https://leadtype.dev";
 // Stage generated OpenAPI pages next to the authored docs (temp copy) so the
 // llms.txt / nav / readability generators below see them like any other page.
 const staged =
   docsConfig.openapi === undefined
     ? undefined
     : await stageOpenApiDocs({
+        baseUrl,
         contentDir: join(repoRoot, "docs"),
         openapi: docsConfig.openapi,
       });
@@ -45,13 +53,6 @@ const docsNavigation = [
 const outDir = join(appRoot, "public");
 const generatedDir = join(appRoot, "src", "generated");
 const LEADING_SLASHES_PATTERN = /^\/+/;
-// Base URL precedence: package-specific override, generic deployment URL,
-// portless local URL, then a stable docs example fallback.
-const baseUrl =
-  process.env.LEADTYPE_AGENT_BASE_URL?.trim() ||
-  process.env.BASE_URL?.trim() ||
-  process.env.PORTLESS_URL?.trim() ||
-  "https://leadtype.dev";
 
 function outputPathForUrlPrefix(urlPrefix: string): string {
   return urlPrefix.replace(LEADING_SLASHES_PATTERN, "");
