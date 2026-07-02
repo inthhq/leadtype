@@ -19,6 +19,7 @@ export type LeadtypeMdastTransform = (
 ) => Root | undefined | Promise<Root | undefined>;
 
 export type LeadtypeMdastTransformContext = {
+  data?: Record<string, unknown>;
   filePath: string;
   value: string;
 };
@@ -74,6 +75,7 @@ function pluginName(entry: Pluggable): string {
 
 function createVFile(context: LeadtypeMdastTransformContext): VFile {
   return new VFile({
+    ...(context.data ? { data: context.data } : {}),
     ...(context.filePath ? { path: context.filePath } : {}),
     value: context.value,
   });

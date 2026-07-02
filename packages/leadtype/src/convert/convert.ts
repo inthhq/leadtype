@@ -25,6 +25,10 @@ import {
   stringifyMarkdown,
 } from "../markdown";
 import {
+  createIncludeResolutionCache,
+  type IncludeResolutionCache,
+} from "../remark/plugins/include.remark";
+import {
   type DocsFrontmatter,
   type DocsTransformerOptions,
   runTransformers,
@@ -348,6 +352,7 @@ type ConversionPrepareOptions<
   gitSourcePath?: (filePath: string) => string | undefined;
   ignoredGitAuthors?: string[];
   gitEnrichment?: GitEnrichment;
+  includeResolutionCache?: IncludeResolutionCache;
   onTiming?: (timing: MdxConversionTiming) => void;
 };
 
@@ -395,13 +400,15 @@ async function runMdxAstTransforms(
   ast: Root,
   content: string,
   sourcePath: string,
-  timings: ConversionTimingAccumulator
+  timings: ConversionTimingAccumulator,
+  fileData?: Record<string, unknown>
 ): Promise<Root> {
   const startedAt = performance.now();
   try {
     return await runMdastTransforms(ast, transforms, {
       filePath: sourcePath,
       value: content,
+      ...(fileData ? { data: fileData } : {}),
     });
   } finally {
     addTiming(timings, "transformMs", startedAt);
@@ -809,13 +816,17 @@ async function prepareMdxConversion<
     content = frontmatterMatch[2] ?? "";
   }
 
+  const fileData = options.includeResolutionCache
+    ? { _leadtypeIncludeCache: options.includeResolutionCache }
+    : undefined;
   const parsed = parseMdxAst(content, timings);
   let ast = await runMdxAstTransforms(
     nativeTransforms,
     parsed,
     content,
     sourcePath,
-    timings
+    timings,
+    fileData
   );
 
   let resolvedFrontmatter =
@@ -867,7 +878,8 @@ async function prepareMdxConversion<
       reparsed,
       content,
       sourcePath,
-      timings
+      timings,
+      fileData
     );
   }
   parsedData = validateFrontmatter(
@@ -930,11 +942,13 @@ export async function convertMdxFile<
   options: ConversionPrepareOptions<TFrontmatter> = {}
 ): Promise<ConvertMdxFileResult<TFrontmatter>> {
   const totalStartedAt = performance.now();
+  const includeResolutionCache =
+    options.includeResolutionCache ?? createIncludeResolutionCache();
   const prepared = await prepareMdxConversion(
     sourcePath,
     markdownTransforms,
     enrichFromGitFlag,
-    options
+    { ...options, includeResolutionCache }
   );
   const { content, shouldRewriteFrontmatter } = prepared;
   let {
@@ -1162,6 +1176,7 @@ export async function writeMdxFileAsMarkdown(
       ignoredGitAuthors: config.ignoredGitAuthors,
       transformers: config.transformers,
       transformContext: config.transformContext,
+      includeResolutionCache: createIncludeResolutionCache(),
       onTiming: config.onTiming,
     },
     true
@@ -1203,6 +1218,7 @@ export async function convertAllMdx(
   const markdownTransforms = resolveMarkdownTransforms(config);
   const enrichFromGitFlag = config.enrichFrontmatterFromGit ?? false;
   const concurrency = config.concurrency ?? DEFAULT_CONCURRENCY;
+  const includeResolutionCache = createIncludeResolutionCache();
   const gitSourcePaths = mdxFiles.map(
     (mdxFilePath) => config.gitSourcePath?.(mdxFilePath) ?? mdxFilePath
   );
@@ -1238,6 +1254,7 @@ export async function convertAllMdx(
           gitSourcePath: config.gitSourcePath,
           ignoredGitAuthors: config.ignoredGitAuthors,
           gitEnrichment: gitEnrichments.get(resolve(gitSourcePath)) ?? {},
+          includeResolutionCache,
           transformers: config.transformers,
           onTiming: config.onTiming,
           transformContext: {

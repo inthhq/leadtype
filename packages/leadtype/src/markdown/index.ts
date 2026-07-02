@@ -1,6 +1,13 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
-export { remarkInclude as includeMarkdown } from "../remark/plugins/include.remark";
+export {
+  createIncludeResolutionCache,
+  type IncludeResolutionCache,
+  type IncludeResolutionCacheStats,
+  type RemarkIncludeOptions,
+  remarkInclude as includeMarkdown,
+  remarkInclude,
+} from "../remark/plugins/include.remark";
 export { type Builders, b, parseMarkdown } from "./builders";
 export {
   type NativeMarkdownDispatcherOptions,

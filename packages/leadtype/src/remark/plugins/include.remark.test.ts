@@ -1,10 +1,14 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { remark } from "remark";
+import remarkMdx from "remark-mdx";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  createIncludeResolutionCache,
   extractMdxSection,
   parseIncludeSpecifier,
+  remarkInclude,
   resolveInclude,
   resolveIncludePath,
 } from "./include.remark";
@@ -140,6 +144,75 @@ describe("resolveInclude", () => {
     await expect(
       resolveInclude("missing.mdx", { fromDir: root })
     ).rejects.toThrow(/ENOENT|no such file/i);
+  });
+
+  it("reuses raw file reads across section anchors in one cache scope", async () => {
+    const filePath = path.join(root, "partial.mdx");
+    await writeFile(
+      filePath,
+      '<section id="one">\nOne\n</section>\n<section id="two">\nTwo\n</section>\n'
+    );
+    const cache = createIncludeResolutionCache();
+
+    await resolveInclude("partial.mdx#one", { fromDir: root, cache });
+    await resolveInclude("partial.mdx#two", { fromDir: root, cache });
+
+    expect(cache.stats.rawFileReads).toBe(1);
+    expect(cache.stats.rawFileHits).toBe(1);
+  });
+});
+
+describe("remarkInclude cache", () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "leadtype-remark-include-"));
+  });
+
+  afterEach(async () => {
+    await rm(root, { force: true, recursive: true });
+  });
+
+  it("reuses parsed markdown while preserving different requested sections", async () => {
+    const partialPath = path.join(root, "partial.mdx");
+    await writeFile(
+      partialPath,
+      '<section id="one">\nOne\n</section>\n<section id="two">\nTwo\n</section>\n'
+    );
+    const firstPage = path.join(root, "first.mdx");
+    const secondPage = path.join(root, "second.mdx");
+    const cache = createIncludeResolutionCache();
+    const processor = remark().use(remarkMdx).use(remarkInclude, { cache });
+
+    const first = (await processor.run(
+      processor.parse({
+        path: firstPage,
+        value: '<include src="./partial.mdx#one" />',
+      }),
+      {
+        path: firstPage,
+        value: '<include src="./partial.mdx#one" />',
+      }
+    )) as unknown;
+    const second = (await processor.run(
+      processor.parse({
+        path: secondPage,
+        value: '<include src="./partial.mdx#two" />',
+      }),
+      {
+        path: secondPage,
+        value: '<include src="./partial.mdx#two" />',
+      }
+    )) as unknown;
+
+    expect(JSON.stringify(first)).toContain("One");
+    expect(JSON.stringify(first)).not.toContain("Two");
+    expect(JSON.stringify(second)).toContain("Two");
+    expect(JSON.stringify(second)).not.toContain("One");
+    expect(cache.stats.rawFileReads).toBe(1);
+    expect(cache.stats.rawFileHits).toBe(1);
+    expect(cache.stats.markdownParses).toBe(1);
+    expect(cache.stats.markdownParseHits).toBe(1);
   });
 });
 

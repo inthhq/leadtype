@@ -2,9 +2,10 @@
  * Remark plugin + standalone resolver for include/import MDX elements.
  *
  * Two public surfaces:
- * - `remarkInclude(basePaths?)` — unified plugin that expands `<include>` /
+ * - `remarkInclude(options?)` — unified plugin that expands `<include>` /
  *   `<import>` tags in an mdast tree (consumed by the agent flattening
- *   pipeline and by the MDX-source preset).
+ *   pipeline and by the MDX-source preset). Accepts legacy base path arrays or
+ *   `{ basePaths, cache }`.
  * - `resolveInclude(specifier, options)` — framework-neutral resolver that
  *   reads + classifies the target file. Consumers calling `createDocsSource()`
  *   use this to load partials at request/build time without going through
@@ -39,6 +40,34 @@ type IncludeCandidate = {
   parentContainer: Record<string, unknown>[] | null;
   parentIndex: number;
 };
+
+type ParserLike = { parse: (v: string) => unknown };
+
+export type IncludeResolutionCacheStats = {
+  rawFileReads: number;
+  rawFileHits: number;
+  markdownParses: number;
+  markdownParseHits: number;
+};
+
+export type IncludeResolutionCache = {
+  rawFiles: Map<string, Promise<string>>;
+  markdownAstByParser: WeakMap<ParserLike, Map<string, Root>>;
+  stats: IncludeResolutionCacheStats;
+};
+
+export function createIncludeResolutionCache(): IncludeResolutionCache {
+  return {
+    rawFiles: new Map(),
+    markdownAstByParser: new WeakMap(),
+    stats: {
+      rawFileReads: 0,
+      rawFileHits: 0,
+      markdownParses: 0,
+      markdownParseHits: 0,
+    },
+  };
+}
 
 // Simple frontmatter parser for our build pipeline
 function stripFrontmatterBlock(content: string): { content: string } {
@@ -262,7 +291,61 @@ function replaceTarget(
   Object.assign(node, replacement);
 }
 
-type ParserLike = { parse: (v: string) => unknown };
+async function readIncludedFile(
+  resolvedPath: string,
+  cache?: IncludeResolutionCache
+): Promise<string> {
+  if (!cache) {
+    return await readFile(resolvedPath, "utf8");
+  }
+
+  const cached = cache.rawFiles.get(resolvedPath);
+  if (cached) {
+    const raw = await cached;
+    cache.stats.rawFileHits += 1;
+    return raw;
+  }
+
+  cache.stats.rawFileReads += 1;
+  const pending = readFile(resolvedPath, "utf8").catch((error: unknown) => {
+    cache.rawFiles.delete(resolvedPath);
+    throw error;
+  });
+  cache.rawFiles.set(resolvedPath, pending);
+  return await pending;
+}
+
+function cloneRoot(root: Root): Root {
+  return structuredClone(root) as Root;
+}
+
+function parseIncludedMarkdown(
+  content: string,
+  parser: ParserLike,
+  resolvedPath: string,
+  cache?: IncludeResolutionCache
+): Root {
+  if (!cache) {
+    return parser.parse(content.trim()) as Root;
+  }
+
+  let parserCache = cache.markdownAstByParser.get(parser);
+  if (!parserCache) {
+    parserCache = new Map();
+    cache.markdownAstByParser.set(parser, parserCache);
+  }
+
+  const cached = parserCache.get(resolvedPath);
+  if (cached) {
+    cache.stats.markdownParseHits += 1;
+    return cloneRoot(cached);
+  }
+
+  cache.stats.markdownParses += 1;
+  const parsed = parser.parse(content.trim()) as Root;
+  parserCache.set(resolvedPath, parsed);
+  return cloneRoot(parsed);
+}
 
 const satteriParser: ParserLike = {
   parse: (value: string) =>
@@ -316,11 +399,18 @@ function includeContentAsMarkdown(
     section?: string;
     parser?: ParserLike;
     baseDir?: string | null;
+    resolvedPath: string;
+    cache?: IncludeResolutionCache;
   }
 ): void {
   try {
     const chosenParser = options.parser ?? satteriParser;
-    let parsed = chosenParser.parse(bodyContent.trim()) as Root;
+    let parsed = parseIncludedMarkdown(
+      bodyContent,
+      chosenParser,
+      options.resolvedPath,
+      options.cache
+    );
 
     if (options.section) {
       const extracted = extractMdxSection(parsed, options.section);
@@ -414,6 +504,8 @@ export type ResolveIncludeOptions = {
   cwd?: boolean;
   /** Force code-block rendering with this language even for .md/.mdx files. */
   lang?: string;
+  /** Optional cache scoped to one conversion or conversion batch. */
+  cache?: IncludeResolutionCache;
 };
 
 export type IncludeResolution =
@@ -501,7 +593,7 @@ export async function resolveInclude(
   const isMarkdownFile = file.endsWith(".md") || file.endsWith(".mdx");
   const asCode = Boolean(options.lang) || !isMarkdownFile;
 
-  const raw = await readFile(resolvedPath, "utf8");
+  const raw = await readIncludedFile(resolvedPath, options.cache);
 
   if (asCode) {
     return {
@@ -633,7 +725,9 @@ async function processIncludeNode(
   node: Record<string, unknown>,
   workingDir: string,
   basePaths: string[],
-  fileData?: unknown
+  includeCache?: IncludeResolutionCache,
+  fileData?: unknown,
+  sourcePath?: string
 ): Promise<void> {
   const params = extractAttributes(node);
   const specifier = flattenNode(node).trim() || (params.src ?? "").trim();
@@ -664,7 +758,8 @@ async function processIncludeNode(
       | { _compiler?: { addDependency?: (p: string) => void } }
       | undefined
   )?._compiler;
-  const includeResolver = compiler ? resolveInclude : resolveIncludeInflight;
+  const includeResolver =
+    compiler || includeCache ? resolveInclude : resolveIncludeInflight;
   let resolution: IncludeResolution;
   try {
     const profileEnabled = isMarkdownProfileEnabled();
@@ -675,6 +770,7 @@ async function processIncludeNode(
       baseDir: params.baseDir ?? undefined,
       cwd: "cwd" in params,
       lang: params.lang ?? undefined,
+      cache: includeCache,
     });
     if (profileEnabled) {
       recordMarkdownProfile(
@@ -686,11 +782,15 @@ async function processIncludeNode(
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn({
       human: {
-        message: `failed to include ${includeFile}: ${errorMessage}`,
+        message: `failed to include ${includeFile}${sourcePath ? ` from ${sourcePath}` : ""}: ${errorMessage}`,
       },
       json: {
         event: "include.read_failed",
-        fields: { target: includeFile, reason: errorMessage },
+        fields: {
+          target: includeFile,
+          ...(sourcePath ? { source: sourcePath } : {}),
+          reason: errorMessage,
+        },
       },
     });
 
@@ -731,6 +831,8 @@ async function processIncludeNode(
   const parseStartedAt = profileEnabled ? performance.now() : 0;
   includeContentAsMarkdown(node, includeFile, resolution.content, {
     baseDir: dirname(resolution.resolvedPath),
+    cache: includeCache,
+    resolvedPath: resolution.resolvedPath,
     section: resolution.section,
     parser: parser as ParserLike,
   });
@@ -742,11 +844,28 @@ async function processIncludeNode(
   }
 }
 
+export type RemarkIncludeOptions =
+  | string[]
+  | {
+      basePaths?: string[];
+      cache?: IncludeResolutionCache;
+    };
+
 export function remarkInclude(
-  basePaths: string[] = []
+  options: RemarkIncludeOptions = []
 ): Transformer<Root, Root> {
+  const basePaths = Array.isArray(options)
+    ? options
+    : (options.basePaths ?? []);
+  const pluginCache = Array.isArray(options) ? undefined : options.cache;
+
   return async (tree, file) => {
     const workingDir = file.path ? dirname(file.path) : process.cwd();
+    const fileData = (file as unknown as { data?: unknown })?.data;
+    const fileCache = (
+      fileData as { _leadtypeIncludeCache?: IncludeResolutionCache } | undefined
+    )?._leadtypeIncludeCache;
+    const includeCache = pluginCache ?? fileCache;
 
     // Support nested includes by repeatedly scanning the tree until no more
     // include/import nodes are found. This is safe because:
@@ -779,7 +898,9 @@ export function remarkInclude(
             candidate.node,
             workingDir,
             basePaths,
-            (file as unknown as { data?: unknown })?.data
+            includeCache,
+            fileData,
+            file.path
           );
           return candidate;
         })

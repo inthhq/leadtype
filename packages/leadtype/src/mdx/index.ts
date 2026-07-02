@@ -30,9 +30,13 @@ export {
 } from "../internal/docs-url";
 // Include-resolution primitives (re-exports from the remark plugin file)
 export {
+  createIncludeResolutionCache,
   extractMdxSection,
   type IncludeResolution,
+  type IncludeResolutionCache,
+  type IncludeResolutionCacheStats,
   parseIncludeSpecifier,
+  type RemarkIncludeOptions,
   type ResolveIncludeOptions,
   type ResolveIncludePathOptions,
   resolveInclude,
