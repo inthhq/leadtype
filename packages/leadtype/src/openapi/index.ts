@@ -1554,8 +1554,10 @@ function renderFrontmatter(
     lines.push(`order: ${config.order + index}`);
   }
   // Machine-scannable operation metadata: agents can route to the right
-  // endpoint from frontmatter alone, without parsing the page body.
-  lines.push("generated: true", "source: openapi", "type: api-reference");
+  // endpoint from frontmatter alone, without parsing the page body. `source`
+  // points at the OpenAPI document this page was generated from.
+  lines.push("type: api-reference");
+  lines.push(`source: ${yamlString(config.input)}`);
   lines.push(`method: ${yamlString(operation.method)}`);
   lines.push(`path: ${yamlString(operation.path)}`);
   if (operation.operationId) {
@@ -1769,9 +1771,8 @@ function renderIndexMdx(
     `title: ${yamlString(config.title)}`,
     `description: ${yamlString(description)}`,
     ...(config.group ? [`group: ${JSON.stringify(config.group)}`] : []),
-    "generated: true",
-    "source: openapi",
     "type: api-reference",
+    `source: ${yamlString(config.input)}`,
     ...(version ? [`apiVersion: ${yamlString(version)}`] : []),
     ...(canonicalUrl ? [`canonicalUrl: ${yamlString(canonicalUrl)}`] : []),
     ...(lastModified ? [`lastModified: ${yamlString(lastModified)}`] : []),

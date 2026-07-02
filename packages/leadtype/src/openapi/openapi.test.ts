@@ -120,8 +120,11 @@ describe("OpenAPI page generation", () => {
     expect(page).not.toContain("<ApiTryIt");
     // The docs renderer prints the frontmatter title — no duplicate body h1.
     expect(page).not.toMatch(/^# /m);
-    // Machine-scannable operation metadata in frontmatter.
+    // Machine-scannable operation metadata in frontmatter. `source` points
+    // at the spec the page was generated from.
     expect(page).toContain("type: api-reference");
+    expect(page).toContain('source: "openapi.yaml"');
+    expect(page).not.toContain("generated:");
     expect(page).toContain('method: "get"');
     expect(page).toContain('path: "/access-groups/{id}"');
     expect(page).toContain('operationId: "readAccessGroup"');
