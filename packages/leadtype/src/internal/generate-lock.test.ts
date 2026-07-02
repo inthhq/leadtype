@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, utimes } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -62,6 +62,40 @@ describe("acquireGenerateLock", () => {
     firstReleased = true;
     await first.release();
     await second;
+  });
+
+  it("reclaims a lock whose recorded holder process is dead", async () => {
+    const outDir = await createTempOutDir();
+    const lockPath = generateLockPath(outDir);
+    await mkdir(lockPath);
+    // Fresh mtime, but the recorded pid cannot exist (beyond pid_max on
+    // Linux and macOS) — models a SIGKILLed/OOM-killed holder.
+    await writeFile(
+      path.join(lockPath, "owner.json"),
+      `${JSON.stringify({ pid: 2 ** 30, acquiredAt: "2026-01-01T00:00:00Z" })}\n`
+    );
+
+    const lock = await acquireGenerateLock(outDir, {
+      pollIntervalMs: 20,
+      staleMs: 60_000,
+      waitTimeoutMs: 2000,
+    });
+    expect(existsSync(lock.lockPath)).toBe(true);
+    await lock.release();
+  });
+
+  it("registers signal handlers while held and removes them on release", async () => {
+    const outDir = await createTempOutDir();
+    const sigintBefore = process.listenerCount("SIGINT");
+    const sigtermBefore = process.listenerCount("SIGTERM");
+
+    const lock = await acquireGenerateLock(outDir);
+    expect(process.listenerCount("SIGINT")).toBe(sigintBefore + 1);
+    expect(process.listenerCount("SIGTERM")).toBe(sigtermBefore + 1);
+
+    await lock.release();
+    expect(process.listenerCount("SIGINT")).toBe(sigintBefore);
+    expect(process.listenerCount("SIGTERM")).toBe(sigtermBefore);
   });
 
   it("reclaims a stale lock left by a crashed run", async () => {

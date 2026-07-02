@@ -19,7 +19,10 @@ artifacts.
   instead of `rm -rf`-ing a live directory before rebuilding it.
 - `leadtype generate` runs are single-flight per output directory via a
   cross-process lock stored under the system temp dir (keyed by the resolved
-  `--out` path). Concurrent invocations wait for the in-flight run; locks
-  abandoned by crashed runs are reclaimed after 10 minutes, and waiting runs
-  fail loudly after 5 minutes instead of hanging CI. Set `LEADTYPE_NO_LOCK=1`
-  to opt out.
+  `--out` path). Concurrent invocations wait for the in-flight run. Abandoned
+  locks recover fast: interrupted runs (SIGINT/SIGTERM) release on the way
+  out, hard-killed runs are reclaimed as soon as their recorded pid is gone,
+  and unidentifiable locks are reclaimed after 10 minutes. Waiting runs fail
+  loudly after 15 minutes instead of hanging CI (`LEADTYPE_LOCK_TIMEOUT_MS`
+  overrides). Set `LEADTYPE_NO_LOCK=1` to opt out. Temp files leaked by a
+  hard-killed run are swept at the start of the next locked run.

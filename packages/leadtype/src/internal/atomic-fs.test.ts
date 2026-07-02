@@ -1,8 +1,20 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { copyFileAtomic, writeFileAtomic } from "./atomic-fs";
+import {
+  copyFileAtomic,
+  isAtomicTempFileName,
+  sweepLeakedTempFiles,
+  writeFileAtomic,
+} from "./atomic-fs";
 
 const tempDirs: string[] = [];
 
@@ -94,5 +106,49 @@ describe("copyFileAtomic", () => {
       copyFileAtomic(path.join(dir, "missing.txt"), target)
     ).rejects.toThrow();
     expect(await readdir(dir)).toEqual([]);
+  });
+});
+
+describe("isAtomicTempFileName", () => {
+  it("matches only the temp-sibling naming scheme", () => {
+    expect(isAtomicTempFileName(".guide.md.12345-a1b2c3d4e5f6.tmp")).toBe(true);
+    // User dotfiles and near-misses must never match — the sweep deletes.
+    expect(isAtomicTempFileName(".gitkeep")).toBe(false);
+    expect(isAtomicTempFileName(".env.tmp")).toBe(false);
+    expect(isAtomicTempFileName("guide.md.12345-a1b2c3d4e5f6.tmp")).toBe(false);
+    expect(isAtomicTempFileName(".guide.md.12345-short.tmp")).toBe(false);
+  });
+});
+
+describe("sweepLeakedTempFiles", () => {
+  it("removes leaked temp siblings but leaves everything else", async () => {
+    const dir = await createTempDir();
+    await mkdir(path.join(dir, "docs", "guides"), { recursive: true });
+    const leaked = path.join(
+      dir,
+      "docs",
+      "guides",
+      ".page.md.99999-abcdef012345.tmp"
+    );
+    const artifact = path.join(dir, "docs", "guides", "page.md");
+    const dotfile = path.join(dir, "docs", ".gitkeep");
+    await writeFile(leaked, "partial");
+    await writeFile(artifact, "content");
+    await writeFile(dotfile, "");
+
+    await sweepLeakedTempFiles(dir);
+
+    expect(await readdir(path.join(dir, "docs", "guides"))).toEqual([
+      "page.md",
+    ]);
+    expect(await readFile(artifact, "utf8")).toBe("content");
+    expect(await readdir(path.join(dir, "docs"))).toContain(".gitkeep");
+  });
+
+  it("is a no-op for a missing directory", async () => {
+    const dir = await createTempDir();
+    await expect(
+      sweepLeakedTempFiles(path.join(dir, "missing"))
+    ).resolves.toBeUndefined();
   });
 });

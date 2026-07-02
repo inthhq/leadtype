@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -8,7 +8,11 @@ import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
-import { copyFileAtomic, writeFileAtomic } from "../internal/atomic-fs";
+import {
+  copyFileAtomic,
+  sweepLeakedTempFiles,
+  writeFileAtomic,
+} from "../internal/atomic-fs";
 import {
   type DocsPathMount,
   normalizeBaseUrl,
@@ -2147,9 +2151,21 @@ async function copyMountedMarkdownMirrors(
           `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
         );
       }
+      // A mount whose urlPrefix resolves inside its own source subtree (e.g.
+      // pathPrefix "guides" with urlPrefix "/docs/guides/public") nests
+      // targetDir under sourceDir. Exclude the mirror from the source glob so
+      // a previous run's mirror output is never re-mirrored into itself.
+      const targetRelativeToSource = path.relative(sourceDir, targetDir);
+      const targetInsideSource =
+        targetRelativeToSource.length > 0 &&
+        !targetRelativeToSource.startsWith("..") &&
+        !path.isAbsolute(targetRelativeToSource);
       const files = await fg("**/*.md", {
         absolute: false,
         cwd: sourceDir,
+        ignore: targetInsideSource
+          ? [`${normalizeDocsPath(targetRelativeToSource)}/**`]
+          : [],
         onlyFiles: true,
       });
       await Promise.all(
@@ -2170,13 +2186,45 @@ async function copyMountedMarkdownMirrors(
         cwd: targetDir,
         onlyFiles: true,
       });
-      await Promise.all(
-        mirroredFiles
-          .filter((file) => !currentFiles.has(file))
-          .map((file) => rm(path.join(targetDir, file), { force: true }))
+      const staleFiles = mirroredFiles.filter(
+        (file) => !currentFiles.has(file)
       );
+      await Promise.all(
+        staleFiles.map((file) =>
+          rm(path.join(targetDir, file), { force: true })
+        )
+      );
+      await removeEmptyMirrorDirs(targetDir, staleFiles);
     })
   );
+}
+
+/**
+ * Remove directories left empty after pruning stale mirror files, walking
+ * each pruned file's parent chain up to (but never including) the mirror
+ * root. A non-empty directory stops the walk — everything above it is
+ * non-empty too.
+ */
+async function removeEmptyMirrorDirs(
+  targetDir: string,
+  prunedFiles: string[]
+): Promise<void> {
+  const parents = new Set(
+    prunedFiles.map((file) => path.dirname(path.join(targetDir, file)))
+  );
+  for (const parent of [...parents].sort(
+    (left, right) => right.length - left.length
+  )) {
+    let current = parent;
+    while (current.startsWith(`${targetDir}${path.sep}`)) {
+      try {
+        await rmdir(current);
+      } catch {
+        break;
+      }
+      current = path.dirname(current);
+    }
+  }
 }
 
 async function hasMarkdownFiles(dir: string): Promise<boolean> {
@@ -2538,7 +2586,13 @@ export async function runGenerateCommand(
   let generateLock: GenerateLock | undefined;
   if (process.env.LEADTYPE_NO_LOCK !== "1") {
     try {
-      generateLock = await acquireGenerateLock(outDir);
+      const waitTimeoutMs = Number(process.env.LEADTYPE_LOCK_TIMEOUT_MS);
+      generateLock = await acquireGenerateLock(
+        outDir,
+        Number.isFinite(waitTimeoutMs) && waitTimeoutMs > 0
+          ? { waitTimeoutMs }
+          : {}
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       reportFailure(message);
@@ -2548,6 +2602,11 @@ export async function runGenerateCommand(
 
   let sourceMirror: SourceMirror | undefined;
   try {
+    if (generateLock) {
+      // With the lock held, no other run is in flight — safe to sweep temp
+      // files leaked into the output tree by a previous hard-killed run.
+      await sweepLeakedTempFiles(outDir);
+    }
     const metadata = await resolveGenerateMetadata(
       srcDir,
       loadedConfig,

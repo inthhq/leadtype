@@ -1,5 +1,14 @@
-import { createHash } from "node:crypto";
-import { mkdir, rm, stat, utimes, writeFile } from "node:fs/promises";
+import { createHash, randomBytes } from "node:crypto";
+import { rmSync } from "node:fs";
+import {
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -20,18 +29,27 @@ import path from "node:path";
  * crashed runs. `mkdir` without `recursive` is the atomic acquire: exactly
  * one process creates the directory, everyone else gets EEXIST.
  *
- * Stale handling: the holder refreshes the lock directory's mtime on an
- * interval; a lock whose mtime is older than `staleMs` belongs to a crashed
- * run and is reclaimed. Concurrent reclaimers race on the next mkdir and
- * exactly one wins.
+ * Abandoned-lock recovery, ordered by how fast each path fires:
+ * 1. SIGINT/SIGTERM: the holder removes its lock on the way out, so an
+ *    interrupted run never stalls the next one.
+ * 2. Dead holder (SIGKILL, OOM kill): waiters probe the pid recorded in
+ *    `owner.json` — the lock lives in the local tmpdir, so the holder is
+ *    always a same-machine process — and reclaim as soon as it is gone.
+ * 3. Stale mtime: the holder refreshes the lock's mtime on an interval; a
+ *    lock older than `staleMs` is reclaimed even when no pid is readable.
  */
 
 const DEFAULT_STALE_MS = 10 * 60 * 1000;
-const DEFAULT_WAIT_TIMEOUT_MS = 5 * 60 * 1000;
+// Longer than the stale window so a waiter always outlives a crashed holder
+// (the lock goes stale and is reclaimed before any waiter gives up), while a
+// healthy long-running holder — whose keepalive keeps the lock fresh — is
+// waited on rather than failed.
+const DEFAULT_WAIT_TIMEOUT_MS = 15 * 60 * 1000;
 const DEFAULT_POLL_INTERVAL_MS = 150;
 const KEEPALIVE_DIVISOR = 4;
 const MIN_KEEPALIVE_MS = 1000;
 const LOCK_KEY_LENGTH = 16;
+const RECLAIM_SUFFIX_BYTES = 4;
 
 export type GenerateLockOptions = {
   /** Age after which an unrefreshed lock is considered abandoned. */
@@ -59,13 +77,76 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function isStale(lockPath: string, staleMs: number): Promise<boolean> {
+async function readOwnerPid(lockPath: string): Promise<number | undefined> {
+  try {
+    const raw = await readFile(path.join(lockPath, "owner.json"), "utf8");
+    const pid = (JSON.parse(raw) as { pid?: unknown }).pid;
+    return typeof pid === "number" ? pid : undefined;
+  } catch {
+    // Holder mid-acquire or metadata unreadable — fall back to the mtime window.
+    return;
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM means the pid exists but belongs to another user.
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+async function isAbandoned(
+  lockPath: string,
+  staleMs: number
+): Promise<boolean> {
   try {
     const info = await stat(lockPath);
-    return Date.now() - info.mtimeMs > staleMs;
+    if (Date.now() - info.mtimeMs > staleMs) {
+      return true;
+    }
   } catch {
     // Lock vanished between EEXIST and stat — the holder released; retry.
     return false;
+  }
+  const pid = await readOwnerPid(lockPath);
+  return pid !== undefined && !isProcessAlive(pid);
+}
+
+/**
+ * Remove an abandoned lock without racing competing acquirers: rename it to a
+ * unique trash path first (rename is atomic, so exactly one reclaimer wins),
+ * then re-check that what we grabbed really was the abandoned lock. A plain
+ * `rm` here could delete a fresh lock that a competing process created
+ * between our abandonment check and the removal.
+ */
+async function reclaimAbandonedLock(
+  lockPath: string,
+  staleMs: number
+): Promise<void> {
+  const suffix = randomBytes(RECLAIM_SUFFIX_BYTES).toString("hex");
+  const trashPath = `${lockPath}.reclaim-${process.pid}-${suffix}`;
+  try {
+    await rename(lockPath, trashPath);
+  } catch {
+    // Another reclaimer won, or the holder released — go retry the acquire.
+    return;
+  }
+  if (await isAbandoned(trashPath, staleMs)) {
+    await rm(trashPath, { force: true, recursive: true });
+    return;
+  }
+  // We grabbed a live lock created in the check→rename window; hand it back.
+  try {
+    await rename(trashPath, lockPath);
+  } catch {
+    // A third process acquired lockPath in the same window. Dropping the
+    // displaced lock is the least-bad option: the window is microseconds
+    // wide, and the displaced run's artifacts remain safe under the atomic
+    // per-file writes.
+    await rm(trashPath, { force: true, recursive: true });
   }
 }
 
@@ -91,7 +172,7 @@ async function writeOwnerMetadata(lockPath: string): Promise<void> {
       })}\n`
     );
   } catch {
-    // Diagnostics only — the lock is the directory itself.
+    // Waiters fall back to the mtime stale window without a readable pid.
   }
 }
 
@@ -106,19 +187,40 @@ export async function acquireGenerateLock(
   const startedAt = Date.now();
 
   while (!(await tryAcquire(lockPath))) {
-    if (await isStale(lockPath, staleMs)) {
-      await rm(lockPath, { force: true, recursive: true });
+    if (await isAbandoned(lockPath, staleMs)) {
+      await reclaimAbandonedLock(lockPath, staleMs);
       continue;
     }
     if (Date.now() - startedAt >= waitTimeoutMs) {
       throw new Error(
         `timed out after ${Math.round(waitTimeoutMs / 1000)}s waiting for another \`leadtype generate\` run writing to "${outDir}" ` +
-          `(lock: ${lockPath}). If no other run is active, delete the lock directory, ` +
-          "or set LEADTYPE_NO_LOCK=1 to skip locking entirely."
+          `(lock: ${lockPath}). If no other run is active, delete the lock directory. ` +
+          "Set LEADTYPE_LOCK_TIMEOUT_MS to wait longer, or LEADTYPE_NO_LOCK=1 to skip locking entirely."
       );
     }
     await sleep(pollIntervalMs);
   }
+
+  // An interrupted holder must not stall the next run until a slower
+  // recovery path fires, so release the lock on the way out and re-raise to
+  // preserve the default terminate behavior and exit code.
+  const onSigint = (): void => releaseOnSignal("SIGINT");
+  const onSigterm = (): void => releaseOnSignal("SIGTERM");
+  const removeSignalHandlers = (): void => {
+    process.removeListener("SIGINT", onSigint);
+    process.removeListener("SIGTERM", onSigterm);
+  };
+  const releaseOnSignal = (signal: NodeJS.Signals): void => {
+    try {
+      rmSync(lockPath, { force: true, recursive: true });
+    } catch {
+      // Best effort — the dead-pid reclaim covers whatever we couldn't remove.
+    }
+    removeSignalHandlers();
+    process.kill(process.pid, signal);
+  };
+  process.once("SIGINT", onSigint);
+  process.once("SIGTERM", onSigterm);
 
   await writeOwnerMetadata(lockPath);
 
@@ -145,6 +247,7 @@ export async function acquireGenerateLock(
       }
       released = true;
       clearInterval(keepalive);
+      removeSignalHandlers();
       await rm(lockPath, { force: true, recursive: true });
     },
   };
