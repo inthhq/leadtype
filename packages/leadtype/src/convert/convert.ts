@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath } from "node:fs/promises";
 import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -9,6 +9,7 @@ import type { Root } from "mdast";
 import { mdxToMdast } from "satteri";
 import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import {
   deriveDocContext,
   resolvePlaceholderStrings,
@@ -1117,7 +1118,7 @@ async function processMdxFile(
     }
 
     await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, markdown);
+    await writeFileAtomic(outputPath, markdown);
 
     if (!writeToStdout) {
       const ms = Date.now() - startedAt;
@@ -1264,7 +1265,7 @@ export async function convertAllMdx(
         }
       );
       const outputPath = deriveOutputPath(mdxFilePath, srcDir, outDir);
-      await writeFile(outputPath, markdown);
+      await writeFileAtomic(outputPath, markdown);
       logger.debug({
         human: {
           message: `convert ${mdxFilePath} → ${outputPath} (${Date.now() - fileStartedAt}ms)`,

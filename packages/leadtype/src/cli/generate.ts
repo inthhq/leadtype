@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -9,12 +9,21 @@ import { convertAllMdx } from "../convert";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
+  copyFileAtomic,
+  sweepLeakedTempFiles,
+  writeFileAtomic,
+} from "../internal/atomic-fs";
+import {
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
+import {
+  acquireGenerateLock,
+  type GenerateLock,
+} from "../internal/generate-lock";
 import {
   logger,
   setLogFormat,
@@ -2142,10 +2151,21 @@ async function copyMountedMarkdownMirrors(
           `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
         );
       }
-      await rm(targetDir, { force: true, recursive: true });
+      // A mount whose urlPrefix resolves inside its own source subtree (e.g.
+      // pathPrefix "guides" with urlPrefix "/docs/guides/public") nests
+      // targetDir under sourceDir. Exclude the mirror from the source glob so
+      // a previous run's mirror output is never re-mirrored into itself.
+      const targetRelativeToSource = path.relative(sourceDir, targetDir);
+      const targetInsideSource =
+        targetRelativeToSource.length > 0 &&
+        !targetRelativeToSource.startsWith("..") &&
+        !path.isAbsolute(targetRelativeToSource);
       const files = await fg("**/*.md", {
         absolute: false,
         cwd: sourceDir,
+        ignore: targetInsideSource
+          ? [`${normalizeDocsPath(targetRelativeToSource)}/**`]
+          : [],
         onlyFiles: true,
       });
       await Promise.all(
@@ -2153,11 +2173,58 @@ async function copyMountedMarkdownMirrors(
           const sourcePath = path.join(sourceDir, file);
           const targetPath = path.join(targetDir, file);
           await mkdir(path.dirname(targetPath), { recursive: true });
-          await cp(sourcePath, targetPath);
+          await copyFileAtomic(sourcePath, targetPath);
         })
       );
+      // Prune mirror files whose source pages no longer exist. Pruning after
+      // the copy (instead of rm -rf on the whole mirror before it) keeps the
+      // mirror readable throughout — a concurrent reader never sees the
+      // directory disappear mid-generation.
+      const currentFiles = new Set(files);
+      const mirroredFiles = await fg("**/*.md", {
+        absolute: false,
+        cwd: targetDir,
+        onlyFiles: true,
+      });
+      const staleFiles = mirroredFiles.filter(
+        (file) => !currentFiles.has(file)
+      );
+      await Promise.all(
+        staleFiles.map((file) =>
+          rm(path.join(targetDir, file), { force: true })
+        )
+      );
+      await removeEmptyMirrorDirs(targetDir, staleFiles);
     })
   );
+}
+
+/**
+ * Remove directories left empty after pruning stale mirror files, walking
+ * each pruned file's parent chain up to (but never including) the mirror
+ * root. A non-empty directory stops the walk — everything above it is
+ * non-empty too.
+ */
+async function removeEmptyMirrorDirs(
+  targetDir: string,
+  prunedFiles: string[]
+): Promise<void> {
+  const parents = new Set(
+    prunedFiles.map((file) => path.dirname(path.join(targetDir, file)))
+  );
+  for (const parent of [...parents].sort(
+    (left, right) => right.length - left.length
+  )) {
+    let current = parent;
+    while (current.startsWith(`${targetDir}${path.sep}`)) {
+      try {
+        await rmdir(current);
+      } catch {
+        break;
+      }
+      current = path.dirname(current);
+    }
+  }
 }
 
 async function hasMarkdownFiles(dir: string): Promise<boolean> {
@@ -2203,7 +2270,7 @@ async function copyDefaultLocaleMarkdownAliases(
       const sourcePath = path.join(defaultLocaleDir, file);
       const targetPath = path.join(docsDir, file);
       await mkdir(path.dirname(targetPath), { recursive: true });
-      await cp(sourcePath, targetPath);
+      await copyFileAtomic(sourcePath, targetPath);
     })
   );
   await rm(defaultLocaleDir, { force: true, recursive: true });
@@ -2248,7 +2315,7 @@ async function writeI18nManifest(
   }
   const outputPath = path.join(outDir, DEFAULT_DOCS_DIR, "i18n-manifest.json");
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return outputPath;
 }
 
@@ -2512,8 +2579,34 @@ export async function runGenerateCommand(
     return 1;
   }
 
+  // Serialize concurrent generate runs targeting the same outDir (parallel CI
+  // task graphs commonly fan out lint/typecheck/build, each regenerating docs).
+  // Atomic per-file writes keep individual artifacts readable at all times;
+  // the lock keeps whole runs from interleaving their read-back phases.
+  let generateLock: GenerateLock | undefined;
+  if (process.env.LEADTYPE_NO_LOCK !== "1") {
+    try {
+      const waitTimeoutMs = Number(process.env.LEADTYPE_LOCK_TIMEOUT_MS);
+      generateLock = await acquireGenerateLock(
+        outDir,
+        Number.isFinite(waitTimeoutMs) && waitTimeoutMs > 0
+          ? { waitTimeoutMs }
+          : {}
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      reportFailure(message);
+      return 1;
+    }
+  }
+
   let sourceMirror: SourceMirror | undefined;
   try {
+    if (generateLock) {
+      // With the lock held, no other run is in flight — safe to sweep temp
+      // files leaked into the output tree by a previous hard-killed run.
+      await sweepLeakedTempFiles(outDir);
+    }
     const metadata = await resolveGenerateMetadata(
       srcDir,
       loadedConfig,
@@ -2944,6 +3037,7 @@ export async function runGenerateCommand(
     return 1;
   } finally {
     await sourceMirror?.cleanup();
+    await generateLock?.release();
   }
   return 0;
 }
