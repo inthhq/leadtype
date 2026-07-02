@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -34,6 +34,17 @@ import {
   runTransformers,
   validateFrontmatter,
 } from "../transformers";
+import {
+  CONVERT_CACHE_VERSION,
+  type ConvertCacheEntry,
+  type ConvertCacheOptions,
+  createFileHashCache,
+  depsUnchanged,
+  hashContent,
+  hashFileCached,
+  loadConvertCacheManifest,
+  saveConvertCacheManifest,
+} from "./incremental";
 
 const execFileAsync = promisify(execFile);
 
@@ -333,6 +344,12 @@ export type MdxToMarkdownOptions = {
   transformContext?: DocsTransformerOptions["transformContext"];
   /** Per-file conversion timings used by benchmark scripts. */
   onTiming?: (timing: MdxConversionTiming) => void;
+  /**
+   * Incremental cache. When set, files whose source, dependencies (includes,
+   * type-table sources), and git enrichment are unchanged since the recorded
+   * run are skipped, and outputs of deleted sources are pruned.
+   */
+  cache?: ConvertCacheOptions;
 };
 
 function resolveMarkdownTransforms(
@@ -354,6 +371,12 @@ type ConversionPrepareOptions<
   gitEnrichment?: GitEnrichment;
   includeResolutionCache?: IncludeResolutionCache;
   onTiming?: (timing: MdxConversionTiming) => void;
+  /**
+   * Called with the absolute path of every file the conversion reads beyond
+   * the source itself (include targets, type-table TypeScript sources).
+   * Plugins receive it via the `_compiler.addDependency` file-data protocol.
+   */
+  onDependency?: (filePath: string) => void;
 };
 
 type GitSourceGroup = {
@@ -816,9 +839,17 @@ async function prepareMdxConversion<
     content = frontmatterMatch[2] ?? "";
   }
 
-  const fileData = options.includeResolutionCache
-    ? { _leadtypeIncludeCache: options.includeResolutionCache }
-    : undefined;
+  const fileData =
+    options.includeResolutionCache || options.onDependency
+      ? {
+          ...(options.includeResolutionCache
+            ? { _leadtypeIncludeCache: options.includeResolutionCache }
+            : {}),
+          ...(options.onDependency
+            ? { _compiler: { addDependency: options.onDependency } }
+            : {}),
+        }
+      : undefined;
   const parsed = parseMdxAst(content, timings);
   let ast = await runMdxAstTransforms(
     nativeTransforms,
@@ -1236,11 +1267,59 @@ export async function convertAllMdx(
     Array.from(outputDirs, (dir) => mkdir(dir, { recursive: true }))
   );
 
+  const cacheState = config.cache
+    ? {
+        options: config.cache,
+        previousEntries: config.cache.force
+          ? {}
+          : ((
+              await loadConvertCacheManifest(
+                config.cache.file,
+                config.cache.fingerprint
+              )
+            )?.entries ?? {}),
+        nextEntries: {} as Record<string, ConvertCacheEntry>,
+        hashCache: createFileHashCache(),
+      }
+    : undefined;
+
   const startedAt = Date.now();
   const results = await mapLimit(mdxFiles, concurrency, async (mdxFilePath) => {
     try {
       const fileStartedAt = Date.now();
       const gitSourcePath = config.gitSourcePath?.(mdxFilePath) ?? mdxFilePath;
+      const gitEnrichment = gitEnrichments.get(resolve(gitSourcePath)) ?? {};
+      const outputPath = deriveOutputPath(mdxFilePath, srcDir, outDir);
+      const cacheKey = normalizeRelativePath(relative(srcDir, mdxFilePath));
+      const enrichmentKey = enrichFromGitFlag
+        ? JSON.stringify(gitEnrichment)
+        : "";
+      let sourceHash: string | undefined;
+      if (cacheState) {
+        sourceHash = hashContent(await readFile(mdxFilePath));
+        const previousEntry = cacheState.previousEntries[cacheKey];
+        const reusable =
+          previousEntry &&
+          previousEntry.sourceHash === sourceHash &&
+          previousEntry.enrichment === enrichmentKey &&
+          existsSync(outputPath) &&
+          (await depsUnchanged(previousEntry.deps, cacheState.hashCache));
+        if (reusable) {
+          cacheState.nextEntries[cacheKey] = previousEntry;
+          logger.debug({
+            human: { message: `cached ${mdxFilePath} → ${outputPath}` },
+            json: {
+              event: "convert.cached",
+              fields: { src: mdxFilePath, out: outputPath },
+            },
+          });
+          return "cached";
+        }
+      }
+
+      // Dependencies are recorded as real source paths (via gitSourcePath) so
+      // entries stay valid when a staged temp mirror is rebuilt next run.
+      const dependencyPaths = cacheState ? new Set<string>() : undefined;
       const { markdown } = await convertMdxToMarkdown(
         mdxFilePath,
         markdownTransforms,
@@ -1253,18 +1332,44 @@ export async function convertAllMdx(
           ),
           gitSourcePath: config.gitSourcePath,
           ignoredGitAuthors: config.ignoredGitAuthors,
-          gitEnrichment: gitEnrichments.get(resolve(gitSourcePath)) ?? {},
+          gitEnrichment,
           includeResolutionCache,
           transformers: config.transformers,
           onTiming: config.onTiming,
+          ...(dependencyPaths
+            ? {
+                onDependency: (dependencyPath: string) => {
+                  const resolvedDependency = resolve(dependencyPath);
+                  dependencyPaths.add(
+                    config.gitSourcePath?.(resolvedDependency) ??
+                      resolvedDependency
+                  );
+                },
+              }
+            : {}),
           transformContext: {
             ...config.transformContext,
             filePath: mdxFilePath,
           },
         }
       );
-      const outputPath = deriveOutputPath(mdxFilePath, srcDir, outDir);
       await writeFile(outputPath, markdown);
+      if (cacheState && sourceHash) {
+        const deps: Record<string, string> = {};
+        for (const dependencyPath of dependencyPaths ?? []) {
+          // Unreadable/missing deps record an empty hash: the entry stays
+          // invalid until the file appears, so a broken reference that gets
+          // fixed later is picked up without --force.
+          deps[dependencyPath] =
+            (await hashFileCached(dependencyPath, cacheState.hashCache)) ?? "";
+        }
+        cacheState.nextEntries[cacheKey] = {
+          sourceHash,
+          deps,
+          enrichment: enrichmentKey,
+          output: normalizeRelativePath(relative(outDir, outputPath)),
+        };
+      }
       logger.debug({
         human: {
           message: `convert ${mdxFilePath} → ${outputPath} (${Date.now() - fileStartedAt}ms)`,
@@ -1293,12 +1398,43 @@ export async function convertAllMdx(
     }
   });
 
+  let pruned = 0;
+  if (cacheState) {
+    const currentKeys = new Set(
+      mdxFiles.map((mdxFilePath) =>
+        normalizeRelativePath(relative(srcDir, mdxFilePath))
+      )
+    );
+    pruned = await pruneStaleOutputs(
+      cacheState.previousEntries,
+      cacheState.nextEntries,
+      currentKeys,
+      outDir
+    );
+    try {
+      await saveConvertCacheManifest(cacheState.options.file, {
+        version: CONVERT_CACHE_VERSION,
+        fingerprint: cacheState.options.fingerprint,
+        entries: cacheState.nextEntries,
+      });
+    } catch (cacheError) {
+      const reason =
+        cacheError instanceof Error ? cacheError.message : String(cacheError);
+      logger.debug({
+        human: { message: `failed to save convert cache: ${reason}` },
+        json: { event: "convert.cache_save_failed", fields: { reason } },
+      });
+    }
+  }
+
+  const cached = results.filter((result) => result === "cached").length;
   const ok = results.filter(Boolean).length;
   const failed = results.length - ok;
   const ms = Date.now() - startedAt;
+  const cachedSuffix = cached > 0 ? ` (${cached} unchanged, skipped)` : "";
   logger.info({
     human: {
-      message: `Converted ${ok} docs in ${ms} ms${failed > 0 ? ` (${failed} failed)` : ""}`,
+      message: `Converted ${ok - cached} docs${cachedSuffix} in ${ms} ms${failed > 0 ? ` (${failed} failed)` : ""}`,
     },
     json: {
       event: "convert.batch",
@@ -1307,6 +1443,8 @@ export async function convertAllMdx(
         outDir,
         files: results.length,
         ok,
+        cached,
+        pruned,
         failed,
         ms,
       },
@@ -1316,4 +1454,44 @@ export async function convertAllMdx(
   if (failed > 0 && config.failOnError) {
     throw new Error(`Failed to convert ${failed} docs file(s).`);
   }
+}
+
+/**
+ * Delete outputs whose source MDX no longer exists. Only outputs recorded by
+ * a previous cached run are touched, and only when they resolve inside
+ * `outDir` — hand-placed files are never deleted.
+ */
+async function pruneStaleOutputs(
+  previousEntries: Record<string, ConvertCacheEntry>,
+  nextEntries: Record<string, ConvertCacheEntry>,
+  currentKeys: ReadonlySet<string>,
+  outDir: string
+): Promise<number> {
+  const liveOutputs = new Set(
+    Object.values(nextEntries).map((entry) => entry.output)
+  );
+  let pruned = 0;
+  for (const [key, entry] of Object.entries(previousEntries)) {
+    // A key still present in the source set is never pruned — a failed
+    // conversion keeps its previous output on disk, matching uncached runs.
+    if (currentKeys.has(key) || liveOutputs.has(entry.output)) {
+      continue;
+    }
+    const outputPath = resolve(outDir, entry.output);
+    const relativeToOut = relative(outDir, outputPath);
+    if (
+      !relativeToOut ||
+      relativeToOut.startsWith("..") ||
+      !existsSync(outputPath)
+    ) {
+      continue;
+    }
+    await rm(outputPath, { force: true });
+    pruned += 1;
+    logger.debug({
+      human: { message: `pruned stale output ${outputPath}` },
+      json: { event: "convert.pruned", fields: { out: outputPath } },
+    });
+  }
+  return pruned;
 }
