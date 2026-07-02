@@ -19,6 +19,7 @@ import {
   createListItem,
   createParagraph,
   createTable,
+  createText,
   createUnorderedList,
   getAttributeValue,
   type MdxNode,
@@ -200,6 +201,14 @@ function renderResponse(response: OpenApiResponse): RootContent[] {
   return nodes;
 }
 
+function detailParagraph(label: string, value: string): RootContent {
+  // Inline code keeps URLs and IDs verbatim (no markdown escaping artifacts).
+  return {
+    children: [createText(`${label}: `), createInlineCode(value)],
+    type: "paragraph",
+  };
+}
+
 export function apiEndpointToMarkdown(node: MdxNode): RootContent[] {
   const method = (getAttributeValue(node, "method") ?? "").toUpperCase();
   const apiPath = getAttributeValue(node, "path") ?? "";
@@ -209,13 +218,14 @@ export function apiEndpointToMarkdown(node: MdxNode): RootContent[] {
   const nodes: RootContent[] = [
     createCodeBlock(`${method} ${apiPath}`, "http"),
   ];
-  const details = [
-    serverUrl ? `Server: ${serverUrl}` : "",
-    operationId ? `Operation ID: ${operationId}` : "",
-    deprecated ? "Deprecated: true" : "",
-  ].filter(Boolean);
-  if (details.length > 0) {
-    nodes.push(createParagraph(details.join("\n")));
+  if (serverUrl) {
+    nodes.push(detailParagraph("Server", serverUrl));
+  }
+  if (operationId) {
+    nodes.push(detailParagraph("Operation ID", operationId));
+  }
+  if (deprecated) {
+    nodes.push(createParagraph("Deprecated: true"));
   }
   return nodes;
 }

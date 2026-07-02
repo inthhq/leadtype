@@ -1362,16 +1362,23 @@ function yamlString(value: string): string {
   return JSON.stringify(value);
 }
 
+const MAX_SHORT_DESCRIPTION_LENGTH = 250;
+
 /**
  * Short, single-line description for frontmatter, nav, and search snippets.
- * Prefers the operation summary, then the first paragraph of the description.
+ * Prefers the first paragraph of the description (the summary usually mirrors
+ * the title), then the summary.
  */
 function shortDescription(operation: OpenApiOperation): string {
-  const source =
-    operation.summary ??
-    operation.description.split(BLANK_LINE_PATTERN)[0] ??
-    operation.title;
-  return source.replace(WHITESPACE_RUN_PATTERN, " ").trim();
+  const firstParagraph = operation.description
+    .split(BLANK_LINE_PATTERN)[0]
+    ?.trim();
+  const source = firstParagraph || (operation.summary ?? operation.title);
+  const collapsed = source.replace(WHITESPACE_RUN_PATTERN, " ").trim();
+  if (collapsed.length <= MAX_SHORT_DESCRIPTION_LENGTH) {
+    return collapsed;
+  }
+  return `${collapsed.slice(0, MAX_SHORT_DESCRIPTION_LENGTH).trimEnd()}…`;
 }
 
 function renderFrontmatter(
