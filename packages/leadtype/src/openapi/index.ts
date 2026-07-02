@@ -1464,9 +1464,14 @@ function renderOperationMdx(
       path: operation.path,
       serverUrl: operation.serverUrl,
     }),
-    "",
-    escapeMarkdownForMdx(operation.description),
   ];
+
+  // Docs renderers already print the frontmatter description under the title;
+  // only repeat the description in the body when it says more than that.
+  const description = operation.description.trim();
+  if (description && description !== shortDescription(operation)) {
+    blocks.push("", escapeMarkdownForMdx(description));
+  }
 
   if (operation.securitySchemes.length > 0 || operation.security.length > 0) {
     blocks.push(

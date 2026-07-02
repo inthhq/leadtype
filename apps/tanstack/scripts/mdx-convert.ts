@@ -15,12 +15,15 @@ import {
   includeMarkdown,
   nativeMarkdownComponentsToMarkdown,
 } from "leadtype/markdown";
+import { normalizeOpenApiConfig, writeOpenApiPages } from "leadtype/openapi";
+import docsConfig from "../../../docs/docs.config";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
 const repoRoot = join(appRoot, "..", "..");
 const srcDir = join(repoRoot, "docs");
 const outDir = join(appRoot, "public", "docs");
+const openapiDocsDir = join(appRoot, "src", "generated", "openapi-docs");
 const typeTableMarkdownTransform: NonNullable<
   MdxToMarkdownOptions["markdownTransforms"]
 >[number] = [
@@ -50,3 +53,22 @@ await convertAllMdx({
   markdownTransforms,
   enrichFrontmatterFromGit: true,
 });
+
+// Generated OpenAPI reference pages: write the MDX into the app-local
+// generated dir (Vite renders it via import.meta.glob), then flatten the same
+// pages into the public markdown mirrors so agents and search see them too.
+// Authored docs keep git-enriched frontmatter above; generated pages have no
+// git history, so enrichment stays off here.
+if (docsConfig.openapi !== undefined) {
+  await rm(openapiDocsDir, { force: true, recursive: true });
+  await writeOpenApiPages({
+    configs: normalizeOpenApiConfig(docsConfig.openapi, srcDir),
+    docsDir: openapiDocsDir,
+  });
+  await convertAllMdx({
+    srcDir: openapiDocsDir,
+    outDir,
+    markdownTransforms,
+    enrichFrontmatterFromGit: false,
+  });
+}

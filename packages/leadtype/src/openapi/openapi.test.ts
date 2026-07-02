@@ -150,18 +150,35 @@ paths:
       operationId: readUser
       summary: Read a user
       description: |
-        Returns the user for {id}. Set the header to <token> when calling.
+        Returns the user for {id}.
+
+        Set the header to <token> when calling. Keep \`{literal}\` intact.
       responses:
         "200":
           description: ok
 `;
     const { result } = await generateFixturePages(spec);
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    // Multi-paragraph description renders in the body, escaped for MDX.
+    expect(page).toContain("\\{id\\}");
+    expect(page).toContain("\\<token>");
+    expect(page).toContain("`{literal}`");
+
     const converted = await convertMdxToMarkdown(
       result.pages[0]?.filePath ?? "",
       defaultMarkdownTransforms
     );
     expect(converted.markdown).toContain("{id}");
     expect(converted.markdown).toContain("<token>");
+  });
+
+  it("omits the body description when it matches the frontmatter description", async () => {
+    const { result } = await generateFixturePages(FIXTURE_SPEC);
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    // Single-sentence descriptions already render under the page title via
+    // frontmatter — repeating them in the body would show twice in docs UIs.
+    const body = page.split("---").slice(2).join("---");
+    expect(body).not.toContain("Reads an access group");
   });
 
   it("renders nested array item properties as dotted rows", async () => {

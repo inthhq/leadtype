@@ -1,4 +1,13 @@
 import { Accordion, AccordionItem } from "./accordion";
+import {
+  ApiAuth,
+  ApiCodeSamples,
+  ApiEndpoint,
+  ApiParameters,
+  ApiRequestBody,
+  ApiResponses,
+  ApiTryIt,
+} from "./api";
 import { Audience } from "./audience";
 import { Callout } from "./callout";
 import { Card, Cards } from "./card";
@@ -16,6 +25,13 @@ import { ExtractedTypeTable, TypeTable } from "./type-table";
 export const mdxComponents = {
   Accordion,
   AccordionItem,
+  ApiAuth,
+  ApiCodeSamples,
+  ApiEndpoint,
+  ApiParameters,
+  ApiRequestBody,
+  ApiResponses,
+  ApiTryIt,
   Audience,
   ExtractedTypeTable,
   Callout,

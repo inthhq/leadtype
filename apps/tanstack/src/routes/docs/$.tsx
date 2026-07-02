@@ -31,10 +31,23 @@ const TRAILING_SLASH_RE = /\/+$/;
  * exactly. (Trade-off: all docs ship in the `/docs` chunk — ideal for a docs
  * site you browse page-to-page; revisit lazy loading only for a huge corpus.)
  */
-const mdxModules = import.meta.glob<{ default: ComponentType }>(
+const authoredMdxModules = import.meta.glob<{ default: ComponentType }>(
   "../../../../../docs/**/*.mdx",
   { eager: true }
 );
+
+/**
+ * Generated OpenAPI reference pages live in the app-local generated dir
+ * (written by `pipeline:source-manifest`) because Vite globs are static —
+ * they can't reach into the temp staging dir `createDocsSource({ openapi })`
+ * uses. Manifest `globKey`s point into whichever map owns the page.
+ */
+const openapiMdxModules = import.meta.glob<{ default: ComponentType }>(
+  "../../generated/openapi-docs/**/*.mdx",
+  { eager: true }
+);
+
+const mdxModules = { ...authoredMdxModules, ...openapiMdxModules };
 
 function resolvePage(
   urlPrefix: "/changelog" | "/docs",

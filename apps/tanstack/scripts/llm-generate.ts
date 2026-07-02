@@ -20,14 +20,28 @@ import {
   resolveAgentInputs,
   resolveDocsNavigation,
 } from "leadtype/llm";
+import { stageOpenApiDocs } from "leadtype/openapi";
 import docsConfig from "../../../docs/docs.config";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
 const repoRoot = join(appRoot, "..", "..");
+// Stage generated OpenAPI pages next to the authored docs (temp copy) so the
+// llms.txt / nav / readability generators below see them like any other page.
+const staged =
+  docsConfig.openapi === undefined
+    ? undefined
+    : await stageOpenApiDocs({
+        contentDir: join(repoRoot, "docs"),
+        openapi: docsConfig.openapi,
+      });
 // `generateLlmsTxt` joins `${srcDir}/docs/` and `${outDir}/docs/` internally,
 // so we pass the parents (repo root for source, app root/public for output).
-const srcDir = repoRoot;
+const srcDir = staged ? dirname(staged.contentDir) : repoRoot;
+const docsNavigation = [
+  ...(docsConfig.navigation ?? []),
+  ...(staged?.nav ?? []),
+];
 const outDir = join(appRoot, "public");
 const generatedDir = join(appRoot, "src", "generated");
 const LEADING_SLASHES_PATTERN = /^\/+/;
@@ -75,7 +89,7 @@ await generateLlmsTxt({
   outDir,
   baseUrl,
   product: agentInputs.product,
-  nav: docsConfig.navigation,
+  nav: docsNavigation,
   mounts: docsConfig.mounts,
 });
 
@@ -83,7 +97,7 @@ await generateLLMFullContextFiles({
   outDir,
   baseUrl,
   product: { name: agentInputs.product.name },
-  nav: docsConfig.navigation,
+  nav: docsNavigation,
   mounts: docsConfig.mounts,
 });
 
@@ -94,7 +108,7 @@ const agentReadability = await generateAgentReadabilityArtifacts({
     name: agentInputs.product.name,
     summary: agentInputs.product.summary,
   },
-  nav: docsConfig.navigation,
+  nav: docsNavigation,
   mounts: docsConfig.mounts,
   // Bake the agent-surface config into the manifest so runtime helpers
   // (renderSiteJsonLd, robots) are config-driven from the one docs.config.ts.
@@ -108,7 +122,9 @@ const agentReadability = await generateAgentReadabilityArtifacts({
 // points agents at /llms.txt and this app's MCP endpoint (agents.mcp.enabled).
 await generateSkillArtifacts({
   outDir,
-  srcDir,
+  // Skills read authored files outside /docs (e.g. skills/*.md), so resolve
+  // them against the real repo root rather than the staged docs copy.
+  srcDir: repoRoot,
   baseUrl,
   product: {
     name: agentInputs.product.name,
@@ -145,7 +161,7 @@ await generateFeedArtifacts({
 const navigation = await resolveDocsNavigation({
   srcDir,
   baseUrl,
-  nav: docsConfig.navigation,
+  nav: docsNavigation,
   mounts: docsConfig.mounts,
 });
 
@@ -177,5 +193,7 @@ await Promise.all(
     join(outDir, "robots.txt"),
   ].map((file) => rm(file, { force: true }))
 );
+
+await staged?.cleanup();
 
 process.stdout.write("LLM files + agent readability manifests generated\n");
