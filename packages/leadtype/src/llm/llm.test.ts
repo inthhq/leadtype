@@ -713,6 +713,49 @@ describe("generateLLMFullContextFiles", () => {
     expect(wellKnownFull).toBe(llmsFull);
   });
 
+  it("orders content by group in legacy groups mode, matching the manifest", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "client-modes.md",
+        frontmatter:
+          "title: Client Modes\ndescription: Modes.\ngroup: concepts\norder: 20",
+        body: "# Client Modes\n\nBody.\n",
+      },
+      {
+        relativePath: "initialization-flow.md",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\ngroup: concepts\norder: 10",
+        body: "# Initialization Flow\n\nBody.\n",
+      },
+      {
+        relativePath: "about.md",
+        frontmatter: "title: About\ndescription: Ungrouped.",
+        body: "# About\n\nBody.\n",
+      },
+    ]);
+
+    await generateLLMFullContextFiles({
+      outDir: projectDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t" },
+      groups: [{ slug: "concepts", title: "Concepts" }],
+    });
+
+    const llmsFull = await readFile(
+      path.join(projectDir, "llms-full.txt"),
+      "utf8"
+    );
+    // Group pages honor `order:` and lead; ungrouped pages trail.
+    const positions = [
+      llmsFull.indexOf("# Initialization Flow"),
+      llmsFull.indexOf("# Client Modes"),
+      llmsFull.indexOf("# About"),
+    ];
+    expect(positions.every((index) => index >= 0)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
   it("inlines a multi-group page only once", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
@@ -989,6 +1032,129 @@ describe("generateAgentReadabilityArtifacts", () => {
         urlPath: "/docs/quickstart",
       })
     );
+  });
+
+  it("sorts manifest pages in nav order with non-nav pages appended by urlPath", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "advanced.md",
+        frontmatter: "title: Advanced\ndescription: Advanced usage.",
+      },
+      {
+        relativePath: "zulu.md",
+        frontmatter: "title: Zulu\ndescription: Listed first in nav.",
+      },
+      {
+        relativePath: "beta.md",
+        frontmatter: "title: Beta\ndescription: Not in nav.",
+      },
+      {
+        relativePath: "alpha.md",
+        frontmatter: "title: Alpha\ndescription: Not in nav.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      nav: [{ title: "Guide", pages: ["zulu", "advanced"] }],
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/zulu",
+      "/docs/advanced",
+      "/docs/alpha",
+      "/docs/beta",
+    ]);
+
+    // sitemap.xml is rendered from the same list, so it shares the order.
+    const sitemapXml = await readFile(result.files.sitemapXml, "utf8");
+    const locOrder = ["zulu", "advanced", "alpha", "beta"].map((slug) =>
+      sitemapXml.indexOf(`<loc>https://leadtype.dev/docs/${slug}</loc>`)
+    );
+    expect(locOrder.every((index) => index >= 0)).toBe(true);
+    expect([...locOrder].sort((a, b) => a - b)).toEqual(locOrder);
+  });
+
+  it("flattens nested nav depth-first, dedupes shared pages, and trails root pages", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "index.md",
+        frontmatter: "title: Home\ndescription: Root page.",
+      },
+      {
+        relativePath: "intro.md",
+        frontmatter: "title: Intro\ndescription: Intro.",
+      },
+      {
+        relativePath: "shared.md",
+        frontmatter: "title: Shared\ndescription: Referenced by two groups.",
+      },
+      {
+        relativePath: "deep.md",
+        frontmatter: "title: Deep\ndescription: Nested child page.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      nav: [
+        "index",
+        {
+          title: "First",
+          pages: ["intro", "shared"],
+          children: [{ title: "Nested", pages: ["deep"] }],
+        },
+        { title: "Second", pages: ["shared"] },
+      ],
+    });
+
+    // Groups flatten depth-first, a page shared across branches appears once
+    // at its first position, and root pages trail (they land in `ungrouped`).
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/intro",
+      "/docs/shared",
+      "/docs/deep",
+      "/docs",
+    ]);
+  });
+
+  it("sorts manifest pages by group order in legacy groups mode", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "client-modes.md",
+        frontmatter:
+          "title: Client Modes\ndescription: Modes.\ngroup: concepts\norder: 20",
+      },
+      {
+        relativePath: "initialization-flow.md",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\ngroup: concepts\norder: 10",
+      },
+      {
+        relativePath: "about.md",
+        frontmatter: "title: About\ndescription: Ungrouped.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      groups: [{ slug: "concepts", title: "Concepts" }],
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/initialization-flow",
+      "/docs/client-modes",
+      "/docs/about",
+    ]);
   });
 
   it("applies a robotsPolicy + content signals to the emitted robots.txt", async () => {

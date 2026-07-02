@@ -2372,7 +2372,19 @@ export async function generateLLMFullContextFiles(
       navigation
     );
   } else {
-    resolveGroups(config.groups ?? []);
+    // Keep parity with the agent-readability manifest: group order applies in
+    // legacy groups mode too, not just under curated nav.
+    const resolved = resolveGroups(config.groups ?? []);
+    const navigation = buildNavigationFromMarkdownDocs(
+      markdownDocs,
+      resolved,
+      "groups",
+      config.groups
+    );
+    orderedMarkdownDocs = orderMarkdownDocsByNavigation(
+      markdownDocs,
+      navigation
+    );
   }
 
   if (!i18n || locale === i18n.defaultLocale) {
@@ -2527,7 +2539,10 @@ export async function generateAgentReadabilityArtifacts(
     config.groups,
     resolvedNav?.rootPageEntries ?? []
   );
-  const pages = markdownDocs.map((doc) =>
+  // Navigation order is the authored reading order; docs arrive sorted by
+  // urlPath, so pages outside the navigation keep that deterministic tail.
+  const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
+  const pages = orderedDocs.map((doc) =>
     toAgentReadabilityPage(doc, baseUrl, config.mounts)
   );
   const manifest: AgentReadabilityManifest = {
