@@ -202,6 +202,13 @@ export type TypeTableOptions = {
   strict?: boolean;
   /** Emit a stderr warning when extraction fails. Defaults to true. */
   warnOnFailure?: boolean;
+  /**
+   * Called with the absolute path of every TypeScript file the extraction
+   * reads, so hosts can invalidate caches when those sources change. When
+   * unset, the `_compiler.addDependency` file-data protocol (shared with the
+   * include plugin) is used if the host provides it.
+   */
+  onDependency?: (filePath: string) => void;
 };
 
 const TABLE_HEADING_DEPTH = 3 as const;
@@ -224,6 +231,26 @@ function getVFilePath(file?: VFile): string | undefined {
   return typeof file?.path === "string" && file.path.length > 0
     ? file.path
     : undefined;
+}
+
+/**
+ * Dependency reporter provided by the host via the `_compiler.addDependency`
+ * file-data protocol — the same channel the include plugin uses, so caching
+ * hosts see type-table TypeScript reads too.
+ */
+function getFileDependencyReporter(
+  file?: VFile
+): ((filePath: string) => void) | undefined {
+  const compiler = (
+    file?.data as
+      | { _compiler?: { addDependency?: (filePath: string) => void } }
+      | undefined
+  )?._compiler;
+  const addDependency = compiler?.addDependency;
+  if (typeof addDependency !== "function") {
+    return;
+  }
+  return (filePath: string) => addDependency.call(compiler, filePath);
 }
 
 export function resolveDefaultTypeTableBasePath(sourcePath?: string): string {
@@ -727,7 +754,8 @@ function extractPropertiesFromSourceFile(
 export function extractTypeFromFile(
   filePath: string,
   typeName: string,
-  basePath?: string
+  basePath?: string,
+  onDependency?: (filePath: string) => void
 ): Record<string, ObjectType> | null {
   try {
     const normalizeExtractedTypeTablePath = (
@@ -767,6 +795,7 @@ export function extractTypeFromFile(
       ? resolve(basePath, normalizedPath)
       : filePath;
 
+    onDependency?.(resolvedPath);
     if (!existsSync(resolvedPath)) {
       return null;
     }
@@ -774,6 +803,11 @@ export function extractTypeFromFile(
     const cacheKey = `${resolvedPath}\0${typeName}`;
     const cached = __extractedTypeByKey.get(cacheKey);
     if (cached && programDependenciesAreFresh(cached.dependencies)) {
+      if (onDependency) {
+        for (const dependency of cached.dependencies) {
+          onDependency(dependency.filePath);
+        }
+      }
       return cached.value;
     }
 
@@ -784,6 +818,11 @@ export function extractTypeFromFile(
         value: null,
       });
       return null;
+    }
+    if (onDependency) {
+      for (const dependency of tsProgram.dependencies) {
+        onDependency(dependency.filePath);
+      }
     }
 
     const extracted = extractPropertiesFromSourceFile(
@@ -888,7 +927,8 @@ function processExtractedTypeTableNode(
   const extractedType = extractTypeFromFile(
     extractedTypePath,
     extractedTypeName,
-    overrideBasePath || options.basePath
+    overrideBasePath || options.basePath,
+    options.onDependency
   );
 
   if (extractedType && Object.keys(extractedType).length > 0) {
@@ -1064,6 +1104,7 @@ export function typeTableToMarkdown(
     ...opts,
     basePath:
       opts.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file)),
+    onDependency: opts.onDependency ?? getFileDependencyReporter(file),
   };
   if (isExtractedTypeTableNode(node)) {
     return processExtractedTypeTableNode(node, resolved);

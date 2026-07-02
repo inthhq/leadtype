@@ -57,6 +57,8 @@ leadtype generate [options]
 | `--sync` | off | Collections mode only. Clone any missing remote sources before generating; leave existing caches alone. Mutually exclusive with `--refresh` and `--offline`. |
 | `--refresh` | off | Collections mode only. Re-fetch and fast-forward every remote source's cache. Mutually exclusive with `--sync` and `--offline`. |
 | `--offline` | off | Collections mode only. Never touch the network; error if any remote cache is missing or its `ref` has drifted. Mutually exclusive with `--sync` and `--refresh`. |
+| `-w`, `--watch` | off | Rebuild whenever the docs sources or the config file change. The process stays alive until Ctrl+C; a failing rebuild keeps watching. |
+| `--force` | off | Ignore the incremental cache and reconvert every file. |
 | `--format <fmt>` | `text` | `text` or `json`. JSON prints a single result object on stdout. |
 | `--json` | — | Alias for `--format json`. |
 | `-h`, `--help` | — | Print usage. |
@@ -64,6 +66,16 @@ leadtype generate [options]
 Exit codes: `0` success, `1` runtime error (docs dir missing, config load error, unknown group, conversion error, sync failure), `2` CLI usage error.
 
 When the project root has a `leadtype.config.{ts,js,mjs,cjs}` that declares `collections`, `--docs-dir` is rejected (collections fully describe their sources). The legacy `--docs-dir` shape stays available for projects without a collections config.
+
+### Incremental builds
+
+Repeat `generate` runs are incremental. Each converted file's inputs — the MDX source, every `<include>` target it pulls in, the TypeScript files its type tables extract from, and the git enrichment written into its frontmatter — are content-hashed into a manifest under `node_modules/.cache/leadtype/`. Files whose inputs are unchanged are skipped, and outputs whose source file was deleted are pruned. Site artifacts (`llms.txt`, search index, sitemaps) are always regenerated from the converted markdown; they are cheap relative to conversion.
+
+The whole cache is invalidated when the leadtype version, the docs config file, or conversion-relevant flags change. One caveat: config-declared `transformers` and `flatteners` are functions, so only the config file's own content is fingerprinted — if a transformer imports another module and you edit *that* module, run `--force` once (or restart `--watch`). Projects without a `node_modules/` directory skip caching entirely.
+
+### Watch mode
+
+`leadtype generate --watch` runs the pipeline once, then watches every docs source directory and the loaded config file, re-running on change (debounced). Combined with the incremental cache, a one-file edit rebuilds one file. Changes to files *outside* the docs sources that pages depend on — `<include>` targets or type-table sources living elsewhere in the repo — are picked up on the next rebuild but don't themselves trigger one; touch the including page or restart with `--force` if needed.
 
 ### Config loading
 
