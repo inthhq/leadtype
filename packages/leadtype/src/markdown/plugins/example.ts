@@ -6,6 +6,7 @@ import {
   createParagraph,
   createStrongParagraph,
   getAttributeValue,
+  type MdxNode,
   normalizeWhitespace,
   processContentNode,
 } from "../libs";
@@ -214,48 +215,48 @@ function processPreview(children: RootContent[]): RootContent[] {
 }
 
 export function remarkExampleToMarkdown(): Transformer<Root, Root> {
-  return createJsxComponentProcessor("Example", (node) => {
-    const title = normalizeWhitespace(getAttributeValue(node, "title") ?? "");
-    const description = normalizeWhitespace(
-      getAttributeValue(node, "description") ?? ""
+  return createJsxComponentProcessor("Example", exampleToMarkdown);
+}
+
+export function exampleToMarkdown(node: MdxNode): RootContent[] {
+  const title = normalizeWhitespace(getAttributeValue(node, "title") ?? "");
+  const description = normalizeWhitespace(
+    getAttributeValue(node, "description") ?? ""
+  );
+  const filename = normalizeWhitespace(
+    getAttributeValue(node, "filename") ?? ""
+  );
+  const language = normalizeWhitespace(
+    getAttributeValue(node, "language") ?? "tsx"
+  );
+  const code = parseString(getAttributeValue(node, "code"));
+  const sourceFiles = parseSourceFiles(getAttributeValue(node, "sourceFiles"));
+  const replacement: RootContent[] = [];
+
+  if (title) {
+    replacement.push(createStrongParagraph(title));
+  }
+
+  if (description) {
+    replacement.push(createParagraph(description));
+  }
+
+  replacement.push(...processPreview((node.children ?? []) as RootContent[]));
+
+  if (filename) {
+    replacement.push(createStrongParagraph(filename));
+  }
+
+  if (code) {
+    replacement.push(createCodeBlock(code, language));
+  }
+
+  for (const sourceFile of sourceFiles) {
+    replacement.push(createStrongParagraph(sourceFile.filename));
+    replacement.push(
+      createCodeBlock(sourceFile.code, sourceFile.language ?? language)
     );
-    const filename = normalizeWhitespace(
-      getAttributeValue(node, "filename") ?? ""
-    );
-    const language = normalizeWhitespace(
-      getAttributeValue(node, "language") ?? "tsx"
-    );
-    const code = parseString(getAttributeValue(node, "code"));
-    const sourceFiles = parseSourceFiles(
-      getAttributeValue(node, "sourceFiles")
-    );
-    const replacement: RootContent[] = [];
+  }
 
-    if (title) {
-      replacement.push(createStrongParagraph(title));
-    }
-
-    if (description) {
-      replacement.push(createParagraph(description));
-    }
-
-    replacement.push(...processPreview((node.children ?? []) as RootContent[]));
-
-    if (filename) {
-      replacement.push(createStrongParagraph(filename));
-    }
-
-    if (code) {
-      replacement.push(createCodeBlock(code, language));
-    }
-
-    for (const sourceFile of sourceFiles) {
-      replacement.push(createStrongParagraph(sourceFile.filename));
-      replacement.push(
-        createCodeBlock(sourceFile.code, sourceFile.language ?? language)
-      );
-    }
-
-    return replacement;
-  });
+  return replacement;
 }

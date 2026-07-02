@@ -6,12 +6,9 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
 import { promisify } from "node:util";
 import type { Root } from "mdast";
-import { remark } from "remark";
-import remarkGfm from "remark-gfm";
-import remarkMdx from "remark-mdx";
 import { mdxToMdast } from "satteri";
 import { glob as fg } from "tinyglobby";
-import type { Pluggable, PluggableList } from "unified";
+import type { PluggableList } from "unified";
 import {
   deriveDocContext,
   resolvePlaceholderStrings,
@@ -21,7 +18,12 @@ import {
   stringifyFrontmatter,
 } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
-import { sortRemarkPluginsByPhase } from "../internal/remark-phase";
+import {
+  createMdastTransforms,
+  type LeadtypeMdastTransform,
+  runMdastTransforms,
+  stringifyMarkdown,
+} from "../markdown";
 import {
   createIncludeResolutionCache,
   type IncludeResolutionCache,
@@ -93,7 +95,6 @@ const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_QUARANTINE_PATH",
   "GIT_WORK_TREE",
 ] as const;
-const MARKDOWN_ENGINES = new Set(["remark", "satteri"]);
 const SATTERI_FEATURES = {
   frontmatter: false,
   gfm: true,
@@ -145,55 +146,6 @@ function isIgnoredGitAuthor(
     normalizedAuthor.endsWith("-bot") ||
     normalizedAuthor.endsWith("_bot")
   );
-}
-
-type RemarkProcessor = ReturnType<typeof remark>;
-
-let cachedProcessor: RemarkProcessor | null = null;
-let cachedPluginIds: PluggableList = [];
-
-/**
- * Create (and cache) a remark processor with the given plugins. Plugins are
- * matched by identity — if the same plugin array is passed again, the existing
- * processor is reused. Plugins must be stateless/module-safe for reuse.
- */
-function createRemarkProcessor(
-  additionalPlugins: PluggableList = []
-): RemarkProcessor {
-  const sameLength = cachedPluginIds.length === additionalPlugins.length;
-  const sameIdentity =
-    sameLength &&
-    additionalPlugins.every((plugin, i) => plugin === cachedPluginIds[i]);
-
-  if (cachedProcessor && sameIdentity) {
-    return cachedProcessor;
-  }
-
-  let processor: RemarkProcessor = remark()
-    .use(remarkMdx)
-    .use(remarkGfm)
-    .data("settings", {
-      tableCellPadding: false,
-      tablePipeAlign: false,
-    } as Record<string, unknown>);
-
-  // Schedule plugins by phase (resolve → custom → flatten → post) so a custom
-  // flattener appended to `defaultRemarkPlugins` still runs in the right slot.
-  // Cache identity stays keyed on the original array (stable across calls).
-  for (const plugin of sortRemarkPluginsByPhase(additionalPlugins)) {
-    if (Array.isArray(plugin)) {
-      const [factory, ...args] = plugin as [Pluggable, ...unknown[]];
-      // biome-ignore lint/suspicious/noExplicitAny: unified's .use() overloads are too narrow for dynamic plugin arrays
-      processor = (processor as any).use(factory, ...args);
-      continue;
-    }
-    // biome-ignore lint/suspicious/noExplicitAny: unified's .use() overloads are too narrow for dynamic plugin arrays
-    processor = (processor as any).use(plugin);
-  }
-
-  cachedProcessor = processor;
-  cachedPluginIds = additionalPlugins.slice(0);
-  return processor;
 }
 
 function toYamlScalar(value: string): string {
@@ -316,19 +268,11 @@ function compactMermaidBlocks(markdown: string): string {
   return markdown;
 }
 
-function serializeTransformedAst(
-  processor: RemarkProcessor,
-  ast: Root
-): string {
-  return compactMermaidBlocks(
-    compactMarkdownTables(String(processor.stringify(ast)))
-  );
+function serializeTransformedAst(ast: Root): string {
+  return compactMermaidBlocks(compactMarkdownTables(stringifyMarkdown(ast)));
 }
 
-export type MarkdownEngine = "remark" | "satteri";
-
 export type MdxConversionTiming = {
-  engine: MarkdownEngine;
   filePath: string;
   parseMs: number;
   stringifyMs: number;
@@ -346,10 +290,8 @@ export type MdxToMarkdownOptions = {
   srcDir?: string;
   /** Output directory for .md files */
   outDir?: string;
-  /** Additional remark plugins (e.g. defaultRemarkPlugins from leadtype/remark) */
-  remarkPlugins?: PluggableList;
-  /** Experimental Markdown parser engine. Defaults to `satteri`. */
-  markdownEngine?: MarkdownEngine;
+  /** Native markdown/MDAST transforms (e.g. defaultMarkdownTransforms from leadtype/markdown). */
+  markdownTransforms?: PluggableList;
   /**
    * If true, inject `lastModified` (ISO-8601) and `lastAuthor` into the
    * output frontmatter from git history. `lastModified` uses the latest file
@@ -393,6 +335,12 @@ export type MdxToMarkdownOptions = {
   onTiming?: (timing: MdxConversionTiming) => void;
 };
 
+function resolveMarkdownTransforms(
+  config: Pick<MdxToMarkdownOptions, "markdownTransforms">
+): PluggableList {
+  return config.markdownTransforms ?? [];
+}
+
 type GitEnrichment = {
   lastModified?: string;
   lastAuthor?: string;
@@ -405,7 +353,6 @@ type ConversionPrepareOptions<
   ignoredGitAuthors?: string[];
   gitEnrichment?: GitEnrichment;
   includeResolutionCache?: IncludeResolutionCache;
-  markdownEngine?: MarkdownEngine;
   onTiming?: (timing: MdxConversionTiming) => void;
 };
 
@@ -413,36 +360,6 @@ type GitSourceGroup = {
   gitRoot: string;
   historyRoot: string;
 };
-
-function isMarkdownEngine(value: string): value is MarkdownEngine {
-  return MARKDOWN_ENGINES.has(value);
-}
-
-function resolveMarkdownEngine(
-  explicitEngine?: MarkdownEngine,
-  envValue = process.env.LEADTYPE_MARKDOWN_ENGINE
-): MarkdownEngine {
-  if (explicitEngine !== undefined) {
-    if (
-      typeof explicitEngine !== "string" ||
-      !isMarkdownEngine(explicitEngine)
-    ) {
-      throw new Error(
-        `markdownEngine must be remark|satteri, got ${String(explicitEngine)}`
-      );
-    }
-    return explicitEngine;
-  }
-  if (!envValue) {
-    return "satteri";
-  }
-  if (isMarkdownEngine(envValue)) {
-    return envValue;
-  }
-  throw new Error(
-    `LEADTYPE_MARKDOWN_ENGINE must be remark|satteri, got ${envValue}`
-  );
-}
 
 function addTiming(
   timings: ConversionTimingAccumulator,
@@ -467,27 +384,19 @@ function ensureMdastRoot(node: unknown): Root {
 }
 
 function parseMdxAst(
-  processor: RemarkProcessor,
   content: string,
-  sourcePath: string,
-  engine: MarkdownEngine,
   timings: ConversionTimingAccumulator
 ): Root {
   const startedAt = performance.now();
   try {
-    if (engine === "satteri") {
-      return ensureMdastRoot(
-        mdxToMdast(content, { features: SATTERI_FEATURES })
-      );
-    }
-    return processor.parse({ value: content, path: sourcePath }) as Root;
+    return ensureMdastRoot(mdxToMdast(content, { features: SATTERI_FEATURES }));
   } finally {
     addTiming(timings, "parseMs", startedAt);
   }
 }
 
-async function runRemarkAst(
-  processor: RemarkProcessor,
+async function runMdxAstTransforms(
+  transforms: readonly LeadtypeMdastTransform[],
   ast: Root,
   content: string,
   sourcePath: string,
@@ -496,25 +405,23 @@ async function runRemarkAst(
 ): Promise<Root> {
   const startedAt = performance.now();
   try {
-    const runOptions = {
+    return await runMdastTransforms(ast, transforms, {
+      filePath: sourcePath,
       value: content,
-      path: sourcePath,
       ...(fileData ? { data: fileData } : {}),
-    };
-    return (await processor.run(ast, runOptions)) as Root;
+    });
   } finally {
     addTiming(timings, "transformMs", startedAt);
   }
 }
 
 function serializeWithTiming(
-  processor: RemarkProcessor,
   ast: Root,
   timings: ConversionTimingAccumulator
 ): string {
   const startedAt = performance.now();
   try {
-    return serializeTransformedAst(processor, ast);
+    return serializeTransformedAst(ast);
   } finally {
     addTiming(timings, "stringifyMs", startedAt);
   }
@@ -859,8 +766,6 @@ type PreparedMdxConversion<
   frontmatter: string;
   data: TFrontmatter;
   ast: Root;
-  engine: MarkdownEngine;
-  processor: RemarkProcessor;
   shouldRewriteFrontmatter: boolean;
   timings: ConversionTimingAccumulator;
 };
@@ -876,7 +781,7 @@ async function prepareMdxConversion<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
   sourcePath: string,
-  remarkPlugins: PluggableList,
+  markdownTransforms: PluggableList,
   enrichFromGitFlag: boolean,
   options: ConversionPrepareOptions<TFrontmatter>
 ): Promise<PreparedMdxConversion<TFrontmatter>> {
@@ -896,13 +801,12 @@ async function prepareMdxConversion<
   const shouldRewriteFrontmatter = Boolean(
     options.frontmatterSchema || (options.transformers?.length ?? 0) > 0
   );
-  const engine = resolveMarkdownEngine(options.markdownEngine);
   const timings: ConversionTimingAccumulator = {
     parseMs: 0,
     stringifyMs: 0,
     transformMs: 0,
   };
-  const processor = createRemarkProcessor(remarkPlugins);
+  const nativeTransforms = createMdastTransforms(markdownTransforms);
   const frontmatterMatch = raw.match(FRONTMATTER_REGEX);
   let frontmatter = "";
   let content = raw;
@@ -915,9 +819,9 @@ async function prepareMdxConversion<
   const fileData = options.includeResolutionCache
     ? { _leadtypeIncludeCache: options.includeResolutionCache }
     : undefined;
-  const parsed = parseMdxAst(processor, content, sourcePath, engine, timings);
-  let ast = await runRemarkAst(
-    processor,
+  const parsed = parseMdxAst(content, timings);
+  let ast = await runMdxAstTransforms(
+    nativeTransforms,
     parsed,
     content,
     sourcePath,
@@ -928,10 +832,7 @@ async function prepareMdxConversion<
   let resolvedFrontmatter =
     frontmatter.trim().length > 0
       ? frontmatter
-      : synthesizeFrontmatter(
-          sourcePath,
-          serializeTransformedAst(processor, ast)
-        );
+      : synthesizeFrontmatter(sourcePath, serializeTransformedAst(ast));
 
   if (enrichFromGitFlag) {
     const gitSourcePath = options.gitSourcePath?.(sourcePath) ?? sourcePath;
@@ -971,15 +872,9 @@ async function prepareMdxConversion<
   );
   if (frontmatterPage.content !== content) {
     content = frontmatterPage.content;
-    const reparsed = parseMdxAst(
-      processor,
-      content,
-      sourcePath,
-      engine,
-      timings
-    );
-    ast = await runRemarkAst(
-      processor,
+    const reparsed = parseMdxAst(content, timings);
+    ast = await runMdxAstTransforms(
+      nativeTransforms,
       reparsed,
       content,
       sourcePath,
@@ -1001,8 +896,6 @@ async function prepareMdxConversion<
     frontmatter: resolvedFrontmatter,
     data: parsedData,
     ast,
-    engine,
-    processor,
     shouldRewriteFrontmatter,
     timings,
   };
@@ -1012,13 +905,13 @@ export async function resolveMdxFrontmatter<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
   sourcePath: string,
-  remarkPlugins: PluggableList = [],
+  markdownTransforms: PluggableList = [],
   enrichFromGitFlag = false,
   options: ConversionPrepareOptions<TFrontmatter> = {}
 ): Promise<ResolvedMdxFrontmatterResult<TFrontmatter>> {
   const prepared = await prepareMdxConversion(
     sourcePath,
-    remarkPlugins,
+    markdownTransforms,
     enrichFromGitFlag,
     options
   );
@@ -1044,7 +937,7 @@ export async function convertMdxFile<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
   sourcePath: string,
-  remarkPlugins: PluggableList = [],
+  markdownTransforms: PluggableList = [],
   enrichFromGitFlag = false,
   options: ConversionPrepareOptions<TFrontmatter> = {}
 ): Promise<ConvertMdxFileResult<TFrontmatter>> {
@@ -1053,11 +946,11 @@ export async function convertMdxFile<
     options.includeResolutionCache ?? createIncludeResolutionCache();
   const prepared = await prepareMdxConversion(
     sourcePath,
-    remarkPlugins,
+    markdownTransforms,
     enrichFromGitFlag,
     { ...options, includeResolutionCache }
   );
-  const { content, processor, shouldRewriteFrontmatter } = prepared;
+  const { content, shouldRewriteFrontmatter } = prepared;
   let {
     ast: transformed,
     data: parsedData,
@@ -1091,11 +984,7 @@ export async function convertMdxFile<
     resolvedFrontmatter = stringifyFrontmatter(parsedData);
   }
 
-  const markdown = serializeWithTiming(
-    processor,
-    transformed,
-    prepared.timings
-  );
+  const markdown = serializeWithTiming(transformed, prepared.timings);
 
   const markdownPage = await runTransformers(
     options.transformers,
@@ -1126,7 +1015,6 @@ export async function convertMdxFile<
   }
 
   options.onTiming?.({
-    engine: prepared.engine,
     filePath: sourcePath,
     parseMs: prepared.timings.parseMs,
     stringifyMs: prepared.timings.stringifyMs,
@@ -1148,13 +1036,13 @@ export async function convertMdxFile<
  */
 export async function convertMdxToMarkdown(
   sourcePath: string,
-  remarkPlugins: PluggableList = [],
+  markdownTransforms: PluggableList = [],
   enrichFromGitFlag = false,
   options: ConversionPrepareOptions = {}
 ): Promise<ConvertResult> {
   const result = await convertMdxFile(
     sourcePath,
-    remarkPlugins,
+    markdownTransforms,
     enrichFromGitFlag,
     options
   );
@@ -1199,7 +1087,7 @@ async function processMdxFile(
   mdxFilePath: string,
   srcDir: string,
   outDir: string,
-  remarkPlugins: PluggableList,
+  markdownTransforms: PluggableList,
   enrichFromGitFlag: boolean,
   transformOptions: ConversionPrepareOptions,
   writeToStdout = false
@@ -1218,7 +1106,7 @@ async function processMdxFile(
     const startedAt = Date.now();
     const { markdown } = await convertMdxToMarkdown(
       resolvedPath,
-      remarkPlugins,
+      markdownTransforms,
       enrichFromGitFlag,
       transformOptions
     );
@@ -1275,12 +1163,12 @@ export async function writeMdxFileAsMarkdown(
   const outDir = config.outDir
     ? resolve(config.outDir)
     : resolve(process.cwd(), "public");
-  const remarkPlugins = config.remarkPlugins ?? [];
+  const markdownTransforms = resolveMarkdownTransforms(config);
   return await processMdxFile(
     mdxFilePath,
     srcDir,
     outDir,
-    remarkPlugins,
+    markdownTransforms,
     config.enrichFrontmatterFromGit ?? false,
     {
       frontmatterSchema: config.frontmatterSchema,
@@ -1289,7 +1177,6 @@ export async function writeMdxFileAsMarkdown(
       transformers: config.transformers,
       transformContext: config.transformContext,
       includeResolutionCache: createIncludeResolutionCache(),
-      markdownEngine: config.markdownEngine,
       onTiming: config.onTiming,
     },
     true
@@ -1328,7 +1215,7 @@ export async function convertAllMdx(
     return;
   }
 
-  const remarkPlugins = config.remarkPlugins ?? [];
+  const markdownTransforms = resolveMarkdownTransforms(config);
   const enrichFromGitFlag = config.enrichFrontmatterFromGit ?? false;
   const concurrency = config.concurrency ?? DEFAULT_CONCURRENCY;
   const includeResolutionCache = createIncludeResolutionCache();
@@ -1356,7 +1243,7 @@ export async function convertAllMdx(
       const gitSourcePath = config.gitSourcePath?.(mdxFilePath) ?? mdxFilePath;
       const { markdown } = await convertMdxToMarkdown(
         mdxFilePath,
-        remarkPlugins,
+        markdownTransforms,
         enrichFromGitFlag,
         {
           frontmatterSchema: frontmatterSchemaForFile(
@@ -1369,7 +1256,6 @@ export async function convertAllMdx(
           gitEnrichment: gitEnrichments.get(resolve(gitSourcePath)) ?? {},
           includeResolutionCache,
           transformers: config.transformers,
-          markdownEngine: config.markdownEngine,
           onTiming: config.onTiming,
           transformContext: {
             ...config.transformContext,

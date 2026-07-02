@@ -1,9 +1,8 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
-import { remark } from "remark";
-import remarkGfm from "remark-gfm";
-import remarkMdx from "remark-mdx";
+import type { Root } from "mdast";
+import { mdxToMdast } from "satteri";
 import { glob as fg } from "tinyglobby";
 import { visit } from "unist-util-visit";
 import * as v from "valibot";
@@ -18,9 +17,9 @@ import { parseFrontmatter } from "../internal/frontmatter";
 import { validateJsonLd } from "../llm/readability";
 import {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
-  defaultRemarkPlugins,
-  remarkInclude,
-} from "../remark";
+  defaultMarkdownTransforms,
+  includeMarkdown,
+} from "../markdown";
 import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
@@ -276,7 +275,9 @@ function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
 
 function collectMarkdownUrls(markdown: string): UrlCandidate[] {
   const urls = new Set<string>();
-  const tree = remark().use(remarkGfm).parse(markdown);
+  const tree = mdxToMdast(markdown, {
+    features: { frontmatter: false, gfm: true },
+  }) as Root;
   const definitions = new Map<string, string>();
 
   visit(tree, "definition", (node: { identifier?: string; url?: string }) => {
@@ -370,7 +371,15 @@ function validateDocUrls(
   return violations;
 }
 
-const mdxComponentParser = remark().use(remarkMdx);
+function parseMdxBody(body: string): Root | null {
+  try {
+    return mdxToMdast(body, {
+      features: { frontmatter: false, gfm: true },
+    }) as Root;
+  } catch {
+    return null;
+  }
+}
 
 type GeoIssue = {
   rule: "geo:code-language" | "geo:heading-skip" | "geo:image-alt";
@@ -386,10 +395,8 @@ type GeoIssue = {
  * exist, so they never block by default.
  */
 function collectGeoIssues(body: string): GeoIssue[] {
-  let tree: ReturnType<typeof mdxComponentParser.parse>;
-  try {
-    tree = mdxComponentParser.parse(body);
-  } catch {
+  const tree = parseMdxBody(body);
+  if (!tree) {
     return []; // parse errors are reported by the link-check path
   }
 
@@ -454,10 +461,8 @@ function collectUnflattenedComponents(
   body: string,
   recognized: Set<string>
 ): { line?: number; name: string }[] {
-  let tree: ReturnType<typeof mdxComponentParser.parse>;
-  try {
-    tree = mdxComponentParser.parse(body);
-  } catch {
+  const tree = parseMdxBody(body);
+  if (!tree) {
     // Parse failures are reported by the markdown link-check path as
     // `parse-error`; don't double-report here.
     return [];
@@ -619,8 +624,8 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
 
     try {
       const converted = await convertMdxToMarkdown(file, [
-        remarkInclude,
-        ...defaultRemarkPlugins,
+        includeMarkdown,
+        ...defaultMarkdownTransforms,
       ]);
       const rendered = parseFrontmatter(converted.markdown);
       const currentFramework = deriveDocContext(file).framework;

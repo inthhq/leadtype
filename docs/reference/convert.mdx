@@ -3,7 +3,7 @@ title: "Convert"
 description: "MDX-to-markdown conversion APIs from leadtype/convert."
 ---
 
-The `leadtype/convert` entry point flattens MDX into clean markdown via the [remark plugin stack](/docs/reference/remark).
+The `leadtype/convert` entry point flattens MDX into clean markdown via the [markdown transform stack](/docs/reference/markdown).
 
 ```ts
 import {
@@ -13,19 +13,19 @@ import {
 } from "leadtype/convert";
 ```
 
-The CLI ([`leadtype generate`](/docs/reference/cli)) calls `convertAllMdx` internally — use these APIs directly when you need custom plugin order, in-memory output, or per-file control.
+The CLI ([`leadtype generate`](/docs/reference/cli)) calls `convertAllMdx` internally — use these APIs directly when you need custom transform order, in-memory output, or per-file control.
 
 ## convertAllMdx
 
 Batch convert a docs tree:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 await convertAllMdx({
   srcDir: "docs",
   outDir: "public/docs",
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
   enrichFrontmatterFromGit: true,
 });
 ```
@@ -34,7 +34,7 @@ await convertAllMdx({
 | --- | --- |
 | `srcDir` | Root directory of `.mdx` files. |
 | `outDir` | Destination for `.md` output. The directory structure mirrors `srcDir`. |
-| `remarkPlugins` | Plugin array. Usually `[remarkInclude?, ...defaultRemarkPlugins]`. Order matters. |
+| `markdownTransforms` | Transform array. Usually `[includeMarkdown?, ...defaultMarkdownTransforms]`. Order matters. |
 | `enrichFrontmatterFromGit` | When true, adds `lastModified` and `lastAuthor` from git history. |
 
 The function is concurrent — large trees process in parallel.
@@ -46,7 +46,7 @@ Convert one file in memory and get back the markdown plus parsed frontmatter:
 ```ts
 const result = await convertMdxToMarkdown(
   "docs/quickstart.mdx",
-  defaultRemarkPlugins,
+  defaultMarkdownTransforms,
   /* enrichFrontmatterFromGit */ false,
 );
 
@@ -61,10 +61,9 @@ Use this when you want to render the output yourself, validate it before writing
 Convert one file and write the output:
 
 ```ts
-await writeMdxFileAsMarkdown({
-  srcPath: "docs/quickstart.mdx",
-  outPath: "public/docs/quickstart.md",
-  remarkPlugins: defaultRemarkPlugins,
+await writeMdxFileAsMarkdown("docs/quickstart.mdx", {
+  outDir: "public/docs",
+  markdownTransforms: defaultMarkdownTransforms,
 });
 ```
 
@@ -75,16 +74,16 @@ await writeMdxFileAsMarkdown({
 - **Tables and Mermaid blocks are compacted** after rendering so agent output stays clean.
 - **Conversion is concurrent** — there is no global state.
 
-## Pairing with remark plugins
+## Pairing with markdown transforms
 
-In most setups, pair `convertAllMdx` with the default plugin stack and `remarkInclude` if your docs use partials:
+In most setups, pair `convertAllMdx` with the default transform stack and `includeMarkdown` if your docs use partials:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
-remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms];
 ```
 
-Place `remarkInclude` *before* the defaults so includes expand into the source AST before component flattening sees them. See [Remark plugins](/docs/reference/remark) for the full stack and order rationale.
+Place `includeMarkdown` *before* the defaults so includes expand into the source AST before component flattening sees them. See [Markdown transforms](/docs/reference/markdown) for the full stack and order rationale.
 
 The include plugin supports tags such as `<include src="./shared/auth.mdx" />` and section reuse with `<include src="./shared/auth.mdx#session-flow" />`. Section reuse expects a lowercase `<section id="session-flow">` block in the included file.

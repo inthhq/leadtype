@@ -1,9 +1,13 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { remark } from "remark";
-import remarkMdx from "remark-mdx";
+import type { Root } from "mdast";
+import { mdxToMdast } from "satteri";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  createMdastTransforms,
+  runMdastTransforms,
+} from "../../markdown/transform";
 import {
   createIncludeResolutionCache,
   extractMdxSection,
@@ -182,28 +186,22 @@ describe("remarkInclude cache", () => {
     const firstPage = path.join(root, "first.mdx");
     const secondPage = path.join(root, "second.mdx");
     const cache = createIncludeResolutionCache();
-    const processor = remark().use(remarkMdx).use(remarkInclude, { cache });
+    const transforms = createMdastTransforms([[remarkInclude, { cache }]]);
+    const runIncludeTransform = async (filePath: string, value: string) => {
+      const ast = mdxToMdast(value, {
+        features: { frontmatter: false, gfm: true },
+      }) as Root;
+      return await runMdastTransforms(ast, transforms, { filePath, value });
+    };
 
-    const first = (await processor.run(
-      processor.parse({
-        path: firstPage,
-        value: '<include src="./partial.mdx#one" />',
-      }),
-      {
-        path: firstPage,
-        value: '<include src="./partial.mdx#one" />',
-      }
-    )) as unknown;
-    const second = (await processor.run(
-      processor.parse({
-        path: secondPage,
-        value: '<include src="./partial.mdx#two" />',
-      }),
-      {
-        path: secondPage,
-        value: '<include src="./partial.mdx#two" />',
-      }
-    )) as unknown;
+    const first = await runIncludeTransform(
+      firstPage,
+      '<include src="./partial.mdx#one" />'
+    );
+    const second = await runIncludeTransform(
+      secondPage,
+      '<include src="./partial.mdx#two" />'
+    );
 
     expect(JSON.stringify(first)).toContain("One");
     expect(JSON.stringify(first)).not.toContain("Two");

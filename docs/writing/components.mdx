@@ -3,7 +3,7 @@ title: "Components"
 description: "MDX components the pipeline knows how to flatten into agent-readable markdown."
 ---
 
-Leadtype does not ship UI components. **Your docs app owns runtime rendering, styling, and accessibility** — it only has to honor a small naming contract so the remark pipeline can flatten each component into markdown for agents, search, and `llms-full.txt`.
+Leadtype does not ship UI components. **Your docs app owns runtime rendering, styling, and accessibility** — it only has to honor a small naming contract so the markdown transform pipeline can flatten each component into markdown for agents, search, and `llms-full.txt`.
 
 ## Why flatten at all?
 
@@ -12,17 +12,17 @@ Interactive MDX components like `<Tabs>` or `<Callout>` render fine in a browser
 - A `<Callout>` becomes a blockquote.
 - A `<Tabs>` becomes a stack of bold headings, one per tab.
 - A `<TypeTable>` becomes a markdown table.
-- A `<Mermaid>` becomes a fenced ` ```mermaid ` block — the diagram source survives so other tooling can render it.
+- A `<Mermaid>` becomes a fenced Mermaid code block — the diagram source survives so other tooling can render it.
 
 This means the same content reaches three audiences (humans, agents, search) without you maintaining two copies.
 
 ## The naming contract
 
-The remark pipeline recognizes these names. If your components use the same names, flattening Just Works:
+The markdown transform pipeline recognizes these names. If your components use the same names, flattening Just Works:
 
-`Accordion`, `AccordionItem`, `Audience`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+`Accordion`, `AccordionItem`, `Audience`, `AutoTypeTable`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
 
-If your app uses different names — or a component that has no equivalent above — you have two options: rename to match the contract, or define how it flattens with [`defineComponentFlattener`](/docs/reference/remark#custom-component-flatteners). You declare the component name and a `toMarkdown` function; leadtype handles tree-walking, prop parsing, child flattening, and plugin order for you.
+If your app uses different names — or a component that has no equivalent above — you have two options: rename to match the contract, or define how it flattens with [`defineComponentFlattener`](/docs/reference/markdown#custom-component-flatteners). You declare the component name and a `toMarkdown` function; leadtype handles tree-walking, prop parsing, child flattening, and transform order for you.
 
 A rendered component that's neither in the contract nor has a flattener passes through as **raw JSX** in the generated markdown — agents see noise instead of content. [`leadtype lint`](/docs/reference/lint) catches this: the [`unflattened-component`](/docs/reference/lint#content-link-rules) rule warns on any such component. Components shown inside code fences are examples, not rendered JSX, so they never warn.
 
@@ -30,12 +30,12 @@ Runtime registration, heading IDs, and "On this page" sidebars are docs-app conc
 
 ## Reuse shared content
 
-Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `remarkInclude` before the default plugin stack in custom conversion scripts:
+Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `includeMarkdown` before the default transform stack in custom conversion scripts:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
-remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms];
 ```
 
 Include a whole markdown or MDX partial with `src` or text content:
@@ -68,7 +68,7 @@ To reuse only one block from a larger file, append `#section-id` and wrap that b
 
 Section reuse matches lowercase `<section id="...">` only. A capitalized `<Section id="...">` component is flattened later for markdown output, but it is not an include anchor.
 
-Relative paths resolve from the including file first. Nested includes are supported, so a shared partial can include files next to itself. See [Remark plugins](/docs/reference/remark#remarkinclude) for base paths and plugin details.
+Relative paths resolve from the including file first. Nested includes are supported, so a shared partial can include files next to itself. See [Markdown transforms](/docs/reference/markdown#includemarkdown) for base paths and transform details.
 
 ## Component reference
 
@@ -89,7 +89,7 @@ Wraps supporting context, warnings, or tips. Variants change styling but flatten
 ```
 
 <Callout title="Heads up" variant="info">
-  Callouts wrap supporting context, warnings, or tips. The remark pipeline flattens them into blockquotes so agents still see the content.
+  Callouts wrap supporting context, warnings, or tips. The markdown transform pipeline flattens them into blockquotes so agents still see the content.
 </Callout>
 
 <Callout title="Don't do this" variant="warning">
@@ -108,7 +108,7 @@ A grid of short, linked entry points. Flattens to a bullet list of links.
 
 <Cards>
   <Card title="Convert" description="Turn MDX into agent-friendly markdown." href="/docs/reference/convert" />
-  <Card title="Remark" description="The plugin set that flattens components." href="/docs/reference/remark" />
+  <Card title="Markdown" description="The transform stack that flattens components." href="/docs/reference/markdown" />
   <Card title="Search" description="Static index plus runtime helpers." href="/docs/reference/search" />
 </Cards>
 
@@ -246,7 +246,7 @@ Collapsible details for secondary content. Flattening ignores open/closed state 
 
 <Accordion>
   <AccordionItem title="When should I use accordions?">
-    Use them for supporting details, troubleshooting notes, and optional reference material. Closed content is still flattened by the remark pipeline.
+    Use them for supporting details, troubleshooting notes, and optional reference material. Closed content is still flattened by the markdown transform pipeline.
   </AccordionItem>
   <AccordionItem title="Are accordions a good place to hide content from LLMs?">
     No. Conversion ignores the open/closed state and emits everything inside.
@@ -319,21 +319,21 @@ Data-driven preview and source examples. The host component receives code as dat
 
 ### Mermaid
 
-Diagrams authored as plain text. Renders client-side as interactive SVG. Flattening preserves the source as a fenced ` ```mermaid ` block so other tools can render the diagram from the markdown copy.
+Diagrams authored as plain text. Renders client-side as interactive SVG. Flattening preserves the source as a fenced Mermaid code block so other tools can render the diagram from the markdown copy.
 
 ```tsx
 <Mermaid chart={`graph LR
-  MDX -->|remark| Markdown
+  MDX -->|flatten| Markdown
   Markdown -->|llms.txt| Agents`} />
 ```
 
 <Mermaid chart={`graph LR
-  MDX -->|remark| Markdown
+  MDX -->|flatten| Markdown
   Markdown -->|search index| API
   Markdown -->|llms.txt| Agents`} />
 
 ## Guidelines
 
 - Keep runtime components in your docs app. Leadtype stays out of UI.
-- Keep component names stable. Renaming `<Callout>` breaks the flattening contract until you remap it with [`defineComponentFlattener`](/docs/reference/remark#custom-component-flatteners).
-- For agent output quality, read the converted `.md` files first and only edit components or plugin order if the markdown actually looks wrong.
+- Keep component names stable. Renaming `<Callout>` breaks the flattening contract until you remap it with [`defineComponentFlattener`](/docs/reference/markdown#custom-component-flatteners).
+- For agent output quality, read the converted `.md` files first and only edit components or transform order if the markdown actually looks wrong.

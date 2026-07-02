@@ -233,12 +233,12 @@ import {
   generateLlmsTxt,
   resolveAgentInputs,
 } from "leadtype/llm";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 await convertAllMdx({
   srcDir: "docs",
   outDir: "public/docs",
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
 });
 
 // Bridge the config identity (product/organization/llms) into the internal

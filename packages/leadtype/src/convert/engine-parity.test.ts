@@ -14,10 +14,10 @@ import type { Pluggable, PluggableList } from "unified";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "../cli";
 import {
-  defaultRemarkPlugins,
-  remarkInclude,
-  remarkTypeTableToMarkdown,
-} from "../remark";
+  defaultMarkdownTransforms,
+  includeMarkdown,
+  nativeMarkdownComponentsToMarkdown,
+} from "../markdown";
 import { convertAllMdx, convertMdxFile } from "./convert";
 
 const tempDirs: string[] = [];
@@ -70,12 +70,15 @@ const writeProjectFile = async (
   return filePath;
 };
 
-const createRemarkPlugins = (typeTableBasePath: string): PluggableList => [
-  remarkInclude,
-  ...defaultRemarkPlugins.filter(
-    (plugin) => plugin !== remarkTypeTableToMarkdown
+const createMarkdownTransforms = (typeTableBasePath: string): PluggableList => [
+  includeMarkdown,
+  ...defaultMarkdownTransforms.filter(
+    (plugin) => plugin !== nativeMarkdownComponentsToMarkdown
   ),
-  [remarkTypeTableToMarkdown, { basePath: typeTableBasePath }] as Pluggable,
+  [
+    nativeMarkdownComponentsToMarkdown,
+    { typeTable: { basePath: typeTableBasePath } },
+  ] as Pluggable,
 ];
 
 const listFiles = async (dir: string, ext?: string): Promise<string[]> => {
@@ -103,36 +106,25 @@ const listFiles = async (dir: string, ext?: string): Promise<string[]> => {
 };
 
 const compareTrees = async (
-  remarkDir: string,
-  satteriDir: string,
+  expectedDir: string,
+  actualDir: string,
   ext?: string
 ): Promise<string | undefined> => {
-  const remarkFiles = await listFiles(remarkDir, ext);
-  const satteriFiles = await listFiles(satteriDir, ext);
-  if (JSON.stringify(satteriFiles) !== JSON.stringify(remarkFiles)) {
-    return `file lists differ: remark=${remarkFiles.length}, satteri=${satteriFiles.length}`;
+  const expectedFiles = await listFiles(expectedDir, ext);
+  const actualFiles = await listFiles(actualDir, ext);
+  if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
+    return `file lists differ: expected=${expectedFiles.length}, actual=${actualFiles.length}`;
   }
-  for (const relativePath of remarkFiles) {
-    const [remarkMarkdown, satteriMarkdown] = await Promise.all([
-      readFile(path.join(remarkDir, relativePath), "utf8"),
-      readFile(path.join(satteriDir, relativePath), "utf8"),
+  for (const relativePath of expectedFiles) {
+    const [expectedMarkdown, actualMarkdown] = await Promise.all([
+      readFile(path.join(expectedDir, relativePath), "utf8"),
+      readFile(path.join(actualDir, relativePath), "utf8"),
     ]);
-    if (satteriMarkdown !== remarkMarkdown) {
+    if (actualMarkdown !== expectedMarkdown) {
       return `content differs: ${relativePath}`;
     }
   }
   return;
-};
-
-const readSearchIndexWithoutGeneratedAt = async (
-  filePath: string
-): Promise<Record<string, unknown>> => {
-  const index = JSON.parse(await readFile(filePath, "utf8")) as Record<
-    string,
-    unknown
-  >;
-  const { generatedAt: _generatedAt, ...stableIndex } = index;
-  return stableIndex;
 };
 
 afterEach(async () => {
@@ -143,42 +135,8 @@ afterEach(async () => {
   );
 });
 
-describe("markdown engine parity", () => {
-  it("prints generate help even when the markdown engine env var is invalid", async () => {
-    const previousEngine = process.env.LEADTYPE_MARKDOWN_ENGINE;
-    process.env.LEADTYPE_MARKDOWN_ENGINE = "bogus";
-    try {
-      const capture = createCapture();
-      const code = await runCli(["generate", "--help"], capture.io);
-
-      expect(code).toBe(0);
-      expect(capture.stdout).toContain("--markdown-engine");
-      expect(capture.stderr).toBe("");
-    } finally {
-      if (previousEngine === undefined) {
-        Reflect.deleteProperty(process.env, "LEADTYPE_MARKDOWN_ENGINE");
-      } else {
-        process.env.LEADTYPE_MARKDOWN_ENGINE = previousEngine;
-      }
-    }
-  });
-
-  it("rejects invalid runtime markdown engines", async () => {
-    const projectDir = await createTempProject("leadtype-engine-invalid-");
-    const sourcePath = await writeProjectFile(
-      projectDir,
-      "page.mdx",
-      "# Invalid\n"
-    );
-
-    await expect(
-      convertMdxFile(sourcePath, [], false, {
-        markdownEngine: "bogus" as never,
-      })
-    ).rejects.toThrow("markdownEngine must be remark|satteri");
-  });
-
-  it("matches remark output for high-value MDX constructs", async () => {
+describe("native markdown output", () => {
+  it("renders high-value MDX constructs through the native pipeline", async () => {
     const projectDir = await createTempProject("leadtype-engine-fixture-");
     await writeProjectFile(
       projectDir,
@@ -227,62 +185,60 @@ import { Demo } from "./demo";
 <AutoTypeTable name="FixtureOptions" path="./types.ts" />
 `
     );
-    const plugins = createRemarkPlugins(projectDir);
+    const plugins = createMarkdownTransforms(projectDir);
 
-    const [remarkResult, satteriResult] = await Promise.all([
-      convertMdxFile(sourcePath, plugins, false, { markdownEngine: "remark" }),
-      convertMdxFile(sourcePath, plugins, false, { markdownEngine: "satteri" }),
-    ]);
+    const result = await convertMdxFile(sourcePath, plugins);
     const defaultResult = await convertMdxFile(sourcePath, plugins);
 
-    expect(satteriResult.frontmatter).toBe(remarkResult.frontmatter);
-    expect(satteriResult.markdown).toBe(remarkResult.markdown);
-    expect(defaultResult.markdown).toBe(satteriResult.markdown);
-    expect(satteriResult.ast.type).toBe("root");
-    expect(satteriResult.ast.children.length).toBe(
-      remarkResult.ast.children.length
+    expect(result.frontmatter).toContain("title: Parity");
+    expect(result.markdown).toContain("# Parity");
+    expect(result.markdown).toContain("> Remember this.");
+    expect(result.markdown).toContain("## Included");
+    expect(result.markdown).toContain(
+      "|enabled|boolean|Whether parity is enabled."
     );
+    expect(result.markdown).not.toContain("<include");
+    expect(result.markdown).not.toContain("hidden comment");
+    expect(defaultResult.markdown).toBe(result.markdown);
+    expect(result.ast.type).toBe("root");
   });
 
-  it("matches remark output across this repo's docs corpus", async () => {
+  it("generates deterministic native output across this repo's docs corpus", async () => {
     const outRoot = await createTempProject("leadtype-engine-corpus-");
-    const remarkOut = path.join(outRoot, "remark");
-    const satteriOut = path.join(outRoot, "satteri");
-    const plugins = createRemarkPlugins(repoRoot);
+    const firstOut = path.join(outRoot, "first");
+    const secondOut = path.join(outRoot, "second");
+    const plugins = createMarkdownTransforms(repoRoot);
 
     await convertAllMdx({
       srcDir: path.join(repoRoot, "docs"),
-      outDir: remarkOut,
-      remarkPlugins: plugins,
+      outDir: firstOut,
+      markdownTransforms: plugins,
       enrichFrontmatterFromGit: false,
-      markdownEngine: "remark",
       failOnError: true,
     });
     await convertAllMdx({
       srcDir: path.join(repoRoot, "docs"),
-      outDir: satteriOut,
-      remarkPlugins: plugins,
+      outDir: secondOut,
+      markdownTransforms: plugins,
       enrichFrontmatterFromGit: false,
-      markdownEngine: "satteri",
       failOnError: true,
     });
 
-    await expect(compareTrees(remarkOut, satteriOut, ".md")).resolves.toBe(
+    await expect(compareTrees(firstOut, secondOut, ".md")).resolves.toBe(
       undefined
     );
   });
 
-  it("generates matching CLI artifacts with both engines", async () => {
-    const srcDir = await createTempProject("leadtype-engine-cli-src-");
-    const outRoot = await createTempProject("leadtype-engine-cli-out-");
-    const remarkOut = path.join(outRoot, "remark");
-    const satteriOut = path.join(outRoot, "satteri");
+  it("generates CLI artifacts with the default Satteri parser", async () => {
+    const srcDir = await createTempProject("leadtype-satteri-cli-src-");
+    const outDir = await createTempProject("leadtype-satteri-cli-out-");
+    const capture = createCapture();
 
     await writeProjectFile(
       srcDir,
       "docs/docs.config.ts",
       `export default {
-  product: { name: "Parity Product", tagline: "Engine parity." },
+  product: { name: "Satteri Product", tagline: "Parser output." },
   groups: [{ slug: "guide", title: "Guide" }],
 };`
     );
@@ -301,46 +257,31 @@ group: guide
 `
     );
 
-    const baseArgs = [
-      "generate",
-      "--src",
-      srcDir,
-      "--base-url",
-      "https://example.com",
-      "--format",
-      "json",
-    ];
-    const remarkCapture = createCapture();
-    const satteriCapture = createCapture();
-    const remarkCode = await runCli(
-      [...baseArgs, "--out", remarkOut, "--markdown-engine", "remark"],
-      remarkCapture.io
-    );
-    const satteriCode = await runCli(
-      [...baseArgs, "--out", satteriOut, "--markdown-engine", "satteri"],
-      satteriCapture.io
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
     );
 
-    expect(remarkCode).toBe(0);
-    expect(satteriCode).toBe(0);
+    expect(code).toBe(0);
+    expect(capture.stderr).toContain("generate.done");
     await expect(
-      compareTrees(
-        path.join(remarkOut, "docs"),
-        path.join(satteriOut, "docs"),
-        ".md"
-      )
-    ).resolves.toBe(undefined);
+      readFile(path.join(outDir, "docs", "quickstart.md"), "utf8")
+    ).resolves.toContain("> Same output.");
     await expect(
-      readFile(path.join(satteriOut, "llms.txt"), "utf8")
-    ).resolves.toBe(await readFile(path.join(remarkOut, "llms.txt"), "utf8"));
-    await expect(
-      readSearchIndexWithoutGeneratedAt(
-        path.join(satteriOut, "docs", "search-index.json")
-      )
-    ).resolves.toEqual(
-      await readSearchIndexWithoutGeneratedAt(
-        path.join(remarkOut, "docs", "search-index.json")
-      )
+      readFile(path.join(outDir, "llms.txt"), "utf8")
+    ).resolves.toContain("Satteri Product");
+    expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
+      true
     );
   });
 });

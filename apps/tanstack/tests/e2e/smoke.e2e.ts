@@ -72,21 +72,21 @@ test("/docs renders the package overview MDX", async ({ page, request }) => {
   ).toBeVisible();
 });
 
-test("/docs/reference/remark renders the remark plugin reference", async ({
+test("/docs/reference/markdown renders the markdown transform reference", async ({
   page,
   request,
 }) => {
-  const response = await request.get("/docs/reference/remark");
+  const response = await request.get("/docs/reference/markdown");
   const html = await response.text();
 
-  expect(html).toContain("Remark");
-  expect(html).toContain("defaultRemarkPlugins");
+  expect(html).toContain("Markdown transforms");
+  expect(html).toContain("defaultMarkdownTransforms");
   expect(html).toContain("PipelineExampleOptions");
 
-  await page.goto("/docs/reference/remark", { waitUntil: "networkidle" });
+  await page.goto("/docs/reference/markdown", { waitUntil: "networkidle" });
   await waitForClientHydration(page);
   await expect(
-    page.getByRole("heading", { name: "Remark plugins", exact: true })
+    page.getByRole("heading", { name: "Markdown transforms", exact: true })
   ).toBeVisible();
 });
 

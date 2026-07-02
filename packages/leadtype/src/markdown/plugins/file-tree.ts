@@ -1,4 +1,4 @@
-import type { Code, Root } from "mdast";
+import type { Code, Root, RootContent } from "mdast";
 import type { Transformer } from "unified";
 import {
   createJsxComponentProcessor,
@@ -100,14 +100,16 @@ function createCodeBlock(value: string): Code {
 }
 
 export function remarkFileTreeToMarkdown(): Transformer<Root, Root> {
-  return createJsxComponentProcessor("FileTree", (node) => {
-    const entries = collectEntries(node.children ?? []);
-    const rootName = normalizeWhitespace(getAttributeValue(node, "root") ?? "");
+  return createJsxComponentProcessor("FileTree", fileTreeToMarkdown);
+}
 
-    if (entries.length === 0 && !rootName) {
-      return [];
-    }
+export function fileTreeToMarkdown(node: MdxNode): RootContent[] {
+  const entries = collectEntries(node.children ?? []);
+  const rootName = normalizeWhitespace(getAttributeValue(node, "root") ?? "");
 
-    return [createCodeBlock(renderTree(entries, rootName))];
-  });
+  if (entries.length === 0 && !rootName) {
+    return [];
+  }
+
+  return [createCodeBlock(renderTree(entries, rootName))];
 }

@@ -90,7 +90,7 @@ describe("package surface", () => {
       "./nuxt",
       "./next",
       "./next/client",
-      "./remark",
+      "./markdown",
       "./transformers",
       "./convert",
       "./llm",
@@ -134,8 +134,8 @@ describe("package surface", () => {
     expect(exportedPaths).not.toContain("./solid");
   });
 
-  it("keeps optional TypeScript loading out of the remark entry import path", () => {
-    const typeTableSource = readSrc("remark/plugins/type-table.remark.ts");
+  it("keeps optional TypeScript loading out of the markdown entry import path", () => {
+    const typeTableSource = readSrc("markdown/plugins/type-table.ts");
 
     expect(typeTableSource).not.toContain('import * as ts from "typescript"');
     expect(typeTableSource).toContain('import type * as ts from "typescript"');

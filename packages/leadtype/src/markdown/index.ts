@@ -1,14 +1,23 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
+export {
+  createIncludeResolutionCache,
+  type IncludeResolutionCache,
+  type IncludeResolutionCacheStats,
+  type RemarkIncludeOptions,
+  remarkInclude as includeMarkdown,
+  remarkInclude,
+} from "../remark/plugins/include.remark";
 export { type Builders, b, parseMarkdown } from "./builders";
-// The built-in plugin set, split by phase. `defaultRemarkPlugins` keeps its
-// historical order; phase tags handle scheduling when consumers add their own.
+export {
+  type NativeMarkdownDispatcherOptions,
+  nativeMarkdownComponentsToMarkdown,
+} from "./component-dispatcher";
 export {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
-  builtinFlattenerPlugins,
-  defaultRemarkPlugins,
-} from "./default-plugins";
-// High-level authoring surface for custom component → markdown flattening.
+  builtinMarkdownFlattenerTransforms,
+  defaultMarkdownTransforms,
+} from "./default-transforms";
 export {
   type ComponentFlattenerSpec,
   defineComponentFlattener,
@@ -18,8 +27,6 @@ export {
   type PropKind,
   type PropsSpec,
 } from "./define-flattener";
-// Low-level toolkit — the same building blocks the built-in flatteners use.
-// Reach for these when you need full mdast control inside a custom plugin.
 export {
   createBlockquote,
   createHeading,
@@ -45,13 +52,14 @@ export {
   processContentNode,
 } from "./libs";
 export {
-  createIncludeResolutionCache,
-  type IncludeResolutionCache,
-  type IncludeResolutionCacheStats,
-  type RemarkIncludeOptions,
-  remarkInclude,
-} from "./plugins/include.remark";
-export {
   extractTypeFromFile,
   remarkTypeTableToMarkdown,
-} from "./plugins/type-table.remark";
+} from "./plugins/type-table";
+export { stringifyMarkdown } from "./stringify";
+export {
+  createMdastTransforms,
+  type LeadtypeMdastTransform,
+  type LeadtypeMdastTransformContext,
+  runMdastTransforms,
+  runMdastTransformsSync,
+} from "./transform";

@@ -128,7 +128,7 @@ export type DocsTransformer<
     page: DocsFrontmatterPage<TFrontmatter>,
     context: DocsTransformContext
   ) => MaybePromise<DocsFrontmatterPage<TFrontmatter> | undefined>;
-  /** Edit the mdast tree after Leadtype's remark pipeline has run. */
+  /** Edit the mdast tree after Leadtype's markdown transforms have run. */
   afterMdxAst?: (
     page: DocsAstPage<TFrontmatter>,
     context: DocsTransformContext

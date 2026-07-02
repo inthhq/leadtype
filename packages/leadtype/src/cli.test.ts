@@ -23,9 +23,9 @@ const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../.."
 );
-const remarkEntry = path.join(
+const markdownEntry = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
-  "remark",
+  "markdown",
   "index.ts"
 );
 const valibotEntry = fileURLToPath(import.meta.resolve("valibot"));
@@ -873,15 +873,15 @@ describe("leadtype CLI", () => {
     // Temp dirs have no node_modules, so import the flattener factory by
     // absolute source path; the `Symbol.for` phase tag works across module
     // instances, so scheduling is unaffected.
-    const remarkEntry = path.join(
+    const markdownEntry = path.join(
       path.dirname(fileURLToPath(import.meta.url)),
-      "remark",
+      "markdown",
       "index.ts"
     );
     await mkdir(path.join(srcDir, "docs"), { recursive: true });
     await writeFile(
       path.join(srcDir, "docs", "docs.config.ts"),
-      `import { defineComponentFlattener } from ${JSON.stringify(remarkEntry)};
+      `import { defineComponentFlattener } from ${JSON.stringify(markdownEntry)};
 
 export default {
   product: { name: "Flattener Product", tagline: "Custom flatteners." },
@@ -2358,7 +2358,7 @@ This page is valid, but the output path is not a directory.
 
   it("inherits source-owned navigation, groups, and flatteners after sync", async () => {
     const sourceRepo = await createGitDocsSource({
-      "docs/docs.config.ts": `import { defineComponentFlattener } from ${JSON.stringify(remarkEntry)};
+      "docs/docs.config.ts": `import { defineComponentFlattener } from ${JSON.stringify(markdownEntry)};
 
 export default {
   navigation: [{ title: "Source Navigation", base: "", pages: [""] }],

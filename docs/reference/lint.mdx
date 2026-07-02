@@ -48,7 +48,7 @@ Grouped by what they catch.
 
 The `geo:*` rules are the **mechanical** half of [Write for agents & GEO](/docs/writing/write-for-agents#how-to-structure-for-answer-engines-geo) — the structure signals a linter can check. The editorial ones (lead-with-the-answer, question-form headings) can't be linted; that's what the guide is for. All three are warn-level: legitimate exceptions exist, so they never fail the build by default (gate with `--max-warnings` if you want them to). The same checks feed the **Structure** portion of [`leadtype score`](/docs/reference/cli#score).
 
-Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
+Linting renders MDX through the [default markdown transform stack](/docs/reference/markdown) before walking links — same flattening the converter performs, so link checks see the final URLs.
 
 The `unflattened-component` rule walks the MDX AST, so components inside code fences or inline code are examples — not rendered JSX — and never warn. It recognizes the built-in [tag contract](/docs/writing/components#the-naming-contract) plus any custom `defineComponentFlattener` plugins declared in your config.
 

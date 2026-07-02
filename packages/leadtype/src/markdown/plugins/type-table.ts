@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { normalize, resolve } from "node:path";
 import JSON5 from "json5";
@@ -30,6 +30,12 @@ type ObjectType = {
 };
 
 type TypeScriptModule = typeof ts;
+type TypeScriptProgramCacheEntry = {
+  dependencies: Array<{ filePath: string; mtimeMs: number }>;
+  program: ts.Program;
+  checker: ts.TypeChecker;
+  sourceFile: ts.SourceFile;
+};
 
 const require = createRequire(import.meta.url);
 const TYPESCRIPT_PACKAGE = "typescript";
@@ -38,12 +44,12 @@ const MISSING_TYPESCRIPT_MESSAGE =
 
 let __tsCompilerOptions: ts.CompilerOptions | null = null;
 let __ts: TypeScriptModule | null = null;
-const __tsProgramByRootFile = new Map<
+const __tsProgramByRootFile = new Map<string, TypeScriptProgramCacheEntry>();
+const __extractedTypeByKey = new Map<
   string,
   {
-    program: ts.Program;
-    checker: ts.TypeChecker;
-    sourceFile: ts.SourceFile;
+    dependencies: Array<{ filePath: string; mtimeMs: number }>;
+    value: Record<string, ObjectType> | null;
   }
 >();
 
@@ -120,14 +126,47 @@ function getTypeScriptCompilerOptions(): ts.CompilerOptions {
   return compilerOptions;
 }
 
-function getTypeScriptProgramForFile(rootFilePath: string): {
-  program: ts.Program;
-  checker: ts.TypeChecker;
-  sourceFile: ts.SourceFile;
-} | null {
+function programDependenciesAreFresh(
+  dependencies: readonly { filePath: string; mtimeMs: number }[]
+): boolean {
+  for (const dependency of dependencies) {
+    try {
+      if (statSync(dependency.filePath).mtimeMs !== dependency.mtimeMs) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function collectProgramDependencies(
+  program: ts.Program
+): Array<{ filePath: string; mtimeMs: number }> {
+  const dependencies: Array<{ filePath: string; mtimeMs: number }> = [];
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile) {
+      continue;
+    }
+    try {
+      dependencies.push({
+        filePath: sourceFile.fileName,
+        mtimeMs: statSync(sourceFile.fileName).mtimeMs,
+      });
+    } catch {
+      // Virtual files cannot be used to validate freshness.
+    }
+  }
+  return dependencies;
+}
+
+function getTypeScriptProgramForFile(
+  rootFilePath: string
+): TypeScriptProgramCacheEntry | null {
   const ts = getTypeScript();
   const cached = __tsProgramByRootFile.get(rootFilePath);
-  if (cached) {
+  if (cached && programDependenciesAreFresh(cached.dependencies)) {
     return cached;
   }
 
@@ -140,12 +179,17 @@ function getTypeScriptProgramForFile(rootFilePath: string): {
   }
   const checker = program.getTypeChecker();
 
-  const value = { program, checker, sourceFile };
+  const value = {
+    dependencies: collectProgramDependencies(program),
+    program,
+    checker,
+    sourceFile,
+  };
   __tsProgramByRootFile.set(rootFilePath, value);
   return value;
 }
 
-type TypeTableOptions = {
+export type TypeTableOptions = {
   /** When true, include the description column in the output table. */
   includeDescriptions?: boolean;
   /** When true, include the default value column in the output table. */
@@ -726,17 +770,32 @@ export function extractTypeFromFile(
     if (!existsSync(resolvedPath)) {
       return null;
     }
+    const mtimeMs = statSync(resolvedPath).mtimeMs;
+    const cacheKey = `${resolvedPath}\0${typeName}`;
+    const cached = __extractedTypeByKey.get(cacheKey);
+    if (cached && programDependenciesAreFresh(cached.dependencies)) {
+      return cached.value;
+    }
 
     const tsProgram = getTypeScriptProgramForFile(resolvedPath);
     if (!tsProgram) {
+      __extractedTypeByKey.set(cacheKey, {
+        dependencies: [{ filePath: resolvedPath, mtimeMs }],
+        value: null,
+      });
       return null;
     }
 
-    return extractPropertiesFromSourceFile(
+    const extracted = extractPropertiesFromSourceFile(
       tsProgram.sourceFile,
       typeName,
       tsProgram.checker
     );
+    __extractedTypeByKey.set(cacheKey, {
+      dependencies: tsProgram.dependencies,
+      value: extracted,
+    });
+    return extracted;
   } catch (error) {
     if (
       error instanceof Error &&
@@ -983,27 +1042,31 @@ function processTypeTableNode(
 
 export const remarkTypeTableToMarkdown = (
   opts: Partial<TypeTableOptions> = {}
-) => {
+) =>
+  createJsxComponentProcessor(
+    ["TypeTable", "ExtractedTypeTable", "AutoTypeTable"],
+    (node, _index, _parent, file) => typeTableToMarkdown(node, opts, file)
+  );
+
+export function typeTableToMarkdown(
+  node: MdxNode,
+  opts: Partial<TypeTableOptions> = {},
+  file?: VFile
+): RootContent[] {
   const defaults: TypeTableOptions = {
     includeDescriptions: true,
     includeDefaults: true,
     includeRequired: true,
     warnOnFailure: true,
   };
-
-  return createJsxComponentProcessor(
-    ["TypeTable", "ExtractedTypeTable", "AutoTypeTable"],
-    (node, _index, _parent, file) => {
-      const resolved = {
-        ...defaults,
-        ...opts,
-        basePath:
-          opts.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file)),
-      };
-      if (isExtractedTypeTableNode(node)) {
-        return processExtractedTypeTableNode(node, resolved);
-      }
-      return processTypeTableNode(node, resolved);
-    }
-  );
-};
+  const resolved = {
+    ...defaults,
+    ...opts,
+    basePath:
+      opts.basePath ?? resolveDefaultTypeTableBasePath(getVFilePath(file)),
+  };
+  if (isExtractedTypeTableNode(node)) {
+    return processExtractedTypeTableNode(node, resolved);
+  }
+  return processTypeTableNode(node, resolved);
+}

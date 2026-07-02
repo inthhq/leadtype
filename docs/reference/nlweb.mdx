@@ -75,8 +75,7 @@ agents: {
 `leadtype generate` then writes `/feeds/schema.jsonl` (one schema.org
 `TechArticle` per docs page), `/schema-map.xml` listing the feed, and adds
 `Schemamap: <baseUrl>/schema-map.xml` after the `Sitemap:` line in robots.txt.
-The root `llms.txt` also links the `/ask` endpoint under `## Agent
-Interfaces`. Set `agents.nlweb.endpoint` if you mount the handler somewhere
+The root `llms.txt` also links the `/ask` endpoint under `## Agent Interfaces`. Set `agents.nlweb.endpoint` if you mount the handler somewhere
 other than `/ask`.
 
 Hosts that regenerate robots.txt at request time pass the directive through
