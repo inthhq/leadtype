@@ -52,9 +52,10 @@ Run generation:
 bunx leadtype generate --src . --out public --base-url https://example.com
 ```
 
-This writes operation pages such as:
+This writes an overview page plus one page per operation:
 
 ```text
+public/docs/rest-api/index.md
 public/docs/rest-api/users/read-user.md
 public/docs/llms.txt
 public/docs/search-index.json
@@ -62,6 +63,25 @@ public/docs/search-index.json
 
 The same generated pages are added to the docs navigation used by
 `llms.txt`, `AGENTS.md`, search, and Agent Readability artifacts.
+
+Every generated page opens with machine-scannable frontmatter, so an agent
+can pick the right endpoint — and fetch the source spec — without parsing
+the body:
+
+```yaml
+title: Read a user
+description: Fetch one user by ID.
+type: api-reference
+source: ./openapi/api.yaml
+method: get
+path: /users/{id}
+operationId: readUser
+server: https://api.example.com
+apiVersion: 1.2.0
+tags: ["Users"]
+canonicalUrl: https://example.com/docs/rest-api/users/read-user
+lastModified: "2026-07-02T15:54:34+01:00"
+```
 
 ## What each page includes
 
@@ -171,8 +191,10 @@ export const mdxComponents = {
 };
 ```
 
-For a fuller copyable implementation, see the Fumadocs example component map at
-`apps/fumadocs-example/lib/mdx-components.tsx`.
+For fuller copyable implementations, see the leadtype repo's example
+component maps: `apps/fumadocs-example/lib/mdx-components.tsx` (Tailwind
+utility classes) and `apps/tanstack/src/components/docs-mdx/api.tsx`
+(data-attribute styling with tabbed code samples).
 
 ### fumadocs / createDocsSource
 
@@ -195,6 +217,38 @@ const source = await fumadocsSource({
 Relative `input` paths resolve from `contentDir` by default; pass `openapiCwd`
 when your config lives elsewhere. Because staging snapshots the docs at
 construction time, restart the dev server to pick up spec or docs edits.
+
+### Static-glob bundlers (TanStack Start, Vite)
+
+Apps that compile MDX with a static `import.meta.glob` can't reach into the
+temp staging directory — Vite resolves glob patterns at build time. Generate
+the pages into an app-local directory instead and add a second glob:
+
+```ts title="scripts/docs-source-manifest.ts"
+import { normalizeOpenApiConfig, writeOpenApiPages } from "leadtype/openapi";
+import docsConfig from "../../docs/docs.config";
+
+const generated = await writeOpenApiPages({
+  configs: normalizeOpenApiConfig(docsConfig.openapi, contentDir, {
+    baseUrl,
+  }),
+  docsDir: openapiDocsDir, // e.g. src/generated/openapi-docs (gitignored)
+});
+// generated.pages / generated.indexPages → append to your route manifest
+// generated.nav → append to your navigation
+```
+
+```ts title="src/routes/docs/$.tsx"
+const authored = import.meta.glob("../../../docs/**/*.mdx", { eager: true });
+const openapi = import.meta.glob("../../generated/openapi-docs/**/*.mdx", {
+  eager: true,
+});
+const mdxModules = { ...authored, ...openapi };
+```
+
+The TanStack example in the leadtype repo (`apps/tanstack`) wires this
+end-to-end: generated MDX for the router, flattened mirrors for agents and
+search, and generated navigation for the sidebar and `llms.txt`.
 
 ## Try-it consoles
 
@@ -303,9 +357,10 @@ overwriting each other.
 
 ## Dogfooding
 
-Leadtype's own package docs generate a small API reference from
+Leadtype's own package docs generate an API reference from
 `docs/openapi/leadtype-api.yaml`. The package build stages that spec, generates
 native MDX operation pages, converts them to markdown, and includes them in
 `packages/leadtype/docs`, `AGENTS.md`, search, and Agent Readability artifacts.
 The Fumadocs example passes the same `openapi` config to `fumadocsSource()`,
-so the browser-rendered docs exercise the component contract too.
+and the TanStack example renders the same pages through the static-glob
+recipe above — both browser-rendered apps exercise the component contract.

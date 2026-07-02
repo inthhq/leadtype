@@ -9,6 +9,14 @@ In progress.
 
 Leadtype 0.4 is the next minor release after the 0.3 line. These notes are being written as changes land.
 
+## OpenAPI API reference generation
+
+- Added native OpenAPI 3.x page generation: an `openapi` block in `docs.config.ts` turns a JSON/YAML spec into MDX operation pages that render through your docs UI and flatten into agent-readable markdown — the same pages flow into `llms.txt`, search, markdown mirrors, `AGENTS.md`, and Agent Readability artifacts. See the [OpenAPI reference](/docs/reference/openapi).
+- Each operation page carries the full contract: machine-scannable frontmatter (`method`, `path`, `operationId`, `apiVersion`, `canonicalUrl`, `lastModified`, and a `source` pointing at the spec), parameter and property tables with nested dotted rows (`results[].title`), the dereferenced JSON Schema per media type, named or synthesized JSON examples, response headers, and generated cURL/`fetch` samples with real bodies and auth headers derived from the security scheme. Redocly-style `x-codeSamples` override the generated snippets.
+- A generated overview page per spec lists every operation grouped by tag and joins the navigation as the section landing page; operation pages link back to it from a Related section.
+- Three integration shapes: `createDocsSource({ openapi })` / `fumadocsSource({ openapi })` stage pages without touching authored docs, `leadtype generate` picks the config up automatically, and static-glob bundlers (TanStack Start / Vite) use `writeOpenApiPages()` into an app-local directory. `stageOpenApiDocs()` exposes the staging primitive for custom pipelines.
+- Rendering follows the existing component naming contract: seven new `Api*` tags with prop types from `leadtype/mdx`, built-in markdown flatteners, and copyable reference implementations in the Fumadocs and TanStack examples. Operation summaries and descriptions are treated as CommonMark and escaped, so arbitrary specs can't break the MDX build.
+
 ## Agent-readability artifacts
 
 - Sorted `manifest.pages` from `generateAgentReadabilityArtifacts` in navigation order — groups depth-first, then pages within each group — instead of alphabetical `urlPath` order. Navigation order is the authored reading order, which is what agent and LLM consumers of the manifest want. Pages not present in the navigation are appended sorted by `urlPath`, so the manifest stays fully deterministic without consumer-side re-sorting. `sitemap.xml` is rendered from the same page list and shares the order. ([#115](https://github.com/inthhq/leadtype/issues/115), [#120](https://github.com/inthhq/leadtype/pull/120))
