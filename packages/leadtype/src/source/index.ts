@@ -46,6 +46,7 @@ import type {
 import { extractDocsTableOfContents, resolveDocsNavigation } from "../llm";
 import type { DocsNavigation } from "../llm/readability";
 import { createMdxSourcePlugins } from "../mdx/source-preset";
+import { type DocsOpenApiConfig, stageOpenApiDocs } from "../openapi";
 import {
   type IncludeResolution,
   type ResolveIncludeOptions,
@@ -142,6 +143,17 @@ export type CreateDocsSourceConfig<
   /** Optional locale configuration. When present, `locale` selects the active docs language. */
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
+  /**
+   * OpenAPI specs to generate API reference pages from. Pages are staged into
+   * a temp copy of `contentDir` (the source directory is never modified) and
+   * their navigation nodes are appended to `nav`.
+   */
+  openapi?: DocsOpenApiConfig;
+  /**
+   * Base directory for relative `openapi` input paths — typically the
+   * directory containing your docs config. Defaults to `contentDir`.
+   */
+  openapiCwd?: string;
 };
 
 export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
@@ -380,17 +392,36 @@ export async function createDocsSource<
 >(
   config: CreateDocsSourceConfig<TFrontmatter>
 ): Promise<DocsSource<TFrontmatter>> {
-  const contentDir = path.resolve(config.contentDir);
-  if (!existsSync(contentDir)) {
+  const sourceContentDir = path.resolve(config.contentDir);
+  if (!existsSync(sourceContentDir)) {
     throw new Error(
-      `createDocsSource: contentDir does not exist at "${contentDir}"`
+      `createDocsSource: contentDir does not exist at "${sourceContentDir}"`
     );
   }
 
+  // OpenAPI generation stages a temp copy of the source so generated pages
+  // exist on disk without polluting the authored docs. Nav nodes for the
+  // generated pages are appended to the curated nav.
+  let contentDir = sourceContentDir;
+  let nav = config.nav;
+  if (config.openapi !== undefined) {
+    const staged = await stageOpenApiDocs({
+      contentDir: sourceContentDir,
+      cwd: config.openapiCwd,
+      openapi: config.openapi,
+      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+    });
+    contentDir = staged.contentDir;
+    nav = [...(config.nav ?? []), ...staged.nav];
+  }
+
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const contentParentDir = path.dirname(contentDir);
+  // Type-table and include resolution stay anchored to the *original* source
+  // tree so relative references outside the docs dir keep working when the
+  // content is staged.
+  const contentParentDir = path.dirname(sourceContentDir);
   const defaultTypeTableBasePath =
-    contentParentDir === contentDir ? contentDir : contentParentDir;
+    contentParentDir === sourceContentDir ? sourceContentDir : contentParentDir;
   const typeTableBasePath = path.resolve(
     config.typeTableBasePath ?? defaultTypeTableBasePath
   );
@@ -488,7 +519,7 @@ export async function createDocsSource<
       docsDirName: path.basename(contentDir),
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
-      nav: config.nav,
+      nav,
       mounts: config.mounts,
       i18n: config.i18n,
       locale: config.locale,

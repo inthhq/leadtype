@@ -667,6 +667,101 @@
   @apply w-full;
 }
 
+/* OpenAPI reference components (generated API pages) */
+[data-leadtype-api-endpoint] {
+  @apply my-6 rounded-lg border border-border bg-card p-4;
+}
+
+[data-leadtype-api-endpoint-row] {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+[data-leadtype-api-method] {
+  @apply inline-flex items-center rounded-md border border-border px-2 py-0.5 font-mono text-xs font-semibold uppercase;
+}
+
+[data-leadtype-api-method][data-method="get"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 88%,
+    oklch(0.72 0.1 160) 12%
+  );
+}
+
+[data-leadtype-api-method][data-method="post"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 88%,
+    oklch(0.7 0.1 240) 12%
+  );
+}
+
+[data-leadtype-api-method][data-method="put"],
+[data-leadtype-api-method][data-method="patch"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 88%,
+    oklch(0.75 0.1 75) 12%
+  );
+}
+
+[data-leadtype-api-method][data-method="delete"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 88%,
+    oklch(0.65 0.12 25) 12%
+  );
+}
+
+[data-leadtype-api-path] {
+  @apply text-sm;
+}
+
+[data-leadtype-api-deprecated] {
+  @apply inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground line-through;
+}
+
+[data-leadtype-api-endpoint-details] {
+  @apply mt-3 grid gap-1 text-sm text-muted-foreground;
+}
+
+[data-leadtype-api-endpoint-details] div {
+  @apply flex gap-2;
+}
+
+[data-leadtype-api-endpoint-details] dt {
+  @apply text-muted-foreground;
+}
+
+[data-leadtype-api-auth],
+[data-leadtype-api-response] {
+  @apply my-4 rounded-lg border border-border bg-card p-4;
+}
+
+[data-leadtype-api-response] h3 {
+  @apply mt-0;
+}
+
+[data-leadtype-api-meta] {
+  @apply text-sm text-muted-foreground;
+}
+
+[data-leadtype-api-table] {
+  @apply my-3 overflow-x-auto;
+}
+
+[data-leadtype-api-table] table {
+  @apply w-full;
+}
+
+[data-leadtype-api-schema] {
+  @apply my-3 rounded-lg border border-border bg-card px-4 py-2;
+}
+
+[data-leadtype-api-schema] summary {
+  @apply cursor-pointer text-sm font-medium text-muted-foreground;
+}
+
 [data-leadtype-extracted-type-table] {
   @apply my-6 space-y-4 rounded-lg border border-border bg-card p-4;
 }

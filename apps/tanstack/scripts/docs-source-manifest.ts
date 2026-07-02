@@ -13,10 +13,11 @@
  * integration shapes from `/docs/pipeline/build-a-docs-site`.
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, sep as platformSep, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createDocsSource } from "leadtype";
+import { normalizeOpenApiConfig, writeOpenApiPages } from "leadtype/openapi";
 import docsConfig from "../../../docs/docs.config";
 
 /** `import.meta.glob` keys are always POSIX even on Windows. */
@@ -30,10 +31,16 @@ const repoRoot = join(appRoot, "..", "..");
 const contentDir = join(repoRoot, "docs");
 const generatedDir = join(appRoot, "src", "generated");
 const manifestPath = join(generatedDir, "docs-pages.json");
+const routesDocsDir = join(appRoot, "src", "routes", "docs");
+const baseUrl = process.env.BASE_URL?.trim() || "https://leadtype.dev";
+// Generated OpenAPI MDX lives inside the app (not the authored /docs tree) so
+// Vite's static `import.meta.glob` can compile it. See `pipeline:convert` for
+// the markdown-mirror counterpart.
+const openapiDocsDir = join(generatedDir, "openapi-docs");
 
 const source = await createDocsSource({
   contentDir,
-  baseUrl: process.env.BASE_URL?.trim() || "https://leadtype.dev",
+  baseUrl,
   nav: docsConfig.navigation,
   mounts: docsConfig.mounts,
 });
@@ -53,9 +60,52 @@ const manifest = pages.map((page) => ({
   // src/routes/docs/$.tsx with POSIX separators so the key matches the
   // glob output on every platform (Windows otherwise emits backslashes).
   globKey: toPosix(
-    `${relative(join(appRoot, "src", "routes", "docs"), join(contentDir, page.relativePath))}${page.extension}`
+    `${relative(routesDocsDir, join(contentDir, page.relativePath))}${page.extension}`
   ),
 }));
+
+// Regenerate OpenAPI reference pages into the app-local generated dir and
+// append their manifest entries. `writeOpenApiPages` is deterministic, so this
+// stays in sync with the pipeline:convert output for the same spec.
+await rm(openapiDocsDir, { force: true, recursive: true });
+if (docsConfig.openapi !== undefined) {
+  const generated = await writeOpenApiPages({
+    configs: normalizeOpenApiConfig(docsConfig.openapi, contentDir, {
+      baseUrl,
+    }),
+    docsDir: openapiDocsDir,
+  });
+  const MDX_EXTENSION_PATTERN = /\.mdx$/;
+  const INDEX_SEGMENT_PATTERN = /(?:^|\/)index$/;
+  const generatedEntries = [
+    ...generated.pages.map((page) => ({
+      description: page.description,
+      relativePath: page.relativePath,
+      title: page.title,
+    })),
+    ...generated.indexPages.map((page) => ({
+      description: page.description,
+      relativePath: page.relativePath,
+      title: page.title,
+    })),
+  ];
+  for (const page of generatedEntries) {
+    const relativePath = page.relativePath.replace(MDX_EXTENSION_PATTERN, "");
+    const urlPath = relativePath.replace(INDEX_SEGMENT_PATTERN, "");
+    manifest.push({
+      slug: urlPath.split("/").filter(Boolean),
+      urlPath: `/docs/${urlPath}`,
+      title: page.title,
+      description: page.description,
+      relativePath,
+      extension: ".mdx",
+      groups: [],
+      globKey: toPosix(
+        relative(routesDocsDir, join(openapiDocsDir, page.relativePath))
+      ),
+    });
+  }
+}
 
 await mkdir(generatedDir, { recursive: true });
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

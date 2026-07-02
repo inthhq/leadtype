@@ -24,6 +24,14 @@ const config: DocsConfig = {
       email: "support@inth.com",
     },
   },
+  openapi: {
+    input: "./openapi/leadtype-api.yaml",
+    output: "rest-api",
+    title: "Leadtype REST API",
+    description:
+      "Generated from docs/openapi/leadtype-api.yaml to dogfood native API reference pages.",
+    groupByTags: true,
+  },
   // The llms.txt body, rendered in order (was `product.blocks`).
   llms: {
     sections: [
@@ -246,6 +254,7 @@ const config: DocsConfig = {
         "frontmatter-transformers",
         "mdx",
         "markdown",
+        "openapi",
         "search",
         "i18n",
         "troubleshooting",

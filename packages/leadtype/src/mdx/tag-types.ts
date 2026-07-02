@@ -19,6 +19,17 @@
  * Every tag type is part of the 1.0 contract — bumping the prop shape is a
  * breaking change.
  */
+import type {
+  OpenApiCodeSample,
+  OpenApiMediaType,
+  OpenApiOperation,
+  OpenApiParameter,
+  OpenApiRequestBody,
+  OpenApiResponse,
+  OpenApiSchemaProperty,
+  OpenApiSecurityRequirement,
+  OpenApiSecurityScheme,
+} from "../openapi";
 
 // ---------------------------------------------------------------------------
 // Callout
@@ -133,6 +144,48 @@ export type ExtractedTypeTableProps = {
   basePath?: string;
   title?: string;
   description?: string;
+};
+
+// ---------------------------------------------------------------------------
+// OpenAPI
+// ---------------------------------------------------------------------------
+
+export type ApiSchemaProperty = OpenApiSchemaProperty;
+export type ApiMediaType = OpenApiMediaType;
+
+export type ApiEndpointProps = {
+  method: OpenApiOperation["method"];
+  path: string;
+  operationId?: string;
+  serverUrl?: string;
+  deprecated?: boolean;
+};
+
+export type ApiAuthProps = {
+  requirements: OpenApiSecurityRequirement[];
+  schemes: OpenApiSecurityScheme[];
+};
+
+export type ApiParametersProps = {
+  location: OpenApiParameter["in"];
+  title?: string;
+  parameters: OpenApiParameter[];
+};
+
+export type ApiRequestBodyProps = {
+  body: OpenApiRequestBody;
+};
+
+export type ApiCodeSamplesProps = {
+  samples: OpenApiCodeSample[];
+};
+
+export type ApiResponsesProps = {
+  responses: OpenApiResponse[];
+};
+
+export type ApiTryItProps = {
+  operation: OpenApiOperation;
 };
 
 // ---------------------------------------------------------------------------

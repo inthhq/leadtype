@@ -4,6 +4,7 @@
 //   - `leadtype/mdx` — tag types, source remark preset, include resolver
 //   - `leadtype/fumadocs` — adapter for fumadocs-core's Source interface
 //   - `leadtype/markdown` — agent/LLM flattening plugins
+//   - `leadtype/openapi` — OpenAPI loading and generated API reference pages
 //   - `leadtype/convert` — MDX → markdown helpers
 //   - `leadtype/feed` — RSS/Atom renderers and artifact generation
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
@@ -70,6 +71,30 @@ export {
   type SourceConfigInheritance,
   type SourceConfigInheritField,
 } from "./llm";
+export type {
+  DocsOpenApiConfig,
+  GeneratedOpenApiIndexPage,
+  GeneratedOpenApiPage,
+  GenerateOpenApiPagesResult,
+  NormalizeOpenApiConfigDefaults,
+  OpenApiCodeSample,
+  OpenApiHttpMethod,
+  OpenApiMediaType,
+  OpenApiOperation,
+  OpenApiParameter,
+  OpenApiRequestBody,
+  OpenApiResponse,
+  OpenApiSchemaProperty,
+  OpenApiSchemaSummary,
+  OpenApiSecurityRequirement,
+  OpenApiSecurityScheme,
+  OpenApiSlugStrategy,
+  OpenApiSourceConfig,
+  OpenApiSourceInput,
+  ResolvedOpenApiSourceConfig,
+  StagedOpenApiDocs,
+  StageOpenApiDocsConfig,
+} from "./openapi";
 export {
   type CreateDocsSourceConfig,
   createDocsSource,
