@@ -2527,7 +2527,10 @@ export async function generateAgentReadabilityArtifacts(
     config.groups,
     resolvedNav?.rootPageEntries ?? []
   );
-  const pages = markdownDocs.map((doc) =>
+  // Navigation order is the authored reading order; docs arrive sorted by
+  // urlPath, so pages outside the navigation keep that deterministic tail.
+  const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
+  const pages = orderedDocs.map((doc) =>
     toAgentReadabilityPage(doc, baseUrl, config.mounts)
   );
   const manifest: AgentReadabilityManifest = {

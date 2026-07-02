@@ -991,6 +991,83 @@ describe("generateAgentReadabilityArtifacts", () => {
     );
   });
 
+  it("sorts manifest pages in nav order with non-nav pages appended by urlPath", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "advanced.md",
+        frontmatter: "title: Advanced\ndescription: Advanced usage.",
+      },
+      {
+        relativePath: "zulu.md",
+        frontmatter: "title: Zulu\ndescription: Listed first in nav.",
+      },
+      {
+        relativePath: "beta.md",
+        frontmatter: "title: Beta\ndescription: Not in nav.",
+      },
+      {
+        relativePath: "alpha.md",
+        frontmatter: "title: Alpha\ndescription: Not in nav.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      nav: [{ title: "Guide", pages: ["zulu", "advanced"] }],
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/zulu",
+      "/docs/advanced",
+      "/docs/alpha",
+      "/docs/beta",
+    ]);
+
+    // sitemap.xml is rendered from the same list, so it shares the order.
+    const sitemapXml = await readFile(result.files.sitemapXml, "utf8");
+    const locOrder = ["zulu", "advanced", "alpha", "beta"].map((slug) =>
+      sitemapXml.indexOf(`<loc>https://leadtype.dev/docs/${slug}</loc>`)
+    );
+    expect(locOrder.every((index) => index >= 0)).toBe(true);
+    expect([...locOrder].sort((a, b) => a - b)).toEqual(locOrder);
+  });
+
+  it("sorts manifest pages by group order in legacy groups mode", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "client-modes.md",
+        frontmatter:
+          "title: Client Modes\ndescription: Modes.\ngroup: concepts\norder: 20",
+      },
+      {
+        relativePath: "initialization-flow.md",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\ngroup: concepts\norder: 10",
+      },
+      {
+        relativePath: "about.md",
+        frontmatter: "title: About\ndescription: Ungrouped.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      groups: [{ slug: "concepts", title: "Concepts" }],
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/initialization-flow",
+      "/docs/client-modes",
+      "/docs/about",
+    ]);
+  });
+
   it("applies a robotsPolicy + content signals to the emitted robots.txt", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
