@@ -7,6 +7,15 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type {
   AccordionItemProps,
+  ApiAuthProps,
+  ApiCodeSamplesProps,
+  ApiEndpointProps,
+  ApiMediaType,
+  ApiParametersProps,
+  ApiRequestBodyProps,
+  ApiResponsesProps,
+  ApiSchemaProperty,
+  ApiTryItProps,
   AudienceProps,
   CommandTabsProps,
   DetailsProps,
@@ -110,6 +119,250 @@ function TypeTable({
         </table>
       </div>
     </div>
+  );
+}
+
+function SchemaRows({ properties = [] }: { properties?: ApiSchemaProperty[] }) {
+  if (properties.length === 0) {
+    return null;
+  }
+  return (
+    <div className="my-3 overflow-x-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b text-left">
+            <th className="px-4 py-2">Property</th>
+            <th className="px-4 py-2">Type</th>
+            <th className="px-4 py-2">Required</th>
+            <th className="px-4 py-2">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {properties.map((property) => (
+            <tr className="border-b last:border-b-0" key={property.name}>
+              <td className="px-4 py-2 font-mono">{property.name}</td>
+              <td className="px-4 py-2 font-mono">
+                {formatApiSchemaType(property)}
+              </td>
+              <td className="px-4 py-2">
+                {property.required ? "Required" : "Optional"}
+              </td>
+              <td className="px-4 py-2">{property.description ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function formatApiSchemaType(
+  schema?: Pick<ApiSchemaProperty, "format" | "type">
+): string {
+  if (!schema) {
+    return "unknown";
+  }
+  return schema.format ? `${schema.type} (${schema.format})` : schema.type;
+}
+
+function ApiEndpoint({
+  method,
+  path,
+  operationId,
+  serverUrl,
+  deprecated,
+}: ApiEndpointProps) {
+  return (
+    <div className="my-4 rounded-lg border p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-md border px-2 py-1 font-mono font-semibold text-xs uppercase">
+          {method}
+        </span>
+        <code className="text-sm">{path}</code>
+        {deprecated ? (
+          <span className="rounded-md border px-2 py-1 text-xs">
+            Deprecated
+          </span>
+        ) : null}
+      </div>
+      {operationId || serverUrl ? (
+        <dl className="mt-3 grid gap-1 text-sm">
+          {operationId ? (
+            <div className="flex gap-2">
+              <dt className="opacity-70">Operation ID</dt>
+              <dd className="font-mono">{operationId}</dd>
+            </div>
+          ) : null}
+          {serverUrl ? (
+            <div className="flex gap-2">
+              <dt className="opacity-70">Server</dt>
+              <dd className="font-mono">{serverUrl}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+    </div>
+  );
+}
+
+function ApiAuth({ requirements, schemes }: ApiAuthProps) {
+  if (requirements.length === 0 && schemes.length === 0) {
+    return <p>No authentication required.</p>;
+  }
+  return (
+    <div className="my-4 rounded-lg border p-4">
+      {requirements.length > 0 ? (
+        <>
+          <h3 className="mt-0 font-medium text-base">Requirements</h3>
+          <ul>
+            {requirements.map((requirement) => {
+              const names = Object.keys(requirement);
+              return (
+                <li key={names.join("+") || "anonymous"}>
+                  {names.length > 0 ? names.join(" + ") : "Anonymous"}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
+      {schemes.length > 0 ? (
+        <>
+          <h3 className="font-medium text-base">Schemes</h3>
+          <ul>
+            {schemes.map((scheme) => (
+              <li key={scheme.key}>
+                <code>{scheme.key}</code>: {scheme.type}
+                {scheme.scheme ? ` / ${scheme.scheme}` : ""}
+                {scheme.description ? ` - ${scheme.description}` : ""}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function ApiParameters({ title, parameters }: ApiParametersProps) {
+  if (parameters.length === 0) {
+    return null;
+  }
+  return (
+    <div className="my-4">
+      {title ? <h3 className="font-medium text-base">{title}</h3> : null}
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="px-4 py-2">Name</th>
+              <th className="px-4 py-2">Type</th>
+              <th className="px-4 py-2">Required</th>
+              <th className="px-4 py-2">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {parameters.map((parameter) => (
+              <tr
+                className="border-b last:border-b-0"
+                key={`${parameter.in}:${parameter.name}`}
+              >
+                <td className="px-4 py-2 font-mono">{parameter.name}</td>
+                <td className="px-4 py-2 font-mono">
+                  {formatApiSchemaType(parameter.schema)}
+                </td>
+                <td className="px-4 py-2">
+                  {parameter.required ? "Required" : "Optional"}
+                </td>
+                <td className="px-4 py-2">{parameter.description ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function MediaType({ media }: { media: ApiMediaType }) {
+  return (
+    <div className="my-3">
+      <p className="text-sm">
+        Content type <code>{media.mediaType}</code>
+      </p>
+      <SchemaRows properties={media.schema?.properties} />
+      {media.example === undefined ? null : (
+        <pre data-language="json">
+          <code>{JSON.stringify(media.example, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function ApiRequestBody({ body }: ApiRequestBodyProps) {
+  return (
+    <div className="my-4 rounded-lg border p-4">
+      <h3 className="mt-0 font-medium text-base">Request Body</h3>
+      <p className="text-sm opacity-80">
+        {body.required ? "Required" : "Optional"}
+        {body.description ? ` - ${body.description}` : ""}
+      </p>
+      {body.content.map((media) => (
+        <MediaType key={media.mediaType} media={media} />
+      ))}
+    </div>
+  );
+}
+
+function ApiCodeSamples({ samples }: ApiCodeSamplesProps) {
+  if (samples.length === 0) {
+    return null;
+  }
+  return (
+    <div className="my-4">
+      {samples.map((sample) => (
+        <div key={`${sample.label}:${sample.language}`}>
+          <h3 className="font-medium text-base">{sample.label}</h3>
+          <pre data-language={sample.language}>
+            <code>{sample.code}</code>
+          </pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ApiResponses({ responses }: ApiResponsesProps) {
+  if (responses.length === 0) {
+    return null;
+  }
+  return (
+    <div className="my-4 grid gap-4">
+      {responses.map((response) => (
+        <section className="rounded-lg border p-4" key={response.status}>
+          <h3 className="mt-0 font-medium text-base">
+            <code>{response.status}</code>
+          </h3>
+          <p className="text-sm opacity-80">{response.description}</p>
+          {response.content.map((media) => (
+            <MediaType key={media.mediaType} media={media} />
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function ApiTryIt({ operation }: ApiTryItProps) {
+  return (
+    <Callout title="Try it">
+      Wire this component to your API proxy to execute{" "}
+      <code>
+        {operation.method.toUpperCase()} {operation.path}
+      </code>
+      .
+    </Callout>
   );
 }
 
@@ -351,6 +604,13 @@ export const mdxComponents = {
   TypeTable,
   AutoTypeTable: TypeTable,
   ExtractedTypeTable: TypeTable,
+  ApiAuth,
+  ApiCodeSamples,
+  ApiEndpoint,
+  ApiParameters,
+  ApiRequestBody,
+  ApiResponses,
+  ApiTryIt,
   CommandTabs,
   // Compatibility aliases for external docs that use the same component map.
   PackageCommandTabs: CommandTabs,

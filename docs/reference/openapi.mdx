@@ -1,0 +1,233 @@
+---
+title: OpenAPI
+description: Generate native MDX API reference pages from OpenAPI 3.x specs.
+---
+
+# OpenAPI
+
+Leadtype can turn OpenAPI 3.x JSON or YAML specs into native MDX pages before
+the normal docs pipeline runs. Generated API pages render through your docs UI,
+flatten into markdown mirrors, appear in `llms.txt`, feed search, and ship in
+package docs bundles.
+
+## Quickstart
+
+Put the spec somewhere in your docs source:
+
+<FileTree root="docs">
+  <Folder name="openapi" defaultOpen>
+    <File name="api.yaml" />
+  </Folder>
+  <File name="docs.config.ts" />
+</FileTree>
+
+Add an `openapi` block to the config. If the config lives at the project root,
+use `leadtype.config.ts`. If it lives inside the docs folder, use
+`docs.config.ts`; relative `input` paths resolve from the config file directory.
+
+```ts title="docs/docs.config.ts"
+import type { DocsConfig } from "leadtype";
+
+const config: DocsConfig = {
+  product: {
+    name: "Acme API",
+    tagline: "Programmable access to Acme.",
+  },
+  openapi: {
+    input: "./openapi/api.yaml",
+    output: "rest-api",
+    title: "REST API",
+    groupByTags: true,
+  },
+};
+
+export default config;
+```
+
+Run generation:
+
+```sh
+bunx leadtype generate --src . --out public --base-url https://example.com
+```
+
+This writes operation pages such as:
+
+```text
+public/docs/rest-api/users/read-user.md
+public/docs/llms.txt
+public/docs/search-index.json
+```
+
+The same generated pages are added to the docs navigation used by
+`llms.txt`, `AGENTS.md`, search, and Agent Readability artifacts.
+
+## Render in a docs app
+
+Generated pages use native API components instead of Swagger UI:
+
+```mdx
+<ApiEndpoint method="get" path="/users/{id}" operationId="readUser" />
+<ApiAuth schemes={...} requirements={...} />
+<ApiParameters location="path" parameters={...} />
+<ApiRequestBody body={...} />
+<ApiCodeSamples samples={...} />
+<ApiResponses responses={...} />
+```
+
+Leadtype exports the prop contracts from `leadtype/mdx`. Your renderer maps
+those names to local components the same way it maps `Callout`, `Tabs`, and
+`TypeTable`.
+
+```tsx title="lib/mdx-components.tsx"
+import type {
+  ApiEndpointProps,
+  ApiParametersProps,
+  ApiResponsesProps,
+} from "leadtype/mdx";
+
+export function ApiEndpoint({
+  method,
+  path,
+  operationId,
+}: ApiEndpointProps) {
+  return (
+    <div className="rounded-lg border p-4">
+      <span className="font-mono uppercase">{method}</span>{" "}
+      <code>{path}</code>
+      {operationId ? <p>Operation ID: {operationId}</p> : null}
+    </div>
+  );
+}
+
+export function ApiParameters({ title, parameters }: ApiParametersProps) {
+  return (
+    <section>
+      {title ? <h3>{title}</h3> : null}
+      <table>
+        <tbody>
+          {parameters.map((parameter) => (
+            <tr key={`${parameter.in}:${parameter.name}`}>
+              <td>
+                <code>{parameter.name}</code>
+              </td>
+              <td>{parameter.schema?.type ?? "unknown"}</td>
+              <td>{parameter.required ? "Required" : "Optional"}</td>
+              <td>{parameter.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+export function ApiResponses({ responses }: ApiResponsesProps) {
+  return responses.map((response) => (
+    <section key={response.status}>
+      <h3>{response.status}</h3>
+      <p>{response.description}</p>
+    </section>
+  ));
+}
+
+export const mdxComponents = {
+  ApiEndpoint,
+  ApiParameters,
+  ApiResponses,
+};
+```
+
+For a fuller copyable implementation, see the Fumadocs example component map at
+`apps/fumadocs-example/lib/mdx-components.tsx`.
+
+## Try-it consoles
+
+Leadtype does not ship an API console. Set `includeTryIt: true` only when your
+renderer implements `<ApiTryIt />` and routes requests through a server-side API
+proxy.
+
+```ts
+openapi: {
+  input: "./openapi/api.yaml",
+  output: "rest-api",
+  includeTryIt: true,
+}
+```
+
+Without `includeTryIt`, generated docs still include endpoint details, auth,
+parameters, request bodies, code samples, and responses.
+
+## Multiple specs
+
+Pass an array to generate pages from more than one spec:
+
+```ts title="docs.config.ts"
+export default {
+  product: {
+    name: "Acme",
+    tagline: "Acme developer docs.",
+  },
+  openapi: [
+    {
+      input: "./public-api.yaml",
+      output: "rest-api",
+      title: "REST API",
+    },
+    {
+      input: "https://example.com/admin-openapi.json",
+      output: "admin-api",
+      title: "Admin API",
+      includeTags: ["Admin"],
+    },
+  ],
+};
+```
+
+## Options
+
+| Option | Description |
+|---|---|
+| `input` | Local path or absolute URL to an OpenAPI 3.x JSON/YAML document. |
+| `output` | Docs-relative directory for generated pages. Defaults to `api`. |
+| `group` | Frontmatter group assigned to generated pages. |
+| `order` | Starting frontmatter order; each operation increments from it. |
+| `title` | Generated navigation section title. Defaults to `API Reference`. |
+| `description` | Generated navigation section description. |
+| `includeTags` | Only generate operations with one of these tags. |
+| `excludeTags` | Skip operations with one of these tags. |
+| `groupByTags` | Nest pages and generated nav by first operation tag. Defaults to `true`. |
+| `serverUrl` | Override the server URL used in examples and try-it metadata. |
+| `slugStrategy` | `"operation-id"` or `"method-path"`. Defaults to `"operation-id"`. |
+| `includeTryIt` | Emit `<ApiTryIt />` metadata for renderers with an API console. Defaults to `false`. |
+
+## Library API
+
+```ts
+import {
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "leadtype/openapi";
+
+const configs = normalizeOpenApiConfig(
+  { input: "./openapi.yaml", output: "rest-api" },
+  process.cwd()
+);
+
+const result = await writeOpenApiPages({
+  configs,
+  docsDir: "./docs",
+});
+```
+
+`writeOpenApiPages()` returns generated page metadata and a navigation node you
+can merge into a custom source pipeline.
+
+## Dogfooding
+
+Leadtype's own package docs generate a small API reference from
+`docs/openapi/leadtype-api.yaml`. The package build stages that spec, generates
+native MDX operation pages, converts them to markdown, and includes them in
+`packages/leadtype/docs`, `AGENTS.md`, search, and Agent Readability artifacts.
+The Fumadocs example stages the same generated MDX pages before calling
+`fumadocsSource()`, so the browser-rendered docs exercise the component
+contract too.

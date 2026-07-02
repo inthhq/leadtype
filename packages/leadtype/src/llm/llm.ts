@@ -30,6 +30,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { DocsOpenApiConfig } from "../openapi";
 import {
   type DocsFrontmatterSchema,
   type DocsLlmsTxtArtifact,
@@ -473,6 +474,11 @@ export type DocsConfig<
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
    */
   collections?: Record<string, DocsCollection>;
+  /**
+   * OpenAPI specs to generate into the docs source before conversion. Generated
+   * pages use native MDX API components and flatten into agent-readable markdown.
+   */
+  openapi?: DocsOpenApiConfig;
   i18n?: DocsI18nConfig;
   /**
    * Optional base directory for ExtractedTypeTable / AutoTypeTable path

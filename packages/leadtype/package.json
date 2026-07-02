@@ -67,6 +67,10 @@
       "types": "./dist/markdown/index.d.ts",
       "import": "./dist/markdown/index.js"
     },
+    "./openapi": {
+      "types": "./dist/openapi/index.d.ts",
+      "import": "./dist/openapi/index.js"
+    },
     "./transformers": {
       "types": "./dist/transformers.d.ts",
       "import": "./dist/transformers.js"

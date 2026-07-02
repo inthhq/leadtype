@@ -1,0 +1,70 @@
+openapi: 3.1.0
+info:
+  title: Leadtype Docs API
+  version: 0.1.0
+  description: Example API used to dogfood Leadtype's OpenAPI page generation.
+servers:
+  - url: https://leadtype.dev
+components:
+  securitySchemes:
+    docsToken:
+      type: http
+      scheme: bearer
+      description: Optional token for private docs deployments.
+paths:
+  /api/docs/search:
+    post:
+      operationId: searchDocs
+      summary: Search docs
+      description: Search a generated Leadtype docs index and return matching docs chunks.
+      tags:
+        - Operations
+      security:
+        - docsToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: Search query entered by the user or agent.
+                limit:
+                  type: integer
+                  format: int32
+                  description: Maximum number of results to return.
+                  default: 8
+      responses:
+        "200":
+          description: Ranked docs search results.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - results
+                properties:
+                  results:
+                    type: array
+                    description: Matching docs chunks ordered by relevance.
+                    items:
+                      type: object
+                      required:
+                        - title
+                        - urlPath
+                      properties:
+                        title:
+                          type: string
+                          description: Page or heading title.
+                        urlPath:
+                          type: string
+                          description: Docs URL path for the result.
+                        snippet:
+                          type: string
+                          description: Highlight-ready excerpt from the matched chunk.
+        "400":
+          description: The request body was malformed or the query was empty.

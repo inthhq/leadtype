@@ -91,6 +91,7 @@ describe("package surface", () => {
       "./next",
       "./next/client",
       "./markdown",
+      "./openapi",
       "./transformers",
       "./convert",
       "./llm",

@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { cp, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import docsConfig from "../../../docs/docs.config";
@@ -12,12 +13,18 @@ import {
   resolveDocsNavigation,
 } from "../src/llm/index";
 import { defaultMarkdownTransforms } from "../src/markdown/index";
+import {
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "../src/openapi/index";
 import { generateDocsSearchFiles } from "../src/search/node-index";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const REPO_ROOT = resolve(PACKAGE_ROOT, "..", "..");
 const SRC_DOCS_DIR = join(REPO_ROOT, "docs");
 const OUT_DOCS_DIR = join(PACKAGE_ROOT, "docs");
+const STAGED_ROOT = await mkdtemp(join(tmpdir(), "leadtype-docs-"));
+const STAGED_DOCS_DIR = join(STAGED_ROOT, "docs");
 
 // The output folder is entirely generated and gitignored — safe to nuke.
 // Also clear the package-root AGENTS.md and any leftover `llms.txt` /
@@ -28,88 +35,106 @@ await rm(join(PACKAGE_ROOT, "SKILL.md"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms.txt"), { force: true });
 await rm(join(PACKAGE_ROOT, "llms-full.txt"), { force: true });
 
-await convertAllMdx({
-  srcDir: SRC_DOCS_DIR,
-  outDir: OUT_DOCS_DIR,
-  markdownTransforms: defaultMarkdownTransforms,
-});
+try {
+  await cp(SRC_DOCS_DIR, STAGED_DOCS_DIR, { recursive: true });
 
-// Validate group references against docs.config.ts and fail fast on typos —
-// the lint rule covers this in CI, but the package build is also a gate so a
-// bad config can't ship.
-const agentInputs = resolveAgentInputs({
-  product: docsConfig.product,
-  organization: docsConfig.organization,
-  llms: docsConfig.llms,
-});
+  const openApiResult =
+    docsConfig.openapi === undefined
+      ? { nav: [], pages: [] }
+      : await writeOpenApiPages({
+          configs: normalizeOpenApiConfig(docsConfig.openapi, SRC_DOCS_DIR),
+          docsDir: STAGED_DOCS_DIR,
+        });
+  const docsNavigation = [
+    ...(docsConfig.navigation ?? []),
+    ...openApiResult.nav,
+  ];
 
-const navigation = await resolveDocsNavigation({
-  srcDir: REPO_ROOT,
-  nav: docsConfig.navigation,
-  mounts: docsConfig.mounts,
-});
-if (navigation.unknown.length > 0) {
-  for (const { urlPath, slug } of navigation.unknown) {
-    logger.error({
-      human: { message: `${urlPath} declares unknown group "${slug}"` },
-      json: {
-        event: "docs.unknown_group",
-        fields: { urlPath, slug },
-      },
-    });
+  await convertAllMdx({
+    srcDir: STAGED_DOCS_DIR,
+    outDir: OUT_DOCS_DIR,
+    markdownTransforms: defaultMarkdownTransforms,
+  });
+
+  // Validate group references against docs.config.ts and fail fast on typos —
+  // the lint rule covers this in CI, but the package build is also a gate so a
+  // bad config can't ship.
+  const agentInputs = resolveAgentInputs({
+    product: docsConfig.product,
+    organization: docsConfig.organization,
+    llms: docsConfig.llms,
+  });
+
+  const navigation = await resolveDocsNavigation({
+    srcDir: STAGED_ROOT,
+    nav: docsNavigation,
+    mounts: docsConfig.mounts,
+  });
+  if (navigation.unknown.length > 0) {
+    for (const { urlPath, slug } of navigation.unknown) {
+      logger.error({
+        human: { message: `${urlPath} declares unknown group "${slug}"` },
+        json: {
+          event: "docs.unknown_group",
+          fields: { urlPath, slug },
+        },
+      });
+    }
+    process.exit(1);
   }
-  process.exit(1);
+
+  // Emit AGENTS.md at the package root. Every link inside is a relative path to
+  // the bundled `.md` topic, so the docs remain valid after npm install at
+  // node_modules/leadtype/ with no URL fetches required.
+  const { outputPath } = await generateAgentsMd({
+    srcDir: STAGED_ROOT,
+    outDir: PACKAGE_ROOT,
+    product: agentInputs.product,
+    nav: docsNavigation,
+  });
+
+  // Also ship the MCP artifacts (search index + readability manifest) inside the
+  // tarball — the `--bundle --mcp` story — so a consumer can run a version-matched
+  // docs MCP server over our own docs: `leadtype mcp --package leadtype`.
+  // URL-independent, so no base URL is needed.
+  await generateDocsSearchFiles({
+    outDir: PACKAGE_ROOT,
+    mounts: docsConfig.mounts,
+  });
+  await generateAgentReadabilityArtifacts({
+    outDir: PACKAGE_ROOT,
+    product: {
+      name: agentInputs.product.name,
+      summary: agentInputs.product.summary,
+    },
+    nav: docsNavigation,
+    mounts: docsConfig.mounts,
+    jsonLd: agentInputs.jsonLd,
+  });
+
+  // Ship the docs-skill SKILL.md next to AGENTS.md so on-disk agents discover it the
+  // same way they discover AGENTS.md (offline, version-matched). Bundle MCP is on.
+  await generateSkillArtifacts({
+    outDir: PACKAGE_ROOT,
+    srcDir: REPO_ROOT,
+    product: {
+      name: agentInputs.product.name,
+      summary: agentInputs.product.summary,
+    },
+    skills: docsConfig.agents?.skills,
+    mode: "bundle",
+    mcpEnabled: true,
+  });
+
+  logger.info({
+    human: {
+      message: `Generated ${outputPath} and ${OUT_DOCS_DIR}/*.md`,
+    },
+    json: {
+      event: "docs.generate.done",
+      fields: { outputPath, docsDir: OUT_DOCS_DIR },
+    },
+  });
+} finally {
+  await rm(STAGED_ROOT, { recursive: true, force: true });
 }
-
-// Emit AGENTS.md at the package root. Every link inside is a relative path to
-// the bundled `.md` topic, so the docs remain valid after npm install at
-// node_modules/leadtype/ with no URL fetches required.
-const { outputPath } = await generateAgentsMd({
-  srcDir: REPO_ROOT,
-  outDir: PACKAGE_ROOT,
-  product: agentInputs.product,
-  nav: docsConfig.navigation,
-});
-
-// Also ship the MCP artifacts (search index + readability manifest) inside the
-// tarball — the `--bundle --mcp` story — so a consumer can run a version-matched
-// docs MCP server over our own docs: `leadtype mcp --package leadtype`.
-// URL-independent, so no base URL is needed.
-await generateDocsSearchFiles({
-  outDir: PACKAGE_ROOT,
-  mounts: docsConfig.mounts,
-});
-await generateAgentReadabilityArtifacts({
-  outDir: PACKAGE_ROOT,
-  product: {
-    name: agentInputs.product.name,
-    summary: agentInputs.product.summary,
-  },
-  nav: docsConfig.navigation,
-  mounts: docsConfig.mounts,
-  jsonLd: agentInputs.jsonLd,
-});
-
-// Ship the docs-skill SKILL.md next to AGENTS.md so on-disk agents discover it the
-// same way they discover AGENTS.md (offline, version-matched). Bundle MCP is on.
-await generateSkillArtifacts({
-  outDir: PACKAGE_ROOT,
-  srcDir: REPO_ROOT,
-  product: {
-    name: agentInputs.product.name,
-    summary: agentInputs.product.summary,
-  },
-  skills: docsConfig.agents?.skills,
-  mode: "bundle",
-  mcpEnabled: true,
-});
-
-logger.info({
-  human: {
-    message: `Generated ${outputPath} and ${OUT_DOCS_DIR}/*.md`,
-  },
-  json: {
-    event: "docs.generate.done",
-    fields: { outputPath, docsDir: OUT_DOCS_DIR },
-  },
-});

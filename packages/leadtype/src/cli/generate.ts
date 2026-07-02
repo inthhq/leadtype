@@ -71,6 +71,11 @@ import {
   generateNlwebArtifacts,
   NLWEB_SCHEMA_MAP_PATH,
 } from "../nlweb/artifacts";
+import {
+  type DocsOpenApiConfig,
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "../openapi";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
@@ -300,6 +305,7 @@ type ResolvedGenerateMetadata = {
   mounts?: DocsPathMount[];
   feeds?: DocsFeedConfig[];
   git?: DocsConfig["git"];
+  openapi?: DocsOpenApiConfig;
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -1295,6 +1301,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
+  const openapi =
+    value.openapi === undefined
+      ? undefined
+      : (value.openapi as DocsOpenApiConfig);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -1312,6 +1322,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(mounts ? { mounts } : {}),
     ...(feeds ? { feeds } : {}),
     ...(git ? { git } : {}),
+    ...(openapi ? { openapi } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -1846,6 +1857,7 @@ async function resolveGenerateMetadata(
       mounts: loaded.config.mounts,
       feeds: loaded.config.feeds,
       git: loaded.config.git,
+      openapi: loaded.config.openapi,
       ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
@@ -2322,7 +2334,8 @@ async function writeI18nManifest(
 async function createSourceMirror(
   srcDir: string,
   sources: ResolvedDocsSource[],
-  args: GenerateArgs
+  args: GenerateArgs,
+  forceStaging = false
 ): Promise<SourceMirror> {
   const filters = {
     exclude: [...args.exclude],
@@ -2336,7 +2349,7 @@ async function createSourceMirror(
     path.resolve(sources[0]?.docsDir ?? "") ===
       path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
-  if (isDefaultSingleSource && !hasFilters) {
+  if (isDefaultSingleSource && !hasFilters && !forceStaging) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
     return {
       cleanup: async () => {
@@ -2613,7 +2626,22 @@ export async function runGenerateCommand(
       args,
       docsSources
     );
-    sourceMirror = await createSourceMirror(srcDir, docsSources, args);
+    sourceMirror = await createSourceMirror(
+      srcDir,
+      docsSources,
+      args,
+      metadata.openapi !== undefined
+    );
+    const generatedOpenApi =
+      metadata.openapi === undefined
+        ? { nav: [], pages: [] }
+        : await writeOpenApiPages({
+            configs: normalizeOpenApiConfig(
+              metadata.openapi,
+              metadata.configPath ? path.dirname(metadata.configPath) : docsDir
+            ),
+            docsDir: sourceMirror.docsDir,
+          });
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
     // Collections-mode configs may omit per-collection `groups` and lean on
@@ -2634,7 +2662,9 @@ export async function runGenerateCommand(
           }
         : metadata;
     const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
-    const effectiveNav = hasExplicitPathFilters ? undefined : nav;
+    const effectiveNav = hasExplicitPathFilters
+      ? undefined
+      : [...(nav ?? []), ...generatedOpenApi.nav];
     const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
