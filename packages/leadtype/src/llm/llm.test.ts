@@ -1035,6 +1035,52 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect([...locOrder].sort((a, b) => a - b)).toEqual(locOrder);
   });
 
+  it("flattens nested nav depth-first, dedupes shared pages, and trails root pages", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "index.md",
+        frontmatter: "title: Home\ndescription: Root page.",
+      },
+      {
+        relativePath: "intro.md",
+        frontmatter: "title: Intro\ndescription: Intro.",
+      },
+      {
+        relativePath: "shared.md",
+        frontmatter: "title: Shared\ndescription: Referenced by two groups.",
+      },
+      {
+        relativePath: "deep.md",
+        frontmatter: "title: Deep\ndescription: Nested child page.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      nav: [
+        "index",
+        {
+          title: "First",
+          pages: ["intro", "shared"],
+          children: [{ title: "Nested", pages: ["deep"] }],
+        },
+        { title: "Second", pages: ["shared"] },
+      ],
+    });
+
+    // Groups flatten depth-first, a page shared across branches appears once
+    // at its first position, and root pages trail (they land in `ungrouped`).
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/intro",
+      "/docs/shared",
+      "/docs/deep",
+      "/docs",
+    ]);
+  });
+
   it("sorts manifest pages by group order in legacy groups mode", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [

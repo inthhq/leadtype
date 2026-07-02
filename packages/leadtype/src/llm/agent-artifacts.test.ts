@@ -99,6 +99,25 @@ describe("generateAgentArtifacts", () => {
     expect(sitemapMd).toContain("## Benchmarks");
   });
 
+  it("keeps manifest pages in the authored input order", async () => {
+    const outDir = await createTempOutDir();
+    // Neither alphabetical nor group-navigation order (firefox has order: 1,
+    // so nav order would move it ahead of chrome and trail the root page).
+    const reordered = [PAGES[2], PAGES[0], PAGES[1]].filter(
+      (page): page is AgentPageInput => page !== undefined
+    );
+    const result = await generateAgentArtifacts({
+      ...baseConfig(outDir),
+      pages: reordered,
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/benchmarks/firefox",
+      "/",
+      "/benchmarks/chrome",
+    ]);
+  });
+
   it("writes markdown mirrors at urlPath locations with spec frontmatter", async () => {
     const outDir = await createTempOutDir();
     const result = await generateAgentArtifacts(baseConfig(outDir));
