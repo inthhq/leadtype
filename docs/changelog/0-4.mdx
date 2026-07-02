@@ -9,6 +9,12 @@ In progress.
 
 Leadtype 0.4 is the next minor release after the 0.3 line. These notes are being written as changes land.
 
+## Agent-readability artifacts
+
+- Sorted `manifest.pages` from `generateAgentReadabilityArtifacts` in navigation order — groups depth-first, then pages within each group — instead of alphabetical `urlPath` order. Navigation order is the authored reading order, which is what agent and LLM consumers of the manifest want. Pages not present in the navigation are appended sorted by `urlPath`, so the manifest stays fully deterministic without consumer-side re-sorting. `sitemap.xml` is rendered from the same page list and shares the order. ([#115](https://github.com/inthhq/leadtype/issues/115), [#120](https://github.com/inthhq/leadtype/pull/120))
+- Applied the same ordering to `llms-full.txt` in legacy `groups` mode. `generateLLMFullContextFiles` previously only reordered under curated `nav`, so the full-context file could disagree with the manifest when only `groups` were configured; both now share reading order in both modes.
+- Left the bring-your-own-pages `generateAgentArtifacts` entry point unchanged: there the input `pages` order is the authored order supplied by the caller, now pinned by a regression test.
+
 ## Conversion performance
 
 - Batched Git frontmatter enrichment during `convertAllMdx`. When `enrichFrontmatterFromGit` is enabled, conversion now reads Git history once for the docs tree and maps results back to each converted file instead of spawning `git log` per file. In a 120-file synthetic docs benchmark, the Git metadata read dropped from ~2.36s of per-file process spawning to ~12ms for the batched read; full conversion with enrichment added ~27ms over no enrichment.
