@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<schemamap>
-  <feed>
-    <loc>http://localhost:3000/feeds/schema.jsonl</loc>
-    <format>application/jsonl</format>
-    <itemType>https://schema.org/TechArticle</itemType>
-  </feed>
-</schemamap>
