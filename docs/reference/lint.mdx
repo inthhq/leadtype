@@ -47,7 +47,8 @@ Grouped by what they catch.
 
 | Rule | Severity | Catches |
 | --- | --- | --- |
-| `invalid-link` | error | A `/docs/...` link — or a link under any configured mount prefix — points to a route that doesn't exist. Links under a generated tree (the OpenAPI `output` prefix) are assumed valid, since those routes only exist after `leadtype generate`. |
+| `invalid-link` | error | A `/docs/...` link — or a link under any configured mount prefix, or a relative `./x` / `../x` link resolved against its source file — points to a route that doesn't exist. With redirect tracking enabled, a link to a renamed page reports where it moved. Links under a generated tree (the OpenAPI `output` prefix) are assumed valid, since those routes only exist after `leadtype generate`. |
+| `invalid-anchor` | error | A `#fragment` — same-page or on a cross-page docs link — matches no heading anchor on the target page. Anchors come from the same extractor that builds the site TOC (rendered markdown, includes expanded), so lint and the site can't disagree. |
 | `config-link` | error / warn | The docs config itself links to a dead route: a curated `navigation` entry matching no page, an `llms.sections` link to a missing route (error), a feed `source.urlPrefix` matching no pages, or a `redirects.removed` path that is live again (warn). |
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
@@ -64,6 +65,10 @@ The `geo:*` rules are the **mechanical** half of [Write for agents & GEO](/docs/
 Linting renders MDX through the [default markdown transform stack](/docs/reference/markdown) before walking links — same flattening the converter performs, so link checks see the final URLs.
 
 The `unflattened-component` rule walks the MDX AST, so components inside code fences or inline code are examples — not rendered JSX — and never warn. It recognizes the built-in [tag contract](/docs/writing/components#the-naming-contract) plus any custom `defineComponentFlattener` plugins declared in your config.
+
+### Link-check scope and non-goals
+
+Checked: absolute links under `/docs` and every mount prefix, relative `./x` / `../x` links (resolved against the source file, extension optional), same-page and cross-page `#anchor` fragments, and the docs config's own links. Not checked: external URLs (network checks belong in scheduled CI, not PR CI — see the external-link roadmap), links produced at runtime by components, anchors on pages outside the linted tree, and query strings (stripped before validation).
 
 ## Library API
 
@@ -106,6 +111,7 @@ type LintResult = {
       | "unflattened-component"
       | "jsonld"
       | "config-link"
+      | "invalid-anchor"
       | "geo:heading-skip"
       | "geo:code-language"
       | "geo:image-alt";

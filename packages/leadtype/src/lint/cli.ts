@@ -7,6 +7,8 @@ import type { DocsPathMount } from "../internal/docs-url";
 import { setLogFormat, setVerbose } from "../internal/logger";
 import { getFlattenerNames } from "../internal/remark-phase";
 import type { DocsConfig } from "../llm/llm";
+import { readPathsLockfile } from "../redirects/node";
+import type { DocsRedirect } from "../redirects/redirects";
 import { resolveAllCollections } from "../sync/sync";
 import { lintConfigLinks } from "./config-lint";
 import { type ReporterFormat, renderReport } from "./reporters";
@@ -255,6 +257,18 @@ export async function runLintCommand(
   const rules = lintConfig?.rules as LintRuleOverrides | undefined;
   const mounts = loaded?.config.mounts;
   const assumeValidLinkPrefixes = openApiLinkPrefixes(loaded?.config.openapi);
+  // With redirect tracking enabled, an invalid-link to a renamed page reports
+  // where it moved instead of a bare missing-route message.
+  let redirects: DocsRedirect[] | undefined;
+  if (loaded?.config.redirects) {
+    const lockfile = await readPathsLockfile(
+      resolve(
+        dirname(loaded.path),
+        loaded.config.redirects.lockfile ?? "paths.lock.json"
+      )
+    ).catch(() => null);
+    redirects = lockfile?.redirects;
+  }
 
   // Custom-flattener component names, so the `unflattened-component` rule
   // doesn't warn on components the project has actually wired a flattener for.
@@ -344,6 +358,7 @@ export async function runLintCommand(
       mounts,
       assumeValidLinkPrefixes,
       rules,
+      redirects,
       ...(routeSet ? { routeSet } : {}),
     });
 

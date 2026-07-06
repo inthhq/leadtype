@@ -787,6 +787,151 @@ describe("lintDocs mounts and rule overrides", () => {
   });
 });
 
+describe("lintDocs relative links and anchors", () => {
+  it("resolves relative links against the source file", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "alpha.mdx"),
+      "---\ntitle: Alpha\n---\n[sibling](./beta) and [up](../index.mdx) and [gone](./missing)\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "beta.mdx"),
+      "---\ntitle: Beta\n---\nBody\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        rule: "invalid-link",
+        file: "guides/alpha.mdx",
+        message: expect.stringContaining("/docs/guides/missing"),
+      }),
+    ]);
+  });
+
+  it("skips relative links to non-doc assets", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[spec](./api.pdf) and [page](./v0.4)\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "v0.4.mdx"),
+      "---\ntitle: V0.4\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+
+    // ./api.pdf is an asset, not a route; ./v0.4 is a real dotted page name
+    // and validates cleanly.
+    expect(result.violations).toEqual([]);
+  });
+
+  it("flags relative links that climb out of the docs tree", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[escape](../outside)\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        rule: "invalid-link",
+        message: expect.stringContaining("outside the docs tree"),
+      }),
+    ]);
+  });
+
+  it("validates same-page and cross-page anchors", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      [
+        "---",
+        "title: Home",
+        "---",
+        "## Install",
+        "",
+        "[jump](#install) [bad-jump](#instal)",
+        "",
+        "[deep](/docs/guides/alpha#setup) [bad-deep](/docs/guides/alpha#set-up)",
+        "",
+      ].join("\n")
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "guides", "alpha.mdx"),
+      "---\ntitle: Alpha\n---\n## Setup\n\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+
+    const anchors = result.violations.filter(
+      (violation) => violation.rule === "invalid-anchor"
+    );
+    expect(anchors.map((violation) => violation.message)).toEqual([
+      expect.stringContaining("#instal"),
+      expect.stringContaining("#set-up"),
+    ]);
+    expect(result.violations).toHaveLength(2);
+  });
+
+  it("counts anchors contributed by include targets", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      '---\ntitle: Home\n---\n<include src="./_partials/shared.mdx" />\n\n[jump](#from-include)\n'
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "_partials", "shared.mdx"),
+      "## From include\n\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it("suggests the new route when an invalid link matches a redirect", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[old](/docs/old-guide)\n"
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      redirects: [
+        { from: "/docs/old-guide", to: "/docs/new-guide", status: 308 },
+      ],
+    });
+
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        rule: "invalid-link",
+        message: expect.stringContaining("moved to `/docs/new-guide`"),
+      }),
+    ]);
+  });
+});
+
 describe("lintConfigLinks", () => {
   it("reports navigation entries that match no page", async () => {
     const projectDir = await createTempProject();

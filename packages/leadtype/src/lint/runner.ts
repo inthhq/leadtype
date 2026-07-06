@@ -19,12 +19,17 @@ import {
   toDocsUrlPath,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
-import { validateJsonLd } from "../llm/readability";
+import { extractDocsTableOfContents } from "../llm/llm";
+import {
+  type DocsTableOfContentsItem,
+  validateJsonLd,
+} from "../llm/readability";
 import {
   BUILTIN_FLATTENER_COMPONENT_NAMES,
   defaultMarkdownTransforms,
   includeMarkdown,
 } from "../markdown";
+import type { DocsRedirect } from "../redirects/redirects";
 import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
@@ -45,6 +50,7 @@ export type LintRule =
   | "unflattened-component"
   | "jsonld"
   | "config-link"
+  | "invalid-anchor"
   | "geo:heading-skip"
   | "geo:code-language"
   | "geo:image-alt";
@@ -117,6 +123,12 @@ export type LintOptions = {
    * `srcDir`/`ignore`/`mounts`.
    */
   routeSet?: ReadonlySet<string>;
+  /**
+   * Redirect entries from the paths lockfile. An `invalid-link` whose target
+   * matches a redirect reports where the page moved instead of a bare
+   * missing-route message.
+   */
+  redirects?: DocsRedirect[];
   /** Custom schemas override the defaults */
   schemas?: {
     frontmatter?: v.ObjectSchema<
@@ -317,6 +329,15 @@ function looksLikeMarkdownUrlCandidate(
   if (isInternalDocsUrl(value, prefixes)) {
     return true;
   }
+  // Relative links resolve against the source file; same-page anchors
+  // resolve against the page's own headings.
+  if (
+    value.startsWith("./") ||
+    value.startsWith("../") ||
+    value.startsWith("#")
+  ) {
+    return true;
+  }
 
   return hasDocPlaceholder(value) && value.includes("/docs/");
 }
@@ -391,69 +412,191 @@ function collectMarkdownUrls(
   return Array.from(urls, (url) => ({ url }));
 }
 
-function validateDocUrls(
-  candidates: UrlCandidate[],
-  file: string,
-  kind: LintViolation["kind"],
-  routeSet: ReadonlySet<string>,
-  currentFramework: string | null,
-  internalPrefixes: readonly string[],
-  assumeValidLinkPrefixes: readonly string[]
-): LintViolation[] {
+/**
+ * Anchor ids a page's rendered markdown generates, using the same extractor
+ * (slugger, duplicate suffixing, fence handling) that builds the site TOC —
+ * so lint and the rendered site can't disagree about which anchors exist.
+ */
+function collectAnchors(content: string, urlPath: string): ReadonlySet<string> {
+  const anchors = new Set<string>();
+  const walk = (items: DocsTableOfContentsItem[]): void => {
+    for (const item of items) {
+      anchors.add(item.id);
+      walk(item.children);
+    }
+  };
+  walk(
+    extractDocsTableOfContents(
+      content,
+      { absoluteUrl: "", urlPath },
+      { minLevel: 1, maxLevel: 6 }
+    )
+  );
+  return anchors;
+}
+
+/**
+ * A trailing extension that marks a relative link as a non-doc asset
+ * (`./api.pdf`, `./schema.json`) rather than a page. `.md`/`.mdx` stay doc
+ * candidates, and a dotted page name like `./v0.4` doesn't count as an
+ * extension (extensions start with a letter).
+ */
+const NON_DOC_EXTENSION_PATTERN = /\.(?!mdx?$)[a-z][a-z0-9]*$/i;
+
+/**
+ * Resolve a `./x` / `../x` link against its source file's directory into a
+ * docs-relative path (extension stripped). Returns null when the link climbs
+ * out of the docs tree.
+ */
+function resolveRelativeDocPath(
+  sourceRelPath: string,
+  url: string
+): string | null {
+  const withoutExtension = url.replace(/\.(mdx|md)$/i, "");
+  const segments = sourceRelPath.split("/").slice(0, -1);
+  for (const part of withoutExtension.split("/")) {
+    if (!part || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      if (segments.length === 0) {
+        return null;
+      }
+      segments.pop();
+      continue;
+    }
+    segments.push(part);
+  }
+  return segments.join("/");
+}
+
+type ValidateDocUrlsOptions = {
+  candidates: UrlCandidate[];
+  file: string;
+  kind: LintViolation["kind"];
+  routeSet: ReadonlySet<string>;
+  currentFramework: string | null;
+  internalPrefixes: readonly string[];
+  assumeValidLinkPrefixes: readonly string[];
+  /** Docs-relative POSIX path of the source file (for relative links). */
+  sourceRelPath: string;
+  /** The page's own route (for same-page `#anchor` links). */
+  currentRoute: string;
+  /** Anchor ids per route, from every linted page's rendered markdown. */
+  anchorsByRoute: ReadonlyMap<string, ReadonlySet<string>>;
+  mounts?: DocsPathMount[];
+  redirects?: DocsRedirect[];
+};
+
+function validateDocUrls(options: ValidateDocUrlsOptions): LintViolation[] {
+  const {
+    candidates,
+    file,
+    kind,
+    routeSet,
+    currentFramework,
+    internalPrefixes,
+    assumeValidLinkPrefixes,
+    sourceRelPath,
+    currentRoute,
+    anchorsByRoute,
+    mounts,
+    redirects,
+  } = options;
   const violations: LintViolation[] = [];
+  const pushViolation = (
+    rule: LintRule,
+    field: string | undefined,
+    message: string
+  ): void => {
+    violations.push({ file, kind, severity: "error", rule, field, message });
+  };
 
   for (const candidate of candidates) {
     if (hasDocPlaceholder(candidate.url)) {
-      violations.push({
-        file,
-        kind,
-        severity: "error",
-        rule: "unresolved-placeholder",
-        field: candidate.field,
-        message: `unresolved placeholder in docs URL \`${candidate.url}\``,
-      });
+      pushViolation(
+        "unresolved-placeholder",
+        candidate.field,
+        `unresolved placeholder in docs URL \`${candidate.url}\``
+      );
       continue;
     }
 
-    if (!isInternalDocsUrl(candidate.url, internalPrefixes)) {
+    const hashIndex = candidate.url.indexOf("#");
+    const pathPart =
+      hashIndex === -1 ? candidate.url : candidate.url.slice(0, hashIndex);
+    const anchor =
+      hashIndex === -1 ? undefined : candidate.url.slice(hashIndex + 1);
+
+    // Resolve the candidate to a route, or skip it as external.
+    let targetRoute: string;
+    if (pathPart === "") {
+      // Same-page anchor: `#section`.
+      targetRoute = currentRoute;
+    } else if (isInternalDocsUrl(pathPart, internalPrefixes)) {
+      targetRoute = normalizeDocsUrl(pathPart);
+    } else if (pathPart.startsWith("./") || pathPart.startsWith("../")) {
+      // Relative links to non-doc assets aren't routes — skip them like
+      // external links.
+      if (NON_DOC_EXTENSION_PATTERN.test(pathPart)) {
+        continue;
+      }
+      const resolved = resolveRelativeDocPath(sourceRelPath, pathPart);
+      if (resolved === null) {
+        pushViolation(
+          "invalid-link",
+          candidate.field,
+          `relative link \`${candidate.url}\` resolves outside the docs tree`
+        );
+        continue;
+      }
+      targetRoute = toDocsUrlPath(resolved, mounts);
+    } else {
       continue;
     }
-
-    const normalizedUrl = normalizeDocsUrl(candidate.url);
 
     // Generated page trees (e.g. the OpenAPI output prefix) only exist after
-    // `leadtype generate`; their links are assumed valid rather than reported
-    // as missing routes.
-    if (isInternalDocsUrl(normalizedUrl, assumeValidLinkPrefixes)) {
+    // `leadtype generate`; their links are assumed valid rather than
+    // reported as missing routes.
+    if (isInternalDocsUrl(targetRoute, assumeValidLinkPrefixes)) {
       continue;
     }
-    const targetFramework = frameworkFromDocsUrl(normalizedUrl);
 
+    const targetFramework = frameworkFromDocsUrl(targetRoute);
     if (
       currentFramework &&
       targetFramework &&
       currentFramework !== targetFramework
     ) {
-      violations.push({
-        file,
-        kind,
-        severity: "error",
-        rule: "cross-framework-link",
-        field: candidate.field,
-        message: `links to \`${normalizedUrl}\`, which targets framework \`${targetFramework}\` instead of \`${currentFramework}\``,
-      });
+      pushViolation(
+        "cross-framework-link",
+        candidate.field,
+        `links to \`${targetRoute}\`, which targets framework \`${targetFramework}\` instead of \`${currentFramework}\``
+      );
       continue;
     }
 
-    if (!routeSet.has(normalizedUrl)) {
-      violations.push({
-        file,
-        kind,
-        severity: "error",
-        rule: "invalid-link",
-        field: candidate.field,
-        message: `links to missing docs route \`${normalizedUrl}\``,
-      });
+    if (!routeSet.has(targetRoute)) {
+      const moved = redirects?.find((entry) => entry.from === targetRoute);
+      pushViolation(
+        "invalid-link",
+        candidate.field,
+        moved?.to
+          ? `links to \`${targetRoute}\`, which moved to \`${moved.to}\` — update the link`
+          : `links to missing docs route \`${targetRoute}\``
+      );
+      continue;
+    }
+
+    if (anchor) {
+      const anchors = anchorsByRoute.get(targetRoute);
+      if (anchors && !anchors.has(anchor)) {
+        pushViolation(
+          "invalid-anchor",
+          candidate.field,
+          `links to \`${targetRoute}#${anchor}\`, but no heading on that page generates the anchor`
+        );
+      }
     }
   }
 
@@ -617,6 +760,19 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
   const routeSet =
     options.routeSet ?? (await collectRouteSet({ srcDir, ignore, mounts }));
   const internalPrefixes = internalLinkPrefixes(mounts);
+  // Link validation is deferred until every page's anchors are known, so
+  // cross-page `#anchor` checks see the full map.
+  type PendingLinkCheck = {
+    file: string;
+    kind: LintViolation["kind"];
+    frontmatterCandidates: UrlCandidate[];
+    contentCandidates: UrlCandidate[];
+    currentFramework: string | null;
+    sourceRelPath: string;
+    currentRoute: string;
+  };
+  const pendingLinkChecks: PendingLinkCheck[] = [];
+  const anchorsByRoute = new Map<string, ReadonlySet<string>>();
   const assumeValidLinkPrefixes = (options.assumeValidLinkPrefixes ?? []).map(
     (prefix) => normalizeInternalPrefix(prefix)
   );
@@ -720,29 +876,32 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       ]);
       const rendered = parseFrontmatter(converted.markdown);
       const currentFramework = deriveDocContext(file).framework;
-
-      violations.push(
-        ...validateDocUrls(
-          collectFrontmatterUrls(rendered.data, internalPrefixes),
-          relativeFile,
-          kind,
-          routeSet,
-          currentFramework,
-          internalPrefixes,
-          assumeValidLinkPrefixes
-        )
+      const sourceRelPath = toRelative(srcDir, file);
+      const currentRoute = toDocsUrlPath(
+        normalizeDocsPath(relative(srcDir, file)),
+        mounts
       );
-      violations.push(
-        ...validateDocUrls(
-          collectMarkdownUrls(rendered.content, internalPrefixes),
-          relativeFile,
-          "content",
-          routeSet,
-          currentFramework,
-          internalPrefixes,
-          assumeValidLinkPrefixes
-        )
+      // Anchors come from the rendered markdown (includes expanded), so a
+      // heading contributed by an <include> target still counts.
+      anchorsByRoute.set(
+        currentRoute,
+        collectAnchors(rendered.content, currentRoute)
       );
+      pendingLinkChecks.push({
+        file: relativeFile,
+        kind,
+        frontmatterCandidates: collectFrontmatterUrls(
+          rendered.data,
+          internalPrefixes
+        ),
+        contentCandidates: collectMarkdownUrls(
+          rendered.content,
+          internalPrefixes
+        ),
+        currentFramework,
+        sourceRelPath,
+        currentRoute,
+      });
     } catch (error) {
       violations.push({
         file: relativeFile,
@@ -752,6 +911,33 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
         message: `failed to render markdown for link checks: ${String(error)}`,
       });
     }
+  }
+
+  for (const pending of pendingLinkChecks) {
+    const shared = {
+      file: pending.file,
+      routeSet,
+      currentFramework: pending.currentFramework,
+      internalPrefixes,
+      assumeValidLinkPrefixes,
+      sourceRelPath: pending.sourceRelPath,
+      currentRoute: pending.currentRoute,
+      anchorsByRoute,
+      mounts,
+      redirects: options.redirects,
+    };
+    violations.push(
+      ...validateDocUrls({
+        ...shared,
+        candidates: pending.frontmatterCandidates,
+        kind: pending.kind,
+      }),
+      ...validateDocUrls({
+        ...shared,
+        candidates: pending.contentCandidates,
+        kind: "content",
+      })
+    );
   }
 
   for (const file of metaFiles) {
