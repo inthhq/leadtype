@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default described as static/local BM25 lexical index with no DB, (2) specific conditions listed (vocabulary/semantic mismatch + large corpus), and (3) lexical index explicitly kept as complementary. Minor deviation on exact corpus-size threshold (100K vs. tens of thousands) does not violate the rubric, and no incorrect claims appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 25,
+  "inputTokens": 26851,
+  "outputTokens": 352,
+  "durationMs": 48477,
+  "steps": 16,
+  "errors": []
+}

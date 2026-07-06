@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script includes all required library API calls (`convertAllMdx`, `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateDocsSearchFiles`) and passes `product`/`nav`, but it incorrectly sets `srcDir: projectRoot` for `generateLlmsTxt`, causing the generator to read the original source directory containing `.mdx` files instead of the already-converted markdown in `public/docs/`. This violates the ground‑truth requirement that the full‑context, search, and readability generators must read the converted markdown from `<outDir>/docs/`. Therefore, the script would fail to produce correct artifacts.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 21962,
+  "outputTokens": 617,
+  "durationMs": 42065,
+  "steps": 13,
+  "errors": []
+}

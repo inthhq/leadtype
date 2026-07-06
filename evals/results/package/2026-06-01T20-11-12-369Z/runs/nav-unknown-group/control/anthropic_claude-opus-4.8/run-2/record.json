@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that `nav` is the curated source of truth driving sidebar, `llms.txt`, and `AGENTS.md`, and that `group` is legacy/optional, still useful for fallback and search facets. However, it fails the required point about unknown `group` slugs: it confidently asserts that an unknown group slug does **not** cause a build failure, only a soft reported condition, when the rubric states the build must fail with an 'unknown group' error. This is a direct contradiction and makes the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 272062,
+  "outputTokens": 4369,
+  "durationMs": 88474,
+  "steps": 11,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent produced no ANSWER.md and no answer text; it only output helper scripts for inspecting a package. The task explicitly required an ANSWER.md answering two questions, which was not provided. This constitutes an empty/off-topic response, i.e., a refusal to answer.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 45462,
+  "outputTokens": 262,
+  "durationMs": 104268,
+  "steps": 50,
+  "errors": []
+}

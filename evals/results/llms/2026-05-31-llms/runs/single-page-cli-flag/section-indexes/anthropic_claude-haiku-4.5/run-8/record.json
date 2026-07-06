@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object and lists several fields, fulfilling the required points of naming llmsTxt and related keys. However, it invents 'agentReadabilityJson' (should be agentReadabilityManifest) and may misrepresent other field names, which violates the rubric's 'Incorrect if' condition for invented fields. Thus the answer is considered incorrect despite partially accurate information.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2517,
+  "outputTokens": 118,
+  "durationMs": 9592,
+  "steps": 5,
+  "errors": []
+}

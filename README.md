@@ -23,22 +23,34 @@ flowchart LR
   bundle_out --> offline_agents
 ```
 
-leadtype is **not a docs website framework**. Bring your own UI — Next.js, TanStack Start, Astro, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs that website frameworks don't ship.
+leadtype is **not a docs website framework**. Bring your own host and UI — a custom app, Next.js, TanStack Start, Astro, Nuxt, SvelteKit, Fumadocs, Vue, Svelte, anything — and let leadtype handle conversion, validation, search, and the agent-facing outputs it specializes in. Use it to power a custom docs app or layer it under a framework like Fumadocs or Starlight.
 
 ## Choose your path
 
-- **[Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
-- **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`.
+- **[Build a docs site](https://leadtype.dev/docs/pipeline/build-a-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
+- **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`. Agents that install your package then spend **32–54% fewer tokens** and **stop confidently guessing wrong** about your API — the win is biggest for the small, cheap models most agents run, with a smaller accuracy bump for frontier models ([evals](./FINDINGS.md)).
 
 ## Install
 
 ```bash
+# npm
+npm install leadtype
+# pnpm
 pnpm add leadtype
+# bun
+bun add leadtype
 ```
 
 ## 30-second example
 
-For a hosted docs site:
+The fastest start in an existing app — scaffolds the docs source, route, config, and a first artifact set. The framework is auto-detected from `package.json`; pass `--framework` to be explicit:
+
+```bash
+npx leadtype init                    # auto-detect, or:
+npx leadtype init --framework next   # next · astro · nuxt · sveltekit
+```
+
+Or wire the pipeline by hand. For a hosted docs site:
 
 ```bash
 npx leadtype generate --src . --out public --base-url https://leadtype.dev
@@ -47,10 +59,20 @@ npx leadtype generate --src . --out public --base-url https://leadtype.dev
 For an npm-bundled doc set:
 
 ```bash
-npx leadtype generate --bundle --src . --out packages/my-package
+npx leadtype generate --bundle --src . --out packages/acme
 ```
 
-The first produces `public/llms.txt`, `public/llms-full.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/my-package/AGENTS.md` and `packages/my-package/docs/*.md` with relative links that still work after npm install.
+The first produces `public/llms.txt`, `public/llms-full.txt`, `public/docs/search-index.json`, and `public/docs/*.md`. The second produces `packages/acme/AGENTS.md` and `packages/acme/docs/*.md` with relative links that still work after npm install.
+
+**Bundling is two steps, and the second is the one that matters.** Shipping `AGENTS.md` only pays off if consuming projects point their agent at it — left to discover it on their own, agents read the bundle only ~29% of the time; with a root-`AGENTS.md` pointer it's ~90–100% ([evals](./FINDINGS.md)). So tell consumers to add this to their own root `AGENTS.md`:
+
+```md
+When working with the `acme` library, read the bundled docs in
+`node_modules/acme/AGENTS.md` first — they're version-matched to the
+installed package and stay accurate as it updates.
+```
+
+`leadtype generate --bundle` prints this snippet, filled in with your package name, on success.
 
 ## Documentation
 
@@ -58,32 +80,33 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs):
 
 - [Quickstart](https://leadtype.dev/docs/quickstart)
 - [How it works](https://leadtype.dev/docs/how-it-works)
-- [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site)
+- [Build a docs site](https://leadtype.dev/docs/pipeline/build-a-docs-site)
 - [Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)
-- [Add search](https://leadtype.dev/docs/build/add-search)
-- [Frontmatter](https://leadtype.dev/docs/authoring/frontmatter)
+- [Add search](https://leadtype.dev/docs/search/add-search)
+- [Frontmatter](https://leadtype.dev/docs/writing/frontmatter)
 - [CLI reference](https://leadtype.dev/docs/reference/cli)
-- [Methodology](https://leadtype.dev/docs/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
+- [Architecture](https://leadtype.dev/docs/concepts/architecture) — core package boundary and framework adapter rules
+- [Methodology](https://leadtype.dev/docs/concepts/methodology) — how leadtype differs from Fumadocs, Starlight, and Mintlify
 
 ## Repo layout
 
 - `packages/leadtype/` — the npm package (CLI + library entry points).
-- `apps/example/` — production docs site and reference template, on TanStack Start.
+- `apps/tanstack/` — production docs site and reference template, on TanStack Start.
 - `docs/` — the source MDX rendered by both this site and the package's bundled docs.
 
 ## Local workflow
 
 ```bash
 bun install
-bun run dev          # build the package, run the pipeline, start the example app
+bun run dev          # build the package, run the pipeline, start the TanStack app
 ```
 
 Pipeline checks:
 
 ```bash
-bun run --filter example pipeline:build
-bun run --filter example pipeline:test
-bun run --filter example test:e2e
+bun run --filter tanstack pipeline:build
+bun run --filter tanstack pipeline:test
+bun run --filter tanstack test:e2e
 ```
 
 ## License

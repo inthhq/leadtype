@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical index and that it should be kept for exact matches. However, it omits the required condition of a very large corpus (tens of thousands of chunks) as a scenario warranting embeddings. The listed conditions focus only on vocabulary/intent mismatch, and the confident 'only if' phrasing presents an incomplete set of criteria, missing a key rubric point. This makes the response incorrect, though partially complete, earning 60 out of 100.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 169803,
+  "outputTokens": 3021,
+  "durationMs": 43407,
+  "steps": 18,
+  "errors": []
+}

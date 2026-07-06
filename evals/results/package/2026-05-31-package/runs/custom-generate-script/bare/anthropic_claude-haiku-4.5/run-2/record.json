@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script does not call `convertAllMdx` from `leadtype/convert` as required by the rubric; it instead uses its own `convertMdxFile` loop, which is not the documented conversion API. While the ordering is correct and the other required generators (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateDocsSearchFiles`) are called with `product`/`nav`, the conversion step is wrong, making the script incomplete and likely non-functional.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 40,
+  "inputTokens": 38176,
+  "outputTokens": 718,
+  "durationMs": 118684,
+  "steps": 29,
+  "errors": []
+}

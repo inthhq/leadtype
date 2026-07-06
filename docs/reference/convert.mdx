@@ -1,12 +1,9 @@
 ---
 title: "Convert"
 description: "MDX-to-markdown conversion APIs from leadtype/convert."
-group: reference
 ---
 
-# Convert
-
-The `leadtype/convert` entry point flattens MDX into clean markdown via the [remark plugin stack](/docs/reference/remark).
+The `leadtype/convert` entry point flattens MDX into clean markdown via the [markdown transform stack](/docs/reference/markdown).
 
 ```ts
 import {
@@ -16,19 +13,19 @@ import {
 } from "leadtype/convert";
 ```
 
-The CLI ([`leadtype generate`](/docs/reference/cli)) calls `convertAllMdx` internally — use these APIs directly when you need custom plugin order, in-memory output, or per-file control.
+The CLI ([`leadtype generate`](/docs/reference/cli)) calls `convertAllMdx` internally — use these APIs directly when you need custom transform order, in-memory output, or per-file control.
 
 ## convertAllMdx
 
 Batch convert a docs tree:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 await convertAllMdx({
   srcDir: "docs",
   outDir: "public/docs",
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
   enrichFrontmatterFromGit: true,
 });
 ```
@@ -37,10 +34,31 @@ await convertAllMdx({
 | --- | --- |
 | `srcDir` | Root directory of `.mdx` files. |
 | `outDir` | Destination for `.md` output. The directory structure mirrors `srcDir`. |
-| `remarkPlugins` | Plugin array. Usually `[remarkInclude?, ...defaultRemarkPlugins]`. Order matters. |
+| `markdownTransforms` | Transform array. Usually `[includeMarkdown?, ...defaultMarkdownTransforms]`. Order matters. |
 | `enrichFrontmatterFromGit` | When true, adds `lastModified` and `lastAuthor` from git history. |
+| `prune` | When true, deletes `.md` files under `outDir` whose source page was deleted or renamed. Default `false`. |
+| `pruneKeep` | Glob patterns (relative to `outDir`) for `.md` files `prune` must keep. |
 
 The function is concurrent — large trees process in parallel.
+
+### Pruning orphaned output
+
+Renaming or deleting a source page leaves its old `.md` behind in `outDir` — a live URL with stale content that leaks into sitemaps, link checks, and search indexing. `prune: true` garbage-collects those orphans after each successful batch:
+
+```ts
+await convertAllMdx({ srcDir: "docs", outDir: "public/docs", prune: true });
+```
+
+Prune semantics, in order of what protects you:
+
+- **Only `.md` files are candidates.** Images, JSON artifacts, and anything else sharing `outDir` are never touched.
+- **Skipped on partial failure.** If any page fails to convert, the expected output set is incomplete, so the run warns and deletes nothing.
+- **Skipped when `srcDir` resolves to zero pages.** A typoed `srcDir` must not wipe `outDir`; the run warns instead.
+- **Exempt files.** Use `pruneKeep` globs for `.md` files other tools write into the same `outDir` (generated sitemaps, agent page mirrors, locale aliases): `pruneKeep: ["sitemap.md", "mirrors/**"]`. Nothing is exempted implicitly — a deleted source page prunes regardless of its filename.
+- **Symlinks are never followed**, so a link inside `outDir` can't cause deletions outside it.
+- **Locked against concurrent runs.** While pruning, the run holds the same per-`outDir` lock as [`leadtype generate`](/docs/reference/cli), so a prune can't delete output a concurrent run just wrote. Set `LEADTYPE_NO_LOCK=1` to opt out.
+
+Directories emptied by pruning are removed as well.
 
 ## convertMdxToMarkdown
 
@@ -49,7 +67,7 @@ Convert one file in memory and get back the markdown plus parsed frontmatter:
 ```ts
 const result = await convertMdxToMarkdown(
   "docs/quickstart.mdx",
-  defaultRemarkPlugins,
+  defaultMarkdownTransforms,
   /* enrichFrontmatterFromGit */ false,
 );
 
@@ -64,10 +82,9 @@ Use this when you want to render the output yourself, validate it before writing
 Convert one file and write the output:
 
 ```ts
-await writeMdxFileAsMarkdown({
-  srcPath: "docs/quickstart.mdx",
-  outPath: "public/docs/quickstart.md",
-  remarkPlugins: defaultRemarkPlugins,
+await writeMdxFileAsMarkdown("docs/quickstart.mdx", {
+  outDir: "public/docs",
+  markdownTransforms: defaultMarkdownTransforms,
 });
 ```
 
@@ -78,14 +95,16 @@ await writeMdxFileAsMarkdown({
 - **Tables and Mermaid blocks are compacted** after rendering so agent output stays clean.
 - **Conversion is concurrent** — there is no global state.
 
-## Pairing with remark plugins
+## Pairing with markdown transforms
 
-In most setups, pair `convertAllMdx` with the default plugin stack and `remarkInclude` if your docs use partials:
+In most setups, pair `convertAllMdx` with the default transform stack and `includeMarkdown` if your docs use partials:
 
 ```ts
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
-remarkPlugins: [remarkInclude, ...defaultRemarkPlugins];
+markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms];
 ```
 
-Place `remarkInclude` *before* the defaults so includes expand into the source AST before component flattening sees them. See [Remark plugins](/docs/reference/remark) for the full stack and order rationale.
+Place `includeMarkdown` *before* the defaults so includes expand into the source AST before component flattening sees them. See [Markdown transforms](/docs/reference/markdown) for the full stack and order rationale.
+
+The include plugin supports tags such as `<include src="./shared/auth.mdx" />` and section reuse with `<include src="./shared/auth.mdx#session-flow" />`. Section reuse expects a lowercase `<section id="session-flow">` block in the included file.

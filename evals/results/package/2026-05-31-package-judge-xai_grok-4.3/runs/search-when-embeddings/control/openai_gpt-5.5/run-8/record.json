@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the ANSWER.md correctly states the default is a static/local BM25 lexical index with no DB, lists the specific warranted conditions (vocabulary mismatch and/or large corpus after evidence that tuning can't fix it), and explicitly requires keeping the lexical/BM25 index as the primary or complementary component. No incorrect claims appear. Minor deduction only because the exact 'tens of thousands of chunks' phrasing is paraphrased rather than quoted.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 24710,
+  "outputTokens": 121,
+  "durationMs": 46593,
+  "steps": 10,
+  "errors": []
+}

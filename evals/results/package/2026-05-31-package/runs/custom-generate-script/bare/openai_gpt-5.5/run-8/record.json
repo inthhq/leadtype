@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the correct library APIs and calls convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, and it passes product and nav from docs.config.ts. However, the generateLlmsTxt call uses `srcDir: staged.root` (the original MDX source) rather than the converted markdown directory (`public/docs`). Per the rubric, the full-context generators must read the already-converted markdown from `<outDir>/docs/`, so this misconfiguration violates the critical ordering/usage requirement. As a result, the generated artifacts may be based on unconverted content, making the script incorrect despite the presence of all required calls.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 92,
+  "inputTokens": 44270,
+  "outputTokens": 400,
+  "durationMs": 474254,
+  "steps": 14,
+  "errors": []
+}

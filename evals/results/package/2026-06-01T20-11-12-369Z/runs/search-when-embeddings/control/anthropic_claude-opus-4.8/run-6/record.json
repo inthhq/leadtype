@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly describes leadtype’s static BM25 default and warns against a hosted vector DB. It also clearly states that BM25 should be kept and run hybrid. However, the required specific condition for adding embeddings (corpus past tens of thousands of chunks) is missing: the answer only says 'Very large/heterogeneous content,' which is too vague. Because the response asserts conditions confidently but omits the required threshold, it fails the REQUIRED point about giving specific conditions. The rest of the rubric is satisfied, but the omission makes it incomplete and 'correct' is false.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 117989,
+  "outputTokens": 4360,
+  "durationMs": 80886,
+  "steps": 10,
+  "errors": []
+}

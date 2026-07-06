@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response points to the correct agent-facing output APIs (e.g. generateLlmsTxt, generateAgentsMd) from the LLM files area, not the Search UI. It explains /llms-full.txt as a broad fallback used when page-level context is insufficient, exactly as required. All rubric points are satisfied with no factual errors.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 12,
+  "inputTokens": 4544,
+  "outputTokens": 268,
+  "durationMs": 23007,
+  "steps": 8,
+  "errors": []
+}

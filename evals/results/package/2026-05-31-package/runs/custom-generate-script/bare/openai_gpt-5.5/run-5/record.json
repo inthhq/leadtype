@@ -1,0 +1,23 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, satisfying the required ordering. It uses the library APIs from leadtype, imports product and nav from docs.config.ts, and passes them into the generators. All required artifacts are produced without invoking the CLI or inventing API names.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 93,
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "durationMs": 580441,
+  "steps": 0,
+  "errors": [
+    "Invalid error response format: Gateway request failed: The operation timed out."
+  ]
+}

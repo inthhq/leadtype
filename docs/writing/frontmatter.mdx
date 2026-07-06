@@ -1,0 +1,175 @@
+---
+title: "Frontmatter"
+description: "Required fields, optional taxonomy metadata, and how authored MDX becomes a navigation tree."
+status: updated
+related:
+  - title: "Lint rules"
+    href: "/docs/reference/lint"
+    description: "See how Leadtype validates the default frontmatter schema."
+  - title: "Frontmatter transformers"
+    href: "/docs/reference/frontmatter-transformers"
+    description: "Derive release-channel or product-specific metadata at build time."
+---
+
+Every page is a `.mdx` file with a YAML frontmatter block. Leadtype reads
+frontmatter for page metadata and linting; curated navigation lives in
+`docs.config.ts` `navigation`.
+
+## Minimum
+
+```mdx
+---
+title: "Build a docs site"
+description: "Pick the right leadtype integration shape for your docs app."
+---
+```
+
+- `title` — required. Non-empty string. Renders as the page heading and as the entry text in `llms.txt` and the sidebar.
+- `description` — optional but recommended. Becomes the routing hint in `llms.txt`. If omitted, the converter synthesizes one from the body during conversion (see [convert behavior](/docs/reference/convert)).
+- `group` — optional legacy taxonomy metadata. Use config-owned `navigation` for curated page placement.
+
+## How navigation becomes site navigation and the agent map
+
+For curated docs sites, put the navigation structure in `docs.config.ts` with
+`navigation`. Root nodes can become top-level tabs like Docs, Frontend, Integrations,
+or Changelog. The active root node's pages and children usually become the
+sidebar. The same resolved tree drives generated navigation, `llms.txt`,
+`AGENTS.md`, sitemap markdown, and Agent Readability metadata.
+
+```ts
+export default defineDocsConfig({
+  product: { name: "c15t", tagline: "Developer-first consent management." },
+  navigation: [
+    {
+      title: "Frontend",
+      children: [
+        {
+          title: "Next.js",
+          base: "frameworks/next",
+          children: [
+            { title: "Start", pages: ["quickstart", "optimization"] },
+            {
+              title: "Concepts",
+              pages: [
+                "concepts/client-modes",
+                { include: "concepts/*", sort: ["order", "path"] },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
+```
+
+`base` cascades to child nodes. Page strings are extensionless paths relative
+to the nearest `base`; a leading `/` starts from the docs root. Include entries
+append matching pages at that position and use `order` then path sorting by
+default.
+
+## Legacy groups
+
+Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple taxonomy groups. In projects that have not adopted `navigation`, each group is declared once in `docs.config.ts`. `leadtype generate` loads that config automatically when it exists. The intersection produces the fallback nav tree, section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
+
+<Mermaid chart={`flowchart LR
+  cfg["docs.config.ts<br/>groups: [authoring, docs-site, reference]"]
+  page1["page A<br/>group: authoring"]
+  page2["page B<br/>group: docs-site"]
+  page3["page C<br/>group: docs-site"]
+  resolver["group resolver"]
+  nav["navigation tree"]
+  llms["llms.txt sections"]
+  agents["AGENTS.md sections"]
+  cfg --> resolver
+  page1 --> resolver
+  page2 --> resolver
+  page3 --> resolver
+  resolver --> nav
+  resolver --> llms
+  resolver --> agents`} />
+
+If a page declares a group slug that isn't in `docs.config.ts`, the build fails with `unknown group "<slug>"`. Same source of truth, no drift.
+
+If you do not have `navigation`, the CLI falls back to the legacy group resolver and infers groups from the `group:` values it finds. That fallback is enough for small docs sets, but use config `navigation` when you need stable top-level docs areas, sidebar order, descriptions, nested sections, or wildcard includes.
+
+### Nested groups
+
+Declare children in the config to build deeper trees:
+
+```ts
+{
+  slug: "docs-site",
+  title: "Build an Agent-Ready Site",
+  children: [
+    { slug: "source-primitive", title: "Use the source primitive" },
+    { slug: "agent-artifacts", title: "Generate agent artifacts" },
+  ],
+}
+```
+
+A page sets `group: remote-source` and lands in that nested slot. Only **leaf** groups (no children) directly contain pages; non-leaf groups are headings only.
+
+## Optional fields
+
+The default lint schema also accepts:
+
+<TypeTable
+  properties={{
+    icon: { type: "string", description: "Icon name resolved by your sidebar component." },
+    status: { type: "\"new\" | \"updated\" | \"experimental\"", description: "Editorial page badge. Release channels belong in config or transformers." },
+    deprecated: { type: "string", description: "Deprecation message, such as \"Use /docs/new-page instead.\"." },
+    date: { type: "string", description: "Stable publication date for feed entries, especially changelogs and release notes." },
+    tags: { type: "string[]", description: "Free-form tags for search facets." },
+    search: { type: "boolean", description: "Set false to exclude a page from public search and answer citations; set true to index an explicitly public shared route." },
+    variants: { type: "Array<{ value, label?, href, description? }>", description: "Same-topic equivalents across frameworks, SDKs, runtimes, or platforms." },
+    related: { type: "Array<{ title, href, description? }>", description: "See-also links for adjacent pages." },
+    full: { type: "boolean", description: "Layout hint for docs UIs that support full-width pages." },
+  }}
+/>
+
+Use `date` when a page has a stable publication date, such as a changelog or
+release note included in an RSS/Atom feed. `lastModified` and `lastAuthor` are
+filled in automatically by `leadtype generate` when git metadata is available.
+Don't author them by hand.
+
+Route segments named `shared/` or `_shared/` are treated as internal templates
+for search by default, including mounted sections such as changelog routes. Use
+`search: true` only when a shared page is intentionally public and should be
+searchable/citable on its own. Use `search: false` to keep any other page out of
+public search and answer citations while still generating its markdown mirror.
+
+Use `status` only for the page's editorial state. Canary, RC, preview, and
+stable are release-channel concerns; model them with build config, deployment
+environment, or [frontmatter transformers](/docs/reference/frontmatter-transformers)
+so the same source file can move from preview to stable without stale metadata.
+
+Use `deprecated` only when you have a message to show. Empty strings fail lint
+because they usually mean a migration from the old boolean form was left
+unfinished.
+
+Use collection `include` and `exclude` patterns for drafts or private pages.
+The default page schema does not include `draft` because authors expect that
+field to affect generated markdown, search, `llms.txt`, and AGENTS.md.
+
+## Lint rules
+
+`leadtype lint` enforces the schema, so violations surface in CI before they reach a build. The relevant rules:
+
+- `schema` — a required field is missing or has the wrong type.
+- `unknown-field` — a top-level field isn't in the schema (warn by default; `--error-unknown` to fail).
+- `parse-error` — frontmatter or `meta.json` doesn't parse.
+- `invalid-link` — a `/docs/...` link points to a route that doesn't exist.
+- `unresolved-placeholder` — a doc URL still contains an unresolved `{framework}` placeholder.
+- `cross-framework-link` — a framework-scoped page links to another framework's docs.
+
+See [Lint rules](/docs/reference/lint) for the full reference and how to extend the schema.
+
+## What this gives you
+
+Once frontmatter and config are consistent, Leadtype keeps human and agent
+surfaces aligned:
+
+- `navigation` drives top-level docs areas, sidebar structure, `llms.txt`, `AGENTS.md`, sitemap markdown, and Agent Readability navigation.
+- `group` remains available for legacy navigation fallback, search facets, and broad taxonomy.
+- `order` remains available as fallback sorting for pages pulled in by `include`.

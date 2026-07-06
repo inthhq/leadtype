@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer clearly states that 'nav' drives the sidebar, llms.txt, and AGENTS.md, identifies 'group' as legacy fallback taxonomy with some remaining use (validation, fallback metadata), and explicitly describes that an unknown group causes a hard build failure with an error message and exit code 1. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 46931,
+  "outputTokens": 341,
+  "durationMs": 64809,
+  "steps": 17,
+  "errors": []
+}

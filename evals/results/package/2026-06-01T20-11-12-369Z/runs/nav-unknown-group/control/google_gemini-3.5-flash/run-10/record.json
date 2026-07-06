@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies `nav` as the curated source of truth driving sidebar, agent maps, llms.txt, and AGENTS.md. It describes `group` as a legacy fallback for grouping and taxonomy. It explicitly states that an unknown group causes a hard build error (not a silent skip or warning). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 65,
+  "inputTokens": 654195,
+  "outputTokens": 11815,
+  "durationMs": 352077,
+  "steps": 34,
+  "errors": []
+}

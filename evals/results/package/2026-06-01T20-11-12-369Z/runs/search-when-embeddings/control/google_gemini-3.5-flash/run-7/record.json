@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes that the default search uses a static BM25 lexical index with no database. It provides specific conditions for adding embeddings (vocabulary mismatch and large corpus of tens of thousands of chunks) and emphasizes that the lexical index must be retained for exact matches, making embeddings complementary. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 301812,
+  "outputTokens": 7008,
+  "durationMs": 55533,
+  "steps": 15,
+  "errors": []
+}

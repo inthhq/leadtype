@@ -5,7 +5,7 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["example"],
+  "ignore": ["*-example", "tanstack", "leadtype-evals"],
   "snapshot": {
     "useCalculatedVersion": true
   }

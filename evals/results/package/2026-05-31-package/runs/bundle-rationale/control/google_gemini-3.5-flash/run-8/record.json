@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains llms.txt as an HTTP-native standard for websites, making it unsuitable for an npm tarball; describes AGENTS.md as an offline, version-matched file with relative links to docs inside the package; and lists llms.txt, llms-full.txt, and search-index.json as the website artifacts skipped by --bundle. All required rubric points are satisfied with no factual errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 38,
+  "inputTokens": 10840,
+  "outputTokens": 203,
+  "durationMs": 83675,
+  "steps": 19,
+  "errors": []
+}

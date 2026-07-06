@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object describing generated artifacts and lists several correct fields like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it claims the field 'agentReadabilityJson' exists, whereas the ground truth specifies 'agentReadabilityManifest'. This is a confidently wrong assertion about the result shape, making the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3458,
+  "outputTokens": 338,
+  "durationMs": 17443,
+  "steps": 4,
+  "errors": []
+}

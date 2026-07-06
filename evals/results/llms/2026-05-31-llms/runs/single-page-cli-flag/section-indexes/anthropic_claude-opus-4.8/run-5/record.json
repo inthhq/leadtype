@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 45,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails to describe the full JSON result object (missing mode, source/output dirs, product, groups). It presents the output as a flat map of keys to paths instead of a structured result with a 'files' map. It invents keys not in the ground truth (agentReadabilityJson vs. agentReadabilityManifest, sitemapXml, sitemapMd, robotsTxt) while correctly naming some required fields (llmsTxt, docsLlmsTxt, llmsFullTxt). The answer is stated confidently without hedging, hence confident_wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 4158,
+  "outputTokens": 337,
+  "durationMs": 23084,
+  "steps": 6,
+  "errors": []
+}

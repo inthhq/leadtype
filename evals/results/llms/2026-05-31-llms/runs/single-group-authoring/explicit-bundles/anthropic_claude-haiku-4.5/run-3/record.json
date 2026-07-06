@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping, and correctly characterizes `/llms-full.txt` as a monolithic all-docs file. It names many valid optional fields like `icon` and `deprecated`. However, it incorrectly includes `availableIn` as an optional field, which is not in the rubric's list of valid fields, violating the requirement to avoid invented fields. The error is stated plainly without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3520,
+  "outputTokens": 188,
+  "durationMs": 21038,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that group organizes navigation, llms.txt sections, AGENTS.md grouping, and search metadata. It correctly characterizes /llms-full.txt as a monolithic all-docs file not split by group. It names multiple valid optional fields including icon, deprecated, experimental. All required points satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 4921,
+  "outputTokens": 506,
+  "durationMs": 36628,
+  "steps": 9,
+  "errors": []
+}

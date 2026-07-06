@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies `nav` (in `docs.config.ts`) as the curated driver of sidebar/navigation, `llms.txt` sections, and `AGENTS.md` grouping. It describes `group` as an optional/page-level field useful for fallback navigation when config is absent, multi-group sharing, and exclusion. It explicitly states that an unknown `group` slug causes a build failure with an error message. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 44,
+  "inputTokens": 37893,
+  "outputTokens": 513,
+  "durationMs": 131450,
+  "steps": 45,
+  "errors": []
+}

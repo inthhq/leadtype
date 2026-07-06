@@ -1,0 +1,154 @@
+---
+title: "Integrate with Fumadocs"
+description: "Wire leadtype's content layer into a fumadocs app for nav, search, and includes."
+---
+
+Fumadocs owns the docs UI — sidebar, layout, theme, search input, route handlers. Leadtype owns the **content pipeline** — `<include>` expansion, frontmatter resolution, the typed tag contract, and the agent/LLM artifacts. The two pair naturally: fumadocs reads source MDX, leadtype provides the source primitive and the build-time transforms that go through fumadocs's MDX compiler.
+
+This page covers the wiring. For everything fumadocs does after that, see fumadocs's own docs.
+
+## TL;DR
+
+```sh
+bun add leadtype fumadocs-core fumadocs-ui
+```
+
+```ts title="lib/source.ts"
+import { loader } from "fumadocs-core/source";
+import { fumadocsSource } from "leadtype/fumadocs";
+
+const fumaSource = await fumadocsSource({ contentDir: "./content/docs" });
+export const source = loader({ baseUrl: "/docs", source: fumaSource });
+export const leadtypeSource = fumaSource.leadtype;
+```
+
+```ts title="next.config.mjs"
+import createMDX from "@next/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
+
+export default createMDX({
+  options: {
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
+  },
+})({ pageExtensions: ["ts", "tsx", "mdx"] });
+```
+
+That's the minimum. The rest of this page covers `DocsLayout` wiring, page rendering, custom-tag mapping, and search.
+
+## Install
+
+```sh
+bun add leadtype fumadocs-core fumadocs-ui
+```
+
+Leadtype declares `fumadocs-core >= 15` as an **optional peer dependency** — install it explicitly when you want the adapter.
+
+## Wire the source
+
+```ts title="content/source.ts"
+import { loader } from "fumadocs-core/source";
+import { fumadocsSource } from "leadtype/fumadocs";
+
+export const source = loader({
+  baseUrl: "/docs",
+  source: await fumadocsSource({
+    contentDir: "./content/docs",
+    groups: [
+      { slug: "get-started", title: "Get Started" },
+      { slug: "guides", title: "Guides" },
+    ],
+  }),
+});
+```
+
+`fumadocsSource()` pre-walks `contentDir`, returns a synchronous `Source` for fumadocs, and exposes the underlying `DocsSource` on `source.leadtype` for `loadPage()` / `buildSearchIndex()` / `resolveInclude()`.
+
+## Add the source preset to your MDX compiler
+
+Leadtype's MDX-source preset expands `<include>`, resolves `<ExtractedTypeTable>`, and strips authoring `import`s — at build time. Everything else stays JSX for your runtime components.
+
+```ts title="next.config.mjs"
+import createMDX from "@next/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
+
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
+  },
+});
+
+export default withMDX({ pageExtensions: ["ts", "tsx", "mdx"] });
+```
+
+The same plugin list works with `@mdx-js/rollup`, fumadocs-mdx, and any other MDX compiler that accepts a remark plugin list. Set `typeTableBasePath` to the source root that contains files referenced by `<ExtractedTypeTable path="…">`.
+
+## Implement the tag components
+
+Use the prop types from `leadtype/mdx` so your components type-check against the same contract the source preset expects:
+
+```tsx
+import type { CalloutProps, TabsProps, StepProps } from "leadtype/mdx";
+
+export function Callout({ variant, title, children }: CalloutProps) {
+  return (
+    <aside data-variant={variant ?? "info"}>
+      {title ? <p><strong>{title}</strong></p> : null}
+      <div>{children}</div>
+    </aside>
+  );
+}
+```
+
+See [MDX tag contract](/docs/reference/mdx) for the full prop list across all 14 tags.
+
+## Load a page from a server component
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote-client/rsc";
+import { source } from "@/content/source";
+import { mdxComponents } from "@/lib/mdx-components";
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const { slug } = await params;
+  const page = await source.leadtype.loadPage(slug ?? []);
+  if (!page) {
+    notFound();
+  }
+
+  return (
+    <article>
+      <h1>{page.title}</h1>
+      <MDXRemote source={page.markdown} components={mdxComponents} />
+    </article>
+  );
+}
+```
+
+If you prefer fumadocs's built-in page resolution, call `source.getPage(slug)` and import the source `.mdx` directly through fumadocs-mdx as you normally would — the `createMdxSourcePlugins()` preset will resolve includes during MDX compilation.
+
+## Add search
+
+Build a search index from the same source:
+
+```ts title="app/api/search/route.ts"
+import { source } from "@/content/source";
+
+const bundle = await source.leadtype.buildSearchIndex();
+
+export async function GET() {
+  return Response.json(bundle.index);
+}
+```
+
+For provider-specific search (Vercel AI, TanStack, Cloudflare), wire the bundle into a `leadtype/search/*` adapter. See [Search](/docs/search/add-search).

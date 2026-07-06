@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that `leadtype generate --json` prints a JSON result object and names several valid output-path fields like `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. However, it invents the field `agentReadabilityJson`, which does not exist in the result shape (the correct field is `agentReadabilityManifest`). This violates the rubric's 'incorrect if invents fields' rule, so the answer is not fully correct. The error is stated confidently, without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2459,
+  "outputTokens": 120,
+  "durationMs": 7783,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `--json` prints a JSON object describing the generation run. It lists multiple artifact path fields, including the required `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. It does not describe human-readable output or invent non-existent fields, satisfying all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3036,
+  "outputTokens": 76,
+  "durationMs": 8642,
+  "steps": 5,
+  "errors": []
+}

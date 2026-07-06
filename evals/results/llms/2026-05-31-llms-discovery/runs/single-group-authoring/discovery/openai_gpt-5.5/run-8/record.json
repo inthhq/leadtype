@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately explains that 'group' organizes navigation, llms.txt sections, and AGENTS.md grouping, and correctly describes /llms-full.txt as a single monolithic file. It also lists at least two valid optional fields (e.g., icon, deprecated). However, it includes fields not present in the rubric's optional schema (description, deprecatedReason, availableIn), which violates the 'invents fields not in the schema' condition, making the overall response incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 10,
+  "inputTokens": 4656,
+  "outputTokens": 13,
+  "durationMs": 18781,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly covers the default (static BM25 lexical index, no DB) and the requirement to keep the lexical index as primary/complementary. However, it fails the second REQUIRED point: it lists its own generic conditions (semantically dense docs, query volume/latency, frequent updates) instead of the rubric's exact triggers (vocabulary/intent mismatch with docs, and/or corpus past ~tens of thousands of chunks). This is presented confidently without hedging, so it does not satisfy every required rubric criterion.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 23225,
+  "outputTokens": 410,
+  "durationMs": 55006,
+  "steps": 21,
+  "errors": []
+}

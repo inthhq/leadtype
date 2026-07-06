@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "router",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that `--json` prints a JSON object describing the generated artifacts and lists several valid output-path keys such as `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. However, it invents the field `agentReadabilityJson`; the actual field is `agentReadabilityManifest` per the rubric. Since the rubric marks inventing fields as incorrect, the answer is incorrect despite meeting the two required points.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3972,
+  "outputTokens": 298,
+  "durationMs": 22981,
+  "steps": 6,
+  "errors": []
+}

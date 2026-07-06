@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: nav is identified as the curated driver of sidebar/llms.txt/AGENTS.md etc.; group is correctly described as legacy/optional for fallback + search facets; and unknown group is stated to produce a hard build failure with the exact error message. No rubric violations or incorrect claims appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 8157,
+  "outputTokens": 456,
+  "durationMs": 32626,
+  "steps": 5,
+  "errors": []
+}

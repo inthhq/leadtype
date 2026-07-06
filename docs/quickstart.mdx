@@ -1,28 +1,68 @@
 ---
 title: "Quickstart"
-description: "Install leadtype, run the hosted-docs pipeline once, and inspect the generated artifacts."
-group: get-started
+description: "Build an agent-ready docs site from one MDX page: render it, generate llms.txt and markdown mirrors, then verify the output."
 ---
 
-# Quickstart
+<Callout title="Shipping docs inside an npm package?" variant="info">
+  This quickstart covers **site mode** (docs website). For npm-bundled docs, follow [Bundle docs into a package](/docs/package-docs/bundle) instead.
+</Callout>
 
-Five minutes from a folder of MDX to generated docs artifacts.
+This is the GA happy path: one MDX source, one docs route, and one generated artifact set for agents.
 
 ## Install
 
 <CommandTabs command="leadtype" mode="install" />
 
-`leadtype` ships a CLI plus focused library entry points. Start with the CLI; use the APIs only when your build needs custom plugin order, filtering, or output paths.
+## Fastest: scaffold with `leadtype init`
 
-## Author one page
+In an existing app, `leadtype init` writes the integration for you — a starter
+`docs/` source, the docs route, the markdown route, config, and a generated set
+of agent artifacts — then runs `leadtype generate` so the site works on the
+first `dev`.
 
-Create `docs/index.mdx` in your repo:
+```bash
+# Auto-detects your framework from package.json, or pass --framework
+npx leadtype init --framework next
+```
 
-```mdx
+```text
+leadtype init: scaffolded next docs integration
+  + docs/docs.config.ts
+  + docs/index.mdx
+  + next.config.mjs
+  + lib/source.ts
+  + lib/mdx-components.tsx
+  + app/docs/[[...slug]]/page.tsx
+  + package.json (added "docs:generate" script)
+  + AGENTS.md (created leadtype docs pointer)
+
+leadtype init: generating agent artifacts…
+```
+
+The last line is the [root-`AGENTS.md` pointer](/docs/package-docs/bundle#point-consumers-at-the-bundle): `init` adds (or merges, never overwrites) a marked block pointing your coding agent at `node_modules/leadtype/AGENTS.md`, so any agent using leadtype or editing your docs reads leadtype's own version-matched docs. Re-running refreshes the block in place.
+
+Supported targets: `next`, `astro`, `nuxt`, `sveltekit`. Run with `--dry-run`
+to preview the file list, or `--base-url`, `--name`, and `--summary` to seed the
+config. For TanStack Start and Fumadocs (heavier app-specific setup), follow the
+recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive) and
+[Integrate with Fumadocs](/docs/integrations/integrate-with-fumadocs).
+
+`init` scaffolds the **local-`docs/`** case. If your docs live in another repo,
+or you're adding Leadtype to an app with an existing structure, hand a coding
+agent one of the [agent setup prompts](/docs/pipeline/agent-setup-prompts) instead
+— it adapts to your real layout.
+
+That's the whole quickstart if you let the CLI scaffold it. The steps below
+walk through the same wiring by hand — read them to understand what `init`
+generated or to customize it. Steps 1, 2, 4, and 5 are framework-neutral; only
+step 3 (rendering) varies by framework.
+
+## 1. Author one page
+
+```mdx title="docs/index.mdx"
 ---
 title: "My library"
 description: "What it does in one sentence."
-group: get-started
 ---
 
 # My library
@@ -30,9 +70,135 @@ group: get-started
 Welcome.
 ```
 
-Every page needs a `title`. Add `group:` when the page should appear in generated navigation and `llms.txt` sections. See [Frontmatter](/docs/authoring/frontmatter) for the full content contract.
+Every page needs a `title`. Add `description` so generated `llms.txt`, search results, and bundled `AGENTS.md` can route readers without guessing from the body.
 
-## Generate hosted docs output
+Add a small config next to the docs source:
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "My library",
+    tagline: "What it does in one sentence.",
+  },
+  llms: {
+    // `llms.sections` is the body of llms.txt, in order. Use markdown blocks for
+    // prose/highlights and links blocks for curated entry points.
+    sections: [
+      {
+        type: "links",
+        heading: "Best Starting Points",
+        links: [
+          {
+            urlPath: "/docs",
+            title: "Start here",
+            description: "Overview and first steps for using My library.",
+          },
+        ],
+      },
+    ],
+  },
+  navigation: ["index"],
+});
+```
+
+`navigation` is the shared source of truth for the sidebar, `llms.txt`, `AGENTS.md`, sitemap markdown, and [Agent Readability](/docs/how-it-works#vocabulary) metadata.
+
+## 2. Create the source
+
+```ts title="lib/source.ts"
+import { createDocsSource } from "leadtype";
+
+export const source = await createDocsSource({
+  contentDir: "./docs",
+  baseUrl: "https://example.com",
+});
+```
+
+That's the framework-neutral primitive. You can now call:
+
+- `source.loadPage(slug)` — resolved markdown + AST + frontmatter + TOC
+- `source.listPages()` — every page's slug, urlPath, and metadata
+- `source.getNavigation()` — grouped sidebar tree
+- `source.buildSearchIndex()` — static search bundle
+- `source.resolveInclude(specifier)` — standalone include resolver
+
+## 3. Render the docs route
+
+Step 3 is the only step that varies by framework — here's what it looks like in Next App Router. The same `createDocsSource()` from step 2 powers every framework; pick yours below the code block to see the equivalent wiring.
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote-client/rsc";
+import { source } from "@/lib/source";
+import { mdxComponents } from "@/lib/mdx-components";
+
+export async function generateStaticParams() {
+  const pages = await source.listPages();
+  return pages.map((page) => ({ slug: page.slug }));
+}
+
+export default async function DocsPage({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const page = await source.loadPage((await params).slug ?? []);
+  if (!page) {
+    notFound();
+  }
+
+  return (
+    <article>
+      <h1>{page.title}</h1>
+      {page.description ? <p>{page.description}</p> : null}
+      <MDXRemote components={mdxComponents} source={page.markdown} />
+    </article>
+  );
+}
+```
+
+The UI is yours. Leadtype provides page loading, navigation, markdown output, table of contents data, include resolution, and search input data.
+
+### Pick your framework
+
+<Cards>
+  <Card
+    title="Next App Router"
+    description="Catch-all route + @next/mdx + createMdxSourcePlugins()."
+    href="/docs/pipeline/use-the-source-primitive#next-app-router"
+  />
+  <Card
+    title="TanStack Start"
+    description="@mdx-js/rollup + viteReact + TanStack Router catch-all."
+    href="/docs/pipeline/use-the-source-primitive#tanstack-start"
+  />
+  <Card
+    title="Nuxt"
+    description="@nuxtjs/mdc + createMdxSourcePlugins()."
+    href="/docs/pipeline/use-the-source-primitive#nuxt"
+  />
+  <Card
+    title="Astro Content Collections"
+    description="@astrojs/mdx + createMdxSourcePlugins(). Compose with Astro's native content schema."
+    href="/docs/pipeline/use-the-source-primitive#astro-content-collections"
+  />
+  <Card
+    title="SvelteKit"
+    description="mdsvex preprocessor + createMdxSourcePlugins()."
+    href="/docs/pipeline/use-the-source-primitive#sveltekit-mdsvex"
+  />
+  <Card
+    title="Fumadocs"
+    description="First-party leadtype/fumadocs adapter — Source interface + meta.json."
+    href="/docs/integrations/integrate-with-fumadocs"
+  />
+</Cards>
+
+## 4. Generate agent artifacts
+
+Run the site-mode CLI before your app build:
 
 ```bash
 npx leadtype generate \
@@ -41,7 +207,7 @@ npx leadtype generate \
   --base-url https://example.com
 ```
 
-That command reads `docs/*.mdx`, converts it to markdown, resolves groups, builds search JSON, and writes hosted agent artifacts.
+That writes the hosted files agents need:
 
 <FileTree root="public">
   <File name="llms.txt" />
@@ -49,50 +215,38 @@ That command reads `docs/*.mdx`, converts it to markdown, resolves groups, build
   <Folder name="docs">
     <File name="index.md" />
     <File name="llms.txt" />
+    <File name="search-index.json" />
+    <File name="search-content.json" />
     <File name="sitemap.xml" />
     <File name="sitemap.md" />
     <File name="robots.txt" />
     <File name="agent-readability.json" />
-    <File name="search-index.json" />
-    <File name="search-content.json" />
   </Folder>
 </FileTree>
 
-Open `public/docs/index.md` first. It shows what your MDX becomes after the remark component flattening pipeline runs. Then open `public/llms.txt` to see the hosted routing file that HTTP agents start from.
+Keep this command in your build script so browser docs, markdown mirrors, search, and agent discovery files stay in sync.
 
-<Callout title="Working reference" variant="tip">
-  `apps/example/` in the [leadtype repo](https://github.com/inthhq/leadtype) is the production docs site for these docs. It runs the same pipeline you just ran, on TanStack Start, with markdown content negotiation, sitemap regeneration, and JSON-LD wired up. Clone it when you want a copy-pastable end-to-end setup.
-</Callout>
+## 5. Verify the output
 
-## Choose the next setup step
+Before publishing, check the files that prove the pipeline worked:
 
-| Goal | Next page |
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com --json
+test -s public/llms.txt
+test -s public/docs/index.md
+test -s public/docs/search-index.json
+test -s public/docs/agent-readability.json
+```
+
+Then add runtime handling for markdown responses, sitemap/robots regeneration, and JSON-LD with [Serve agent responses](/docs/aeo/serve-agent-responses).
+
+## Common next steps
+
+| Goal | Go to |
 | --- | --- |
-| Wire the generator into an app build | [Connect a docs site](/docs/build/connect-docs-site) |
-| Render HTML pages and an "On this page" sidebar | [Render MDX and TOC](/docs/build/render-mdx-and-toc) |
-| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Optimize docs for agents](/docs/build/optimize-docs-for-agents) |
-| Query the generated static search index | [Add search](/docs/build/add-search) |
-| Publish AGENTS.md inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
-
-<Cards>
-  <Card
-    title="Connect a docs site"
-    description="Wire generation into your app build and serve the output from your framework."
-    href="/docs/build/connect-docs-site"
-  />
-  <Card
-    title="Render MDX and TOC"
-    description="Set up runtime MDX components, heading IDs, and an On this page sidebar."
-    href="/docs/build/render-mdx-and-toc"
-  />
-  <Card
-    title="Make the site agent-readable"
-    description="Serve llms.txt, markdown mirrors, JSON-LD, sitemaps, and robots.txt correctly."
-    href="/docs/build/optimize-docs-for-agents"
-  />
-  <Card
-    title="Bundle docs into a package"
-    description="Emit AGENTS.md plus docs/*.md into an npm package tarball."
-    href="/docs/package-docs/bundle"
-  />
-</Cards>
+| Compare every hosted-site integration shape | [Build a docs site](/docs/pipeline/build-a-docs-site) |
+| Serve markdown, sitemaps, robots, and JSON-LD for agents | [Serve agent responses](/docs/aeo/serve-agent-responses) |
+| Add local search or source-grounded answers | [Add search](/docs/search/add-search) |
+| Combine local folders, mounted folders, or remote git repos | [Configure docs sources](/docs/pipeline/configure-sources) |
+| Publish version-matched docs inside an npm package | [Bundle docs into a package](/docs/package-docs/bundle) |
+| Validate frontmatter, links, and nav in CI | [Validate in CI](/docs/pipeline/validate-in-ci) |

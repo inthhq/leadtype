@@ -1,8 +1,17 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
 import {
+  type DocsI18nConfig,
+  type LocaleCode,
+  logicalPathFromLocaleRelativePath,
+  normalizeDocsI18nConfig,
+  outputRelativePathForLocale,
+  toLocalizedDocsUrlPath,
+} from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
+import {
+  type DocsPathMount,
   GENERIC_DOC_TITLES,
   normalizeBaseUrl,
   normalizeWhitespace as normalizeDescription,
@@ -11,7 +20,9 @@ import {
   toAbsoluteUrl,
   toDocsUrlPath,
 } from "../internal/docs-url";
+import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { DocsTransformerOptions } from "../transformers";
 import {
   type CreateDocsSearchIndexOptions,
   createDocsSearchIndex,
@@ -30,10 +41,14 @@ const SEPARATOR_PATTERN = /[-_]/;
 export type GenerateDocsSearchFilesConfig = {
   outDir: string;
   baseUrl?: string;
+  mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
   outputFile?: string;
   contentOutputFile?: string;
   embedContent?: boolean;
   indexOptions?: CreateDocsSearchIndexOptions;
+  transformers?: DocsTransformerOptions["transformers"];
 };
 
 export type GenerateDocsSearchFilesResult = {
@@ -84,37 +99,117 @@ async function collectMarkdownFiles(rootDir: string): Promise<string[]> {
 
 async function readMarkdownDocs(
   docsDir: string,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[],
+  i18nConfig?: DocsI18nConfig,
+  requestedLocale?: LocaleCode
 ): Promise<DocsSearchDocument[]> {
   const files = await collectMarkdownFiles(docsDir);
+  const i18n = normalizeDocsI18nConfig(i18nConfig);
+  const locale = requestedLocale ?? i18n?.defaultLocale;
+  const selectedFiles = selectMarkdownFiles(files, docsDir, i18nConfig, locale);
   const docs: DocsSearchDocument[] = [];
 
-  for (const filePath of files) {
+  for (const file of selectedFiles) {
+    const filePath = file.filePath;
     const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
-    if (GENERATED_MARKDOWN_FILES.has(relativePath)) {
+    if (
+      GENERATED_MARKDOWN_FILES.has(relativePath) ||
+      GENERATED_MARKDOWN_FILES.has(path.basename(relativePath))
+    ) {
       continue;
     }
     const raw = await readFile(filePath, "utf-8");
-    const parsed = matter(raw);
+    const parsed = parseFrontmatter(raw);
     const title =
       String(parsed.data.title ?? "").trim() ||
       titleFromRelativePath(relativePath);
     const description = normalizeDescription(
       String(parsed.data.description ?? "")
     );
-    const urlPath = toDocsUrlPath(relativePath);
+    const urlPath =
+      i18n && locale
+        ? toLocalizedDocsUrlPath(`${file.logicalPath}.md`, locale, i18n, mounts)
+        : toDocsUrlPath(relativePath, mounts);
     docs.push({
-      id: stripDocsExtension(relativePath),
+      id: urlPath,
       title,
       description,
       urlPath,
       absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-      relativePath: stripDocsExtension(relativePath),
+      relativePath: file.outputRelativePath,
+      frontmatter: parsed.data,
+      ...(file.locale ? { locale: file.locale } : {}),
+      ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
+      ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
       content: parsed.content.trim(),
     });
   }
 
   return docs;
+}
+
+type SelectedMarkdownFile = {
+  filePath: string;
+  logicalPath: string;
+  outputRelativePath: string;
+  locale?: LocaleCode;
+  sourceLocale?: LocaleCode;
+};
+
+function selectMarkdownFiles(
+  files: string[],
+  docsDir: string,
+  i18nConfig?: DocsI18nConfig,
+  requestedLocale?: LocaleCode
+): SelectedMarkdownFile[] {
+  const i18n = normalizeDocsI18nConfig(i18nConfig);
+  if (!(i18n && requestedLocale)) {
+    return files.map((filePath) => {
+      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
+      return {
+        filePath,
+        logicalPath: stripDocsExtension(relativePath),
+        outputRelativePath: stripDocsExtension(relativePath),
+      };
+    });
+  }
+
+  const localeCodes = new Set(i18n.locales.map((entry) => entry.code));
+  const byLogicalPath = new Map<
+    string,
+    Map<LocaleCode, SelectedMarkdownFile>
+  >();
+  for (const filePath of files) {
+    const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
+    const { logicalPath, sourceLocale } = logicalPathFromLocaleRelativePath(
+      relativePath,
+      localeCodes
+    );
+    const resolvedLocale = sourceLocale ?? i18n.defaultLocale;
+    const localeFiles = byLogicalPath.get(logicalPath) ?? new Map();
+    localeFiles.set(resolvedLocale, {
+      filePath,
+      logicalPath,
+      outputRelativePath: outputRelativePathForLocale(
+        logicalPath,
+        requestedLocale,
+        i18nConfig
+      ),
+      locale: requestedLocale,
+      sourceLocale: resolvedLocale,
+    });
+    byLogicalPath.set(logicalPath, localeFiles);
+  }
+
+  return Array.from(byLogicalPath.values())
+    .flatMap((localeFiles) => {
+      const direct = localeFiles.get(requestedLocale);
+      return direct ? [direct] : [];
+    })
+    .sort((left, right) =>
+      left.outputRelativePath.localeCompare(right.outputRelativePath)
+    );
 }
 
 function formatBytes(bytes: number): string {
@@ -187,6 +282,12 @@ export async function generateDocsSearchFiles(
 ): Promise<GenerateDocsSearchFilesResult> {
   const outDir = path.resolve(config.outDir);
   const docsDir = path.join(outDir, DOCS_DIRNAME);
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const outputDocsDir =
+    i18n && locale && locale !== i18n.defaultLocale
+      ? path.join(docsDir, locale)
+      : docsDir;
   if (!existsSync(docsDir)) {
     throw new Error(
       `generateDocsSearchFiles found no docs directory at "${docsDir}". Run convertAllMdx first, or check config.outDir.`
@@ -194,28 +295,37 @@ export async function generateDocsSearchFiles(
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const docs = await readMarkdownDocs(docsDir, baseUrl);
+  const docs = await readMarkdownDocs(
+    docsDir,
+    baseUrl,
+    config.mounts,
+    config.i18n,
+    locale
+  );
   if (docs.length === 0) {
     throw new Error(
       `generateDocsSearchFiles found no markdown files under "${docsDir}". Run convertAllMdx first, or check config.outDir.`
     );
   }
 
-  const indexWithContent = createDocsSearchIndex(docs, config.indexOptions);
+  const indexWithContent = createDocsSearchIndex(docs, {
+    ...config.indexOptions,
+    transformers: config.transformers,
+  });
   const { content, ...indexWithoutContent } = indexWithContent;
   if (!content) {
     throw new Error("createDocsSearchIndex did not return a content store.");
   }
   const index = config.embedContent ? indexWithContent : indexWithoutContent;
   const outputPath = resolveDocsOutputPath(
-    docsDir,
+    outputDocsDir,
     config.outputFile,
     DEFAULT_OUTPUT_FILE
   );
   const contentOutputPath = config.embedContent
     ? undefined
     : resolveDocsOutputPath(
-        docsDir,
+        outputDocsDir,
         config.contentOutputFile,
         DEFAULT_CONTENT_OUTPUT_FILE
       );
@@ -223,10 +333,10 @@ export async function generateDocsSearchFiles(
   const serializedContent = `${JSON.stringify(content)}\n`;
 
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, serialized);
+  await writeFileAtomic(outputPath, serialized);
   if (contentOutputPath) {
     await mkdir(path.dirname(contentOutputPath), { recursive: true });
-    await writeFile(contentOutputPath, serializedContent);
+    await writeFileAtomic(contentOutputPath, serializedContent);
   }
 
   const indexBytes = Buffer.byteLength(serialized, "utf-8");

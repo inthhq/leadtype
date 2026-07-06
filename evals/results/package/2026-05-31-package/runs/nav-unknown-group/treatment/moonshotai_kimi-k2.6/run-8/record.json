@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly identifies nav as the curated sidebar/llms/agents driver and group as legacy for fallback/search facets. It correctly states that an unknown group slug causes a build failure (error, exit 1), not a silent skip. All required rubric points are met clearly.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 27,
+  "inputTokens": 77570,
+  "outputTokens": 553,
+  "durationMs": 118072,
+  "steps": 18,
+  "errors": []
+}

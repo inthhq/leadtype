@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md file names both `lastModified` and `lastAuthor` as the frontmatter fields added by `--enrich-git`, explicitly states they are injected as frontmatter fields, and describes their source as the file's Git commit history. All REQUIRED rubric points are satisfied completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 30351,
+  "outputTokens": 438,
+  "durationMs": 32537,
+  "steps": 15,
+  "errors": []
+}

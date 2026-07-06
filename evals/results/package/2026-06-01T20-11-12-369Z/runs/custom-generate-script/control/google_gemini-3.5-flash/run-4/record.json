@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls `convertAllMdx`, `generateLlmsTxt`, `generateLLMFullContextFiles`, and `generateDocsSearchFiles` in the correct order, and imports `product` and `nav` from the config. However, it fails to point the subsequent generators to the converted markdown in `public/docs`: `generateLlmsTxt` receives `srcDir: '.'` (the project root, likely still containing .mdx), and the other two lack a `srcDir` entirely. According to the rubric, the full‑context and search generators must read the already‑converted markdown from `<outDir>/docs/`, so this misconfiguration means the build would not produce correct artifacts. Therefore the script is incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 202959,
+  "outputTokens": 9558,
+  "durationMs": 84122,
+  "steps": 20,
+  "errors": []
+}

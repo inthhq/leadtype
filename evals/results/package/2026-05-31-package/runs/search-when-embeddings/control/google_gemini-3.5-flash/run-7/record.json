@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default as a static, local, edge-safe BM25 lexical index with no database, fully meeting the first required point. It gives specific conditions for when embeddings are warranted—conceptual/abstract queries that vocabulary can't match and massive scale (thousands of pages/chunks)—which satisfies the second required point. It explicitly states that the lexical index should be kept for exact matches and used in a hybrid system, demonstrating that embeddings are complementary, not a replacement, thus meeting the third required point. No rubric violations are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 35390,
+  "outputTokens": 440,
+  "durationMs": 76123,
+  "steps": 27,
+  "errors": []
+}

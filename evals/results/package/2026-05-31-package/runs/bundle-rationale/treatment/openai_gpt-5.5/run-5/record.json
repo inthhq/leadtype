@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes llms.txt as a website/HTTP convention with URL-shaped (absolute) links unsuitable for an npm tarball, while AGENTS.md is the filesystem convention with relative links for offline, version-matched use. It also lists the website artifacts skipped by --bundle, including llms.txt and llms-full.txt, satisfying all required rubric points. No incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 23628,
+  "outputTokens": 38,
+  "durationMs": 27167,
+  "steps": 7,
+  "errors": []
+}

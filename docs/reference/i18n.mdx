@@ -1,0 +1,119 @@
+---
+title: "i18n"
+description: "Localization config, locale-aware URL helpers, alternate-locale links, and the per-locale artifact manifest from leadtype/i18n."
+related:
+  - title: "Localize docs"
+    href: "/docs/pipeline/localize-docs"
+    description: "Author multi-locale docs and generate per-locale artifacts."
+  - title: "createDocsSource"
+    href: "/docs/reference/source"
+    description: "Pass i18n + locale to build a per-locale source."
+---
+
+`leadtype/i18n` adds multi-locale support to the pipeline: locale-prefixed URLs,
+per-locale `llms.txt`/`llms-full.txt`/markdown mirrors/search/sitemaps, an
+`i18n-manifest.json`, and alternate-locale links for HTML heads. Enable it by
+adding `i18n` to your config; everything else is derived.
+
+## Config
+
+```ts title="docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "My library", tagline: "..." },
+  navigation: ["index"],
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "zh", { code: "fr", label: "Français", dir: "ltr" }],
+    fallback: "default",
+  },
+});
+```
+
+<TypeTable
+  properties={{
+    defaultLocale: { type: "string", description: "Locale served at the unprefixed docs root. Must be one of `locales`." },
+    locales: { type: "(string | { code, label?, dir? })[]", description: "All locales. Shorthand string or an object with a display `label` and text `dir` (\"ltr\" | \"rtl\")." },
+    fallback: { type: "\"default\"", description: "How missing translations resolve. `\"default\"` (the only mode today) falls back to the default-locale page. Optional; defaults to `\"default\"`." },
+  }}
+/>
+
+Validation (enforced by `normalizeDocsI18nConfig`, run during generate): locale
+codes must be URL-safe (`[a-zA-Z0-9][a-zA-Z0-9_-]*`), duplicates are rejected,
+and `defaultLocale` must appear in `locales`.
+
+## URL strategy
+
+The default locale stays unprefixed; translated locales get a `/{locale}`
+segment after the docs prefix.
+
+| Source file | Locale | Page URL | Markdown mirror |
+| --- | --- | --- | --- |
+| `docs/quickstart.mdx` | `en` (default) | `/docs/quickstart` | `/docs/quickstart.md` |
+| `docs/zh/quickstart.mdx` | `zh` | `/docs/zh/quickstart` | `/docs/zh/quickstart.md` |
+| `docs/zh/guides/index.mdx` | `zh` | `/docs/zh/guides` | `/docs/zh/guides/index.md` |
+
+## Helpers
+
+All exported from `leadtype/i18n`:
+
+<TypeTable
+  properties={{
+    normalizeDocsI18nConfig: { type: "(config?) => NormalizedDocsI18nConfig | undefined", description: "Validate and normalize config (string → { code }). Returns undefined when i18n is unset." },
+    listDocsLocales: { type: "(i18n?) => DocsLocale[]", description: "All locales, normalized. Empty when i18n is off." },
+    isDefaultLocale: { type: "(locale, i18n?) => boolean", description: "Whether a locale is the default." },
+    getDocsLocaleUrlPrefix: { type: "(locale, i18n?, docsUrlPrefix?) => string", description: "URL prefix for a locale, e.g. `/docs` (default) or `/docs/zh`." },
+    resolveDocsLocale: { type: "(pathname, i18n?, docsUrlPrefix?) => string | undefined", description: "Infer the active locale from a request path; returns the default locale for unprefixed docs paths." },
+    stripLocaleFromDocsPath: { type: "(pathname, i18n?, docsUrlPrefix?) => string", description: "Remove the locale segment from a path." },
+    toLocalizedDocsUrlPath: { type: "(relativePath, locale, i18n?, mounts?) => string", description: "Build the page URL for a source file in a locale (mount-aware)." },
+    toLocalizedMarkdownUrlPath: { type: "(relativePath, locale, i18n?, mounts?) => string", description: "Build the `.md` mirror URL for a locale." },
+    getAlternateLocaleLinks: { type: "(page, pagesByLocale, i18n?) => AlternateLocaleLink[]", description: "Alternate-locale links (hreflang) for a page, matched by logical path across locales." },
+  }}
+/>
+
+## Alternate-locale links
+
+`getAlternateLocaleLinks` returns one entry per locale that has a matching page
+(same logical path), for rendering `<link rel="alternate" hreflang>` tags:
+
+```ts
+type AlternateLocaleLink = {
+  locale: string;
+  urlPath: string;
+  label?: string;
+  dir?: "ltr" | "rtl";
+  /** true when this locale falls back to default-locale content. */
+  isFallback: boolean;
+};
+```
+
+## i18n-manifest.json
+
+Site-mode generate writes `docs/i18n-manifest.json` alongside the other
+artifacts. It lists every locale and the paths of that locale's generated files,
+so a runtime can serve the right `llms.txt`, search index, sitemap, and robots
+per locale.
+
+```ts
+type DocsI18nManifest = {
+  version: 1;
+  defaultLocale: string;
+  locales: { code: string; label?: string; dir?: "ltr" | "rtl" }[];
+  artifacts: {
+    locale: string;
+    urlPrefix: string; // "/docs" for default, "/docs/{locale}" otherwise
+    llmsTxt?: string;
+    llmsFullTxt?: string;
+    searchIndex?: string;
+    searchContent?: string;
+    agentReadabilityManifest?: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
+  }[];
+};
+```
+
+See [Localize docs](/docs/pipeline/localize-docs) for the authoring layout and the
+end-to-end build.

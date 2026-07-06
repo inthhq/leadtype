@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default search as a static, edge-safe lexical index using BM25 with no database. It specifies the exact conditions for adding embeddings (vocabulary mismatch and large corpus past tens of thousands of chunks). It explicitly states that the lexical index should be kept for exact matches and that embeddings are complementary, not a replacement. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 4,
+  "inputTokens": 7960,
+  "outputTokens": 562,
+  "durationMs": 34897,
+  "steps": 4,
+  "errors": []
+}

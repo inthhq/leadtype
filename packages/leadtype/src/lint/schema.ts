@@ -13,21 +13,26 @@ const semver = v.pipe(
 );
 
 const isoDate = v.pipe(
-  v.string(),
-  v.check((value: string) => !Number.isNaN(new Date(value).getTime()), {
-    message: "Must be an ISO-8601 date or parseable date string",
-  } as never)
+  v.union([v.string(), v.date()]),
+  v.check(
+    (value: Date | string) => !Number.isNaN(new Date(value).getTime()),
+    "Must be an ISO-8601 date or parseable date string"
+  )
 );
 
-/**
- * Cross-framework page link used by the "Available in other SDKs" widget.
- * Framework-neutral by default; projects can use this for SDK/framework
- * switchers or ignore it entirely.
- */
-const availableInEntry = v.object({
-  framework: v.string(),
-  url: v.optional(v.string()),
-  title: v.optional(v.string()),
+const nonEmptyString = v.pipe(v.string(), v.minLength(1, "must not be empty"));
+
+const variantEntry = v.object({
+  value: nonEmptyString,
+  label: v.optional(nonEmptyString),
+  href: nonEmptyString,
+  description: v.optional(v.string()),
+});
+
+const relatedEntry = v.object({
+  title: nonEmptyString,
+  href: nonEmptyString,
+  description: v.optional(v.string()),
 });
 
 /**
@@ -38,28 +43,45 @@ const availableInEntry = v.object({
  * Callers can override via `lintDocs({ schemas: { frontmatter: ... } })`.
  */
 export const defaultFrontmatterSchema = v.object({
-  title: v.pipe(v.string(), v.minLength(1, "must not be empty")),
+  title: nonEmptyString,
   description: v.optional(v.string()),
   icon: v.optional(v.string()),
 
-  // Lifecycle
-  deprecated: v.optional(v.boolean()),
-  deprecatedReason: v.optional(v.string()),
-  experimental: v.optional(v.boolean()),
-  canary: v.optional(v.boolean()),
-  new: v.optional(v.boolean()),
-  draft: v.optional(v.boolean()),
+  // Editorial page state. Release channels belong in build config or
+  // transformers, not page frontmatter.
+  status: v.optional(v.picklist(["new", "updated", "experimental"])),
+  deprecated: v.optional(nonEmptyString),
 
   // Categorization
   tags: v.optional(v.array(v.string())),
   group: v.optional(v.union([v.string(), v.array(v.string())])),
-  availableIn: v.optional(v.array(availableInEntry)),
+  // Search visibility. `search: false` excludes a page from public search and
+  // answer citations; `search: true` opts `shared`/`_shared` routes back in.
+  search: v.optional(v.boolean()),
+  // Old public paths this page took over, e.g. ["/docs/guides/old-name"].
+  // Consumed by redirect tracking (`redirects` in the docs config) to emit
+  // permanent redirects when rename detection can't match by content hash.
+  redirectFrom: v.optional(v.array(nonEmptyString)),
+  // Stable publication date for feeds. Use generated `lastModified` only when
+  // the feed should track source edits instead of a fixed publish date.
+  date: v.optional(isoDate),
+  variants: v.optional(v.array(variantEntry)),
+  related: v.optional(v.array(relatedEntry)),
+  /**
+   * Sidebar ordering within a group. Lower numbers come first. Pages
+   * without `order` sort alphabetically by URL path **after** explicitly
+   * ordered pages, so you can pin a few key pages and leave the rest as
+   * default. Conventionally numbered in tens (10, 20, 30) to leave room
+   * for insertions. Must be an integer — fractional orders are rejected
+   * by lint.
+   */
+  order: v.optional(v.pipe(v.number(), v.integer())),
 
   // Layout
   full: v.optional(v.boolean()),
   // Note: `lastModified` and `lastAuthor` are intentionally NOT in this
-  // schema. They are auto-populated during convert via
-  // `enrichFrontmatterFromGit` and should not be hand-authored — the linter
+  // schema. They are auto-populated during generate when git metadata is
+  // available and should not be hand-authored — the linter
   // will flag any source-authored `lastModified` as unknown-field.
 });
 

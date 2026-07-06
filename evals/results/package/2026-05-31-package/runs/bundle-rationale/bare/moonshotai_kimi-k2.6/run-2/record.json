@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt is a website convention with absolute URLs and that coding agents don't look for it in node_modules, making it unsuitable for a tarball. It describes AGENTS.md as using relative paths for offline, version-matched docs, satisfying the second required point. It explicitly lists that --bundle skips llms.txt, llms-full.txt, search index, sitemaps, robots.txt, and other URL-anchored artifacts, covering the third point. All required rubric elements are met with no incorrect statements.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 24,
+  "inputTokens": 18109,
+  "outputTokens": 239,
+  "durationMs": 48486,
+  "steps": 17,
+  "errors": []
+}

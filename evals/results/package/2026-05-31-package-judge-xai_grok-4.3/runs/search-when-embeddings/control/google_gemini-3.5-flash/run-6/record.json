@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response fully satisfies the first and third required rubric points (correctly describes the default static/local BM25 lexical index with no DB, and states that the lexical index must be kept for exact matches via hybrid search). It fails the second required point because its listed conditions for embeddings cover only vocabulary/intent mismatch (plus cross-lingual) but entirely omit the corpus-size threshold (tens of thousands of chunks / cold-start memory) that the rubric explicitly requires as one of the specific triggers. No hedging is present, but the answer is incomplete rather than asserting a direct falsehood.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 18856,
+  "outputTokens": 586,
+  "durationMs": 65062,
+  "steps": 27,
+  "errors": []
+}

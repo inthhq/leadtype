@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly states that `nav` is the curated driver of sidebar, agent map, `llms.txt`, and `AGENTS.md`, while `group` is legacy taxonomy still used for fallback navigation and search facets. It confirms that an unknown `group` slug causes a build failure with an error, not a silent skip. All required rubric points are met completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 23,
+  "inputTokens": 64362,
+  "outputTokens": 258,
+  "durationMs": 107877,
+  "steps": 18,
+  "errors": []
+}

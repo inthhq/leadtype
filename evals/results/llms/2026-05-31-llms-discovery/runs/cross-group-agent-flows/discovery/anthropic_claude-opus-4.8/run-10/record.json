@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the hosted flow starts from /llms.txt and the bundle flow starts from AGENTS.md. It clearly states that --bundle mode skips website artifacts, including llms.txt and llms-full.txt, as well as search, sitemap, and robots. All required rubric points are met with no errors.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 11,
+  "inputTokens": 5940,
+  "outputTokens": 491,
+  "durationMs": 38345,
+  "steps": 6,
+  "errors": []
+}

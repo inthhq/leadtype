@@ -1,0 +1,179 @@
+---
+title: "Add search"
+description: "Generate a static docs search index, query it at runtime, and wire a search UI with the React, Vue, or Svelte hooks."
+related:
+  - title: "Search reference"
+    href: "/docs/reference/search"
+    description: "Full options, types, and defaults for the search API."
+  - title: "Stream AI answers"
+    href: "/docs/search/ai-answers"
+    description: "Layer source-grounded answers on top of the static index."
+---
+
+Leadtype search is static by default. Build time produces two JSON files;
+runtime code loads them and queries them locally — no database, edge-safe.
+
+## Generate the files
+
+`leadtype generate` writes the search files in site mode:
+
+```bash
+npx leadtype generate --src . --out public --base-url https://example.com
+```
+
+If you run the pipeline from scripts, call the generator after conversion:
+
+```ts
+import { generateDocsSearchFiles } from "leadtype/search/node";
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://example.com",
+});
+```
+
+This writes:
+
+```txt
+public/docs/search-index.json     # compact ranking data — load on every search
+public/docs/search-content.json   # chunk text — load lazily for excerpts/answers
+```
+
+## Query at runtime
+
+For server routes or any code that already has the JSON, query directly with
+`searchDocs`:
+
+```ts
+import {
+  searchDocs,
+  type DocsSearchContentStore,
+  type DocsSearchIndex,
+} from "leadtype/search";
+import contentJson from "../public/docs/search-content.json";
+import indexJson from "../public/docs/search-index.json";
+
+const index = indexJson as DocsSearchIndex;
+const content = contentJson as DocsSearchContentStore;
+
+const results = searchDocs(index, "run lint", { content });
+```
+
+Results carry page URLs, heading paths, hash URLs, and snippets — render them in
+your own UI. See the [reference](/docs/reference/search) for the full result
+shape and options.
+
+## Wire a search UI
+
+For a client search box, use the framework hook instead of fetching and querying
+by hand. Each loads `/docs/search-index.json` + `/docs/search-content.json`
+(by collection name), debounces input, and manages loading state.
+
+<Tabs items={["React", "Vue", "Svelte", "Vanilla"]}>
+  <Tab value="React">
+```tsx
+import { useLeadtypeSearch } from "leadtype/search/react";
+
+export function DocsSearch() {
+  const { search, results, status } = useLeadtypeSearch("docs");
+  return (
+    <div>
+      <input
+        aria-label="Search docs"
+        onChange={(event) => search(event.target.value)}
+        placeholder="Search docs"
+      />
+      <span>{status}</span>
+      <ul>
+        {results.map((result) => (
+          <li key={result.id}>
+            <a href={result.urlWithHash}>{result.title}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+Next App Router apps can import the same hook from `leadtype/next/client`.
+  </Tab>
+  <Tab value="Vue">
+```vue
+<script setup lang="ts">
+import { useLeadtypeSearch } from "leadtype/search/vue";
+const { search, results, status } = useLeadtypeSearch("docs");
+</script>
+
+<template>
+  <input
+    aria-label="Search docs"
+    placeholder="Search docs"
+    @input="search(($event.target as HTMLInputElement).value)"
+  />
+  <span>{{ status }}</span>
+  <ul>
+    <li v-for="result in results" :key="result.id">
+      <a :href="result.urlWithHash">{{ result.title }}</a>
+    </li>
+  </ul>
+</template>
+```
+  </Tab>
+  <Tab value="Svelte">
+```svelte
+<script lang="ts">
+  import { createLeadtypeSearch } from "leadtype/search/svelte";
+  const { search, results, status } = createLeadtypeSearch("docs");
+</script>
+
+<input
+  aria-label="Search docs"
+  oninput={(event) => search(event.currentTarget.value)}
+  placeholder="Search docs"
+/>
+<span>{$status}</span>
+<ul>
+  {#each $results as result}
+    <li><a href={result.urlWithHash}>{result.title}</a></li>
+  {/each}
+</ul>
+```
+  </Tab>
+  <Tab value="Vanilla">
+```ts
+import { createSearchClient } from "leadtype/search/client";
+
+const client = createSearchClient("docs");
+const results = await client.search("run lint");
+// client.preload() warms the index + content before the first keystroke.
+```
+  </Tab>
+</Tabs>
+
+The collection name (`"docs"`) maps to `/docs/search-index.json` and
+`/docs/search-content.json`. Override the URLs via client options when your
+artifacts live elsewhere.
+
+## Add vocabulary aliases
+
+Search already does stemming, prefix matches, typo-tolerant fallbacks, and a
+small built-in synonym map. Add product-specific synonyms only when users search
+with words your docs don't use:
+
+```ts
+const results = searchDocs(index, "starter", {
+  content,
+  synonyms: { starter: ["quickstart", "getting started"] },
+});
+```
+
+## Next steps
+
+- [Stream AI answers](/docs/search/ai-answers) — source-grounded answers over the same index, across Vercel AI SDK, TanStack AI, and Cloudflare Workers AI, with a hardened endpoint.
+- [Agent search tools](/docs/search/agent-tools) — let an agent explore docs with `ls`/`cat`/`grep` instead of pre-selected chunks.
+
+## Verify
+
+- `public/docs/search-index.json` and `search-content.json` exist and are non-empty.
+- Searching for an exact API name returns the expected reference page.
+- Searching for a guide phrase returns a result with a section hash.

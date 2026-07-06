@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP convention with absolute URLs, making it unsuitable for a tarball because the links become stale. It explains that AGENTS.md provides offline, version-matched access with relative links to docs in the same directory, requiring no network. It lists the website artifacts skipped by --bundle: llms.txt, llms-full.txt, search-index.json, and mentions sitemaps and robots as website-only. All rubric requirements are fully met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 31745,
+  "outputTokens": 260,
+  "durationMs": 25077,
+  "steps": 10,
+  "errors": []
+}

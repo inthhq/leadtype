@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly describes the default BM25 static index and stresses keeping it for exact matches. However, for when embeddings are warranted, it only mentions 'Large or conceptually broad corpus' without the specific 'tens of thousands of chunks' threshold required by the rubric. Thus the specific condition is not fully given, making the answer incomplete.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 246468,
+  "outputTokens": 2088,
+  "durationMs": 64092,
+  "steps": 13,
+  "errors": []
+}

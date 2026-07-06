@@ -1,0 +1,120 @@
+---
+title: "Leadtype 0.2"
+description: "Release notes for Leadtype 0.2, released June 3, 2026."
+date: 2026-06-03
+---
+
+Released June 3, 2026.
+
+Leadtype 0.2 turns the package from an MDX-to-agent-artifacts pipeline into a portable docs and agent-readability layer for your own docs host. Use it under an existing stack like Fumadocs, Starlight, or Mintlify-adjacent workflows, or build a custom docs app around the source primitive. The release adds discoverable agent surfaces, a docs MCP server, config-owned navigation, remote source sync, i18n, scoring, and framework examples that show how to keep rendered docs UI separate from the pipeline.
+
+## Agent surfaces
+
+- Added `leadtype mcp` and `leadtype/mcp` so generated docs can be served to MCP clients over stdio or mounted as a stateless Streamable HTTP handler. The default tools are `search-docs` and `get-page`, with `list-pages` available opt-in.
+- Added `leadtype mcp --check` for a one-shot local verification before wiring an editor or hosted MCP client.
+- Added `leadtype generate --bundle --mcp` so an installed dependency can expose version-matched bundled docs through `leadtype mcp --package <name>`.
+- Added `/.well-known/agent-skills` for hosted docs and bundled `SKILL.md` output for package docs. The default docs skill points agents at `llms.txt`, MCP, or bundled `AGENTS.md` depending on the surface.
+- Expanded `/.well-known/agent-card.json` into an A2A-style AgentCard with provider, documentation URL, skills, capabilities, modes, and the MCP endpoint as the standard `url` when MCP is enabled.
+- Added `/.well-known/llms.txt`, `/.well-known/llms-full.txt`, `Link` and `X-Llms-Txt` discovery headers, robots/content-signal generation, SEO metadata, and config-driven JSON-LD.
+- Added `leadtype score` and `leadtype/score` to rate a generated build's leadtype-addressable agent readiness and gate CI with `--min`.
+
+## Configuration and source model
+
+- Added top-level `product`, `organization`, `agents`, and `llms.sections` config fields so `llms.txt`, `AGENTS.md`, JSON-LD, robots, the agent card, and generated skills share one identity model.
+- Added config-owned `navigation` with nested sections, explicit pages, wildcard includes, root-relative entries, per-node bases, and `optional: true` sections. Frontmatter `group` still works as taxonomy and fallback metadata, but curated IA should now live in config.
+- Added `collections` and `leadtype sync` for multi-source docs. Collections can read local folders or remote git repositories pinned to a branch, tag, or commit, then generate under separate URL prefixes.
+- Added `sourceConfig: true` for the flagship pinned source docs UI path. A docs UI repo can pin a source/package repo, inherit source-owned `navigation`, legacy `groups`, `frontmatterSchema`, `flatteners`, and `mounts`, then keep product identity, agent policy, deployment, and the app shell in the UI repo.
+- Added first-class docs i18n helpers and locale-aware generation for localized sources, search indexes, LLM files, and Agent Readability artifacts.
+- Added frontmatter transformers and tightened the default frontmatter metadata contract, including stronger linting around JSON-LD validity, link structure, and GEO-oriented docs shape.
+- Added `resolveAgentInputs(config)` so custom scripts can map config identity into lower-level generation APIs the same way the CLI does.
+
+## Host and framework integration
+
+- Formalized the package boundary: leadtype ships data, types, adapters, handlers, and CLI output, but no rendered DOM. Docs apps own their UI components, layouts, accessibility, and styling.
+- Added and dogfooded framework surfaces and examples for Next.js, Nuxt, Astro, SvelteKit, TanStack Start, and Fumadocs.
+- Added runtime helpers for markdown response negotiation, sitemap/robots responses, docs head metadata, JSON-LD rendering, markdown mirror routing, and Agent Readability manifests.
+- Added search adapters and client helpers for React, Vue, Svelte, Node, Vercel, TanStack, Cloudflare, AI SDK flows, and bash-tool flows.
+- Added authoring docs and component flattening coverage for agent-readable output, including `Prompt`, `FileTree`, `CommandTabs`, and custom flatteners.
+
+## Authoring and bundle improvements
+
+- Added `defineComponentFlattener` for custom MDX components that need a first-class markdown representation.
+- Improved type table source-root resolution and source-preset behavior so generated tables resolve against the intended project root.
+- Reframed package docs bundling around the most reliable wins from evals: lower token cost and fewer confidently wrong answers.
+- Made `leadtype init` write or refresh a root `AGENTS.md` pointer to `node_modules/leadtype/AGENTS.md`, so agents setting up docs read version-matched Leadtype guidance first.
+- Improved missing-artifact errors for MCP and scoring by listing the actionable fixes: run `leadtype generate`, point `--artifacts` at the generated output, or use `--package` for bundled docs.
+
+## Migration notes
+
+- Move curated sidebars and top-level docs areas into `navigation`. Keep frontmatter `group` for taxonomy or compatibility only, and keep `order` only where wildcard includes need fallback sorting.
+- Replace older ad hoc `llms.txt` body setup with `llms.sections`. Use markdown blocks for overview/context and links blocks for best starting points.
+- Add `product` and `organization` metadata before enabling agent surfaces so JSON-LD, AgentCard, skills, and generated docs all describe the same entity.
+- Configure `agents.robots`, `agents.seo`, `agents.mcp`, and `agents.skills` in config instead of duplicating those settings in routes or scripts.
+- For package docs, continue using `leadtype generate --bundle`. Add `--mcp` only when the package should ship the search index and Agent Readability manifest needed for package-local MCP retrieval.
+- For docs spread across repositories, use a root `leadtype.config.ts` with `collections`, pin remote sources to a reviewed ref, set `sourceConfig: true` when the source repo owns navigation/schema/flatteners/mounts, and run `leadtype generate --sync`.
+- For host integrations you control, wire the runtime route to generated `agent-readability.json`, add markdown response negotiation, render JSON-LD from the manifest, and keep visual components in the host app or docs framework.
+
+## Upgrade prompt
+
+<Prompt
+  title="Upgrade a docs host integration to Leadtype 0.2"
+  description="Use when you control the docs host app or framework integration and want to adopt the 0.2 agent-ready surface."
+>
+  Upgrade this project to Leadtype 0.2 and adopt the new docs-source, generated-artifact, and host-integration best practices. Keep Leadtype as the content and agent-readability layer. If the project already uses a docs framework such as Fumadocs, Starlight, Mintlify, or a custom app, integrate with that host instead of replacing it unless the user explicitly asks for a rebuild.
+
+  Inspect first:
+  - The installed Leadtype version, package manager, framework, docs source folders, and current generate scripts.
+  - Existing `docs.config.ts`, `leadtype.config.ts`, frontmatter `group` and `order` usage, generated navigation files, and host sidebar/header integration code.
+  - Whether the docs are local, split across folders, pulled from remote repositories, or bundled into an npm package.
+  - Whether the project should expose agent retrieval through hosted MCP, editor stdio MCP, package-bundled MCP, or no MCP.
+
+  Implement:
+  - Upgrade Leadtype and update scripts to run `leadtype generate` with the correct `--src`, `--out`, `--base-url`, and source mode.
+  - Define `product`, `organization`, `llms.sections`, and config-owned `navigation`. Use explicit pages for primary flows and wildcard includes for inventory-like folders.
+  - Keep frontmatter `group` only as taxonomy or compatibility metadata. Keep `order` only when wildcard navigation includes need fallback sorting.
+  - If docs come from multiple local or remote sources, create a root `leadtype.config.ts` with `collections`, pin remote refs, set `sourceConfig: true` when a source repo owns its docs navigation/schema/flatteners/mounts, and use `--sync`, `--refresh`, or `--offline` intentionally.
+  - Configure `agents.robots`, `agents.seo`, `agents.skills`, and `agents.mcp` where relevant.
+  - Update only the host integration you control to load the generated Agent Readability manifest, serve markdown responses for agent requests and `.md` URLs, render JSON-LD/head metadata from Leadtype helpers, and keep all visual UI components owned by the app or docs framework.
+  - Add or refresh runtime MDX components for the Leadtype component contract, including `Prompt`, `CommandTabs`, `FileTree`, `Tabs`, `Steps`, `Callout`, and `TypeTable`.
+  - If serving MCP is in scope, install `@modelcontextprotocol/sdk` in the app that runs the server, validate the generated artifacts before configuring clients, then wire either editor stdio MCP or a hosted route with `createMcpHandler`.
+  - If bundling package docs, run bundle generation for the package. Add MCP bundle artifacts only when consumers should be able to query the installed package's docs locally.
+
+  Validate:
+  - Run docs generation, linting, type checks, and the app's relevant tests.
+  - Confirm `/llms.txt`, `/.well-known/llms.txt`, `/llms-full.txt`, markdown mirrors, search files, `agent-readability.json`, sitemap, robots, AgentCard, and agent-skills output exist when configured.
+  - Confirm `llms.txt`, generated markdown, Agent Readability navigation, and the human sidebar agree.
+  - Confirm markdown responses return `Content-Type: text/markdown` for agent requests and `.md` URLs.
+  - If MCP is enabled, confirm the configured MCP surface can search and fetch a page before configuring clients.
+  - Summarize changed config, routes, scripts, generated artifacts, and any remaining manual docs IA decisions.
+</Prompt>
+
+<Prompt
+  title="Upgrade docs source to Leadtype 0.2"
+  description="Use when the docs content and config need the 0.2 migration, but the docs UI/runtime should stay out of scope."
+>
+  Upgrade only the docs source and Leadtype configuration to the 0.2 best practices. Do not edit app routes, framework layouts, rendered UI components, middleware, or hosting code unless a broken docs-source assumption makes that unavoidable.
+
+  Inspect first:
+  - `docs.config.ts`, `leadtype.config.ts`, collection configs, and generate scripts.
+  - The full docs tree, including current frontmatter `title`, `description`, `group`, `order`, `status`, and `related` fields.
+  - Existing sidebar/nav conventions in config or generated nav files, but do not change runtime UI code.
+  - The highest-value reader and agent entry points: overview, quickstart, install/setup, migration, troubleshooting, API/CLI reference, and changelog.
+  - Current `leadtype lint` and `leadtype score` output if generated artifacts already exist.
+
+  Implement:
+  - Move intentional docs IA into config-owned `navigation`. Use nested sections for the product's real information architecture, explicit page entries for primary flows, and wildcard includes for inventory-like folders.
+  - Keep frontmatter `group` only as taxonomy or compatibility metadata. Keep `order` only where wildcard includes need fallback sorting.
+  - Add or refresh `product`, `organization`, and `llms.sections`. Include an `Overview` markdown section and a `Best Starting Points` links section with concise descriptions that route agents to the right pages.
+  - If the source spans multiple folders or repos, model it with `collections`, `defineCollection`, stable `prefix` values, pinned remote `ref` values, `sourceConfig: true` for source-owned docs config, and clear include/exclude filters.
+  - Review every important page against the Write for agents & GEO guidance: lead with the answer, phrase H2/H3 headings as user questions where natural, make sections self-contained, use one term per concept, include exact defaults/limits/failure modes, and avoid restating types or CLI help.
+  - Fix mechanical GEO issues: no skipped heading levels, every fenced code block has a language, and every meaningful image has alt text.
+  - Add or improve frontmatter descriptions, related links, and page titles so `llms.txt`, search snippets, sitemap metadata, and Agent Readability output have useful summaries.
+  - Preserve public URLs unless a URL is already broken. If a move is unavoidable, document the old and new paths for the UI/hosting owner to redirect.
+
+  Validate:
+  - Run `leadtype lint` on the docs source and fix relevant warnings, especially `geo:*`, broken links, missing descriptions, and unflattened components.
+  - Run `leadtype generate` with the project's normal source/output flags.
+  - Run `leadtype score --src <docs-source> --out <generated-output>` when generated site artifacts exist, and list the remaining score fixes.
+  - Confirm every explicit navigation page resolves, wildcard sections do not pull unrelated pages, and `llms.txt` shows the intended sections and best starting points.
+  - Summarize the final navigation tree, the pages changed for GEO/content quality, and any runtime/UI follow-up that should be handled separately.
+</Prompt>

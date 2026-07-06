@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: default described as static/local BM25 lexical index (two JSON files, no DB), specific conditions given (vocabulary mismatch OR corpus > tens of thousands of chunks), and explicit statement that lexical index is kept for exact matches with embeddings only layered on top. No incorrect claims present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 16012,
+  "outputTokens": 239,
+  "durationMs": 25268,
+  "steps": 8,
+  "errors": []
+}

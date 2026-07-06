@@ -1,0 +1,82 @@
+---
+title: "NLWeb"
+description: "Serve an NLWeb /ask endpoint over your generated docs and publish the schema feeds + robots.txt Schemamap directive that make the site conversational for agents."
+related:
+  - title: "MCP server"
+    href: "/docs/reference/mcp"
+    description: "The other hosted agent surface — same artifacts, MCP transport."
+  - title: "Agent readability"
+    href: "/docs/reference/llm"
+    description: "robots.txt, sitemaps, and the manifest the /ask handler reads."
+---
+
+`leadtype/nlweb` makes your docs site answer [NLWeb](https://nlweb.ai)
+natural-language queries. It has two halves:
+
+- **Runtime**: `createAskHandler()` mounts a Web-standard `/ask` endpoint over
+  the generated artifacts — list-mode answers backed by the same search index
+  the [docs MCP server](/docs/reference/mcp) uses. No LLM, no new content
+  surface.
+- **Generate-time**: with `agents.nlweb.enabled`, `leadtype generate` emits a
+  schema.org JSONL feed (`/feeds/schema.jsonl`), a `/schema-map.xml` that lists
+  it, and a `Schemamap:` directive in robots.txt so retrieval systems can find
+  the feeds.
+
+## Mount the /ask endpoint
+
+```ts
+// app/ask/route.ts (Next App Router)
+import { createAskHandler } from "leadtype/nlweb";
+
+const handler = createAskHandler({ artifacts: "./public" });
+export const GET = handler;
+export const POST = handler;
+```
+
+The handler accepts the NLWeb request shapes — `?query=` params, a flat JSON
+body, or the `{ query: { text }, prefer: { streaming } }` document — and
+answers with:
+
+```json
+{
+  "query_id": "…",
+  "_meta": { "response_type": "answer", "version": "0.55" },
+  "results": [
+    {
+      "url": "https://example.com/docs/quickstart",
+      "name": "Quickstart",
+      "site": "example.com",
+      "score": 12.4,
+      "description": "Install and configure the package.",
+      "schema_object": { "@type": "TechArticle", "…": "…" }
+    }
+  ]
+}
+```
+
+Streaming is opt-in: request it with `prefer.streaming: true`, `?streaming=1`,
+or an `Accept: text/event-stream` header and the handler responds with SSE
+`start` / `result` / `complete` events. (NLWeb defaults to streaming; leadtype
+defaults to the JSON document so plain fetches and scanners get what they
+expect.)
+
+`mode=summarize` / `mode=generate` need an LLM and are not implemented —
+queries always answer in list mode.
+
+## Emit the schema feeds
+
+```ts
+// docs/docs.config.ts
+agents: {
+  nlweb: { enabled: true },
+},
+```
+
+`leadtype generate` then writes `/feeds/schema.jsonl` (one schema.org
+`TechArticle` per docs page), `/schema-map.xml` listing the feed, and adds
+`Schemamap: <baseUrl>/schema-map.xml` after the `Sitemap:` line in robots.txt.
+The root `llms.txt` also links the `/ask` endpoint under `## Agent Interfaces`. Set `agents.nlweb.endpoint` if you mount the handler somewhere
+other than `/ask`.
+
+Hosts that regenerate robots.txt at request time pass the directive through
+`createRobotsTxtResponse({ schemamapUrlPath: "/schema-map.xml" })`.

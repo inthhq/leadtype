@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that `nav` from docs.config.ts is the curated driver of sidebar, llms.txt, and AGENTS.md grouping. It explains that `group` is a legacy field useful for fallback navigation and search facets/taxonomy. It also correctly notes that an unknown group slug causes a build failure with an 'unknown group' error. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 111029,
+  "outputTokens": 2323,
+  "durationMs": 29779,
+  "steps": 7,
+  "errors": []
+}

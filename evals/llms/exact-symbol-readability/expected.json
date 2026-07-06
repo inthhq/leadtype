@@ -1,11 +1,4 @@
 {
-  "answerPatterns": [
-    "isAgentReadabilityArtifactPath",
-    "llms\\.txt",
-    "llms-full\\.txt",
-    "sitemap",
-    "robots"
-  ],
   "expectedGroups": ["reference"],
   "expectedPages": ["docs/reference/llm.md"]
 }

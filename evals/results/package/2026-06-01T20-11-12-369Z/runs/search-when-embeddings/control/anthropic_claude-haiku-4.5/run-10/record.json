@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes default BM25 static index and that embeddings should be complementary (keep BM25). However, it fails to mention the very large corpus condition (≈ tens of thousands of chunks) as a specific scenario where embeddings are warranted; it only focuses on vocabulary mismatch. This makes the set of conditions incomplete and thus the answer incorrect. The answer confidently asserts an incomplete set of conditions.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 189501,
+  "outputTokens": 3425,
+  "durationMs": 53107,
+  "steps": 19,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md invocation uses --docs-dir changelog=/changelog as required, states the canonical URL is /changelog/v1.md, and describes the internal copy under public/docs/changelog/ and the public mirror at public/changelog/v1.md. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 294937,
+  "outputTokens": 2377,
+  "durationMs": 36357,
+  "steps": 12,
+  "errors": []
+}

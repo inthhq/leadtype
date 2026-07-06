@@ -4,6 +4,7 @@ const ROOT_INDEX_PATTERN = /^index$/;
 const MD_EXTENSION_PATTERN = /\.(md|mdx)$/;
 const TRAILING_SLASHES_PATTERN = /\/+$/;
 const QUERY_OR_HASH_PATTERN = /[?#]/;
+const LEADING_SLASHES_PATTERN = /^\/+/;
 
 type BrowserGlobal = typeof globalThis & {
   location?: { origin?: string };
@@ -34,16 +35,103 @@ export function stripDocsExtension(relativePath: string): string {
   return normalizeDocsPath(relativePath).replace(MD_EXTENSION_PATTERN, "");
 }
 
-export function toDocsUrlPath(relativePath: string): string {
-  const normalizedPath = stripDocsExtension(relativePath)
+export type DocsPathMount = {
+  pathPrefix: string;
+  urlPrefix: string;
+};
+
+export function normalizeUrlPrefix(input: string): string {
+  const normalized = `/${normalizeDocsPath(input).replace(LEADING_SLASHES_PATTERN, "")}`;
+  return stripTrailingSlashes(normalized) || "/";
+}
+
+function stripIndexSegments(relativePath: string): string {
+  return stripDocsExtension(relativePath)
     .replace(INDEX_SEGMENT_PATTERN, "")
     .replace(ROOT_INDEX_PATTERN, "");
+}
 
-  return normalizedPath.length > 0 ? `/docs/${normalizedPath}` : "/docs";
+function normalizeMountPathPrefix(input: string): string {
+  return stripTrailingSlashes(normalizeDocsPath(input)).replace(
+    LEADING_SLASHES_PATTERN,
+    ""
+  );
+}
+
+function resolveDocsPathMount(
+  relativePath: string,
+  mounts: DocsPathMount[] | undefined
+): { mount: DocsPathMount; mountedRelativePath: string } {
+  const normalizedPath = normalizeDocsPath(relativePath);
+  const normalizedMounts = (
+    mounts && mounts.length > 0
+      ? mounts
+      : [{ pathPrefix: "", urlPrefix: "/docs" }]
+  )
+    .map((mount) => ({
+      pathPrefix: normalizeMountPathPrefix(mount.pathPrefix),
+      urlPrefix: normalizeUrlPrefix(mount.urlPrefix),
+    }))
+    .sort((left, right) => right.pathPrefix.length - left.pathPrefix.length);
+
+  for (const mount of normalizedMounts) {
+    if (!mount.pathPrefix) {
+      return { mount, mountedRelativePath: normalizedPath };
+    }
+    if (
+      normalizedPath === mount.pathPrefix ||
+      normalizedPath.startsWith(`${mount.pathPrefix}/`)
+    ) {
+      return {
+        mount,
+        mountedRelativePath: normalizedPath.slice(mount.pathPrefix.length + 1),
+      };
+    }
+  }
+
+  return {
+    mount: { pathPrefix: "", urlPrefix: "/docs" },
+    mountedRelativePath: normalizedPath,
+  };
+}
+
+export function toDocsUrlPath(
+  relativePath: string,
+  mounts?: DocsPathMount[]
+): string {
+  const { mount, mountedRelativePath } = resolveDocsPathMount(
+    relativePath,
+    mounts
+  );
+  const normalizedPath = stripIndexSegments(mountedRelativePath);
+  const urlPrefix = normalizeUrlPrefix(mount.urlPrefix);
+
+  if (normalizedPath.length === 0) {
+    return urlPrefix;
+  }
+  // A root mount (`urlPrefix: "/"`) maps pages onto the site root; joining
+  // with the prefix verbatim would emit `//page`.
+  return urlPrefix === "/"
+    ? `/${normalizedPath}`
+    : `${urlPrefix}/${normalizedPath}`;
 }
 
 export function toMarkdownUrlPath(urlPath: string): string {
   return urlPath === "/docs" ? "/docs/index.md" : `${urlPath}.md`;
+}
+
+export function toMountedMarkdownUrlPath(
+  relativePath: string,
+  mounts?: DocsPathMount[]
+): string {
+  const urlPath = toDocsUrlPath(relativePath, mounts);
+  const stripped = stripIndexSegments(
+    resolveDocsPathMount(relativePath, mounts).mountedRelativePath
+  );
+  if (stripped.length > 0) {
+    return `${urlPath}.md`;
+  }
+  return urlPath === "/" ? "/index.md" : `${urlPath}/index.md`;
 }
 
 export function toAbsoluteUrl(urlPath: string, baseUrl: string): string {

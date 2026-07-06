@@ -1,0 +1,57 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { MarkdownMirrorTarget } from "leadtype/llm/readability";
+import { normalizeAgentReadabilityManifest } from "leadtype/llm/readability";
+import {
+  getHeader,
+  getRequestProtocol,
+  getRequestURL,
+  type H3Event,
+} from "nitro/h3";
+import manifestJson from "../../src/generated/agent-readability.json" with {
+  type: "json",
+};
+
+export const agentReadabilityManifest =
+  normalizeAgentReadabilityManifest(manifestJson);
+
+export function getRequestOrigin(event: H3Event): string | undefined {
+  const forwardedHost = getHeader(event, "x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const forwardedProto = getHeader(event, "x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  if (forwardedHost) {
+    const protocol = forwardedProto || getRequestProtocol(event) || "http";
+    return `${protocol}://${forwardedHost}`;
+  }
+  const url = getRequestURL(event);
+  return url.origin;
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "ENOENT" || error.code === "ENOTDIR")
+  );
+}
+
+export async function readMarkdownFile(
+  target: MarkdownMirrorTarget
+): Promise<string | null> {
+  try {
+    return await readFile(
+      join(process.cwd(), "public", target.filePath),
+      "utf8"
+    );
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}

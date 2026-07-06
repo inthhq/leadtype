@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer clearly explains that llms.txt is a website/HTTP convention with absolute URLs and that no agent looks for it in node_modules, satisfying the first required point. It describes AGENTS.md as the filesystem convention with relative links that work offline and version-matched, meeting the second point. It explicitly lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, and others, fulfilling the third point. No rubric violations or incorrect assertions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 4,
+  "inputTokens": 64955,
+  "outputTokens": 1884,
+  "durationMs": 29363,
+  "steps": 4,
+  "errors": []
+}

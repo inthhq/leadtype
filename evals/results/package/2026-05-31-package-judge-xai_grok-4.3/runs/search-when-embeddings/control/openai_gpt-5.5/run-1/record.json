@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly states the default is a static/local BM25 lexical index with generated JSON (no DB), gives the specific triggers (vocabulary mismatch + large corpus/scale), and explicitly requires keeping the lexical index for exact matches with embeddings only as a complementary layer. The listed conditions in ANSWER.md are concrete rather than generic, and no incorrect claims appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 19339,
+  "outputTokens": 80,
+  "durationMs": 43816,
+  "steps": 9,
+  "errors": []
+}

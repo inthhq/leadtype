@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response does not provide the leadtype generate invocation or the description of emitted files; it only states that it implemented ANSWER.md. No required rubric points are met: the mount syntax, the canonical URL, and the static mirror location are all absent.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 55656,
+  "outputTokens": 554,
+  "durationMs": 64098,
+  "steps": 11,
+  "errors": []
+}

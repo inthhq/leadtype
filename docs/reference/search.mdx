@@ -1,168 +1,145 @@
 ---
 title: "Search"
-description: "Static search index, runtime helpers, and source-grounded answer streaming."
-group: reference
+description: "API surface for leadtype/search: index generation, runtime query, framework hooks, answer streaming, bash tools, and endpoint guards."
+related:
+  - title: "Add search"
+    href: "/docs/search/add-search"
+    description: "How-to: generate the index and wire a search UI."
+  - title: "Stream AI answers"
+    href: "/docs/search/ai-answers"
+    description: "How-to: source-grounded answers across runtimes."
 ---
-# Search
 
-Leadtype builds a **static, edge-safe search index** over your docs at build time and exposes a runtime that queries it without touching a database. Source-grounded answer streaming layers on top via provider-specific entry points.
+The API surface for `leadtype/search` and its subpaths. For tasks, start with
+[Add search](/docs/search/add-search), [Stream AI answers](/docs/search/ai-answers),
+and [Agent search tools](/docs/search/agent-tools).
 
 ## Vocabulary
 
-- **Chunk** — a heading-aware slice of a page. Each chunk is a separate document in the index, so search results jump to the right section, not just the right page.
-- **BM25** — the ranking function. Titles weigh 4×, headings 2×, body 1×, code 0.35×. Tunable in the index generator.
-- **Index** — `search-index.json`. Compact tuple format with term postings, document refs, and chunk refs.
-- **Content store** — `search-content.json`. The actual chunk text, separated from the index so you can search without loading content, then read content lazily for excerpts and answers.
+- **Chunk** — a heading-aware slice of a page; each is a separate document, so results jump to the right section.
+- **Index** (`search-index.json`) — compact term postings + document/chunk refs. Loaded on every search.
+- **Content store** (`search-content.json`) — chunk text, separate from the index so search stays cheap and content loads lazily.
+- **BM25** — the ranking function. Weights: title 4×, headings 2×, body 1×, code 0.35×.
 
-## Build-time indexing
-
-Generate after MDX conversion:
+## Build time — `leadtype/search/node`
 
 ```ts
-import { generateDocsSearchFiles } from "leadtype/search/node";
-
-await generateDocsSearchFiles({
-  outDir: "public",
-  baseUrl: "https://leadtype.dev",
-});
+generateDocsSearchFiles(config): Promise<GenerateResult>
 ```
 
-The generator reads markdown under `<outDir>/docs/` and writes:
+<TypeTable
+  properties={{
+    outDir: { type: "string", description: "Output root. Reads markdown under `<outDir>/docs/`." },
+    baseUrl: { type: "string", description: "Base URL for absolute result links." },
+    mounts: { type: "DocsPathMount[]", description: "Mounted URL prefixes — match the LLM/Agent Readability generators." },
+    i18n: { type: "DocsI18nConfig", description: "Localization config; emits per-locale indexes." },
+    locale: { type: "string", description: "Active locale when i18n is set." },
+    indexOptions: { type: "object", description: "BM25 weight + tokenizer tuning." },
+    transformers: { type: "DocsTransformer[]", description: "beforeSearchIndex / beforeSearchChunk hooks." },
+  }}
+/>
 
-```
-<outDir>/docs/search-index.json
-<outDir>/docs/search-content.json
-```
-
-Splitting them keeps the index small (load on every search) while content stays cheap (load on result hover or answer generation).
-
-## Runtime search
-
-The runtime is edge-safe — no Node APIs, works on Vercel, Cloudflare, and anywhere else:
+## Runtime query — `leadtype/search`
 
 ```ts
-import {
-  searchDocs,
-  type DocsSearchIndex,
-  type DocsSearchContentStore,
-} from "leadtype/search";
-import indexJson from "../public/docs/search-index.json";
-import contentJson from "../public/docs/search-content.json";
-
-const results = searchDocs(
-  indexJson as DocsSearchIndex,
-  "tabs install",
-  { content: contentJson as DocsSearchContentStore }
-);
+searchDocs(index: DocsSearchIndex, query: string, options?: {
+  content?: DocsSearchContentStore;  // enables excerpts
+  synonyms?: Record<string, string[]>;
+  limit?: number;                    // default 8
+}): DocsSearchResult[]
 ```
 
-Results include heading paths, hash URLs, and snippets ready for a search UI.
+`DocsSearchResult` carries `title`, `urlPath`, `urlWithHash`, `headingPath`,
+`score`, and (with `content`) `excerpt`. The runtime is edge-safe — no Node APIs.
 
-Search is still local and dependency-free, but it is not exact-token only. Query
-terms expand through lightweight stemming, prefix matches, typo-tolerant
-fallbacks, and a small built-in synonym map. Exact matches keep the highest
-weight so API names and config keys stay precise. Pass `synonyms` when your docs
-use product-specific vocabulary:
+### Content readers
 
 ```ts
-const results = searchDocs(index, "starter", {
-  content,
-  synonyms: {
-    starter: ["quickstart", "getting started"],
-  },
-});
+listDocsContentFiles(index): string[]
+readDocsContentFile(index, relativePath, content): string | null
+readDocsContentChunk(index, chunkId, content): string | null
 ```
 
-## Reading docs at runtime
+Use `readDocsContentFile` for a whole page, `readDocsContentChunk` when a result
+already named the heading.
 
-The same index doubles as a virtual filesystem. Three readers, picked by what you have:
+## Framework hooks
+
+| Import | Export | Returns |
+| --- | --- | --- |
+| `leadtype/search/client` | `createSearchClient(collection, opts?)` | `{ search(q), preload() }` |
+| `leadtype/search/react` | `useLeadtypeSearch(collection, opts?)` | `{ query, search, results, status, error }` |
+| `leadtype/next/client` | `useLeadtypeSearch(collection, opts?)` | same (Next App Router) |
+| `leadtype/search/vue` | `useLeadtypeSearch(collection, opts?)` | refs: `{ query, results, status, error, search, preload }` |
+| `leadtype/search/svelte` | `createLeadtypeSearch(collection, opts?)` | stores: `{ query, results, status, error, search, preload }` |
+
+`status` is `"idle" | "loading" | "ready" | "error"`. Options: `debounceMs`
+(default 120), plus `indexUrl` / `contentUrl` / `limit` / `fetch` overrides.
+Collection `"docs"` resolves to `/docs/search-index.json` + `/docs/search-content.json`.
+
+## Answer context & streaming
 
 ```ts
-import {
-  listDocsContentFiles,
-  readDocsContentFile,
-  readDocsContentChunk,
-} from "leadtype/search";
-
-const allFiles = listDocsContentFiles(index);
-const wholePage = readDocsContentFile(index, "guides/quickstart", content);
-const oneChunk = readDocsContentChunk(index, "chunk-0", content);
+createAnswerContext(index, query, { content, productName }): {
+  system: string; prompt: string; sources: DocsAnswerSource[];
+}
 ```
 
-Use `readDocsContentFile` when you need the entire page (for context links). Use `readDocsContentChunk` when a search result already named the right heading.
+The system message constrains the model to the retrieved context and `[1]`-style
+citations. `streamDocsAnswer` wraps this per runtime and returns
+`{ response: Response, sources: DocsAnswerSource[] }` (plain-text stream + separate citations):
 
-## Source-grounded answers
+| Import | Model argument | Other options |
+| --- | --- | --- |
+| `leadtype/search/vercel` | `model: LanguageModel \| string` | `maxOutputTokens`, `timeout`, `providerOptions`, `tools` |
+| `leadtype/search/tanstack` | `adapter: AnyTextAdapter` | `maxTokens`, `modelOptions`, `tools` |
+| `leadtype/search/cloudflare` | `adapter` from `createCloudflareDocsAdapter(...)` | `maxTokens` |
 
-`createAnswerContext` turns a query plus retrieved chunks into a `system` and `prompt` you pass to any model:
+`createCloudflareDocsAdapter({ provider, model, options })` — `provider` is one
+of `anthropic | gemini | grok | openai | openrouter | workers-ai`.
+
+## Bash tools — `leadtype/search/bash`
 
 ```ts
-import { createAnswerContext } from "leadtype/search";
-
-const context = createAnswerContext(index, "how do I run lint?", {
-  content,
-  productName: "My Library",
-});
-// → { system, prompt, sources }
+createDocsBashTool(index, content): Promise<{ tools, instructions }>   // Vercel AI SDK
+createDocsBashTools(index, content): Promise<{ tools, instructions }>  // TanStack AI
+createDocsBashFileMap(index, content): DocsBashFileMap                 // raw filesystem
 ```
 
-The system message instructs the model to answer only from the retrieved context, cite sources with `[1]`-style references, and say so when the context is insufficient.
+Read-only virtual `/docs` with `ls`, `cat`, `find`, `grep`, `rg`. No network, no
+execution, no writes.
 
-## Streaming via provider entry points
+## Endpoint guards — `leadtype/search`
 
-Three thin wrappers around `createAnswerContext` that stream a Response and surface sources separately. Use one matching your runtime:
+| Helper | Purpose |
+| --- | --- |
+| `validateDocsQuery(input, { maxChars, fieldName? })` | Trim and cap query text. |
+| `readJsonWithLimit(request, { maxBytes })` | Reject oversized JSON bodies before parse. |
+| `getClientIdentifier(request, { fallback? })` | Read proxy IP headers for a limiter key. |
+| `createMemoryRateLimiter({ limit, windowMs })` | In-memory `RateLimiter` (demos). |
 
 ```ts
-import { streamDocsAnswer } from "leadtype/search/vercel";       // Vercel AI SDK / AI Gateway
-import { streamDocsAnswer } from "leadtype/search/tanstack";     // TanStack AI
-import { streamDocsAnswer } from "leadtype/search/cloudflare";   // Cloudflare AI Gateway / Workers AI
+interface RateLimiter {
+  check(key: string): Promise<{ allowed: boolean; resetAt: number }>;
+}
 ```
 
-```ts
-const { response, sources } = streamDocsAnswer({
-  index,
-  content,
-  query,
-  model: "openai/gpt-5.5",
-  productName: "My Library",
-});
-```
+Adapt `RateLimiter` to a shared store (Redis, Vercel KV, Cloudflare KV, Durable
+Objects) in production. Defaults live in `docsSearchDefaults`:
 
-`response` is a plain text Response. `sources` is metadata for citation links — display it separately, don't embed it in the streamed answer.
-
-For TanStack, pass an explicit `adapter`. For Cloudflare, build one with `createCloudflareDocsAdapter({ provider, model, options: { binding: env.AI.gateway("docs") } })`.
-
-## Bash tool adapters
-
-When you want an agent to **explore docs with shell commands** instead of receiving pre-selected chunks:
-
-```ts
-import { createDocsBashTool, createDocsBashTools } from "leadtype/search/bash";
-
-const { tools, instructions } = await createDocsBashTool(index, content);
-```
-
-The adapter exposes a read-only virtual `/docs` filesystem with `ls`, `cat`, `find`, `grep`, and `rg`. Network commands, code execution, and writes are disabled. Use `createDocsBashTool` for Vercel AI SDK tool sets and `createDocsBashTools` for TanStack-compatible tools over the same filesystem.
-
-## Abuse guards
-
-Reusable utilities for the request path:
-
-
-| Helper                    | Purpose                                    |
-| ------------------------- | ------------------------------------------ |
-| `validateDocsQuery`       | Trim and cap query text.                   |
-| `readJsonWithLimit`       | Reject oversized JSON bodies before parse. |
-| `getClientIdentifier`     | Read common proxy IP headers.              |
-| `createMemoryRateLimiter` | Implements `RateLimiter` for demos.        |
-
-
-The in-memory limiter is fine for demos. Production apps should adapt the `RateLimiter` interface to a shared store — Redis, Vercel KV, Cloudflare KV, or Durable Objects.
+| Key | Default |
+| --- | --- |
+| `maxQueryChars` | 400 |
+| `askMaxQueryChars` | 600 |
+| `maxContextChars` | 12000 |
+| `maxSources` | 6 |
+| `searchLimit` | 8 |
+| `maxBodyBytes` | 16 KB |
 
 ## When to add embeddings
 
-Start with the local index. It is static, cheap, edge-safe, and fast for exact API names, config keys, error messages, and paths. Add embeddings only when:
-
-- Users search with vocabulary that doesn't match the docs (e.g. "make it faster" matching a "performance optimization" page).
-- Your docs grow past tens of thousands of chunks and the cold-start memory hit becomes noticeable.
-
-Even then, keep the lexical index for exact matches and layer embeddings on top — they're complementary, not replacements.
+Start with the local index — static, cheap, edge-safe, and precise for API
+names, config keys, error messages, and paths. Add embeddings only when users
+search with vocabulary the docs don't use, or the corpus grows past tens of
+thousands of chunks. Even then, keep the lexical index for exact matches and
+layer embeddings on top.

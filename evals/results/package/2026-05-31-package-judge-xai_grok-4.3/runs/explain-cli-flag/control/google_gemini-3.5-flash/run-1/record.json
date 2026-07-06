@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both exact field names (lastModified and lastAuthor) are stated, they are described as being added to document frontmatter, and their source is explicitly git history / the git log command on the file. No rubric violations (wrong fields, non-git source, or different flag) occur. The paragraph is concise and on-topic.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 13051,
+  "outputTokens": 308,
+  "durationMs": 30192,
+  "steps": 16,
+  "errors": []
+}

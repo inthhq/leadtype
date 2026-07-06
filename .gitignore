@@ -11,9 +11,11 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+.docs-src/
 
 # Testing
 coverage
+.playwright-mcp/
 
 # Turbo
 .turbo
@@ -22,10 +24,34 @@ coverage
 .vercel
 
 # Build Outputs
+.astro/
 .next/
+.nuxt/
+.output/
+.svelte-kit/
 out/
 /build
 dist
+*.tsbuildinfo
+
+# Generated example docs
+apps/*/.leadtype/
+apps/*/public/docs/
+apps/*/public/changelog/
+apps/*/public/llms-full.txt
+apps/*/public/llms.txt
+apps/*/public/.well-known/
+apps/*/public/feeds/
+apps/*/public/mcp.json
+apps/*/public/robots.txt
+apps/*/public/schema-map.xml
+apps/*/public/sitemap.md
+apps/*/public/sitemap.xml
+apps/sveltekit-example/static/docs/
+apps/sveltekit-example/static/changelog/
+apps/sveltekit-example/static/llms-full.txt
+apps/sveltekit-example/static/llms.txt
+apps/sveltekit-example/static/.well-known/
 
 
 # Debug

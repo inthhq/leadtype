@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response in ANSWER.md explicitly names both required frontmatter fields ('lastModified' and 'lastAuthor'), states they are added to the frontmatter of converted documents, and correctly identifies that these values come from git history (specifically from the output of `git log`). All rubric-required points are satisfied, and there are no inaccuracies.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 42252,
+  "outputTokens": 416,
+  "durationMs": 32240,
+  "steps": 6,
+  "errors": []
+}

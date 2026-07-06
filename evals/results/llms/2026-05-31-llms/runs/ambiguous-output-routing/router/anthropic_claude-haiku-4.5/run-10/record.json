@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area (listing generateLLMFullContextFiles and other agent-facing APIs) without routing to Search. It explains /llms-full.txt as a fallback used when page-level routing is insufficient, and advises starting with the lightweight router. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 4377,
+  "outputTokens": 209,
+  "durationMs": 16549,
+  "steps": 8,
+  "errors": []
+}

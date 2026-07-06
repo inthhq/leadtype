@@ -1,0 +1,148 @@
+---
+title: "WebMCP"
+description: "Register generated docs as browser-side WebMCP tools with document.modelContext / navigator.modelContext — separate from the server MCP endpoint."
+related:
+  - title: "MCP server"
+    href: "/docs/reference/mcp"
+    description: "Server-side MCP over stdio or Streamable HTTP."
+  - title: "Search reference"
+    href: "/docs/reference/search"
+    description: "The generated search artifacts WebMCP docs tools read."
+  - title: "CLI"
+    href: "/docs/reference/cli"
+    description: "CLI flags and deprecation notes."
+---
+
+WebMCP is a browser API: a page registers JavaScript tools with
+`document.modelContext.registerTool()` (and current scanners also look for
+`navigator.modelContext.registerTool()`). This is **not** the same thing as the
+server MCP endpoint in [`leadtype/mcp`](/docs/reference/mcp). Use WebMCP when a
+browser-based agent is on your page and should call the same read-only docs
+helpers without scraping the DOM.
+
+## Register docs tools
+
+One call creates and registers both docs tools:
+
+```ts
+import { registerDocsWebMcpTools } from "leadtype/webmcp";
+
+const registration = registerDocsWebMcpTools();
+
+// Later, if the page/component unloads:
+registration.unregister();
+```
+
+In a framework component, use the matching hook instead — it registers on
+mount and unregisters on unmount (including React Strict Mode double-mounts):
+
+```tsx
+// React (leadtype/webmcp/react)
+"use client";
+import { useLeadtypeWebMcp } from "leadtype/webmcp/react";
+
+export function LeadtypeWebMcp() {
+  useLeadtypeWebMcp();
+  return null;
+}
+```
+
+```svelte
+<!-- Svelte (leadtype/webmcp/svelte), e.g. the root +layout.svelte -->
+<script lang="ts">
+import { useLeadtypeWebMcp } from "leadtype/webmcp/svelte";
+
+useLeadtypeWebMcp();
+</script>
+```
+
+```vue
+<!-- Vue (leadtype/webmcp/vue), e.g. app.vue -->
+<script setup lang="ts">
+import { useLeadtypeWebMcp } from "leadtype/webmcp/vue";
+
+useLeadtypeWebMcp();
+</script>
+```
+
+The tools created for the default `docs` collection:
+
+| Tool | Input | Behavior |
+| --- | --- | --- |
+| `search-docs` | `query: string`, `limit?: number` (1–25) | Reads `/docs/search-index.json` and optional `/docs/search-content.json`, then returns ranked `{ title, urlPath, snippet }` hits. |
+| `get-page` | `urlPath: string` | Fetches the generated Markdown mirror for the page. `/docs` maps to `/docs/index.md`; other paths append `.md`. |
+
+Both tools set `readOnlyHint: true` and `untrustedContentHint: true`.
+
+Tool input is agent-controlled, so `get-page` only fetches same-site page
+paths: protocol-relative URLs, `..` segments, backslashes, and query/fragment
+smuggling are rejected, and unknown paths are rejected against the search
+index with a hint to call `search-docs` first (disable the index check with
+`validatePages: false`).
+
+In browsers without WebMCP, registration is a no-op: the result reports
+`supported: false`, and a `console.debug` notice explains this in development
+builds.
+
+## Add it to your app
+
+Register WebMCP from app code, next to the component or layout that owns your
+docs page. `leadtype init --webmcp` still exists for old setup scripts, but it is
+deprecated and will be removed in the next major version. The browser API is
+experimental; registration is client-side only and does not install
+`@modelcontextprotocol/sdk` or create a server `/mcp` route.
+
+## Options
+
+```ts
+registerDocsWebMcpTools({
+  collection: "docs",
+  indexUrl: "/docs/search-index.json",
+  contentUrl: "/docs/search-content.json",
+  limit: 5,
+  validatePages: true,
+});
+```
+
+Pass `markdownUrl(urlPath)` when your generated Markdown mirrors live somewhere
+other than the default `.md` URL shape.
+
+Non-default collections derive their own tool names so two collections can
+register on one page without colliding: `collection: "api"` creates
+`search-api` and `get-api-page`.
+
+## Custom tools
+
+`registerDocsWebMcpTools` is the blessed path. To mix the docs tools with your
+own, compose the primitives:
+
+```ts
+import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
+
+const registration = registerWebMcpTools([
+  ...createDocsWebMcpTools(),
+  {
+    name: "subscribe-newsletter",
+    description: "Subscribe the visitor to the docs newsletter.",
+    execute: (input) => subscribe(input),
+  },
+]);
+```
+
+Registration is atomic: if any tool fails to register (for example, a
+duplicate name), the already-registered ones are rolled back and the error is
+rethrown.
+
+## Validate
+
+WebMCP is detected by loading the page in a browser and observing tool
+registration on page load. To check a deployed site with Cloudflare's scanner:
+
+```http
+POST https://isitagentready.com/api/scan
+Content-Type: application/json
+
+{"url": "https://YOUR-SITE.com"}
+```
+
+Look for `checks.discovery.webMcp.status` to be `"pass"`.

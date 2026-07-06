@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly distinguishes llms.txt as a website/HTTP convention with absolute URLs, which doesn’t work inside a tarball, and positions AGENTS.md as the filesystem convention with relative links, offline-ready and version‑matched. It explicitly lists the website artifacts --bundle skips (llms.txt, llms-full.txt, search index, sitemap, robots, agent-readability.json). All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 18712,
+  "outputTokens": 636,
+  "durationMs": 59701,
+  "steps": 12,
+  "errors": []
+}

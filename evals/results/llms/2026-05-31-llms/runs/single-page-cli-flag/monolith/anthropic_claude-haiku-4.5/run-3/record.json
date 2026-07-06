@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "monolith",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object with generated paths and names several required fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it incorrectly lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', which is an invented field not present in the actual output shape. Per the rubric, inventing fields makes the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3499,
+  "outputTokens": 116,
+  "durationMs": 10792,
+  "steps": 4,
+  "errors": []
+}

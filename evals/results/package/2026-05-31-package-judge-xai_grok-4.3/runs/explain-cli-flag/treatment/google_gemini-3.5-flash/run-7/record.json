@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md paragraph names both required fields (lastModified and lastAuthor), states they are added to frontmatter of the compiled files, and states the values are populated from git history via the git log command. All three rubric REQUIRED points are satisfied with no invented fields or wrong sources.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 15249,
+  "outputTokens": 273,
+  "durationMs": 41329,
+  "steps": 18,
+  "errors": []
+}

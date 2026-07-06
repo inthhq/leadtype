@@ -1,0 +1,340 @@
+---
+title: "Use the source primitive"
+description: "Wire createDocsSource into Next, TanStack Start, Nuxt, Astro, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes."
+related:
+  - title: "createDocsSource"
+    href: "/docs/reference/source"
+    description: "Reference for the source object returned by the primitive."
+  - title: "Frontmatter transformers"
+    href: "/docs/reference/frontmatter-transformers"
+    description: "Add typed metadata and lifecycle hooks to source loading."
+---
+
+`createDocsSource()` is the framework-neutral way to render leadtype-authored MDX in your own docs app. This page shows the wiring on top of the most common hosts. Fumadocs has its own first-party adapter — see [`leadtype/fumadocs`](/docs/integrations/integrate-with-fumadocs).
+
+## TL;DR
+
+The primitive itself is identical across frameworks:
+
+```ts title="lib/source.ts"
+import { createDocsSource } from "leadtype";
+
+export const source = await createDocsSource({
+  contentDir: "./content/docs",
+  baseUrl: "https://example.com",
+});
+```
+
+Wire `createMdxSourcePlugins()` into your bundler's remark stack, then call `source.loadPage(slug)` from your framework's page renderer. The "Wire into your framework" section below has minimal setups for each host.
+
+## Install
+
+```sh
+bun add leadtype
+```
+
+Plus an MDX integration for your bundler (`@next/mdx`, `@astrojs/mdx`, `@mdx-js/rollup`, etc.).
+
+## Wire into your framework
+
+`createMdxSourcePlugins()` expands `<include>` partials and resolves `<ExtractedTypeTable>` at build time, while leaving every custom tag (`<Callout>`, `<Tabs>`, `<Steps>`, …) as JSX for your runtime components. Set `typeTableBasePath` to the source root that contains referenced TypeScript files; use `path.resolve(process.cwd(), "docs")` only when those files intentionally live under your docs folder.
+
+### Next App Router
+
+The `leadtype/next` adapter wraps the common Next wiring so the page, route handler, and search hook each become a one-line export. Use it as the recommended path; fall back to calling `createDocsSource()` directly only when you need behavior the adapter doesn't expose.
+
+```ts title="next.config.mjs"
+import createMDX from "@next/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import path from "node:path";
+
+const typeTableBasePath = path.resolve(process.cwd(), ".c15t");
+
+export default createMDX({
+  options: {
+    remarkPlugins: [...createMdxSourcePlugins({ typeTableBasePath })],
+  },
+})({ pageExtensions: ["ts", "tsx", "mdx"] });
+```
+
+```tsx title="app/docs/[[...slug]]/page.tsx"
+import { notFound } from "next/navigation";
+import { MDXRemote } from "next-mdx-remote-client/rsc";
+import {
+  createGenerateStaticParams,
+  createLoadPageData,
+} from "leadtype/next";
+import { source } from "@/lib/source";
+import { mdxComponents } from "@/lib/mdx-components";
+
+const loadPageData = createLoadPageData({ source });
+export const generateStaticParams = createGenerateStaticParams({ source });
+
+export default async function DocsPage({
+  params,
+}: { params: Promise<{ slug?: string[] }> }) {
+  const page = await loadPageData((await params).slug);
+  if (!page) notFound();
+
+  return (
+    <article>
+      <h1>{page.title}</h1>
+      {page.description ? <p>{page.description}</p> : null}
+      <MDXRemote source={page.markdown} components={mdxComponents} />
+    </article>
+  );
+}
+```
+
+Add a sibling `route.ts` to serve raw markdown and content negotiation:
+
+```ts title="app/docs/[[...slug]]/route.ts"
+import { createDocsRouteHandler } from "leadtype/next";
+import manifest from "@/generated/agent-readability.json" with { type: "json" };
+
+export const GET = createDocsRouteHandler({
+  manifest: { ...manifest, version: 1 } as const,
+});
+```
+
+Pair with `useLeadtypeSearch` from `leadtype/next/client` when building a search input — see the [search recipe](/docs/search/add-search).
+
+### TanStack Start
+
+```ts title="vite.config.ts"
+import mdx from "@mdx-js/rollup";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+import remarkFrontmatter from "remark-frontmatter";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [
+    {
+      ...mdx({
+        providerImportSource: "@mdx-js/react",
+        remarkPlugins: [remarkFrontmatter, ...createMdxSourcePlugins()],
+      }),
+      enforce: "pre",
+    },
+    tanstackStart(),
+    viteReact({ include: /\.(mdx|[jt]sx?)$/ }),
+  ],
+});
+```
+
+```tsx title="src/routes/docs/$.tsx"
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { type ComponentType, lazy, Suspense, useMemo } from "react";
+import docsPages from "@/generated/docs-pages.json";
+
+type DocsPage = { slug: string[]; globKey: string; urlPath: string };
+
+const pagesBySlug = new Map<string, DocsPage>(
+  (docsPages as DocsPage[]).map((p) => [p.slug.join("/"), p])
+);
+
+// import.meta.glob keys are POSIX paths; the build-time manifest writes
+// matching keys so each slug maps to its lazy-loaded MDX module.
+const mdxModules = import.meta.glob<{ default: ComponentType }>(
+  "../../../content/docs/**/*.mdx"
+);
+
+const TRAILING_SLASH = /\/+$/;
+
+function resolvePage(splat: string | undefined): DocsPage | null {
+  if (!splat) return null;
+  return pagesBySlug.get(splat.replace(TRAILING_SLASH, "")) ?? null;
+}
+
+function MissingMdxModule({ urlPath }: { urlPath: string }) {
+  return (
+    <div>
+      MDX module not found for <code>{urlPath}</code>. Re-run your docs
+      manifest script after adding new pages.
+    </div>
+  );
+}
+
+export const Route = createFileRoute("/docs/$")({
+  beforeLoad: ({ params }) => {
+    if (!resolvePage(params._splat)) throw notFound();
+  },
+  component: DocsCatchAllRoute,
+});
+
+function DocsCatchAllRoute() {
+  const { _splat } = Route.useParams();
+  // beforeLoad guarantees this is non-null when the component renders.
+  const page = resolvePage(_splat) as DocsPage;
+
+  // `lazy()` must run outside the render body — calling it inline returns
+  // a fresh lazy component every render, defeats Suspense caching, and
+  // remounts the MDX page on every parent re-render. Memoize on the
+  // globKey so the cached lazy component is reused across renders. Guard
+  // the lookup in case the manifest references a file the glob didn't
+  // pick up (stale manifest, file deleted between builds, …).
+  const MdxComponent = useMemo(() => {
+    const loader = mdxModules[page.globKey];
+    if (!loader) {
+      return () => <MissingMdxModule urlPath={page.urlPath} />;
+    }
+    return lazy(loader);
+  }, [page.globKey, page.urlPath]);
+
+  return (
+    <Suspense fallback={null}>
+      <MdxComponent />
+    </Suspense>
+  );
+}
+```
+
+Generate `docs-pages.json` at build time by calling `createDocsSource().listPages()` from a build script and writing each page's `slug`, `urlPath`, and `globKey` (path relative to the catch-all route, POSIX separators).
+
+Use `createLoadPageData` from `leadtype/tanstack-start` when you want adapter helpers for TanStack Router route params and page data. TanStack AI answer streaming lives separately under `leadtype/search/tanstack`.
+
+### Nuxt
+
+```ts title="nuxt.config.ts"
+import { createMdxSourcePlugins } from "leadtype/mdx";
+
+export default defineNuxtConfig({
+  modules: ["@nuxtjs/mdc"],
+  mdc: { remarkPlugins: [...createMdxSourcePlugins()] },
+});
+```
+
+Use `createLoadPageData` and the Nitro route handlers from `leadtype/nuxt` for page data, generated markdown, and Agent Readability artifacts. For search, use `leadtype/search/vue` with the generated JSON files.
+
+### Astro Content Collections
+
+```ts title="astro.config.mjs"
+import { defineConfig } from "astro/config";
+import mdx from "@astrojs/mdx";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+
+export default defineConfig({
+  integrations: [mdx({ remarkPlugins: [...createMdxSourcePlugins()] })],
+});
+```
+
+Use Astro's native content collection schema for typed frontmatter. Call `source.loadPage()` from leadtype only when you need programmatic include resolution, search, or navigation. See [Astro's content collections docs](https://docs.astro.build/en/guides/content-collections/) for the routing pattern.
+
+### SvelteKit + `mdsvex`
+
+```ts title="svelte.config.js"
+import { mdsvex } from "mdsvex";
+import { createMdxSourcePlugins } from "leadtype/mdx";
+
+export default {
+  extensions: [".svelte", ".svx", ".mdx"],
+  preprocess: mdsvex({ remarkPlugins: [...createMdxSourcePlugins()] }),
+};
+```
+
+Use `createLoadPageData`, `createEntries`, and `createDocsServerHandler` from `leadtype/sveltekit` for page data, prerender entries, and markdown or JSON artifact responses. For search, use `leadtype/search/svelte` with the generated JSON files.
+
+> TanStack Start, Nuxt, Astro, and SvelteKit expose adapter helpers for native route data and handler shapes. The open follow-up work is to keep expanding those helpers without adding rendered UI components.
+
+## Implement the tag components
+
+Import prop types from `leadtype/mdx` and implement against your framework:
+
+```tsx title="lib/mdx-components.tsx"
+import type { CalloutProps, TabsProps, StepProps } from "leadtype/mdx";
+
+export const mdxComponents = {
+  Callout: ({ variant, title, children }: CalloutProps & { children?: React.ReactNode }) => (
+    <aside data-variant={variant ?? "info"}>
+      {title ? <strong>{title}</strong> : null}
+      <div>{children}</div>
+    </aside>
+  ),
+  // ... Tabs, Tab, Steps, Step, Cards, Card, TypeTable, etc.
+};
+```
+
+The full tag inventory and intersection patterns for React, Vue, Svelte, Solid, and Astro live in [`leadtype/mdx`](/docs/reference/mdx).
+
+## Build the sidebar from navigation
+
+```tsx title="components/sidebar.tsx"
+import { source } from "@/lib/source";
+
+export async function Sidebar({ currentUrlPath }: { currentUrlPath: string }) {
+  const navigation = await source.getNavigation();
+  return (
+    <nav>
+      {navigation.groups.map((group) => (
+        <section key={group.slug}>
+          <h2>{group.title}</h2>
+          {group.pages.map((page) => (
+            <a
+              key={page.urlPath}
+              href={page.urlPath}
+              aria-current={page.urlPath === currentUrlPath ? "page" : undefined}
+            >
+              {page.title}
+            </a>
+          ))}
+        </section>
+      ))}
+    </nav>
+  );
+}
+```
+
+Each `page` carries a `toc` field (`DocsTableOfContentsItem[]`) you can render as an "On this page" rail.
+
+## Match heading slugs
+
+`source.loadPage().toc` uses `slugifyDocsHeading` to derive anchor IDs. Your rendered heading components need matching `id` attributes:
+
+```tsx
+import { slugifyDocsHeading } from "leadtype/llm/readability";
+
+function textFromChildren(children: unknown): string {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  if (Array.isArray(children)) return children.map(textFromChildren).join("");
+  // (recurse into React elements as needed)
+  return "";
+}
+
+const Heading2 = ({ children, id, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+  const headingId = id ?? slugifyDocsHeading(textFromChildren(children));
+  return <h2 id={headingId || undefined} {...props}>{children}</h2>;
+};
+```
+
+Wire `Heading2` (and `h3`, etc.) into your `mdxComponents` map. Authors can still pin an explicit `id` on a heading.
+
+## Build a search index
+
+```tsx title="app/api/search/route.ts"
+import { source } from "@/lib/source";
+
+const bundle = await source.buildSearchIndex();
+
+export async function GET() {
+  return Response.json(bundle.index);
+}
+```
+
+For provider-specific search (Vercel AI, TanStack, Cloudflare), feed the bundle into a `leadtype/search/*` adapter — see [Add search](/docs/search/add-search).
+
+## Troubleshooting
+
+- **`<include>` tags survive into the rendered output.** You forgot to add `createMdxSourcePlugins()` to your MDX compiler's remark plugin list.
+- **`<ExtractedTypeTable>` renders unresolved.** The source preset converts these to `<TypeTable>` only when `extractTypeFromFile` succeeds. Make sure `typescript` is installed in the docs app and `typeTableBasePath` resolves to the project that contains the type.
+- **TOC links don't scroll.** Rendered heading IDs don't match. Wire `slugifyDocsHeading` into your heading components.
+- **Sidebar order doesn't match `llms.txt`.** Your app and the CLI are loading different `docs.config.ts` files. Centralize the config and import it in both.
+
+## Reference
+
+- [`leadtype/mdx`](/docs/reference/mdx) — tag types, `createMdxSourcePlugins()`, include helpers
+- [`createDocsSource`](/docs/reference/source) — full API surface for the primitive
+- [`leadtype/fumadocs`](/docs/integrations/integrate-with-fumadocs) — fumadocs adapter recipe

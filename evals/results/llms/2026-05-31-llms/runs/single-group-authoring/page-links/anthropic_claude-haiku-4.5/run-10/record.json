@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that 'group' controls navigation (sidebar positioning), llms.txt sectioning, search metadata, and AGENTS.md grouping. It correctly characterizes /llms-full.txt as a monolithic all-docs file not split by group. It names deprecated, icon, experimental, and other optional frontmatter fields, satisfying the requirement to name at least two from the given list.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3147,
+  "outputTokens": 214,
+  "durationMs": 12786,
+  "steps": 5,
+  "errors": []
+}

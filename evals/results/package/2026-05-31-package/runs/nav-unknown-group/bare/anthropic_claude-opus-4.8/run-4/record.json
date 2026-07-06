@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the curated groups in docs.config.ts as the driver of sidebar/navigation and agent-map grouping. It explains that the group frontmatter field is a membership pointer and, although not explicitly called 'legacy' or 'optional', it describes its fallback role when no config is present, satisfying the rubric. The response also clearly states that an unknown group slug causes a build failure with an error message, not a silent skip. All required points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 30021,
+  "outputTokens": 622,
+  "durationMs": 82547,
+  "steps": 16,
+  "errors": []
+}

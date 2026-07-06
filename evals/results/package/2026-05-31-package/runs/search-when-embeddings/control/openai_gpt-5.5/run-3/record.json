@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default as a static, local BM25 lexical index (no hosted database) and states that the lexical index should be kept for exact matches, making it complementary. However, when specifying the conditions for adding embeddings, it omits the required criterion of a very large corpus (≈ tens of thousands of chunks) and presents its list of conditions as exhaustive, effectively claiming embeddings are warranted only in cases of semantic/paraphrase mismatch. This misses a key condition from the rubric, so the answer is incomplete and factually insufficient.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 27190,
+  "outputTokens": 110,
+  "durationMs": 47328,
+  "steps": 9,
+  "errors": []
+}

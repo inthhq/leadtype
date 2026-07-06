@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states 'No' to the database-backed vector index default. It describes the default as a static local search index with BM25-style lexical ranking, no database needed. It explains embeddings are a later addition only when vocabulary mismatch or large corpus demands them, meeting all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2088,
+  "outputTokens": 13,
+  "durationMs": 10111,
+  "steps": 4,
+  "errors": []
+}

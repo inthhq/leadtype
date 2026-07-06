@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default static BM25 lexical index with no database, and states that embeddings should complement, not replace, the lexical index. It also gives specific conditions including vocabulary mismatch and a large corpus. However, it fails to specify the required corpus size threshold (≈ tens of thousands of chunks), making the condition insufficiently precise. All other required points are met.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 168428,
+  "outputTokens": 5407,
+  "durationMs": 94909,
+  "steps": 12,
+  "errors": []
+}

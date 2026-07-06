@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both field names are explicitly stated, they are described as being injected into output frontmatter, and their values are attributed to git log / commit metadata on the source file. No invented fields or non-git sources appear. The extra implementation details do not contradict the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 24723,
+  "outputTokens": 266,
+  "durationMs": 26607,
+  "steps": 10,
+  "errors": []
+}

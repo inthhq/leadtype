@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md file provides the correct command with --docs-dir changelog=/changelog, states the canonical URL as /changelog/v1, and describes the internal copy at public/docs/changelog/v1.md and public mirror at public/changelog/v1.md. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 16164,
+  "outputTokens": 500,
+  "durationMs": 64056,
+  "steps": 16,
+  "errors": []
+}

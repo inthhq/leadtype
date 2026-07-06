@@ -1,0 +1,382 @@
+---
+title: OpenAPI
+description: Generate native MDX API reference pages from OpenAPI 3.x specs.
+---
+
+Leadtype can turn OpenAPI 3.x JSON or YAML specs into native MDX pages before
+the normal docs pipeline runs. Generated API pages render through your docs UI,
+flatten into markdown mirrors, appear in `llms.txt`, feed search, and ship in
+package docs bundles.
+
+Operation summaries and descriptions are treated as CommonMark (per the
+OpenAPI spec) — Leadtype escapes MDX-significant characters like `{` and `<`
+in prose, so arbitrary specs can't break the MDX build.
+
+## Quickstart
+
+Put the spec somewhere in your docs source:
+
+<FileTree root="docs">
+  <Folder name="openapi" defaultOpen>
+    <File name="api.yaml" />
+  </Folder>
+  <File name="docs.config.ts" />
+</FileTree>
+
+Add an `openapi` block to the config. If the config lives at the project root,
+use `leadtype.config.ts`. If it lives inside the docs folder, use
+`docs.config.ts`; relative `input` paths resolve from the config file directory.
+
+```ts title="docs/docs.config.ts"
+import type { DocsConfig } from "leadtype";
+
+const config: DocsConfig = {
+  product: {
+    name: "Acme API",
+    tagline: "Programmable access to Acme.",
+  },
+  openapi: {
+    input: "./openapi/api.yaml",
+    output: "rest-api",
+    title: "REST API",
+    groupByTags: true,
+  },
+};
+
+export default config;
+```
+
+Run generation:
+
+```sh
+bunx leadtype generate --src . --out public --base-url https://example.com
+```
+
+This writes an overview page plus one page per operation:
+
+```text
+public/docs/rest-api/index.md
+public/docs/rest-api/users/read-user.md
+public/docs/llms.txt
+public/docs/search-index.json
+```
+
+The same generated pages are added to the docs navigation used by
+`llms.txt`, `AGENTS.md`, search, and Agent Readability artifacts.
+CLI path filters are for authored docs only: `leadtype generate --include ...`
+or `--exclude ...` skips OpenAPI generation.
+
+Every generated page opens with machine-scannable frontmatter, so an agent
+can pick the right endpoint — and fetch the source spec — without parsing
+the body:
+
+```yaml
+title: Read a user
+description: Fetch one user by ID.
+type: api-reference
+source: ./openapi/api.yaml
+method: get
+path: /users/{id}
+operationId: readUser
+server: https://api.example.com
+apiVersion: 1.2.0
+tags: ["Users"]
+canonicalUrl: https://example.com/docs/rest-api/users/read-user
+lastModified: "2026-07-02T15:54:34+01:00"
+```
+
+## What each page includes
+
+Every operation page carries the full request/response contract:
+
+- **Machine-scannable frontmatter** — `method`, `path`, `operationId`,
+  `server`, `apiVersion`, `tags`, and `type: api-reference`, so agents can
+  route to the right endpoint without parsing the body. Local specs also get
+  `lastModified` (git commit date, falling back to file mtime), and setting
+  `baseUrl` adds a `canonicalUrl` per page.
+- **Endpoint** — method, path, server URL, operation ID, deprecation.
+- **Authentication** — the operation's security requirements and only the
+  schemes those requirements reference.
+- **Parameters** — path/query/header/cookie tables. Nested object and
+  array-item properties flatten into dotted rows such as `results[].title`.
+- **Request body and responses** — property tables plus a JSON example. When
+  the spec provides `example`/`examples` they are used verbatim; otherwise a
+  representative payload is synthesized from the schema (defaults, enums, and
+  formats included). The dereferenced **JSON Schema** ships alongside as the
+  precise contract (disable with `includeSchemas: false`).
+- **Code samples** — generated cURL and `fetch` snippets with real example
+  bodies, required query parameters, and auth headers derived from the
+  security scheme (`Authorization: Bearer <token>`, API-key headers, and so
+  on). Specs that define Redocly-style `x-codeSamples` (or `x-code-samples`)
+  override the generated snippets with their hand-written ones.
+- **Related links** — every page links back to the generated overview page,
+  plus the machine-readable spec when `input` is a URL.
+
+An **overview page** (`<output>/index.mdx`) is generated per source: the API
+title, description, and version, plus every operation grouped by tag with
+method, path, and summary. It joins the generated navigation as the section
+landing page. Links use the `urlPrefix` option (default `/docs`).
+
+## Render in a docs app
+
+Generated pages use native API components instead of Swagger UI:
+
+```mdx
+<ApiEndpoint method="get" path="/users/{id}" operationId="readUser" />
+<ApiAuth schemes={...} requirements={...} />
+<ApiParameters location="path" parameters={...} />
+<ApiRequestBody body={...} />
+<ApiCodeSamples samples={...} />
+<ApiResponses responses={...} />
+```
+
+Leadtype exports the prop contracts from `leadtype/mdx`. Your renderer maps
+those names to local components the same way it maps `Callout`, `Tabs`, and
+`TypeTable`.
+
+For request-body and response property tables, import `flattenApiSchemaRows()`
+from `leadtype/mdx/openapi` — it derives the same nested dotted rows
+(`results[].title`) as the built-in markdown flatteners, so your rendered
+tables never disagree with the agent-readable markdown mirrors. The subpath
+has no dependencies and is safe to import from client components.
+
+```tsx title="lib/mdx-components.tsx"
+import type {
+  ApiEndpointProps,
+  ApiParametersProps,
+  ApiResponsesProps,
+} from "leadtype/mdx";
+
+export function ApiEndpoint({
+  method,
+  path,
+  operationId,
+}: ApiEndpointProps) {
+  return (
+    <div className="rounded-lg border p-4">
+      <span className="font-mono uppercase">{method}</span>{" "}
+      <code>{path}</code>
+      {operationId ? <p>Operation ID: {operationId}</p> : null}
+    </div>
+  );
+}
+
+export function ApiParameters({ title, parameters }: ApiParametersProps) {
+  return (
+    <section>
+      {title ? <h3>{title}</h3> : null}
+      <table>
+        <tbody>
+          {parameters.map((parameter) => (
+            <tr key={`${parameter.in}:${parameter.name}`}>
+              <td>
+                <code>{parameter.name}</code>
+              </td>
+              <td>{parameter.schema?.type ?? "unknown"}</td>
+              <td>{parameter.required ? "Required" : "Optional"}</td>
+              <td>{parameter.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+export function ApiResponses({ responses }: ApiResponsesProps) {
+  return responses.map((response) => (
+    <section key={response.status}>
+      <h3>{response.status}</h3>
+      <p>{response.description}</p>
+    </section>
+  ));
+}
+
+export const mdxComponents = {
+  ApiEndpoint,
+  ApiParameters,
+  ApiResponses,
+};
+```
+
+For fuller copyable implementations, see the leadtype repo's example
+component maps: `apps/fumadocs-example/lib/mdx-components.tsx` (Tailwind
+utility classes) and `apps/tanstack/src/components/docs-mdx/api.tsx`
+(data-attribute styling with tabbed code samples).
+
+### fumadocs / createDocsSource
+
+`createDocsSource()` (and therefore `fumadocsSource()`) accepts the `openapi`
+config directly. Generated pages are written into a temp overlay — your
+authored docs are never modified — and the generated navigation is appended to
+`nav` automatically:
+
+```ts title="lib/source.ts"
+import { fumadocsSource } from "leadtype/fumadocs";
+import docsConfig from "../../docs/docs.config";
+
+const source = await fumadocsSource({
+  contentDir: "../../docs",
+  nav: docsConfig.navigation,
+  openapi: docsConfig.openapi,
+});
+```
+
+Relative `input` paths resolve from `contentDir` by default; pass `openapiCwd`
+when your config lives elsewhere. Authored docs are still read live from
+`contentDir`; spec edits and regenerated API pages require recreating the
+source or restarting the dev server. Call `source.cleanup()` when disposing the
+source. A best-effort process-exit cleanup removes the temp overlay if you do
+not.
+
+### Static-glob bundlers (TanStack Start, Vite)
+
+Apps that compile MDX with a static `import.meta.glob` can't reach into the
+temp staging directory — Vite resolves glob patterns at build time. Generate
+the pages into an app-local directory instead and add a second glob:
+
+```ts title="scripts/docs-source-manifest.ts"
+import { normalizeOpenApiConfig, writeOpenApiPages } from "leadtype/openapi";
+import docsConfig from "../../docs/docs.config";
+
+const generated = await writeOpenApiPages({
+  configs: normalizeOpenApiConfig(docsConfig.openapi, contentDir, {
+    baseUrl,
+  }),
+  docsDir: openapiDocsDir, // e.g. src/generated/openapi-docs (gitignored)
+});
+// generated.pages / generated.indexPages → append to your route manifest
+// generated.nav → append to your navigation
+```
+
+```ts title="src/routes/docs/$.tsx"
+const authored = import.meta.glob("../../../docs/**/*.mdx", { eager: true });
+const openapi = import.meta.glob("../../generated/openapi-docs/**/*.mdx", {
+  eager: true,
+});
+const mdxModules = { ...authored, ...openapi };
+```
+
+The TanStack example in the leadtype repo (`apps/tanstack`) wires this
+end-to-end: generated MDX for the router, flattened mirrors for agents and
+search, and generated navigation for the sidebar and `llms.txt`.
+
+## Try-it consoles
+
+Leadtype does not ship an API console. Set `includeTryIt: true` only when your
+renderer implements `<ApiTryIt />` and routes requests through a server-side API
+proxy.
+
+```ts
+openapi: {
+  input: "./openapi/api.yaml",
+  output: "rest-api",
+  includeTryIt: true,
+}
+```
+
+Without `includeTryIt`, generated docs still include endpoint details, auth,
+parameters, request bodies, code samples, and responses.
+
+## Multiple specs
+
+Pass an array to generate pages from more than one spec:
+
+```ts title="docs.config.ts"
+export default {
+  product: {
+    name: "Acme",
+    tagline: "Acme developer docs.",
+  },
+  openapi: [
+    {
+      input: "./public-api.yaml",
+      output: "rest-api",
+      title: "REST API",
+    },
+    {
+      input: "https://example.com/admin-openapi.json",
+      output: "admin-api",
+      title: "Admin API",
+      includeTags: ["Admin"],
+    },
+  ],
+};
+```
+
+Specs and their `$ref` targets are read or fetched at build time with the docs
+author's privileges. Treat spec sources as trusted input: Leadtype does not
+sandbox local file refs or restrict `$ref` URLs. Remote fetches time out after
+30 seconds.
+
+## Options
+
+| Option | Description |
+|---|---|
+| `input` | Local path or absolute URL to an OpenAPI 3.x JSON/YAML document. |
+| `output` | Docs-relative directory for generated pages. Defaults to `api`. |
+| `group` | Frontmatter group assigned to generated pages. |
+| `order` | Starting frontmatter order; each operation increments from it. |
+| `title` | Generated navigation section title. Defaults to `API Reference`. |
+| `description` | Generated navigation section description. |
+| `includeTags` | Only generate operations with one of these tags. |
+| `excludeTags` | Skip operations with one of these tags. |
+| `groupByTags` | Nest pages and generated nav by first operation tag. Defaults to `true`. |
+| `serverUrl` | Override the server URL used in examples and try-it metadata. |
+| `slugStrategy` | `"operation-id"` or `"method-path"`. Defaults to `"operation-id"`. |
+| `includeTryIt` | Emit `<ApiTryIt />` metadata for renderers with an API console. Defaults to `false`. |
+| `includeSchemas` | Ship the dereferenced JSON Schema for request/response bodies. Defaults to `true`. |
+| `urlPrefix` | Site prefix for overview and Related links. Defaults to `/docs`. |
+| `baseUrl` | Absolute site base URL — adds `canonicalUrl` frontmatter to every generated page. The CLI passes `--base-url` automatically; `createDocsSource` forwards its own `baseUrl`. |
+
+## Library API
+
+For custom pipelines, `stageOpenApiDocs()` does the staging dance in one call:
+copy the docs source to a temp directory, generate pages into it, and return
+the staged path plus generated nav.
+
+```ts
+import { stageOpenApiDocs } from "leadtype/openapi";
+
+const staged = await stageOpenApiDocs({
+  contentDir: "./docs",
+  openapi: { input: "./openapi.yaml", output: "rest-api" },
+});
+// staged.contentDir — temp docs copy including generated pages
+// staged.nav — navigation nodes to append to your curated nav
+await staged.cleanup();
+```
+
+The lower-level primitives are exported too:
+
+```ts
+import {
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "leadtype/openapi";
+
+const configs = normalizeOpenApiConfig(
+  { input: "./openapi.yaml", output: "rest-api" },
+  process.cwd()
+);
+
+const result = await writeOpenApiPages({
+  configs,
+  docsDir: "./docs",
+});
+```
+
+`writeOpenApiPages()` returns generated page metadata and a navigation node you
+can merge into a custom source pipeline. When multiple specs share an
+`output` directory, colliding slugs get numeric suffixes instead of
+overwriting each other.
+
+## Dogfooding
+
+Leadtype's own package docs generate an API reference from
+`docs/openapi/leadtype-api.yaml`. The package build stages that spec, generates
+native MDX operation pages, converts them to markdown, and includes them in
+`packages/leadtype/docs`, `AGENTS.md`, search, and Agent Readability artifacts.
+The Fumadocs example passes the same `openapi` config to `fumadocsSource()`,
+and the TanStack example renders the same pages through the static-glob
+recipe above — both browser-rendered apps exercise the component contract.

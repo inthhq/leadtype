@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static lexical BM25 index and that the lexical index must be kept. However, it fails to provide the specific condition that a very large corpus (≈ tens of thousands of chunks) warrants embeddings; it only mentions 'very large documentation' vaguely. This omission violates the required rubric point, making the answer incorrect. The answer confidently asserts the conditions without hedging, so failure mode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 4747,
+  "outputTokens": 242,
+  "durationMs": 30069,
+  "steps": 14,
+  "errors": []
+}

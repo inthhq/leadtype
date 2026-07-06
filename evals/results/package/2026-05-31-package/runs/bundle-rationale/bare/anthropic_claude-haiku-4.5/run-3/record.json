@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that `AGENTS.md` (not `llms.txt`) belongs inside the package, but it fails to meet the required points. It does not explain that `llms.txt` links are absolute URLs (making it unsuitable for a tarball) nor that no agent looks for it in `node_modules`. It also omits that `AGENTS.md` uses relative links and works offline. For `--bundle`, it mentions skipping website artifacts like HTML and robots.txt but does not explicitly list `llms.txt` and `llms-full.txt`, which the rubric requires. The answer is confidently worded but incomplete on every mandatory point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 3623,
+  "outputTokens": 266,
+  "durationMs": 27681,
+  "steps": 11,
+  "errors": []
+}

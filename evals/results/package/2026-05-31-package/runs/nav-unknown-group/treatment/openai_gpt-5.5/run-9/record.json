@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` in `docs.config.ts` as the curated source of truth driving sidebar, `llms.txt` sections, and `AGENTS.md` grouping. It identifies `group` as legacy/optional, still useful for fallback navigation and search facets/taxonomy. It unambiguously states that an unknown `group` causes the build to fail with an error, not a silent skip or warning. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 48818,
+  "outputTokens": 73,
+  "durationMs": 53819,
+  "steps": 16,
+  "errors": []
+}

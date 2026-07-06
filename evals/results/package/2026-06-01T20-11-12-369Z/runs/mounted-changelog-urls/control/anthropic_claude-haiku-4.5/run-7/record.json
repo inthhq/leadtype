@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent's ANSWER.md uses the required mount syntax '--docs-dir changelog=/changelog' in the leadtype generate command, states the canonical URL is /changelog/v1 (not /docs/changelog/...), and mentions both the internal copy at public/docs/changelog/v1.md and the public mirror at public/changelog/v1.md. All rubric required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 212184,
+  "outputTokens": 1820,
+  "durationMs": 41757,
+  "steps": 11,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first and imports the required generators, but the llm‑txt, full‑context, and search generators are not configured to read from the converted directory (public/docs/) as required. generateLlmsTxt uses srcDir: '.' instead of the output docs path, and both generateLLMFullContextFiles and generateDocsSearchFiles omit any source‑directory argument, so they would not consume the converted markdown. This violates the rubric’s explicit expectation that those generators read the already‑converted markdown mirrors.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 25,
+  "inputTokens": 211140,
+  "outputTokens": 6752,
+  "durationMs": 88563,
+  "steps": 12,
+  "errors": []
+}

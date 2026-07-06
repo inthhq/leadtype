@@ -77,7 +77,7 @@ const PAGES: DocsPage[] = [
 
 Install Leadtype in a docs project, author MDX under docs/, and run leadtype generate.
 
-Website mode writes /llms.txt, /docs/llms.txt, /llms-full.txt, markdown mirrors under /docs/*.md, docs/sitemap.xml, docs/sitemap.md, docs/robots.txt, docs/agent-readability.json, docs/search-index.json, and docs/search-content.json.
+Website mode writes /llms.txt, /docs/llms.txt, /llms-full.txt, markdown mirrors under /docs/*.md, /sitemap.xml, /sitemap.md, /robots.txt, docs/agent-readability.json, docs/search-index.json, and docs/search-content.json.
 
 Bundle mode is different. leadtype generate --bundle writes AGENTS.md and docs/*.md for npm packages, with relative links that work inside node_modules.`,
   },
@@ -107,13 +107,13 @@ Each MDX page has YAML frontmatter. title is required. description is optional b
 
 The group value drives the sidebar position, the llms.txt section, search metadata, and AGENTS.md grouping. Pages can belong to multiple groups with group: [a, b]. The root /llms-full.txt fallback contains all generated markdown pages and is not split by group. If a page declares an unknown group, the build fails.
 
-Optional fields include icon, deprecated, deprecatedReason, experimental, canary, new, draft, tags, availableIn, full, lastModified, and lastAuthor. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
+Optional fields include icon, status, deprecated, tags, variants, related, full, lastModified, and lastAuthor. status is editorial page metadata: new, updated, or experimental. lastModified and lastAuthor are filled in when --enrich-git is enabled.`,
   },
   {
     path: "docs/authoring/components.md",
     title: "Components",
     description:
-      "MDX component names that the remark pipeline converts into markdown.",
+      "MDX component names that the markdown transform pipeline converts into markdown.",
     group: "authoring",
     content: `# Components
 
@@ -135,7 +135,7 @@ Use website mode when a docs site should expose HTTP-discoverable agent files. T
 
 For agent requests, serve markdown when Accept asks for text/markdown or when a known AI user agent requests a docs page. Keep /llms.txt, /llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json as static artifacts.
 
-Good verification checks include fetching /llms.txt, fetching a docs page with Accept: text/markdown, checking /docs/sitemap.xml, and confirming /robots.txt allows /llms.txt.`,
+Good verification checks include fetching /llms.txt, fetching a docs page with Accept: text/markdown, checking /sitemap.xml, and confirming /robots.txt allows /llms.txt.`,
   },
   {
     path: "docs/package-docs/bundle.md",
@@ -177,7 +177,7 @@ generateLlmsTxt writes the product-level /llms.txt and the docs-scoped /docs/llm
 
 generateLLMFullContextFiles writes one root /llms-full.txt file containing every generated markdown docs page. Groups still organize llms.txt sections, navigation, search metadata, and AGENTS.md; they are not published as per-group full-context files by default.
 
-generateAgentsMd writes AGENTS.md for npm-bundled docs. It intentionally ignores product.agentGuidance because that text is written for website URL routing.
+generateAgentsMd writes AGENTS.md for npm-bundled docs. The deprecated product.agentGuidance field is intentionally skipped because that text is written for website URL routing, but author-curated product.blocks are emitted verbatim, so keep block bodies sensible for offline readers.
 
 isAgentReadabilityArtifactPath identifies artifact paths that should not be rewritten as missing markdown pages. It covers llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json.
 
@@ -243,6 +243,41 @@ export async function materializeLlmsVariant(options: {
       throw new Error(`Unhandled llms variant: ${String(_exhaustive)}`);
     }
   }
+}
+
+/**
+ * Materialize a *realistic* hosted-docs web root for the discovery arm: the
+ * actual page markdown, a page-links `/llms.txt`, a monolith `/llms-full.txt`,
+ * plus `robots.txt` and `sitemap.xml`. Unlike the routing variants, the agent
+ * is NOT told to start at `/llms.txt` — so it could grep the docs pages, read
+ * the sitemap, or consult `/llms.txt`. Measures whether the convention gets
+ * used unprompted.
+ */
+export async function materializeDiscoveryRoot(options: {
+  tempDir: string;
+}): Promise<void> {
+  const { tempDir } = options;
+  await writeDocsPages(tempDir);
+  await writeTextFile(tempDir, "llms.txt", renderLlmsTxt("page-links"));
+  await writeTextFile(tempDir, "llms-full.txt", renderMonolith());
+  await writeTextFile(
+    tempDir,
+    "robots.txt",
+    ["User-agent: *", "Allow: /", "Sitemap: /sitemap.xml"].join("\n")
+  );
+  await writeTextFile(tempDir, "sitemap.xml", renderSitemap());
+}
+
+function renderSitemap(): string {
+  const urls = ["/llms.txt", "/llms-full.txt", ...PAGES.map(pageUrl)]
+    .map((loc) => `  <url><loc>${loc}</loc></url>`)
+    .join("\n");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    urls,
+    "</urlset>",
+  ].join("\n");
 }
 
 function pagesForGroup(group: LlmsVariantGroup): DocsPage[] {

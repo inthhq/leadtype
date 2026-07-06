@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `llms.txt` as a website/HTTP convention with absolute URLs that are inappropriate inside an npm tarball, and `AGENTS.md` as the filesystem convention with relative links that work offline in `node_modules`. It states that `--bundle` skips `llms.txt`, `llms-full.txt`, and other website-only artifacts (search index, sitemap, robots, etc.), explaining they assume a hosted origin and HTTP crawlers. All rubric-required points are clearly and accurately covered.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 16592,
+  "outputTokens": 429,
+  "durationMs": 24862,
+  "steps": 6,
+  "errors": []
+}

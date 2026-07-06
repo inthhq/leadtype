@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies the curated `groups` array in `docs.config.ts` as the driver of sidebar, agent map, `llms.txt` sections, and search metadata. It describes `group` as a supporting, per-page membership tag that provides fallback navigation when no config exists, satisfying the legacy/optional role. It explicitly states that an unknown `group` slug causes a hard build failure with an error message, not a warning or silent skip. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 46,
+  "inputTokens": 45866,
+  "outputTokens": 331,
+  "durationMs": 146417,
+  "steps": 43,
+  "errors": []
+}

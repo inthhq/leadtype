@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "Conversion via convertAllMdx runs first (step 1) and all subsequent generators (generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) run after it, satisfying the critical ordering requirement. The script imports and calls exactly the three required leadtype library functions, passes product (plus groups) from the imported docs.config, and never shells out to the CLI. Minor deviations (use of groups rather than nav, extra readability call, slightly different search import path) do not violate any REQUIRED rubric point.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 53,
+  "inputTokens": 43924,
+  "outputTokens": 656,
+  "durationMs": 116222,
+  "steps": 46,
+  "errors": []
+}

@@ -1,0 +1,90 @@
+---
+title: "Architecture"
+description: "The core / adapter boundary — what ships where, and the rules adapters must follow."
+---
+
+Leadtype is split into a **framework-neutral core** and a small set of **thin adapters** that wire the core into specific host frameworks. The rules below are the contract — they tell you where new code lives, what it can import, and what it can never ship.
+
+## The three layers
+
+### Core
+
+| Subpath | Purpose |
+| --- | --- |
+| `leadtype` | `createDocsSource`, `defineDocsConfig`, agent-readability types. |
+| `leadtype/mdx` | Tag types (`CalloutProps`, `TabsProps`, …) and `createMdxSourcePlugins()`. |
+| `leadtype/markdown` | Native markdown transforms for include expansion, type-table extraction, and agent flattening. |
+| `leadtype/transformers` | Frontmatter schema and lifecycle hook types. |
+| `leadtype/convert` | MDX → markdown conversion. |
+| `leadtype/llm` | `llms.txt`, `llms-full.txt`, sitemap, AGENTS.md, agent-readability manifest. |
+| `leadtype/llm/readability` | Runtime helpers (`createAgentMarkdownResponse`, content negotiation). |
+| `leadtype/search` | Static BM25 index + edge-safe runtime. |
+| `leadtype/search/{node,vercel,tanstack,cloudflare,ai,bash}` | Host-runtime adapters for the search/answer pipeline. |
+| `leadtype/lint` | Frontmatter, navigation, and link validation. |
+
+Core has **zero framework runtime dependencies**. It imports no React, Vue, Svelte, Next, Nuxt, SvelteKit, Astro, or Solid code. Anything published under one of the subpaths above must stay framework-neutral.
+
+### Host-runtime adapters (`leadtype/search/*`)
+
+The `leadtype/search/*` subpaths are scoped by **where the code runs** — Node, Vercel Edge, Cloudflare Workers, TanStack runtime, the bash tool — not by which UI framework wraps them. They cover the answer-streaming/search read path on their target runtime.
+
+### Framework adapters
+
+| Subpath | Host | What it exports |
+| --- | --- | --- |
+| `leadtype/fumadocs` | fumadocs-core | `fumadocsSource()` — maps `DocsSource` to fumadocs's `Source` interface. |
+| `leadtype/next` | Next.js App Router (server) | `createGenerateStaticParams`, `createLoadPageData`, `createDocsRouteHandler`. No React. |
+| `leadtype/next/client` | Next.js App Router (client) | `useLeadtypeSearch` React hook, `createSearchClient` vanilla factory. |
+
+Framework adapters are thin. They wire the core primitives into the host's native conventions and declare their host package as an **optional peer dependency**. A consumer that doesn't use fumadocs never installs fumadocs-core; a consumer that doesn't use Next never installs React.
+
+## Adapter shapes
+
+The boundary applies to every framework adapter and search helper:
+
+| Subpath | Native host shape |
+| --- | --- |
+| `leadtype/nuxt` | Nitro route helpers, build-time source wiring, and Vue composables. |
+| `leadtype/sveltekit` | `+page.server.ts`, `+server.ts`, `entries()`, and Svelte stores/runes. |
+| `leadtype/astro` | `getStaticPaths()`, endpoint helpers, Content Collections interop, and island-friendly client helpers. |
+| `leadtype/tanstack-start` | TanStack Router route helpers, static route manifests, server functions, and React state helpers. |
+| `leadtype/search/vue` | Vue composables over generated `search-index.json` and `search-content.json`. |
+| `leadtype/search/svelte` | Svelte stores/runes over generated search artifacts. |
+
+These are public surfaces, not UI kits. Use the recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive) to wire the same core primitives into each framework.
+
+`leadtype/tanstack-start` is intentionally separate from `leadtype/search/tanstack`: the former adapts docs routing and source data to TanStack Start, while the latter is the TanStack AI answer-streaming runtime.
+
+## Rules
+
+### Flat naming
+
+Adapters live under `leadtype/<framework>`. There is no `leadtype/adapters/*` nesting. Sub-runtimes (server vs. client, hook vs. handler) use a second segment: `leadtype/next`, `leadtype/next/client`.
+
+### No rendered DOM
+
+**No leadtype package — core or adapter — emits rendered DOM. Ever.** Adapters ship state primitives (hooks, composables, stores), route-handler factories, and pure data helpers. Anything that renders markup — `<SearchBox>`, `<DocsLayout>`, `<Sidebar>`, theme tokens, CSS — does not ship under the `leadtype` name. Consumers implement components against the tag contract from [`leadtype/mdx`](/docs/reference/mdx); leadtype supplies the data and the wiring.
+
+When reviewing a new adapter PR, ask: *does this return data, state, or a function, or does it return JSX?* If JSX, the PR doesn't ship.
+
+### Dependency rule
+
+An adapter at `leadtype/<framework>` may import:
+
+1. Other leadtype core entry points (`leadtype`, `leadtype/search`, `leadtype/llm/readability`, etc.).
+2. Its **declared optional peer** (e.g. `leadtype/fumadocs` may import `fumadocs-core`; `leadtype/next/client` may import `react`).
+
+Adapters may **not** import from another adapter — `leadtype/next` never reaches into `leadtype/fumadocs`. They compose with core, not each other.
+
+### Enforcement
+
+The contract above is enforced by tests in `packages/leadtype/src/internal/package-surface.test.ts`. The suite scans every file under `src/`, fails if a framework runtime import leaks into a non-adapter directory, and fails if one adapter directory imports from another.
+
+## Adding a new framework adapter
+
+1. Pick the subpath: `leadtype/<framework>` (e.g. `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`). Split into `<framework>` (server) and `<framework>/client` (or `<framework>/composables`, etc.) only when the framework has distinct server/client runtimes that share no peer dependency.
+2. Declare the host package and any framework UI runtime (`vue`, `svelte`, `solid-js`) as **optional peer dependencies** in `packages/leadtype/package.json`. Mark each one optional in `peerDependenciesMeta`.
+3. Add the entry to `rollup.config.ts` `entries` and to `package.json` `exports`.
+4. Update the entry-point list in `package-surface.test.ts` so the test enforces the new subpath.
+5. Export **state and routing primitives only** — no rendered DOM.
+6. Add tests covering handler factories with synthetic `Request` objects and state primitives with a stub backing implementation. Don't require a running framework runtime in unit tests.

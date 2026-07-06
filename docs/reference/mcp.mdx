@@ -1,0 +1,240 @@
+---
+title: "MCP server"
+description: "Serve docs to MCP clients over stdio or Streamable HTTP — the gate for when it's worth it, the optional-peer-dep and stateless-HTTP gotchas, and how edge/bundled hosts skip the disk path."
+related:
+  - title: "Agent search tools"
+    href: "/docs/search/agent-tools"
+    description: "In-process bash tools for your own AI app — the alternative to a standalone MCP server."
+  - title: "CLI"
+    href: "/docs/reference/cli"
+    description: "leadtype mcp flags and exit codes."
+  - title: "Search reference"
+    href: "/docs/reference/search"
+    description: "searchDocs() and the index the MCP server ranks over."
+---
+
+`leadtype/mcp` serves your generated docs to MCP clients with two tools:
+`search-docs(query, limit?)` returns ranked `{ title, urlPath, snippet }`, and
+`get-page(urlPath)` returns the full Markdown of one page. (`list-pages()` is
+available but off by default.) It's a thin adapter over artifacts you already
+build — the search index ranks results, the `.md` mirror supplies pages — so
+there's no new content surface to maintain.
+
+This is **server MCP** over stdio or Streamable HTTP. Browser-side WebMCP is a
+different surface: [`leadtype/webmcp`](/docs/reference/webmcp) registers tools
+with `document.modelContext` / `navigator.modelContext` on page load.
+
+There are **two paths**, same two tools — pick by *who connects*:
+
+- **[Path 1 — in your editor](#path-1-in-your-editor-stdio)** (`leadtype mcp`, stdio): your *own*
+  agent (Cursor, Claude Desktop, Cline) searches your docs while you work.
+- **[Path 2 — a hosted endpoint](#path-2-a-hosted-endpoint-createmcphandler)** (`createMcpHandler`,
+  Streamable HTTP): *other people's* agents connect to `yoursite.com/mcp`.
+
+Everything else on this page is a variation on one of those two.
+
+## Path 1 — in your editor (stdio)
+
+The common case: give your own editor's agent live search over your docs.
+
+<Steps>
+  <Step title="Install the MCP SDK">
+    It's an optional peer dependency — install it in the project that runs the server.
+
+    ```bash
+    bun add @modelcontextprotocol/sdk
+    ```
+  </Step>
+  <Step title="Generate the artifacts">
+    The same `leadtype generate` you run for your docs site writes everything the server reads — `public/docs/search-index.json`, `agent-readability.json`, and the `.md` mirror. The server never builds these; it only reads them.
+
+    ```bash
+    leadtype generate
+    ```
+  </Step>
+  <Step title="Point your editor at the binary">
+    Use an **absolute** `--artifacts` path — the client spawns the binary from an unpredictable working directory.
+
+    <Tabs items={["Cursor", "Claude Desktop"]}>
+      <Tab value="Cursor">
+```json
+// .cursor/mcp.json
+{ "mcpServers": { "my-docs": { "command": "leadtype", "args": ["mcp", "--artifacts", "/abs/path/to/public"] } } }
+```
+      </Tab>
+      <Tab value="Claude Desktop">
+```json
+// claude_desktop_config.json
+{ "mcpServers": { "my-docs": { "command": "leadtype", "args": ["mcp", "--artifacts", "/abs/path/to/public"] } } }
+```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Verify it works — before touching your editor">
+    Exercise the tools once, with no client and no SDK:
+
+    ```bash
+    leadtype mcp --check --query "getting started"
+    ```
+
+    It prints the tools, the `search-docs` hits, and a `get-page` byte count. If that looks right, the server is good — wire it into your editor next.
+  </Step>
+  <Step title="Ask the agent">
+    Restart the client and ask its agent something about your docs — it calls `search-docs`, then `get-page` on the best hit.
+  </Step>
+</Steps>
+
+That's the whole loop: `leadtype generate` makes the artifacts, `leadtype mcp` serves them over stdio, your editor's agent calls the two tools. Nothing to host. (Want a full client UI to poke at? `npx @modelcontextprotocol/inspector leadtype mcp --artifacts ./public`.)
+
+### Variant: a dependency's docs (`--package`)
+
+Same stdio command, pointed at an installed package instead of a local dir — to read *that
+version's* docs. The package must have been built with `leadtype generate --bundle`, and its
+config should set `agents.mcp.enabled` so the tarball ships the search index and
+manifest (see [Bundle docs into a package](/docs/package-docs/bundle)):
+
+```bash
+leadtype mcp --package some-installed-lib
+```
+
+> `get-page` reads the `.md` mirror from disk, not the index. If the mirror was deleted, search still works but `get-page` reports the page missing — regenerate to restore it.
+
+## Path 2 — a hosted endpoint (`createMcpHandler`)
+
+`createMcpHandler` returns a Web-standard `(Request) => Promise<Response>` you
+mount in your own route. **leadtype never owns the port, hosting, or auth** —
+that's the host's job.
+
+<Tabs items={["Next (App Router)", "Generic Request → Response"]}>
+  <Tab value="Next (App Router)">
+```ts
+// app/mcp/route.ts
+import { createMcpHandler } from "leadtype/mcp";
+
+export const POST = createMcpHandler({ artifacts: "./public" });
+```
+  </Tab>
+  <Tab value="Generic Request → Response">
+```ts
+// Works on TanStack Start, SvelteKit, Nuxt, Astro, Workers, Deno, Bun.
+import { createMcpHandler } from "leadtype/mcp";
+
+const handler = createMcpHandler({ artifacts: "./public" });
+// mount `handler(request)` on a POST route at /mcp
+```
+  </Tab>
+</Tabs>
+
+### Publish the discovery card
+
+When your site hosts MCP, set `agents.mcp.enabled` in `docs.config.ts`.
+`leadtype generate` then writes `/.well-known/mcp/server-card.json` for agent
+discovery. Keep the configured endpoint aligned with the route you mount:
+
+```ts
+// docs/docs.config.ts
+export default {
+  product: {
+    name: "Acme",
+    tagline: "Acme documentation.",
+  },
+  agents: {
+    mcp: {
+      enabled: true,
+      endpoint: "/mcp",
+      serverInfo: { name: "acme-docs", version: "1.0.0" },
+      authentication: { required: false },
+    },
+  },
+};
+```
+
+If you mount somewhere else, configure that path once:
+
+```ts
+// docs/docs.config.ts
+export default {
+  agents: {
+    mcp: {
+      enabled: true,
+      endpoint: "/api/mcp",
+      serverInfo: { name: "acme-docs", version: "1.0.0" },
+    },
+  },
+};
+```
+
+```ts
+// app/api/mcp/route.ts
+import { createMcpHandler } from "leadtype/mcp";
+
+const serverInfo = { name: "acme-docs", version: "1.0.0" };
+
+export const POST = createMcpHandler({ artifacts: "./public", serverInfo });
+```
+
+The same resolved endpoint is also used in the generated agent-card and
+docs-skill, so agents see one consistent MCP location. If your host wraps the
+MCP route in authentication, set `authentication.required: true` so the static
+server card does not advertise a public endpoint.
+
+<Callout variant="info">
+**It runs stateless and returns JSON — it never opens an SSE stream.** That's
+the whole transport: a client POSTs a JSON-RPC request and gets one JSON
+response. There are no sessions to track and nothing to keep alive between
+requests, which is exactly what makes the handler safe to drop onto serverless
+and edge routes. Artifacts load once and are reused; each request gets a fresh
+server instance so concurrent requests never share state. It reads the generated
+artifacts from disk (`<artifacts>/docs/`), so run it where those files exist.
+</Callout>
+
+## When is it worth adding?
+
+<Callout variant="info">
+**A docs MCP server earns its keep on large corpora, not small ones.** If your
+whole doc set fits comfortably in an agent's context, `llms-full.txt` already
+hands it everything in one fetch — an MCP server just adds a round-trip. Reach
+for MCP when the docs are large enough that *targeted retrieval* beats dumping
+the corpus: SDK references, multi-product docs, anything an agent should search
+rather than read end-to-end.
+</Callout>
+
+These tools also don't make your *product* agent-callable — they let an agent
+read your *docs*. Function-calling against your API is a separate surface that
+lives in your own backend, not here.
+
+## Tools
+
+| Tool | Input | Returns |
+| --- | --- | --- |
+| `search-docs` | `query: string`, `limit?: number` (default 5, max 50) | Ranked `{ title, urlPath, snippet }[]` |
+| `get-page` | `urlPath: string` (e.g. a `search-docs` result, with or without `.md`) | Full page Markdown |
+| `list-pages` *(opt-in)* | — | `{ title, urlPath, groups }[]` for every page |
+
+Expose a different set with `tools` (CLI: `--tools search-docs,get-page,list-pages`;
+API: `createMcpHandler({ tools: [...] })`). The default is `search-docs` +
+`get-page` — the consensus minimal set.
+
+## The SDK is an optional dependency
+
+The MCP server is built on `@modelcontextprotocol/sdk` (v1.x), declared as an
+**optional peer dependency**, so it stays out of installs that never touch
+MCP. The CLI loads it only when it actually serves (`leadtype mcp` without
+`--check`); non-serving commands — `leadtype generate`, `leadtype mcp
+--check`, and everything else — run without the SDK installed. Install it
+alongside any app that mounts `createMcpHandler` or runs `leadtype mcp`.
+
+The `leadtype/mcp` entry imports the SDK **statically** (not through a dynamic
+specifier). That is deliberate: bundlers and serverless file tracing
+(Vercel/Next output tracing) follow static imports, so the SDK ships inside
+the deployed function automatically. A computed `import(specifier)` would
+resolve fine locally and then 500 in production with the SDK missing from the
+bundle. The trade-off: importing `leadtype/mcp` requires the SDK to be
+installed — which mounting a server required anyway.
+
+## MCP server vs. bash tools
+
+This page is about a **standalone server** other clients connect to. If instead
+you're building *your own* AI app and want the model to explore docs inside that
+app, use the in-process [bash tools](/docs/search/agent-tools) — same index, no
+server, no transport.

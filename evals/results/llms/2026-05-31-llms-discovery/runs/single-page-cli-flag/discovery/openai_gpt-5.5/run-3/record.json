@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "variant": "discovery",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON result object describing generated files and names required keys llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it lists 'agentReadabilityJson', while the rubric specifies 'agentReadabilityManifest'—an invented field. This violates the rubric's 'Incorrect if it invents fields' condition, so the answer is incorrect. The error is stated confidently with no hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 12,
+  "inputTokens": 2906,
+  "outputTokens": 6,
+  "durationMs": 19912,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,134 @@
+---
+title: "Build an agent-ready docs site"
+description: "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata."
+---
+
+Leadtype offers two integration shapes for hosted docs. Most sites use both: the [source primitive](/docs/how-it-works#vocabulary) renders human-facing pages, and the CLI writes the agent-facing files during the build.
+
+For production docs where the source package and rendered site live in different
+repos, start with the pinned remote collection path. This is Leadtype's flagship
+deployment shape:
+
+- The **source repo** owns MDX, sidebar/order, frontmatter schema, and any
+  source-specific MDX flatteners.
+- The **docs UI repo** owns the app shell, deploy target, branding, analytics,
+  generated artifact output, and the reviewed source `ref`.
+
+## Pick your path
+
+<Mermaid chart={`flowchart LR
+  src["source MDX<br/>docs/*.mdx + meta.json"]
+  primitive["createDocsSource()<br/>(leadtype/mdx + leadtype/fumadocs)"]
+  cli["leadtype generate<br/>(CLI)"]
+  app["docs app<br/>(Next, TanStack Start, Nuxt, Astro, SvelteKit)"]
+  artifacts["public/<br/>llms.txt · docs/*.md<br/>search-index · sitemap"]
+  src --> primitive --> app
+  src --> cli --> artifacts --> app`} />
+
+| Path | When to choose | What you wire |
+| --- | --- | --- |
+| **Pinned source docs UI** | Recommended for hosted product docs split across a source/package repo and a docs UI repo. Production needs reproducible deploys and reviewed source promotion. | Docs UI `leadtype.config.ts` remote collection with `sourceConfig: true` + `leadtype generate --sync` |
+| **Source primitive** | Most cases. You're building a Next, TanStack Start, Nuxt, Astro, or SvelteKit app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
+| **Static artifacts** | Your runtime needs flat files on disk (CDN-only deploy, static export, agent-only consumption, multi-app sharing). | `leadtype generate` CLI in your build script |
+
+Use the source primitive for your UI and still run `leadtype generate` for `llms.txt`, markdown mirrors, search JSON, sitemap, robots, and Agent Readability metadata.
+
+## Pinned source docs UI: the production path
+
+Use this when your package/source repo owns the MDX and its information
+architecture, but a separate app owns the rendered docs site, deployment,
+branding, analytics, consent, and headers/footers.
+
+```ts title="leadtype.config.ts"
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "Acme",
+    tagline: "Docs for Acme SDKs.",
+  },
+  collections: {
+    docs: defineCollection({
+      repository: "https://github.com/acme/sdk",
+      ref: "v1.2.3",
+      cacheDir: ".docs-src/sdk",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    }),
+  },
+});
+```
+
+`sourceConfig: true` loads the source repo's `docs/docs.config.ts` after sync,
+then inherits only content-owned fields into the collection: `navigation`,
+legacy `groups`, `frontmatterSchema`, `flatteners`, and `mounts`. The docs UI
+repo keeps site-owned fields such as `product`, `organization`, `agents`,
+`llms`, `repository`, `ref`, `cacheDir`, output paths, and framework routes.
+
+That split keeps releases reproducible without asking the docs UI app to copy
+or import source-owned sidebar/schema code by hand.
+
+```json title="package.json"
+{
+  "scripts": {
+    "docs:generate": "leadtype generate --src . --out public --base-url https://docs.example.com --sync",
+    "build": "bun run docs:generate && next build"
+  }
+}
+```
+
+→ [Sync docs across repositories](/docs/pipeline/sync-docs-across-repos) — pinned
+source promotion flow
+
+## Source primitive: the common path
+
+If your docs app compiles MDX through a bundler, use the source primitive. It gives your runtime:
+
+- `loadPage(slug)` returning frontmatter + AST + serialized markdown + TOC
+- `getNavigation()` returning the resolved group tree
+- `buildSearchIndex()` returning a static search index
+- `resolveInclude()` for programmatic partial loading
+
+→ [Use the source primitive](/docs/pipeline/use-the-source-primitive) — generic recipe
+→ [Integrate with Fumadocs](/docs/integrations/integrate-with-fumadocs) — first-party adapter
+
+## Static artifacts: the CLI path
+
+If your runtime needs files on disk — for a CDN-only deploy, a static export, a separate agent-only service, or to share artifacts across multiple sibling apps — run the CLI. It writes:
+
+- `public/llms.txt` and `public/llms-full.txt`
+- `public/.well-known/api-catalog`
+- `public/docs/*.md` (markdown mirrors)
+- `public/docs/search-index.json` + `search-content.json`
+- `public/sitemap.xml`, `public/sitemap.md`, `public/robots.txt`
+- `public/docs/agent-readability.json`
+
+→ [Generate static artifacts](/docs/pipeline/generate-static-artifacts) — CLI workflow
+
+## Add the cross-cutting features
+
+Whichever path you pick, the same follow-on guides apply:
+
+- [Configure docs sources](/docs/pipeline/configure-sources) — local folders, mounted folders, and remote git collections
+- [Add search](/docs/search/add-search) — local search index + optional source-grounded answers
+- [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents) — markdown responses, llms.txt, discovery files
+- [Deploy generated artifacts](/docs/pipeline/deploy-generated-artifacts) — host-specific output paths and runtime responsibilities
+- [Validate in CI](/docs/pipeline/validate-in-ci) — lint frontmatter, meta.json, internal links
+
+## Configure ownership
+
+For a single-repo docs site, put product metadata, navigation, and source
+settings together in `docs/docs.config.ts`.
+
+For a pinned source docs UI, keep two configs:
+
+- Source repo `docs/docs.config.ts`: MDX-owned navigation, fallback groups,
+  frontmatter schema, flatteners, and mounts.
+- Docs UI repo `leadtype.config.ts`: product identity as rendered by the site,
+  organization, agent policy, source `repository`/`ref`, output paths, and the
+  framework app shell.
+
+See [Frontmatter](/docs/writing/frontmatter) for the page-level schema, and
+[Configure docs sources](/docs/pipeline/configure-sources) for the full config
+shape, including multi-folder and remote source setups.

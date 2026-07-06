@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports leadtype library APIs (not CLI), calls `convertAllMdx` first to produce `public/docs/*.md`, then runs `generateLlmsTxt`, `generateLLMFullContextFiles`, and `generateDocsSearchFiles` in the correct order. It passes `product` and `nav` from `docs.config.ts` into the generators. Every required rubric point is satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 42680,
+  "outputTokens": 192,
+  "durationMs": 105779,
+  "steps": 18,
+  "errors": []
+}

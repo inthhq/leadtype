@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly identifies llms.txt as a website/HTTP convention using absolute URLs (and useless inside node_modules), describes AGENTS.md as the offline relative-link filesystem form that is version-matched, and explicitly lists the artifacts --bundle skips (llms.txt, llms-full.txt, search-index.json) because they are hosted-site artifacts. No rubric violations or factual errors appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 5752,
+  "outputTokens": 366,
+  "durationMs": 30194,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied: (1) default described as static/local BM25 lexical index with no DB, (2) specific conditions given (vocabulary mismatch + corpus size ~tens of thousands of chunks), and (3) lexical index explicitly kept for hybrid/exact-match use. The answer adds extra detail but never contradicts the ground truth or makes any of the listed incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 31406,
+  "outputTokens": 499,
+  "durationMs": 51510,
+  "steps": 17,
+  "errors": []
+}

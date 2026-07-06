@@ -1,4 +1,11 @@
+import type { LocalizedDocsMetadata } from "../i18n";
 import { slugifyDocsHeading } from "../internal/docs-heading";
+import {
+  type DocsFrontmatter,
+  type DocsSearchChunkInput,
+  type DocsTransformerOptions,
+  runTransformersSync,
+} from "../transformers";
 
 const DEFAULT_MAX_CHUNK_CHARS = 1200;
 const DEFAULT_OVERLAP_CHARS = 160;
@@ -34,12 +41,17 @@ const WHITESPACE_PATTERN = /\s+/g;
 const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
 
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
+const SHARED_ROUTE_SEGMENTS = new Set(["shared", "_shared"]);
 const DOCUMENT_ID = 0;
 const DOCUMENT_TITLE = 1;
 const DOCUMENT_DESCRIPTION = 2;
 const DOCUMENT_URL_PATH = 3;
 const DOCUMENT_ABSOLUTE_URL = 4;
 const DOCUMENT_RELATIVE_PATH = 5;
+const DOCUMENT_LOCALE = 6;
+const DOCUMENT_SOURCE_LOCALE = 7;
+const DOCUMENT_IS_FALLBACK = 8;
+const DOCUMENT_LOGICAL_PATH = 9;
 const CHUNK_ID = 0;
 const CHUNK_DOCUMENT_INDEX = 1;
 const CHUNK_ANCHOR = 2;
@@ -99,17 +111,18 @@ const DEFAULT_SYNONYMS: Record<string, string[]> = {
   typescript: ["ts"],
 };
 
-export type DocsSearchDocument = {
+export type DocsSearchDocument = LocalizedDocsMetadata & {
   id?: string;
   title: string;
   description?: string;
   urlPath: string;
   absoluteUrl: string;
   relativePath: string;
+  frontmatter?: DocsFrontmatter;
   content: string;
 };
 
-export type DocsSearchDocumentRecord = {
+export type DocsSearchDocumentRecord = LocalizedDocsMetadata & {
   id: string;
   title: string;
   description: string;
@@ -118,7 +131,7 @@ export type DocsSearchDocumentRecord = {
   relativePath: string;
 };
 
-export type DocsSearchChunk = {
+export type DocsSearchChunk = LocalizedDocsMetadata & {
   id: string;
   documentId: string;
   title: string;
@@ -142,6 +155,10 @@ export type DocsSearchDocumentEntry = [
   urlPath: string,
   absoluteUrl: string,
   relativePath: string,
+  locale?: string,
+  sourceLocale?: string,
+  isFallback?: boolean,
+  logicalPath?: string,
 ];
 
 export type DocsSearchChunkEntry = [
@@ -191,6 +208,7 @@ export type CreateDocsSearchIndexOptions = {
   generatedAt?: string;
   maxChunkChars?: number;
   overlapChars?: number;
+  transformers?: DocsTransformerOptions["transformers"];
 };
 
 export type SearchDocsOptions = ContentStoreOptions & {
@@ -198,7 +216,7 @@ export type SearchDocsOptions = ContentStoreOptions & {
   synonyms?: Record<string, string[]>;
 };
 
-export type DocsSearchResult = {
+export type DocsSearchResult = LocalizedDocsMetadata & {
   id: string;
   documentId: string;
   title: string;
@@ -392,10 +410,16 @@ function synonymTokensFor(
   token: string,
   synonyms?: Record<string, string[]>
 ): string[] {
-  return [
-    ...(DEFAULT_SYNONYMS[token] ?? []),
-    ...(synonyms?.[token] ?? []),
-  ].flatMap((entry) => tokenize(entry));
+  // hasOwn guards: tokens like "constructor" would otherwise resolve to
+  // Object.prototype members on these plain records.
+  const defaults = Object.hasOwn(DEFAULT_SYNONYMS, token)
+    ? DEFAULT_SYNONYMS[token]
+    : undefined;
+  const custom =
+    synonyms && Object.hasOwn(synonyms, token) ? synonyms[token] : undefined;
+  return [...(defaults ?? []), ...(custom ?? [])].flatMap((entry) =>
+    tokenize(entry)
+  );
 }
 
 function collectWeightedSearchTerms(
@@ -714,16 +738,6 @@ function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
     : 0;
 }
 
-function compareResults(
-  left: DocsSearchResult,
-  right: DocsSearchResult
-): number {
-  if (right.score !== left.score) {
-    return right.score - left.score;
-  }
-  return left.absoluteUrl.localeCompare(right.absoluteUrl);
-}
-
 function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
 }
@@ -738,7 +752,7 @@ function resolveContentStore(
 function documentRecordFromEntry(
   entry: DocsSearchDocumentEntry
 ): DocsSearchDocumentRecord {
-  return {
+  const record: DocsSearchDocumentRecord = {
     id: entry[DOCUMENT_ID],
     title: entry[DOCUMENT_TITLE],
     description: entry[DOCUMENT_DESCRIPTION],
@@ -746,6 +760,19 @@ function documentRecordFromEntry(
     absoluteUrl: entry[DOCUMENT_ABSOLUTE_URL],
     relativePath: entry[DOCUMENT_RELATIVE_PATH],
   };
+  if (entry[DOCUMENT_LOCALE]) {
+    record.locale = entry[DOCUMENT_LOCALE];
+  }
+  if (entry[DOCUMENT_SOURCE_LOCALE]) {
+    record.sourceLocale = entry[DOCUMENT_SOURCE_LOCALE];
+  }
+  if (entry[DOCUMENT_IS_FALLBACK] !== undefined) {
+    record.isFallback = entry[DOCUMENT_IS_FALLBACK];
+  }
+  if (entry[DOCUMENT_LOGICAL_PATH]) {
+    record.logicalPath = entry[DOCUMENT_LOGICAL_PATH];
+  }
+  return record;
 }
 
 function chunkFromEntry(
@@ -783,11 +810,35 @@ function chunkFromEntry(
     text,
     codeText: "",
     length: entry[CHUNK_LENGTH],
+    ...(documentRecord.locale ? { locale: documentRecord.locale } : {}),
+    ...(documentRecord.sourceLocale
+      ? { sourceLocale: documentRecord.sourceLocale }
+      : {}),
+    ...(documentRecord.isFallback === undefined
+      ? {}
+      : { isFallback: documentRecord.isFallback }),
+    ...(documentRecord.logicalPath
+      ? { logicalPath: documentRecord.logicalPath }
+      : {}),
   };
 }
 
+// Keyed by the chunks array (stable identity after JSON.parse) so repeated
+// lookups stay O(1) instead of scanning every chunk per scored result.
+const chunkIndexCache = new WeakMap<
+  DocsSearchChunkEntry[],
+  Map<string, number>
+>();
+
 function findChunkIndex(index: DocsSearchIndex, chunkId: string): number {
-  return index.chunks.findIndex((entry) => entry[CHUNK_ID] === chunkId);
+  let lookup = chunkIndexCache.get(index.chunks);
+  if (!lookup) {
+    lookup = new Map(
+      index.chunks.map((entry, chunkIndex) => [entry[CHUNK_ID], chunkIndex])
+    );
+    chunkIndexCache.set(index.chunks, lookup);
+  }
+  return lookup.get(chunkId) ?? -1;
 }
 
 function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
@@ -796,6 +847,32 @@ function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
       entry[DOCUMENT_ID] === pathOrId ||
       entry[DOCUMENT_RELATIVE_PATH] === pathOrId ||
       entry[DOCUMENT_URL_PATH] === pathOrId
+  );
+}
+
+function pathSegments(input: string): string[] {
+  return input.replaceAll("\\", "/").split("/").filter(Boolean);
+}
+
+function isSharedRoutePath(input: string): boolean {
+  const segments = pathSegments(input);
+  return segments.some((segment) => SHARED_ROUTE_SEGMENTS.has(segment));
+}
+
+function frontmatterSearchSetting(
+  frontmatter: DocsFrontmatter | undefined
+): boolean | undefined {
+  const value = frontmatter?.search;
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function shouldIndexSearchDocument(doc: DocsSearchDocument): boolean {
+  const search = frontmatterSearchSetting(doc.frontmatter);
+  if (search !== undefined) {
+    return search;
+  }
+  return !(
+    isSharedRoutePath(doc.relativePath) || isSharedRoutePath(doc.urlPath)
   );
 }
 
@@ -812,17 +889,42 @@ export function createDocsSearchIndex(
   const mutableChunks: MutableChunk[] = [];
   const chunkTermCounts = new Map<number, MutableTermCounts>();
 
-  for (const [documentIndex, doc] of markdownDocs.entries()) {
+  const docs = runTransformersSync(
+    options.transformers,
+    "beforeSearchIndex",
+    markdownDocs,
+    { stage: "search" },
+    (transformer, value, context) =>
+      transformer.beforeSearchIndex?.(value, context) as
+        | DocsSearchDocument[]
+        | undefined
+  );
+
+  for (const [documentIndex, doc] of docs
+    .filter(shouldIndexSearchDocument)
+    .entries()) {
     const documentId = doc.id ?? `doc-${documentIndex}`;
     const description = doc.description ?? "";
-    documents.push([
+    const entry: DocsSearchDocumentEntry = [
       documentId,
       doc.title,
       description,
       doc.urlPath,
       doc.absoluteUrl,
       doc.relativePath,
-    ]);
+    ];
+    if (
+      doc.locale ||
+      doc.sourceLocale ||
+      doc.isFallback !== undefined ||
+      doc.logicalPath
+    ) {
+      entry[DOCUMENT_LOCALE] = doc.locale;
+      entry[DOCUMENT_SOURCE_LOCALE] = doc.sourceLocale;
+      entry[DOCUMENT_IS_FALLBACK] = doc.isFallback;
+      entry[DOCUMENT_LOGICAL_PATH] = doc.logicalPath;
+    }
+    documents.push(entry);
 
     for (const block of collectSectionBlocks(doc.content)) {
       const bodyParts = splitWithOverlap(
@@ -849,29 +951,65 @@ export function createDocsSearchIndex(
           continue;
         }
 
+        const chunkInput: DocsSearchChunkInput = {
+          title: doc.title,
+          description,
+          urlPath: doc.urlPath,
+          absoluteUrl: doc.absoluteUrl,
+          relativePath: doc.relativePath,
+          anchor: slugifyDocsHeading(block.headingPath.at(-1) ?? ""),
+          headingPath: block.headingPath,
+          text: chunkText,
+          codeText,
+          length: tokenize(chunkText).length,
+          ...(doc.locale ? { locale: doc.locale } : {}),
+          ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+          ...(doc.isFallback === undefined
+            ? {}
+            : { isFallback: doc.isFallback }),
+          ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
+        };
+        const transformedChunk = runTransformersSync(
+          options.transformers,
+          "beforeSearchChunk",
+          chunkInput,
+          {
+            stage: "search",
+            relativePath: doc.relativePath,
+            urlPath: doc.urlPath,
+            locale: doc.locale,
+          },
+          (transformer, value, context) =>
+            transformer.beforeSearchChunk?.(value, context) as
+              | DocsSearchChunkInput
+              | undefined
+        );
+
         const chunkIndex = mutableChunks.length;
         const chunkId = `chunk-${chunkIndex}`;
-        const length = tokenize(chunkText).length;
-        const anchor = slugifyDocsHeading(block.headingPath.at(-1) ?? "");
+        const length = tokenize(transformedChunk.text).length;
+        const anchor = transformedChunk.anchor;
         mutableChunks.push({
           id: chunkId,
           documentIndex,
           anchor,
-          headingPath: block.headingPath,
-          text: chunkText,
+          headingPath: transformedChunk.headingPath,
+          text: transformedChunk.text,
           length,
         });
         chunkTermCounts.set(chunkIndex, {
           title: countTerms(doc.title),
-          heading: countTerms(block.headingPath.join(" ")),
-          body: countTerms([description, text].join(" ")),
-          code: countTerms(codeText),
+          heading: countTerms(transformedChunk.headingPath.join(" ")),
+          body: countTerms([description, transformedChunk.text].join(" ")),
+          code: countTerms(transformedChunk.codeText),
         });
       }
     }
   }
 
-  const terms: Record<string, DocsSearchPosting[]> = {};
+  // Null prototype so terms like "constructor" can't collide with
+  // Object.prototype members during posting accumulation.
+  const terms: Record<string, DocsSearchPosting[]> = Object.create(null);
   for (const [chunkIndex, counts] of chunkTermCounts) {
     const uniqueTerms = new Set<string>();
     addCountEntries(uniqueTerms, counts.title);
@@ -940,7 +1078,12 @@ export function searchDocs(
   const scores = new Map<string, number>();
   const averageLength = Math.max(index.averageChunkLength, 1);
   for (const { term, weight } of weightedTerms) {
-    const postings = index.terms[term];
+    // hasOwn guard: a JSON.parse'd index has a normal prototype, so a query
+    // term like "constructor" would otherwise resolve to Object.prototype
+    // members instead of postings.
+    const postings = Object.hasOwn(index.terms, term)
+      ? index.terms[term]
+      : undefined;
     if (!postings || postings.length === 0) {
       continue;
     }
@@ -976,19 +1119,34 @@ export function searchDocs(
   }
 
   const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
-  const results: DocsSearchResult[] = [];
-  const excerptTokens = Array.from(
-    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
-  );
+  const scoredChunks: Array<{ chunk: DocsSearchChunk; score: number }> = [];
   for (const [chunkId, score] of scores) {
     const chunk = readDocsContentChunk(index, chunkId, options.content);
     if (!chunk) {
       continue;
     }
+    scoredChunks.push({
+      chunk,
+      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
+    });
+  }
+  scoredChunks.sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score;
+    }
+    return left.chunk.absoluteUrl.localeCompare(right.chunk.absoluteUrl);
+  });
+
+  // Excerpts are expensive string scans, so build them only for results
+  // that survive the limit.
+  const excerptTokens = Array.from(
+    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
+  );
+  return scoredChunks.slice(0, limit).map(({ chunk, score }) => {
     const excerptText =
       chunk.text ||
       [chunk.title, chunk.description, ...chunk.headingPath].join(" ");
-    results.push({
+    return {
       id: chunk.id,
       documentId: chunk.documentId,
       title: chunk.title,
@@ -1001,11 +1159,9 @@ export function searchDocs(
       anchor: chunk.anchor,
       headingPath: chunk.headingPath,
       excerpt: buildExcerpt(excerptText, excerptTokens),
-      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
-    });
-  }
-
-  return results.sort(compareResults).slice(0, limit);
+      score,
+    };
+  });
 }
 
 export function readDocsContentChunk(
@@ -1062,6 +1218,13 @@ export function listDocsContentFiles(
     }
   }
   return files;
+}
+
+/** Document records (id, title, urlPath, …) for every page in the index. */
+export function listDocsSearchDocuments(
+  index: DocsSearchIndex
+): DocsSearchDocumentRecord[] {
+  return index.documents.map(documentRecordFromEntry);
 }
 
 export function attachDocsSearchContent(

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first to produce markdown mirrors, then generateLlmsTxt and generateLLMFullContextFiles to produce the routing index and root fallback, and finally generateDocsSearchFiles for the search index. All calls are to leadtype's library APIs, not the CLI, and the script passes product and nav imported from docs.config.ts into the relevant generators. The ordering respects that the full-context and search generators read the converted markdown, satisfying the critical ordering requirement.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 25,
+  "inputTokens": 56621,
+  "outputTokens": 952,
+  "durationMs": 82827,
+  "steps": 16,
+  "errors": []
+}

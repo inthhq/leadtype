@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains how `group` controls navigation and the monolithic nature of `/llms-full.txt`. It also lists two valid optional fields (`icon`, `deprecated`). However, it incorrectly claims `availableIn` is a valid optional frontmatter field, which is not in the schema and thus violates the rubric's requirement to not invent fields. Therefore the response is incorrect overall.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 9,
+  "inputTokens": 3792,
+  "outputTokens": 167,
+  "durationMs": 19636,
+  "steps": 5,
+  "errors": []
+}

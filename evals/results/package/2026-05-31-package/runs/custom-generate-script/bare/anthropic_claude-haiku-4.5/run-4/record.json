@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script uses API function names (convertMdxToMarkdown, buildRoutingIndex, buildFallbackIndex, buildSearchIndex) that are not the documented library APIs required by the rubric (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles). It also imports from 'leadtype' directly instead of from the specified submodules ('leadtype/convert', 'leadtype/llm', 'leadtype/search/node'). Although the ordering of conversion before index generation is correct, the wrong API calls make it incorrect and the script would not run as expected.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 11403,
+  "outputTokens": 480,
+  "durationMs": 56333,
+  "steps": 17,
+  "errors": []
+}

@@ -1,42 +1,67 @@
 import { existsSync } from "node:fs";
-import {
-  mkdir,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
+import type { PluggableList } from "unified";
+import type { DocsFeedConfig } from "../feed";
+import {
+  type DocsI18nConfig,
+  type DocsI18nManifest,
+  type LocaleCode,
+  type LocalizedDocsMetadata,
+  logicalPathFromLocaleRelativePath,
+  normalizeDocsI18nConfig,
+  outputRelativePathForLocale,
+  toLocalizedDocsUrlPath,
+} from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
+  type DocsPathMount,
   GENERIC_DOC_TITLES,
   normalizeBaseUrl,
   normalizeWhitespace as normalizeDescription,
   normalizeDocsPath,
   stripDocsExtension,
+  stripTrailingSlashes,
   toAbsoluteUrl,
   toMarkdownUrlPath,
+  toMountedMarkdownUrlPath,
   toDocsUrlPath as toUrlPath,
 } from "../internal/docs-url";
+import { parseFrontmatter } from "../internal/frontmatter";
+import { logger } from "../internal/logger";
+import type { DocsOpenApiConfig } from "../openapi";
+import {
+  type DocsFrontmatterSchema,
+  type DocsLlmsTxtArtifact,
+  type DocsTransformer,
+  runTransformers,
+} from "../transformers";
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
+  type ContentSignals,
   type DocsNavigation,
   type DocsNavigationGroup,
   type DocsNavigationPage,
   type DocsTableOfContentsItem,
   type DocsTableOfContentsOptions,
+  type RenderSiteJsonLdOptions,
+  type RobotsPolicy,
+  renderApiCatalog,
   renderRobotsTxt,
   renderSitemapMarkdown,
   renderSitemapXml,
+  type SeoMeta,
 } from "./readability";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
+export type { DocsPathMount } from "../internal/docs-url";
 
 const DOCS_DIRNAME = "docs";
 const AGENT_READABILITY_MANIFEST_FILE = "agent-readability.json";
+const API_CATALOG_FILE = path.join(".well-known", "api-catalog");
+const API_CATALOG_URL_PATH = "/.well-known/api-catalog";
 const ROBOTS_FILE = "robots.txt";
 const SITEMAP_MARKDOWN_FILE = "sitemap.md";
 const SITEMAP_XML_FILE = "sitemap.xml";
@@ -49,6 +74,8 @@ const FENCE_PATTERN = /^(`{3,}|~{3,})/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
+const NON_ALPHANUMERIC_PATTERN = /[^a-z0-9]+/gi;
+const NAV_INCLUDE_SORT_DEFAULT = ["order", "path"] as const;
 
 function assertValidGroupSlug(slug: string, parentPath: string[]): string {
   if (!SLUG_PATTERN.test(slug)) {
@@ -59,11 +86,10 @@ function assertValidGroupSlug(slug: string, parentPath: string[]): string {
   }
   return slug;
 }
-const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
 const GENERATED_MARKDOWN_FILES = new Set([SITEMAP_MARKDOWN_FILE]);
 const SEPARATOR_PATTERN = /[-_]/;
 
-export type SourceDoc = {
+export type SourceDoc = LocalizedDocsMetadata & {
   title: string;
   description: string;
   urlPath: string;
@@ -71,6 +97,12 @@ export type SourceDoc = {
   relativePath: string;
   /** Group slugs declared in frontmatter `group:`. Empty array = ungrouped. */
   groups: string[];
+  /**
+   * Sidebar order within a group, parsed from frontmatter `order:`. Pages
+   * with an explicit order sort first (ascending). Pages without `order`
+   * fall back to alphabetical urlPath ordering.
+   */
+  order?: number;
 };
 
 type SourceDocWithContent = SourceDoc & {
@@ -95,16 +127,116 @@ export type CuratedLink = {
   description?: string;
 };
 
+/**
+ * One content block in the body of `llms.txt`, rendered after the summary
+ * blockquote. Blocks render in array order, so position is just the index —
+ * there are no placement enums.
+ *
+ * - `markdown`: a verbatim markdown body under an optional H2 heading. Covers
+ *   bullets, prose, popularity stats (stars, downloads), a "Hosted by …"
+ *   mention, community links, badges, etc. leadtype never fetches or computes
+ *   these values — supply them in `docs.config.ts` (you can fetch at build
+ *   time from your own `.ts` config module) or via a `beforeLlmsTxt` transformer.
+ * - `links`: a curated link list under an H2 heading, resolved against the
+ *   source docs (titles/descriptions auto-filled, URLs rewritten via
+ *   mounts/baseUrl), exactly like the legacy `bestStartingPoints` field.
+ */
+export type LlmsBlock =
+  | { type: "markdown"; heading?: string; body: string }
+  | { type: "links"; heading: string; links: CuratedLink[] };
+
+/**
+ * Identity of the thing being documented. Reused across `llms.txt`, the
+ * JSON-LD entity graph, and the A2A agent card — author it once. Who *publishes*
+ * the product is a separate concept: see {@link OrganizationInfo}.
+ */
 export type ProductInfo = {
-  /** Product display name, e.g. "DSAR SDK" */
+  /** Product display name, e.g. "DSAR SDK". Rendered as the H1. */
   name: string;
-  /** Short one-line summary, rendered as a blockquote at the top of llms.txt */
+  /**
+   * One-line description. Rendered as the `llms.txt` blockquote and reused as
+   * the agent-card / JSON-LD description.
+   */
+  tagline: string;
+  /** Canonical product homepage. Agent-card `url` fallback (when no MCP endpoint). */
+  homepage?: string;
+  /** Docs entry point. Agent-card `documentationUrl`. Defaults to `${baseUrl}/docs`. */
+  docs?: string;
+  /** Source repository URL. Emitted as JSON-LD `codeRepository` for libraries. */
+  repository?: string;
+  /**
+   * What the product is. `"library"` emits JSON-LD `SoftwareApplication` with
+   * `SoftwareSourceCode`; anything else emits `SoftwareApplication`. Defaults to
+   * `"app"`.
+   */
+  kind?: "library" | "app";
+  /** JSON-LD `applicationCategory`, e.g. `"DeveloperApplication"`. */
+  category?: string;
+};
+
+export type OrganizationPostalAddress = {
+  streetAddress?: string;
+  addressLocality?: string;
+  addressRegion?: string;
+  postalCode?: string;
+  addressCountry?: string;
+};
+
+export type OrganizationContactPoint = {
+  /** Schema.org contact type, e.g. "customer support", "sales", or "press". */
+  contactType: string;
+  email?: string;
+  /** Phone number, emitted as Schema.org `telephone`. */
+  telephone?: string;
+  url?: string;
+  areaServed?: string | string[];
+  availableLanguage?: string | string[];
+};
+
+/**
+ * Who publishes / maintains the product. Feeds the JSON-LD `Organization` node
+ * and the A2A agent card's `provider`. Distinct from {@link ProductInfo}: the
+ * product is the documented thing, the organization is who stands behind it.
+ */
+export type OrganizationInfo = {
+  /** Publisher name, e.g. "Inth". */
+  name: string;
+  /** Publisher URL, e.g. "https://inth.com". */
+  url?: string;
+  /** Organization email address, emitted as JSON-LD `Organization.email`. */
+  email?: string;
+  /** Logo URL, emitted as JSON-LD `Organization.logo`. */
+  logo?: string;
+  /** Entity links that disambiguate the organization, emitted as JSON-LD `sameAs`. */
+  sameAs?: string[];
+  /** Contact details for agent/contact-query discovery, emitted as `ContactPoint`. */
+  contactPoint?: OrganizationContactPoint | OrganizationContactPoint[];
+  /** Business address, emitted as Schema.org `PostalAddress`. */
+  address?: OrganizationPostalAddress;
+};
+
+/** Authored `llms.txt` body. Sections render after the tagline blockquote, in array order. */
+export type DocsLlmsConfig = {
+  /** Ordered content sections — markdown prose or curated link lists. */
+  sections?: LlmsBlock[];
+};
+
+/**
+ * Internal product shape consumed by the low-level `llms.txt` / `AGENTS.md` /
+ * readability-manifest generators: a name, a one-line summary, and ordered body
+ * sections. The public config ({@link ProductInfo} + {@link DocsLlmsConfig}) is
+ * translated into this at the mapping layer.
+ */
+export type LlmsProductInfo = {
+  name: string;
   summary: string;
-  /** Bullets rendered under "## Product Summary" */
+  /** Ordered content blocks rendered after the summary blockquote (config `llms.sections`). */
+  blocks?: LlmsBlock[];
+  /** @deprecated Use `blocks`. Sugar for a `markdown` block titled "Product Summary". */
   bullets?: string[];
-  /** Curated links rendered under "## Best Starting Points" */
+  /** @deprecated Use `blocks`. Sugar for a `links` block titled "Best Starting Points". */
   bestStartingPoints?: CuratedLink[];
-  /** Optional agent guidance paragraph at the bottom of llms.txt */
+  /** @deprecated Use `blocks`. Sugar for a `markdown` block titled "Agent Guidance". */
   agentGuidance?: string;
 };
 
@@ -120,70 +252,645 @@ export type DocsGroup = {
   children?: DocsGroup[];
 };
 
+export type DocsNavSortKey = "order" | "path" | "title";
+
+export type DocsNavIncludeEntry = {
+  include: string;
+  exclude?: string | string[];
+  sort?: DocsNavSortKey[];
+  required?: boolean;
+};
+
+export type DocsNavPageEntry = string | DocsNavIncludeEntry;
+
+/**
+ * Author-facing curated navigation tree. `base` cascades to descendants, page
+ * strings are extensionless paths relative to the nearest base, and a leading
+ * slash escapes back to the collection root.
+ */
+export type DocsNavNode = {
+  title: string;
+  slug?: string;
+  description?: string;
+  base?: string;
+  pages?: DocsNavPageEntry[];
+  children?: DocsNavNode[];
+  /**
+   * Mark this section "safe to drop for shorter context". Its pages are listed
+   * under a single `## Optional` section in `docs/llms.txt` (the llms.txt spec's
+   * convention for low-priority links) instead of their own heading.
+   */
+  optional?: boolean;
+};
+
+/**
+ * Top-level curated navigation entry. Strings and include entries become
+ * ordered root pages (`navigation.ungrouped`); objects with `title` become
+ * grouped navigation sections.
+ */
+export type DocsNavEntry = DocsNavNode | DocsNavPageEntry;
+
+export type FrameworkNavigationTemplate = Pick<
+  DocsNavNode,
+  "children" | "description" | "optional" | "pages"
+>;
+
+export type FrameworkNavigationVariant<TTemplateName extends string = string> =
+  FrameworkNavigationTemplate &
+    Pick<DocsNavNode, "title"> & {
+      /** Framework URL segment relative to the framework root, e.g. "react". */
+      base: string;
+      /** Optional stable group key. */
+      slug?: string;
+      /** Template name to inherit pages/children from. */
+      template?: TTemplateName;
+    };
+
+type FrameworkNavigationConfigBase = Pick<
+  DocsNavNode,
+  "base" | "description" | "optional" | "pages" | "slug" | "title"
+>;
+
+export type FrameworkNavigationConfig<TTemplateName extends string = string> =
+  FrameworkNavigationConfigBase & {
+    /**
+     * Named framework section templates. Variants inherit `pages`, `children`,
+     * `description`, and `optional` from their template unless they override them.
+     */
+    templates?: Record<TTemplateName, FrameworkNavigationTemplate>;
+    /** Ordered framework sections rendered under this navigation node. */
+    frameworks: FrameworkNavigationVariant<TTemplateName>[];
+  };
+
+type FrameworkNavigationConfigWithTemplates<
+  TTemplates extends Record<string, FrameworkNavigationTemplate>,
+> = FrameworkNavigationConfigBase & {
+  /**
+   * Named framework section templates. Variants inherit `pages`, `children`,
+   * `description`, and `optional` from their template unless they override them.
+   */
+  templates: TTemplates;
+  /** Ordered framework sections rendered under this navigation node. */
+  frameworks: FrameworkNavigationVariant<Extract<keyof TTemplates, string>>[];
+};
+
+type FrameworkNavigationConfigWithoutTemplates =
+  FrameworkNavigationConfigBase & {
+    templates?: undefined;
+    /** Ordered framework sections rendered under this navigation node. */
+    frameworks: FrameworkNavigationVariant[];
+  };
+
+/** Valibot frontmatter schema accepted by a {@link DocsCollection}. */
+export type { DocsFrontmatterSchema } from "../transformers";
+
+export type SourceConfigInheritField =
+  | "navigation"
+  | "groups"
+  | "frontmatterSchema"
+  | "flatteners"
+  | "mounts";
+
+export type SourceConfigInheritance =
+  | true
+  | {
+      /**
+       * Config file path relative to the collection `dir`. Defaults to
+       * `docs.config.{ts,js,mjs,cjs}` in that directory.
+       */
+      path?: string;
+      /** Source-owned fields to inherit. Defaults to all supported fields. */
+      inherit?: SourceConfigInheritField[];
+    };
+
+/**
+ * One content set in a multi-source docs site. A collection declares where its
+ * MDX comes from (local `dir`, or a remote git `repository` at `ref`), how it
+ * appears in URLs (`prefix`), and how its frontmatter is validated (`schema`).
+ * Multiple collections may share a repository — acquisition is deduped by
+ * `(repository, ref)`.
+ */
+export type DocsCollection = {
+  /** https or git@ URL. Omit for a local-only collection. */
+  repository?: string;
+  /** Branch, tag, or commit SHA. Defaults to `"main"` for remote sources. */
+  ref?: string;
+  /**
+   * Override the cache directory for the cloned repository. Defaults to
+   * `.leadtype/sources/<repo-slug>@<ref>` relative to the config dir.
+   * Ignored for local-only collections.
+   */
+  cacheDir?: string;
+  /**
+   * For remote collections, load source-owned docs config from the synced
+   * collection directory after sync and inherit content-owned fields into this
+   * collection.
+   */
+  sourceConfig?: SourceConfigInheritance;
+  /**
+   * Directory containing the MDX. Relative to the repo root for remote
+   * collections, or relative to cwd for local-only collections.
+   */
+  dir: string;
+  /** Optional include globs. Defaults to all `.mdx` files in `dir`. */
+  include?: string[];
+  /** Optional exclude globs. */
+  exclude?: string[];
+  /** URL prefix. Defaults to `"/" + <collection-key>`. */
+  prefix?: string;
+  /**
+   * Per-collection frontmatter schema. Defaults to the standard leadtype
+   * frontmatter schema. Errors are reported as
+   * `[collection:<key>] <relPath>: ...`.
+   */
+  schema?: DocsFrontmatterSchema;
+  /** Per-collection navigation tree. */
+  groups?: DocsGroup[];
+  /** Per-collection curated docs UI and agent navigation tree. */
+  navigation?: DocsNavEntry[];
+  /** Optional path-to-URL mounts for pages inside this collection. */
+  mounts?: DocsPathMount[];
+  /**
+   * Custom component flatteners (from `defineComponentFlattener`) declared
+   * alongside this collection. Run in the `custom` phase, before the built-in
+   * flatteners.
+   *
+   * @remarks
+   * Merged into the build's single flattener list together with the top-level
+   * `flatteners` and every other collection's — generation runs one conversion
+   * pass over all pages. Flatteners match by component name, so a collection's
+   * flatteners effectively apply build-wide; only collections that reuse the
+   * same component name with different intended output would collide.
+   */
+  flatteners?: PluggableList;
+};
+
 /**
  * Combined config for the `leadtype` docs-generation pipeline. Pass to
- * `defineDocsConfig` in a `docs.config.ts` file. Pages declare which group
- * they belong to via MDX frontmatter (`group: <slug>` or `group: [a, b]`),
- * so this config only describes the structure and metadata of groups, not
- * per-page membership.
+ * `defineDocsConfig` in a `leadtype.config.ts` or `docs.config.ts` file.
+ *
+ * A config either uses the single-collection shape (top-level `groups`) or
+ * the multi-collection shape (`collections` map). Setting both is rejected
+ * at config load.
  */
-export type DocsConfig = {
+export type DocsConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  /** Identity of the documented product — name, tagline, links. Reused everywhere. */
   product: ProductInfo;
-  groups: DocsGroup[];
+  /** Who publishes the product. Feeds JSON-LD `Organization` + the agent-card `provider`. */
+  organization?: OrganizationInfo;
+  /** Authored `llms.txt` body (ordered sections). */
+  llms?: DocsLlmsConfig;
+  /** Site-wide custom frontmatter schema used by generation/source APIs. */
+  frontmatterSchema?: DocsFrontmatterSchema<TFrontmatter>;
+  /** Build-time lifecycle hooks for frontmatter, search, and agent artifacts. */
+  transformers?: DocsTransformer<TFrontmatter>[];
+  /**
+   * Custom component flatteners (from `defineComponentFlattener`) applied during
+   * generation, in addition to the built-in stack. Run in the `custom` phase —
+   * after includes/placeholder resolution, before the built-in flatteners.
+   * For multi-collection configs, these merge with each collection's `flatteners`.
+   */
+  flatteners?: PluggableList;
+  /**
+   * Top-level navigation for the single-collection shape. Mutually exclusive
+   * with `collections`. Pages declare which group they belong to via MDX
+   * frontmatter (`group: <slug>` or `group: [a, b]`).
+   */
+  groups?: DocsGroup[];
+  /**
+   * Curated navigation for the single-collection shape. When present, this
+   * drives docs UI and agent-facing indexes; `groups` remains fallback
+   * taxonomy/navigation metadata.
+   */
+  navigation?: DocsNavEntry[];
+  /** Optional path-to-URL mounts for pages inside the docs tree. */
+  mounts?: DocsPathMount[];
+  /** Optional RSS/Atom feeds generated from URL-prefixed docs pages. */
+  feeds?: DocsFeedConfig[];
+  /**
+   * Multi-source content sets, keyed by collection id. Each collection owns
+   * its own source acquisition, URL prefix, frontmatter schema, and nav.
+   */
+  collections?: Record<string, DocsCollection>;
+  /**
+   * OpenAPI specs to generate into the docs source before conversion. Generated
+   * pages use native MDX API components and flatten into agent-readable markdown.
+   */
+  openapi?: DocsOpenApiConfig;
+  i18n?: DocsI18nConfig;
+  /**
+   * Optional base directory for ExtractedTypeTable / AutoTypeTable path
+   * resolution during generation. Relative values are resolved from `--src`.
+   */
+  typeTableBasePath?: string;
+  /** Throw during generation when a referenced type cannot be extracted. */
+  typeTableStrict?: boolean;
+  /** Git metadata enrichment options. */
+  git?: DocsGitConfig;
+  /** Agent-surface options (robots policy / Content-Signals, …). All optional. */
+  agents?: DocsAgentsConfig;
+  /**
+   * Opt-in redirect tracking for renamed/deleted pages. When present,
+   * generate maintains a committed paths lockfile, auto-detects pure moves by
+   * content hash, emits `docs/redirects.json`, and fails loudly when a page
+   * disappears without a successor.
+   */
+  redirects?: DocsRedirectsConfig;
+};
+
+export type DocsRedirectsConfig = {
+  /**
+   * Lockfile location, resolved relative to the docs source directory.
+   * Defaults to `paths.lock.json` inside it. Commit this file — it is the
+   * record of previously published paths that rename detection diffs against.
+   */
+  lockfile?: string;
+  /**
+   * Paths acknowledged as intentionally deleted, e.g. `/docs/old-guide`.
+   * Served as 410 Gone instead of failing the build.
+   */
+  removed?: string[];
+};
+
+export type DocsGitConfig = {
+  /**
+   * Additional git author names to ignore when deriving generated markdown
+   * `lastAuthor`. Matching is case-insensitive and additive with built-in bot
+   * author detection.
+   */
+  ignoredAuthors?: string[];
+};
+
+/** A single agent skill (agentskills.io `SKILL.md`). */
+export type DocsSkillSpec = {
+  name: string;
+  description: string;
+  license?: string;
+  compatibility?: string;
+  /** Space- or array-delimited pre-approved tools (rendered as `allowed-tools`). */
+  allowedTools?: string[];
+  metadata?: Record<string, string>;
+  /** Inline Markdown instructions. Use this or `bodyPath`. */
+  body?: string;
+  /** Path to a Markdown instructions file, relative to the docs source root. */
+  bodyPath?: string;
+};
+
+/** Additive `agents` config block. All fields optional; zero-config defaults hold. */
+export type DocsAgentsConfig = {
+  /** Signals that your docs support MCP, so leadtype emits hosted or package-local MCP surfaces. */
+  mcp?: {
+    enabled?: boolean;
+    /** MCP transport endpoint advertised in the server card. Defaults to `${baseUrl}/mcp` or `/mcp`. */
+    endpoint?: string;
+    /** Card icon/logo URL advertised to registries and scanners. */
+    icon?: string;
+    /** Alias for `icon` for configs that prefer a semantic logo name. */
+    logo?: string;
+    /** Server identity advertised in the MCP Server Card. */
+    serverInfo?: {
+      name?: string;
+      version?: string;
+      description?: string;
+      instructions?: string;
+    };
+    /** Whether the advertised MCP endpoint requires authentication. Defaults to public. */
+    authentication?: { required?: boolean };
+    /**
+     * Tools the mounted server exposes, advertised in the server card.
+     * Defaults to `search-docs` + `get-page`.
+     */
+    tools?: ("search-docs" | "get-page" | "list-pages")[];
+  };
+  /**
+   * Signals that your docs serve an NLWeb `/ask` endpoint, so leadtype emits
+   * the schema feed + schema map and adds the robots.txt `Schemamap:` directive.
+   */
+  nlweb?: {
+    enabled?: boolean;
+    /** The `/ask` endpoint path or absolute URL. Defaults to `/ask`. */
+    endpoint?: string;
+  };
+  robots?: {
+    /** Crawler-access stance. Defaults to `balanced`. */
+    policy?: RobotsPolicy;
+    /** Override individual Content-Signals beyond the policy preset. */
+    signals?: Partial<ContentSignals>;
+  };
+  /** Site-level SEO defaults (og:image, twitter, keywords) for `createDocsHead`. */
+  seo?: SeoMeta;
+  /**
+   * The A2A agent card at `/.well-known/agent-card.json`. Its `provider` is the
+   * top-level `organization`; `documentationUrl` is `product.docs`. Emitted by default.
+   */
+  agentCard?: {
+    /** Emit the agent card. Default `true`. */
+    enabled?: boolean;
+    /** Override the card `version`. Defaults to `1.0.0`. */
+    version?: string;
+  };
+  /** Skills surface emitted to `/.well-known/agent-skills` (+ bundled `SKILL.md`). */
+  skills?: {
+    /** Emit the auto "use these docs" skill. Default `true`. */
+    docsSkill?: boolean;
+    /** Author-declared skills, emitted alongside (or instead of) the docs-skill. */
+    items?: DocsSkillSpec[];
+  };
 };
 
 /**
  * Identity helper that gives the config object full IDE autocomplete and
  * type-checks the docs structure at edit time.
  */
-export function defineDocsConfig(config: DocsConfig): DocsConfig {
+export function defineDocsConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+>(config: DocsConfig<TFrontmatter>): DocsConfig<TFrontmatter> {
   return config;
 }
+
+/**
+ * Identity helper for a single collection. Use with
+ * {@link defineDocsConfig}'s `collections` map.
+ */
+export function defineCollection(collection: DocsCollection): DocsCollection {
+  return collection;
+}
+
+function compactDocsNavNode(node: DocsNavNode): DocsNavNode {
+  const compacted: DocsNavNode = { title: node.title };
+
+  if (node.slug !== undefined) {
+    compacted.slug = node.slug;
+  }
+  if (node.description !== undefined) {
+    compacted.description = node.description;
+  }
+  if (node.base !== undefined) {
+    compacted.base = node.base;
+  }
+  if (node.pages !== undefined) {
+    compacted.pages = node.pages;
+  }
+  if (node.children !== undefined) {
+    compacted.children = node.children;
+  }
+  if (node.optional !== undefined) {
+    compacted.optional = node.optional;
+  }
+
+  return compacted;
+}
+
+/**
+ * Builds repeated framework navigation from shared templates while returning a
+ * plain {@link DocsNavNode}. Use this when React, Next.js, Vue, JavaScript, or
+ * other framework sections share the same concepts/guides/reference structure.
+ */
+export function defineFrameworkNavigation<
+  const TTemplates extends Record<string, FrameworkNavigationTemplate>,
+>(config: FrameworkNavigationConfigWithTemplates<TTemplates>): DocsNavNode;
+export function defineFrameworkNavigation(
+  config: FrameworkNavigationConfigWithoutTemplates
+): DocsNavNode;
+export function defineFrameworkNavigation(
+  config: FrameworkNavigationConfig
+): DocsNavNode {
+  const templates = config.templates ?? {};
+  const children = config.frameworks.map((framework) => {
+    const template =
+      framework.template === undefined
+        ? undefined
+        : templates[framework.template];
+
+    if (framework.template !== undefined && template === undefined) {
+      throw new Error(
+        `defineFrameworkNavigation: unknown template "${framework.template}" for framework "${framework.title}"`
+      );
+    }
+
+    return compactDocsNavNode({
+      title: framework.title,
+      slug: framework.slug,
+      base: framework.base,
+      description: framework.description ?? template?.description,
+      pages: framework.pages ?? template?.pages,
+      children: framework.children ?? template?.children,
+      optional: framework.optional ?? template?.optional,
+    });
+  });
+
+  return compactDocsNavNode({
+    title: config.title,
+    slug: config.slug,
+    base: config.base,
+    description: config.description,
+    pages: config.pages,
+    children,
+    optional: config.optional,
+  });
+}
+
+/** Generator inputs derived from the public config's identity blocks. */
+export type ResolvedAgentInputs = {
+  /** Internal product shape for `generateLlmsTxt` / `generateAgentReadabilityArtifacts`. */
+  product: LlmsProductInfo;
+  /** JSON-LD options for `renderSiteJsonLd` (from `organization` + `product` software fields). */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Agent-card `provider` (from `organization`). */
+  provider?: { organization: string; url?: string };
+  /** Agent-card `documentationUrl` (from `product.docs`). */
+  documentationUrl?: string;
+};
+
+/**
+ * Translate the public config's identity blocks ({@link ProductInfo},
+ * {@link OrganizationInfo}, {@link DocsLlmsConfig}) into the inputs the low-level
+ * generators consume. One source of truth for the config → generator mapping,
+ * shared by `leadtype generate` and anyone composing the generators by hand.
+ */
+export function resolveAgentInputs(config: {
+  product: ProductInfo;
+  organization?: OrganizationInfo;
+  llms?: DocsLlmsConfig;
+}): ResolvedAgentInputs {
+  const { product, organization, llms } = config;
+  const hasSoftware =
+    product.kind !== undefined ||
+    product.category !== undefined ||
+    product.repository !== undefined;
+  const software: RenderSiteJsonLdOptions["software"] | undefined = hasSoftware
+    ? {
+        ...(product.kind ? { isLibrary: product.kind === "library" } : {}),
+        ...(product.category ? { applicationCategory: product.category } : {}),
+        ...(product.repository ? { codeRepository: product.repository } : {}),
+      }
+    : undefined;
+  const org = organization
+    ? {
+        ...(organization.name ? { name: organization.name } : {}),
+        ...(organization.url ? { url: organization.url } : {}),
+        ...(organization.email ? { email: organization.email } : {}),
+        ...(organization.logo ? { logo: organization.logo } : {}),
+        ...(organization.sameAs ? { sameAs: organization.sameAs } : {}),
+        ...(organization.contactPoint
+          ? { contactPoint: organization.contactPoint }
+          : {}),
+        ...(organization.address ? { address: organization.address } : {}),
+      }
+    : undefined;
+  const jsonLd: RenderSiteJsonLdOptions | undefined =
+    org || software
+      ? {
+          ...(org ? { organization: org } : {}),
+          ...(software ? { software } : {}),
+        }
+      : undefined;
+  return {
+    product: {
+      name: product.name,
+      summary: product.tagline,
+      ...(llms?.sections ? { blocks: llms.sections } : {}),
+    },
+    ...(jsonLd ? { jsonLd } : {}),
+    ...(organization?.name
+      ? {
+          provider: {
+            organization: organization.name,
+            ...(organization.url ? { url: organization.url } : {}),
+          },
+        }
+      : {}),
+    ...(product.docs ? { documentationUrl: product.docs } : {}),
+  };
+}
+
+/**
+ * Programmatic agent endpoints linked from the root `llms.txt` — referencing
+ * the MCP server there is one of the discovery paths agent scanners accept.
+ */
+export type LlmsAgentInterfaces = {
+  /** MCP Streamable HTTP endpoint (absolute when baseUrl is known). */
+  mcpEndpoint?: string;
+  /** MCP server card URL. */
+  mcpServerCardUrl?: string;
+  /**
+   * Tool names the MCP endpoint exposes. Keep in sync with the server card
+   * (`agents.mcp.tools`); defaults to the standard search-docs + get-page.
+   */
+  mcpTools?: string[];
+  /** NLWeb `/ask` endpoint. */
+  askEndpoint?: string;
+};
 
 export type LlmsTxtConfig = {
   srcDir: string;
   outDir: string;
   baseUrl?: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   /** Group tree from `docs.config.ts`. Used for `/docs/llms.txt` sections. */
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavEntry[];
+  /** Optional path-to-URL mounts for generated docs, e.g. changelog -> /changelog. */
+  mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  transformers?: DocsTransformer[];
+  /** Agent endpoints appended to the root llms.txt as `## Agent Interfaces`. */
+  agentInterfaces?: LlmsAgentInterfaces;
 };
 
 export type LLMFullContextConfig = {
   outDir: string;
   baseUrl?: string;
-  product: Pick<ProductInfo, "name">;
+  product: Pick<LlmsProductInfo, "name">;
   /** Group tree from `docs.config.ts`. Preserved for config validation. */
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavEntry[];
+  mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  transformers?: DocsTransformer[];
 };
 
 export type AgentReadabilityConfig = {
   outDir: string;
   baseUrl?: string;
-  product: Pick<ProductInfo, "name" | "summary">;
-  groups: DocsGroup[];
+  product: Pick<LlmsProductInfo, "name" | "summary">;
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavEntry[];
+  mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  i18nManifest?: DocsI18nManifest;
+  transformers?: DocsTransformer[];
+  /** Crawler-access stance for robots.txt + Content-Signals. Defaults to `balanced`. */
+  robotsPolicy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  contentSignals?: Partial<ContentSignals>;
+  /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a robots.txt `Schemamap:` directive. */
+  schemamapUrlPath?: string;
+  /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
+  seo?: SeoMeta;
+  /**
+   * Pin manifest `generatedAt` and the per-page `lastModified` fallback (used
+   * when a page's frontmatter carries no date, instead of the file mtime) so
+   * repeated runs produce reproducible output. Accepts a date string or a
+   * Date. Defaults to the current time.
+   */
+  generatedAt?: string | Date;
+  /** Write origin-root crawler files. Defaults to true for the default locale. */
+  emitRootCrawlerFiles?: boolean;
 };
 
 export type AgentReadabilityResult = {
   manifest: AgentReadabilityManifest;
   files: {
     manifest: string;
-    robotsTxt: string;
-    sitemapMd: string;
-    sitemapXml: string;
+    apiCatalog?: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
   };
 };
 
 export type ResolveDocsNavigationConfig = {
   srcDir: string;
   baseUrl?: string;
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavEntry[];
+  /**
+   * Additional directories whose pages are treated as if they lived in the docs
+   * dir. Intended for generated-page overlays.
+   */
+  extraDocsDirs?: string[];
+  mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  includeFallback?: boolean;
   toc?: boolean | DocsTableOfContentsOptions;
+  /**
+   * Name of the docs subdirectory under `srcDir`. Defaults to `"docs"` for
+   * backward compatibility. Set this when the docs folder isn't named `docs`
+   * (e.g. fumadocs sites using `content/docs` — the directory containing the
+   * `.mdx` files would be `srcDir/content`'s `docs` child).
+   */
+  docsDirName?: string;
 };
 
 export type ResolveDocsTableOfContentsConfig = {
   srcDir: string;
   baseUrl?: string;
+  mounts?: DocsPathMount[];
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
   options?: DocsTableOfContentsOptions;
 };
 
@@ -195,6 +902,9 @@ type ResolvedGroup = {
   segmentPath: string[];
   parent: ResolvedGroup | null;
   children: ResolvedGroup[];
+  base: string;
+  pageEntries: DocsNavPageEntry[];
+  optional?: boolean;
 };
 
 function resolveGroups(
@@ -223,6 +933,8 @@ function resolveGroups(
       segmentPath,
       parent,
       children: [],
+      base: "",
+      pageEntries: [],
     };
     resolved.children = resolveGroups(
       group.children ?? [],
@@ -242,6 +954,106 @@ function flattenGroups(groups: ResolvedGroup[]): ResolvedGroup[] {
     }
   }
   return result;
+}
+
+function inferNavSlug(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(NON_ALPHANUMERIC_PATTERN, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeNavPath(input: string): string {
+  return stripDocsExtension(normalizeDocsPath(input).replace(/^\/+/, ""))
+    .replace(/\/index$/, "")
+    .replace(/^index$/, "");
+}
+
+function joinNavPath(base: string, input: string): string {
+  if (input.trim() === "") {
+    return normalizeNavPath(base);
+  }
+  if (input.startsWith("/")) {
+    return normalizeNavPath(input);
+  }
+  return normalizeNavPath(path.posix.join(base, input));
+}
+
+type ResolvedNavConfig = {
+  groups: ResolvedGroup[];
+  rootPageEntries: DocsNavPageEntry[];
+};
+
+function isDocsNavNode(entry: DocsNavEntry): entry is DocsNavNode {
+  return (
+    typeof entry === "object" &&
+    entry !== null &&
+    "title" in entry &&
+    typeof entry.title === "string"
+  );
+}
+
+function resolveNavConfig(nav: DocsNavEntry[]): ResolvedNavConfig {
+  const rootPageEntries: DocsNavPageEntry[] = [];
+  const nodes: DocsNavNode[] = [];
+  for (const entry of nav) {
+    if (isDocsNavNode(entry)) {
+      nodes.push(entry);
+    } else {
+      rootPageEntries.push(entry);
+    }
+  }
+  return {
+    groups: resolveNavGroups(nodes),
+    rootPageEntries,
+  };
+}
+
+function resolveNavGroups(
+  nav: DocsNavNode[],
+  parentPath: string[] = [],
+  parent: ResolvedGroup | null = null,
+  inheritedBase = ""
+): ResolvedGroup[] {
+  const seen = new Set<string>();
+  return nav.map((node) => {
+    const inferredSlug = inferNavSlug(node.slug ?? node.title);
+    const slug = assertValidGroupSlug(inferredSlug, parentPath);
+    const slugKey = slug.toLowerCase();
+    if (seen.has(slugKey)) {
+      const scope = parentPath.join("/") || "root";
+      throw new Error(
+        `Duplicate nav slug "${slug}" under "${scope}". Nav slugs must be unique among siblings.`
+      );
+    }
+    seen.add(slugKey);
+
+    const base =
+      node.base === undefined
+        ? inheritedBase
+        : joinNavPath(inheritedBase, node.base);
+    const segmentPath = [...parentPath, slug];
+    const resolved: ResolvedGroup = {
+      slug,
+      slugKey,
+      title: node.title,
+      description: node.description,
+      segmentPath,
+      parent,
+      children: [],
+      base,
+      pageEntries: node.pages ?? [],
+      ...(node.optional ? { optional: true } : {}),
+    };
+    resolved.children = resolveNavGroups(
+      node.children ?? [],
+      segmentPath,
+      resolved,
+      base
+    );
+    return resolved;
+  });
 }
 
 function titleize(input: string): string {
@@ -277,6 +1089,19 @@ function normalizeDate(value: unknown): string | undefined {
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
   }
   return;
+}
+
+function resolveGeneratedAt(value?: string | Date): Date {
+  if (value === undefined) {
+    return new Date();
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(
+      `generatedAt must be a valid Date or date string; received ${JSON.stringify(value)}.`
+    );
+  }
+  return date;
 }
 
 function readLastModified(
@@ -453,7 +1278,10 @@ export function extractDocsTableOfContents(
   return items;
 }
 
-function pageToRenderedLink(doc: SourceDoc): RenderedLink {
+function pageToRenderedLink(
+  doc: Pick<SourceDoc, "description" | "relativePath" | "title">,
+  mounts?: DocsPathMount[]
+): RenderedLink {
   const title =
     doc.title && !GENERIC_DOC_TITLES.has(doc.title.toLowerCase())
       ? doc.title
@@ -464,13 +1292,14 @@ function pageToRenderedLink(doc: SourceDoc): RenderedLink {
   return {
     title,
     description,
-    url: toMarkdownUrlPath(doc.urlPath),
+    url: toMountedMarkdownUrlPath(`${doc.relativePath}.md`, mounts),
   };
 }
 
 function resolveCuratedLink(
   link: CuratedLink,
-  sourceDocs: Map<string, SourceDoc>
+  sourceDocs: Map<string, SourceDoc>,
+  mounts?: DocsPathMount[]
 ): RenderedLink {
   const sourceDoc = sourceDocs.get(link.urlPath);
   const title =
@@ -487,7 +1316,9 @@ function resolveCuratedLink(
   return {
     title,
     description: description || `Entry point for ${title} documentation.`,
-    url: toMarkdownUrlPath(sourceDoc?.urlPath ?? link.urlPath),
+    url: sourceDoc
+      ? toMountedMarkdownUrlPath(`${sourceDoc.relativePath}.md`, mounts)
+      : toMarkdownUrlPath(link.urlPath),
   };
 }
 
@@ -510,11 +1341,142 @@ async function collectFiles(
   return files.flat();
 }
 
+type LocaleReadOptions = {
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  includeFallback?: boolean;
+  /**
+   * Used as the per-page `lastModified` when frontmatter carries no date,
+   * instead of the file's mtime (which changes on every fresh checkout).
+   */
+  lastModifiedFallback?: Date;
+};
+
+function resolveLocaleReadOptions(options: LocaleReadOptions): {
+  i18n: ReturnType<typeof normalizeDocsI18nConfig>;
+  locale?: LocaleCode;
+  includeFallback: boolean;
+} {
+  const i18n = normalizeDocsI18nConfig(options.i18n);
+  if (!i18n) {
+    return { i18n, includeFallback: false };
+  }
+  const locale = options.locale ?? i18n.defaultLocale;
+  if (!i18n.locales.some((entry) => entry.code === locale)) {
+    throw new Error(`Unknown locale "${locale}" in i18n config.`);
+  }
+  return {
+    i18n,
+    locale,
+    includeFallback: options.includeFallback ?? i18n.fallback === "default",
+  };
+}
+
+function assertUnambiguousDefaultLocaleLayout(
+  relativePaths: string[],
+  localeCodes: Set<string>,
+  defaultLocale: string
+): void {
+  const hasRootDefault = relativePaths.some((relativePath) => {
+    const first = normalizeDocsPath(relativePath).split("/")[0] ?? "";
+    return !localeCodes.has(first);
+  });
+  const hasDefaultFolder = relativePaths.some((relativePath) =>
+    normalizeDocsPath(relativePath).startsWith(`${defaultLocale}/`)
+  );
+
+  if (hasRootDefault && hasDefaultFolder) {
+    throw new Error(
+      `Ambiguous i18n default-locale layout. Use either root docs files or docs/${defaultLocale}/ files for the default locale, not both.`
+    );
+  }
+}
+
+type SelectedDocFile = LocalizedDocsMetadata & {
+  filePath: string;
+  logicalPath: string;
+  outputRelativePath: string;
+  sourceLocale?: LocaleCode;
+};
+
+function selectLocalizedFiles(
+  files: string[],
+  docsDir: string,
+  options: {
+    defaultLocale: LocaleCode;
+    locale: LocaleCode;
+    localeCodes: Set<string>;
+    includeFallback: boolean;
+  }
+): SelectedDocFile[] {
+  const byLogicalPath = new Map<
+    string,
+    Map<LocaleCode, { filePath: string; sourceLocale: LocaleCode }>
+  >();
+
+  for (const filePath of files) {
+    const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
+    const { logicalPath, sourceLocale } = logicalPathFromLocaleRelativePath(
+      relativePath,
+      options.localeCodes
+    );
+    const resolvedSourceLocale = sourceLocale ?? options.defaultLocale;
+    const localeFiles = byLogicalPath.get(logicalPath) ?? new Map();
+    const existing = localeFiles.get(resolvedSourceLocale);
+    if (existing) {
+      throw new Error(
+        `Duplicate docs file for logical path "${logicalPath}" and locale "${resolvedSourceLocale}": "${existing.filePath}" conflicts with "${filePath}". Rename one or remove it.`
+      );
+    }
+
+    localeFiles.set(resolvedSourceLocale, {
+      filePath,
+      sourceLocale: resolvedSourceLocale,
+    });
+    byLogicalPath.set(logicalPath, localeFiles);
+  }
+
+  const selected: SelectedDocFile[] = [];
+  for (const [logicalPath, localeFiles] of byLogicalPath) {
+    const localized = localeFiles.get(options.locale);
+    const fallback =
+      options.includeFallback && options.locale !== options.defaultLocale
+        ? localeFiles.get(options.defaultLocale)
+        : undefined;
+    const match = localized ?? fallback;
+    if (!match) {
+      continue;
+    }
+    selected.push({
+      filePath: match.filePath,
+      locale: options.locale,
+      sourceLocale: match.sourceLocale,
+      isFallback: match.sourceLocale !== options.locale,
+      logicalPath,
+      outputRelativePath: outputRelativePathForLocale(
+        logicalPath,
+        options.locale,
+        {
+          defaultLocale: options.defaultLocale,
+          locales: Array.from(options.localeCodes),
+        }
+      ),
+    });
+  }
+
+  return selected.sort((left, right) =>
+    left.outputRelativePath.localeCompare(right.outputRelativePath)
+  );
+}
+
 async function readSourceDocs(
   srcDir: string,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[],
+  docsDirName: string = DOCS_DIRNAME,
+  localeOptions: LocaleReadOptions = {}
 ): Promise<Map<string, SourceDocWithContent>> {
-  const docsDir = path.join(srcDir, DOCS_DIRNAME);
+  const docsDir = path.join(srcDir, docsDirName);
   const docs = new Map<string, SourceDocWithContent>();
 
   if (!existsSync(docsDir)) {
@@ -522,24 +1484,73 @@ async function readSourceDocs(
   }
 
   const files = await collectFiles(docsDir, [".md", ".mdx"]);
+  const relativePaths = files.map((filePath) =>
+    normalizeDocsPath(path.relative(docsDir, filePath))
+  );
+  const localeRead = resolveLocaleReadOptions(localeOptions);
+  const localeCodes = new Set(
+    localeRead.i18n?.locales.map((locale) => locale.code) ?? []
+  );
+
+  if (localeRead.i18n && localeRead.locale) {
+    assertUnambiguousDefaultLocaleLayout(
+      relativePaths,
+      localeCodes,
+      localeRead.i18n.defaultLocale
+    );
+  }
+
+  const selectedFiles: SelectedDocFile[] =
+    localeRead.i18n && localeRead.locale
+      ? selectLocalizedFiles(files, docsDir, {
+          defaultLocale: localeRead.i18n.defaultLocale,
+          locale: localeRead.locale,
+          localeCodes,
+          includeFallback: localeRead.includeFallback,
+        })
+      : files.map((filePath) => {
+          const relativePath = normalizeDocsPath(
+            path.relative(docsDir, filePath)
+          );
+          return {
+            filePath,
+            logicalPath: stripDocsExtension(relativePath),
+            outputRelativePath: stripDocsExtension(relativePath),
+          };
+        });
 
   const entries = await Promise.all(
-    files.map(async (filePath) => {
-      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
-      const raw = await readFile(filePath, "utf-8");
-      const parsed = matter(raw);
+    selectedFiles.map(async (file) => {
+      const relativePath = normalizeDocsPath(
+        path.relative(docsDir, file.filePath)
+      );
+      const raw = await readFile(file.filePath, "utf-8");
+      const parsed = parseFrontmatter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
         titleFromRelativePath(
-          relativePath,
+          `${file.logicalPath}${path.extname(relativePath)}`,
           path.extname(relativePath) as ".md" | ".mdx"
         ) ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
       );
-      const urlPath = toUrlPath(relativePath);
+      const urlPath =
+        localeRead.i18n && localeRead.locale
+          ? toLocalizedDocsUrlPath(
+              `${file.logicalPath}.mdx`,
+              localeRead.locale,
+              localeRead.i18n,
+              mounts
+            )
+          : toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
+      const orderRaw = parsed.data.order;
+      const order =
+        typeof orderRaw === "number" && Number.isFinite(orderRaw)
+          ? orderRaw
+          : undefined;
       return {
         urlPath,
         doc: {
@@ -547,8 +1558,15 @@ async function readSourceDocs(
           description,
           urlPath,
           absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-          relativePath: stripDocsExtension(relativePath),
+          relativePath: file.outputRelativePath,
           groups,
+          ...(order === undefined ? {} : { order }),
+          ...(file.locale ? { locale: file.locale } : {}),
+          ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
+          ...(file.isFallback === undefined
+            ? {}
+            : { isFallback: file.isFallback }),
+          ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
           content: parsed.content,
         },
       };
@@ -570,7 +1588,9 @@ async function readSourceDocs(
 
 async function readMarkdownDocs(
   outDir: string,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[],
+  localeOptions: LocaleReadOptions = {}
 ): Promise<MarkdownDoc[]> {
   const docsDir = path.join(outDir, DOCS_DIRNAME);
   if (!existsSync(docsDir)) {
@@ -578,37 +1598,100 @@ async function readMarkdownDocs(
   }
 
   const files = await collectFiles(docsDir, [".md"]);
+  const relativePaths = files.map((filePath) =>
+    normalizeDocsPath(path.relative(docsDir, filePath))
+  );
+  const localeRead = resolveLocaleReadOptions(localeOptions);
+  const localeCodes = new Set(
+    localeRead.i18n?.locales.map((locale) => locale.code) ?? []
+  );
+  if (localeRead.i18n && localeRead.locale) {
+    assertUnambiguousDefaultLocaleLayout(
+      relativePaths,
+      localeCodes,
+      localeRead.i18n.defaultLocale
+    );
+  }
+  const selectedFiles: SelectedDocFile[] =
+    localeRead.i18n && localeRead.locale
+      ? selectLocalizedFiles(files, docsDir, {
+          defaultLocale: localeRead.i18n.defaultLocale,
+          locale: localeRead.locale,
+          localeCodes,
+          includeFallback: localeRead.includeFallback,
+        })
+      : files.map((filePath) => {
+          const relativePath = normalizeDocsPath(
+            path.relative(docsDir, filePath)
+          );
+          return {
+            filePath,
+            logicalPath: stripDocsExtension(relativePath),
+            outputRelativePath: stripDocsExtension(relativePath),
+          };
+        });
   const docs = await Promise.all(
-    files.map(async (filePath) => {
-      const relativePath = normalizeDocsPath(path.relative(docsDir, filePath));
-      const raw = await readFile(filePath, "utf-8");
-      const fileStat = await stat(filePath);
-      const parsed = matter(raw);
+    selectedFiles.map(async (file) => {
+      const relativePath = normalizeDocsPath(
+        path.relative(docsDir, file.filePath)
+      );
+      const raw = await readFile(file.filePath, "utf-8");
+      const fileStat = await stat(file.filePath);
+      const parsed = parseFrontmatter(raw);
       const title =
         String(parsed.data.title ?? "").trim() ||
-        titleFromRelativePath(relativePath, ".md") ||
+        titleFromRelativePath(`${file.logicalPath}.md`, ".md") ||
         "Untitled";
       const description = normalizeDescription(
         String(parsed.data.description ?? "")
       );
-      const urlPath = toUrlPath(relativePath);
+      const urlPath =
+        localeRead.i18n && localeRead.locale
+          ? toLocalizedDocsUrlPath(
+              `${file.logicalPath}.md`,
+              localeRead.locale,
+              localeRead.i18n,
+              mounts
+            )
+          : toUrlPath(relativePath, mounts);
       const groups = normalizeGroupValue(parsed.data.group);
+      const orderRaw = parsed.data.order;
+      const order =
+        typeof orderRaw === "number" && Number.isFinite(orderRaw)
+          ? orderRaw
+          : undefined;
 
       return {
         title,
         description,
         urlPath,
         absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
-        relativePath: relativePath.replace(MD_ONLY_EXTENSION_PATTERN, ""),
+        relativePath: file.outputRelativePath,
         groups,
+        ...(order === undefined ? {} : { order }),
+        ...(file.locale ? { locale: file.locale } : {}),
+        ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
+        ...(file.isFallback === undefined
+          ? {}
+          : { isFallback: file.isFallback }),
+        ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
         content: parsed.content.trim(),
-        lastModified: readLastModified(parsed.data, fileStat.mtime),
+        lastModified: readLastModified(
+          parsed.data,
+          localeOptions.lastModifiedFallback ?? fileStat.mtime
+        ),
       };
     })
   );
 
   return docs
-    .filter((doc) => !GENERATED_MARKDOWN_FILES.has(`${doc.relativePath}.md`))
+    .filter((doc) => {
+      const filename = path.basename(`${doc.relativePath}.md`);
+      return !(
+        GENERATED_MARKDOWN_FILES.has(`${doc.relativePath}.md`) ||
+        GENERATED_MARKDOWN_FILES.has(filename)
+      );
+    })
     .sort((left, right) => left.urlPath.localeCompare(right.urlPath));
 }
 
@@ -631,12 +1714,20 @@ function buildGroupMembership(
   const ungrouped: SourceDoc[] = [];
   const unknown: { page: SourceDoc; slug: string }[] = [];
 
-  // Stable page order: by urlPath. Inputs are already iteration-order-stable
-  // when they come from a Map in insertion order, but explicit sort makes
-  // the rendered llms.txt deterministic regardless of source.
-  const ordered = [...pages].sort((left, right) =>
-    left.urlPath.localeCompare(right.urlPath)
-  );
+  // Page order within a group:
+  //   1. Pages with an explicit `order:` field sort first, ascending.
+  //   2. Pages without `order` sort alphabetically by urlPath as a tiebreaker.
+  // This lets authors pin a few key pages with `order: 10, 20, 30, …` and
+  // leave the rest at the default. Sorting is stable and deterministic so
+  // the rendered llms.txt, sidebar, and AGENTS.md match across runs.
+  const ordered = [...pages].sort((left, right) => {
+    const leftOrder = left.order ?? Number.POSITIVE_INFINITY;
+    const rightOrder = right.order ?? Number.POSITIVE_INFINITY;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    return left.urlPath.localeCompare(right.urlPath);
+  });
 
   for (const page of ordered) {
     if (page.groups.length === 0) {
@@ -663,6 +1754,154 @@ function buildGroupMembership(
   return { byGroupSlug, ungrouped, unknown };
 }
 
+function isNavIncludeEntry(
+  entry: DocsNavPageEntry
+): entry is DocsNavIncludeEntry {
+  return typeof entry === "object" && entry !== null;
+}
+
+function createDocsByRelativePath(docs: SourceDoc[]): Map<string, SourceDoc> {
+  const byPath = new Map<string, SourceDoc>();
+  for (const doc of docs) {
+    const key = normalizeNavPath(doc.relativePath);
+    byPath.set(key, doc);
+    if (key === "") {
+      byPath.set("index", doc);
+    }
+    if (key.endsWith("/index")) {
+      byPath.set(key.slice(0, -"/index".length), doc);
+    }
+    if (key === "index") {
+      byPath.set("", doc);
+    }
+  }
+  return byPath;
+}
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const normalized = normalizeNavPath(pattern);
+  let source = "";
+  for (let index = 0; index < normalized.length; index++) {
+    const char = normalized[index];
+    const next = normalized[index + 1];
+    if (char === "*" && next === "*") {
+      const after = normalized[index + 2];
+      if (after === "/") {
+        source += "(?:[^/]+/)*";
+        index += 2;
+      } else {
+        source += ".*";
+        index += 1;
+      }
+    } else if (char === "*") {
+      source += "[^/]*";
+    } else {
+      source += escapeRegExp(char ?? "");
+    }
+  }
+  return new RegExp(`^${source}$`);
+}
+
+function compareNavDocs(
+  left: SourceDoc,
+  right: SourceDoc,
+  sort: readonly DocsNavSortKey[]
+): number {
+  for (const key of sort) {
+    if (key === "order") {
+      const leftOrder = left.order ?? Number.POSITIVE_INFINITY;
+      const rightOrder = right.order ?? Number.POSITIVE_INFINITY;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+    } else if (key === "title") {
+      const compared = left.title.localeCompare(right.title);
+      if (compared !== 0) {
+        return compared;
+      }
+    } else {
+      const compared = left.relativePath.localeCompare(right.relativePath);
+      if (compared !== 0) {
+        return compared;
+      }
+    }
+  }
+  return left.relativePath.localeCompare(right.relativePath);
+}
+
+function normalizeExcludePatterns(
+  exclude: string | string[] | undefined,
+  base: string
+) {
+  let patterns: string[] = [];
+  if (typeof exclude === "string") {
+    patterns = [exclude];
+  } else if (Array.isArray(exclude)) {
+    patterns = exclude;
+  }
+  return patterns.map((pattern) => globToRegExp(joinNavPath(base, pattern)));
+}
+
+/**
+ * resolveNavEntryPages is intentionally asymmetric: entries that fail
+ * isNavIncludeEntry are string refs and throw when docsByRelativePath has no
+ * matching page, while entry.include globs only warn unless entry.required is
+ * true.
+ */
+function resolveNavEntryPages(
+  group: ResolvedGroup,
+  entry: DocsNavPageEntry,
+  docs: SourceDoc[],
+  docsByRelativePath: Map<string, SourceDoc>
+): SourceDoc[] {
+  if (!isNavIncludeEntry(entry)) {
+    const ref = joinNavPath(group.base, entry);
+    const doc = docsByRelativePath.get(ref);
+    if (!doc) {
+      const scope = group.segmentPath.join("/") || "root";
+      throw new Error(
+        `Nav page "${entry}" under "${scope}" did not match a documentation page.`
+      );
+    }
+    return [doc];
+  }
+
+  const include = joinNavPath(group.base, entry.include);
+  const includePattern = globToRegExp(include);
+  const excludePatterns = normalizeExcludePatterns(entry.exclude, group.base);
+  const sort = entry.sort ?? NAV_INCLUDE_SORT_DEFAULT;
+  const matches = docs
+    .filter((doc) => {
+      const relativePath = normalizeNavPath(doc.relativePath);
+      return (
+        includePattern.test(relativePath) &&
+        !excludePatterns.some((pattern) => pattern.test(relativePath))
+      );
+    })
+    .sort((left, right) => compareNavDocs(left, right, sort));
+
+  if (matches.length === 0) {
+    const scope = group.segmentPath.join("/") || "root";
+    const message = `Nav include "${entry.include}" under "${scope}" matched no documentation pages.`;
+    if (entry.required) {
+      throw new Error(message);
+    }
+    logger.warn({
+      human: { message },
+      json: {
+        event: "nav.include.empty",
+        fields: { include: entry.include, group: group.segmentPath.join("/") },
+      },
+    });
+  }
+
+  return matches;
+}
+
 /** Pages whose `group:` includes the slug of `target` or any descendant. */
 function pagesUnderGroup(
   target: ResolvedGroup,
@@ -684,41 +1923,110 @@ function pagesUnderGroup(
   return collected;
 }
 
-function renderProductSummary(
-  product: ProductInfo,
-  sourceDocs: Map<string, SourceDoc>
-): string {
-  const startingPoints = product.bestStartingPoints ?? [];
-  const links = startingPoints.map((link) =>
-    resolveCuratedLink(link, sourceDocs)
-  );
-
-  const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
-
+/**
+ * Resolve the ordered content blocks for a product. When `blocks` is set it is
+ * used as-is; otherwise the deprecated `bullets` / `bestStartingPoints` /
+ * `agentGuidance` fields are synthesized into the equivalent block sequence so
+ * existing configs emit byte-for-byte identical output.
+ */
+function resolveBlocks(product: LlmsProductInfo): LlmsBlock[] {
+  if (product.blocks) {
+    return product.blocks;
+  }
+  const blocks: LlmsBlock[] = [];
   if (product.bullets && product.bullets.length > 0) {
-    sections.push(
-      "",
-      "## Product Summary",
-      "",
-      ...product.bullets.map((bullet) => `- ${bullet}`)
+    blocks.push({
+      type: "markdown",
+      heading: "Product Summary",
+      body: product.bullets.map((bullet) => `- ${bullet}`).join("\n"),
+    });
+  }
+  if (product.bestStartingPoints && product.bestStartingPoints.length > 0) {
+    blocks.push({
+      type: "links",
+      heading: "Best Starting Points",
+      links: product.bestStartingPoints,
+    });
+  }
+  if (product.agentGuidance) {
+    blocks.push({
+      type: "markdown",
+      heading: "Agent Guidance",
+      body: product.agentGuidance,
+    });
+  }
+  return blocks;
+}
+
+/** Render one block for the website `llms.txt` (absolute markdown URL paths). */
+function renderProductBlock(
+  block: LlmsBlock,
+  sourceDocs: Map<string, SourceDoc>,
+  mounts?: DocsPathMount[]
+): string[] {
+  if (block.type === "links") {
+    const links = block.links.map((link) =>
+      resolveCuratedLink(link, sourceDocs, mounts)
+    );
+    if (links.length === 0) {
+      return [];
+    }
+    return ["", `## ${block.heading}`, "", ...links.map(renderLink)];
+  }
+  if (block.heading) {
+    return ["", `## ${block.heading}`, "", block.body];
+  }
+  return ["", block.body];
+}
+
+function renderAgentInterfaces(
+  agentInterfaces: LlmsAgentInterfaces | undefined
+): string[] {
+  if (!agentInterfaces) {
+    return [];
+  }
+  const bullets: string[] = [];
+  if (agentInterfaces.mcpEndpoint) {
+    const card = agentInterfaces.mcpServerCardUrl
+      ? ` (server card: ${agentInterfaces.mcpServerCardUrl})`
+      : "";
+    const toolNames = agentInterfaces.mcpTools?.length
+      ? agentInterfaces.mcpTools
+      : ["search-docs", "get-page"];
+    bullets.push(
+      `- MCP server (Streamable HTTP): ${agentInterfaces.mcpEndpoint}${card} — ${toolNames.join(", ")} tools over this documentation.`
     );
   }
-
-  if (links.length > 0) {
-    sections.push("", "## Best Starting Points", "", ...links.map(renderLink));
+  if (agentInterfaces.askEndpoint) {
+    bullets.push(
+      `- NLWeb /ask endpoint: ${agentInterfaces.askEndpoint} — natural-language queries over this documentation, JSON or SSE.`
+    );
   }
-
-  if (product.agentGuidance) {
-    sections.push("", "## Agent Guidance", "", product.agentGuidance);
+  if (bullets.length === 0) {
+    return [];
   }
+  return ["", "## Agent Interfaces", "", ...bullets];
+}
 
+function renderProductSummary(
+  product: LlmsProductInfo,
+  sourceDocs: Map<string, SourceDoc>,
+  mounts?: DocsPathMount[],
+  agentInterfaces?: LlmsAgentInterfaces
+): string {
+  const sections: string[] = [`# ${product.name}`, "", `> ${product.summary}`];
+  for (const block of resolveBlocks(product)) {
+    sections.push(...renderProductBlock(block, sourceDocs, mounts));
+  }
+  sections.push(...renderAgentInterfaces(agentInterfaces));
   return sections.join("\n");
 }
 
 function renderDocsSummary(
-  product: ProductInfo,
+  product: LlmsProductInfo,
   resolved: ResolvedGroup[],
-  membership: GroupMembership
+  membership: GroupMembership,
+  mounts?: DocsPathMount[]
 ): string {
   const renderedSections: string[] = [];
   for (const group of resolved) {
@@ -730,7 +2038,10 @@ function renderDocsSummary(
     if (group.description) {
       lines.push("", group.description);
     }
-    lines.push("", ...pages.map(pageToRenderedLink).map(renderLink));
+    lines.push(
+      "",
+      ...pages.map((page) => pageToRenderedLink(page, mounts)).map(renderLink)
+    );
     renderedSections.push(lines.join("\n"));
   }
 
@@ -738,8 +2049,119 @@ function renderDocsSummary(
     const lines = ["## Other"];
     lines.push(
       "",
-      ...membership.ungrouped.map(pageToRenderedLink).map(renderLink)
+      ...membership.ungrouped
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink)
     );
+    renderedSections.push(lines.join("\n"));
+  }
+
+  return `# ${product.name} Documentation
+
+> Curated documentation map for developers and coding agents working with ${product.name}.
+
+## How To Use This File
+
+Read the summary links first. If the page links are not enough, use \`/llms-full.txt\` as the broad full-context fallback.
+
+${renderedSections.join("\n\n")}`;
+}
+
+function renderNavigationSummaryGroup(
+  group: DocsNavigationGroup,
+  mounts: DocsPathMount[] | undefined,
+  depth = 2,
+  // Children flagged `optional` at any depth collapse into the trailing
+  // `## Optional` section rather than rendering inline. Their pages accumulate
+  // here so the caller can render them once.
+  optionalPages?: DocsNavigationPage[]
+): string[] {
+  const lines: string[] = [`${"#".repeat(depth)} ${group.title}`];
+  if (group.description) {
+    lines.push("", group.description);
+  }
+
+  if (group.pages.length > 0) {
+    lines.push(
+      "",
+      ...group.pages
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink)
+    );
+  }
+
+  for (const child of group.children) {
+    if (child.optional && optionalPages) {
+      optionalPages.push(...collectNavigationGroupPages(child));
+      continue;
+    }
+    lines.push(
+      "",
+      ...renderNavigationSummaryGroup(child, mounts, depth + 1, optionalPages)
+    );
+  }
+
+  return lines;
+}
+
+function collectNavigationGroupPages(
+  group: DocsNavigationGroup
+): DocsNavigationPage[] {
+  const pages = [...group.pages];
+  for (const child of group.children) {
+    pages.push(...collectNavigationGroupPages(child));
+  }
+  return pages;
+}
+
+function renderDocsNavigationSummary(
+  product: LlmsProductInfo,
+  navigation: DocsNavigation,
+  mounts?: DocsPathMount[]
+): string {
+  const renderedSections: string[] = [];
+  const optionalPages: DocsNavigationPage[] = [];
+  for (const group of navigation.groups) {
+    // Sections flagged `optional` collapse into a single trailing `## Optional`
+    // section (the llms.txt convention for links safe to drop for shorter context).
+    if (group.optional) {
+      optionalPages.push(...collectNavigationGroupPages(group));
+      continue;
+    }
+    renderedSections.push(
+      renderNavigationSummaryGroup(group, mounts, 2, optionalPages).join("\n")
+    );
+  }
+
+  if (navigation.ungrouped.length > 0) {
+    const lines = ["## Other"];
+    lines.push(
+      "",
+      ...navigation.ungrouped
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink)
+    );
+    renderedSections.push(lines.join("\n"));
+  }
+
+  if (optionalPages.length > 0) {
+    const seen = new Set<string>();
+    const lines = [
+      "## Optional",
+      "",
+      "Lower-priority pages — safe to skip for a shorter context.",
+      "",
+      ...optionalPages
+        .filter((page) => {
+          if (seen.has(page.urlPath)) {
+            return false;
+          }
+          seen.add(page.urlPath);
+          return true;
+        })
+        .map((page) => pageToRenderedLink(page, mounts))
+        .map(renderLink),
+    ];
     renderedSections.push(lines.join("\n"));
   }
 
@@ -775,7 +2197,7 @@ function stripLeadingTitleHeading(content: string): string {
 }
 
 function renderFullContextDocument(
-  product: Pick<ProductInfo, "name">,
+  product: Pick<LlmsProductInfo, "name">,
   pages: MarkdownDoc[]
 ): string {
   const links = pages.map((doc) => ({
@@ -810,6 +2232,47 @@ ${content}`.trim();
   ].join("\n");
 }
 
+function flattenNavigationPagePaths(navigation: DocsNavigation): string[] {
+  const paths: string[] = [];
+  const visit = (group: DocsNavigationGroup) => {
+    for (const page of group.pages) {
+      paths.push(page.urlPath);
+    }
+    for (const child of group.children) {
+      visit(child);
+    }
+  };
+  for (const group of navigation.groups) {
+    visit(group);
+  }
+  for (const page of navigation.ungrouped) {
+    paths.push(page.urlPath);
+  }
+  return paths;
+}
+
+function orderMarkdownDocsByNavigation(
+  docs: MarkdownDoc[],
+  navigation: DocsNavigation
+): MarkdownDoc[] {
+  const byUrlPath = new Map(docs.map((doc) => [doc.urlPath, doc]));
+  const seen = new Set<string>();
+  const ordered: MarkdownDoc[] = [];
+  for (const urlPath of flattenNavigationPagePaths(navigation)) {
+    const doc = byUrlPath.get(urlPath);
+    if (doc && !seen.has(urlPath)) {
+      ordered.push(doc);
+      seen.add(urlPath);
+    }
+  }
+  for (const doc of docs) {
+    if (!seen.has(doc.urlPath)) {
+      ordered.push(doc);
+    }
+  }
+  return ordered;
+}
+
 /**
  * Generate `/llms.txt` (product summary) and `/docs/llms.txt` (curated docs
  * map) by reading frontmatter from .md/.mdx files under `{srcDir}/docs/`.
@@ -818,22 +2281,110 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
   const srcDir = path.resolve(config.srcDir);
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
-
-  const resolved = resolveGroups(config.groups);
-  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
-
-  await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
-  await writeFile(
-    path.join(outDir, "llms.txt"),
-    renderProductSummary(config.product, sourceDocs)
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    config.mounts,
+    DOCS_DIRNAME,
+    {
+      i18n: config.i18n,
+      locale,
+      includeFallback: false,
+    }
   );
 
-  if (resolved.length > 0) {
-    await writeFile(
-      path.join(outDir, DOCS_DIRNAME, "llms.txt"),
-      renderDocsSummary(config.product, resolved, membership)
+  const sourceDocList = [...sourceDocs.values()];
+  const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolvedNav = hasNav ? resolveNavConfig(config.nav ?? []) : undefined;
+  const resolved = hasNav
+    ? (resolvedNav?.groups ?? [])
+    : resolveGroups(config.groups ?? []);
+  const membership = hasNav
+    ? undefined
+    : buildGroupMembership(sourceDocList, resolved);
+
+  await mkdir(path.join(outDir, DOCS_DIRNAME), { recursive: true });
+  const isDefaultLocale = !i18n || locale === i18n.defaultLocale;
+  if (isDefaultLocale) {
+    const outputPath = path.join(outDir, "llms.txt");
+    const input: DocsLlmsTxtArtifact = {
+      content: renderProductSummary(
+        config.product,
+        sourceDocs,
+        config.mounts,
+        config.agentInterfaces
+      ),
+      outputPath,
+      kind: "root",
+      ...(locale ? { locale } : {}),
+    };
+    const artifact = await runTransformers(
+      config.transformers,
+      "beforeLlmsTxt",
+      input,
+      { stage: "llm", relativePath: "llms.txt", locale },
+      (transformer, value, context) =>
+        transformer.beforeLlmsTxt?.(value, context)
     );
+    await writeFileAtomic(outputPath, artifact.content);
+    // Publish a discovery copy at the well-known location so agents can find
+    // llms.txt without guessing the root path. Served statically from the
+    // output (public) dir; no route handler needed.
+    const wellKnownPath = path.join(outDir, ".well-known", "llms.txt");
+    await mkdir(path.dirname(wellKnownPath), { recursive: true });
+    await writeFileAtomic(wellKnownPath, artifact.content);
+  }
+
+  if (hasNav || resolved.length > 0) {
+    const docsLlmsPath =
+      i18n && locale && locale !== i18n.defaultLocale
+        ? path.join(outDir, DOCS_DIRNAME, locale, "llms.txt")
+        : path.join(outDir, DOCS_DIRNAME, "llms.txt");
+    await mkdir(path.dirname(docsLlmsPath), { recursive: true });
+    const docsLlmsContent = hasNav
+      ? renderDocsNavigationSummary(
+          config.product,
+          buildNavigationFromNav(
+            sourceDocList,
+            resolved,
+            new Map(),
+            locale,
+            [],
+            resolvedNav?.rootPageEntries ?? []
+          ),
+          config.mounts
+        )
+      : renderDocsSummary(
+          config.product,
+          resolved,
+          membership ?? {
+            byGroupSlug: new Map(),
+            unknown: [],
+            ungrouped: [],
+          },
+          config.mounts
+        );
+    const docsLlmsRelativePath =
+      i18n && locale && locale !== i18n.defaultLocale
+        ? `docs/${locale}/llms.txt`
+        : "docs/llms.txt";
+    const input: DocsLlmsTxtArtifact = {
+      content: docsLlmsContent,
+      outputPath: docsLlmsPath,
+      kind: "docs",
+      ...(locale ? { locale } : {}),
+    };
+    const artifact = await runTransformers(
+      config.transformers,
+      "beforeLlmsTxt",
+      input,
+      { stage: "llm", relativePath: docsLlmsRelativePath, locale },
+      (transformer, value, context) =>
+        transformer.beforeLlmsTxt?.(value, context)
+    );
+    await writeFileAtomic(docsLlmsPath, artifact.content);
   }
 }
 
@@ -846,7 +2397,13 @@ export async function generateLLMFullContextFiles(
 ): Promise<void> {
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
+    i18n: config.i18n,
+    locale,
+    includeFallback: false,
+  });
 
   if (markdownDocs.length === 0) {
     throw new Error(
@@ -854,22 +2411,92 @@ export async function generateLLMFullContextFiles(
     );
   }
 
-  resolveGroups(config.groups);
+  let orderedMarkdownDocs = markdownDocs;
+  if (config.nav && config.nav.length > 0) {
+    const resolvedNav = resolveNavConfig(config.nav);
+    const navigation = buildNavigationFromMarkdownDocs(
+      markdownDocs,
+      resolvedNav.groups,
+      "nav",
+      undefined,
+      resolvedNav.rootPageEntries
+    );
+    orderedMarkdownDocs = orderMarkdownDocsByNavigation(
+      markdownDocs,
+      navigation
+    );
+  } else {
+    // Keep parity with the agent-readability manifest: group order applies in
+    // legacy groups mode too, not just under curated nav.
+    const resolved = resolveGroups(config.groups ?? []);
+    const navigation = buildNavigationFromMarkdownDocs(
+      markdownDocs,
+      resolved,
+      "groups",
+      config.groups
+    );
+    orderedMarkdownDocs = orderMarkdownDocsByNavigation(
+      markdownDocs,
+      navigation
+    );
+  }
 
-  const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
-  await rm(llmsFullDir, { recursive: true, force: true });
-  await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
-  await writeFile(
-    path.join(outDir, "llms-full.txt"),
-    renderFullContextDocument(config.product, markdownDocs)
+  if (!i18n || locale === i18n.defaultLocale) {
+    const llmsFullDir = path.join(outDir, DOCS_DIRNAME, "llms-full");
+    const outputPath = path.join(outDir, "llms-full.txt");
+    await rm(llmsFullDir, { recursive: true, force: true });
+    await rm(path.join(outDir, DOCS_DIRNAME, "llms-full.txt"), { force: true });
+    const artifact = await runTransformers(
+      config.transformers,
+      "beforeLlmsFull",
+      {
+        content: renderFullContextDocument(config.product, orderedMarkdownDocs),
+        outputPath,
+        ...(locale ? { locale } : {}),
+      },
+      { stage: "llm", relativePath: "llms-full.txt", locale },
+      (transformer, value, context) =>
+        transformer.beforeLlmsFull?.(value, context)
+    );
+    await writeFileAtomic(outputPath, artifact.content);
+    // Discovery copy at the well-known location, alongside .well-known/llms.txt.
+    const wellKnownFull = path.join(outDir, ".well-known", "llms-full.txt");
+    await mkdir(path.dirname(wellKnownFull), { recursive: true });
+    await writeFileAtomic(wellKnownFull, artifact.content);
+    return;
+  }
+
+  const localeFullPath = path.join(
+    outDir,
+    DOCS_DIRNAME,
+    locale ?? i18n.defaultLocale,
+    "llms-full.txt"
   );
+  await mkdir(path.dirname(localeFullPath), { recursive: true });
+  const artifact = await runTransformers(
+    config.transformers,
+    "beforeLlmsFull",
+    {
+      content: renderFullContextDocument(config.product, orderedMarkdownDocs),
+      outputPath: localeFullPath,
+      ...(locale ? { locale } : {}),
+    },
+    { stage: "llm", relativePath: `docs/${locale}/llms-full.txt`, locale },
+    (transformer, value, context) =>
+      transformer.beforeLlmsFull?.(value, context)
+  );
+  await writeFileAtomic(localeFullPath, artifact.content);
 }
 
 function toAgentReadabilityPage(
   doc: MarkdownDoc,
-  baseUrl: string
+  baseUrl: string,
+  mounts?: DocsPathMount[]
 ): AgentReadabilityPage {
-  const markdownUrlPath = toMarkdownUrlPath(doc.urlPath);
+  const markdownUrlPath = toMountedMarkdownUrlPath(
+    `${doc.relativePath}.md`,
+    mounts
+  );
   return {
     title: doc.title,
     description: doc.description,
@@ -880,20 +2507,38 @@ function toAgentReadabilityPage(
     relativePath: doc.relativePath,
     groups: [...doc.groups],
     lastModified: doc.lastModified,
+    ...(doc.locale ? { locale: doc.locale } : {}),
+    ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+    ...(doc.isFallback === undefined ? {} : { isFallback: doc.isFallback }),
+    ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
   };
 }
 
 function buildNavigationFromMarkdownDocs(
   docs: MarkdownDoc[],
-  resolved: ResolvedGroup[]
+  resolved: ResolvedGroup[],
+  mode: "groups" | "nav" = "groups",
+  groupsForValidation?: DocsGroup[],
+  rootPageEntries: DocsNavPageEntry[] = []
 ): DocsNavigation {
-  const membership = buildGroupMembership(docs, resolved);
   const tocByUrlPath = new Map(
     docs.map((doc) => [
       doc.urlPath,
       extractDocsTableOfContents(doc.content, doc),
     ])
   );
+  if (mode === "nav") {
+    return buildNavigationFromNav(
+      docs,
+      resolved,
+      tocByUrlPath,
+      docs[0]?.locale,
+      findUnknownGroups(docs, groupsForValidation),
+      rootPageEntries
+    );
+  }
+
+  const membership = buildGroupMembership(docs, resolved);
   return {
     groups: resolved.map((group) =>
       buildNavigationGroup(group, membership, tocByUrlPath)
@@ -903,6 +2548,7 @@ function buildNavigationFromMarkdownDocs(
       urlPath: page.urlPath,
       slug,
     })),
+    locale: docs[0]?.locale,
   };
 }
 
@@ -916,9 +2562,27 @@ export async function generateAgentReadabilityArtifacts(
   config: AgentReadabilityConfig
 ): Promise<AgentReadabilityResult> {
   const outDir = path.resolve(config.outDir);
-  const docsDir = path.join(outDir, DOCS_DIRNAME);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const markdownDocs = await readMarkdownDocs(outDir, baseUrl);
+  const generatedAt = resolveGeneratedAt(config.generatedAt);
+  const i18n = normalizeDocsI18nConfig(config.i18n);
+  const locale = config.locale ?? i18n?.defaultLocale;
+  const docsDir =
+    i18n && locale && locale !== i18n.defaultLocale
+      ? path.join(outDir, DOCS_DIRNAME, locale)
+      : path.join(outDir, DOCS_DIRNAME);
+  // Deliberately asymmetric with generateAgentArtifacts: here the default
+  // per-page date fallback is the mirror's file mtime, so generatedAt only
+  // replaces it when the caller explicitly pins a timestamp.
+  // generateAgentArtifacts has no file mtimes (in-memory pages) and always
+  // uses the resolved timestamp — don't "normalize" the two.
+  const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
+    i18n: config.i18n,
+    locale,
+    includeFallback: false,
+    ...(config.generatedAt === undefined
+      ? {}
+      : { lastModifiedFallback: generatedAt }),
+  });
 
   if (markdownDocs.length === 0) {
     throw new Error(
@@ -926,51 +2590,446 @@ export async function generateAgentReadabilityArtifacts(
     );
   }
 
-  const resolved = resolveGroups(config.groups);
-  const navigation = buildNavigationFromMarkdownDocs(markdownDocs, resolved);
-  const pages = markdownDocs.map((doc) => toAgentReadabilityPage(doc, baseUrl));
+  const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolvedNav = hasNav ? resolveNavConfig(config.nav ?? []) : undefined;
+  const resolved = hasNav
+    ? (resolvedNav?.groups ?? [])
+    : resolveGroups(config.groups ?? []);
+  const navigation = buildNavigationFromMarkdownDocs(
+    markdownDocs,
+    resolved,
+    hasNav ? "nav" : "groups",
+    config.groups,
+    resolvedNav?.rootPageEntries ?? []
+  );
+  // Navigation order is the authored reading order; docs arrive sorted by
+  // urlPath, so pages outside the navigation keep that deterministic tail.
+  const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
+  const pages = orderedDocs.map((doc) =>
+    toAgentReadabilityPage(doc, baseUrl, config.mounts)
+  );
   const manifest: AgentReadabilityManifest = {
     version: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt: generatedAt.toISOString(),
     baseUrl,
     product: config.product,
+    ...(locale ? { locale } : {}),
+    ...(config.i18nManifest ? { i18n: config.i18nManifest } : {}),
     pages,
     navigation,
     files: {
-      robotsTxt: `/docs/${ROBOTS_FILE}`,
-      sitemapMd: `/docs/${SITEMAP_MARKDOWN_FILE}`,
-      sitemapXml: `/docs/${SITEMAP_XML_FILE}`,
+      apiCatalog: API_CATALOG_URL_PATH,
+      robotsTxt: `/${ROBOTS_FILE}`,
+      sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
+    ...(config.seo ? { seo: config.seo } : {}),
   };
 
   const files = {
     manifest: path.join(docsDir, AGENT_READABILITY_MANIFEST_FILE),
-    robotsTxt: path.join(docsDir, ROBOTS_FILE),
-    sitemapMd: path.join(docsDir, SITEMAP_MARKDOWN_FILE),
-    sitemapXml: path.join(docsDir, SITEMAP_XML_FILE),
+    apiCatalog: path.join(outDir, API_CATALOG_FILE),
+    robotsTxt: path.join(outDir, ROBOTS_FILE),
+    sitemapMd: path.join(outDir, SITEMAP_MARKDOWN_FILE),
+    sitemapXml: path.join(outDir, SITEMAP_XML_FILE),
   };
+  const shouldEmitRootCrawlerFiles =
+    config.emitRootCrawlerFiles ??
+    !(i18n && locale && locale !== i18n.defaultLocale);
 
-  await mkdir(docsDir, { recursive: true });
-  await writeFile(files.sitemapXml, renderSitemapXml(pages));
-  await writeFile(
-    files.sitemapMd,
-    renderSitemapMarkdown({
-      product: config.product,
-      navigation,
-      pages,
-    })
+  const sitemapXml = renderSitemapXml(pages);
+  const sitemapMd = renderSitemapMarkdown({
+    product: config.product,
+    navigation,
+    pages,
+  });
+  if (shouldEmitRootCrawlerFiles) {
+    await mkdir(outDir, { recursive: true });
+    await mkdir(path.dirname(files.apiCatalog), { recursive: true });
+    await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    await writeFileAtomic(files.sitemapXml, sitemapXml);
+    await writeFileAtomic(files.sitemapMd, sitemapMd);
+    await writeFileAtomic(
+      files.robotsTxt,
+      renderRobotsTxt({
+        baseUrl,
+        sitemapUrlPath: "/sitemap.xml",
+        schemamapUrlPath: config.schemamapUrlPath,
+        policy: config.robotsPolicy,
+        signals: config.contentSignals,
+      })
+    );
+  }
+  await writeFileAtomic(
+    files.manifest,
+    `${JSON.stringify(manifest, null, 2)}\n`
   );
-  await writeFile(
-    files.robotsTxt,
-    renderRobotsTxt({
-      baseUrl,
-      sitemapUrlPath: "/docs/sitemap.xml",
-    })
-  );
-  await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
 
   return {
-    files,
+    files: {
+      manifest: files.manifest,
+      ...(shouldEmitRootCrawlerFiles
+        ? {
+            apiCatalog: files.apiCatalog,
+            robotsTxt: files.robotsTxt,
+            sitemapMd: files.sitemapMd,
+            sitemapXml: files.sitemapXml,
+          }
+        : {}),
+    },
+    manifest,
+  };
+}
+
+/* ---------------- bring-your-own-pages agent artifacts ------------------ */
+
+/**
+ * One page handed to {@link generateAgentArtifacts}. Build these from any
+ * source — a CMS API, a database, a route manifest — instead of `.mdx` files
+ * on disk. The `content` markdown may carry its own frontmatter; explicit
+ * fields here win over frontmatter values.
+ */
+export type AgentPageInput = {
+  /** Canonical HTML route, e.g. `/benchmarks/chrome` or `/`. */
+  urlPath: string;
+  /** Markdown body served as the `.md` mirror. */
+  content: string;
+  /** Page title. Falls back to frontmatter `title:`, then the URL slug. */
+  title?: string;
+  /** One-line summary. Falls back to frontmatter `description:`. */
+  description?: string;
+  /** Last content change. Falls back to frontmatter, then the generation time. */
+  lastModified?: string | Date;
+  /** Group slugs matched against the `groups` config (like frontmatter `group:`). */
+  groups?: string[];
+  /** Order within a group (like frontmatter `order:`). Lower sorts first. */
+  order?: number;
+};
+
+export type GenerateAgentArtifactsConfig = {
+  /** Directory the artifacts are written into (usually the static/public root). */
+  outDir: string;
+  baseUrl?: string;
+  /** Pages to publish. At least one is required. */
+  pages: AgentPageInput[];
+  product: ProductInfo;
+  organization?: OrganizationInfo;
+  /** Authored `llms.txt` sections, rendered after the tagline blockquote. */
+  llms?: DocsLlmsConfig;
+  /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
+  groups?: DocsGroup[];
+  agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  /**
+   * Pin manifest `generatedAt` and per-page `lastModified` fallbacks so
+   * repeated runs can produce reproducible output. Accepts a date string or a
+   * Date. Defaults to the current time.
+   */
+  generatedAt?: string | Date;
+  /**
+   * Emit root `/robots.txt`, `/sitemap.xml`, and `/sitemap.md`. Disable when a
+   * host app merges several artifact sets (docs, blog, marketing) and serves
+   * its own root crawler files. Default `true`.
+   */
+  emitRootCrawlerFiles?: boolean;
+};
+
+export type GenerateAgentArtifactsResult = {
+  files: {
+    llmsTxt: string;
+    wellKnownLlmsTxt: string;
+    manifest: string;
+    /** One `.md` mirror per page, mounted at `${urlPath}.md`. */
+    markdown: string[];
+    apiCatalog?: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
+  };
+  manifest: AgentReadabilityManifest;
+};
+
+/** Mount that maps page routes 1:1 onto the site root instead of `/docs`. */
+const ROOT_PAGE_MOUNTS: DocsPathMount[] = [{ pathPrefix: "", urlPrefix: "/" }];
+const YAML_QUOTE_PATTERN = /["\\]/g;
+
+function toYamlScalar(value: string): string {
+  return `"${value.replace(YAML_QUOTE_PATTERN, "\\$&")}"`;
+}
+
+function normalizeAgentPageUrlPath(urlPath: string): string {
+  const trimmed = urlPath.trim();
+  if (!trimmed.startsWith("/")) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must start with "/".`
+    );
+  }
+  if (trimmed.includes("?") || trimmed.includes("#")) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must not contain a query or hash.`
+    );
+  }
+  const normalized = stripTrailingSlashes(normalizeDocsPath(trimmed)) || "/";
+  // The path becomes a file location under outDir; `.`/`..`/empty segments
+  // would let a route escape the output directory.
+  const hasUnsafeSegment = normalized
+    .slice(1)
+    .split("/")
+    .some((segment) => segment === "" || segment === "." || segment === "..");
+  if (normalized !== "/" && hasUnsafeSegment) {
+    throw new Error(
+      `generateAgentArtifacts: page urlPath "${urlPath}" must not contain empty, ".", or ".." segments.`
+    );
+  }
+  return normalized;
+}
+
+function toAgentPageMarkdownDoc(
+  page: AgentPageInput,
+  baseUrl: string,
+  generatedAt: Date
+): MarkdownDoc {
+  const urlPath = normalizeAgentPageUrlPath(page.urlPath);
+  const relativePath = urlPath === "/" ? "index" : urlPath.slice(1);
+  const parsed = parseFrontmatter(page.content);
+  const title =
+    page.title?.trim() ||
+    String(parsed.data.title ?? "").trim() ||
+    titleize(urlPath.split("/").filter(Boolean).pop() ?? "") ||
+    "Untitled";
+  const description = normalizeDescription(
+    page.description ?? String(parsed.data.description ?? "")
+  );
+  const groups = page.groups
+    ? page.groups.map((group) => group.trim()).filter(Boolean)
+    : normalizeGroupValue(parsed.data.group);
+  const orderRaw = page.order ?? parsed.data.order;
+  const order =
+    typeof orderRaw === "number" && Number.isFinite(orderRaw)
+      ? orderRaw
+      : undefined;
+  const lastModified =
+    normalizeDate(page.lastModified) ??
+    readLastModified(parsed.data, generatedAt);
+
+  return {
+    title,
+    description,
+    urlPath,
+    absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
+    relativePath,
+    groups,
+    ...(order === undefined ? {} : { order }),
+    content: parsed.content.trim(),
+    lastModified,
+  };
+}
+
+/**
+ * Render a `.md` mirror with the frontmatter agents expect for attribution
+ * and staleness checks (`canonical_url`, `last_updated`), so statically hosted
+ * mirrors satisfy the agent-readability spec without runtime enrichment.
+ */
+function renderAgentPageMirror(doc: MarkdownDoc): string {
+  const lines = [
+    "---",
+    `title: ${toYamlScalar(doc.title)}`,
+    ...(doc.description
+      ? [`description: ${toYamlScalar(doc.description)}`]
+      : []),
+    `canonical_url: ${toYamlScalar(doc.absoluteUrl)}`,
+    `last_updated: ${toYamlScalar(doc.lastModified)}`,
+    "---",
+    "",
+    doc.content,
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function renderAgentPagesLlmsTxt(
+  product: LlmsProductInfo,
+  docs: MarkdownDoc[],
+  resolved: ResolvedGroup[]
+): string {
+  const sourceDocs = new Map(docs.map((doc) => [doc.urlPath, doc]));
+  const sections = [
+    renderProductSummary(product, sourceDocs, ROOT_PAGE_MOUNTS),
+  ];
+  const membership = buildGroupMembership(docs, resolved);
+  for (const group of resolved) {
+    const pages = pagesUnderGroup(group, membership);
+    if (pages.length === 0) {
+      continue;
+    }
+    const lines = [`## ${group.title}`];
+    if (group.description) {
+      lines.push("", group.description);
+    }
+    lines.push(
+      "",
+      ...pages
+        .map((page) => pageToRenderedLink(page, ROOT_PAGE_MOUNTS))
+        .map(renderLink)
+    );
+    sections.push(lines.join("\n"));
+  }
+  if (membership.ungrouped.length > 0) {
+    const heading = resolved.length > 0 ? "## Other" : "## Pages";
+    sections.push(
+      [
+        heading,
+        "",
+        ...membership.ungrouped
+          .map((page) => pageToRenderedLink(page, ROOT_PAGE_MOUNTS))
+          .map(renderLink),
+      ].join("\n")
+    );
+  }
+  return `${sections.join("\n\n")}\n`;
+}
+
+/**
+ * Generate the full agent-artifact set (llms.txt, `.md` mirrors, sitemaps,
+ * robots.txt, agent-readability manifest) from an in-memory page list instead
+ * of a docs source tree. This is the bring-your-own-pages entry point for
+ * sites without `.mdx` docs — CMS-backed blogs, marketing pages, data-driven
+ * routes — and for microfrontends contributing one fragment of a larger site
+ * (set `emitRootCrawlerFiles: false` and merge at the host).
+ *
+ * Mirrors are written at `${urlPath}.md` relative to `outDir` (the root page
+ * `/` becomes `/index.md`), so the whole output can be served statically.
+ */
+export async function generateAgentArtifacts(
+  config: GenerateAgentArtifactsConfig
+): Promise<GenerateAgentArtifactsResult> {
+  if (config.pages.length === 0) {
+    throw new Error(
+      "generateAgentArtifacts: config.pages is empty — supply at least one page."
+    );
+  }
+  const outDir = path.resolve(config.outDir);
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const generatedAt = resolveGeneratedAt(config.generatedAt);
+
+  const docs: MarkdownDoc[] = [];
+  const byUrlPath = new Map<string, MarkdownDoc>();
+  for (const page of config.pages) {
+    const doc = toAgentPageMarkdownDoc(page, baseUrl, generatedAt);
+    if (byUrlPath.has(doc.urlPath)) {
+      throw new Error(
+        `generateAgentArtifacts: duplicate page route "${doc.urlPath}" — page urlPaths must be unique.`
+      );
+    }
+    byUrlPath.set(doc.urlPath, doc);
+    docs.push(doc);
+  }
+
+  const inputs = resolveAgentInputs({
+    product: config.product,
+    ...(config.organization ? { organization: config.organization } : {}),
+    ...(config.llms ? { llms: config.llms } : {}),
+  });
+  const resolved = resolveGroups(config.groups ?? []);
+  const navigation = buildNavigationFromMarkdownDocs(
+    docs,
+    resolved,
+    "groups",
+    config.groups
+  );
+  const pages = docs.map((doc) =>
+    toAgentReadabilityPage(doc, baseUrl, ROOT_PAGE_MOUNTS)
+  );
+
+  const markdownFiles = await Promise.all(
+    docs.map(async (doc, index) => {
+      const markdownUrlPath =
+        pages[index]?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
+      const filePath = path.join(
+        outDir,
+        ...markdownUrlPath.slice(1).split("/")
+      );
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFileAtomic(filePath, renderAgentPageMirror(doc));
+      return filePath;
+    })
+  );
+
+  await mkdir(outDir, { recursive: true });
+  const llmsTxt = renderAgentPagesLlmsTxt(inputs.product, docs, resolved);
+  const llmsTxtPath = path.join(outDir, "llms.txt");
+  await writeFileAtomic(llmsTxtPath, llmsTxt);
+  const wellKnownLlmsTxtPath = path.join(outDir, ".well-known", "llms.txt");
+  await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
+  await writeFileAtomic(wellKnownLlmsTxtPath, llmsTxt);
+
+  const manifest: AgentReadabilityManifest = {
+    version: 1,
+    generatedAt: generatedAt.toISOString(),
+    baseUrl,
+    product: { name: inputs.product.name, summary: inputs.product.summary },
+    pages,
+    navigation,
+    files: {
+      apiCatalog: API_CATALOG_URL_PATH,
+      robotsTxt: `/${ROBOTS_FILE}`,
+      sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
+      sitemapXml: `/${SITEMAP_XML_FILE}`,
+    },
+    ...(inputs.jsonLd ? { jsonLd: inputs.jsonLd } : {}),
+    ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
+  };
+  const manifestPath = path.join(outDir, AGENT_READABILITY_MANIFEST_FILE);
+  await writeFileAtomic(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  if (!(config.emitRootCrawlerFiles ?? true)) {
+    return {
+      files: {
+        llmsTxt: llmsTxtPath,
+        wellKnownLlmsTxt: wellKnownLlmsTxtPath,
+        manifest: manifestPath,
+        markdown: markdownFiles,
+      },
+      manifest,
+    };
+  }
+
+  const sitemapXmlPath = path.join(outDir, SITEMAP_XML_FILE);
+  const sitemapMdPath = path.join(outDir, SITEMAP_MARKDOWN_FILE);
+  const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
+  const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
+  await mkdir(path.dirname(apiCatalogPath), { recursive: true });
+  await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  await writeFileAtomic(sitemapXmlPath, renderSitemapXml(pages));
+  await writeFileAtomic(
+    sitemapMdPath,
+    renderSitemapMarkdown({ product: inputs.product, navigation, pages })
+  );
+  await writeFileAtomic(
+    robotsTxtPath,
+    renderRobotsTxt({
+      baseUrl,
+      sitemapUrlPath: "/sitemap.xml",
+      allowPaths: ["/", "/llms.txt", "/sitemap.xml", "/sitemap.md"],
+      ...(config.agents?.robots?.policy
+        ? { policy: config.agents.robots.policy }
+        : {}),
+      ...(config.agents?.robots?.signals
+        ? { signals: config.agents.robots.signals }
+        : {}),
+    })
+  );
+
+  return {
+    files: {
+      llmsTxt: llmsTxtPath,
+      wellKnownLlmsTxt: wellKnownLlmsTxtPath,
+      manifest: manifestPath,
+      markdown: markdownFiles,
+      apiCatalog: apiCatalogPath,
+      robotsTxt: robotsTxtPath,
+      sitemapMd: sitemapMdPath,
+      sitemapXml: sitemapXmlPath,
+    },
     manifest,
   };
 }
@@ -982,14 +3041,19 @@ export type AgentsMdConfig = {
   srcDir: string;
   /** Output root. AGENTS.md is written at `<outDir>/AGENTS.md`. */
   outDir: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   /** Group tree from `docs.config.ts`. Drives section structure. */
-  groups: DocsGroup[];
+  groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups` when present. */
+  nav?: DocsNavEntry[];
   /**
    * Subdirectory under `outDir` that holds the converted `.md` files.
    * Used for the relative-path prefix in every link. Default: `docs`.
    */
   docsSubdir?: string;
+  i18n?: DocsI18nConfig;
+  locale?: LocaleCode;
+  transformers?: DocsTransformer[];
 };
 
 export type AgentsMdResult = {
@@ -1000,12 +3064,82 @@ function relativeDocLink(relativePath: string, docsSubdir: string): string {
   return `./${docsSubdir}/${relativePath}.md`;
 }
 
-function pageDescription(doc: SourceDoc, fallback?: string): string {
+function pageDescription(
+  doc: Pick<SourceDoc, "description" | "title">,
+  fallback?: string
+): string {
   return (
     normalizeDescription(doc.description) ||
     fallback ||
     `Reference page for ${doc.title.toLowerCase()}.`
   );
+}
+
+/**
+ * Render one product block for the offline `AGENTS.md` bundle. Link blocks use
+ * relative filesystem paths (`./docs/<slug>.md`) and skip links not present in
+ * the source, mirroring the legacy `bestStartingPoints` behavior.
+ */
+function renderAgentsBlock(
+  block: LlmsBlock,
+  sourceDocs: Map<string, SourceDoc>,
+  docsSubdir: string
+): string[] {
+  if (block.type === "links") {
+    const rendered: string[] = [];
+    for (const link of block.links) {
+      const sourceDoc = sourceDocs.get(link.urlPath);
+      if (!sourceDoc) {
+        continue;
+      }
+      const title = link.title ?? sourceDoc.title;
+      const description = link.description ?? pageDescription(sourceDoc);
+      rendered.push(
+        `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
+      );
+    }
+    if (rendered.length === 0) {
+      return [];
+    }
+    return ["", `## ${block.heading}`, "", ...rendered];
+  }
+  if (block.heading) {
+    return ["", `## ${block.heading}`, "", block.body];
+  }
+  return ["", block.body];
+}
+
+function renderAgentsNavigationGroup(
+  group: DocsNavigationGroup,
+  docsByUrlPath: Map<string, SourceDoc>,
+  docsSubdir: string,
+  depth = 2
+): string[] {
+  const lines: string[] = [`${"#".repeat(depth)} ${group.title}`];
+  if (group.description) {
+    lines.push("", group.description);
+  }
+  if (group.pages.length > 0) {
+    lines.push("");
+    for (const page of group.pages) {
+      const sourceDoc = docsByUrlPath.get(page.urlPath) ?? page;
+      lines.push(
+        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(sourceDoc)}`
+      );
+    }
+  }
+  for (const child of group.children) {
+    lines.push(
+      "",
+      ...renderAgentsNavigationGroup(
+        child,
+        docsByUrlPath,
+        docsSubdir,
+        depth + 1
+      )
+    );
+  }
+  return lines;
 }
 
 /**
@@ -1024,9 +3158,26 @@ export async function generateAgentsMd(
   // field, but AGENTS.md output never reads that field — relative paths only.
   // Pass through any configured fallback so SourceDoc objects are well-formed.
   const baseUrl = normalizeBaseUrl(undefined);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
-  const resolved = resolveGroups(config.groups);
-  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    undefined,
+    DOCS_DIRNAME,
+    {
+      i18n: config.i18n,
+      locale: config.locale,
+      includeFallback: false,
+    }
+  );
+  const sourceDocList = [...sourceDocs.values()];
+  const hasNav = Boolean(config.nav && config.nav.length > 0);
+  const resolvedNav = hasNav ? resolveNavConfig(config.nav ?? []) : undefined;
+  const resolved = hasNav
+    ? (resolvedNav?.groups ?? [])
+    : resolveGroups(config.groups ?? []);
+  const membership = hasNav
+    ? undefined
+    : buildGroupMembership(sourceDocList, resolved);
 
   const lines: string[] = [
     `# ${config.product.name}`,
@@ -1036,67 +3187,117 @@ export async function generateAgentsMd(
     "These docs ship inside the package so coding agents can read them offline. Open the topic file you need from the list below — paths are relative to this file.",
   ];
 
-  if (config.product.bullets && config.product.bullets.length > 0) {
-    lines.push("", "## Product Summary", "");
-    for (const bullet of config.product.bullets) {
-      lines.push(`- ${bullet}`);
+  if (config.product.blocks) {
+    // Author-curated blocks: render each (markdown + resolved link lists) in
+    // order. Unlike the legacy path below, an explicit Agent Guidance block is
+    // honored — the author opted into the bundle content.
+    for (const block of config.product.blocks) {
+      lines.push(...renderAgentsBlock(block, sourceDocs, docsSubdir));
+    }
+  } else {
+    if (config.product.bullets && config.product.bullets.length > 0) {
+      lines.push("", "## Product Summary", "");
+      for (const bullet of config.product.bullets) {
+        lines.push(`- ${bullet}`);
+      }
+    }
+
+    const startingPoints = config.product.bestStartingPoints ?? [];
+    const renderedStarts: string[] = [];
+    for (const link of startingPoints) {
+      const sourceDoc = sourceDocs.get(link.urlPath);
+      if (!sourceDoc) {
+        // bestStartingPoints can reference URLs not present in source (e.g.
+        // /docs root). Skip those rather than emit a broken relative link.
+        continue;
+      }
+      const title = link.title ?? sourceDoc.title;
+      const description = link.description ?? pageDescription(sourceDoc);
+      renderedStarts.push(
+        `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
+      );
+    }
+    if (renderedStarts.length > 0) {
+      lines.push("", "## Best Starting Points", "", ...renderedStarts);
     }
   }
 
-  const startingPoints = config.product.bestStartingPoints ?? [];
-  const renderedStarts: string[] = [];
-  for (const link of startingPoints) {
-    const sourceDoc = sourceDocs.get(link.urlPath);
-    if (!sourceDoc) {
-      // bestStartingPoints can reference URLs not present in source (e.g.
-      // /docs root). Skip those rather than emit a broken relative link.
-      continue;
-    }
-    const title = link.title ?? sourceDoc.title;
-    const description = link.description ?? pageDescription(sourceDoc);
-    renderedStarts.push(
-      `- [${title}](${relativeDocLink(sourceDoc.relativePath, docsSubdir)}): ${description}`
+  if (hasNav) {
+    const docsByUrlPath = new Map(
+      sourceDocList.map((doc) => [doc.urlPath, doc])
     );
-  }
-  if (renderedStarts.length > 0) {
-    lines.push("", "## Best Starting Points", "", ...renderedStarts);
-  }
-
-  for (const group of resolved) {
-    const pages = pagesUnderGroup(group, membership);
-    if (pages.length === 0) {
-      continue;
-    }
-    lines.push("", `## ${group.title}`);
-    if (group.description) {
-      lines.push("", group.description);
-    }
-    lines.push("");
-    for (const page of pages) {
+    const navigation = buildNavigationFromNav(
+      sourceDocList,
+      resolved,
+      new Map(),
+      config.locale,
+      [],
+      resolvedNav?.rootPageEntries ?? []
+    );
+    for (const group of navigation.groups) {
       lines.push(
-        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        "",
+        ...renderAgentsNavigationGroup(group, docsByUrlPath, docsSubdir)
       );
     }
-  }
+    if (navigation.ungrouped.length > 0) {
+      lines.push("", "## Other", "");
+      for (const page of navigation.ungrouped) {
+        lines.push(
+          `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        );
+      }
+    }
+  } else if (membership) {
+    for (const group of resolved) {
+      const pages = pagesUnderGroup(group, membership);
+      if (pages.length === 0) {
+        continue;
+      }
+      lines.push("", `## ${group.title}`);
+      if (group.description) {
+        lines.push("", group.description);
+      }
+      lines.push("");
+      for (const page of pages) {
+        lines.push(
+          `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        );
+      }
+    }
 
-  if (membership.ungrouped.length > 0) {
-    lines.push("", "## Other", "");
-    for (const page of membership.ungrouped) {
-      lines.push(
-        `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
-      );
+    if (membership.ungrouped.length > 0) {
+      lines.push("", "## Other", "");
+      for (const page of membership.ungrouped) {
+        lines.push(
+          `- [${page.title}](${relativeDocLink(page.relativePath, docsSubdir)}): ${pageDescription(page)}`
+        );
+      }
     }
   }
 
-  // Skip product.agentGuidance — it's written for the website's llms.txt
-  // routing flow ("open /docs/llms.txt then…") and would mislead an agent
-  // reading from node_modules. The preamble paragraph already covers offline
-  // navigation in format-agnostic terms.
+  // Legacy path only: skip product.agentGuidance — it's written for the
+  // website's llms.txt routing flow ("open /docs/llms.txt then…") and would
+  // mislead an agent reading from node_modules. The preamble paragraph already
+  // covers offline navigation. Author-curated `blocks` are honored above.
 
   const content = `${lines.join("\n")}\n`;
   await mkdir(outDir, { recursive: true });
   const outputPath = path.join(outDir, "AGENTS.md");
-  await writeFile(outputPath, content);
+  const artifact = await runTransformers(
+    config.transformers,
+    "beforeAgentsMd",
+    {
+      content,
+      outputPath,
+      docsSubdir,
+      ...(config.locale ? { locale: config.locale } : {}),
+    },
+    { stage: "llm", relativePath: "AGENTS.md", locale: config.locale },
+    (transformer, value, context) =>
+      transformer.beforeAgentsMd?.(value, context)
+  );
+  await writeFileAtomic(outputPath, artifact.content);
   return { outputPath };
 }
 
@@ -1108,10 +3309,15 @@ function pageView(
 ): DocsNavigationPage {
   return {
     urlPath: doc.urlPath,
+    relativePath: doc.relativePath,
     title: doc.title,
     description: doc.description,
     groups: [...doc.groups],
     toc: tocByUrlPath.get(doc.urlPath) ?? [],
+    ...(doc.locale ? { locale: doc.locale } : {}),
+    ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+    ...(doc.isFallback === undefined ? {} : { isFallback: doc.isFallback }),
+    ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
   };
 }
 
@@ -1133,10 +3339,125 @@ function buildNavigationGroup(
   };
 }
 
+function buildNavigationGroupFromNav(
+  group: ResolvedGroup,
+  docs: SourceDoc[],
+  docsByRelativePath: Map<string, SourceDoc>,
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
+  referencedUrlPaths: Set<string>
+): DocsNavigationGroup {
+  const directPages: SourceDoc[] = [];
+  const groupSeenUrlPaths = new Set<string>();
+  for (const entry of group.pageEntries) {
+    const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
+    for (const page of pages) {
+      if (groupSeenUrlPaths.has(page.urlPath)) {
+        continue;
+      }
+      groupSeenUrlPaths.add(page.urlPath);
+      referencedUrlPaths.add(page.urlPath);
+      directPages.push(page);
+    }
+  }
+
+  return {
+    slug: group.slug,
+    segmentPath: group.segmentPath,
+    title: group.title,
+    description: group.description,
+    ...(group.optional ? { optional: true } : {}),
+    pages: directPages.map((page) => pageView(page, tocByUrlPath)),
+    children: group.children.map((child) =>
+      buildNavigationGroupFromNav(
+        child,
+        docs,
+        docsByRelativePath,
+        tocByUrlPath,
+        referencedUrlPaths
+      )
+    ),
+  };
+}
+
+function buildNavigationFromNav(
+  docs: SourceDoc[],
+  resolved: ResolvedGroup[],
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
+  locale?: string,
+  unknown: DocsNavigation["unknown"] = [],
+  rootPageEntries: DocsNavPageEntry[] = []
+): DocsNavigation {
+  const referencedUrlPaths = new Set<string>();
+  const docsByRelativePath = createDocsByRelativePath(docs);
+  const rootPages: SourceDoc[] = [];
+  if (rootPageEntries.length > 0) {
+    const rootGroup: ResolvedGroup = {
+      slug: "root",
+      slugKey: "root",
+      title: "Root",
+      segmentPath: [],
+      parent: null,
+      children: [],
+      base: "",
+      pageEntries: rootPageEntries,
+    };
+    const rootSeenUrlPaths = new Set<string>();
+    for (const entry of rootPageEntries) {
+      const pages = resolveNavEntryPages(
+        rootGroup,
+        entry,
+        docs,
+        docsByRelativePath
+      );
+      for (const page of pages) {
+        if (rootSeenUrlPaths.has(page.urlPath)) {
+          continue;
+        }
+        rootSeenUrlPaths.add(page.urlPath);
+        referencedUrlPaths.add(page.urlPath);
+        rootPages.push(page);
+      }
+    }
+  }
+  const groups = resolved.map((group) =>
+    buildNavigationGroupFromNav(
+      group,
+      docs,
+      docsByRelativePath,
+      tocByUrlPath,
+      referencedUrlPaths
+    )
+  );
+  return {
+    groups,
+    ungrouped: [
+      ...rootPages,
+      ...docs.filter((doc) => !referencedUrlPaths.has(doc.urlPath)),
+    ].map((page) => pageView(page, tocByUrlPath)),
+    unknown,
+    ...(locale ? { locale } : {}),
+  };
+}
+
+function findUnknownGroups(
+  docs: SourceDoc[],
+  groups: DocsGroup[] | undefined
+): DocsNavigation["unknown"] {
+  if (!(groups && groups.length > 0)) {
+    return [];
+  }
+  const resolved = resolveGroups(groups);
+  const membership = buildGroupMembership(docs, resolved);
+  return membership.unknown.map(({ page, slug }) => ({
+    urlPath: page.urlPath,
+    slug,
+  }));
+}
+
 /**
  * Walk the docs source tree once and return a structured navigation manifest.
  * Build pipelines write this to disk (e.g. `src/generated/docs-nav.json`)
- * for the runtime sidebar to import — keeps the docs-config.ts as the single
+ * for the runtime docs shell to import — keeps the docs-config.ts as the single
  * source of truth without forcing the runtime to scan MDX itself.
  */
 export async function resolveDocsNavigation(
@@ -1144,11 +3465,40 @@ export async function resolveDocsNavigation(
 ): Promise<DocsNavigation> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
-  const resolved = resolveGroups(config.groups);
-  const membership = buildGroupMembership([...sourceDocs.values()], resolved);
+  const localeOptions = {
+    i18n: config.i18n,
+    locale: config.locale,
+    includeFallback: config.includeFallback ?? true,
+  };
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    config.mounts,
+    config.docsDirName,
+    localeOptions
+  );
+  for (const extraDocsDir of config.extraDocsDirs ?? []) {
+    const resolvedExtraDocsDir = path.resolve(extraDocsDir);
+    const extraDocs = await readSourceDocs(
+      path.dirname(resolvedExtraDocsDir),
+      baseUrl,
+      config.mounts,
+      path.basename(resolvedExtraDocsDir),
+      localeOptions
+    );
+    for (const [urlPath, doc] of extraDocs) {
+      const existing = sourceDocs.get(urlPath);
+      if (existing) {
+        throw new Error(
+          `Duplicate documentation route "${urlPath}" from extra docs dir "${resolvedExtraDocsDir}" — existing page "${existing.relativePath}" conflicts with overlay page "${doc.relativePath}". Rename one or remove it.`
+        );
+      }
+      sourceDocs.set(urlPath, doc);
+    }
+  }
   const tocOptions = resolveNavigationTocOptions(config.toc);
   const tocByUrlPath = new Map<string, DocsTableOfContentsItem[]>();
+  const docs = [...sourceDocs.values()];
 
   if (tocOptions !== false) {
     for (const page of sourceDocs.values()) {
@@ -1159,6 +3509,20 @@ export async function resolveDocsNavigation(
     }
   }
 
+  if (config.nav && config.nav.length > 0) {
+    const resolvedNav = resolveNavConfig(config.nav);
+    return buildNavigationFromNav(
+      docs,
+      resolvedNav.groups,
+      tocByUrlPath,
+      config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
+      findUnknownGroups(docs, config.groups),
+      resolvedNav.rootPageEntries
+    );
+  }
+
+  const resolved = resolveGroups(config.groups ?? []);
+  const membership = buildGroupMembership(docs, resolved);
   return {
     groups: resolved.map((group) =>
       buildNavigationGroup(group, membership, tocByUrlPath)
@@ -1168,6 +3532,8 @@ export async function resolveDocsNavigation(
       urlPath: page.urlPath,
       slug,
     })),
+    locale:
+      config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
   };
 }
 
@@ -1176,7 +3542,17 @@ export async function resolveDocsTableOfContents(
 ): Promise<DocsTableOfContentsPage[]> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const sourceDocs = await readSourceDocs(srcDir, baseUrl);
+  const sourceDocs = await readSourceDocs(
+    srcDir,
+    baseUrl,
+    config.mounts,
+    DOCS_DIRNAME,
+    {
+      i18n: config.i18n,
+      locale: config.locale,
+      includeFallback: false,
+    }
+  );
 
   return [...sourceDocs.values()]
     .sort((left, right) => left.urlPath.localeCompare(right.urlPath))

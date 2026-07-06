@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `leadtype generate --json` prints a single JSON object describing the generation run, and it names the required output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it incorrectly lists `agentReadabilityJson` as one of the fields; the actual field is `agentReadabilityManifest`. This invents a field not part of the result shape, which violates the 'Incorrect if' condition, so the response is not fully correct. The core explanation is otherwise accurate.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1771,
+  "outputTokens": 13,
+  "durationMs": 13268,
+  "steps": 6,
+  "errors": []
+}

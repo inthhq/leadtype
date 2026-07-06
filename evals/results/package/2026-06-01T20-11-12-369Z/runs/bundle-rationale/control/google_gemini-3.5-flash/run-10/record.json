@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt uses absolute HTTP URLs, making it unsuitable inside a tarball where no host domain exists, and that AGENTS.md uses relative filesystem paths for offline, version-matched access—satisfying both required points. It correctly lists llms.txt, llms-full.txt, and additional website artifacts (search-index.json, sitemaps, robots.txt) that --bundle skips, and explains their web-specific purposes. All rubric requirements are fully met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 94205,
+  "outputTokens": 4923,
+  "durationMs": 40361,
+  "steps": 16,
+  "errors": []
+}

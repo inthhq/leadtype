@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies `nav` as the primary curated driver of sidebar, llms.txt, and AGENTS.md. It explains `group` as a legacy fallback useful for taxonomy. It explicitly states that an unknown group slug causes a build failure with an 'unknown group' error, not a warning or silence. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 18585,
+  "outputTokens": 381,
+  "durationMs": 32486,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly gives the mount command `--docs-dir changelog=/changelog` and properly describes the internal copy at `public/docs/changelog/v1.md` and the public mirror at `public/changelog/v1.md`. However, it states the canonical agent/search URL as `/changelog/v1` without the `.md` extension, while the rubric ground truth specifies the canonical URL is `/changelog/v1.md`. This is a factual error on a required point, so the answer is not fully correct. The error is stated confidently, making the failure mode 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 51306,
+  "outputTokens": 136,
+  "durationMs": 52306,
+  "steps": 13,
+  "errors": []
+}

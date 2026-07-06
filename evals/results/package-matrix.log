@@ -1,0 +1,993 @@
+Package benchmark: 6 fixtures × 2 modes × 4 models × 10 runs = 480 agent runs
+Judge: claude-opus-4-7 · concurrency: 6
+Results: /Users/kaylee/orca/workspaces/leadtype/docs-evals/evals/results/package/2026-05-25-package
+
+▶ bundle-rationale / treatment / claude-haiku-4-5 [1/10]
+▶ bundle-rationale / treatment / claude-haiku-4-5 [2/10]
+▶ bundle-rationale / treatment / claude-haiku-4-5 [3/10]
+▶ bundle-rationale / treatment / claude-haiku-4-5 [4/10]
+▶ bundle-rationale / treatment / claude-haiku-4-5 [5/10]
+▶ bundle-rationale / treatment / claude-haiku-4-5 [6/10]
+  ✓ score 90 · 13.1s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-haiku-4-5 [7/10]
+  ✓ score 85 · 15.6s · 8 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-haiku-4-5 [8/10]
+  ✓ score 95 · 21.5s · 12 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-haiku-4-5 [9/10]
+  ✓ score 95 · 22.0s · 12 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-haiku-4-5 [10/10]
+  ✓ score 92 · 21.6s · 11 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [1/10]
+  ✓ score 92 · 25.0s · 11 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [2/10]
+  ✓ score 92 · 18.2s · 12 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [3/10]
+  ✓ score 90 · 18.9s · 9 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [4/10]
+  ✓ score 94 · 18.4s · 10 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [5/10]
+  ✓ score 85 · 19.0s · 11 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [6/10]
+  ✓ score 92 · 34.2s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [7/10]
+  ✓ score 95 · 34.1s · 7 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [8/10]
+  ✓ score 90 · 27.3s · 5 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 33.5s · 7 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-sonnet-4-6 [10/10]
+  ✓ score 88 · 36.8s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [1/10]
+  ✓ score 88 · 34.7s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [2/10]
+  ✓ score 92 · 32.5s · 7 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [3/10]
+  ✓ score 92 · 32.2s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [4/10]
+  ✓ score 90 · 31.6s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [5/10]
+  ✓ score 88 · 28.7s · 5 calls · read AGENTS.md
+  …20/480 runs done
+▶ bundle-rationale / treatment / claude-opus-4-7 [6/10]
+  ✓ score 90 · 30.1s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [7/10]
+  ✓ score 95 · 36.3s · 8 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [8/10]
+  ✓ score 94 · 25.0s · 5 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [9/10]
+  ✓ score 95 · 33.5s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / claude-opus-4-7 [10/10]
+  ✓ score 94 · 25.7s · 4 calls
+▶ bundle-rationale / treatment / gpt-5.5 [1/10]
+  ✓ score 95 · 26.0s · 5 calls
+▶ bundle-rationale / treatment / gpt-5.5 [2/10]
+  ✓ score 95 · 35.1s · 6 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [3/10]
+  ✓ score 92 · 26.9s · 5 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [4/10]
+  ✓ score 90 · 24.4s · 5 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [5/10]
+  ✓ score 95 · 27.3s · 5 calls
+▶ bundle-rationale / treatment / gpt-5.5 [6/10]
+  ✓ score 92 · 21.3s · 8 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [7/10]
+  ✓ score 95 · 23.8s · 9 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [8/10]
+  ✓ score 94 · 26.8s · 9 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [9/10]
+  ✓ score 94 · 20.2s · 8 calls · read AGENTS.md
+▶ bundle-rationale / treatment / gpt-5.5 [10/10]
+  ✓ score 95 · 25.0s · 14 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [1/10]
+  ✓ score 94 · 13.6s · 8 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [2/10]
+  ✓ score 92 · 29.8s · 12 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [3/10]
+  ✓ score 92 · 21.2s · 11 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [4/10]
+  ✓ score 85 · 30.2s · 12 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [5/10]
+  ✓ score 90 · 23.7s · 15 calls
+  …40/480 runs done
+▶ bundle-rationale / control / claude-haiku-4-5 [6/10]
+  ✗ score 55 · 24.8s · 11 calls
+▶ bundle-rationale / control / claude-haiku-4-5 [7/10]
+  ✓ score 88 · 38.9s · 9 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [8/10]
+  ✓ score 90 · 22.7s · 14 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-haiku-4-5 [9/10]
+  ✓ score 88 · 23.3s · 16 calls
+▶ bundle-rationale / control / claude-haiku-4-5 [10/10]
+  ✓ score 92 · 22.4s · 14 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [1/10]
+  ✓ score 92 · 22.9s · 11 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [2/10]
+  ✓ score 88 · 36.0s · 21 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [3/10]
+  ✗ score 70 · 30.7s · 16 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-sonnet-4-6 [4/10]
+  ✓ score 88 · 25.9s · 13 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [5/10]
+  ✓ score 92 · 26.5s · 14 calls · read AGENTS.md
+▶ bundle-rationale / control / claude-sonnet-4-6 [6/10]
+  ✓ score 92 · 38.1s · 7 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [7/10]
+  ✓ score 94 · 47.3s · 9 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [8/10]
+  ✓ score 92 · 31.8s · 7 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [9/10]
+  ✓ score 94 · 44.3s · 9 calls
+▶ bundle-rationale / control / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 43.8s · 7 calls
+▶ bundle-rationale / control / claude-opus-4-7 [1/10]
+  ✓ score 95 · 57.0s · 12 calls
+▶ bundle-rationale / control / claude-opus-4-7 [2/10]
+  ✓ score 95 · 57.9s · 12 calls
+▶ bundle-rationale / control / claude-opus-4-7 [3/10]
+  ✓ score 95 · 48.1s · 10 calls
+▶ bundle-rationale / control / claude-opus-4-7 [4/10]
+  ✓ score 90 · 38.3s · 7 calls
+▶ bundle-rationale / control / claude-opus-4-7 [5/10]
+  ✓ score 88 · 31.5s · 7 calls
+  …60/480 runs done
+▶ bundle-rationale / control / claude-opus-4-7 [6/10]
+  ✓ score 90 · 31.9s · 6 calls
+▶ bundle-rationale / control / claude-opus-4-7 [7/10]
+  ✓ score 92 · 60.6s · 10 calls
+▶ bundle-rationale / control / claude-opus-4-7 [8/10]
+  ✓ score 88 · 29.7s · 7 calls
+▶ bundle-rationale / control / claude-opus-4-7 [9/10]
+  ✓ score 92 · 42.1s · 6 calls
+▶ bundle-rationale / control / claude-opus-4-7 [10/10]
+  ✓ score 94 · 62.0s · 8 calls
+▶ bundle-rationale / control / gpt-5.5 [1/10]
+  ✓ score 95 · 49.1s · 7 calls
+▶ bundle-rationale / control / gpt-5.5 [2/10]
+  ✓ score 92 · 34.4s · 5 calls
+▶ bundle-rationale / control / gpt-5.5 [3/10]
+  ✓ score 92 · 53.6s · 9 calls
+▶ bundle-rationale / control / gpt-5.5 [4/10]
+  ✓ score 90 · 35.6s · 7 calls
+▶ bundle-rationale / control / gpt-5.5 [5/10]
+  ✓ score 92 · 34.1s · 9 calls
+▶ bundle-rationale / control / gpt-5.5 [6/10]
+  ✓ score 92 · 47.7s · 8 calls
+▶ bundle-rationale / control / gpt-5.5 [7/10]
+  ✓ score 92 · 61.8s · 9 calls
+▶ bundle-rationale / control / gpt-5.5 [8/10]
+  ✓ score 90 · 48.2s · 9 calls
+▶ bundle-rationale / control / gpt-5.5 [9/10]
+  ✓ score 95 · 58.7s · 9 calls
+▶ bundle-rationale / control / gpt-5.5 [10/10]
+  ✓ score 90 · 31.6s · 11 calls
+▶ custom-generate-script / treatment / claude-haiku-4-5 [1/10]
+  ✓ score 92 · 49.5s · 15 calls
+▶ custom-generate-script / treatment / claude-haiku-4-5 [2/10]
+  ✓ score 90 · 36.1s · 10 calls
+▶ custom-generate-script / treatment / claude-haiku-4-5 [3/10]
+  ✓ score 90 · 37.2s · 9 calls
+▶ custom-generate-script / treatment / claude-haiku-4-5 [4/10]
+  ✓ score 90 · 36.8s · 11 calls
+▶ custom-generate-script / treatment / claude-haiku-4-5 [5/10]
+  ✓ score 90 · 41.2s · 9 calls
+  …80/480 runs done
+▶ custom-generate-script / treatment / claude-haiku-4-5 [6/10]
+  ✓ score 92 · 45.4s · 18 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-haiku-4-5 [7/10]
+  ✓ score 92 · 40.1s · 19 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-haiku-4-5 [8/10]
+  ✓ score 92 · 39.2s · 20 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-haiku-4-5 [9/10]
+  ✓ score 92 · 76.0s · 31 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-haiku-4-5 [10/10]
+  ✓ score 90 · 80.4s · 21 calls
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [1/10]
+  ✓ score 90 · 42.0s · 21 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [2/10]
+  ✓ score 90 · 158.0s · 44 calls
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [3/10]
+  ✓ score 92 · 43.8s · 23 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [4/10]
+  ✓ score 90 · 64.4s · 27 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [5/10]
+  ✓ score 90 · 60.2s · 23 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [6/10]
+  ✓ score 95 · 94.0s · 32 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [7/10]
+  ✓ score 95 · 107.1s · 28 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [8/10]
+  ✓ score 95 · 107.7s · 31 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 100.5s · 31 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 102.9s · 30 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [1/10]
+  ✓ score 92 · 111.6s · 28 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [2/10]
+  ✓ score 95 · 105.3s · 28 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [3/10]
+  ✓ score 95 · 108.2s · 29 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [4/10]
+  ✓ score 95 · 114.6s · 29 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [5/10]
+  ✓ score 92 · 84.4s · 19 calls · read AGENTS.md
+  …100/480 runs done
+▶ custom-generate-script / treatment / claude-opus-4-7 [6/10]
+  ✓ score 92 · 127.2s · 14 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [7/10]
+  ✓ score 92 · 134.2s · 25 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [8/10]
+  ✓ score 92 · 62.3s · 14 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [9/10]
+  ✓ score 92 · 73.8s · 20 calls · read AGENTS.md
+▶ custom-generate-script / treatment / claude-opus-4-7 [10/10]
+  ✓ score 92 · 73.7s · 13 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [1/10]
+  ✓ score 92 · 53.9s · 12 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [2/10]
+  ✓ score 92 · 51.9s · 12 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [3/10]
+  ✓ score 92 · 65.7s · 16 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [4/10]
+  ✓ score 90 · 43.3s · 12 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [5/10]
+  ✓ score 92 · 42.6s · 12 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [6/10]
+  ✓ score 92 · 69.0s · 21 calls
+▶ custom-generate-script / treatment / gpt-5.5 [7/10]
+  ✓ score 92 · 85.9s · 23 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [8/10]
+  ✓ score 92 · 93.3s · 26 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [9/10]
+  ✓ score 92 · 80.0s · 22 calls · read AGENTS.md
+▶ custom-generate-script / treatment / gpt-5.5 [10/10]
+  ✓ score 90 · 73.5s · 25 calls · read AGENTS.md
+▶ custom-generate-script / control / claude-haiku-4-5 [1/10]
+  ✓ score 92 · 105.4s · 31 calls
+▶ custom-generate-script / control / claude-haiku-4-5 [2/10]
+  ✓ score 90 · 113.4s · 32 calls · read AGENTS.md
+▶ custom-generate-script / control / claude-haiku-4-5 [3/10]
+  ✓ score 90 · 73.7s · 27 calls
+▶ custom-generate-script / control / claude-haiku-4-5 [4/10]
+  ✓ score 90 · 110.9s · 23 calls · read AGENTS.md
+▶ custom-generate-script / control / claude-haiku-4-5 [5/10]
+  ✓ score 92 · 141.0s · 23 calls
+  …120/480 runs done
+▶ custom-generate-script / control / claude-haiku-4-5 [6/10]
+  ✓ score 90 · 76.2s · 23 calls
+▶ custom-generate-script / control / claude-haiku-4-5 [7/10]
+  ✓ score 92 · 172.4s · 29 calls
+▶ custom-generate-script / control / claude-haiku-4-5 [8/10]
+  ✓ score 85 · 101.6s · 23 calls
+▶ custom-generate-script / control / claude-haiku-4-5 [9/10]
+  ✗ score 55 · 31.7s · 19 calls
+▶ custom-generate-script / control / claude-haiku-4-5 [10/10]
+  ✓ score 90 · 32.8s · 19 calls · read AGENTS.md
+▶ custom-generate-script / control / claude-sonnet-4-6 [1/10]
+  ✓ score 90 · 44.1s · 22 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [2/10]
+  ✗ score 55 · 54.2s · 24 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [3/10]
+  ✓ score 92 · 62.9s · 27 calls · read AGENTS.md
+▶ custom-generate-script / control / claude-sonnet-4-6 [4/10]
+  ✗ score 70 · 86.7s · 35 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [5/10]
+  ✓ score 90 · 100.6s · 31 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [6/10]
+  ✓ score 92 · 122.0s · 35 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [7/10]
+  ✓ score 97 · 126.7s · 39 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [8/10]
+  ✓ score 92 · 104.6s · 31 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [9/10]
+  ✓ score 94 · 90.4s · 27 calls
+▶ custom-generate-script / control / claude-sonnet-4-6 [10/10]
+  ✓ score 94 · 129.4s · 33 calls
+▶ custom-generate-script / control / claude-opus-4-7 [1/10]
+  ✓ score 92 · 91.3s · 30 calls
+▶ custom-generate-script / control / claude-opus-4-7 [2/10]
+  ✓ score 95 · 84.7s · 25 calls
+▶ custom-generate-script / control / claude-opus-4-7 [3/10]
+  ✓ score 95 · 112.3s · 30 calls
+▶ custom-generate-script / control / claude-opus-4-7 [4/10]
+  ✓ score 92 · 177.4s · 42 calls
+▶ custom-generate-script / control / claude-opus-4-7 [5/10]
+  ✓ score 92 · 80.3s · 21 calls
+  …140/480 runs done
+▶ custom-generate-script / control / claude-opus-4-7 [6/10]
+  ✓ score 95 · 46.1s · 17 calls
+▶ custom-generate-script / control / claude-opus-4-7 [7/10]
+  ✓ score 95 · 103.4s · 28 calls
+▶ custom-generate-script / control / claude-opus-4-7 [8/10]
+  ✓ score 92 · 51.9s · 15 calls
+▶ custom-generate-script / control / claude-opus-4-7 [9/10]
+  ✓ score 95 · 84.2s · 22 calls
+▶ custom-generate-script / control / claude-opus-4-7 [10/10]
+  ✓ score 95 · 53.8s · 16 calls
+▶ custom-generate-script / control / gpt-5.5 [1/10]
+  ✓ score 90 · 50.9s · 17 calls
+▶ custom-generate-script / control / gpt-5.5 [2/10]
+  ✓ score 92 · 54.1s · 17 calls
+▶ custom-generate-script / control / gpt-5.5 [3/10]
+  ✓ score 92 · 68.9s · 16 calls
+▶ custom-generate-script / control / gpt-5.5 [4/10]
+  ✓ score 92 · 113.9s · 32 calls
+▶ custom-generate-script / control / gpt-5.5 [5/10]
+  ✓ score 92 · 50.6s · 17 calls
+▶ custom-generate-script / control / gpt-5.5 [6/10]
+  ✓ score 90 · 63.9s · 20 calls
+▶ custom-generate-script / control / gpt-5.5 [7/10]
+  ✓ score 90 · 74.3s · 21 calls
+▶ custom-generate-script / control / gpt-5.5 [8/10]
+  ✓ score 92 · 109.9s · 29 calls
+▶ custom-generate-script / control / gpt-5.5 [9/10]
+  ✓ score 92 · 94.7s · 23 calls
+▶ custom-generate-script / control / gpt-5.5 [10/10]
+  ✓ score 90 · 88.3s · 27 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [1/10]
+  ✓ score 92 · 89.2s · 26 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [2/10]
+  ✓ score 95 · 10.1s · 7 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [3/10]
+  ✓ score 90 · 86.7s · 25 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [4/10]
+  ✓ score 95 · 8.9s · 6 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [5/10]
+  ✓ score 95 · 9.6s · 5 calls
+  …160/480 runs done
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [6/10]
+  ✓ score 92 · 103.7s · 28 calls · read AGENTS.md
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [7/10]
+  ✓ score 95 · 14.8s · 8 calls · read AGENTS.md
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [8/10]
+  ✓ score 95 · 14.3s · 5 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [9/10]
+  ✓ score 95 · 12.2s · 5 calls
+▶ explain-cli-flag / treatment / claude-haiku-4-5 [10/10]
+  ✓ score 90 · 94.2s · 27 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [1/10]
+  ✓ score 97 · 19.4s · 8 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [2/10]
+  ✓ score 98 · 12.4s · 7 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [3/10]
+  ✓ score 98 · 13.6s · 7 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [4/10]
+  ✓ score 97 · 8.4s · 7 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [5/10]
+  ✓ score 95 · 35.5s · 10 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [6/10]
+  ✓ score 88 · 134.6s · 27 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [7/10]
+  ✓ score 95 · 35.3s · 13 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [8/10]
+  ✓ score 98 · 44.8s · 16 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 53.0s · 17 calls
+▶ explain-cli-flag / treatment / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 41.0s · 11 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [1/10]
+  ✓ score 95 · 26.7s · 8 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [2/10]
+  ✓ score 95 · 27.7s · 8 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [3/10]
+  ✓ score 95 · 42.4s · 12 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [4/10]
+  ✓ score 95 · 46.1s · 15 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [5/10]
+  ✓ score 98 · 41.6s · 12 calls
+  …180/480 runs done
+▶ explain-cli-flag / treatment / claude-opus-4-7 [6/10]
+  ✓ score 95 · 37.3s · 8 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [7/10]
+  ✓ score 95 · 36.3s · 7 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [8/10]
+  ✓ score 95 · 39.1s · 8 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [9/10]
+  ✓ score 95 · 33.2s · 7 calls
+▶ explain-cli-flag / treatment / claude-opus-4-7 [10/10]
+  ✓ score 95 · 38.9s · 9 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [1/10]
+  ✓ score 95 · 30.8s · 6 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [2/10]
+  ✓ score 95 · 40.0s · 8 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [3/10]
+  ✓ score 95 · 21.4s · 10 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [4/10]
+  ✓ score 95 · 29.9s · 7 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [5/10]
+  ✓ score 95 · 23.0s · 8 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [6/10]
+  ✓ score 95 · 34.7s · 8 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [7/10]
+  ✓ score 95 · 40.7s · 8 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [8/10]
+  ✓ score 95 · 20.0s · 8 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [9/10]
+  ✓ score 92 · 16.8s · 9 calls
+▶ explain-cli-flag / treatment / gpt-5.5 [10/10]
+  ✓ score 95 · 15.4s · 10 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [1/10]
+  ✓ score 92 · 16.7s · 8 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [2/10]
+  ✓ score 95 · 27.0s · 8 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [3/10]
+  ✓ score 95 · 24.7s · 8 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [4/10]
+  ✓ score 92 · 37.6s · 5 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [5/10]
+  ✓ score 95 · 16.7s · 9 calls
+  …200/480 runs done
+▶ explain-cli-flag / control / claude-haiku-4-5 [6/10]
+  ✓ score 95 · 25.5s · 13 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [7/10]
+  ✓ score 92 · 26.9s · 10 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [8/10]
+  ✓ score 95 · 32.5s · 16 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [9/10]
+  ✓ score 95 · 27.3s · 13 calls
+▶ explain-cli-flag / control / claude-haiku-4-5 [10/10]
+  ✓ score 95 · 21.3s · 13 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [1/10]
+  ✓ score 95 · 21.9s · 14 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [2/10]
+  ✓ score 92 · 18.3s · 9 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [3/10]
+  ✓ score 95 · 14.5s · 9 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [4/10]
+  ✓ score 92 · 20.6s · 11 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [5/10]
+  ✓ score 95 · 26.7s · 14 calls · read AGENTS.md
+▶ explain-cli-flag / control / claude-sonnet-4-6 [6/10]
+  ✓ score 95 · 26.8s · 6 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [7/10]
+  ✓ score 95 · 35.0s · 10 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [8/10]
+  ✓ score 98 · 30.0s · 7 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [9/10]
+  ✓ score 97 · 33.2s · 9 calls
+▶ explain-cli-flag / control / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 41.7s · 9 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [1/10]
+  ✓ score 97 · 37.6s · 9 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [2/10]
+  ✓ score 97 · 30.6s · 8 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [3/10]
+  ✓ score 95 · 42.6s · 11 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [4/10]
+  ✓ score 97 · 33.1s · 7 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [5/10]
+  ✓ score 95 · 32.2s · 7 calls
+  …220/480 runs done
+▶ explain-cli-flag / control / claude-opus-4-7 [6/10]
+  ✓ score 98 · 35.5s · 6 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [7/10]
+  ✓ score 98 · 37.1s · 6 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [8/10]
+  ✓ score 97 · 31.5s · 6 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [9/10]
+  ✓ score 95 · 31.4s · 6 calls
+▶ explain-cli-flag / control / claude-opus-4-7 [10/10]
+  ✓ score 98 · 30.6s · 6 calls
+▶ explain-cli-flag / control / gpt-5.5 [1/10]
+  ✓ score 97 · 32.1s · 6 calls
+▶ explain-cli-flag / control / gpt-5.5 [2/10]
+  ✓ score 95 · 36.5s · 6 calls
+▶ explain-cli-flag / control / gpt-5.5 [3/10]
+  ✓ score 98 · 39.2s · 7 calls
+▶ explain-cli-flag / control / gpt-5.5 [4/10]
+  ✓ score 97 · 35.4s · 6 calls
+▶ explain-cli-flag / control / gpt-5.5 [5/10]
+  ✓ score 97 · 41.2s · 6 calls
+▶ explain-cli-flag / control / gpt-5.5 [6/10]
+  ✓ score 95 · 20.4s · 8 calls
+▶ explain-cli-flag / control / gpt-5.5 [7/10]
+  ✓ score 95 · 24.7s · 7 calls
+▶ explain-cli-flag / control / gpt-5.5 [8/10]
+  ✓ score 95 · 21.8s · 9 calls
+▶ explain-cli-flag / control / gpt-5.5 [9/10]
+  ✓ score 95 · 28.0s · 9 calls
+▶ explain-cli-flag / control / gpt-5.5 [10/10]
+  ✓ score 92 · 19.4s · 10 calls
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [1/10]
+  ✓ score 95 · 23.4s · 13 calls
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [2/10]
+  ✓ score 92 · 25.6s · 11 calls
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [3/10]
+  ✓ score 95 · 18.3s · 8 calls
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [4/10]
+  ✓ score 92 · 23.3s · 8 calls
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [5/10]
+  ✓ score 95 · 31.5s · 10 calls
+  …240/480 runs done
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [6/10]
+  ✓ score 92 · 22.5s · 12 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [7/10]
+  ✓ score 95 · 27.1s · 14 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [8/10]
+  ✓ score 92 · 27.6s · 12 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [9/10]
+  ✓ score 95 · 28.5s · 14 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-haiku-4-5 [10/10]
+  ✓ score 95 · 28.4s · 11 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [1/10]
+  ✓ score 90 · 23.2s · 12 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [2/10]
+  ✓ score 94 · 20.4s · 10 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [3/10]
+  ✓ score 95 · 21.2s · 10 calls
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [4/10]
+  ✓ score 98 · 23.6s · 10 calls
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [5/10]
+  ✓ score 95 · 39.4s · 20 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [6/10]
+  ✓ score 97 · 47.2s · 11 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [7/10]
+  ✓ score 92 · 36.8s · 9 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [8/10]
+  ✓ score 95 · 34.5s · 7 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 50.1s · 11 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-sonnet-4-6 [10/10]
+  ✓ score 92 · 47.4s · 11 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [1/10]
+  ✓ score 95 · 49.8s · 11 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [2/10]
+  ✓ score 95 · 40.4s · 10 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [3/10]
+  ✓ score 92 · 41.8s · 11 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [4/10]
+  ✓ score 96 · 33.5s · 7 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [5/10]
+  ✓ score 95 · 53.8s · 12 calls · read AGENTS.md
+  …260/480 runs done
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [6/10]
+  ✓ score 98 · 24.7s · 5 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [7/10]
+  ✓ score 92 · 45.2s · 10 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [8/10]
+  ✓ score 92 · 30.4s · 7 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [9/10]
+  ✓ score 97 · 32.7s · 6 calls
+▶ mounted-changelog-urls / treatment / claude-opus-4-7 [10/10]
+  ✓ score 98 · 22.3s · 4 calls
+▶ mounted-changelog-urls / treatment / gpt-5.5 [1/10]
+  ✓ score 95 · 27.5s · 5 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [2/10]
+  ✓ score 95 · 26.5s · 5 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [3/10]
+  ✓ score 98 · 26.3s · 5 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [4/10]
+  ✓ score 97 · 27.6s · 7 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [5/10]
+  ✓ score 97 · 19.5s · 7 calls
+▶ mounted-changelog-urls / treatment / gpt-5.5 [6/10]
+  ✓ score 90 · 43.2s · 10 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [7/10]
+  ✓ score 95 · 50.8s · 8 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [8/10]
+  ✓ score 90 · 53.7s · 17 calls · read AGENTS.md
+▶ mounted-changelog-urls / treatment / gpt-5.5 [9/10]
+  ✓ score 95 · 37.7s · 11 calls
+▶ mounted-changelog-urls / treatment / gpt-5.5 [10/10]
+  ✓ score 95 · 67.4s · 16 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [1/10]
+  ✓ score 95 · 50.9s · 17 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [2/10]
+  ✓ score 97 · 19.4s · 6 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [3/10]
+  ✓ score 97 · 39.8s · 8 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [4/10]
+  ✓ score 92 · 50.7s · 17 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [5/10]
+  ✓ score 94 · 57.5s · 15 calls
+  …280/480 runs done
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [6/10]
+  ✓ score 90 · 46.7s · 24 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [7/10]
+  ✓ score 92 · 63.9s · 31 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [8/10]
+  ✓ score 90 · 38.9s · 22 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [9/10]
+  ✓ score 90 · 53.3s · 23 calls
+▶ mounted-changelog-urls / control / claude-haiku-4-5 [10/10]
+  ✓ score 90 · 67.8s · 27 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [1/10]
+  ✓ score 90 · 68.9s · 31 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [2/10]
+  ✓ score 92 · 34.9s · 17 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [3/10]
+  ✓ score 92 · 50.0s · 20 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [4/10]
+  ✓ score 92 · 57.6s · 27 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [5/10]
+  ✓ score 90 · 62.8s · 29 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [6/10]
+  ✓ score 92 · 69.5s · 19 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [7/10]
+  ✓ score 95 · 80.2s · 20 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [8/10]
+  ✓ score 97 · 79.0s · 19 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 66.2s · 18 calls
+▶ mounted-changelog-urls / control / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 75.5s · 18 calls
+▶ mounted-changelog-urls / control / claude-opus-4-7 [1/10]
+  ✓ score 97 · 103.1s · 24 calls
+▶ mounted-changelog-urls / control / claude-opus-4-7 [2/10]
+  ✓ score 95 · 77.6s · 19 calls
+▶ mounted-changelog-urls / control / claude-opus-4-7 [3/10]
+  ✓ score 92 · 77.2s · 19 calls
+▶ mounted-changelog-urls / control / claude-opus-4-7 [4/10]
+  ✓ score 92 · 47.9s · 10 calls
+▶ mounted-changelog-urls / control / claude-opus-4-7 [5/10]
+  ✓ score 94 · 69.1s · 18 calls
+  …300/480 runs done
+▶ mounted-changelog-urls / control / claude-opus-4-7 [6/10]
+  ✓ score 95 · 84.3s · 19 calls
+▶ mounted-changelog-urls / control / claude-opus-4-7 [7/10]
+  ✓ score 92 · 82.4s · 10 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / claude-opus-4-7 [8/10]
+  ✓ score 95 · 67.9s · 12 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / claude-opus-4-7 [9/10]
+  ✓ score 94 · 70.9s · 13 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / claude-opus-4-7 [10/10]
+  ✓ score 92 · 72.6s · 13 calls
+▶ mounted-changelog-urls / control / gpt-5.5 [1/10]
+  ✓ score 95 · 62.3s · 9 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / gpt-5.5 [2/10]
+  ✓ score 92 · 82.2s · 16 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / gpt-5.5 [3/10]
+  ✓ score 92 · 85.9s · 16 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / gpt-5.5 [4/10]
+  ✓ score 94 · 72.6s · 13 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / gpt-5.5 [5/10]
+  ✓ score 90 · 51.6s · 11 calls
+▶ mounted-changelog-urls / control / gpt-5.5 [6/10]
+  ✓ score 90 · 58.7s · 14 calls
+▶ mounted-changelog-urls / control / gpt-5.5 [7/10]
+  ✓ score 92 · 75.6s · 11 calls
+▶ mounted-changelog-urls / control / gpt-5.5 [8/10]
+  ✓ score 90 · 54.0s · 15 calls · read AGENTS.md
+▶ mounted-changelog-urls / control / gpt-5.5 [9/10]
+  ✓ score 92 · 33.9s · 10 calls
+▶ mounted-changelog-urls / control / gpt-5.5 [10/10]
+  ✓ score 92 · 54.0s · 12 calls
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [1/10]
+  ✓ score 90 · 47.4s · 12 calls
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [2/10]
+  ✓ score 85 · 64.8s · 15 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [3/10]
+  ✓ score 92 · 24.7s · 12 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [4/10]
+  ✓ score 90 · 49.8s · 13 calls
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [5/10]
+  ✓ score 85 · 42.6s · 9 calls
+  …320/480 runs done
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [6/10]
+  ✓ score 92 · 22.9s · 10 calls
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [7/10]
+  ✓ score 95 · 30.5s · 15 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [8/10]
+  ✓ score 92 · 67.4s · 14 calls
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [9/10]
+  ✓ score 86 · 25.7s · 12 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-haiku-4-5 [10/10]
+  ✓ score 94 · 32.0s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [1/10]
+  ✓ score 92 · 37.8s · 14 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [2/10]
+  ✓ score 92 · 22.0s · 14 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [3/10]
+  ✓ score 92 · 28.7s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [4/10]
+  ✓ score 92 · 30.0s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [5/10]
+  ✓ score 92 · 25.3s · 15 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [6/10]
+  ✓ score 95 · 52.7s · 12 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [7/10]
+  ✓ score 95 · 62.5s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [8/10]
+  ✓ score 94 · 68.5s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [9/10]
+  ✓ score 92 · 52.1s · 11 calls
+▶ nav-unknown-group / treatment / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 56.7s · 14 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [1/10]
+  ✓ score 95 · 66.1s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [2/10]
+  ✓ score 94 · 48.5s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [3/10]
+  ✓ score 95 · 54.9s · 11 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [4/10]
+  ✓ score 95 · 42.7s · 7 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [5/10]
+  ✓ score 92 · 53.1s · 10 calls
+  …340/480 runs done
+▶ nav-unknown-group / treatment / claude-opus-4-7 [6/10]
+  ✓ score 95 · 54.0s · 8 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [7/10]
+  ✓ score 95 · 61.8s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / claude-opus-4-7 [8/10]
+  ✓ score 95 · 47.2s · 7 calls
+▶ nav-unknown-group / treatment / claude-opus-4-7 [9/10]
+  ✓ score 96 · 56.5s · 5 calls
+▶ nav-unknown-group / treatment / claude-opus-4-7 [10/10]
+  ✓ score 95 · 34.3s · 8 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / gpt-5.5 [1/10]
+  ✓ score 95 · 39.0s · 7 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / gpt-5.5 [2/10]
+  ✓ score 95 · 40.2s · 7 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / gpt-5.5 [3/10]
+  ✓ score 94 · 41.5s · 7 calls
+▶ nav-unknown-group / treatment / gpt-5.5 [4/10]
+  ✓ score 96 · 35.1s · 7 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / gpt-5.5 [5/10]
+  ✓ score 95 · 28.1s · 4 calls
+▶ nav-unknown-group / treatment / gpt-5.5 [6/10]
+  ✓ score 90 · 51.5s · 13 calls
+▶ nav-unknown-group / treatment / gpt-5.5 [7/10]
+  ✓ score 92 · 39.2s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / treatment / gpt-5.5 [8/10]
+  ✓ score 90 · 49.9s · 16 calls
+▶ nav-unknown-group / treatment / gpt-5.5 [9/10]
+  ✓ score 92 · 51.8s · 13 calls
+▶ nav-unknown-group / treatment / gpt-5.5 [10/10]
+  ✓ score 90 · 44.1s · 12 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [1/10]
+  ✗ score 5 · 47.6s · 14 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [2/10]
+  ✓ score 90 · 33.8s · 11 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [3/10]
+  ✓ score 85 · 46.0s · 14 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-haiku-4-5 [4/10]
+  ✓ score 90 · 44.8s · 16 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [5/10]
+  ✓ score 85 · 56.8s · 16 calls · read AGENTS.md
+  …360/480 runs done
+▶ nav-unknown-group / control / claude-haiku-4-5 [6/10]
+  ✗ score 25 · 41.9s · 19 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [7/10]
+  ✓ score 90 · 52.9s · 18 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [8/10]
+  ✗ score 25 · 34.7s · 17 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [9/10]
+  ✗ score 25 · 43.7s · 22 calls
+▶ nav-unknown-group / control / claude-haiku-4-5 [10/10]
+  ✗ score 25 · 39.5s · 18 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [1/10]
+  ✓ score 94 · 54.6s · 28 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [2/10]
+  ✗ score 25 · 38.1s · 15 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [3/10]
+  ✗ score 25 · 26.7s · 12 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [4/10]
+  ✗ score 15 · 38.5s · 15 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [5/10]
+  ✗ score 25 · 36.8s · 19 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-sonnet-4-6 [6/10]
+  ✗ score 25 · 73.7s · 15 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [7/10]
+  ✗ score 25 · 93.2s · 17 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-sonnet-4-6 [8/10]
+  ✗ score 10 · 85.7s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-sonnet-4-6 [9/10]
+  ✗ score 25 · 85.8s · 17 calls
+▶ nav-unknown-group / control / claude-sonnet-4-6 [10/10]
+  ✗ score 25 · 89.3s · 17 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [1/10]
+  ✓ score 95 · 80.4s · 18 calls
+▶ nav-unknown-group / control / claude-opus-4-7 [2/10]
+  ✗ score 25 · 90.7s · 17 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [3/10]
+  ✗ score 15 · 83.4s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [4/10]
+  ✗ score 25 · 87.6s · 17 calls
+▶ nav-unknown-group / control / claude-opus-4-7 [5/10]
+  ✗ score 15 · 108.5s · 18 calls · read AGENTS.md
+  …380/480 runs done
+▶ nav-unknown-group / control / claude-opus-4-7 [6/10]
+  ✓ score 95 · 86.1s · 12 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [7/10]
+  ✓ score 95 · 110.6s · 19 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [8/10]
+  ✓ score 95 · 69.7s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [9/10]
+  ✓ score 92 · 96.9s · 15 calls · read AGENTS.md
+▶ nav-unknown-group / control / claude-opus-4-7 [10/10]
+  ✗ score 25 · 102.0s · 17 calls
+▶ nav-unknown-group / control / gpt-5.5 [1/10]
+  ✓ score 95 · 80.5s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [2/10]
+  ✓ score 95 · 100.3s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [3/10]
+  ✓ score 95 · 99.2s · 19 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [4/10]
+  ✓ score 85 · 38.4s · 9 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [5/10]
+  ✓ score 85 · 35.0s · 10 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [6/10]
+  ✓ score 90 · 47.4s · 13 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [7/10]
+  ✗ score 35 · 88.6s · 16 calls · read AGENTS.md
+▶ nav-unknown-group / control / gpt-5.5 [8/10]
+  ✗ score 55 · 50.2s · 12 calls
+▶ nav-unknown-group / control / gpt-5.5 [9/10]
+  ✓ score 90 · 30.2s · 10 calls
+▶ nav-unknown-group / control / gpt-5.5 [10/10]
+  ✗ score 25 · 89.5s · 15 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [1/10]
+  ✓ score 85 · 54.2s · 13 calls
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [2/10]
+  ✓ score 85 · 45.1s · 16 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [3/10]
+  ✓ score 95 · 19.1s · 7 calls
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [4/10]
+  ✓ score 90 · 45.6s · 12 calls
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [5/10]
+  ✗ score 55 · 41.5s · 11 calls · read AGENTS.md
+  …400/480 runs done
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [6/10]
+  ✓ score 82 · 62.1s · 14 calls
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [7/10]
+  ✓ score 95 · 15.4s · 6 calls
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [8/10]
+  ✓ score 95 · 20.4s · 9 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [9/10]
+  ✓ score 95 · 21.2s · 7 calls
+▶ search-when-embeddings / treatment / claude-haiku-4-5 [10/10]
+  ✓ score 92 · 52.6s · 9 calls
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [1/10]
+  ✗ score 0 · 22.2s · 9 calls · JUDGE ERROR
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [2/10]
+  ✗ score 0 · 270.2s · 9 calls · read AGENTS.md
+    ! Invalid error response format: Gateway request failed: The operation timed out.
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [3/10]
+  ✗ score 0 · 256.7s · 6 calls · read AGENTS.md
+    ! Invalid error response format: Gateway request failed: The operation timed out.
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [4/10]
+  ✓ score 95 · 22.5s · 13 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [5/10]
+  ✓ score 95 · 19.1s · 6 calls
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [6/10]
+  ✓ score 96 · 47.8s · 8 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [7/10]
+  ✓ score 97 · 49.0s · 7 calls
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [8/10]
+  ✓ score 95 · 52.2s · 7 calls
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 54.2s · 7 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-sonnet-4-6 [10/10]
+  ✓ score 95 · 52.8s · 8 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-opus-4-7 [1/10]
+  ✓ score 96 · 42.5s · 6 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-opus-4-7 [2/10]
+  ✓ score 97 · 55.2s · 7 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-opus-4-7 [3/10]
+  ✓ score 97 · 52.6s · 7 calls
+▶ search-when-embeddings / treatment / claude-opus-4-7 [4/10]
+  ✓ score 97 · 49.6s · 7 calls
+▶ search-when-embeddings / treatment / claude-opus-4-7 [5/10]
+  ✓ score 96 · 50.1s · 7 calls · read AGENTS.md
+  …420/480 runs done
+▶ search-when-embeddings / treatment / claude-opus-4-7 [6/10]
+  ✓ score 97 · 47.3s · 5 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-opus-4-7 [7/10]
+  ✓ score 97 · 54.3s · 6 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / claude-opus-4-7 [8/10]
+  ✓ score 96 · 52.3s · 5 calls
+▶ search-when-embeddings / treatment / claude-opus-4-7 [9/10]
+  ✓ score 95 · 45.4s · 5 calls
+▶ search-when-embeddings / treatment / claude-opus-4-7 [10/10]
+  ✓ score 97 · 48.0s · 5 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [1/10]
+  ✓ score 96 · 52.6s · 5 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [2/10]
+  ✓ score 95 · 42.5s · 4 calls
+▶ search-when-embeddings / treatment / gpt-5.5 [3/10]
+  ✓ score 95 · 22.3s · 7 calls
+▶ search-when-embeddings / treatment / gpt-5.5 [4/10]
+  ✓ score 97 · 45.5s · 7 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [5/10]
+  ✓ score 97 · 56.8s · 6 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [6/10]
+  ✓ score 95 · 40.8s · 4 calls
+▶ search-when-embeddings / treatment / gpt-5.5 [7/10]
+  ✓ score 95 · 35.7s · 13 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [8/10]
+  ✓ score 95 · 25.2s · 13 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [9/10]
+  ✓ score 95 · 22.5s · 10 calls · read AGENTS.md
+▶ search-when-embeddings / treatment / gpt-5.5 [10/10]
+  ✓ score 94 · 24.2s · 10 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [1/10]
+  ✓ score 92 · 21.9s · 9 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [2/10]
+  ✓ score 95 · 20.7s · 8 calls
+▶ search-when-embeddings / control / claude-haiku-4-5 [3/10]
+  ✓ score 95 · 26.5s · 9 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [4/10]
+  ✓ score 94 · 23.6s · 9 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [5/10]
+  ✓ score 95 · 27.5s · 11 calls · read AGENTS.md
+  …440/480 runs done
+▶ search-when-embeddings / control / claude-haiku-4-5 [6/10]
+  ✓ score 85 · 43.3s · 22 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [7/10]
+  ✓ score 85 · 33.3s · 18 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [8/10]
+  ✗ score 55 · 48.2s · 30 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [9/10]
+  ✓ score 82 · 51.2s · 19 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-haiku-4-5 [10/10]
+  ✓ score 88 · 44.7s · 18 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-sonnet-4-6 [1/10]
+  ✓ score 86 · 45.9s · 18 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [2/10]
+  ✓ score 86 · 43.9s · 21 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [3/10]
+  ✓ score 86 · 46.0s · 19 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-sonnet-4-6 [4/10]
+  ✗ score 55 · 67.3s · 28 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [5/10]
+  ✓ score 85 · 59.6s · 26 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [6/10]
+  ✓ score 90 · 90.8s · 22 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [7/10]
+  ✓ score 88 · 102.5s · 22 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [8/10]
+  ✓ score 92 · 93.4s · 23 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [9/10]
+  ✓ score 95 · 89.1s · 25 calls
+▶ search-when-embeddings / control / claude-sonnet-4-6 [10/10]
+  ✓ score 88 · 85.5s · 22 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [1/10]
+  ✓ score 90 · 103.8s · 23 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [2/10]
+  ✓ score 90 · 106.4s · 25 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [3/10]
+  ✓ score 90 · 106.5s · 27 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [4/10]
+  ✓ score 92 · 109.6s · 24 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [5/10]
+  ✓ score 90 · 108.5s · 25 calls
+  …460/480 runs done
+▶ search-when-embeddings / control / claude-opus-4-7 [6/10]
+  ✓ score 94 · 105.0s · 15 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-opus-4-7 [7/10]
+  ✓ score 92 · 120.4s · 18 calls · read AGENTS.md
+▶ search-when-embeddings / control / claude-opus-4-7 [8/10]
+  ✓ score 95 · 115.9s · 15 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [9/10]
+  ✓ score 92 · 100.3s · 14 calls
+▶ search-when-embeddings / control / claude-opus-4-7 [10/10]
+  ✓ score 92 · 73.5s · 10 calls
+▶ search-when-embeddings / control / gpt-5.5 [1/10]
+  ✓ score 92 · 106.0s · 13 calls
+▶ search-when-embeddings / control / gpt-5.5 [2/10]
+  ✓ score 92 · 104.2s · 17 calls
+▶ search-when-embeddings / control / gpt-5.5 [3/10]
+  ✓ score 94 · 110.1s · 15 calls
+▶ search-when-embeddings / control / gpt-5.5 [4/10]
+  ✗ score 62 · 36.2s · 13 calls
+▶ search-when-embeddings / control / gpt-5.5 [5/10]
+  ✓ score 85 · 62.2s · 21 calls
+▶ search-when-embeddings / control / gpt-5.5 [6/10]
+  ✗ score 62 · 60.6s · 19 calls · read AGENTS.md
+▶ search-when-embeddings / control / gpt-5.5 [7/10]
+  ✓ score 92 · 100.5s · 15 calls
+▶ search-when-embeddings / control / gpt-5.5 [8/10]
+  ✓ score 95 · 103.1s · 14 calls · read AGENTS.md
+▶ search-when-embeddings / control / gpt-5.5 [9/10]
+  ✗ score 60 · 47.3s · 18 calls · read AGENTS.md
+▶ search-when-embeddings / control / gpt-5.5 [10/10]
+  ✓ score 86 · 65.1s · 19 calls
+  ✓ score 90 · 78.9s · 21 calls
+  ✗ score 62 · 44.8s · 16 calls
+  ✓ score 92 · 77.1s · 21 calls
+  ✗ score 62 · 68.1s · 18 calls
+  ✓ score 85 · 57.5s · 20 calls
+  …480/480 runs done
+
+══ Done ══
+480 runs · report: /Users/kaylee/orca/workspaces/leadtype/docs-evals/evals/results/package/2026-05-25-package/report.md

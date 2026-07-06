@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: default described as static/local lexical BM25 with no DB; specific conditions given (vocab mismatch +/or >tens-of-k chunks); lexical index explicitly kept as complementary layer for exact matches. No incorrect claims present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 9369,
+  "outputTokens": 265,
+  "durationMs": 25993,
+  "steps": 11,
+  "errors": []
+}

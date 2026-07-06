@@ -1,0 +1,162 @@
+---
+title: "Leadtype 0.3"
+description: "Release notes for Leadtype 0.3, focused on browser-side WebMCP docs tools, RSS and Atom feed generation, and URL-prefixed docs content."
+date: 2026-06-07
+---
+
+Leadtype 0.3 adds browser-side WebMCP docs tools, plus config-driven RSS and
+Atom feed generation for changelogs, release notes, blogs, news, and any
+generated docs content selected by canonical URL prefix. It also hardens docs
+search for large corpora with prototype-safe indexing and linear query
+scaling, validated by a new benchmark against real TanStack-scale docs.
+
+## Browser WebMCP
+
+- Added `leadtype/webmcp` for registering generated docs as browser-side
+  WebMCP tools with `document.modelContext` or `navigator.modelContext`.
+- Added default `search-docs` and `get-page` tools over the generated search
+  index and Markdown mirror, with bounded search limits, page-path validation,
+  and default known-page checks.
+- Added React, Vue, and Svelte lifecycle helpers so host apps can register and
+  clean up docs tools from framework-owned client entry points.
+- Added `leadtype init --webmcp` scaffolding for framework examples.
+- Documented the distinction between browser WebMCP and the server-side
+  `leadtype/mcp` endpoint.
+
+## Feeds
+
+- Added a `feeds` config field for `docs.config.ts` and `leadtype.config.ts`.
+- Added `leadtype/feed` with `generateFeedArtifacts()`, `renderRssFeed()`, and
+  `renderAtomFeed()` for custom pipelines.
+- Added site-mode generation for configured feeds, with generated paths reported
+  in JSON output under `files.feeds.<id>`.
+- Added RSS 2.0 and Atom output, including XML escaping, control-character
+  stripping, stable Atom entry IDs, absolute canonical links, feed-level author
+  metadata, and newest-first entry sorting.
+- Added support for mounted changelog URLs such as `/changelog`, so feed entries
+  do not have to live under `/docs`.
+
+## Date handling
+
+- Feed entries use stable frontmatter dates. Changelogs and release notes should
+  set an explicit `date` because the publication date is part of the release
+  record.
+- Pages where the feed should represent source edits can use Git-derived
+  `lastModified`; `leadtype generate` writes it automatically when git metadata
+  is available.
+- Generation fails when a selected feed page has no `date` or `lastModified`
+  frontmatter, so feed order does not churn based on CI-generated file mtimes.
+- The default docs lint schema now accepts optional `date` frontmatter, including
+  YAML dates parsed as `Date` values.
+
+## CLI defaults and deprecations
+
+- `leadtype generate` now enriches generated markdown with Git-derived
+  `lastModified` and `lastAuthor` by default. Enrichment is best-effort: missing
+  `.git` metadata, shallow history, untracked files, or a missing `git` binary
+  skip those fields without failing generation.
+- Git-derived `lastAuthor` now skips bot and automation commits, falling back
+  to the latest human author for the page while keeping `lastModified` tied to
+  the latest commit. Projects can add repo-specific automation names with
+  `git.ignoredAuthors` in `docs.config.ts`.
+- Package-mode MCP artifacts are inferred from `agents.mcp.enabled` in
+  `docs.config.ts`, so `leadtype generate --bundle` is enough for packages that
+  configure MCP support.
+- Deprecated shortcut flags that duplicate config or defaults:
+  `leadtype generate --mcp`, `leadtype generate --enrich-git`, and
+  `leadtype init --webmcp`. They still work for compatibility and print warnings;
+  new docs and scripts should use `docs.config.ts` or explicit app code instead.
+
+## Search reliability and scaling
+
+- Fixed a crash when indexed content or a search query contains a term that
+  collides with an `Object.prototype` member, such as `constructor`. The term
+  postings record is now built with a null prototype and query-time lookups,
+  including synonym expansion, use `Object.hasOwn` guards. Previously such a
+  term crashed both `createDocsSearchIndex` at build time and `searchDocs` in
+  the browser.
+- Made `searchDocs` latency scale linearly with corpus size. Chunk lookups now
+  use a cached map instead of a per-result linear scan, and excerpts are built
+  only for results that survive the limit. Ranking is unchanged. On a
+  20,000-chunk corpus this cuts p95 query latency from roughly 665 ms to 186 ms;
+  at the scale of the combined TanStack Router, Start, and Query docs
+  (about 5,000 chunks), median queries run in about 13 ms.
+- Added a search scalability benchmark (`pipeline:search-bench` in the TanStack
+  example) that measures index build time, artifact sizes, parse cost, memory,
+  and query latency across real and synthetically grown corpora.
+
+## Validation and safety
+
+- Agent Skills discovery manifests now emit the v0.2.0 format: the `$schema`
+  URL plus per-entry `type: "skill-md"`, a relative `url`, and a `sha256:` hex
+  `digest`, so spec-conformant clients (such as Vercel's `skills` tool) resolve
+  every entry. The pre-0.2.0 leadtype `path`/`integrity` fields are still
+  emitted alongside for older consumers, and skill descriptions over the spec's
+  1024-character cap now fail generation instead of being silently dropped by
+  clients.
+- Organization JSON-LD now supports `email`, `sameAs`, `contactPoint`, and
+  `address` fields from `docs.config.ts`, so hosted docs can publish direct
+  email contact details, brand-disambiguation links, and Schema.org
+  `ContactPoint`/`PostalAddress` data. These objects are emitted verbatim into
+  JSON-LD, so config validation rejects unknown `contactPoint`/`address` keys
+  (catching typos like `telphone`) and empty `address` objects.
+- Feed generation requires `--base-url` or a deployment URL environment
+  variable so RSS and Atom item links are absolute.
+- Search generation now treats `shared/` and `_shared/` route segments as
+  internal by default, so template content does not appear as duplicate public
+  search results or answer citations unless a page explicitly sets
+  `search: true`.
+- Feed output paths must start with `/`, end with `.xml`, resolve inside the
+  output directory, and be unique across all configured feeds.
+- Pages with `draft: true` are excluded from feeds when that field reaches
+  generated markdown.
+- Locale-prefixed generated pages are excluded from root feeds so localized
+  mirrors do not duplicate entries.
+
+## Crawler artifacts
+
+- Site-mode generation now writes `robots.txt`, `sitemap.xml`, and `sitemap.md`
+  at the output root only. Nested `/docs` sitemap and robots copies are no
+  longer emitted because crawlers treat the origin-root `robots.txt` as the
+  authoritative policy file.
+
+## Agent artifacts without a docs tree
+
+- Added `generateAgentArtifacts()` to `leadtype/llm` for sites without `.mdx`
+  docs — CMS-backed blogs, marketing sites, and data-driven pages. It takes an
+  in-memory page list and emits llms.txt (plus the `/.well-known` copy),
+  per-page Markdown mirrors at `${urlPath}.md` with `canonical_url` and
+  `last_updated` frontmatter, `sitemap.xml`, `sitemap.md`, `robots.txt` with
+  Content-Signals, and a root-level agent-readability manifest.
+- Page inputs fall back from explicit fields to frontmatter inside `content`
+  to the URL slug; duplicate, relative, and query-bearing routes fail loudly
+  before anything is written.
+- `emitRootCrawlerFiles: false` supports microfrontend fragments whose host
+  app owns the origin-level crawler files and merges fragment manifests.
+- Root URL mounts (`urlPrefix: "/"`) now resolve correctly instead of
+  emitting `//page` paths.
+
+## Docs reorganization
+
+- The docs are now organized by capability: Docs Pipeline, AEO & Agent
+  Readability, Writing for Agents, Search & AI Answers, Package Docs, and
+  Integrations. Because navigation drives `llms.txt` and `sitemap.md`, the
+  new structure is also the agent-facing index.
+- Added an AEO overview page mapping every agent artifact to the Vercel
+  agent-readability spec and the ora scoring rubric, with an audit workflow.
+- Page URLs moved (`/docs/build/*` and `/docs/sources/*` →
+  `/docs/pipeline|aeo|integrations/*`, `/docs/authoring/*` →
+  `/docs/writing/*`); leadtype.dev serves 301 redirects from every old path
+  and its `.md` mirror.
+
+## Dogfooding
+
+- The Leadtype docs now publish `/changelog/rss.xml` and
+  `/changelog/atom.xml` from the real changelog.
+- The Next.js, Astro, Nuxt, SvelteKit, and TanStack examples now generate the
+  changelog feeds. Next.js, Nuxt, SvelteKit, and TanStack smoke-test the feed
+  endpoints.
+- The TanStack custom pipeline calls `generateFeedArtifacts()` directly so the
+  lower-level API stays covered outside the CLI.
+- Added a task-focused guide for feed setup, feed date policy, output validation,
+  and verification steps.

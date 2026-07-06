@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied exactly: nav is identified as the curated driver for sidebar/llms.txt/AGENTS.md, group is correctly described as legacy/optional (fallback + search facets), and the unknown-group case is stated to produce a hard build failure with the exact error. No rubric violations or incorrect claims appear in the produced ANSWER.md.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 15,
+  "inputTokens": 44734,
+  "outputTokens": 246,
+  "durationMs": 52513,
+  "steps": 9,
+  "errors": []
+}

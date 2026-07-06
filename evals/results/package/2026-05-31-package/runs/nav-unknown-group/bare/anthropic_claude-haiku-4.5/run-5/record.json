@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": false,
+  "score": 35,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of sidebar/agent map and describes `group` as legacy/fallback, but it omits that `nav` also drives `llms.txt` sections (a required rubric detail). Most critically, it asserts that an unknown group 'will either fail or warn' and depends on configuration, directly contradicting the rubric's requirement that the build definitively fails with an error. This is a confident, factual error.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 3872,
+  "outputTokens": 288,
+  "durationMs": 24311,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is invoked first (writing public/docs/*.md), followed by generateLlmsTxt + generateLLMFullContextFiles (producing the two llms*.txt files) and generateDocsSearchFiles (search index). product/nav from docs.config.ts are imported and passed to the generators that need them. Conversion precedes the full-context/search calls, satisfying the explicit ordering rule. No CLI usage or invented APIs appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 32,
+  "inputTokens": 54648,
+  "outputTokens": 490,
+  "durationMs": 130498,
+  "steps": 19,
+  "errors": []
+}

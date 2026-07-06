@@ -1,0 +1,18 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "paths": {
+      "leadtype": ["../../packages/leadtype/src/index.ts"],
+      "leadtype/llm/readability": [
+        "../../packages/leadtype/src/llm/readability.ts"
+      ],
+      "leadtype/navigation": ["../../packages/leadtype/src/navigation/index.ts"]
+    },
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "scripts", "vite.config.ts"]
+}

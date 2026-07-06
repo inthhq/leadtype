@@ -1,0 +1,28 @@
+{
+  "name": "nuxt-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:generate": "leadtype generate --src ../.. --docs-dir docs --out public --base-url http://localhost:3000 --json",
+    "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run nuxt dev",
+    "build": "bun run --filter leadtype build && bun run docs:generate && nuxt build",
+    "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run nuxt preview",
+    "check-types": "bun run --filter leadtype build && bun run docs:generate && nuxt typecheck",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@nuxtjs/mdc": "^0.22.0",
+    "leadtype": "workspace:*",
+    "nuxt": "^4.0.0",
+    "vue": "^3.5.0",
+    "vue-router": "^5.0.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@repo/typescript-config": "workspace:*",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "typescript": "6.0.3",
+    "vue-tsc": "^3.1.5"
+  }
+}

@@ -1,0 +1,254 @@
+---
+title: "Generate static artifacts"
+description: "Run leadtype generate from your build pipeline to write llms.txt, markdown mirrors, search index, sitemap, and agent-readability files to disk."
+---
+
+Use this path when your runtime needs files on disk — a CDN-only deploy, a static export, a separate agent-only service, or multiple sibling apps sharing one corpus. The `leadtype generate` CLI walks your MDX source and writes a complete set of files into `public/`.
+
+If you'd rather render docs directly from your bundler, see [the source primitive](/docs/pipeline/use-the-source-primitive). For source-shape decisions (multi-folder, remote git, pinned refs), see [Configure docs sources](/docs/pipeline/configure-sources). For host-specific serving details, see [Deploy generated artifacts](/docs/pipeline/deploy-generated-artifacts).
+
+## The flow
+
+<Mermaid chart={`flowchart LR
+  repo["source repo<br/>docs/*.mdx"]
+  clone["checkout or clone<br/>.docs-src/c15t"]
+  lint["leadtype lint"]
+  generate["leadtype generate"]
+  public["public/<br/>llms.txt · llms-full.txt<br/>docs/*.md<br/>search · agent metadata"]
+  app["any consumer<br/>(docs app, agent, CDN)"]
+  repo --> clone --> lint --> generate --> public --> app`} />
+
+## Fetch the source repo
+
+In CI, check out the docs source before the build. For a public repo, a shallow clone is enough:
+
+```bash
+rm -rf .docs-src/c15t
+git clone --depth 1 https://github.com/c15t/c15t .docs-src/c15t
+```
+
+For private repos, use your CI platform's checkout action or a read-only deploy key. The important part is that leadtype receives a normal filesystem path whose root contains `docs/`.
+
+## Lint before generate
+
+Run lint against the fetched docs before writing generated output. Lint fails with file and line context, which is easier to debug than a later app build using stale artifacts:
+
+```bash
+npx leadtype lint .docs-src/c15t/docs \
+  --format github \
+  --error-unknown \
+  --max-warnings 0
+```
+
+## Generate
+
+Point `--src` at the fetched repo root and `--out` at the directory you'll serve:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --out public \
+  --base-url https://docs.example.com \
+  --json
+```
+
+That command writes:
+
+- `public/llms.txt` and `public/llms-full.txt`
+- `public/.well-known/api-catalog`
+- `public/docs/*.md`
+- `public/docs/search-index.json` and `public/docs/search-content.json`
+- `public/sitemap.xml`, `public/sitemap.md`, and `public/robots.txt`
+- `public/docs/agent-readability.json`
+- configured RSS/Atom feeds, such as `public/changelog/rss.xml`
+
+For feed-specific configuration and date rules, see [Generate RSS and Atom feeds](/docs/pipeline/generate-rss-atom-feeds).
+
+Use `--json` in CI so automation can record resolved groups, output files, filters, and search index stats.
+
+## Multi-source mounting
+
+Some projects keep docs and release notes side by side instead of putting everything under `docs/`:
+
+<FileTree root=".docs-src/c15t">
+  <Folder name="docs">
+    <File name="quickstart.mdx" />
+    <File name="docs.config.ts" />
+  </Folder>
+  <Folder name="changelog">
+    <File name="v1.mdx" />
+  </Folder>
+</FileTree>
+
+Repeat `--docs-dir` to include those folders in the same generated corpus:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --docs-dir docs \
+  --docs-dir changelog \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+By default, extra sources are mounted under `/docs/<folder>`, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1.md`.
+
+Use `<dir>=<url-prefix>` when the folder should keep its own public route:
+
+```bash
+npx leadtype generate \
+  --src .docs-src/c15t \
+  --docs-dir docs \
+  --docs-dir changelog=/changelog \
+  --out public \
+  --base-url https://docs.example.com
+```
+
+That still keeps an internal generated copy at `public/docs/changelog/v1.md` for search and runtime helpers, but it also writes `public/changelog/v1.md` and emits canonical links such as `/changelog/v1` and `/changelog/v1.md` in `llms.txt`, search metadata, sitemap entries, and `agent-readability.json`.
+
+Add `feeds` in config when that mounted content should publish RSS or Atom:
+
+```ts title="docs/docs.config.ts"
+export default {
+  product: {
+    name: "My product",
+    tagline: "Developer tools for modern apps.",
+  },
+  navigation: [
+    "index",
+    { title: "Changelog", base: "changelog", pages: [{ include: "*" }] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "My product changelog",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+};
+```
+
+Selected feed pages need stable frontmatter dates. Use explicit `date` values for changelogs and release notes. For pages where "updated at" should track source edits, default git enrichment writes `lastModified` when history is available. See [Generate RSS and Atom feeds](/docs/pipeline/generate-rss-atom-feeds) for the full feed contract.
+
+## Wire it into the build
+
+Make checkout, lint, and generation run before the framework build:
+
+```json
+{
+  "scripts": {
+    "docs:fetch": "rm -rf .docs-src/c15t && git clone --depth 1 https://github.com/c15t/c15t .docs-src/c15t",
+    "docs:lint": "leadtype lint .docs-src/c15t/docs --format github --error-unknown --max-warnings 0",
+    "docs:generate": "leadtype generate --src .docs-src/c15t --out public --base-url https://docs.example.com --json",
+    "build": "npm run docs:fetch && npm run docs:lint && npm run docs:generate && vite build"
+  }
+}
+```
+
+If the docs source and docs app live in the same repo, skip `docs:fetch` and point `--src` at `.`:
+
+```bash
+npx leadtype lint docs --error-unknown
+npx leadtype generate --src . --out public --base-url https://docs.example.com
+```
+
+## Concurrent invocation
+
+Parallel task graphs often invoke generation more than once at the same time — lint, typecheck, and build each declaring "docs are generated" as a prerequisite. `leadtype generate` is safe under that pattern:
+
+- **Runs are single-flight per output directory.** A cross-process lock (keyed by the resolved `--out` path, stored under the system temp dir — never inside the output directory) serializes concurrent runs. Later invocations wait for the in-flight run, then regenerate. Abandoned locks recover fast: an interrupted run (Ctrl-C, `SIGTERM`) releases its lock on the way out, a hard-killed run's lock is reclaimed as soon as its recorded process is gone, and an unidentifiable lock is reclaimed after 10 minutes without refresh. Waiting runs fail loudly after 15 minutes rather than hanging CI (`LEADTYPE_LOCK_TIMEOUT_MS` overrides this for very large sites).
+- **Every artifact is replaced atomically.** Files are written to a temp sibling and renamed into place, so a sibling build step reading the output directory (`tsc`, `next build`, a dev server watching `public/`) sees the old artifact or the new one — never a truncated file, and never a missing file for pages that still exist. Temp files leaked by a hard-killed run are swept at the start of the next locked run, so they never linger in a deployed `public/`.
+
+Set `LEADTYPE_NO_LOCK=1` to skip the lock — for example on network filesystems where directory-based locking is unreliable, or when your task runner already serializes generation.
+
+Even though concurrent runs are safe, they are redundant: each waits its turn and regenerates the same output. If your task graph supports it, prefer a single generation task that lint, typecheck, and build all depend on.
+
+## Use library APIs for custom pipelines
+
+The CLI is the happy path. Use the library APIs directly when you need custom plugin order, filters, or generated JSON paths. Keep conversion first — LLM files, search, and Agent Readability artifacts read the generated markdown:
+
+```ts
+import { convertAllMdx } from "leadtype/convert";
+import {
+  generateAgentReadabilityArtifacts,
+  generateLLMFullContextFiles,
+  generateLlmsTxt,
+  resolveDocsNavigation,
+} from "leadtype/llm";
+import { generateFeedArtifacts } from "leadtype/feed";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
+import { generateDocsSearchFiles } from "leadtype/search/node";
+import docsConfig from "../.docs-src/c15t/docs/docs.config";
+
+const sourceRoot = ".docs-src/c15t";
+const mounts = docsConfig.mounts;
+
+await convertAllMdx({
+  srcDir: `${sourceRoot}/docs`,
+  outDir: "public/docs",
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
+  enrichFrontmatterFromGit: true,
+});
+
+await generateLlmsTxt({
+  srcDir: sourceRoot,
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  nav: docsConfig.nav,
+  mounts,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: { name: docsConfig.product.name },
+  nav: docsConfig.nav,
+  mounts,
+});
+
+await generateDocsSearchFiles({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  mounts,
+});
+
+await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  product: docsConfig.product,
+  nav: docsConfig.nav,
+  mounts,
+});
+
+await generateFeedArtifacts({
+  outDir: "public",
+  baseUrl: "https://docs.example.com",
+  feeds: docsConfig.feeds,
+  mounts,
+});
+
+const navigation = await resolveDocsNavigation({
+  srcDir: sourceRoot,
+  baseUrl: "https://docs.example.com",
+  nav: docsConfig.nav,
+  mounts,
+});
+```
+
+## Verify
+
+After a clean build, inspect these files:
+
+- `public/docs/index.md` — converted markdown for the source repo home page
+- `public/llms.txt` — hosted routing index with page-level markdown links
+- `public/llms-full.txt` — all generated markdown docs in one fallback file
+- `public/docs/search-index.json` and `public/docs/search-content.json` — non-empty search files
+- `public/docs/agent-readability.json` — manifest for markdown responses, JSON-LD, sitemap, and robots helpers
+- configured feed files such as `public/changelog/rss.xml` and `public/changelog/atom.xml`

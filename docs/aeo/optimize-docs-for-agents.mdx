@@ -1,0 +1,246 @@
+---
+title: "Optimize docs for agents"
+description: "Generate llms.txt, markdown mirrors, JSON-LD inputs, sitemaps, robots.txt, and agent-readability.json from one CLI run."
+---
+
+Use this guide when you already have a docs site and want agents to find, fetch, attribute, and cite the same content humans read in the browser.
+
+Leadtype generates the files. Your app wires those files into routing and HTML — that runtime side is covered in [Serve agent responses](/docs/aeo/serve-agent-responses).
+
+This guide is about the *plumbing* — the files agents fetch. For the content inside them, [Write for agents](/docs/writing/write-for-agents) covers the one rule that moved the evals: document the non-obvious, not restatements of your types or CLI help.
+
+The default output shape is based on the repo's agent evals. See [Evals](/docs/concepts/evals) for the benchmark summary and the open question around larger-corpus `llms-full.txt` scaling.
+
+## What good looks like
+
+An agent-readable docs site has four layers:
+
+<Steps>
+  <Step title="Discovery files">
+    `/llms.txt`, `/.well-known/api-catalog`, `/sitemap.xml`, `/sitemap.md`, and `/robots.txt` tell agents what exists and where to start.
+  </Step>
+  <Step title="Markdown retrieval">
+    Each docs page has a markdown mirror at `/docs/page.md`, and agent requests to `/docs/page` can receive markdown instead of HTML.
+  </Step>
+  <Step title="Structured HTML metadata">
+    Human HTML pages include JSON-LD, canonical links, and markdown alternate links so agents can extract page identity without guessing from the DOM.
+  </Step>
+  <Step title="Attribution metadata">
+    Markdown responses include `canonical_url` and `last_updated` frontmatter so copied content keeps its source and freshness.
+  </Step>
+</Steps>
+
+## Generate the artifacts
+
+Run the site-mode pipeline before your app build:
+
+```bash
+npx leadtype generate \
+  --src . \
+  --out public \
+  --base-url https://leadtype.dev \
+  --name "My product" \
+  --summary "One sentence about the product."
+```
+
+This writes root crawler files, root LLM entry points, and docs artifacts under `public/docs/`:
+
+```txt
+public/
+├── .well-known/
+│   ├── api-catalog
+│   └── llms.txt
+├── llms.txt
+├── llms-full.txt
+├── sitemap.xml
+├── sitemap.md
+├── robots.txt
+└── docs/
+    ├── index.md
+    ├── quickstart.md
+    ├── llms.txt
+    └── agent-readability.json
+```
+
+The generated `agent-readability.json` manifest is the bridge between build-time content and runtime requests. It contains page URLs, markdown mirror paths, titles, descriptions, navigation, and freshness dates. Your framework loads it once and passes it to the runtime helpers (markdown responses, JSON-LD, sitemap, robots):
+
+```jsonc
+{
+  "version": 1,
+  "generatedAt": "2026-05-29T09:36:07.521Z",
+  "baseUrl": "https://leadtype.dev",
+  "product": { "name": "My product", "summary": "One sentence." },
+  "navigation": { "groups": [ /* … nav tree … */ ] },
+  "files": {
+    "apiCatalog": "/.well-known/api-catalog",
+    "robotsTxt": "/robots.txt",
+    "sitemapMd": "/sitemap.md",
+    "sitemapXml": "/sitemap.xml"
+  },
+  "pages": [
+    {
+      "title": "Quickstart",
+      "description": "Build an agent-ready docs site from one MDX page.",
+      "urlPath": "/docs/quickstart",
+      "absoluteUrl": "https://leadtype.dev/docs/quickstart",
+      "markdownUrlPath": "/docs/quickstart.md",
+      "markdownAbsoluteUrl": "https://leadtype.dev/docs/quickstart.md",
+      "relativePath": "quickstart",
+      "groups": ["start"],
+      "lastModified": "2026-05-29T09:36:07.000Z"
+    }
+  ]
+}
+```
+
+Static crawlers should start at root `/robots.txt` and `/sitemap.xml`, which `leadtype generate` writes. Web Linking-aware agents can start from your homepage `Link` header and follow `rel="api-catalog"` to `/.well-known/api-catalog`.
+
+Pass it through `normalizeAgentReadabilityManifest()` before handing it to a runtime helper — that validates the shape and fills defaults.
+
+Once these files exist, see [Serve agent responses](/docs/aeo/serve-agent-responses) to wire markdown content negotiation, JSON-LD, and per-request sitemap/robots into your framework.
+
+## Configure the agent surface
+
+The agent surface is driven by four top-level blocks in `docs.config.ts`: **`product`** (identity), **`organization`** (who publishes it), **`llms`** (the `llms.txt` body), and **`agents`** (robots / SEO / MCP / skills toggles). Everything beyond the required `product.name` and `product.tagline` is optional with zero-config defaults — add a key only to change one.
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  // Identity — authored once, reused in llms.txt, JSON-LD, and the agent card.
+  product: {
+    name: "Acme",
+    tagline: "…",
+    homepage: "https://acme.dev",
+    docs: "https://acme.dev/docs",
+    kind: "library", // -> JSON-LD SoftwareApplication + SoftwareSourceCode
+    category: "DeveloperApplication",
+  },
+  // Who publishes it -> JSON-LD Organization + agent-card provider.
+  organization: { name: "Acme Inc", url: "https://acme.com" },
+  navigation: [/* … */],
+  // The authored llms.txt body.
+  llms: { sections: [/* markdown + links sections */] },
+  agents: {
+    robots: { policy: "balanced", signals: { aiTrain: "no" } },
+    seo: { ogImage: "https://acme.dev/og.png", twitterSite: "@acme", keywords: ["docs"] },
+    mcp: { enabled: true },
+    agentCard: { enabled: true },
+    skills: { docsSkill: true, items: [/* your capability skills */] },
+  },
+});
+```
+
+| Block | Controls | Default |
+| --- | --- | --- |
+| `product` | identity (name / tagline / links / kind / category) → llms.txt header, JSON-LD software node, agent card | `name` + `tagline` required |
+| `organization` | publisher → JSON-LD `Organization` + agent-card `provider` | optional |
+| `llms.sections` | the authored `llms.txt` body ([reference](/docs/reference/llm#llmssections)) | empty |
+| `agents.robots` | robots.txt crawler policy + Content-Signals ([below](#control-ai-crawler-access)) | `balanced` (crawlable, `ai-train=no`) |
+| `agents.seo` | `og:image` / `twitter` / `keywords` head meta | `og:type` + `twitter:card` always; rest off |
+| `agents.mcp` | `{ enabled, endpoint, serverInfo, authentication }` — emits MCP discovery and points agent surfaces at your MCP endpoint ([MCP](/docs/reference/mcp)) | off |
+| `agents.agentCard` | `{ enabled, version }` — the `/.well-known/agent-card.json` | emitted |
+| `agents.skills` | the `/.well-known/agent-skills` surface ([skills](/docs/reference/skills)) | docs-skill emits |
+
+Per-page JSON-LD always emits; the site-level graph is derived from `product` + `organization`. Omit these blocks (beyond the required `product` fields) and you still get balanced robots/Content-Signals, the JSON-LD graph, per-page metadata, the auto docs-skill, and the agent card.
+
+## Control AI crawler access
+
+By default (`balanced`), `robots.txt` keeps the site fully crawlable and emits a [Content-Signals](https://contentsignals.org) line — `Content-Signal: ai-train=no, search=yes, ai-input=yes` — so retrieval is welcome but you signal "don't train on this". Change the stance with the additive `agents.robots` config:
+
+```ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Acme", tagline: "…" },
+  agents: {
+    robots: {
+      policy: "block-training", // balanced · open · block-training · block-ai
+      signals: { aiInput: "yes" }, // override individual directives
+    },
+    // Site-wide SEO/social defaults, emitted on every page head by createDocsHead.
+    seo: {
+      ogImage: "https://acme.dev/og.png", // emitted as a URL; you supply the image
+      twitterSite: "@acme",
+      keywords: ["acme", "docs"],
+    },
+  },
+});
+```
+
+- **`balanced`** (default) — crawlable + retrievable; signals `ai-train=no`.
+- **`open`** — also welcomes training (`ai-train=yes`).
+- **`block-training`** — `Disallow: /` for training crawlers (GPTBot, Google-Extended, CCBot, ByteSpider/Bytespider, anthropic-ai, MetaExternalAgent, Applebot-Extended); retrieval crawlers stay allowed.
+- **`block-ai`** — `Disallow: /` for every AI crawler; conventional search engines are untouched; signals `ai-input=no, ai-train=no`.
+
+The same stance drives the `Content-Signal` response header on served markdown (see [Serve agent responses](/docs/aeo/serve-agent-responses)), so robots.txt and live responses never disagree. Robots `Disallow` is advisory — pair `block-*` with your CDN/WAF if you need hard enforcement.
+
+## Make the index worth reading
+
+`llms.txt` is the first thing an indexing model reads, so it should do more than list links. Use the top-level `llms.sections` array in `docs.config.ts` to describe the body in order — what the project is, why it's credible, and where to start:
+
+```ts title="docs/docs.config.ts"
+product: {
+  name: "My product",
+  tagline: "Developer-first tooling for modern apps.",
+},
+llms: {
+  sections: [
+    { type: "markdown", heading: "Overview", body: "- What it does\n- Who it's for" },
+    {
+      type: "markdown",
+      heading: "Popularity",
+      body: "12k GitHub stars · 90k weekly npm downloads. Hosted by [Acme](https://acme.com).",
+    },
+    {
+      type: "links",
+      heading: "Best Starting Points",
+      links: [{ urlPath: "/docs/quickstart" }],
+    },
+  ],
+}
+```
+
+Sections render in array order. A `links` section and a `markdown` section with a `heading` each become an `## heading` block; a `markdown` section without a `heading` renders its body inline, with no heading. Use `markdown` sections for anything an indexer should weigh — adoption (stars, downloads), hosting provider, license, positioning — and `links` sections for curated entry points resolved against your docs. Popularity numbers are author-supplied; fetch them at build time in the config module if you want them live. Full field reference: [LLM files → llms.sections](/docs/reference/llm#llmssections).
+
+## Verify locally
+
+Start the docs site, then check the URLs agents use:
+
+```bash
+curl http://localhost:5173/llms.txt
+curl http://localhost:5173/sitemap.xml
+curl http://localhost:5173/sitemap.md
+curl -I -H "Accept: text/markdown" http://localhost:5173/docs/quickstart
+curl http://localhost:5173/docs/quickstart.md
+curl -H "User-Agent: ChatGPT-User" http://localhost:5173/docs/quickstart
+```
+
+Expected results:
+
+- `llms.txt` links point to existing `.md` URLs.
+- Root sitemap and robots routes resolve.
+- Markdown responses use `Content-Type: text/markdown; charset=utf-8`.
+- Markdown frontmatter contains `canonical_url` and `last_updated`.
+- HTML pages contain one `application/ld+json` script.
+- Missing docs pages return a markdown body for agent-oriented requests.
+
+Then run the Vercel Agent Readability audit against the docs entry point:
+
+```bash
+npx @vercel/agent-readability audit http://localhost:5173/docs
+```
+
+If the audit reports broken links from `llms.txt`, check whether your generated URLs use the production `--base-url` while your local audit expects `localhost`. For local dev, serve root sitemap/robots files from the current request origin, or run the audit against a preview URL that matches `--base-url`.
+
+## Minimal checklist
+
+- Generate `llms.txt`, markdown mirrors, `llms-full.txt`, sitemap, robots, and `agent-readability.json`.
+- Serve root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+- Add JSON-LD to every docs HTML page.
+- Add canonical and markdown alternate links to every docs HTML page.
+- Return markdown for agent Accept headers, AI user agents, and `.md` URLs.
+- Include `canonical_url` and `last_updated` in markdown frontmatter.
+- Return markdown bodies for missing docs pages requested by agents.
+
+For the wiring that satisfies the middleware/JSON-LD/markdown lines of this checklist, see [Serve agent responses](/docs/aeo/serve-agent-responses).

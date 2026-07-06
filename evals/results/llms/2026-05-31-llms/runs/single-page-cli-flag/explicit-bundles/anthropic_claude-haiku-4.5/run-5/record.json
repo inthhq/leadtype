@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and lists many output-path fields. However, it invents a field name 'agentReadabilityJson' instead of the documented 'agentReadabilityManifest', and also includes 'sitemapMd' which is not part of the standard output shape. Because it fabricates fields, it fails the rubric's 'Incorrect if' rule.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3032,
+  "outputTokens": 136,
+  "durationMs": 8584,
+  "steps": 5,
+  "errors": []
+}

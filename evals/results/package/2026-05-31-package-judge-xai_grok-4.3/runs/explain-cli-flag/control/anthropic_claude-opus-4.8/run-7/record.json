@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names (lastModified, lastAuthor) are stated, they are described as being added to frontmatter, and their source is explicitly the git history (via the git log command and commit metadata). No invented fields, no wrong provenance, and the paragraph is written to ANSWER.md as requested.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 4,
+  "inputTokens": 11762,
+  "outputTokens": 258,
+  "durationMs": 18799,
+  "steps": 5,
+  "errors": []
+}

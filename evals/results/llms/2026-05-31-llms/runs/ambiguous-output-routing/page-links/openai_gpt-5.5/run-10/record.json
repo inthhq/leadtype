@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "openai/gpt-5.5",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly directs the user to the LLM files reference area (e.g., /docs/reference/llm.md) and explicitly advises against the Search docs area. It clearly explains that the monolithic /llms-full.txt is a fallback used only when page-level links are insufficient, not the default path. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 2362,
+  "outputTokens": 6,
+  "durationMs": 22336,
+  "steps": 5,
+  "errors": []
+}

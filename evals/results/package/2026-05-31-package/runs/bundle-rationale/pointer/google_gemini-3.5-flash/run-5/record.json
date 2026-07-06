@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt is a website/HTTP convention with absolute/root-relative URLs and not looked for in node_modules, meeting point 1. It describes AGENTS.md using relative paths, enabling offline/version-matched access, satisfying point 2. It explicitly lists skipped artifacts including llms.txt and llms-full.txt, and justifies why, covering point 3. No incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 17099,
+  "outputTokens": 381,
+  "durationMs": 22004,
+  "steps": 9,
+  "errors": []
+}

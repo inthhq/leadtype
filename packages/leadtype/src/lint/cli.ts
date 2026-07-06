@@ -1,8 +1,18 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
+import type { PluggableList } from "unified";
+import { loadLeadtypeConfig } from "../cli/generate";
 import { setLogFormat, setVerbose } from "../internal/logger";
+import { getFlattenerNames } from "../internal/remark-phase";
+import { resolveAllCollections } from "../sync/sync";
 import { type ReporterFormat, renderReport } from "./reporters";
-import { DEFAULT_IGNORE_GLOBS, type LintSeverity, lintDocs } from "./runner";
+import {
+  DEFAULT_IGNORE_GLOBS,
+  type LintResult,
+  type LintSeverity,
+  type LintViolation,
+  lintDocs,
+} from "./runner";
 
 const DEFAULT_IGNORE_GLOBS_TEXT = DEFAULT_IGNORE_GLOBS.join(", ");
 const STDOUT_FORMATS = new Set<ReporterFormat>(["github", "json"]);
@@ -144,16 +154,75 @@ export async function runLintCommand(
   }
 
   const resolvedSrcDir = resolve(args.srcDir);
-  const result = await lintDocs({
-    srcDir: resolvedSrcDir,
-    // Resolve changelog against the source root so `--changelog changelog`
-    // points inside the src tree, not inside the process cwd.
-    changelogDir: args.changelogDir
-      ? resolve(resolvedSrcDir, args.changelogDir)
-      : undefined,
-    ignore: args.ignore,
-    unknownFieldSeverity: args.unknownFieldSeverity,
-  });
+
+  // Look for the project-level leadtype.config.* under the user's --src so a
+  // monorepo invocation like `leadtype lint --src packages/foo` lints that
+  // package's collections rather than the repo-root project.
+  const projectConfig = await loadLeadtypeConfig(resolvedSrcDir);
+  const collections = projectConfig?.config.collections;
+
+  // Custom-flattener component names, so the `unflattened-component` rule
+  // doesn't warn on components the project has actually wired a flattener for.
+  const knownComponentSet = new Set<string>();
+  const addFlattenerNames = (plugins?: PluggableList): void => {
+    for (const entry of plugins ?? []) {
+      for (const name of getFlattenerNames(entry)) {
+        knownComponentSet.add(name);
+      }
+    }
+  };
+  addFlattenerNames(projectConfig?.config.flatteners);
+  for (const collection of Object.values(collections ?? {})) {
+    addFlattenerNames(collection.flatteners);
+  }
+  const knownComponents = [...knownComponentSet];
+
+  let result: LintResult;
+  if (collections && Object.keys(collections).length > 0) {
+    const configDir = resolve(projectConfig.path, "..");
+    const resolved = resolveAllCollections(collections, configDir);
+    const combined: LintViolation[] = [];
+    let filesScanned = 0;
+    let errors = 0;
+    let warnings = 0;
+    for (const entry of resolved) {
+      io.stderr.write(
+        `Linting collection [${entry.key}] at ${entry.absoluteDir}\n`
+      );
+      const each = await lintDocs({
+        srcDir: entry.absoluteDir,
+        ignore: args.ignore,
+        unknownFieldSeverity: args.unknownFieldSeverity,
+        knownComponents,
+        schemas: entry.collection.schema
+          ? { frontmatter: entry.collection.schema }
+          : undefined,
+      });
+      for (const violation of each.violations) {
+        combined.push({
+          ...violation,
+          message: `[collection:${entry.key}] ${violation.message}`,
+        });
+      }
+      filesScanned += each.summary.filesScanned;
+      errors += each.summary.errors;
+      warnings += each.summary.warnings;
+    }
+    result = {
+      violations: combined,
+      summary: { filesScanned, errors, warnings },
+    };
+  } else {
+    result = await lintDocs({
+      srcDir: resolvedSrcDir,
+      changelogDir: args.changelogDir
+        ? resolve(resolvedSrcDir, args.changelogDir)
+        : undefined,
+      ignore: args.ignore,
+      unknownFieldSeverity: args.unknownFieldSeverity,
+      knownComponents,
+    });
+  }
 
   const output = renderReport(args.format, result);
   // Machine-readable formats go to stdout so they can be piped; the pretty

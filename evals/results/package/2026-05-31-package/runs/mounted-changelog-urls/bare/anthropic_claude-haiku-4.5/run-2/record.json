@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The invocation uses an invented flag `--mount` instead of the required `--docs-dir changelog=/changelog` repeated mount syntax. The emission details do not match the ground truth (e.g., internal copy at `public/docs/changelog/v1.md`, mirror at `public/changelog/v1.md`, `.md` extension). The canonical URL is correctly identified as under `/changelog/`, but the overall answer is incorrect and presents a non-existent flag.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 4801,
+  "outputTokens": 307,
+  "durationMs": 26924,
+  "steps": 13,
+  "errors": []
+}

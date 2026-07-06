@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the curated groups config as the driver of sidebar/nav, and correctly states that unknown group causes a build failure. However, it explicitly claims that the group frontmatter field is 'not legacy', contradicting the rubric's requirement to identify it as a legacy/optional field still useful for fallback or search taxonomy. This is a confident misstatement, making the answer incorrect overall. Score reflects that two of three required points were met, but a key part of the relationship is misrepresented.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 44,
+  "inputTokens": 68346,
+  "outputTokens": 245,
+  "durationMs": 190940,
+  "steps": 41,
+  "errors": []
+}

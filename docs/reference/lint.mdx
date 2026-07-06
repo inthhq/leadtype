@@ -1,10 +1,15 @@
 ---
 title: "Lint rules"
 description: "Schema, link, and navigation checks. CLI and library API."
-group: reference
+status: updated
+related:
+  - title: "Frontmatter"
+    href: "/docs/writing/frontmatter"
+    description: "See the default fields that lint validates."
+  - title: "Validate in CI"
+    href: "/docs/pipeline/validate-in-ci"
+    description: "Run lint before generated artifacts reach production."
 ---
-
-# Lint rules
 
 `leadtype lint` validates source MDX before generation. Run it in CI to fail PRs on schema and link issues before they reach a build. CLI flags are documented in the [CLI reference](/docs/reference/cli) — this page covers the rules, schemas, and library API.
 
@@ -33,8 +38,19 @@ Grouped by what they catch.
 | `invalid-link` | error | A `/docs/...` link points to a route that doesn't exist. |
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
+| `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
+| `jsonld` | warn | The page's frontmatter would emit invalid JSON-LD — most often a `lastModified`/`last_updated` value that isn't a valid date, producing a broken `dateModified`. Broken schema is worse than none. |
+| `geo:heading-skip` | warn | A heading jumps a level (e.g. `H2` → `H4`). Keep the hierarchy sequential so answer engines can parse the topic tree. |
+| `geo:code-language` | warn | A fenced code block has no language label (a bare fence). Tag it with the language (e.g. `ts`) so engines surface it for the right stack. |
+| `geo:image-alt` | warn | An image has no alt text. Answer engines can't see images — describe what it conveys. |
 
-Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
+### GEO rules
+
+The `geo:*` rules are the **mechanical** half of [Write for agents & GEO](/docs/writing/write-for-agents#how-to-structure-for-answer-engines-geo) — the structure signals a linter can check. The editorial ones (lead-with-the-answer, question-form headings) can't be linted; that's what the guide is for. All three are warn-level: legitimate exceptions exist, so they never fail the build by default (gate with `--max-warnings` if you want them to). The same checks feed the **Structure** portion of [`leadtype score`](/docs/reference/cli#score).
+
+Linting renders MDX through the [default markdown transform stack](/docs/reference/markdown) before walking links — same flattening the converter performs, so link checks see the final URLs.
+
+The `unflattened-component` rule walks the MDX AST, so components inside code fences or inline code are examples — not rendered JSX — and never warn. It recognizes the built-in [tag contract](/docs/writing/components#the-naming-contract) plus any custom `defineComponentFlattener` plugins declared in your config.
 
 ## Library API
 
@@ -73,7 +89,12 @@ type LintResult = {
       | "parse-error"
       | "invalid-link"
       | "unresolved-placeholder"
-      | "cross-framework-link";
+      | "cross-framework-link"
+      | "unflattened-component"
+      | "jsonld"
+      | "geo:heading-skip"
+      | "geo:code-language"
+      | "geo:image-alt";
     field?: string;
     message: string;
   }>;
@@ -96,18 +117,20 @@ Required-field failures are reported as `schema` violations — that's the publi
 | `title` | Yes | non-empty string |
 | `description` | No | string |
 | `icon` | No | string |
-| `deprecated` | No | boolean |
-| `deprecatedReason` | No | string |
-| `experimental` | No | boolean |
-| `canary` | No | boolean |
-| `new` | No | boolean |
-| `draft` | No | boolean |
+| `status` | No | `new`, `updated`, or `experimental` |
+| `deprecated` | No | non-empty string |
+| `date` | No | ISO-8601 or parseable date |
 | `tags` | No | string array |
 | `group` | No | string or string array |
-| `availableIn` | No | array of `{ framework, url?, title? }` |
+| `variants` | No | array of `{ value, label?, href, description? }` |
+| `related` | No | array of `{ title, href, description? }` |
 | `full` | No | boolean |
 
-`lastModified` and `lastAuthor` are produced by the converter when `--enrich-git` is set. Don't author them.
+`lastModified` and `lastAuthor` are produced by `leadtype generate` when git metadata is available. Don't author them.
+
+Page `status` is editorial metadata. Release channels such as canary, RC,
+preview, and stable should be modeled in build config or transformers, not in
+source-authored page status.
 
 ### Changelog frontmatter
 
@@ -162,7 +185,7 @@ Once you provide a custom schema, `unknown-field` warnings apply to *that* schem
 
 - Run lint **before** `leadtype generate` so content errors fail fast.
 - Use `--format github` in GitHub Actions and `--format json` in any other CI.
-- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `availableIn` or a stale URL template.
+- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `variants` or a stale URL template.
 - After a docs move, lint and run `meta.json` updates together; they drift at the same time.
 
-For wiring lint into pipelines, see [Validate in CI](/docs/build/validate-in-ci).
+For wiring lint into pipelines, see [Validate in CI](/docs/pipeline/validate-in-ci).

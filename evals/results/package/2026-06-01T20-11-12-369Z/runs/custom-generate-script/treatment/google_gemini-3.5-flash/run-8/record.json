@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first, which satisfies the ordering requirement, but the subsequent generator calls (generateLlmsTxt with srcDir '.', generateLLMFullContextFiles, and generateDocsSearchFiles) do not point to the converted markdown in public/docs/. They likely read from the source docs/ directory, making the conversion output unused. The rubric requires that the generators read from the already-converted markdown in <outDir>/docs/, so the script is incorrect. No hedging or uncertainty is present.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 29,
+  "inputTokens": 644064,
+  "outputTokens": 14706,
+  "durationMs": 116564,
+  "steps": 30,
+  "errors": []
+}

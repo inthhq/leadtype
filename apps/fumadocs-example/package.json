@@ -1,0 +1,35 @@
+{
+  "name": "fumadocs-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:generate": "leadtype generate --src ../.. --docs-dir docs --out public --base-url http://localhost:3000 --json",
+    "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next dev --webpack",
+    "build": "bun run --filter leadtype build && bun run docs:generate && next build --webpack",
+    "start": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next start",
+    "check-types": "bun run --filter leadtype build && bun run docs:generate && tsgo --noEmit"
+  },
+  "dependencies": {
+    "@next/mdx": "^16.2.6",
+    "@tailwindcss/postcss": "^4.3.0",
+    "fumadocs-core": "^16.0.0",
+    "fumadocs-ui": "^16.0.0",
+    "leadtype": "workspace:*",
+    "next": "^16.2.6",
+    "next-mdx-remote-client": "^2.1.10",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^25.6.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "typescript": "6.0.3"
+  }
+}

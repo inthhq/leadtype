@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website convention with absolute URLs that is inappropriate inside a tarball, while AGENTS.md uses relative links and works offline version-matched. It explicitly states that --bundle skips llms.txt, llms-full.txt, and other site-only artifacts. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 8321,
+  "outputTokens": 401,
+  "durationMs": 25075,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent did not write the required ANSWER.md file or provide any explanation of the --enrich-git flag. Instead, it produced a JavaScript script to search for documentation, which is off-topic and does not address the rubric's required points (naming both frontmatter fields, stating they come from git history, and specifying they are added to frontmatter). None of the rubric criteria were met.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 23863,
+  "outputTokens": 756,
+  "durationMs": 138407,
+  "steps": 50,
+  "errors": []
+}

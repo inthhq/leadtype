@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the first paragraph correctly identifies llms.txt as an HTTP/website convention using absolute URLs that nothing looks for inside node_modules, while AGENTS.md is the on-disk convention with relative links that works offline and version-matched. The second paragraph explicitly lists the artifacts --bundle skips (llms.txt, llms-full.txt plus search/sitemap/robots/agent-readability) and explains they are URL-anchored web artifacts. No rubric violations or incorrect claims appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 19427,
+  "outputTokens": 360,
+  "durationMs": 27658,
+  "steps": 5,
+  "errors": []
+}

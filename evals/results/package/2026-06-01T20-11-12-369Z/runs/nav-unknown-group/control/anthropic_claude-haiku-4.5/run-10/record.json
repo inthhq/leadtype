@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies `nav` as curated driver and `group` as legacy/optional. However, it fails to mention that `nav` drives `llms.txt` sections (a required point), and it incorrectly asserts that an unknown group does **not** fail the build, stating it only logs a warning. According to the rubric, an unknown group causes a build failure with an error. This directly violates a required rubric point, and the mistake is presented without hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 322415,
+  "outputTokens": 3064,
+  "durationMs": 67869,
+  "steps": 16,
+  "errors": []
+}

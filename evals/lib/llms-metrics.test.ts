@@ -7,7 +7,10 @@ import {
   selectionMatchesVariant,
   summarizeLlmsReads,
 } from "./llms-metrics";
-import { materializeLlmsVariant } from "./llms-variants";
+import {
+  materializeDiscoveryRoot,
+  materializeLlmsVariant,
+} from "./llms-variants";
 import type { ToolCall, Transcript } from "./transcript";
 
 let tempDir: string;
@@ -21,7 +24,6 @@ afterEach(async () => {
 });
 
 const expected: LlmsExpected = {
-  answerPatterns: [],
   expectedGroups: ["reference"],
   expectedPages: ["docs/reference/cli.md"],
 };
@@ -65,6 +67,28 @@ describe("llms variant materialization", () => {
     );
     expect(monolith).toContain("All generated markdown docs pages");
     expect(monolith).toContain("isAgentReadabilityArtifactPath");
+  });
+
+  it("materializes a realistic discovery root (docs, llms.txt, sitemap, robots)", async () => {
+    await materializeDiscoveryRoot({ tempDir });
+
+    const llms = await readFile(path.join(tempDir, "llms.txt"), "utf-8");
+    expect(llms).toContain("/docs/reference/cli.md");
+
+    const robots = await readFile(path.join(tempDir, "robots.txt"), "utf-8");
+    expect(robots).toContain("Sitemap: /sitemap.xml");
+
+    const sitemap = await readFile(path.join(tempDir, "sitemap.xml"), "utf-8");
+    expect(sitemap).toContain("<loc>/llms.txt</loc>");
+    expect(sitemap).toContain("<loc>/docs/reference/cli.md</loc>");
+
+    // The actual page content exists too, so consulting llms.txt is a real
+    // choice rather than the only readable file.
+    const page = await readFile(
+      path.join(tempDir, "docs", "reference", "cli.md"),
+      "utf-8"
+    );
+    expect(page.length).toBeGreaterThan(0);
   });
 
   it("writes section indexes with page links and optional full context", async () => {
@@ -131,6 +155,25 @@ describe("selectionMatchesVariant", () => {
     const result = selectionMatchesVariant(transcript, expected);
     expect(result.passed).toBe(false);
     expect(result.wrongGroupReads).toEqual(["build"]);
+  });
+
+  it("ignores failed reads — a 404 of the intended page is not a match", () => {
+    const transcript = transcriptFor(
+      ["/llms.txt", "/docs/reference/cli.md"],
+      "page-links"
+    );
+    // The agent tried the right path but the read failed (e.g. wrong path
+    // shape for this variant). A failed read is not evidence it followed
+    // the intended route.
+    const cliRead = transcript.toolCalls.find(
+      (c) => c.args.path === "/docs/reference/cli.md"
+    );
+    if (cliRead) {
+      cliRead.isError = true;
+      cliRead.resultSummary = "error: ENOENT";
+    }
+
+    expect(selectionMatchesVariant(transcript, expected).passed).toBe(false);
   });
 
   it("summarizes page, root, and group reads", () => {

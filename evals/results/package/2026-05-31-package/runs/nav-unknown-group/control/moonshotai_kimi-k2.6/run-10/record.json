@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of sidebar and agent map, and group as legacy fallback. It also correctly states that an unknown group causes a build failure. However, it adds an incorrect exception that if groups are entirely omitted and only nav is used, unknown group values are silently ignored. According to the rubric's ground truth, such an exception does not exist; an unknown group always causes a build failure. This confident assertion of false information makes the response incorrect overall.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 68150,
+  "outputTokens": 480,
+  "durationMs": 79279,
+  "steps": 12,
+  "errors": []
+}

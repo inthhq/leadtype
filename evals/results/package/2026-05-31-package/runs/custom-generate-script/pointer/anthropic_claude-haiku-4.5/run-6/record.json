@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first to generate the markdown mirrors under public/docs/, then calls generateLlmsTxt and generateLLMFullContextFiles (passing product and nav from docs.config.ts), and finally generates the search index via generateDocsSearchFiles. The ordering satisfies the requirement that conversion precedes the generators that read the converted markdown. All required library APIs are used and no CLI shelling occurs. The extra agent readability artifacts are irrelevant to correctness.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 25679,
+  "outputTokens": 565,
+  "durationMs": 37526,
+  "steps": 16,
+  "errors": []
+}

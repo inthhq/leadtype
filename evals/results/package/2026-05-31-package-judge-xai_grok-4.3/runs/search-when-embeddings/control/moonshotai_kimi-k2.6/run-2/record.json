@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly identifies the default as a static/local BM25 lexical index with no DB, states the precise conditions (scale breach past the documented thresholds or semantic/paraphrased query failures), and explicitly requires keeping the lexical/BM25 index as a complementary/fallback layer. The agent's thresholds (10k chunks) and examples align closely enough with the ground-truth wording without introducing any forbidden claims such as 'vector DB by default' or 'replace lexical with embeddings'.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 34,
+  "inputTokens": 64840,
+  "outputTokens": 324,
+  "durationMs": 120399,
+  "steps": 23,
+  "errors": []
+}

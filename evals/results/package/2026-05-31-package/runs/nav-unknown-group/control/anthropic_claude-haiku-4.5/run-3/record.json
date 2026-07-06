@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of navigation and `group` as legacy/optional taxonomy, but it incorrectly claims that an unknown group does not cause a build failure (required point 3). It states the build completes successfully, which directly contradicts the rubric's ground truth that the build fails with an error. This error is stated confidently, not hedged.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 42108,
+  "outputTokens": 422,
+  "durationMs": 50236,
+  "steps": 18,
+  "errors": []
+}

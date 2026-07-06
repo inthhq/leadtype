@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script does not import or call any leadtype library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) as required by the task and rubric. Instead it manually reimplements conversion and indexing, which fails every required rubric point. The answer confidently presents this custom approach as correct without any hedging, so failure mode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 31,
+  "inputTokens": 17306,
+  "outputTokens": 502,
+  "durationMs": 83891,
+  "steps": 23,
+  "errors": []
+}

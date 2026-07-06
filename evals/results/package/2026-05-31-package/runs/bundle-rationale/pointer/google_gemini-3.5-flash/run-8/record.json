@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains llms.txt as a website convention using absolute URLs, clarifies AGENTS.md uses relative filesystem paths enabling offline, version-matched reading from node_modules, and lists the website-only artifacts that --bundle skips (llms.txt, llms-full.txt, sitemaps, robots.txt, search indices). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 13290,
+  "outputTokens": 275,
+  "durationMs": 21150,
+  "steps": 10,
+  "errors": []
+}

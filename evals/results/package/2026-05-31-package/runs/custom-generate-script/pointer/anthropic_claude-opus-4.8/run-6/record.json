@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports 'nav' and 'product' from docs.config.ts and uses leadtype library APIs: convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles. Conversion runs first, writing to public/docs, followed by the routing, full-context, and search generators that read from the converted output. All required functions are called with the correct ordering, satisfying every rubric point.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 26,
+  "inputTokens": 50358,
+  "outputTokens": 777,
+  "durationMs": 62417,
+  "steps": 13,
+  "errors": []
+}

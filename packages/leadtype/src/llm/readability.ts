@@ -6,7 +6,13 @@
  * Cloudflare Workers, Hono, Astro, Nuxt, Vite middleware, etc.
  */
 
-import { stripTrailingSlashes, toAbsoluteUrl } from "../internal/docs-url";
+import type { DocsI18nManifest, LocalizedDocsMetadata } from "../i18n";
+import {
+  normalizeDocsPath,
+  stripTrailingSlashes,
+  toAbsoluteUrl,
+} from "../internal/docs-url";
+import { type DocsRedirect, resolveRedirect } from "../redirects/redirects";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
 
@@ -23,33 +29,95 @@ const ROOT_AGENT_ARTIFACT_PATTERN =
   /^\/(?:llms(?:-full)?\.txt|robots\.txt|sitemap\.(?:md|xml))$/;
 const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
+const WELL_KNOWN_AGENT_ARTIFACT_PATTERN =
+  /^\/\.well-known\/(?:api-catalog|llms(?:-full)?\.txt|mcp(?:\.json|\/server-card\.json)?)$/;
 const AI_USER_AGENT_PATTERN =
-  /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-web|claudebot|google-extended|gptbot|metaexternalagent|meta-externalagent|mistralbot|oai-searchbot|perplexitybot|youbot)\b/i;
-const DEFAULT_AI_CRAWLER_USER_AGENTS = [
-  "GPTBot",
-  "ChatGPT-User",
+  /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-searchbot|claude-user|claude-web|claudebot|deepseekbot|gemini-deep-research|google-extended|gptbot|meta-externalagent|meta-externalfetcher|metaexternalagent|mistralbot|oai-searchbot|perplexity-user|perplexitybot|youbot)\b/i;
+// Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
+// fetch a page to answer a live query; training bots gather corpora for model
+// training. Policies treat the two groups differently.
+const RETRIEVAL_AI_CRAWLERS = [
   "OAI-SearchBot",
-  "ClaudeBot",
-  "Claude-Web",
-  "anthropic-ai",
-  "CCBot",
-  "Google-Extended",
-  "AmazonBot",
-  "Bingbot",
-  "MetaExternalAgent",
-  "ByteSpider",
+  "ChatGPT-User",
   "PerplexityBot",
+  "Perplexity-User",
+  "ClaudeBot",
+  "Claude-SearchBot",
+  "Claude-User",
+  "Claude-Web",
+  "Gemini-Deep-Research",
+  "DeepSeekBot",
+  "Meta-ExternalFetcher",
+  "AmazonBot",
+  "Amazonbot",
+  "Bingbot",
   "MistralBot",
   "AppleBot",
   "YouBot",
+] as const;
+const TRAINING_AI_CRAWLERS = [
+  "GPTBot",
+  "Google-Extended",
+  "CCBot",
+  "ByteSpider",
+  "Bytespider",
+  "anthropic-ai",
+  "MetaExternalAgent",
+  "Applebot-Extended",
 ] as const;
 const DEFAULT_CACHE_CONTROL = "public, max-age=300, must-revalidate";
 const SUPPORTED_MANIFEST_VERSION = 1;
 const XML_ESCAPE_PATTERN = /[<>&'"]/g;
 
-export type JsonLdValue = Record<string, unknown>;
+/* --------------------------- content signals --------------------------- */
 
-export type AgentReadabilityPage = {
+export type ContentSignalValue = "yes" | "no";
+
+/**
+ * Cloudflare Content-Signals vocabulary, shared between robots.txt (a
+ * `Content-Signal:` line) and the `Content-Signal` response header on markdown
+ * responses — one config knob, two emitters.
+ */
+export type ContentSignals = {
+  /** Conventional search indexing. */
+  search: ContentSignalValue;
+  /** Use as live input/grounding for an AI answer (retrieval / RAG). */
+  aiInput: ContentSignalValue;
+  /** Use to train AI models. */
+  aiTrain: ContentSignalValue;
+};
+
+/**
+ * Crawler-access stance. `balanced` (default) keeps the site fully crawlable but
+ * signals "don't train on this"; `open` welcomes training; `block-training`
+ * hard-disallows training crawlers; `block-ai` disallows every AI crawler while
+ * leaving conventional search engines allowed.
+ */
+export type RobotsPolicy = "balanced" | "open" | "block-training" | "block-ai";
+
+const ROBOTS_POLICY_SIGNALS: Record<RobotsPolicy, ContentSignals> = {
+  balanced: { search: "yes", aiInput: "yes", aiTrain: "no" },
+  open: { search: "yes", aiInput: "yes", aiTrain: "yes" },
+  "block-training": { search: "yes", aiInput: "yes", aiTrain: "no" },
+  "block-ai": { search: "yes", aiInput: "no", aiTrain: "no" },
+};
+
+export function resolveContentSignals(
+  policy: RobotsPolicy = "balanced",
+  overrides?: Partial<ContentSignals>
+): ContentSignals {
+  return { ...ROBOTS_POLICY_SIGNALS[policy], ...overrides };
+}
+
+/** Render the `ai-train=…, search=…, ai-input=…` directive string. */
+export function renderContentSignal(signals: ContentSignals): string {
+  return `ai-train=${signals.aiTrain}, search=${signals.search}, ai-input=${signals.aiInput}`;
+}
+
+export type JsonLdValue = Record<string, unknown>;
+export type JsonLdType = string | readonly string[];
+
+export type AgentReadabilityPage = LocalizedDocsMetadata & {
   title: string;
   description: string;
   urlPath: string;
@@ -76,8 +144,9 @@ export type DocsTableOfContentsOptions = {
   maxLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 };
 
-export type DocsNavigationPage = {
+export type DocsNavigationPage = LocalizedDocsMetadata & {
   urlPath: string;
+  relativePath: string;
   title: string;
   description: string;
   /** All group slugs the page declared (normalized). */
@@ -92,6 +161,8 @@ export type DocsNavigationGroup = {
   description?: string;
   pages: DocsNavigationPage[];
   children: DocsNavigationGroup[];
+  /** Section is "safe to drop for shorter context" (rendered under `## Optional`). */
+  optional?: boolean;
 };
 
 export type DocsNavigation = {
@@ -99,6 +170,7 @@ export type DocsNavigation = {
   ungrouped: DocsNavigationPage[];
   /** Pages that named a group slug not present in the config. */
   unknown: { urlPath: string; slug: string }[];
+  locale?: string;
 };
 
 export type AgentReadabilityManifest = {
@@ -106,14 +178,34 @@ export type AgentReadabilityManifest = {
   generatedAt: string;
   baseUrl: string;
   product: { name: string; summary: string };
+  locale?: string;
+  i18n?: DocsI18nManifest;
   pages: AgentReadabilityPage[];
   navigation: DocsNavigation;
   files: {
     robotsTxt: string;
     sitemapMd: string;
     sitemapXml: string;
+    /** API catalog linkset advertised from homepage `Link` headers. */
+    apiCatalog?: string;
   };
+  /** Site-level JSON-LD options (from `agents.jsonLd`), so `renderSiteJsonLd` is config-driven. */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Site-level SEO defaults (from `agents.seo`), emitted by `createDocsHead`. */
+  seo?: SeoMeta;
 };
+
+export function normalizeAgentReadabilityManifest(
+  manifest: unknown
+): AgentReadabilityManifest {
+  if (typeof manifest !== "object" || manifest === null) {
+    throw new Error("leadtype: agent-readability manifest must be an object.");
+  }
+  return {
+    ...manifest,
+    version: SUPPORTED_MANIFEST_VERSION,
+  } as AgentReadabilityManifest;
+}
 
 export type MarkdownMirrorTarget = {
   /** Canonical HTML route, e.g. `/docs/quickstart`. */
@@ -133,11 +225,32 @@ export type MarkdownResponseHeadersConfig = {
   includeUserAgentVary?: boolean;
   /** Override Cache-Control. Pass `null` to omit the header. */
   cacheControl?: string | null;
+  /**
+   * Path to the site's `llms.txt`, advertised via `Link: rel="llms-txt"` and
+   * `X-Llms-Txt` so agents can discover it from any markdown response. Defaults
+   * to `/llms.txt`; pass `null` to omit the discovery headers.
+   */
+  llmsTxtPath?: string | null;
+  /**
+   * Cloudflare `Content-Signal` header value. Pass `ContentSignals` (rendered
+   * for you) or a prebuilt string. Defaults to the `balanced` policy; pass
+   * `null` to omit the header.
+   */
+  contentSignal?: ContentSignals | string | null;
 };
+
+const DEFAULT_LLMS_TXT_PATH = "/llms.txt";
 
 export type EnrichMarkdownFrontmatterConfig = {
   canonicalUrl: string;
   lastUpdated?: string | Date;
+  /**
+   * Final `last_updated` fallback when neither `lastUpdated` nor the
+   * markdown's own frontmatter carries a date. Unlike `lastUpdated`, this
+   * never overrides an authored frontmatter date. Defaults to the current
+   * time.
+   */
+  now?: Date;
 };
 
 export type RenderMissingMarkdownConfig = {
@@ -160,6 +273,14 @@ export type CreateAgentMarkdownResponseConfig = {
   userAgentPattern?: RegExp;
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
+  /**
+   * Redirect entries from the generated `docs/redirects.json`. Agent-shaped
+   * requests for a renamed page (including its `.md` mirror) get a 308 to the
+   * new location; acknowledged removals get 410 Gone. Non-agent requests
+   * still fall through so the host app can redirect the HTML route itself
+   * with `resolveRedirect` from `leadtype/redirects`.
+   */
+  redirects?: DocsRedirect[];
 };
 
 export type AgentArtifactResponseConfig = {
@@ -170,6 +291,23 @@ export type AgentArtifactResponseConfig = {
   pages?: AgentReadabilityPage[];
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
+};
+
+export type AgentDiscoveryLinksConfig = {
+  /** API catalog path. Defaults to `/.well-known/api-catalog`. */
+  apiCatalogPath?: string | null;
+  /** Human/agent-facing service documentation path. Defaults to `/docs/llms.txt`. */
+  serviceDocPath?: string | null;
+  /** Machine-readable service description path. Defaults to `/docs/agent-readability.json`. */
+  serviceDescPath?: string | null;
+  /** Sitemap or equivalent descriptor path. Defaults to `/sitemap.xml`. */
+  describedbyPath?: string | null;
+};
+
+export type RenderApiCatalogConfig = AgentDiscoveryLinksConfig & {
+  manifest: AgentReadabilityManifest;
+  /** Live request origin, e.g. "http://localhost:5173". Falls back to manifest.baseUrl. */
+  requestOrigin?: string;
 };
 
 export type CreateSitemapMarkdownResponseConfig =
@@ -186,10 +324,21 @@ export type CreateRobotsTxtResponseConfig = {
   requestOrigin?: string;
   /** Path of the sitemap relative to origin. Default: "/sitemap.xml". */
   sitemapUrlPath?: string;
+  /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a `Schemamap:` directive. */
+  schemamapUrlPath?: string;
   /** Allow paths under the User-agent directives. */
   allowPaths?: string[];
-  /** Override the AI crawler User-agent list. */
+  /** Override the AI crawler User-agent list (legacy flat allow-list). */
   userAgents?: readonly string[];
+  /** Crawler-access stance. Defaults to `balanced`. */
+  policy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  signals?: Partial<ContentSignals>;
+  /** Override Cache-Control. Pass `null` to omit. */
+  cacheControl?: string | null;
+};
+
+export type CreateApiCatalogResponseConfig = RenderApiCatalogConfig & {
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
 };
@@ -201,11 +350,71 @@ export type DocsHead = {
   links: DocsHeadEntry[];
 };
 
+export type JsonLdOverrideContext = {
+  page: AgentReadabilityPage;
+  manifest: AgentReadabilityManifest;
+  jsonLd: JsonLdValue;
+};
+
+export type DocsJsonLdOverrides = Record<string, unknown> & {
+  /**
+   * Convenience alias for Schema.org `@type`. This avoids quoted property
+   * syntax in the common override path.
+   *
+   * @defaultValue `"TechArticle"`
+   */
+  type?: JsonLdType;
+  /**
+   * Override generated breadcrumbs, or pass `false` to remove generated
+   * breadcrumbs from the final JSON-LD object.
+   */
+  breadcrumb?: JsonLdValue | false;
+};
+
+export type DocsJsonLdOverrideInput =
+  | DocsJsonLdOverrides
+  | ((
+      context: JsonLdOverrideContext
+    ) => DocsJsonLdOverrides | null | undefined);
+
+export type DocsJsonLdTransform = (
+  context: JsonLdOverrideContext
+) => JsonLdValue;
+
+export type DocsJsonLdOptions = {
+  /** Merge static or per-page fields into the generated JSON-LD defaults. */
+  overrides?: DocsJsonLdOverrideInput;
+  /**
+   * Return the final JSON-LD object. Runs after generated defaults and
+   * overrides have been applied.
+   */
+  transform?: DocsJsonLdTransform;
+};
+
+export type CreateDocsJsonLdConfig = DocsJsonLdOptions & {
+  urlPath: string;
+  manifest: AgentReadabilityManifest;
+};
+
+/** Social/SEO metadata defaults, emitted by `createDocsHead`. */
+export type SeoMeta = {
+  /** Absolute `og:image` / `twitter:image` URL (a social card). leadtype emits the URL, not the image. */
+  ogImage?: string;
+  /** `twitter:site` handle, e.g. `@acme`. */
+  twitterSite?: string;
+  /** `keywords` meta (joined with commas). */
+  keywords?: string[];
+};
+
 export type CreateDocsHeadConfig = {
   urlPath: string;
   manifest: AgentReadabilityManifest;
   /** Key under which the JSON-LD payload is embedded in `meta`. Default: "script:ld+json" (TanStack Router). */
   jsonLdMetaKey?: string;
+  /** Optional JSON-LD overrides passed through to `createDocsJsonLd`. */
+  jsonLd?: DocsJsonLdOptions;
+  /** Per-page SEO overrides; merged over the manifest's site-level `seo` defaults. */
+  seo?: SeoMeta;
 };
 
 export type RenderSitemapMarkdownConfig = {
@@ -217,8 +426,23 @@ export type RenderSitemapMarkdownConfig = {
 export type RenderRobotsTxtConfig = {
   baseUrl?: string;
   sitemapUrlPath?: string;
+  /**
+   * NLWeb schema-map URL path (e.g. `/schema-map.xml`). When set, robots.txt
+   * gains a `Schemamap:` directive pointing natural-language retrieval
+   * systems at the site's schema.org feeds.
+   */
+  schemamapUrlPath?: string;
   allowPaths?: string[];
+  /**
+   * Legacy: a flat allow-list of crawler user-agents. When set, every listed
+   * agent is allowed (pre-policy behavior). Prefer `policy` for the
+   * train-vs-retrieve split.
+   */
   userAgents?: readonly string[];
+  /** Crawler-access stance. Defaults to `balanced`. */
+  policy?: RobotsPolicy;
+  /** Override individual Content-Signals beyond the policy preset. */
+  signals?: Partial<ContentSignals>;
 };
 
 /* ----------------------- internal helpers ------------------------------ */
@@ -421,8 +645,83 @@ export function isAgentReadabilityArtifactPath(urlPath: string): boolean {
   const pathname = normalizeUrlPath(urlPath);
   return (
     ROOT_AGENT_ARTIFACT_PATTERN.test(pathname) ||
-    DOCS_AGENT_ARTIFACT_PATTERN.test(pathname)
+    DOCS_AGENT_ARTIFACT_PATTERN.test(pathname) ||
+    WELL_KNOWN_AGENT_ARTIFACT_PATTERN.test(pathname)
   );
+}
+
+function normalizeDiscoveryPath(pathname: string): string {
+  return normalizeUrlPath(pathname || "/");
+}
+
+function quotedLink(pathname: string, params: Record<string, string>): string {
+  const serializedParams = Object.entries(params)
+    .map(([key, value]) => `${key}="${value}"`)
+    .join("; ");
+  return `<${pathname}>; ${serializedParams}`;
+}
+
+export function createAgentDiscoveryLinkHeader(
+  config: AgentDiscoveryLinksConfig = {}
+): string {
+  const links: string[] = [];
+  const apiCatalogPath =
+    config.apiCatalogPath === undefined
+      ? "/.well-known/api-catalog"
+      : config.apiCatalogPath;
+  const serviceDocPath =
+    config.serviceDocPath === undefined
+      ? "/docs/llms.txt"
+      : config.serviceDocPath;
+  const serviceDescPath =
+    config.serviceDescPath === undefined
+      ? "/docs/agent-readability.json"
+      : config.serviceDescPath;
+  const describedbyPath =
+    config.describedbyPath === undefined
+      ? "/sitemap.xml"
+      : config.describedbyPath;
+
+  if (apiCatalogPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(apiCatalogPath), {
+        rel: "api-catalog",
+        type: "application/linkset+json",
+      })
+    );
+  }
+  if (serviceDocPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(serviceDocPath), {
+        rel: "service-doc",
+        type: "text/plain",
+      })
+    );
+  }
+  if (serviceDescPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(serviceDescPath), {
+        rel: "service-desc",
+        type: "application/json",
+      })
+    );
+  }
+  if (describedbyPath !== null) {
+    links.push(
+      quotedLink(normalizeDiscoveryPath(describedbyPath), {
+        rel: "describedby",
+        type: "application/xml",
+      })
+    );
+  }
+  return links.join(", ");
+}
+
+export function createAgentDiscoveryHeaders(
+  config: AgentDiscoveryLinksConfig = {}
+): Record<string, string> {
+  const link = createAgentDiscoveryLinkHeader(config);
+  return link ? { Link: link } : {};
 }
 
 export function resolveMarkdownMirrorTarget(
@@ -468,16 +767,66 @@ export function resolveMarkdownMirrorTarget(
   };
 }
 
+/**
+ * Resolve a page's Markdown mirror from the manifest entry (not the raw public
+ * route), so pages mounted outside `/docs` (e.g. a changelog at `/changelog`)
+ * still resolve to their `docs/<relativePath>.md` mirror.
+ */
+export function resolveManifestMarkdownMirrorTarget(
+  urlPath: string,
+  manifest: AgentReadabilityManifest
+): MarkdownMirrorTarget | null {
+  const pathname = normalizeUrlPath(urlPath).replace(
+    TRAILING_SLASH_PATTERN,
+    ""
+  );
+  const page = manifest.pages.find(
+    (entry) => entry.urlPath === pathname || entry.markdownUrlPath === pathname
+  );
+  if (!page) {
+    return null;
+  }
+  const relativePath = normalizeDocsPath(page.relativePath);
+  if (!(relativePath && !relativePath.split("/").includes(".."))) {
+    return null;
+  }
+  return {
+    urlPath: page.urlPath,
+    markdownUrlPath: page.markdownUrlPath,
+    filePath: `${DOCS_DIRNAME}/${relativePath}.md`,
+    relativePath,
+  };
+}
+
 /* ----------------------- markdown response builders -------------------- */
 
 export function createMarkdownResponseHeaders(
   config: MarkdownResponseHeadersConfig
 ): Record<string, string> {
+  const linkParts = [`<${config.canonicalUrl}>; rel="canonical"`];
+  const llmsTxtPath =
+    config.llmsTxtPath === undefined
+      ? DEFAULT_LLMS_TXT_PATH
+      : config.llmsTxtPath;
   const headers: Record<string, string> = {
     "Content-Type": "text/markdown; charset=utf-8",
     Vary: config.includeUserAgentVary ? "Accept, User-Agent" : "Accept",
-    Link: `<${config.canonicalUrl}>; rel="canonical"`,
   };
+  if (llmsTxtPath !== null) {
+    linkParts.push(`<${llmsTxtPath}>; rel="llms-txt"`);
+    headers["X-Llms-Txt"] = llmsTxtPath;
+  }
+  headers.Link = linkParts.join(", ");
+  const contentSignal =
+    config.contentSignal === undefined
+      ? resolveContentSignals("balanced")
+      : config.contentSignal;
+  if (contentSignal !== null) {
+    headers["Content-Signal"] =
+      typeof contentSignal === "string"
+        ? contentSignal
+        : renderContentSignal(contentSignal);
+  }
   const cacheControl =
     config.cacheControl === undefined
       ? DEFAULT_CACHE_CONTROL
@@ -512,7 +861,7 @@ export function enrichMarkdownFrontmatter(
         "lastUpdated",
         "last_modified",
       ]) ??
-      new Date().toISOString();
+      (config.now ?? new Date()).toISOString();
     aliases.push(`last_updated: ${toYamlScalar(lastUpdated)}`);
   }
 
@@ -545,44 +894,430 @@ Use [/llms.txt](/llms.txt) or [/sitemap.md](/sitemap.md) to find available pages
 
 /* ----------------------- JSON-LD helpers ------------------------------- */
 
+type BreadcrumbCrumb = { name: string; url?: string };
+
+const DOCS_ROOT_SEGMENT = "docs";
+
+/**
+ * Walk the navigation tree to find the chain of groups that contains `page`,
+ * outermost first. Returns `[]` for ungrouped pages, which yields the simple
+ * Docs → page breadcrumb.
+ */
+function findGroupTrail(
+  groups: DocsNavigationGroup[] | undefined,
+  urlPath: string
+): DocsNavigationGroup[] {
+  if (!groups) {
+    return [];
+  }
+  for (const group of groups) {
+    if (group.pages?.some((entry) => entry.urlPath === urlPath)) {
+      return [group];
+    }
+    const childTrail = findGroupTrail(group.children, urlPath);
+    if (childTrail.length > 0) {
+      return [group, ...childTrail];
+    }
+  }
+  return [];
+}
+
+/**
+ * The outermost nav node is often a "Docs" tab that maps to the `/docs` root
+ * (segmentPath `["docs"]`). That's already the breadcrumb home, so drop it to
+ * avoid a duplicate `Docs → Docs` trail and a useless `articleSection`.
+ */
+function sectionTrail(trail: DocsNavigationGroup[]): DocsNavigationGroup[] {
+  const first = trail.at(0);
+  const isDocsRootContainer =
+    first?.segmentPath.length === 1 &&
+    first.segmentPath[0] === DOCS_ROOT_SEGMENT;
+  return isDocsRootContainer ? trail.slice(1) : trail;
+}
+
+function buildBreadcrumb(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest,
+  sections: DocsNavigationGroup[]
+): JsonLdValue {
+  // Section crumbs are name-only: a group's segmentPath is a structural nav
+  // path, not a URL, and sections rarely have their own landing page. The home
+  // and leaf crumbs carry the URLs agents resolve.
+  const crumbs: BreadcrumbCrumb[] = [
+    { name: "Docs", url: `${manifest.baseUrl}/docs` },
+    ...sections.map((group) => ({ name: group.title })),
+    { name: page.title, url: page.absoluteUrl },
+  ];
+
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.name,
+      ...(crumb.url ? { item: crumb.url } : {}),
+    })),
+  };
+}
+
+const REFERENCE_SECTION_PATTERN = /^(reference|api)$/i;
+const REFERENCE_PATH_PATTERN = /(^|\/)(reference|api)(\/|$)/i;
+
+/**
+ * Stable `@id`s for the site-level entities, derived from the base URL. Per-page
+ * JSON-LD references these instead of re-inlining the Organization/WebSite, so an
+ * answer engine can stitch every page into one entity graph (DESIGN.md Phase 4).
+ */
+function jsonLdEntityIds(baseUrl: string): {
+  organization: string;
+  website: string;
+  software: string;
+} {
+  const base = stripTrailingSlashes(baseUrl);
+  return {
+    organization: `${base}/#organization`,
+    website: `${base}/#website`,
+    software: `${base}/#software`,
+  };
+}
+
 export function renderJsonLd(
   page: AgentReadabilityPage,
   manifest: AgentReadabilityManifest
 ): JsonLdValue {
   assertManifestVersion(manifest);
+  const sections = sectionTrail(
+    findGroupTrail(manifest.navigation?.groups, page.urlPath)
+  );
+  const breadcrumb = buildBreadcrumb(page, manifest, sections);
+  const articleSection = sections.at(0)?.title;
+  const ids = jsonLdEntityIds(manifest.baseUrl);
+  // Reference pages are additionally typed as APIReference so answer engines can
+  // distinguish prose from the API surface. Keyed on the page's own path as well as
+  // its nav section, so a /reference/ page stays APIReference even when the sidebar
+  // groups it elsewhere.
+  const isApiReference =
+    REFERENCE_PATH_PATTERN.test(page.relativePath) ||
+    sections.some((section) => REFERENCE_SECTION_PATTERN.test(section.slug));
   return {
     "@context": "https://schema.org",
-    "@type": "TechArticle",
+    "@type": isApiReference ? ["TechArticle", "APIReference"] : "TechArticle",
     headline: page.title,
+    name: page.title,
     description: jsonLdPageDescription(page, manifest),
     url: page.absoluteUrl,
+    mainEntityOfPage: page.absoluteUrl,
     dateModified: page.lastModified,
-    breadcrumb: {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Docs",
-          item: `${manifest.baseUrl}/docs`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: page.title,
-          item: page.absoluteUrl,
-        },
-      ],
-    },
+    ...(articleSection ? { articleSection } : {}),
+    ...(page.locale ? { inLanguage: page.locale } : {}),
+    // Reference shared @ids instead of inlining the WebSite/Organization. The
+    // site-level graph (renderSiteJsonLd) defines them; emit it once on a root page.
+    isPartOf: { "@id": ids.website },
+    publisher: { "@id": ids.organization },
+    breadcrumb,
   };
+}
+
+export type RenderSiteJsonLdOptions = {
+  organization?: {
+    name?: string;
+    url?: string;
+    email?: string;
+    logo?: string;
+    sameAs?: string[];
+    contactPoint?:
+      | {
+          contactType: string;
+          email?: string;
+          telephone?: string;
+          url?: string;
+          areaServed?: string | string[];
+          availableLanguage?: string | string[];
+        }
+      | Array<{
+          contactType: string;
+          email?: string;
+          telephone?: string;
+          url?: string;
+          areaServed?: string | string[];
+          availableLanguage?: string | string[];
+        }>;
+    address?: {
+      streetAddress?: string;
+      addressLocality?: string;
+      addressRegion?: string;
+      postalCode?: string;
+      addressCountry?: string;
+    };
+  };
+  software?: {
+    /** Include `SoftwareSourceCode` alongside `SoftwareApplication` for libraries. */
+    isLibrary?: boolean;
+    applicationCategory?: string;
+    operatingSystem?: string;
+    /** Source repository URL, emitted as `codeRepository`. */
+    codeRepository?: string;
+  };
+  /**
+   * URL template for the WebSite `SearchAction`, relative to the base URL.
+   * Defaults to `/docs?q={search_term_string}`. Pass `null` to omit the action.
+   */
+  searchUrlPattern?: string | null;
+};
+
+const DEFAULT_SEARCH_URL_PATTERN = "/docs?q={search_term_string}";
+
+function toArray<T>(value: T | T[]): T[] {
+  return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * The site-level entity graph — `Organization`, `WebSite` (+ `SearchAction`), and
+ * `SoftwareApplication` (+ `SoftwareSourceCode` for libraries) — emitted once
+ * (e.g. on the docs home).
+ * Per-page `renderJsonLd` references these by `@id` (DESIGN.md Phase 4).
+ */
+export function renderSiteJsonLd(
+  manifest: AgentReadabilityManifest,
+  optionOverrides: RenderSiteJsonLdOptions = {}
+): JsonLdValue {
+  assertManifestVersion(manifest);
+  // Explicit options win over the config baked into the manifest (`agents.jsonLd`).
+  const fromManifest = manifest.jsonLd ?? {};
+  const options: RenderSiteJsonLdOptions = {
+    ...fromManifest,
+    ...optionOverrides,
+    organization: {
+      ...fromManifest.organization,
+      ...optionOverrides.organization,
+    },
+    software: { ...fromManifest.software, ...optionOverrides.software },
+  };
+  const base = stripTrailingSlashes(manifest.baseUrl);
+  const ids = jsonLdEntityIds(base);
+
+  // `[]` is truthy — normalize first so an empty array is omitted like sameAs.
+  const contactPoints = options.organization?.contactPoint
+    ? toArray(options.organization.contactPoint).map((contactPoint) => ({
+        "@type": "ContactPoint",
+        ...contactPoint,
+      }))
+    : [];
+
+  const organization: JsonLdValue = {
+    "@type": "Organization",
+    "@id": ids.organization,
+    name: options.organization?.name ?? manifest.product.name,
+    url: options.organization?.url ?? base,
+    ...(options.organization?.email
+      ? { email: options.organization.email }
+      : {}),
+    ...(options.organization?.logo ? { logo: options.organization.logo } : {}),
+    ...(options.organization?.sameAs && options.organization.sameAs.length > 0
+      ? { sameAs: options.organization.sameAs }
+      : {}),
+    ...(contactPoints.length > 0 ? { contactPoint: contactPoints } : {}),
+    ...(options.organization?.address
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            ...options.organization.address,
+          },
+        }
+      : {}),
+  };
+
+  const website: JsonLdValue = {
+    "@type": "WebSite",
+    "@id": ids.website,
+    name: manifest.product.name,
+    url: base,
+    publisher: { "@id": ids.organization },
+  };
+  const searchUrlPattern =
+    options.searchUrlPattern === undefined
+      ? DEFAULT_SEARCH_URL_PATTERN
+      : options.searchUrlPattern;
+  if (searchUrlPattern !== null) {
+    website.potentialAction = {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${base}${searchUrlPattern}`,
+      },
+      "query-input": "required name=search_term_string",
+    };
+  }
+
+  const software: JsonLdValue = {
+    "@type": options.software?.isLibrary
+      ? ["SoftwareApplication", "SoftwareSourceCode"]
+      : "SoftwareApplication",
+    "@id": ids.software,
+    name: manifest.product.name,
+    description: manifest.product.summary,
+    url: base,
+    publisher: { "@id": ids.organization },
+    ...(options.software?.applicationCategory
+      ? { applicationCategory: options.software.applicationCategory }
+      : {}),
+    ...(options.software?.operatingSystem
+      ? { operatingSystem: options.software.operatingSystem }
+      : {}),
+    ...(options.software?.codeRepository
+      ? { codeRepository: options.software.codeRepository }
+      : {}),
+  };
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [organization, website, software],
+  };
+}
+
+const JSON_LD_DATE_FIELDS = ["dateModified", "datePublished", "dateCreated"];
+const ARTICLE_TYPE_PATTERN = /article/i;
+
+function isValidDateString(value: unknown): boolean {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function jsonLdTypes(node: JsonLdValue): string[] {
+  const type = node["@type"];
+  if (typeof type === "string") {
+    return [type];
+  }
+  if (Array.isArray(type)) {
+    return type.filter((entry): entry is string => typeof entry === "string");
+  }
+  return [];
+}
+
+function validateJsonLdNode(
+  node: JsonLdValue,
+  nodePath: string,
+  issues: string[]
+): void {
+  const types = jsonLdTypes(node);
+  if (types.length === 0) {
+    issues.push(`${nodePath}: missing or invalid @type`);
+  }
+  if (
+    "@id" in node &&
+    !(typeof node["@id"] === "string" && (node["@id"] as string).length > 0)
+  ) {
+    issues.push(`${nodePath}: @id must be a non-empty string`);
+  }
+  if ("url" in node && !(typeof node.url === "string" && node.url.length > 0)) {
+    issues.push(`${nodePath}: url must be a non-empty string`);
+  }
+  for (const field of JSON_LD_DATE_FIELDS) {
+    if (field in node && !isValidDateString(node[field])) {
+      issues.push(
+        `${nodePath}: ${field} is not a valid date ("${String(node[field])}")`
+      );
+    }
+  }
+  if (
+    types.some((type) => ARTICLE_TYPE_PATTERN.test(type)) &&
+    !(node.headline || node.name)
+  ) {
+    issues.push(`${nodePath}: ${types.join(", ")} requires a headline or name`);
+  }
+}
+
+/**
+ * Structurally validates a JSON-LD object (or `@graph`) — broken schema is worse
+ * than none (DESIGN.md Phase 4). Returns a list of human-readable issues; an empty
+ * array means valid. Checks `@context`, `@type`, `@id` references, `url`, ISO dates,
+ * and that article-like nodes carry a headline/name. Not a full Schema.org validator.
+ */
+export function validateJsonLd(value: JsonLdValue): string[] {
+  const issues: string[] = [];
+  if (
+    !(typeof value["@context"] === "string" && value["@context"].length > 0)
+  ) {
+    issues.push("root: missing or empty @context");
+  }
+  const graph = value["@graph"];
+  if (Array.isArray(graph)) {
+    if (graph.length === 0) {
+      issues.push("@graph: must not be empty");
+    }
+    graph.forEach((node, index) => {
+      if (node && typeof node === "object") {
+        validateJsonLdNode(node as JsonLdValue, `@graph[${index}]`, issues);
+      } else {
+        issues.push(`@graph[${index}]: not an object`);
+      }
+    });
+  } else {
+    validateJsonLdNode(value, "root", issues);
+  }
+  return issues;
+}
+
+export function stringifyJsonLd(value: JsonLdValue): string {
+  return jsonScriptEscape(JSON.stringify(value));
 }
 
 export function renderJsonLdScript(
   page: AgentReadabilityPage,
   manifest: AgentReadabilityManifest
 ): string {
-  const json = jsonScriptEscape(JSON.stringify(renderJsonLd(page, manifest)));
+  const json = stringifyJsonLd(renderJsonLd(page, manifest));
   return `<script type="application/ld+json">${json}</script>`;
+}
+
+function applyJsonLdOverrides(
+  jsonLd: JsonLdValue,
+  overrides: DocsJsonLdOverrides
+): JsonLdValue {
+  const { breadcrumb, type, ...rest } = overrides;
+  const next: JsonLdValue = { ...jsonLd, ...rest };
+
+  if (type !== undefined) {
+    next["@type"] = type;
+  }
+  if (breadcrumb === false) {
+    const { breadcrumb: _breadcrumb, ...withoutBreadcrumb } = next;
+    return withoutBreadcrumb;
+  }
+  if (breadcrumb !== undefined) {
+    next.breadcrumb = breadcrumb;
+  }
+
+  return next;
+}
+
+export function createDocsJsonLd(
+  config: CreateDocsJsonLdConfig
+): JsonLdValue | null {
+  assertManifestVersion(config.manifest);
+  const page = config.manifest.pages.find(
+    (entry) => entry.urlPath === config.urlPath
+  );
+  if (!page) {
+    return null;
+  }
+
+  let jsonLd = renderJsonLd(page, config.manifest);
+  if (config.overrides) {
+    const context = { page, manifest: config.manifest, jsonLd };
+    const overrides =
+      typeof config.overrides === "function"
+        ? config.overrides(context)
+        : config.overrides;
+    if (overrides) {
+      jsonLd = applyJsonLdOverrides(jsonLd, overrides);
+    }
+  }
+
+  if (config.transform) {
+    return config.transform({ page, manifest: config.manifest, jsonLd });
+  }
+
+  return jsonLd;
 }
 
 /* ----------------------- markdown content negotiation ------------------ */
@@ -601,8 +1336,52 @@ export async function createAgentMarkdownResponse(
   const userAgent = getHeaderValue(config.headers, "user-agent");
   const matchesAgentUa = isAgentUserAgent(userAgent, config.userAgentPattern);
   const wantsMarkdown = acceptsMarkdownHeader(accept) || matchesAgentUa;
-  const target = resolveMarkdownMirrorTarget(pathname);
+  const target =
+    resolveManifestMarkdownMirrorTarget(pathname, config.manifest) ??
+    resolveMarkdownMirrorTarget(pathname);
   const isHead = config.method === "HEAD";
+
+  // Renamed/removed pages: answer agent-shaped requests before the
+  // missing-page fallback would serve a "not found" body for a URL that has
+  // a real successor. Non-agent requests keep falling through to the host
+  // app's own routing.
+  if (config.redirects && (wantsMarkdown || pathname.endsWith(".md"))) {
+    const redirect = resolveRedirect(pathname, config.redirects);
+    if (redirect) {
+      if (redirect.to === undefined) {
+        return new Response(isHead ? null : "Gone\n", {
+          status: redirect.status,
+          headers: { "content-type": "text/plain; charset=utf-8" },
+        });
+      }
+      // On the .md surface, prefer the target page's recorded mirror path —
+      // resolveRedirect's `${to}.md` heuristic is wrong for index routes,
+      // whose mirrors live at `${to}/index.md`.
+      let toPath = redirect.to;
+      if (pathname.endsWith(".md")) {
+        const targetUrlPath =
+          redirect.to
+            .replace(MD_ONLY_EXTENSION_PATTERN, "")
+            .replace(TRAILING_SLASH_PATTERN, "") || "/";
+        const targetPage = config.manifest.pages.find(
+          (entry) => entry.urlPath === targetUrlPath
+        );
+        if (targetPage) {
+          toPath = targetPage.markdownUrlPath;
+        }
+      }
+      const location = toAbsoluteUrl(
+        toPath,
+        config.requestOrigin
+          ? stripTrailingSlashes(config.requestOrigin)
+          : config.manifest.baseUrl
+      );
+      return new Response(null, {
+        status: redirect.status,
+        headers: { location },
+      });
+    }
+  }
 
   if (target && (wantsMarkdown || pathname.endsWith(".md"))) {
     const page = config.manifest.pages.find(
@@ -615,7 +1394,11 @@ export async function createAgentMarkdownResponse(
     const body = markdown
       ? enrichMarkdownFrontmatter(markdown, {
           canonicalUrl,
+          // `now` stays a last-resort fallback inside the enricher so a
+          // mirror's own authored frontmatter date always wins over the
+          // request/generation time.
           lastUpdated: page?.lastModified,
+          now: config.now,
         })
       : renderMissingMarkdown({
           urlPath: target.urlPath,
@@ -748,6 +1531,23 @@ export function renderSitemapMarkdown(
   return `${lines.join("\n")}\n`;
 }
 
+function pushCrawlerBlock(
+  lines: string[],
+  userAgent: string,
+  allowPaths: string[],
+  disallow: boolean
+): void {
+  lines.push(`User-agent: ${userAgent}`);
+  if (disallow) {
+    lines.push("Disallow: /");
+  } else {
+    for (const allowPath of allowPaths) {
+      lines.push(`Allow: ${allowPath}`);
+    }
+  }
+  lines.push("");
+}
+
 export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
   const baseUrl = stripTrailingSlashes(config.baseUrl ?? "");
   const sitemapPath = config.sitemapUrlPath ?? "/sitemap.xml";
@@ -760,22 +1560,43 @@ export function renderRobotsTxt(config: RenderRobotsTxtConfig): string {
     "/sitemap.xml",
     "/sitemap.md",
   ];
-  const userAgents = config.userAgents ?? DEFAULT_AI_CRAWLER_USER_AGENTS;
-  const lines = ["User-agent: *"];
+  const policy = config.policy ?? "balanced";
+  const signals = resolveContentSignals(policy, config.signals);
+
+  // `User-agent: *` carries the Content-Signal line + the allow-list.
+  const lines = [
+    "User-agent: *",
+    `Content-Signal: ${renderContentSignal(signals)}`,
+  ];
   for (const allowPath of allowPaths) {
     lines.push(`Allow: ${allowPath}`);
   }
   lines.push("");
 
-  for (const userAgent of userAgents) {
-    lines.push(`User-agent: ${userAgent}`);
-    for (const allowPath of allowPaths) {
-      lines.push(`Allow: ${allowPath}`);
+  if (config.userAgents) {
+    // Legacy flat allow-list.
+    for (const userAgent of config.userAgents) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, false);
     }
-    lines.push("");
+  } else {
+    const blockRetrieval = policy === "block-ai";
+    const blockTraining = policy === "block-ai" || policy === "block-training";
+    for (const userAgent of RETRIEVAL_AI_CRAWLERS) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, blockRetrieval);
+    }
+    for (const userAgent of TRAINING_AI_CRAWLERS) {
+      pushCrawlerBlock(lines, userAgent, allowPaths, blockTraining);
+    }
   }
 
-  lines.push(`Sitemap: ${sitemapUrl}`, "");
+  lines.push(`Sitemap: ${sitemapUrl}`);
+  if (config.schemamapUrlPath) {
+    const schemamapUrl = baseUrl
+      ? `${baseUrl}${config.schemamapUrlPath}`
+      : config.schemamapUrlPath;
+    lines.push(`Schemamap: ${schemamapUrl}`);
+  }
+  lines.push("");
   return lines.join("\n");
 }
 
@@ -819,6 +1640,63 @@ function resolveEffectiveBase(
   return requestOrigin
     ? stripTrailingSlashes(requestOrigin)
     : stripTrailingSlashes(manifest.baseUrl);
+}
+
+export function renderApiCatalog(config: RenderApiCatalogConfig): string {
+  assertManifestVersion(config.manifest);
+  const base = resolveEffectiveBase(config.manifest, config.requestOrigin);
+  const apiCatalogPath =
+    config.apiCatalogPath === undefined
+      ? "/.well-known/api-catalog"
+      : config.apiCatalogPath;
+  const serviceDocPath =
+    config.serviceDocPath === undefined
+      ? "/docs/llms.txt"
+      : config.serviceDocPath;
+  const serviceDescPath =
+    config.serviceDescPath === undefined
+      ? "/docs/agent-readability.json"
+      : config.serviceDescPath;
+  const describedbyPath =
+    config.describedbyPath === undefined
+      ? "/sitemap.xml"
+      : config.describedbyPath;
+  const relation = (href: string, type: string) => ({
+    href: toAbsoluteUrl(normalizeDiscoveryPath(href), base),
+    type,
+  });
+  const linkset: Record<string, unknown> = {
+    anchor: `${base}/`,
+  };
+  if (apiCatalogPath !== null) {
+    linkset["api-catalog"] = [
+      relation(apiCatalogPath, "application/linkset+json"),
+    ];
+  }
+  if (serviceDocPath !== null) {
+    linkset["service-doc"] = [relation(serviceDocPath, "text/plain")];
+  }
+  if (serviceDescPath !== null) {
+    linkset["service-desc"] = [relation(serviceDescPath, "application/json")];
+  }
+  if (describedbyPath !== null) {
+    linkset.describedby = [relation(describedbyPath, "application/xml")];
+  }
+  return `${JSON.stringify({ linkset: [linkset] }, null, 2)}\n`;
+}
+
+export function createApiCatalogResponse(
+  config: CreateApiCatalogResponseConfig
+): Response {
+  return new Response(renderApiCatalog(config), {
+    status: 200,
+    headers: attachCacheControl(
+      {
+        "Content-Type": "application/linkset+json; charset=utf-8",
+      },
+      config.cacheControl
+    ),
+  });
 }
 
 export function createSitemapXmlResponse(
@@ -882,8 +1760,11 @@ export function createRobotsTxtResponse(
     renderRobotsTxt({
       baseUrl,
       sitemapUrlPath: config.sitemapUrlPath,
+      schemamapUrlPath: config.schemamapUrlPath,
       allowPaths: config.allowPaths,
       userAgents: config.userAgents,
+      policy: config.policy,
+      signals: config.signals,
     }),
     {
       status: 200,
@@ -937,13 +1818,40 @@ export function createDocsHead(config: CreateDocsHeadConfig): DocsHead {
   const title = pageTitle(page, config.manifest);
   const description = pageDescription(page, config.manifest);
   const jsonLdKey = config.jsonLdMetaKey ?? DEFAULT_JSON_LD_META_KEY;
+  const jsonLd = createDocsJsonLd({
+    urlPath: config.urlPath,
+    manifest: config.manifest,
+    ...config.jsonLd,
+  });
+  const seo: SeoMeta = { ...config.manifest.seo, ...config.seo };
+  const seoMeta: DocsHeadEntry[] = [
+    { property: "og:type", content: "article" },
+    {
+      name: "twitter:card",
+      content: seo.ogImage ? "summary_large_image" : "summary",
+    },
+  ];
+  if (seo.ogImage) {
+    seoMeta.push(
+      { property: "og:image", content: seo.ogImage },
+      { name: "twitter:image", content: seo.ogImage }
+    );
+  }
+  if (seo.twitterSite) {
+    seoMeta.push({ name: "twitter:site", content: seo.twitterSite });
+  }
+  if (seo.keywords && seo.keywords.length > 0) {
+    seoMeta.push({ name: "keywords", content: seo.keywords.join(", ") });
+  }
+
   return {
     meta: [
       { title },
       { name: "description", content: description },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
-      { [jsonLdKey]: renderJsonLd(page, config.manifest) },
+      ...seoMeta,
+      ...(jsonLd ? [{ [jsonLdKey]: jsonLd }] : []),
     ],
     links: [
       { rel: "canonical", href: page.absoluteUrl },

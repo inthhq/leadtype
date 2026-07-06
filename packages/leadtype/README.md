@@ -40,9 +40,9 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 
 - [Quickstart](https://leadtype.dev/docs/quickstart) — five-minute happy path.
 - [How it works](https://leadtype.dev/docs/how-it-works) — the mental model.
-- [Build a docs site](https://leadtype.dev/docs/build/connect-docs-site) — wire into your build.
+- [Build a docs site](https://leadtype.dev/docs/pipeline/build-a-docs-site) — wire into your build.
 - [Bundle docs into a package](https://leadtype.dev/docs/package-docs/bundle) — ship docs inside an npm tarball.
-- [Add search](https://leadtype.dev/docs/build/add-search) — generate and query the static search index.
+- [Add search](https://leadtype.dev/docs/search/add-search) — generate and query the static search index.
 - [CLI reference](https://leadtype.dev/docs/reference/cli) — every flag.
 
 ## Entry points
@@ -51,7 +51,8 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 | --- | --- |
 | `leadtype` | `defineDocsConfig` — the config helper. |
 | `leadtype/convert` | MDX-to-markdown conversion. |
-| `leadtype/remark` | `defaultRemarkPlugins` plus individual plugins. |
+| `leadtype/mdx` | Source-MDX tag types, include helpers, and `createMdxSourcePlugins()`. |
+| `leadtype/markdown` | `defaultMarkdownTransforms` plus individual plugins. |
 | `leadtype/llm` | `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentsMd`, `resolveDocsNavigation`. |
 | `leadtype/search` | Edge-safe search runtime, content readers, request guards. |
 | `leadtype/search/node` | Build-time `generateDocsSearchFiles`. |
@@ -60,8 +61,15 @@ Full docs at [leadtype.dev](https://leadtype.dev/docs). Highlights:
 | `leadtype/search/tanstack` | TanStack AI answer streaming. |
 | `leadtype/search/cloudflare` | Cloudflare AI Gateway / Workers AI adapter. |
 | `leadtype/lint` | `lintDocs` and the `leadtype lint` CLI. |
+| `leadtype/mcp` | Docs MCP server — `createMcpHandler` (Streamable HTTP), `runStdioServer`, `createDocsArtifacts`, plus the `leadtype mcp` CLI. |
+| `leadtype/score` | `scoreDocs` — the agent-readiness score behind the `leadtype score` CLI. |
+| `leadtype/fumadocs` | Adapter mapping `createDocsSource()` to fumadocs's `Source` interface. |
+| `leadtype/next` | Next.js App Router server adapter — `createDocsRouteHandler`, `createGenerateStaticParams`, `createLoadPageData`. |
+| `leadtype/next/client` | Next.js client hook — `useLeadtypeSearch` and the framework-free `createSearchClient`. |
 
-The `leadtype` binary wraps `generate` and `lint`. Use the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.
+Framework adapters are thin and ship **state and routing primitives only** — no rendered DOM. See the [architecture reference](https://leadtype.dev/docs/reference/architecture) for the boundary contract and how to add more frameworks (`leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`, `leadtype/search/vue`, and `leadtype/search/svelte` are tracked under [#41](https://github.com/inthhq/leadtype/issues/41) / [#45](https://github.com/inthhq/leadtype/issues/45)).
+
+The `leadtype` binary wraps `init`, `generate`, `sync`, `lint`, `mcp`, and `score`. Use the library entry points when you need custom plugin order, base URL precedence, or alternate output paths.
 
 ## Bundled agent docs
 
@@ -78,7 +86,7 @@ When working with the `leadtype` library, read
 markdown topic files.
 ```
 
-The website-style outputs (`llms.txt`, root `llms-full.txt`, `search-index.json`) are emitted only in default `leadtype generate` mode. They're served from a hosted docs site, not from the package tarball.
+Website URL artifacts (`llms.txt`, root `llms-full.txt`, sitemap, robots) are emitted only in default `leadtype generate` mode. Package bundles stay filesystem-first; when `docs.config.ts` sets `agents.mcp.enabled`, they also include the local search/readability files needed by `leadtype mcp --package`.
 
 ## License
 

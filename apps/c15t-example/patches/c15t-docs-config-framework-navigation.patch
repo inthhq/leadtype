@@ -1,0 +1,130 @@
+diff --git a/docs/docs.config.ts b/docs/docs.config.ts
+index 021037b..415bd23 100644
+--- a/docs/docs.config.ts
++++ b/docs/docs.config.ts
+@@ -1,4 +1,4 @@
+-import { defineDocsConfig } from 'leadtype';
++import { defineDocsConfig, defineFrameworkNavigation } from 'leadtype';
+ 
+ const generateDocsConfig = () => {
+ 	const frameworkConceptPages = [
+@@ -63,46 +63,6 @@ const generateDocsConfig = () => {
+ 		'iab/use-gvl-data',
+ 	];
+ 
+-	const buildReactFrameworkNavigation = (title: string, base: string) => ({
+-		title,
+-		base,
+-		pages: ['quickstart', 'optimization', '/ai-agents'],
+-		children: [
+-			{
+-				title: 'Concepts',
+-				pages: frameworkConceptPages,
+-			},
+-			{
+-				title: 'Guides',
+-				pages: reactFrameworkGuidePages,
+-			},
+-			{
+-				title: 'Components',
+-				pages: reactFrameworkComponentPages,
+-			},
+-			{
+-				title: 'Styling',
+-				pages: reactFrameworkStylingPages,
+-			},
+-			{
+-				title: 'Hooks',
+-				pages: reactFrameworkHookPages,
+-			},
+-			{
+-				title: 'Troubleshooting',
+-				pages: ['troubleshooting'],
+-			},
+-			{
+-				title: 'Headless',
+-				pages: ['building-headless-components', 'headless'],
+-			},
+-			{
+-				title: 'IAB TCF',
+-				pages: reactFrameworkIabPages,
+-			},
+-		],
+-	});
+-
+ 	return defineDocsConfig({
+ 		product: {
+ 			name: 'c15t',
+@@ -166,15 +126,49 @@ const generateDocsConfig = () => {
+ 			},
+ 		],
+ 		navigation: [
+-			{
++			defineFrameworkNavigation({
+ 				title: 'Frameworks',
+ 				base: 'frameworks',
+-				pages: [''],
+-				children: [
+-					buildReactFrameworkNavigation('React', 'react'),
+-					{
+-						title: 'JavaScript',
+-						base: 'javascript',
++				pages: ['index'],
++				templates: {
++					componentFramework: {
++						pages: ['quickstart', 'optimization', '/ai-agents'],
++						children: [
++							{
++								title: 'Concepts',
++								pages: frameworkConceptPages,
++							},
++							{
++								title: 'Guides',
++								pages: reactFrameworkGuidePages,
++							},
++							{
++								title: 'Components',
++								pages: reactFrameworkComponentPages,
++							},
++							{
++								title: 'Styling',
++								pages: reactFrameworkStylingPages,
++							},
++							{
++								title: 'Hooks',
++								pages: reactFrameworkHookPages,
++							},
++							{
++								title: 'Troubleshooting',
++								pages: ['troubleshooting'],
++							},
++							{
++								title: 'Headless',
++								pages: ['building-headless-components', 'headless'],
++							},
++							{
++								title: 'IAB TCF',
++								pages: reactFrameworkIabPages,
++							},
++						],
++					},
++					javascript: {
+ 						pages: ['quickstart', 'optimization', '/ai-agents'],
+ 						children: [
+ 							{
+@@ -215,9 +209,13 @@ const generateDocsConfig = () => {
+ 							},
+ 						],
+ 					},
+-					buildReactFrameworkNavigation('Next.js', 'next'),
++				},
++				frameworks: [
++					{ title: 'React', base: 'react', template: 'componentFramework' },
++					{ title: 'JavaScript', base: 'javascript', template: 'javascript' },
++					{ title: 'Next.js', base: 'next', template: 'componentFramework' },
+ 				],
+-			},
++			}),
+ 			{
+ 				title: 'CLI',
+ 				base: 'cli',

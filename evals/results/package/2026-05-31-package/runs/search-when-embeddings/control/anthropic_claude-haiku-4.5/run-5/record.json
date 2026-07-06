@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static BM25 lexical index with no database (point 1) and correctly states that the lexical index should be kept as a complementary layer, not replaced (point 3). However, for point 2 it only gives the vocabulary/intent mismatch condition and omits the specific threshold of a very large corpus (≈ tens of thousands of chunks). The answer is incomplete—it confidently lists conditions without including the required corpus size, which the rubric explicitly requires. Therefore, the answer is incorrect overall, scoring 70 due to partial coverage.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 16352,
+  "outputTokens": 357,
+  "durationMs": 34948,
+  "steps": 12,
+  "errors": []
+}

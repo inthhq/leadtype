@@ -1,21 +1,20 @@
 ---
 title: "LLM files"
 description: "Generate llms.txt for hosted websites and AGENTS.md for npm-bundled offline reading."
-group: reference
 ---
 
-# LLM files
-
-The `leadtype/llm` entry point produces four flavors of agent-facing output, all derived from the same docs source:
+The `leadtype/llm` entry point produces five flavors of agent-facing output — four derived from a docs source tree, plus one that takes pages directly:
 
 - **`generateLlmsTxt`** — for hosted websites. Emits the `/llms.txt` convention with root-relative markdown mirror links.
 - **`generateLLMFullContextFiles`** — root `/llms-full.txt` fallback containing all generated markdown docs. Pairs with `generateLlmsTxt`.
-- **`generateAgentReadabilityArtifacts`** — docs-scoped `sitemap.xml`, `sitemap.md`, `robots.txt`, and JSON manifest data that a host app can merge into site-level files.
+- **`generateAgentReadabilityArtifacts`** — root `sitemap.xml`, `sitemap.md`, `robots.txt`, and docs-scoped JSON manifest data that a host app can merge into site-level files.
 - **`generateAgentsMd`** — for npm-bundled docs. Emits an `AGENTS.md` index with relative `./docs/<topic>.md` paths so the file works inside `node_modules/<pkg>/`.
+- **`generateAgentArtifacts`** — for sites without a docs tree. Takes an in-memory page list (CMS, database, route manifest) and emits the full artifact set in one call.
 
 ```ts
 import {
   extractDocsTableOfContents,
+  generateAgentArtifacts,
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
@@ -37,16 +36,79 @@ The CLI's default `leadtype generate` calls the website APIs; `leadtype generate
 | `<out>/llms.txt` | Top-level routing index. Product summary, best starting points, and root-relative markdown mirror links. |
 | `<out>/docs/llms.txt` | Docs-scoped routing index. Lists every group with descriptions and markdown entry links. |
 | `<out>/llms-full.txt` | All generated markdown docs flattened into one fallback file. Use when page-level links are not enough. |
-| `<out>/docs/sitemap.xml` | Docs-scoped XML sitemap with canonical page URLs and `<lastmod>` dates. |
-| `<out>/docs/sitemap.md` | Docs-scoped markdown sitemap with headings and links. |
-| `<out>/docs/robots.txt` | Mergeable crawl policy that explicitly allows common AI crawlers. |
+| `<out>/sitemap.xml` / `<out>/sitemap.md` | Origin-root crawler discovery files with canonical page URLs and docs navigation. |
+| `<out>/robots.txt` | Origin-root crawl policy that points crawlers at `<out>/sitemap.xml`. |
 | `<out>/docs/agent-readability.json` | Structured manifest for host apps that need to merge docs pages with marketing, blog, changelog, or product pages. |
 
-Group metadata still drives `llms.txt` sections, navigation, search metadata, and `AGENTS.md`, but site mode no longer emits per-group full-context files by default. See [Evals](/docs/reference/evals) for the benchmark behind that default.
+Config `navigation` drives `llms.txt` sections, the sidebar, sitemap markdown, Agent Readability navigation, and `AGENTS.md` when present. Legacy `group` metadata remains the fallback for projects that have not adopted `navigation`, and still works as search/filter taxonomy. Site mode no longer emits per-group full-context files by default. See [Evals](/docs/concepts/evals) for the benchmark behind that default.
 
-## ProductInfo
+### Optional sections
 
-Every generator that writes a top-level index file (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) takes the same `product` object:
+Mark a navigation node `optional: true` to flag it "safe to drop for shorter context". Its pages don't get their own heading in `docs/llms.txt` — they collapse into a single trailing **`## Optional`** section (the [llms.txt](https://llmstxt.org) convention for low-priority links), so an agent under a tight context budget knows what it can skip first.
+
+```ts
+navigation: [
+  "index",
+  "quickstart",
+  { title: "Reference", base: "reference", pages: [{ include: "*" }] },
+  { title: "Changelog", base: "changelog", optional: true, pages: [{ include: "*" }] },
+],
+```
+
+Use strings at the top level for pages that should not live under a group. Use `index` for `docs/index.mdx` or a nested `index.mdx` page in navigation. Leadtype strips the `index` segment from the public URL, so top-level `"index"` still links to `/docs`, and `base: "guides", pages: ["index"]` links to `/docs/guides`.
+
+### Framework sections
+
+Use `defineFrameworkNavigation` when several framework docs share the same sections. It expands templates into a normal navigation node, so sidebar generation, `llms.txt`, sitemap output, remote sources, and validation all keep using the existing `navigation` contract.
+
+```ts
+import {
+  defineDocsConfig,
+  defineFrameworkNavigation,
+} from "leadtype";
+
+const frameworkConceptPages = ["consent-management", "consent-banner"];
+const frameworkGuidePages = ["script-loader", "iframe-blocking"];
+
+export default defineDocsConfig({
+  navigation: [
+    defineFrameworkNavigation({
+      title: "Frameworks",
+      base: "frameworks",
+      pages: ["index"],
+      templates: {
+        componentFramework: {
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            { title: "Concepts", pages: frameworkConceptPages },
+            { title: "Guides", pages: frameworkGuidePages },
+          ],
+        },
+      },
+      frameworks: [
+        { title: "React", base: "react", template: "componentFramework" },
+        { title: "Next.js", base: "next", template: "componentFramework" },
+        {
+          title: "JavaScript",
+          base: "javascript",
+          pages: ["quickstart", "optimization", "/ai-agents"],
+          children: [
+            { title: "Guides", pages: ["script-loader", "network-blocker"] },
+          ],
+        },
+      ],
+    }),
+  ],
+});
+```
+
+Framework `base` values are still relative to the parent `base`, so the React quickstart above resolves to `/docs/frameworks/react/quickstart`. A page that starts with `/` still points at the collection root, which keeps shared pages such as `/ai-agents` outside the framework tree.
+
+The flag applies to the whole subtree, so nested children of an optional node are flattened into `## Optional` too. It affects `docs/llms.txt` only — the website sidebar, sitemap, and search still list every page normally.
+
+## product (identity)
+
+The `product` block in `docs.config.ts` is the identity of the documented thing — authored once and reused across `llms.txt`, the JSON-LD graph, and the agent card.
 
 <TypeTable
   properties={{
@@ -55,140 +117,255 @@ Every generator that writes a top-level index file (`generateLlmsTxt`, `generate
       required: true,
       description: "Product display name. Rendered as the H1 of llms.txt and AGENTS.md.",
     },
-    summary: {
+    tagline: {
       type: "string",
       required: true,
-      description: "Single-line summary rendered as the blockquote under the H1.",
+      description: "One-line description rendered as the blockquote under the H1, and reused as the agent-card / JSON-LD description.",
     },
-    bullets: {
-      type: "string[]",
-      description: "Rendered under '## Product Summary'. Use for top-level feature highlights.",
-    },
-    bestStartingPoints: {
-      type: "Array<{ urlPath: string, title?: string, description?: string }>",
-      description: "Curated entry points rendered under '## Best Starting Points'. Titles and descriptions fall back to each page's frontmatter when omitted.",
-    },
-    agentGuidance: {
+    homepage: {
       type: "string",
-      description: "Optional routing instruction appended at the bottom of llms.txt. Ignored by generateAgentsMd — the URL-routing flow doesn't apply to offline package docs.",
+      description: "Canonical product homepage. Agent-card `url` fallback when no MCP endpoint is set.",
+    },
+    docs: {
+      type: "string",
+      description: "Docs entry point. Becomes the agent-card `documentationUrl`. Defaults to `${baseUrl}/docs`.",
+    },
+    repository: {
+      type: "string",
+      description: "Source repository URL. Emitted as JSON-LD `codeRepository` for libraries.",
+    },
+    kind: {
+      type: '"library" | "app"',
+      description: "`library` emits JSON-LD `SoftwareApplication` plus `SoftwareSourceCode`; anything else emits `SoftwareApplication`. Defaults to `app`.",
+    },
+    category: {
+      type: "string",
+      description: "JSON-LD `applicationCategory`, e.g. `DeveloperApplication`.",
     },
   }}
 />
 
-The `docs.config.ts` `product` field has this exact shape; both the CLI and the library APIs read it.
+Two sibling top-level blocks complete the identity:
+
+- **`organization`** — `{ name, url?, email?, logo?, sameAs?, contactPoint?, address? }`. Who publishes the product. Feeds the JSON-LD `Organization` node and the agent-card `provider`. `email` publishes a top-level organization contact field, `sameAs` links disambiguate the brand, `contactPoint` emits typed Schema.org `ContactPoint` entries (with `contactType` plus `email` or `telephone`), and `address` emits a `PostalAddress` when you have a real business address to publish. Distinct from `product`: the product is the documented thing, the organization is who stands behind it.
+- **`llms.sections`** — the authored `llms.txt` body (see below).
+
+The low-level generators (`generateLlmsTxt`, `generateLLMFullContextFiles`, `generateAgentReadabilityArtifacts`, `generateAgentsMd`) consume an internal `{ name, summary, blocks }` product shape — not the config `product` directly. `resolveAgentInputs(config)` bridges the two: it maps `product.tagline` → `summary`, `llms.sections` → `blocks`, and `organization` + `product` (`kind`/`category`/`repository`) → JSON-LD and agent-card inputs. `leadtype generate` uses it internally; call it yourself when composing the generators by hand (see "Typical sequence").
+
+## llms.sections
+
+`llms.sections` describes the body of `llms.txt`. It is one ordered array, so a section's position is just its index — there are no placement flags.
+
+Each `LlmsBlock` is one of two kinds:
+
+- **`markdown`** — `{ type: "markdown", heading?: string, body: string }`. The `body` is emitted verbatim under an optional `## heading`. Use it for prose, bullet lists, popularity (GitHub stars, npm downloads), a "Hosted by …" mention, community links, or badges. leadtype never fetches or computes values — supply them yourself (you can fetch at build time in your `.ts` config module, since it's just code).
+- **`links`** — `{ type: "links", heading: string, links: CuratedLink[] }`. A curated link list under a `## heading`, resolved against your source docs — titles and descriptions auto-fill from each page's frontmatter and URLs are rewritten for the website (`/docs/<topic>.md`) or the offline bundle (`./docs/<topic>.md`).
+
+```ts
+product: {
+  name: "c15t",
+  tagline: "Developer-first consent management for modern web apps.",
+},
+organization: {
+  name: "Inth",
+  url: "https://inth.com",
+  email: "support@inth.com",
+  sameAs: ["https://github.com/inthhq"],
+  contactPoint: {
+    contactType: "customer support",
+    email: "support@inth.com",
+  },
+},
+llms: {
+  sections: [
+    { type: "markdown", heading: "Overview", body: "- GDPR-ready banners\n- Framework guides" },
+    {
+      type: "markdown",
+      heading: "Popularity",
+      body: "Widely adopted across the JS ecosystem. Hosted by [Inth](https://inth.com).",
+    },
+    {
+      type: "links",
+      heading: "Best Starting Points",
+      links: [{ urlPath: "/docs/frameworks/next/quickstart" }],
+    },
+    { type: "markdown", heading: "Agent Guidance", body: "Start with the framework quickstart." },
+  ],
+}
+```
+
+In `AGENTS.md` the same sections render as the product-content body, with `generateAgentsMd` adding the offline preamble and navigation around them.
 
 ## Example llms.txt
 
+This is the output of the `llms.sections` config above — each section becomes an `## heading`, in array order, with `links` sections resolved to markdown mirror links:
+
 ```txt
-# My Library
+# c15t
 
-> A library that does one thing well.
+> Developer-first consent management for modern web apps.
 
-- Helper that handles the boring parts.
-- Type-safe by default.
-- Works in any runtime.
+## Overview
+
+- GDPR-ready banners
+- Framework guides
+
+## Popularity
+
+Widely adopted across the JS ecosystem. Hosted by [Inth](https://inth.com).
 
 ## Best Starting Points
 
-- [Documentation](/docs/index.md)
-- [Quickstart](/docs/quickstart.md)
+- [Quickstart](/docs/frameworks/next/quickstart.md): Get started with Next.js.
 
-## Get Started
+## Agent Guidance
 
-Five-minute happy path and the mental model.
-
-- [Quickstart](/docs/quickstart.md): Install and run the pipeline.
-- [How it works](/docs/how-it-works.md): The mental model.
-
-## Reference
-
-CLI flags and conversion APIs.
-
-- [CLI](/docs/reference/cli.md): Every flag.
+Start with the framework quickstart.
 ```
 
 ## Typical sequence
 
 ```ts
 import { convertAllMdx } from "leadtype/convert";
-import { defaultRemarkPlugins, remarkInclude } from "leadtype/remark";
 import {
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  resolveAgentInputs,
 } from "leadtype/llm";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 await convertAllMdx({
   srcDir: "docs",
   outDir: "public/docs",
-  remarkPlugins: [remarkInclude, ...defaultRemarkPlugins],
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
 });
+
+// Bridge the config identity (product/organization/llms) into the internal
+// generator inputs — the same mapping `leadtype generate` uses.
+const { product, jsonLd } = resolveAgentInputs(docsConfig);
 
 await generateLlmsTxt({
   srcDir: ".",
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: {
-    name: "My Library",
-    summary: "A library that does one thing well.",
-  },
-  groups: docsConfig.groups,
+  product,
+  nav: docsConfig.navigation,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: { name: "My Library" },
-  groups: docsConfig.groups,
+  product: { name: product.name },
+  nav: docsConfig.navigation,
 });
 
 await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: docsConfig.product,
-  groups: docsConfig.groups,
+  product,
+  nav: docsConfig.navigation,
+  generatedAt: process.env.SOURCE_DATE_EPOCH
+    ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000)
+    : undefined,
+  jsonLd, // bakes the site graph into the manifest for renderSiteJsonLd
 });
 ```
 
 `generateLLMFullContextFiles` and `generateAgentReadabilityArtifacts` read from `<outDir>/docs/`, so always run conversion first.
+
+## Mounted URL prefixes
+
+By default, generated markdown under `<outDir>/docs/` maps to public URLs under `/docs`. Use `mounts` when part of that generated tree should have a different canonical URL, such as a changelog that lives beside docs in the source repo:
+
+```ts title="docs/docs.config.ts"
+export default {
+  product: { name: "My product", tagline: "Developer tools." },
+  navigation: [
+    "index",
+    "quickstart",
+    { title: "Changelog", base: "changelog", optional: true, pages: ["v1"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+};
+```
+
+With that mount, `public/docs/quickstart.md` is still `/docs/quickstart.md`, while `public/docs/changelog/v1.md` is described as `/changelog/v1.md` in `llms.txt`, `llms-full.txt`, navigation, sitemap data, Agent Readability metadata, and search metadata.
+
+Custom build scripts should pass `docsConfig.mounts` to every artifact generator
+that reads generated markdown:
+
+```ts
+await generateLlmsTxt({
+  srcDir: ".",
+  outDir: "public",
+  product: resolveAgentInputs(docsConfig).product,
+  nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
+});
+
+await generateLLMFullContextFiles({
+  outDir: "public",
+  product: { name: docsConfig.product.name },
+  nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
+});
+
+await generateAgentReadabilityArtifacts({
+  outDir: "public",
+  product: resolveAgentInputs(docsConfig).product,
+  nav: docsConfig.navigation,
+  mounts: docsConfig.mounts,
+});
+```
+
+`resolveDocsNavigation` and `resolveDocsTableOfContents` also accept `mounts` so sidebars and page metadata use the same URL paths. If you use the CLI with `docs/docs.config.ts`, the config-level mount is loaded automatically and the CLI writes static markdown mirrors at `public/changelog/*.md`. For multiple sibling source folders, use `--docs-dir changelog=/changelog`; it creates the equivalent mount from the command line.
 
 ## generateAgentReadabilityArtifacts
 
 For hosted docs sites that need the Vercel Agent Readability discovery layer without letting leadtype own the whole website:
 
 ```ts
-import {
-  generateAgentReadabilityArtifacts,
-  renderRobotsTxt,
-  renderSitemapMarkdown,
-  renderSitemapXml,
-} from "leadtype/llm";
+import { generateAgentReadabilityArtifacts } from "leadtype/llm";
 
 const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: docsConfig.product,
-  groups: docsConfig.groups,
+  product: resolveAgentInputs(docsConfig).product,
+  generatedAt: "2026-06-15T10:30:00.000Z",
 });
 ```
 
-Writes docs-scoped files under `<outDir>/docs/`. The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can then merge `result.manifest.pages` with non-docs routes before serving root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+Writes crawler files at the output root (`<outDir>/robots.txt`, `<outDir>/sitemap.xml`, `<outDir>/sitemap.md`). The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can still merge `result.manifest.pages` with non-docs routes before serving custom root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+
+Pass `generatedAt` (`string | Date`) when your build needs reproducible output. It fixes `manifest.generatedAt` and the per-page `lastModified` fallback for pages whose frontmatter carries no date (otherwise the file mtime leaks in, and mtimes change on every fresh checkout). The CLI currently uses the default current time.
+
+## generateAgentArtifacts
+
+For sites without a `.mdx` docs tree — CMS-backed blogs, data-driven pages, marketing sites. Takes an in-memory page list instead of a source directory and emits the full artifact set: `llms.txt` (+ the `/.well-known/llms.txt` copy), one markdown mirror per page at `${urlPath}.md` with `canonical_url`/`last_updated` frontmatter, `sitemap.xml`, `sitemap.md`, `robots.txt`, and a root-level `agent-readability.json`:
 
 ```ts
-await writeFile("public/sitemap.xml", renderSitemapXml(result.manifest.pages));
-await writeFile(
-  "public/sitemap.md",
-  renderSitemapMarkdown({
-    product: docsConfig.product,
-    navigation: result.manifest.navigation,
-    pages: result.manifest.pages,
-  })
-);
-await writeFile(
-  "public/robots.txt",
-  renderRobotsTxt({ baseUrl: "https://leadtype.dev" })
-);
+import { generateAgentArtifacts } from "leadtype/llm";
+
+await generateAgentArtifacts({
+  outDir: "public",
+  baseUrl: "https://example.com",
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  product: { name: "Example", tagline: "One-line summary." },
+  agents: { robots: { policy: "block-training" } },
+  pages: posts.map((post) => ({
+    urlPath: `/blog/${post.slug}`,
+    title: post.title,
+    description: post.summary,
+    content: post.markdown,
+    lastModified: post.updatedAt,
+  })),
+});
 ```
+
+Pass `generatedAt` (`string | Date`) for deterministic builds. It fixes `manifest.generatedAt` and the `lastModified` fallback for pages that do not provide their own content date.
+
+Set `emitRootCrawlerFiles: false` when the site is one fragment of a larger origin (microfrontends) and the host app owns the root crawler files. See [Generate artifacts without a docs tree](/docs/aeo/generate-artifacts-without-docs) for page-input fallback rules and the merge story.
 
 ## Agent readability helpers
 
@@ -199,6 +376,7 @@ import {
   acceptsMarkdownHeader,
   createAgentMarkdownResponse,
   createDocsHead,
+  createDocsJsonLd,
   createMarkdownResponseHeaders,
   createRobotsTxtResponse,
   createSitemapMarkdownResponse,
@@ -210,6 +388,7 @@ import {
   renderJsonLdScript,
   renderMissingMarkdown,
   resolveMarkdownMirrorTarget,
+  stringifyJsonLd,
 } from "leadtype/llm/readability";
 ```
 
@@ -245,7 +424,7 @@ Headers it sets:
 
 It also enriches frontmatter with `canonical_url` and `last_updated`, leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, root `llms-full.txt`, search JSON) alone, and returns a 200 markdown "Page not found" body only for agent-oriented requests.
 
-Optional `userAgentPattern` overrides the default AI user-agent regex (defaults cover GPTBot, ChatGPT-User, OAI-SearchBot, Claude-Web, ClaudeBot, anthropic-ai, CCBot, Google-Extended, AmazonBot, Bingbot, MetaExternalAgent, ByteSpider, PerplexityBot, MistralBot, AppleBot, YouBot).
+Optional `userAgentPattern` overrides the default AI user-agent regex (defaults cover GPTBot, ChatGPT-User, OAI-SearchBot, Claude-Web, ClaudeBot, anthropic-ai, CCBot, Google-Extended, AmazonBot/Amazonbot, Bingbot, MetaExternalAgent, ByteSpider/Bytespider, PerplexityBot, MistralBot, AppleBot, Applebot-Extended, YouBot).
 
 ### createSitemapXmlResponse / createSitemapMarkdownResponse / createRobotsTxtResponse
 
@@ -262,20 +441,37 @@ const sitemap = createSitemapXmlResponse({
 const robots = createRobotsTxtResponse({
   manifest,
   requestOrigin: new URL(request.url).origin,
-  // Optional: docs-scoped robots points to /docs/sitemap.xml.
-  sitemapUrlPath: "/docs/sitemap.xml",
 });
 ```
 
 `requestOrigin` is optional — when omitted, the helpers fall back to `manifest.baseUrl`.
 
-### createDocsHead
+### createDocsJsonLd / stringifyJsonLd / createDocsHead
 
-Build canonical/alternate/og/JSON-LD head metadata for a docs page from the manifest. Returns `{ meta, links }` in a framework-neutral shape (TanStack Router, Next.js Metadata, Astro, etc.).
+Build JSON-LD, canonical links, markdown alternate links, and OpenGraph-style metadata for a docs page from the manifest.
+
+Reach for `createDocsJsonLd` when your framework wants a structured object, then pass it through `stringifyJsonLd` for safe `<script type="application/ld+json">` contents. `createDocsHead` remains the generic `{ meta, links }` helper for head APIs that accept descriptor arrays.
 
 ```ts
 import manifest from "../public/docs/agent-readability.json";
-import { createDocsHead } from "leadtype/llm/readability";
+import {
+  createDocsHead,
+  createDocsJsonLd,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
+
+const jsonLd = createDocsJsonLd({
+  urlPath: "/docs/quickstart",
+  manifest,
+  overrides: {
+    author: { "@type": "Organization", name: "Acme Docs" },
+    publisher: { "@type": "Organization", name: "Acme" },
+    image: "https://example.com/og/docs.png",
+    keywords: ["docs", "quickstart"],
+  },
+});
+
+const scriptContent = jsonLd ? stringifyJsonLd(jsonLd) : "";
 
 const head = createDocsHead({
   urlPath: "/docs/quickstart",
@@ -301,13 +497,29 @@ const head = createDocsHead({
 
 If the page is not in the manifest, both arrays are empty so the caller can fall back to its own metadata.
 
+The default JSON-LD uses `TechArticle` and includes title, description, canonical URL, last modified time, product website, and breadcrumbs. Override fields only when your site has better product-specific data such as authors, publisher, OpenGraph image, publish date, keywords, or a different Schema.org type.
+
+```ts
+createDocsJsonLd({
+  urlPath: "/docs/api",
+  manifest,
+  overrides: ({ page }) => ({
+    type: ["TechArticle", "APIReference"],
+    articleSection: page.groups[0],
+    breadcrumb: false,
+  }),
+});
+```
+
 ### Lower-level helpers
 
-For a step-by-step integration guide, see [Optimize docs for agents](/docs/build/optimize-docs-for-agents).
+For a step-by-step integration guide, see [Optimize docs for agents](/docs/aeo/optimize-docs-for-agents).
 
 | Helper | Use it for |
 | --- | --- |
-| `renderJsonLd` | Return a Schema.org object for framework metadata APIs. |
+| `createDocsJsonLd` | Return page JSON-LD by `urlPath`, with per-site overrides. |
+| `stringifyJsonLd` | Escape JSON-LD for safe script contents. |
+| `renderJsonLd` | Return the default Schema.org object for a manifest page. |
 | `renderJsonLdScript` | Return an escaped `<script type="application/ld+json">` string. |
 | `createAgentMarkdownResponse` | Build a complete markdown `Response` for agent Accept headers, AI user agents, and direct `.md` URLs. |
 | `createSitemapXmlResponse` / `createSitemapMarkdownResponse` / `createRobotsTxtResponse` | Build sitemap/robots `Response`s rebased to the live origin. |
@@ -338,8 +550,7 @@ import { generateAgentsMd } from "leadtype/llm";
 await generateAgentsMd({
   srcDir: ".",
   outDir: "packages/my-package",
-  product: docsConfig.product,
-  groups: docsConfig.groups,
+  product: resolveAgentInputs(docsConfig).product,
 });
 ```
 
@@ -349,7 +560,7 @@ Writes `<outDir>/AGENTS.md` (singular, at the root) with the same product summar
 | --- | --- |
 | `srcDir` | Repo root containing the `docs/` source. |
 | `outDir` | Package root. `AGENTS.md` is written at `<outDir>/AGENTS.md`. |
-| `product` | Same `ProductInfo` shape as `generateLlmsTxt`. `agentGuidance` is intentionally ignored — it's written for the website's URL-routing flow and would mislead an offline agent. |
+| `product` | Same `ProductInfo` shape as `generateLlmsTxt`. The `blocks` array renders here too, so author offline-friendly content (relative links, no website-routing prose). |
 | `groups` | Group tree from `docs.config.ts`. Same shape as `generateLlmsTxt`. |
 | `docsSubdir` | Subdirectory under `outDir` that holds the `.md` files. Default: `docs`. Used as the relative-path prefix in every link. |
 
@@ -378,13 +589,13 @@ Pair with `convertAllMdx` to produce the `.md` files the links resolve to. See [
 
 ## resolveDocsNavigation
 
-Same group-resolution logic the LLM files use, but returns the navigation manifest as a plain object — useful for driving a sidebar UI:
+Same nav-resolution logic the LLM files use, but returns the navigation manifest as a plain object — useful for driving top nav tabs and sidebar UI:
 
 ```ts
 const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
-  groups: docsConfig.groups,
+  nav: docsConfig.navigation,
 });
 
 if (navigation.unknown.length > 0) {
@@ -395,7 +606,7 @@ if (navigation.unknown.length > 0) {
 }
 ```
 
-Write the result to `src/generated/docs-nav.json` and import it from your sidebar component:
+Write the result to `src/generated/docs-nav.json` and import it from your docs shell:
 
 ```ts
 import { mkdir, writeFile } from "node:fs/promises";
@@ -407,11 +618,11 @@ await writeFile(
 );
 ```
 
-Now your sidebar can import a static manifest with the same group tree the LLM files use.
+Now your top nav and sidebar can import a static manifest with the same nav tree the LLM files use. A common pattern is to render root nav nodes as top-level tabs, then render the active root node's pages and children in the sidebar.
 
 ## Tables of contents
 
-For the heading slug contract and renderer wiring, see [Render MDX and TOC](/docs/build/render-mdx-and-toc). This section covers the build-time APIs only.
+For the heading slug contract and renderer wiring, see [Use the source primitive](/docs/pipeline/use-the-source-primitive). This section covers the build-time APIs only.
 
 `resolveDocsNavigation` includes a `toc` array on every page by default. The default range is `h2`–`h3`, which keeps page-level `h1` titles out of sidebars.
 
@@ -419,12 +630,12 @@ For the heading slug contract and renderer wiring, see [Render MDX and TOC](/doc
 const navigation = await resolveDocsNavigation({
   srcDir: ".",
   baseUrl: "https://leadtype.dev",
-  groups: docsConfig.groups,
+  nav: docsConfig.navigation,
   toc: { minLevel: 2, maxLevel: 4 },
 });
 ```
 
-If you only need TOC data and not the full group tree, call `resolveDocsTableOfContents`:
+If you only need TOC data and not the full navigation tree, call `resolveDocsTableOfContents`:
 
 ```ts
 const pages = await resolveDocsTableOfContents({
@@ -439,7 +650,7 @@ For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX str
 
 The `groups` you pass to these APIs come from `docs.config.ts`. Two principles:
 
-- **Use groups for routing, not sharding.** Groups organize `llms.txt`, navigation, search metadata, and `AGENTS.md`. The root `llms-full.txt` remains the broad fallback.
+- **Use groups for routing, not sharding.** Groups organize `llms.txt`, navigation, search metadata, and `AGENTS.md`. The root `llms-full.txt` remains the broad fallback. Per-group full-context bundles and an `llms-full.txt` router are **not recommended**: the [eval run](/docs/concepts/evals#which-llms-txt-shape-routes-agents-best-hosted-docs-benchmark) shows agents bypass them (context match **26–28%** vs. **83–100%** for page links, the monolith, and section indexes), so leadtype doesn't emit them and you shouldn't hand-roll them.
 - **Write group descriptions for routing, not flavor text.** Agents read those descriptions to decide which pages to load. "How to install and run" beats "Welcome to our guides!"
 
 ## Base URL precedence

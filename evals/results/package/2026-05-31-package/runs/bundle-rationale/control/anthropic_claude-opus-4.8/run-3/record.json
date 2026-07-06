@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fully meets all required rubric points: it explains that llms.txt is a website/HTTP convention (fetched over HTTP) and no agent looks for it inside node_modules, making it wrong for a tarball; explains AGENTS.md works as an offline, version-matched filesystem entry with links to shipped docs (implying relative paths and no network needed); and states --bundle skips llms.txt, llms-full.txt, and search-index.json (website artifacts). No rubric violations.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 8364,
+  "outputTokens": 374,
+  "durationMs": 31469,
+  "steps": 7,
+  "errors": []
+}

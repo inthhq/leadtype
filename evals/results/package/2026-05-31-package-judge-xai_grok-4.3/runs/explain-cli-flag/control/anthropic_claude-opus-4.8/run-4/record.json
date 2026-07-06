@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names are stated, they are described as being merged into output frontmatter, and their source is explicitly git commit metadata (via the git log command). No invented fields, no wrong provenance, and the paragraph is written to ANSWER.md as requested.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 37792,
+  "outputTokens": 452,
+  "durationMs": 27541,
+  "steps": 7,
+  "errors": []
+}

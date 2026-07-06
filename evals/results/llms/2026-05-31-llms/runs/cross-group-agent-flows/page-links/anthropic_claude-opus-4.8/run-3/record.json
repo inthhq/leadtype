@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response identifies the hosted flow starting file as /llms.txt over HTTP and the bundle flow starting file as AGENTS.md in the installed package. It lists the website artifacts skipped in bundle mode, including llms.txt and llms-full.txt, plus search/sitemap/robots/agent-readability.json. No rubric points are missed, and there are no contradictory statements.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4969,
+  "outputTokens": 499,
+  "durationMs": 28775,
+  "steps": 4,
+  "errors": []
+}

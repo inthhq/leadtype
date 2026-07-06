@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "discovery",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response describes the output files (llms.txt, AGENTS.md, /llms-full.txt) and correctly explains the /llms-full.txt fallback, satisfying the second required rubric point. However, it completely fails to mention the LLM files reference (leadtype/llm) or any of the specific API function names like generateLLMFullContextFiles, missing the first required point. As a result, the answer does not correctly identify the agent-facing output APIs within the Leadtype library.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 12,
+  "inputTokens": 5174,
+  "outputTokens": 230,
+  "durationMs": 19042,
+  "steps": 6,
+  "errors": []
+}

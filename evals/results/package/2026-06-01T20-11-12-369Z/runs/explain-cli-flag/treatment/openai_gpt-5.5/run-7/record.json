@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both frontmatter fields explicitly ('lastModified' and 'lastAuthor'), states they are merged into the output frontmatter, and clearly explains they come from git history (via git log). All required rubric points are satisfied completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 5,
+  "inputTokens": 42008,
+  "outputTokens": 475,
+  "durationMs": 20326,
+  "steps": 6,
+  "errors": []
+}

@@ -110,6 +110,32 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(results[0]?.title).toBe("Code");
   });
 
+  it("indexes and searches terms that collide with Object.prototype", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "proto",
+          title: "Constructor Patterns",
+          description: "Class constructor usage.",
+          urlPath: "/docs/constructor",
+          absoluteUrl: "https://leadtype.dev/docs/constructor",
+          relativePath: "constructor",
+          content:
+            "# Constructor\n\nCall the constructor before hasOwnProperty checks.\n",
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    // Simulate the client path: a JSON.parse'd index has a normal prototype,
+    // so "constructor" must not resolve to Object.prototype members.
+    const parsed = JSON.parse(JSON.stringify(index)) as typeof index;
+
+    const results = searchDocs(parsed, "constructor");
+
+    expect(results[0]?.title).toBe("Constructor Patterns");
+  });
+
   it("expands queries with synonyms while keeping exact matches first", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
@@ -131,6 +157,135 @@ describe("createDocsSearchIndex and searchDocs", () => {
     });
 
     expect(results[0]?.title).toBe("Tabs");
+  });
+
+  it("lets transformers customize search documents and chunks", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      transformers: [
+        {
+          name: "search-metadata",
+          beforeSearchIndex(documents) {
+            return documents.map((doc) => ({
+              ...doc,
+              description:
+                doc.id === "quickstart"
+                  ? `${doc.description} sdk bootstrap`
+                  : doc.description,
+            }));
+          },
+          beforeSearchChunk(chunk) {
+            if (chunk.relativePath !== "guides/quickstart") {
+              return;
+            }
+            return {
+              ...chunk,
+              text: `${chunk.text}\n\napiArea: onboarding`,
+            };
+          },
+        },
+      ],
+    });
+
+    expect(searchDocs(index, "bootstrap")[0]?.documentId).toBe("quickstart");
+    expect(searchDocs(index, "onboarding")[0]?.documentId).toBe("quickstart");
+  });
+
+  it("does not index shared route documents by default", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "shared-script-loader",
+          title: "Script loader",
+          urlPath: "/docs/shared/react/guides/script-loader",
+          absoluteUrl:
+            "https://leadtype.dev/docs/shared/react/guides/script-loader",
+          relativePath: "shared/react/guides/script-loader",
+          content: "# Script loader\n\nAlways load the shared script.",
+        },
+        {
+          id: "underscore-shared-script-loader",
+          title: "Script loader",
+          urlPath: "/docs/_shared/react/guides/script-loader",
+          absoluteUrl:
+            "https://leadtype.dev/docs/_shared/react/guides/script-loader",
+          relativePath: "_shared/react/guides/script-loader",
+          content: "# Script loader\n\nAlways load the _shared script.",
+        },
+        {
+          id: "changelog-shared-template",
+          title: "Release template",
+          urlPath: "/changelog/_shared/release-template",
+          absoluteUrl:
+            "https://leadtype.dev/changelog/_shared/release-template",
+          relativePath: "changelog/_shared/release-template",
+          content: "# Release template\n\nShared changelog release notes.",
+        },
+        {
+          id: "react-script-loader",
+          title: "Script loader",
+          urlPath: "/docs/frameworks/react/script-loader",
+          absoluteUrl:
+            "https://leadtype.dev/docs/frameworks/react/script-loader",
+          relativePath: "frameworks/react/script-loader",
+          content: "# Script loader\n\nAlways load the shared script.",
+        },
+      ],
+      {
+        generatedAt: "2026-01-01T00:00:00.000Z",
+      }
+    );
+
+    expect(index.documents.map((document) => document[3])).toEqual([
+      "/docs/frameworks/react/script-loader",
+    ]);
+    expect(searchDocs(index, "always load")).toHaveLength(1);
+  });
+
+  it("lets frontmatter opt shared routes into search", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "shared-public",
+          title: "Shared public guide",
+          urlPath: "/docs/shared/public-guide",
+          absoluteUrl: "https://leadtype.dev/docs/shared/public-guide",
+          relativePath: "shared/public-guide",
+          frontmatter: { search: true },
+          content: "# Shared public guide\n\nReusable concepts.",
+        },
+      ],
+      {
+        generatedAt: "2026-01-01T00:00:00.000Z",
+      }
+    );
+
+    expect(index.documents[0]?.[3]).toBe("/docs/shared/public-guide");
+    expect(searchDocs(index, "reusable")[0]?.urlPath).toBe(
+      "/docs/shared/public-guide"
+    );
+  });
+
+  it("lets frontmatter exclude public docs from search", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "private-preview",
+          title: "Private preview",
+          urlPath: "/docs/private-preview",
+          absoluteUrl: "https://leadtype.dev/docs/private-preview",
+          relativePath: "private-preview",
+          frontmatter: { search: false },
+          content: "# Private preview\n\nUnreleased preview details.",
+        },
+      ],
+      {
+        generatedAt: "2026-01-01T00:00:00.000Z",
+      }
+    );
+
+    expect(index.documents).toEqual([]);
+    expect(searchDocs(index, "unreleased")).toEqual([]);
   });
 
   it("falls back to prefix and typo-tolerant matches", () => {

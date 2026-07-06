@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default static BM25 index and states the lexical index should be kept as complementary. However, it fails to mention the specific condition of a very large corpus (tens of thousands of chunks) for adding embeddings. Instead, it introduces extra prerequisites (search volume, budget) not required by the rubric. This omission means the second required rubric point is not satisfied, and the answer is confidently wrong about the necessary conditions.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 22106,
+  "outputTokens": 326,
+  "durationMs": 34649,
+  "steps": 14,
+  "errors": []
+}

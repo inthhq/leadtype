@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the produced ANSWER.md correctly identifies llms.txt as an HTTP/website convention using absolute URLs (and therefore unsuitable inside node_modules), explains that AGENTS.md works offline because its links are relative, and states that --bundle deliberately omits llms.txt/llms-full.txt plus search/sitemap/robots artifacts because they depend on a baseUrl and server environment. No rubric violations occur; the two paragraphs are concise and factually aligned with the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 14924,
+  "outputTokens": 433,
+  "durationMs": 43321,
+  "steps": 17,
+  "errors": []
+}

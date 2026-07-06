@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that `nav`/`groups` in config drives sidebar, llms.txt, AGENTS.md grouping (point 1) and that an unknown group causes a hard build error (point 3). However, it incorrectly claims that the `group` frontmatter is 'not legacy' and is the 'active membership signal', directly contradicting the rubric's requirement that `group` is legacy/optional and only a fallback. Thus the required point about `group` is not satisfied, making the response incorrect overall.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 31,
+  "inputTokens": 40325,
+  "outputTokens": 274,
+  "durationMs": 111568,
+  "steps": 26,
+  "errors": []
+}

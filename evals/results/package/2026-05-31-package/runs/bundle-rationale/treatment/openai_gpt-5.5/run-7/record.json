@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer clearly explains that `llms.txt` is a website/HTTP convention with URL-based links (implying absolute), making it unsuitable for an npm tarball where agents don't look for it. It explains that `AGENTS.md` works inside the package because its relative links work offline without network, version-matched to the installed code. It correctly states that `--bundle` skips website-only artifacts including `llms.txt`, `llms-full.txt`, search indexes, sitemap, robots.txt, and agent-readability files, with rationale that they are for hosted docs. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 15927,
+  "outputTokens": 49,
+  "durationMs": 17901,
+  "steps": 5,
+  "errors": []
+}

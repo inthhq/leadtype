@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the required library APIs (`convertAllMdx`, `generateLlmsTxt`, `generateLLMFullContextFiles`, `generateDocsSearchFiles`). It calls `convertAllMdx` first to mirror MDX to markdown under `public/docs/`, then runs the LLM and search generators in the correct order. It passes `product` and derived `groups` from the config `nav`. All rubric-required points are satisfied without using the CLI or invented API names.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 81,
+  "inputTokens": 83844,
+  "outputTokens": 267,
+  "durationMs": 329303,
+  "steps": 24,
+  "errors": []
+}

@@ -1,14 +1,21 @@
 ---
 title: "Bundle docs into a package"
 description: "Ship agent-readable docs inside an npm tarball — AGENTS.md at the package root plus per-topic .md files."
-group: package-docs
 ---
 
-# Bundle docs into a package
+**Why bundle:** coding agents that install your package spend **32–54% fewer tokens** — and generally fewer tool calls — and **stop confidently guessing wrong** about your API. Both wins hold for every model tested, frontier included; raw accuracy also rises, most for the small, cheap models a lot of agents run and marginally for frontier ones ([evals](/docs/concepts/evals)).
 
 Use this path when **you publish a library on npm** and want version-matched docs available without a network request. Run `leadtype generate --bundle` at prepack time, include the output in your published `files`, and every install ships **`AGENTS.md` + per-topic markdown** inside `node_modules/<your-package>/`.
 
 The website is for humans and HTTP agents. The package-bundled docs are for coding agents, IDEs, and CLI tooling that can read files from the installed dependency.
+
+<Callout title="The setup is two steps — don't skip the second" variant="warning">
+  **1.** Ship `AGENTS.md` in your tarball (this page). **2.** Tell consumers to
+  point their root `AGENTS.md` at it. Left to discover the bundle on their own,
+  agents read it only **~29%** of the time; with the pointer it jumps to
+  **~90–100%** ([evals](/docs/concepts/evals)). Step 1 without step 2 ships docs
+  nothing reliably reads — [jump to the snippet](#point-consumers-at-the-bundle).
+</Callout>
 
 ## The flow
 
@@ -31,7 +38,7 @@ The website is for humans and HTTP agents. The package-bundled docs are for codi
 
 [`AGENTS.md`](https://agents.md) is the **filesystem convention** that solves this. Tools like Claude Code, OpenAI Codex, Cursor, GitHub Copilot, Aider, Devin, and others can read `AGENTS.md` when working with files on disk. An `AGENTS.md` inside `node_modules/<your-package>/` is the right shape for version-matched package docs: relative links work, no network is required, and the content matches the installed version.
 
-leadtype emits both — `llms.txt` in [website mode](/docs/build/connect-docs-site) for HTTP-discoverable agents, and `AGENTS.md` in `--bundle` mode for offline filesystem-discoverable agents.
+leadtype emits both — `llms.txt` in [website mode](/docs/pipeline/build-a-docs-site) for HTTP-discoverable agents, and `AGENTS.md` in `--bundle` mode for offline filesystem-discoverable agents.
 
 ## Generate into the package
 
@@ -39,14 +46,14 @@ leadtype emits both — `llms.txt` in [website mode](/docs/build/connect-docs-si
 npx leadtype generate \
   --bundle \
   --src . \
-  --out packages/my-package \
-  --name "my-package" \
-  --summary "Docs for my-package."
+  --out packages/acme \
+  --name "acme" \
+  --summary "Docs for acme."
 ```
 
 This writes:
 
-<FileTree root="packages/my-package">
+<FileTree root="packages/acme">
   <File name="AGENTS.md" />
   <Folder name="docs">
     <File name="index.md" />
@@ -57,9 +64,9 @@ This writes:
   </Folder>
 </FileTree>
 
-Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/my-package/AGENTS.md` (during local dev) and at `node_modules/my-package/AGENTS.md` (after install).
+Every link inside `AGENTS.md` is a relative path like `./docs/quickstart.md` so the file is meaningful both at `packages/acme/AGENTS.md` (during local dev) and at `node_modules/acme/AGENTS.md` (after install).
 
-`--bundle` skips `llms.txt`, `llms-full.txt`, and the search index — those are website artifacts that don't make sense offline.
+`--bundle` skips URL-anchored website artifacts such as `llms.txt`, `llms-full.txt`, sitemap, and robots. If your config enables MCP, it still includes the URL-independent retrieval artifacts that `leadtype mcp --package` needs.
 
 ## Filter to package-specific docs
 
@@ -93,12 +100,11 @@ Add `AGENTS.md` and `docs` to `files` and run generation as a build or prepack s
 
 If you need full control over plugin order or custom validation, run the library APIs directly from a script:
 
-```ts
-// scripts/generate-docs.ts
+```ts title="scripts/generate-docs.ts"
 import { rm } from "node:fs/promises";
 import { convertAllMdx } from "leadtype/convert";
 import { generateAgentsMd, resolveDocsNavigation } from "leadtype/llm";
-import { defaultRemarkPlugins } from "leadtype/remark";
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 import docsConfig from "../../../docs/docs.config";
 
 const REPO_ROOT = `${process.cwd()}/../..`;
@@ -110,13 +116,13 @@ await rm(`${PACKAGE_ROOT}/AGENTS.md`, { force: true });
 await convertAllMdx({
   srcDir: `${REPO_ROOT}/docs`,
   outDir: `${PACKAGE_ROOT}/docs`,
-  remarkPlugins: defaultRemarkPlugins,
+  markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms],
 });
 
-// Fail fast on unknown groups so a bad config can't ship.
+// Fail fast on unknown legacy groups or invalid nav refs so a bad config can't ship.
 const navigation = await resolveDocsNavigation({
   srcDir: REPO_ROOT,
-  groups: docsConfig.groups,
+  nav: docsConfig.navigation,
 });
 if (navigation.unknown.length > 0) {
   for (const { urlPath, slug } of navigation.unknown) {
@@ -129,7 +135,7 @@ await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,
   product: docsConfig.product,
-  groups: docsConfig.groups,
+  nav: docsConfig.navigation,
 });
 ```
 
@@ -138,8 +144,8 @@ Point your build script at it: `"build": "tsup && bun run scripts/generate-docs.
 ## Verify before publishing
 
 ```bash
-npx leadtype generate --bundle --src . --out packages/my-package
-cd packages/my-package && npm pack --dry-run
+npx leadtype generate --bundle --src . --out packages/acme
+cd packages/acme && npm pack --dry-run
 ```
 
 `npm pack --dry-run` should list:
@@ -149,32 +155,72 @@ cd packages/my-package && npm pack --dry-run
 
 If `AGENTS.md` is missing, check `files` in `package.json`. If `.md` files are missing, check the `--include`/`--exclude` filters.
 
-## Tell consuming projects to use the bundle
+## Point consumers at the bundle
 
-`AGENTS.md` inside your tarball is available at `node_modules/<your-package>/AGENTS.md` after install. Some agents discover dependency docs from tool use or search. The reliable pattern is to point the consuming project at the bundled docs.
+This is the step that makes the bundle pay off. `AGENTS.md` inside your tarball lands at `node_modules/<your-package>/AGENTS.md` after install, but agents only discover it on their own **~29%** of the time. A root-`AGENTS.md` pointer in the consuming project pushes that to **~90–100%** ([evals](/docs/concepts/evals)) — so treat it as required setup, not a nice-to-have.
 
-Recommend this snippet in your README so consumers add it to their own root `AGENTS.md`:
+Recommend this snippet in your published README so consumers add it to their own root `AGENTS.md`:
 
 ```md
-# <my project>
-
-When working with the `<your-package>` library, read the bundled docs in
-`node_modules/<your-package>/AGENTS.md` first — they're version-matched to
-the installed package and stay accurate as the library updates.
+When working with the `acme` library, read the bundled docs in
+`node_modules/acme/AGENTS.md` first — they're version-matched to the
+installed package and stay accurate as it updates.
 ```
 
-This is the same pattern Next.js uses to point agents at `node_modules/next/dist/docs/`.
+`leadtype generate --bundle` prints this snippet — filled in with your package's name — on success, so you don't have to hand-write it. This is the same pattern Next.js uses to point agents at `node_modules/next/dist/docs/`.
+
+## Ship a version-matched MCP server
+
+`AGENTS.md` works when the agent reads files on disk. For agents that prefer
+**targeted retrieval** over a large corpus — search the docs, then fetch one page
+— enable MCP in `docs.config.ts` and keep the package command focused on the
+package output mode:
+
+```ts title="docs/docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: {
+    name: "acme",
+    tagline: "Docs for acme.",
+  },
+  navigation: ["index", "quickstart"],
+  agents: { mcp: { enabled: true } },
+});
+```
+
+```bash
+npx leadtype generate --bundle --src . --out packages/acme
+```
+
+A consumer who installs your package then runs a docs MCP server pinned to the
+installed version, with no hosting on your side:
+
+```bash
+leadtype mcp --package acme
+```
+
+The emitted artifacts are URL-independent — they need no `--base-url`. The old
+`--mcp` shortcut still works for compatibility, but it is deprecated; put MCP
+intent in config for new package scripts. See the [MCP server reference](/docs/reference/mcp)
+for the tools and the hosted-endpoint variant.
+
+Bundle mode also ships a `SKILL.md` at the package root, next to `AGENTS.md` — the
+[agent-skills](/docs/reference/skills) format. Its instructions point an agent at the
+bundled `AGENTS.md`/`docs`, so a skills-aware client (Claude Code, Cursor, …) discovers
+your docs from `node_modules/<pkg>` the same way it discovers `AGENTS.md`.
 
 ## When to use this
 
 Use this when **agents should understand the package from the installed dependency itself** — coding agents that don't have web access, IDE assistants, CLI tools, or air-gapped environments.
 
-Don't use this if your only goal is a public docs website. For that, see [Connect a docs site](/docs/build/connect-docs-site). You can use both — they read the same source MDX, just emit different shapes.
+Don't use this if your only goal is a public docs website. For that, see [Build a docs site](/docs/pipeline/build-a-docs-site). You can use both — they read the same source MDX, just emit different shapes.
 
 ## What's next
 
 <Cards>
   <Card title="CLI reference" description="Every flag for --bundle and the standard pipeline." href="/docs/reference/cli" />
   <Card title="LLM files" description="The website's llms.txt + llms-full.txt output, side by side with the package's AGENTS.md." href="/docs/reference/llm" />
-  <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/build/validate-in-ci" />
+  <Card title="MCP server" description="Serve the bundled docs to MCP clients with agents.mcp.enabled and leadtype mcp --package." href="/docs/reference/mcp" />
+  <Card title="Lint in CI" description="Fail PRs on broken links before they reach a tarball." href="/docs/pipeline/validate-in-ci" />
 </Cards>

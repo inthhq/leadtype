@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the starting points for hosted (llms.txt over HTTP) and bundle (AGENTS.md in node_modules). It explicitly lists the website-only artifacts skipped by --bundle mode, including llms.txt, llms-full.txt, search, sitemap, robots, and agent-readability. All required rubric points are fully satisfied and the answer is detailed and accurate.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 16,
+  "inputTokens": 5425,
+  "outputTokens": 285,
+  "durationMs": 152453,
+  "steps": 7,
+  "errors": []
+}

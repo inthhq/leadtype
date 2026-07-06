@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "ANSWER.md describes the default as a static, local BM25 lexical index with no database, meeting the first requirement. It specifies the only conditions for adding embeddings: vocabulary mismatch and corpus growing past tens of thousands of chunks, fulfilling the second. It also notes the lexical index must be kept for exact matches as a complementary layer, satisfying the third. No required point is missing or incorrect.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 9345,
+  "outputTokens": 582,
+  "durationMs": 65947,
+  "steps": 14,
+  "errors": []
+}

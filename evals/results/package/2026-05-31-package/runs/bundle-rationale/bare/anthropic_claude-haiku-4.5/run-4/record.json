@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes llms.txt as a website convention, but misses two required points. It does not explain that AGENTS.md uses relative links and works offline inside the installed package (only mentions discoverability). It also fails to name llms‑full.txt or other specific website artifacts skipped by --bundle, mentioning only llms.txt and generic HTML/static files, which falls short of the minimum required list. Thus the answer is incomplete and confidently asserted.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 3304,
+  "outputTokens": 251,
+  "durationMs": 21063,
+  "steps": 9,
+  "errors": []
+}

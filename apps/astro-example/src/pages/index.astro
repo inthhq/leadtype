@@ -1,0 +1,52 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Leadtype Astro Example</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Leadtype</a>
+      <nav aria-label="Primary">
+        <a href="/docs">Docs</a>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/docs/search-index.json">Search JSON</a>
+      </nav>
+    </header>
+    <main class="home-shell">
+      <section class="hero-panel">
+        <p class="eyebrow">Astro dogfood</p>
+        <h1>Leadtype framework example</h1>
+        <p>
+          Astro renders the same Leadtype docs as the TanStack reference app,
+          serves markdown mirrors for agents, and searches generated static JSON
+          with the browser helper.
+        </p>
+        <div class="actions">
+          <a class="button" href="/docs">Open docs</a>
+          <a class="button secondary" href="/docs/quickstart.md">View markdown</a>
+        </div>
+      </section>
+      <section class="proof-grid" aria-label="Leadtype outputs">
+        <article>
+          <h2>Human docs</h2>
+          <p>Static Astro routes load page data through <code>leadtype/astro</code>.</p>
+        </article>
+        <article>
+          <h2>Agent files</h2>
+          <p><code>leadtype generate</code> writes llms.txt, markdown mirrors, and sitemap data.</p>
+        </article>
+        <article>
+          <h2>Search</h2>
+          <p>The browser helper queries generated search JSON without a server index.</p>
+        </article>
+      </section>
+    </main>
+    <script>
+      import { registerLeadtypeWebMcp } from "../lib/leadtype-webmcp";
+
+      registerLeadtypeWebMcp();
+    </script>
+  </body>
+</html>

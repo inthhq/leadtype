@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names the helper exactly as 'isAgentReadabilityArtifactPath' and describes it as guarding artifact paths from being rewritten as missing markdown pages. It explicitly lists llms.txt, llms-full.txt, sitemap files, robots.txt, search JSON, and agent-readability.json, satisfying all rubric requirements.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3530,
+  "outputTokens": 110,
+  "durationMs": 13877,
+  "steps": 7,
+  "errors": []
+}

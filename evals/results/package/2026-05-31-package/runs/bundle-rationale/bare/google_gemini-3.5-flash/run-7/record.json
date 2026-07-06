@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a web-centric convention with absolute URLs and that AGENTS.md is suitable for tarballs due to relative links and offline use. However, it fails to mention that `leadtype generate --bundle` skips `llms.txt` and `llms-full.txt` (and optionally search index, sitemap, robots); it only lists generic website assets like HTML, CSS, JS, and sitemaps. This omission means it does not satisfy the required point about the specific skipped artifacts, so the answer is incomplete.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 6602,
+  "outputTokens": 296,
+  "durationMs": 43413,
+  "steps": 15,
+  "errors": []
+}

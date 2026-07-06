@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls the required library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) and passes product/nav, but the LLM generators are pointed at srcDir: '.' rather than the converted markdown directory (public/docs). This means they would read from the original source directory and not the already-converted markdown, violating the critical ordering requirement that they read from <outDir>/docs/. Therefore the script is not correct enough to produce the intended artifacts in order.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 34,
+  "inputTokens": 1061292,
+  "outputTokens": 11514,
+  "durationMs": 151443,
+  "steps": 35,
+  "errors": [],
+  "failureMode": "confident_wrong"
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the ANSWER.md explains llms.txt as an HTTP/website convention (with base URLs and network assumptions, nothing looks for it in node_modules), contrasts it with AGENTS.md's relative links enabling offline/version-matched use inside node_modules/<pkg>/, and states that --bundle skips llms.txt + llms-full.txt (plus search-index) because they are website-only artifacts. No rubric violations (no recommendation of llms.txt, no claim that AGENTS.md uses absolute URLs, etc.). Minor deduction only for not explicitly naming 'absolute URLs' in the first sentence, though the HTTP contrast is clear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 28531,
+  "outputTokens": 256,
+  "durationMs": 25966,
+  "steps": 11,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly points to the LLM files functionality and names the relevant APIs (generateLLMFullContextFiles, etc.), not the search UI. It clearly explains that /llms-full.txt is the broad all-docs fallback to be used only when page-level context is insufficient. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 10,
+  "inputTokens": 3688,
+  "outputTokens": 13,
+  "durationMs": 27533,
+  "steps": 6,
+  "errors": []
+}
