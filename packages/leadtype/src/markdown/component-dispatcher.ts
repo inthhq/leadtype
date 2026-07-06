@@ -16,6 +16,15 @@ import { detailsToMarkdown } from "./plugins/details";
 import { exampleToMarkdown } from "./plugins/example";
 import { fileTreeToMarkdown } from "./plugins/file-tree";
 import { mermaidToMarkdown } from "./plugins/mermaid";
+import {
+  apiAuthToMarkdown,
+  apiCodeSamplesToMarkdown,
+  apiEndpointToMarkdown,
+  apiParametersToMarkdown,
+  apiRequestBodyToMarkdown,
+  apiResponsesToMarkdown,
+  apiTryItToMarkdown,
+} from "./plugins/openapi";
 import { promptToMarkdown } from "./plugins/prompt";
 import { sectionToMarkdown } from "./plugins/section";
 import { compactStepTree, stepsToMarkdown } from "./plugins/steps";
@@ -74,6 +83,13 @@ function createHandlers(options: NativeMarkdownDispatcherOptions): Handler[] {
     { names: ["FileTree"], process: fileTreeToMarkdown },
     { names: ["Prompt"], process: promptToMarkdown },
     { names: ["Example"], process: exampleToMarkdown },
+    { names: ["ApiEndpoint"], process: apiEndpointToMarkdown },
+    { names: ["ApiAuth"], process: apiAuthToMarkdown },
+    { names: ["ApiParameters"], process: apiParametersToMarkdown },
+    { names: ["ApiRequestBody"], process: apiRequestBodyToMarkdown },
+    { names: ["ApiCodeSamples"], process: apiCodeSamplesToMarkdown },
+    { names: ["ApiResponses"], process: apiResponsesToMarkdown },
+    { names: ["ApiTryIt"], process: () => apiTryItToMarkdown() },
   ];
 }
 

@@ -71,6 +71,12 @@ import {
   generateNlwebArtifacts,
   NLWEB_SCHEMA_MAP_PATH,
 } from "../nlweb/artifacts";
+import {
+  type DocsOpenApiConfig,
+  normalizeOpenApiConfig,
+  validateDocsOpenApiConfig,
+  writeOpenApiPages,
+} from "../openapi";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
@@ -300,6 +306,7 @@ type ResolvedGenerateMetadata = {
   mounts?: DocsPathMount[];
   feeds?: DocsFeedConfig[];
   git?: DocsConfig["git"];
+  openapi?: DocsOpenApiConfig;
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
@@ -1253,6 +1260,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
 
   const collections = validateCollections(value.collections, configPath);
+  const openapi = validateDocsOpenApiConfig(
+    value.openapi,
+    `docs config at "${configPath}"`
+  );
   const hasGroups = value.groups !== undefined;
   const hasNav = value.navigation !== undefined;
 
@@ -1272,7 +1283,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (collections === undefined) {
     groups = validateDocsGroups(value.groups);
     nav = validateDocsNav(value.navigation);
-    if (!(groups || nav)) {
+    if (!(groups || nav || openapi)) {
       throw new Error(
         `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
       );
@@ -1312,6 +1323,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(mounts ? { mounts } : {}),
     ...(feeds ? { feeds } : {}),
     ...(git ? { git } : {}),
+    ...(openapi ? { openapi } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -1846,6 +1858,7 @@ async function resolveGenerateMetadata(
       mounts: loaded.config.mounts,
       feeds: loaded.config.feeds,
       git: loaded.config.git,
+      openapi: loaded.config.openapi,
       ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
@@ -2322,7 +2335,8 @@ async function writeI18nManifest(
 async function createSourceMirror(
   srcDir: string,
   sources: ResolvedDocsSource[],
-  args: GenerateArgs
+  args: GenerateArgs,
+  forceStaging = false
 ): Promise<SourceMirror> {
   const filters = {
     exclude: [...args.exclude],
@@ -2336,7 +2350,7 @@ async function createSourceMirror(
     path.resolve(sources[0]?.docsDir ?? "") ===
       path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
-  if (isDefaultSingleSource && !hasFilters) {
+  if (isDefaultSingleSource && !hasFilters && !forceStaging) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
     return {
       cleanup: async () => {
@@ -2613,9 +2627,37 @@ export async function runGenerateCommand(
       args,
       docsSources
     );
-    sourceMirror = await createSourceMirror(srcDir, docsSources, args);
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
+    sourceMirror = await createSourceMirror(
+      srcDir,
+      docsSources,
+      args,
+      metadata.openapi !== undefined && !hasExplicitPathFilters
+    );
+    const generatedOpenApi =
+      metadata.openapi === undefined || hasExplicitPathFilters
+        ? { indexPages: [], nav: [], pages: [] }
+        : await writeOpenApiPages({
+            configs: normalizeOpenApiConfig(
+              metadata.openapi,
+              metadata.configPath ? path.dirname(metadata.configPath) : docsDir,
+              args.baseUrl ? { baseUrl: args.baseUrl } : {}
+            ),
+            docsDir: sourceMirror.docsDir,
+          });
+    if (metadata.openapi !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "OpenAPI generation is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.openapi_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
     // Collections-mode configs may omit per-collection `groups` and lean on
     // the same frontmatter-discovery path used when no config is present.
     // Filtered single-folder runs also disable curated nav, so infer groups
@@ -2634,7 +2676,9 @@ export async function runGenerateCommand(
           }
         : metadata;
     const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
-    const effectiveNav = hasExplicitPathFilters ? undefined : nav;
+    const effectiveNav = hasExplicitPathFilters
+      ? undefined
+      : [...(nav ?? []), ...generatedOpenApi.nav];
     const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);

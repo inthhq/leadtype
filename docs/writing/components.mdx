@@ -20,7 +20,11 @@ This means the same content reaches three audiences (humans, agents, search) wit
 
 The markdown transform pipeline recognizes these names. If your components use the same names, flattening Just Works:
 
-`Accordion`, `AccordionItem`, `Audience`, `AutoTypeTable`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+`Accordion`, `AccordionItem`, `ApiAuth`, `ApiCodeSamples`, `ApiEndpoint`, `ApiParameters`, `ApiRequestBody`, `ApiResponses`, `ApiTryIt`, `Audience`, `AutoTypeTable`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+
+The `Api*` names are emitted by [OpenAPI page generation](/docs/reference/openapi)
+rather than authored by hand — map them in your renderer when you generate an
+API reference.
 
 If your app uses different names — or a component that has no equivalent above — you have two options: rename to match the contract, or define how it flattens with [`defineComponentFlattener`](/docs/reference/markdown#custom-component-flatteners). You declare the component name and a `toMarkdown` function; leadtype handles tree-walking, prop parsing, child flattening, and transform order for you.
 
@@ -315,6 +319,14 @@ Data-driven preview and source examples. The host component receives code as dat
     The host app owns styling and runtime components while leadtype owns conversion.
   </Callout>
 </Example>
+```
+
+### API reference components
+
+`ApiEndpoint`, `ApiAuth`, `ApiParameters`, `ApiRequestBody`, `ApiCodeSamples`, `ApiResponses`, and `ApiTryIt` render generated OpenAPI operation pages — endpoint badges, parameter tables, request/response contracts with JSON Schema, and code samples. You don't author these by hand; [OpenAPI page generation](/docs/reference/openapi) emits them with serialized props, and the flattener turns them into tables, fenced code, and schema blocks for agents. Prop contracts ship from [`leadtype/mdx`](/docs/reference/mdx) (`ApiEndpointProps`, `ApiResponsesProps`, …).
+
+```tsx
+<ApiEndpoint method="get" path="/users/{id}" operationId="readUser" />
 ```
 
 ### Mermaid

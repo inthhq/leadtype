@@ -11,12 +11,16 @@ const contentDir = resolve(repoRoot, "docs");
  * fumadocs source backed by leadtype/fumadocs. It reads the repo-root
  * Leadtype docs, uses the same curated navigation as the other examples, and
  * resolves `<include>` / `<ExtractedTypeTable>` relative to the repo root.
+ *
+ * Passing `openapi` stages generated API reference pages into a temp copy of
+ * the docs and appends their navigation — the authored docs are untouched.
  */
 const fumadocsSourceResult = await fumadocsSource({
   contentDir,
   includeMetaJson: false,
   nav: docsConfig.navigation,
   mounts: docsConfig.mounts,
+  openapi: docsConfig.openapi,
   typeTableBasePath: repoRoot,
 });
 
