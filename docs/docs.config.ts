@@ -112,6 +112,12 @@ const config: DocsConfig = {
               "Run the site-mode CLI from a build pipeline to write llms.txt, markdown mirrors, search, sitemap, and Agent Readability files.",
           },
           {
+            urlPath: "/docs/pipeline/redirects",
+            title: "Redirect renamed pages",
+            description:
+              "Track renamed and deleted pages with a committed lockfile, emit redirects.json, and serve 308/410 responses.",
+          },
+          {
             urlPath: "/docs/aeo/overview",
             title: "AEO & Agent Readability overview",
             description:

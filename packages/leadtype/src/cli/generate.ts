@@ -77,6 +77,10 @@ import {
   validateDocsOpenApiConfig,
   writeOpenApiPages,
 } from "../openapi";
+import {
+  type UpdateDocsRedirectsResult,
+  updateDocsRedirects,
+} from "../redirects/node";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
@@ -236,6 +240,8 @@ type GenerateResult = {
     mcpWellKnown?: string;
     nlwebSchemaFeed?: string;
     nlwebSchemaMap?: string;
+    redirectsJson?: string;
+    redirectsLockfile?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavEntry[];
@@ -311,6 +317,7 @@ type ResolvedGenerateMetadata = {
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
   agents?: DocsConfig["agents"];
+  redirects?: DocsConfig["redirects"];
 };
 
 type CollectionFrontmatterSchema = {
@@ -1248,6 +1255,34 @@ function validateGitConfig(
   };
 }
 
+function validateRedirectsConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["redirects"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": redirects must be an object`
+    );
+  }
+  if (value.lockfile !== undefined && typeof value.lockfile !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": redirects.lockfile must be a string`
+    );
+  }
+  if (value.removed !== undefined && !isStringArray(value.removed)) {
+    throw new Error(
+      `docs config at "${configPath}": redirects.removed must be an array of strings`
+    );
+  }
+  return {
+    ...(value.lockfile === undefined ? {} : { lockfile: value.lockfile }),
+    ...(value.removed === undefined ? {} : { removed: value.removed }),
+  };
+}
+
 function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -1306,6 +1341,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
+  const redirects = validateRedirectsConfig(value.redirects, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -1323,6 +1359,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(mounts ? { mounts } : {}),
     ...(feeds ? { feeds } : {}),
     ...(git ? { git } : {}),
+    ...(redirects ? { redirects } : {}),
     ...(openapi ? { openapi } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
@@ -1866,6 +1903,7 @@ async function resolveGenerateMetadata(
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
       agents: loaded.config.agents,
+      redirects: loaded.config.redirects,
     };
   }
   return readPackageProduct(srcDir, args).then((product) => ({
@@ -2707,6 +2745,10 @@ export async function runGenerateCommand(
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
+      // Redirect tracking diffs the emitted page set, so stale mirrors from
+      // renamed/deleted sources must be garbage-collected or the old path
+      // never "disappears" and rename detection can't fire.
+      ...(metadata.redirects ? { prune: true } : {}),
       markdownTransforms: createGenerateMarkdownTransforms({
         sourceRoot: srcDir,
         typeTableBasePath,
@@ -3006,11 +3048,44 @@ export async function runGenerateCommand(
         i18n: metadata.i18n,
       });
 
+      // Redirect tracking (opt-in via `redirects` in the docs config): diff
+      // this run's pages against the committed lockfile, auto-redirect pure
+      // moves, and fail loudly on unexplained disappearances.
+      let redirectsUpdate: UpdateDocsRedirectsResult | undefined;
+      if (metadata.redirects) {
+        redirectsUpdate = await updateDocsRedirects({
+          lockfilePath: path.resolve(
+            docsDir,
+            metadata.redirects.lockfile ?? "paths.lock.json"
+          ),
+          outDir,
+          pages: agentReadability.manifest.pages.map((page) => ({
+            urlPath: page.urlPath,
+            markdownUrlPath: page.markdownUrlPath,
+          })),
+          removed: metadata.redirects.removed,
+        });
+        for (const move of redirectsUpdate.moved) {
+          logger.info({
+            human: {
+              message: `redirect: ${move.from} → ${move.to} (rename detected)`,
+            },
+            json: { event: "generate.redirect_detected", fields: move },
+          });
+        }
+      }
+
       result = {
         docsDir,
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
+          ...(redirectsUpdate
+            ? {
+                redirectsJson: redirectsUpdate.redirectsPath,
+                redirectsLockfile: redirectsUpdate.lockfilePath,
+              }
+            : {}),
           ...(agentReadability.files.apiCatalog
             ? { apiCatalog: agentReadability.files.apiCatalog }
             : {}),

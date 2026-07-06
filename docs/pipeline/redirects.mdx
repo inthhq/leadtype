@@ -1,0 +1,90 @@
+---
+title: "Redirect renamed pages"
+description: "Track renamed and deleted docs pages with a committed lockfile, emit redirects.json, and serve 308/410 responses."
+---
+
+Renaming a docs page breaks every link that pointed at it — search results, agent citations, other sites, llms.txt copies agents cached last week. Leadtype's redirect tracking notices renames at generate time, emits a machine-readable redirect map, and refuses to let a page silently disappear.
+
+## Enable it
+
+Add a `redirects` block to `docs.config.ts`:
+
+```ts
+export default defineDocsConfig({
+  // ...
+  redirects: {},
+});
+```
+
+On the next `leadtype generate`, two things appear:
+
+- **`<docs source dir>/paths.lock.json`** — a lockfile recording every published path with a content hash. **Commit this file.** It is the record of previously published paths that future runs diff against.
+- **`<out>/docs/redirects.json`** — the artifact your app serves redirects from: `{ redirects: [{ from, to, status }] }`.
+
+Enabling `redirects` also turns on output pruning (see [convertAllMdx `prune`](/docs/reference/convert)) — rename detection diffs the emitted page set, so stale mirrors from renamed sources must be garbage-collected or the old path never disappears.
+
+## What happens on a rename
+
+Generate compares this run's pages against the lockfile:
+
+- **Pure move** (same content, new path): detected automatically by content hash — the body is hashed with frontmatter excluded, so git-enrichment churn doesn't defeat the match. Emits a permanent `308` redirect. No authoring needed.
+- **Move + edit in one commit**: the hash no longer matches, so the build **fails loudly** listing the disappeared paths. Add the old path to the successor page's frontmatter:
+
+  ```yaml
+  ---
+  title: Script Loader
+  redirectFrom:
+    - /docs/guides/script-loader
+  ---
+  ```
+
+- **Intentional deletion**: acknowledge it in the config to serve `410 Gone` instead of failing:
+
+  ```ts
+  redirects: {
+    removed: ["/docs/guides/retired-page"],
+  }
+  ```
+
+Redirects accumulate in the lockfile across generates: when `/docs/a` moved to `/docs/b` last month and `/docs/b` moves to `/docs/c` today, the old `a → b` entry collapses to `a → c` automatically, and entries whose target is later removed degrade to `410`.
+
+Ambiguity is never guessed: if two pages with identical content disappear and reappear, the build fails and asks for explicit `redirectFrom` instead of picking one.
+
+## Serve the redirects
+
+The generate step emits data; serving is one helper call. For HTML routes, consult the map in your catch-all before rendering a 404:
+
+```ts
+import { resolveRedirect } from "leadtype/redirects";
+import redirects from "./generated/redirects.json";
+
+const redirect = resolveRedirect(url.pathname, redirects.redirects);
+if (redirect) {
+  return redirect.to
+    ? Response.redirect(new URL(redirect.to, url.origin), redirect.status)
+    : new Response("Gone", { status: 410 });
+}
+```
+
+The agent surface is covered for you: pass the entries to `createAgentMarkdownResponse` and agent-shaped requests for a renamed page — including its `.md` mirror (`/docs/old.md` → `/docs/new.md`) — get the `308`/`410` directly, while browser requests still fall through to your HTML routing:
+
+```ts
+createAgentMarkdownResponse({
+  urlPath: url.pathname,
+  headers,
+  manifest,
+  redirects: redirects.redirects,
+  readMarkdownFile,
+});
+```
+
+## Options
+
+| Option | Description |
+| --- | --- |
+| `lockfile` | Lockfile path, resolved relative to the docs source directory. Default `paths.lock.json`. |
+| `removed` | Paths acknowledged as intentionally deleted; served as `410 Gone` instead of failing the build. |
+
+## CI
+
+Because the lockfile is committed, a rename that lands without its lockfile update shows up as a dirty `git diff` after regeneration — the same "regenerate and assert clean" gate that guards the other generated artifacts covers redirects too.

@@ -98,6 +98,7 @@ describe("package surface", () => {
       "./llm",
       "./llm/readability",
       "./navigation",
+      "./redirects",
       "./search",
       "./search/client",
       "./search/react",
