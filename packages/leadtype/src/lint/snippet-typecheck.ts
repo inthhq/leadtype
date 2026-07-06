@@ -50,7 +50,9 @@ const TS_LANGS = new Set(["ts", "typescript", "mts", "cts", "tsx"]);
  */
 export function collectTypecheckSnippets(
   tree: Root | null,
-  file: string
+  file: string,
+  /** Offset from body-relative to file-relative lines (frontmatter length). */
+  lineOffset = 0
 ): TypecheckSnippet[] {
   if (!tree) {
     return [];
@@ -76,9 +78,11 @@ export function collectTypecheckSnippets(
     ) {
       return;
     }
+    const bodyLine = code.position?.start?.line;
     snippets.push({
       file,
-      fenceLine: code.position?.start?.line,
+      // File-relative, so reported lines match every other content check.
+      fenceLine: bodyLine === undefined ? undefined : bodyLine + lineOffset,
       lang,
       value,
     });

@@ -94,6 +94,26 @@ describe("snippet typechecking", () => {
     ]);
   });
 
+  it("reports file-relative line numbers past the frontmatter", async () => {
+    const { projectRoot, srcDir } = await createTypecheckProject();
+    // Frontmatter occupies lines 1-3; body starts at line 4. The fence opens
+    // on body line 1 (file line 4) and the bad call sits on snippet line 3
+    // (file line 7).
+    const violations = await lintWithTypecheck(
+      projectRoot,
+      srcDir,
+      [
+        "```ts",
+        'import { greet } from "fakepkg";',
+        "",
+        "greet(42);",
+        "```",
+        "",
+      ].join("\n")
+    );
+    expect(violations[0]?.message).toContain("(line 7)");
+  });
+
   it("passes snippets using the API correctly", async () => {
     const { projectRoot, srcDir } = await createTypecheckProject();
     const violations = await lintWithTypecheck(

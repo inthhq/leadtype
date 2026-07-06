@@ -889,7 +889,9 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     }
 
     if (options.snippetTypecheck) {
-      typecheckQueue.push(...collectTypecheckSnippets(bodyTree, relativeFile));
+      typecheckQueue.push(
+        ...collectTypecheckSnippets(bodyTree, relativeFile, bodyLineOffset)
+      );
     }
 
     // Parse-level snippet checks (error): a fenced block with a known
