@@ -36,6 +36,7 @@ import {
   defaultFrontmatterSchema,
   defaultMetaSchema,
 } from "./schema";
+import { collectSnippetIssues } from "./snippet-lint";
 
 export type LintSeverity = "error" | "warn";
 
@@ -51,6 +52,7 @@ export type LintRule =
   | "jsonld"
   | "config-link"
   | "invalid-anchor"
+  | "snippet:parse"
   | "geo:heading-skip"
   | "geo:code-language"
   | "geo:image-alt";
@@ -626,8 +628,7 @@ type GeoIssue = {
  * question-form headings) can't be linted. All warn-level: legitimate exceptions
  * exist, so they never block by default.
  */
-function collectGeoIssues(body: string): GeoIssue[] {
-  const tree = parseMdxBody(body);
+function collectGeoIssues(tree: Root | null): GeoIssue[] {
   if (!tree) {
     return []; // parse errors are reported by the link-check path
   }
@@ -690,10 +691,9 @@ const COMPONENT_NAME_PATTERN = /^[A-Z]/;
  * flattener. These leak raw JSX into the generated agent markdown.
  */
 function collectUnflattenedComponents(
-  body: string,
+  tree: Root | null,
   recognized: Set<string>
 ): { line?: number; name: string }[] {
-  const tree = parseMdxBody(body);
   if (!tree) {
     // Parse failures are reported by the markdown link-check path as
     // `parse-error`; don't double-report here.
@@ -840,11 +840,15 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       }
     }
 
+    // The source body parses once; the component, GEO, and snippet walks all
+    // share the tree.
+    const bodyTree = parseMdxBody(body);
+
     // Flag components that won't flatten — they'd leak raw JSX into the agent
     // markdown. Walks the MDX AST, so JSX inside code fences (a `code` node, not
     // a JSX element) is correctly ignored.
     for (const { name, line } of collectUnflattenedComponents(
-      body,
+      bodyTree,
       recognizedComponents
     )) {
       const fileLine = line ? line + bodyLineOffset : undefined;
@@ -858,12 +862,25 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     }
 
     // Structural GEO checks (warn): skipped headings, unlabeled code, missing alt.
-    for (const issue of collectGeoIssues(body)) {
+    for (const issue of collectGeoIssues(bodyTree)) {
       const fileLine = issue.line ? issue.line + bodyLineOffset : undefined;
       violations.push({
         file: relativeFile,
         kind: "content",
         severity: "warn",
+        rule: issue.rule,
+        message: `${issue.message}${fileLine ? ` (line ${fileLine})` : ""}`,
+      });
+    }
+
+    // Parse-level snippet checks (error): a fenced block with a known
+    // language must parse. `// @noErrors` marks deliberate fragments.
+    for (const issue of collectSnippetIssues(bodyTree)) {
+      const fileLine = issue.line ? issue.line + bodyLineOffset : undefined;
+      violations.push({
+        file: relativeFile,
+        kind: "content",
+        severity: "error",
         rule: issue.rule,
         message: `${issue.message}${fileLine ? ` (line ${fileLine})` : ""}`,
       });
