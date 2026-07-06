@@ -200,7 +200,7 @@ Every prop name is part of the 1.0 contract — bumping a shape is a breaking ch
 
 `<ExtractedTypeTable name="X" path="..." />` is an authoring convenience. The source preset replaces it at build time with `<TypeTable properties={…extracted} />`, so consumers only implement the runtime `<TypeTable>` component:
 
-```ts
+```tsx
 import type { TypeTableProps } from "leadtype/mdx";
 
 export function TypeTable({ properties, title, description }: TypeTableProps) {

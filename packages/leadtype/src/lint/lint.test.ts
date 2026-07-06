@@ -932,6 +932,182 @@ describe("lintDocs relative links and anchors", () => {
   });
 });
 
+describe("lintDocs snippet parse checks", () => {
+  async function lintSnippet(
+    body: string
+  ): Promise<Awaited<ReturnType<typeof lintDocs>>["violations"]> {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      `---\ntitle: Home\n---\n${body}`
+    );
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    return result.violations.filter(
+      (violation) => violation.rule === "snippet:parse"
+    );
+  }
+
+  it("flags a ts snippet that does not parse, with a line number", async () => {
+    const violations = await lintSnippet(
+      "Intro\n\n```ts\nconst ok = 1;\nconst broken = ;\n```\n"
+    );
+    expect(violations).toEqual([
+      expect.objectContaining({
+        severity: "error",
+        message: expect.stringContaining("line"),
+      }),
+    ]);
+  });
+
+  it("accepts common fragment idioms without annotations", async () => {
+    const violations = await lintSnippet(
+      [
+        "```ts",
+        "searchDocs(index: unknown, query: string): string[]",
+        "listDocsContentFiles(index: unknown): string[]",
+        "```",
+        "",
+        "```ts",
+        "{",
+        '  slug: "docs-site",',
+        '  children: [{ slug: "x", title: "X" }],',
+        "}",
+        "```",
+        "",
+        "```ts",
+        "{",
+        "  markdown: string;",
+        "  toc: string[];",
+        "}",
+        "```",
+        "",
+        "```ts",
+        "collections: {",
+        '  changelog: defineCollection({ dir: "./changelog" }),',
+        "}",
+        "```",
+        "",
+        "```tsx",
+        '<CommandTabs command="leadtype" mode="install" />',
+        '<CommandTabs command="leadtype lint" mode="run" />',
+        "```",
+        "",
+        "```ts",
+        "const config = {",
+        "  // eslint-style comment",
+        "  ...",
+        "};",
+        "```",
+        "",
+      ].join("\n")
+    );
+    expect(violations).toEqual([]);
+  });
+
+  it("honors the @noErrors escape hatch", async () => {
+    const violations = await lintSnippet(
+      "```ts\n// @noErrors — deliberate fragment\nconst broken = ;\n```\n"
+    );
+    expect(violations).toEqual([]);
+  });
+
+  it("checks json and yaml fences with docs-idiom tolerance", async () => {
+    const violations = await lintSnippet(
+      [
+        "```json",
+        "{",
+        "  // a comment",
+        '  "files": { /* stats */ },',
+        '  "mode": "site",',
+        "}",
+        "```",
+        "",
+        "```yaml",
+        "---",
+        "a: 1",
+        "---",
+        "b: 2",
+        "```",
+        "",
+        "```json",
+        "{ not json",
+        "```",
+        "",
+        "```yaml",
+        "key: [unclosed",
+        "```",
+        "",
+      ].join("\n")
+    );
+    expect(violations).toHaveLength(2);
+    expect(violations[0]?.message).toContain("json");
+    expect(violations[1]?.message).toContain("yaml");
+  });
+
+  it("lints jsonc fences with comment tolerance", async () => {
+    const violations = await lintSnippet(
+      [
+        "```jsonc",
+        "{",
+        "  // tolerated",
+        '  "a": 1,',
+        "}",
+        "```",
+        "",
+        "```jsonc",
+        "{ broken",
+        "```",
+        "",
+      ].join("\n")
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.message).toContain("jsonc");
+  });
+
+  it("checks snippets contributed by include targets", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      '---\ntitle: Home\n---\n```ts\nconst ok = 1;\n```\n\n<include src="./_partials/broken.mdx" />\n'
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "_partials", "broken.mdx"),
+      "```ts\nconst broken = ;\n```\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const snippets = result.violations.filter(
+      (violation) => violation.rule === "snippet:parse"
+    );
+
+    // Exactly one violation: the include-contributed fence, attributed to the
+    // including page; the directly-authored fence isn't double-reported.
+    expect(snippets).toEqual([
+      expect.objectContaining({
+        file: "index.mdx",
+        message: expect.stringContaining("from an included file"),
+      }),
+    ]);
+  });
+
+  it("can be disabled via rules overrides", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n```ts\nconst broken = ;\n```\n"
+    );
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      rules: { "snippet:parse": "off" },
+    });
+    expect(result.violations).toEqual([]);
+  });
+});
+
 describe("lintConfigLinks", () => {
   it("reports navigation entries that match no page", async () => {
     const projectDir = await createTempProject();

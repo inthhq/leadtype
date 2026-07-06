@@ -71,7 +71,7 @@
     },
     {
       "path": "/docs/pipeline/collections",
-      "hash": "76040d25c1719491"
+      "hash": "f7f631263e740334"
     },
     {
       "path": "/docs/pipeline/configure-sources",
@@ -115,7 +115,7 @@
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "6490b47d8e9325a0"
+      "hash": "02b9c7034faeb8de"
     },
     {
       "path": "/docs/reference/convert",
@@ -131,7 +131,7 @@
     },
     {
       "path": "/docs/reference/lint",
-      "hash": "cec497ea566bf69d"
+      "hash": "6ec887b7878c1986"
     },
     {
       "path": "/docs/reference/llm",
@@ -147,7 +147,7 @@
     },
     {
       "path": "/docs/reference/mdx",
-      "hash": "6321c8143601785c"
+      "hash": "e62eb01a159cf8e9"
     },
     {
       "path": "/docs/reference/nlweb",

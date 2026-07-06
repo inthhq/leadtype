@@ -204,12 +204,15 @@ const c15t   = { repository: "https://github.com/c15t/c15t",   ref: "main" } as 
 const swift  = { repository: "https://github.com/c15t/swift",  ref: "main" } as const;
 const kotlin = { repository: "https://github.com/c15t/kotlin", ref: "main" } as const;
 
-collections: {
-  docs:      defineCollection({ ...c15t,   dir: "docs",      prefix: "/docs" }),
-  changelog: defineCollection({ ...c15t,   dir: "changelog", prefix: "/changelog" }),
-  swift:     defineCollection({ ...swift,  dir: "docs",      prefix: "/docs/swift" }),
-  kotlin:    defineCollection({ ...kotlin, dir: "docs",      prefix: "/docs/kotlin" }),
-}
+export default defineDocsConfig({
+  product,
+  collections: {
+    docs:      defineCollection({ ...c15t,   dir: "docs",      prefix: "/docs" }),
+    changelog: defineCollection({ ...c15t,   dir: "changelog", prefix: "/changelog" }),
+    swift:     defineCollection({ ...swift,  dir: "docs",      prefix: "/docs/swift" }),
+    kotlin:    defineCollection({ ...kotlin, dir: "docs",      prefix: "/docs/kotlin" }),
+  },
+});
 ```
 
 `leadtype sync` clones c15t, swift, and kotlin into their own `cacheDir`s, in parallel where the underlying git client allows.
@@ -227,13 +230,16 @@ const changelogFrontmatter = v.object({
   date: v.string(),
 });
 
-collections: {
-  changelog: defineCollection({
-    dir: "./changelog",
-    prefix: "/changelog",
-    schema: changelogFrontmatter,
-  }),
-}
+export default defineDocsConfig({
+  product,
+  collections: {
+    changelog: defineCollection({
+      dir: "./changelog",
+      prefix: "/changelog",
+      schema: changelogFrontmatter,
+    }),
+  },
+});
 ```
 
 `leadtype lint` automatically discovers the project's `leadtype.config.ts`, iterates each collection, and runs lint with the right schema per collection. Violations are prefixed with `[collection:<key>]` so you can see which collection a file came from.

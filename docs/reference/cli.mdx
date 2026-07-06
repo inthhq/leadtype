@@ -320,10 +320,14 @@ Two collections that point at the same `(repository, ref)` share a single clone.
 
 ```ts
 const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as const;
-collections: {
-  docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
-  changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
-}
+
+export default defineDocsConfig({
+  product,
+  collections: {
+    docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
+    changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
+  },
+});
 ```
 
 …runs exactly one `git clone`, with both collections reading from `<cacheDir>/docs` and `<cacheDir>/changelog`.
