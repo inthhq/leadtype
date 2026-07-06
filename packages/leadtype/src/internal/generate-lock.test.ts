@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { acquireGenerateLock, generateLockPath } from "./generate-lock";
+import {
+  acquireGenerateLock,
+  generateLockPath,
+  isGenerateLockHeld,
+} from "./generate-lock";
 
 const tempDirs: string[] = [];
 const lockPaths: string[] = [];
@@ -33,6 +37,17 @@ describe("acquireGenerateLock", () => {
     expect(existsSync(lock.lockPath)).toBe(false);
     // Release is idempotent.
     await lock.release();
+  });
+
+  it("tracks locks held by this process for reentrancy checks", async () => {
+    const outDir = await createTempOutDir();
+    expect(isGenerateLockHeld(outDir)).toBe(false);
+
+    const lock = await acquireGenerateLock(outDir);
+    expect(isGenerateLockHeld(outDir)).toBe(true);
+
+    await lock.release();
+    expect(isGenerateLockHeld(outDir)).toBe(false);
   });
 
   it("keys the lock by outDir so unrelated runs do not contend", async () => {

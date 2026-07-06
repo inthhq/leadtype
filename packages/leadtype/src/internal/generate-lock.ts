@@ -73,6 +73,18 @@ export function generateLockPath(outDir: string): string {
   return path.join(tmpdir(), `leadtype-generate-${key}.lock`);
 }
 
+/**
+ * Lock paths currently held by this process. The lock is not reentrant (a
+ * second acquire would wait on our own mkdir until timeout), so callers that
+ * may run inside an already-locked `leadtype generate` — e.g. `convertAllMdx`
+ * with `prune` — check this before acquiring.
+ */
+const heldLockPaths = new Set<string>();
+
+export function isGenerateLockHeld(outDir: string): boolean {
+  return heldLockPaths.has(generateLockPath(outDir));
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -223,6 +235,7 @@ export async function acquireGenerateLock(
   process.once("SIGTERM", onSigterm);
 
   await writeOwnerMetadata(lockPath);
+  heldLockPaths.add(lockPath);
 
   // Refresh the lock's mtime so runs longer than staleMs are not reclaimed
   // from under us. unref keeps the interval from holding the process open.
@@ -248,6 +261,7 @@ export async function acquireGenerateLock(
       released = true;
       clearInterval(keepalive);
       removeSignalHandlers();
+      heldLockPaths.delete(lockPath);
       await rm(lockPath, { force: true, recursive: true });
     },
   };

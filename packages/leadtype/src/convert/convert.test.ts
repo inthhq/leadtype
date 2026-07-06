@@ -104,6 +104,110 @@ describe("convertAllMdx", () => {
     }
   });
 
+  it("prunes orphaned .md outputs when prune is enabled", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "public");
+    await mkdir(path.join(srcDir, "guides"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guides", "old-thing.mdx"),
+      "# Old\n\nBody.\n"
+    );
+    await writeFile(path.join(srcDir, "index.mdx"), "# Index\n\nBody.\n");
+
+    await convertAllMdx({ srcDir, outDir, prune: true });
+    expect(existsSync(path.join(outDir, "guides", "old-thing.md"))).toBe(true);
+
+    // Rename the source page; the old output becomes an orphan.
+    await rm(path.join(srcDir, "guides", "old-thing.mdx"));
+    await writeFile(
+      path.join(srcDir, "guides", "new-thing.mdx"),
+      "# New\n\nBody.\n"
+    );
+    await convertAllMdx({ srcDir, outDir, prune: true });
+
+    expect(existsSync(path.join(outDir, "guides", "new-thing.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "guides", "old-thing.md"))).toBe(false);
+    expect(existsSync(path.join(outDir, "index.md"))).toBe(true);
+  });
+
+  it("prune removes directories emptied by deletions but keeps non-md files", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "public");
+    await mkdir(path.join(srcDir, "guides"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guides", "only-page.mdx"),
+      "# Only\n\nBody.\n"
+    );
+    await writeFile(path.join(srcDir, "index.mdx"), "# Index\n\nBody.\n");
+    await convertAllMdx({ srcDir, outDir, prune: true });
+
+    await mkdir(path.join(outDir, "assets"), { recursive: true });
+    await writeFile(path.join(outDir, "assets", "diagram.svg"), "<svg/>");
+    await writeFile(path.join(outDir, "sitemap.md"), "# Sitemap\n");
+
+    await rm(path.join(srcDir, "guides", "only-page.mdx"));
+    await convertAllMdx({ srcDir, outDir, prune: true });
+
+    expect(existsSync(path.join(outDir, "guides"))).toBe(false);
+    expect(existsSync(path.join(outDir, "assets", "diagram.svg"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.md"))).toBe(true);
+  });
+
+  it("prune keeps outputs matching pruneKeep globs", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "public");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(path.join(srcDir, "index.mdx"), "# Index\n\nBody.\n");
+
+    await mkdir(path.join(outDir, "mirrors"), { recursive: true });
+    await writeFile(
+      path.join(outDir, "mirrors", "external.md"),
+      "# External mirror\n"
+    );
+    await writeFile(path.join(outDir, "stale.md"), "# Stale\n");
+
+    await convertAllMdx({
+      srcDir,
+      outDir,
+      prune: true,
+      pruneKeep: ["mirrors/**"],
+    });
+
+    expect(existsSync(path.join(outDir, "mirrors", "external.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "stale.md"))).toBe(false);
+  });
+
+  it("skips pruning when any file fails to convert", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "public");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(path.join(srcDir, "good.mdx"), "# Good\n\nBody.\n");
+    await writeFile(path.join(srcDir, "broken.mdx"), "# Broken\n\n<Unclosed\n");
+    await mkdir(outDir, { recursive: true });
+    await writeFile(path.join(outDir, "orphan.md"), "# Orphan\n");
+
+    await convertAllMdx({ srcDir, outDir, prune: true });
+
+    expect(existsSync(path.join(outDir, "orphan.md"))).toBe(true);
+  });
+
+  it("skips pruning when srcDir has no pages", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "empty-docs");
+    const outDir = path.join(projectDir, "public");
+    await mkdir(srcDir, { recursive: true });
+    await mkdir(outDir, { recursive: true });
+    await writeFile(path.join(outDir, "existing.md"), "# Existing\n");
+
+    await convertAllMdx({ srcDir, outDir, prune: true });
+
+    expect(existsSync(path.join(outDir, "existing.md"))).toBe(true);
+  });
+
   it("enriches frontmatter from one batch git history read", async () => {
     const projectDir = await createTempProject();
     const docsDir = path.join(projectDir, "docs");
