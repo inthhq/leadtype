@@ -13,6 +13,18 @@ related:
 
 `leadtype lint` validates source MDX before generation. Run it in CI to fail PRs on schema and link issues before they reach a build. CLI flags are documented in the [CLI reference](/docs/reference/cli) — this page covers the rules, schemas, and library API.
 
+Lint is config-aware: with no `--src`, it discovers your docs config exactly like `generate` does (`leadtype.config.*` at the project root, then `docs.config.*` in `./docs` or `./content`) and lints that tree with the config applied — mounts extend which links are internal and where their routes live, `lint.ignore` replaces the default ignore globs, and `lint.rules` remaps rule severities:
+
+```ts
+// docs.config.ts
+lint: {
+  rules: {
+    "geo:image-alt": "error", // escalate
+    "unflattened-component": "off", // disable
+  },
+},
+```
+
 ```ts
 import { lintDocs } from "leadtype/lint";
 ```
@@ -35,7 +47,8 @@ Grouped by what they catch.
 
 | Rule | Severity | Catches |
 | --- | --- | --- |
-| `invalid-link` | error | A `/docs/...` link points to a route that doesn't exist. |
+| `invalid-link` | error | A `/docs/...` link — or a link under any configured mount prefix — points to a route that doesn't exist. Links under a generated tree (the OpenAPI `output` prefix) are assumed valid, since those routes only exist after `leadtype generate`. |
+| `config-link` | error / warn | The docs config itself links to a dead route: a curated `navigation` entry matching no page, an `llms.sections` link to a missing route (error), a feed `source.urlPrefix` matching no pages, or a `redirects.removed` path that is live again (warn). |
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
 | `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
@@ -92,6 +105,7 @@ type LintResult = {
       | "cross-framework-link"
       | "unflattened-component"
       | "jsonld"
+      | "config-link"
       | "geo:heading-skip"
       | "geo:code-language"
       | "geo:image-alt";

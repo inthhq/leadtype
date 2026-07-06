@@ -11,8 +11,12 @@ import {
   deriveDocContext,
   hasDocPlaceholder,
   normalizeDocsUrl,
-  routeFromFilePath,
 } from "../internal/docs-context";
+import {
+  type DocsPathMount,
+  normalizeDocsPath,
+  toDocsUrlPath,
+} from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { validateJsonLd } from "../llm/readability";
 import {
@@ -39,13 +43,19 @@ export type LintRule =
   | "cross-framework-link"
   | "unflattened-component"
   | "jsonld"
+  | "config-link"
   | "geo:heading-skip"
   | "geo:code-language"
   | "geo:image-alt";
 
+/** `"off"` drops the rule's violations entirely; otherwise remaps severity. */
+export type LintRuleSeverity = "off" | LintSeverity;
+
+export type LintRuleOverrides = Partial<Record<LintRule, LintRuleSeverity>>;
+
 export type LintViolation = {
   file: string;
-  kind: "frontmatter" | "changelog" | "meta" | "content";
+  kind: "frontmatter" | "changelog" | "meta" | "content" | "config";
   severity: LintSeverity;
   rule: LintRule;
   field?: string;
@@ -83,6 +93,23 @@ export type LintOptions = {
    * components the consumer has actually wired a flattener for.
    */
   knownComponents?: string[];
+  /**
+   * Path-to-URL mounts from the docs config. Routes are derived with mounts
+   * applied (`changelog/x.mdx` → `/changelog/x`), and links under every mount
+   * prefix are validated like `/docs/...` links.
+   */
+  mounts?: DocsPathMount[];
+  /**
+   * Link prefixes assumed valid without a matching source file — generated
+   * page trees whose routes only exist after `leadtype generate` (e.g. the
+   * OpenAPI `output` prefix). Checked against normalized URL paths.
+   */
+  assumeValidLinkPrefixes?: string[];
+  /**
+   * Per-rule severity overrides (`"off"` disables a rule). Typically supplied
+   * by the `lint.rules` block in `docs.config.ts`.
+   */
+  rules?: LintRuleOverrides;
   /** Custom schemas override the defaults */
   schemas?: {
     frontmatter?: v.ObjectSchema<
@@ -228,8 +255,46 @@ function lastFieldSegment(path: string): string | null {
   return segment.replace(/\[\d+\]$/u, "") || null;
 }
 
-function looksLikeDocsUrlCandidate(value: string, field?: string): boolean {
-  if (value.startsWith("/docs/")) {
+/**
+ * Prefixes whose links are validated against the route set. Always `/docs`,
+ * plus every mount `urlPrefix` from the docs config. A root mount (`/`) is
+ * deliberately excluded — it would classify every absolute path on the site
+ * (marketing pages, app routes) as a docs link.
+ */
+export function internalLinkPrefixes(mounts?: DocsPathMount[]): string[] {
+  const prefixes = new Set<string>(["/docs"]);
+  for (const mount of mounts ?? []) {
+    const normalized = normalizeInternalPrefix(mount.urlPrefix);
+    if (normalized !== "/") {
+      prefixes.add(normalized);
+    }
+  }
+  return [...prefixes];
+}
+
+function normalizeInternalPrefix(prefix: string): string {
+  const trimmed = prefix.trim().replace(/\/+$/, "");
+  if (!trimmed) {
+    return "/";
+  }
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function isInternalDocsUrl(
+  value: string,
+  prefixes: readonly string[]
+): boolean {
+  return prefixes.some(
+    (prefix) => value === prefix || value.startsWith(`${prefix}/`)
+  );
+}
+
+function looksLikeDocsUrlCandidate(
+  value: string,
+  prefixes: readonly string[],
+  field?: string
+): boolean {
+  if (isInternalDocsUrl(value, prefixes)) {
     return true;
   }
 
@@ -240,18 +305,25 @@ function looksLikeDocsUrlCandidate(value: string, field?: string): boolean {
   return field ? URL_LIKE_FIELD_NAMES.has(field) : false;
 }
 
-function looksLikeMarkdownUrlCandidate(value: string): boolean {
-  if (value.startsWith("/docs/")) {
+function looksLikeMarkdownUrlCandidate(
+  value: string,
+  prefixes: readonly string[]
+): boolean {
+  if (isInternalDocsUrl(value, prefixes)) {
     return true;
   }
 
   return hasDocPlaceholder(value) && value.includes("/docs/");
 }
 
-function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
+function collectFrontmatterUrls(
+  value: unknown,
+  prefixes: readonly string[],
+  path = ""
+): UrlCandidate[] {
   if (typeof value === "string") {
     const field = lastFieldSegment(path) ?? undefined;
-    if (looksLikeDocsUrlCandidate(value, field)) {
+    if (looksLikeDocsUrlCandidate(value, prefixes, field)) {
       return [{ field: path || undefined, url: value }];
     }
     return [];
@@ -259,21 +331,24 @@ function collectFrontmatterUrls(value: unknown, path = ""): UrlCandidate[] {
 
   if (Array.isArray(value)) {
     return value.flatMap((entry, index) =>
-      collectFrontmatterUrls(entry, `${path}[${index}]`)
+      collectFrontmatterUrls(entry, prefixes, `${path}[${index}]`)
     );
   }
 
   if (typeof value === "object" && value !== null) {
     return Object.entries(value).flatMap(([key, entryValue]) => {
       const nextPath = path ? `${path}.${key}` : key;
-      return collectFrontmatterUrls(entryValue, nextPath);
+      return collectFrontmatterUrls(entryValue, prefixes, nextPath);
     });
   }
 
   return [];
 }
 
-function collectMarkdownUrls(markdown: string): UrlCandidate[] {
+function collectMarkdownUrls(
+  markdown: string,
+  prefixes: readonly string[]
+): UrlCandidate[] {
   const urls = new Set<string>();
   const tree = mdxToMdast(markdown, {
     features: { frontmatter: false, gfm: true },
@@ -282,7 +357,7 @@ function collectMarkdownUrls(markdown: string): UrlCandidate[] {
 
   visit(tree, "definition", (node: { identifier?: string; url?: string }) => {
     const url = node.url ?? "";
-    if (looksLikeMarkdownUrlCandidate(url)) {
+    if (looksLikeMarkdownUrlCandidate(url, prefixes)) {
       urls.add(url);
     }
 
@@ -294,7 +369,7 @@ function collectMarkdownUrls(markdown: string): UrlCandidate[] {
 
   visit(tree, "link", (node: { url?: string }) => {
     const url = node.url ?? "";
-    if (looksLikeMarkdownUrlCandidate(url)) {
+    if (looksLikeMarkdownUrlCandidate(url, prefixes)) {
       urls.add(url);
     }
   });
@@ -303,7 +378,7 @@ function collectMarkdownUrls(markdown: string): UrlCandidate[] {
     const identifier = node.identifier?.toLowerCase();
     const url = identifier ? (definitions.get(identifier) ?? "") : "";
 
-    if (looksLikeMarkdownUrlCandidate(url)) {
+    if (looksLikeMarkdownUrlCandidate(url, prefixes)) {
       urls.add(url);
     }
   });
@@ -316,7 +391,9 @@ function validateDocUrls(
   file: string,
   kind: LintViolation["kind"],
   routeSet: Set<string>,
-  currentFramework: string | null
+  currentFramework: string | null,
+  internalPrefixes: readonly string[],
+  assumeValidLinkPrefixes: readonly string[]
 ): LintViolation[] {
   const violations: LintViolation[] = [];
 
@@ -333,11 +410,18 @@ function validateDocUrls(
       continue;
     }
 
-    if (!candidate.url.startsWith("/docs/")) {
+    if (!isInternalDocsUrl(candidate.url, internalPrefixes)) {
       continue;
     }
 
     const normalizedUrl = normalizeDocsUrl(candidate.url);
+
+    // Generated page trees (e.g. the OpenAPI output prefix) only exist after
+    // `leadtype generate`; their links are assumed valid rather than reported
+    // as missing routes.
+    if (isInternalDocsUrl(normalizedUrl, assumeValidLinkPrefixes)) {
+      continue;
+    }
     const targetFramework = frameworkFromDocsUrl(normalizedUrl);
 
     if (
@@ -524,10 +608,11 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
 
   const mdxFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], ignore);
   const metaFiles = await glob(srcDir, ["**/meta.json"], ignore);
-  const routeIgnore = [...new Set([...ignore, ...ROUTE_INDEX_IGNORE_GLOBS])];
-  const routeFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], routeIgnore);
-  const routeSet = new Set(
-    routeFiles.map((filePath) => routeFromFilePath(srcDir, filePath))
+  const mounts = options.mounts;
+  const routeSet = await collectRouteSet({ srcDir, ignore, mounts });
+  const internalPrefixes = internalLinkPrefixes(mounts);
+  const assumeValidLinkPrefixes = (options.assumeValidLinkPrefixes ?? []).map(
+    (prefix) => normalizeInternalPrefix(prefix)
   );
   const filesScanned = mdxFiles.length + metaFiles.length;
 
@@ -632,20 +717,24 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
 
       violations.push(
         ...validateDocUrls(
-          collectFrontmatterUrls(rendered.data),
+          collectFrontmatterUrls(rendered.data, internalPrefixes),
           relativeFile,
           kind,
           routeSet,
-          currentFramework
+          currentFramework,
+          internalPrefixes,
+          assumeValidLinkPrefixes
         )
       );
       violations.push(
         ...validateDocUrls(
-          collectMarkdownUrls(rendered.content),
+          collectMarkdownUrls(rendered.content, internalPrefixes),
           relativeFile,
           "content",
           routeSet,
-          currentFramework
+          currentFramework,
+          internalPrefixes,
+          assumeValidLinkPrefixes
         )
       );
     } catch (error) {
@@ -686,9 +775,11 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     );
   }
 
+  const effective = applyRuleOverrides(violations, options.rules);
+
   let errorCount = 0;
   let warningCount = 0;
-  for (const violation of violations) {
+  for (const violation of effective) {
     if (violation.severity === "error") {
       errorCount += 1;
     } else {
@@ -701,7 +792,59 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     warnings: warningCount,
   };
 
-  return { violations, summary };
+  return { violations: effective, summary };
+}
+
+/**
+ * Route set for a docs tree: every page URL with mounts applied. Shared by
+ * page-link and config-link validation so the two can't drift.
+ */
+export async function collectRouteSet(opts: {
+  srcDir: string;
+  ignore?: string[];
+  mounts?: DocsPathMount[];
+}): Promise<Set<string>> {
+  const ignore = opts.ignore ?? DEFAULT_IGNORE_GLOBS;
+  const routeIgnore = [...new Set([...ignore, ...ROUTE_INDEX_IGNORE_GLOBS])];
+  const routeFiles = await glob(
+    resolve(opts.srcDir),
+    ["**/*.mdx", "**/*.md"],
+    routeIgnore
+  );
+  return new Set(
+    routeFiles.map((filePath) =>
+      toDocsUrlPath(
+        normalizeDocsPath(relative(resolve(opts.srcDir), filePath)),
+        opts.mounts
+      )
+    )
+  );
+}
+
+/**
+ * Apply per-rule severity overrides from the `lint.rules` config block.
+ * `"off"` drops a rule's violations; `"warn"`/`"error"` remap severity.
+ */
+export function applyRuleOverrides(
+  violations: LintViolation[],
+  rules?: LintRuleOverrides
+): LintViolation[] {
+  if (!rules) {
+    return violations;
+  }
+  const result: LintViolation[] = [];
+  for (const violation of violations) {
+    const override = rules[violation.rule];
+    if (override === "off") {
+      continue;
+    }
+    result.push(
+      override && override !== violation.severity
+        ? { ...violation, severity: override }
+        : violation
+    );
+  }
+  return result;
 }
 
 export type {

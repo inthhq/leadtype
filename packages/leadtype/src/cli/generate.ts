@@ -1306,6 +1306,59 @@ function validateRedirectsConfig(
   };
 }
 
+const LINT_SEVERITY_VALUES = new Set(["off", "warn", "error"]);
+
+function validateLintConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["lint"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(`docs config at "${configPath}": lint must be an object`);
+  }
+  if (value.ignore !== undefined && !isStringArray(value.ignore)) {
+    throw new Error(
+      `docs config at "${configPath}": lint.ignore must be an array of strings`
+    );
+  }
+  if (
+    value.unknownFieldSeverity !== undefined &&
+    value.unknownFieldSeverity !== "warn" &&
+    value.unknownFieldSeverity !== "error"
+  ) {
+    throw new Error(
+      `docs config at "${configPath}": lint.unknownFieldSeverity must be "warn" or "error"`
+    );
+  }
+  let rules: Record<string, "off" | "warn" | "error"> | undefined;
+  if (value.rules !== undefined) {
+    if (!isPlainRecord(value.rules)) {
+      throw new Error(
+        `docs config at "${configPath}": lint.rules must be an object`
+      );
+    }
+    for (const [rule, severity] of Object.entries(value.rules)) {
+      if (typeof severity !== "string" || !LINT_SEVERITY_VALUES.has(severity)) {
+        throw new Error(
+          `docs config at "${configPath}": lint.rules.${rule} must be "off", "warn", or "error"`
+        );
+      }
+    }
+    rules = value.rules as Record<string, "off" | "warn" | "error">;
+  }
+  return {
+    ...(value.ignore === undefined ? {} : { ignore: value.ignore }),
+    ...(value.unknownFieldSeverity === undefined
+      ? {}
+      : {
+          unknownFieldSeverity: value.unknownFieldSeverity as "warn" | "error",
+        }),
+    ...(rules ? { rules } : {}),
+  };
+}
+
 function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -1365,6 +1418,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
   const redirects = validateRedirectsConfig(value.redirects, configPath);
+  const lint = validateLintConfig(value.lint, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -1383,6 +1437,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(feeds ? { feeds } : {}),
     ...(git ? { git } : {}),
     ...(redirects ? { redirects } : {}),
+    ...(lint ? { lint } : {}),
     ...(openapi ? { openapi } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
@@ -1631,7 +1686,7 @@ export async function loadLeadtypeConfig(
  * The new `leadtype.config.*` filename is opt-in to project-level config;
  * the per-docs-dir `docs.config.*` lookup stays the same as before.
  */
-async function loadDocsConfig(opts: {
+export async function loadDocsConfig(opts: {
   cwd?: string;
   docsDirs: string[];
 }): Promise<LoadedDocsConfig | null> {

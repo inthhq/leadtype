@@ -13,6 +13,9 @@ description: "Run leadtype lint in CI so frontmatter, navigation, and link issue
 - Internal `/docs/...` links pointing at routes that don't exist (`invalid-link`).
 - Unresolved `{framework}` placeholders left in URLs (`unresolved-placeholder`).
 - Cross-framework links from a framework-scoped page to a different framework's docs (`cross-framework-link`).
+- Dead links owned by the config itself — curated `navigation` entries, `llms.sections` links, feed prefixes, stale `redirects.removed` paths (`config-link`).
+
+Lint discovers your docs config the same way `generate` does, so a bare `leadtype lint` in CI lints the configured source tree with mounts, custom schemas, and `lint.rules` severity overrides applied — no flags needed.
 
 See [Lint reference](/docs/reference/lint) for the full rule list and how to extend the schema.
 

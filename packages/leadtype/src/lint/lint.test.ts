@@ -2,7 +2,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { lintDocs } from "./runner";
+import { runLintCommand } from "./cli";
+import { lintConfigLinks } from "./config-lint";
+import { collectRouteSet, lintDocs } from "./runner";
 
 const tempDirs: string[] = [];
 
@@ -692,5 +694,305 @@ describe("lintDocs JSON-LD validity", () => {
 
     const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
     expect(result.violations.some((v) => v.rule === "jsonld")).toBe(false);
+  });
+});
+
+describe("lintDocs mounts and rule overrides", () => {
+  it("validates links under mount prefixes against mounted routes", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "changelog", "v1.mdx"),
+      "---\ntitle: V1\n---\nBody\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[latest](/changelog/v1) and [missing](/changelog/v2)\n"
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+    });
+
+    const messages = result.violations.map((violation) => violation.message);
+    expect(messages).toEqual([expect.stringContaining("/changelog/v2")]);
+    expect(result.violations[0]?.rule).toBe("invalid-link");
+  });
+
+  it("flags stale /docs links to pages moved under a mount", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "changelog", "v1.mdx"),
+      "---\ntitle: V1\n---\nBody\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[old path](/docs/changelog/v1)\n"
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+    });
+
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        rule: "invalid-link",
+        message: expect.stringContaining("/docs/changelog/v1"),
+      }),
+    ]);
+  });
+
+  it("assumes links under generated prefixes are valid", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[API](/docs/rest-api/endpoints)\n"
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      assumeValidLinkPrefixes: ["/docs/rest-api"],
+    });
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it("applies rule severity overrides, including off", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[gone](/docs/missing)\n\n![](/img.png)\n"
+    );
+
+    const result = await lintDocs({
+      srcDir: path.join(projectDir, "docs"),
+      rules: { "invalid-link": "off", "geo:image-alt": "error" },
+    });
+
+    expect(
+      result.violations.some((violation) => violation.rule === "invalid-link")
+    ).toBe(false);
+    const imageAlt = result.violations.find(
+      (violation) => violation.rule === "geo:image-alt"
+    );
+    expect(imageAlt?.severity).toBe("error");
+    expect(result.summary.errors).toBeGreaterThan(0);
+  });
+});
+
+describe("lintConfigLinks", () => {
+  it("reports navigation entries that match no page", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+    const srcDir = path.join(projectDir, "docs");
+
+    const violations = await lintConfigLinks({
+      config: {
+        product: { name: "T", tagline: "t" },
+        navigation: ["index", "missing-page"],
+      },
+      configFile: "docs/docs.config.ts",
+      srcDir,
+      routeSet: await collectRouteSet({ srcDir }),
+    });
+
+    expect(violations).toEqual([
+      expect.objectContaining({
+        rule: "config-link",
+        kind: "config",
+        severity: "error",
+        field: "navigation",
+        message: expect.stringContaining("missing-page"),
+      }),
+    ]);
+  });
+
+  it("reports curated llms links, empty feeds, and live removed paths", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+    const srcDir = path.join(projectDir, "docs");
+
+    const violations = await lintConfigLinks({
+      config: {
+        product: { name: "T", tagline: "t" },
+        llms: {
+          sections: [
+            {
+              type: "links",
+              heading: "Start",
+              links: [
+                { urlPath: "/docs", title: "Home" },
+                { urlPath: "/docs/gone", title: "Gone" },
+              ],
+            },
+          ],
+        },
+        feeds: [
+          {
+            id: "changelog",
+            title: "Changelog",
+            source: { urlPrefix: "/changelog" },
+            formats: ["rss"],
+            output: { rss: "/changelog/rss.xml" },
+          },
+        ],
+        redirects: { removed: ["/docs"] },
+      },
+      configFile: "docs/docs.config.ts",
+      srcDir,
+      routeSet: await collectRouteSet({ srcDir }),
+    });
+
+    const byField = new Map(
+      violations.map((violation) => [violation.field, violation])
+    );
+    expect(byField.get("llms.sections[0]")?.severity).toBe("error");
+    expect(byField.get("llms.sections[0]")?.message).toContain("/docs/gone");
+    expect(byField.get("feeds[0]")?.severity).toBe("warn");
+    expect(byField.get("redirects.removed")?.severity).toBe("warn");
+    expect(violations).toHaveLength(3);
+  });
+});
+
+describe("runLintCommand config discovery", () => {
+  function createCapture(): {
+    io: {
+      stderr: { write(chunk: string): boolean };
+      stdout: { write(chunk: string): boolean };
+    };
+    stderr(): string;
+    stdout(): string;
+  } {
+    let stderrText = "";
+    let stdoutText = "";
+    return {
+      io: {
+        stderr: {
+          write(chunk: string) {
+            stderrText += chunk;
+            return true;
+          },
+        },
+        stdout: {
+          write(chunk: string) {
+            stdoutText += chunk;
+            return true;
+          },
+        },
+      },
+      stderr: () => stderrText,
+      stdout: () => stdoutText,
+    };
+  }
+
+  it("discovers docs.config in --src, applies mounts and lint.rules", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "docs.config.ts"),
+      `export default {
+  product: { name: "T", tagline: "t" },
+  navigation: ["index"],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  lint: { rules: { "geo:image-alt": "off" } },
+};
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[v1](/changelog/v1)\n\n![](/img.png)\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "changelog", "v1.mdx"),
+      "---\ntitle: V1\n---\nBody\n"
+    );
+
+    const capture = createCapture();
+    const code = await runLintCommand(
+      ["--src", srcDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const report = JSON.parse(capture.stdout()) as {
+      violations: unknown[];
+      summary: { errors: number; warnings: number };
+    };
+    expect(report.violations).toEqual([]);
+  });
+
+  it("fails at the config when curated navigation references a deleted page", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "docs.config.ts"),
+      `export default {
+  product: { name: "T", tagline: "t" },
+  navigation: ["index", "deleted-page"],
+};
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+
+    const capture = createCapture();
+    const code = await runLintCommand(
+      ["--src", srcDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const report = JSON.parse(capture.stdout()) as {
+      violations: { rule: string; file: string }[];
+    };
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        rule: "config-link",
+        file: expect.stringContaining("docs.config.ts"),
+      }),
+    ]);
+  });
+
+  it("reports an invalid docs config instead of crashing", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "docs.config.ts"),
+      'export default { lint: { rules: { "invalid-link": "sometimes" } }, product: { name: "T", tagline: "t" }, navigation: ["index"] };\n'
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+
+    const capture = createCapture();
+    const code = await runLintCommand(["--src", srcDir], capture.io);
+
+    expect(code).toBe(1);
+    expect(capture.stderr()).toContain("lint.rules.invalid-link");
   });
 });

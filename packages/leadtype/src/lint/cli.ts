@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, dirname, relative, resolve } from "node:path";
 import type { PluggableList } from "unified";
-import { loadLeadtypeConfig } from "../cli/generate";
+import { type LoadedDocsConfig, loadDocsConfig } from "../cli/generate";
 import { setLogFormat, setVerbose } from "../internal/logger";
 import { getFlattenerNames } from "../internal/remark-phase";
+import type { DocsConfig } from "../llm/llm";
 import { resolveAllCollections } from "../sync/sync";
+import { lintConfigLinks } from "./config-lint";
 import { type ReporterFormat, renderReport } from "./reporters";
 import {
+  applyRuleOverrides,
+  collectRouteSet,
   DEFAULT_IGNORE_GLOBS,
   type LintResult,
+  type LintRuleOverrides,
   type LintSeverity,
   type LintViolation,
   lintDocs,
@@ -18,11 +24,14 @@ const DEFAULT_IGNORE_GLOBS_TEXT = DEFAULT_IGNORE_GLOBS.join(", ");
 const STDOUT_FORMATS = new Set<ReporterFormat>(["github", "json"]);
 
 type CliArgs = {
-  srcDir: string;
+  /** Explicit source dir; when absent, docs-config discovery picks one. */
+  srcDir?: string;
   changelogDir?: string;
   format: ReporterFormat;
   ignore: string[];
   unknownFieldSeverity: LintSeverity;
+  /** True when --warn-unknown/--error-unknown was passed (beats config). */
+  unknownFieldSeverityExplicit: boolean;
   maxWarnings: number;
   help: boolean;
   verbose: boolean;
@@ -38,8 +47,14 @@ const USAGE = `leadtype lint — validate MDX frontmatter and meta.json against 
 Usage:
   leadtype lint [srcDir] [options]
 
+With no srcDir, lint discovers the docs config the same way generate does
+(leadtype.config.* at the project root, then docs.config.* in ./docs or
+./content) and lints that source tree with the config's mounts, schema,
+ignore globs, and \`lint.rules\` severities applied. Curated config links
+(navigation, llms sections, feeds, redirects) are validated too.
+
 Options:
-  --src <dir>              Source directory (default: ./content)
+  --src <dir>              Source directory (default: from config discovery, else ./content)
   --changelog <dir>        Subdirectory that uses the changelog schema
   --format <fmt>           pretty | json | github (default: pretty)
   --ignore <glob>          Glob to skip (repeatable). Default: ${DEFAULT_IGNORE_GLOBS_TEXT}
@@ -61,10 +76,10 @@ export function getLintUsage(): string {
 
 export function parseLintArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
-    srcDir: "content",
     format: "pretty",
     ignore: [],
     unknownFieldSeverity: "warn",
+    unknownFieldSeverityExplicit: false,
     maxWarnings: Number.POSITIVE_INFINITY,
     help: false,
     verbose: false,
@@ -98,8 +113,10 @@ export function parseLintArgs(argv: string[]): CliArgs {
       args.ignore.push(readValue(argv, ++i, "--ignore"));
     } else if (arg === "--warn-unknown") {
       args.unknownFieldSeverity = "warn";
+      args.unknownFieldSeverityExplicit = true;
     } else if (arg === "--error-unknown") {
       args.unknownFieldSeverity = "error";
+      args.unknownFieldSeverityExplicit = true;
     } else if (arg === "--max-warnings") {
       const value = readValue(argv, ++i, "--max-warnings");
       const parsed = Number.parseInt(value, 10);
@@ -121,10 +138,39 @@ export function parseLintArgs(argv: string[]): CliArgs {
     }
   }
 
-  if (args.ignore.length === 0) {
-    args.ignore = [...DEFAULT_IGNORE_GLOBS];
-  }
   return args;
+}
+
+function summarize(
+  violations: LintViolation[],
+  filesScanned: number
+): LintResult {
+  let errors = 0;
+  let warnings = 0;
+  for (const violation of violations) {
+    if (violation.severity === "error") {
+      errors += 1;
+    } else {
+      warnings += 1;
+    }
+  }
+  return { violations, summary: { filesScanned, errors, warnings } };
+}
+
+/**
+ * Routes under the OpenAPI `output` prefix only exist after generation, so
+ * links into them are assumed valid rather than reported as missing.
+ */
+function openApiLinkPrefixes(openapi: DocsConfig["openapi"]): string[] {
+  if (!openapi) {
+    return [];
+  }
+  const inputs = Array.isArray(openapi) ? openapi : [openapi];
+  return inputs.map((input) => {
+    const output = typeof input === "string" ? undefined : input.output?.trim();
+    // Mirrors the OpenAPI generator's default output directory ("api").
+    return `/docs/${output || "api"}`;
+  });
 }
 
 export async function runLintCommand(
@@ -153,13 +199,50 @@ export async function runLintCommand(
     setVerbose(true);
   }
 
-  const resolvedSrcDir = resolve(args.srcDir);
+  // Config discovery mirrors `leadtype generate`: with an explicit --src,
+  // look for leadtype.config.* at that dir (monorepo subpackage invocations)
+  // and docs.config.* inside it; with no --src, discover from the cwd and
+  // default the source dir to wherever the config lives.
+  const cwd = process.cwd();
+  let loaded: LoadedDocsConfig | null = null;
+  let resolvedSrcDir: string;
+  try {
+    if (args.srcDir) {
+      resolvedSrcDir = resolve(args.srcDir);
+      loaded = await loadDocsConfig({
+        cwd: resolvedSrcDir,
+        docsDirs: [resolvedSrcDir],
+      });
+    } else {
+      const candidates = [resolve(cwd, "docs"), resolve(cwd, "content")];
+      loaded = await loadDocsConfig({ cwd, docsDirs: candidates });
+      if (loaded && basename(loaded.path).startsWith("docs.config")) {
+        resolvedSrcDir = dirname(loaded.path);
+      } else {
+        resolvedSrcDir =
+          candidates.find((dir) => existsSync(dir)) ?? resolve(cwd, "content");
+      }
+    }
+  } catch (error) {
+    // A config that fails to load or validate is a lint failure in its own
+    // right — report it instead of crashing.
+    const message = error instanceof Error ? error.message : String(error);
+    io.stderr.write(`leadtype lint: ${message}\n`);
+    return 1;
+  }
 
-  // Look for the project-level leadtype.config.* under the user's --src so a
-  // monorepo invocation like `leadtype lint --src packages/foo` lints that
-  // package's collections rather than the repo-root project.
-  const projectConfig = await loadLeadtypeConfig(resolvedSrcDir);
-  const collections = projectConfig?.config.collections;
+  const lintConfig = loaded?.config.lint;
+  const collections = loaded?.config.collections;
+  const effectiveIgnore =
+    args.ignore.length > 0
+      ? args.ignore
+      : (lintConfig?.ignore ?? [...DEFAULT_IGNORE_GLOBS]);
+  const unknownFieldSeverity = args.unknownFieldSeverityExplicit
+    ? args.unknownFieldSeverity
+    : (lintConfig?.unknownFieldSeverity ?? args.unknownFieldSeverity);
+  const rules = lintConfig?.rules as LintRuleOverrides | undefined;
+  const mounts = loaded?.config.mounts;
+  const assumeValidLinkPrefixes = openApiLinkPrefixes(loaded?.config.openapi);
 
   // Custom-flattener component names, so the `unflattened-component` rule
   // doesn't warn on components the project has actually wired a flattener for.
@@ -171,29 +254,28 @@ export async function runLintCommand(
       }
     }
   };
-  addFlattenerNames(projectConfig?.config.flatteners);
+  addFlattenerNames(loaded?.config.flatteners);
   for (const collection of Object.values(collections ?? {})) {
     addFlattenerNames(collection.flatteners);
   }
   const knownComponents = [...knownComponentSet];
 
   let result: LintResult;
-  if (collections && Object.keys(collections).length > 0) {
-    const configDir = resolve(projectConfig.path, "..");
+  if (loaded && collections && Object.keys(collections).length > 0) {
+    const configDir = resolve(loaded.path, "..");
     const resolved = resolveAllCollections(collections, configDir);
     const combined: LintViolation[] = [];
     let filesScanned = 0;
-    let errors = 0;
-    let warnings = 0;
     for (const entry of resolved) {
       io.stderr.write(
         `Linting collection [${entry.key}] at ${entry.absoluteDir}\n`
       );
       const each = await lintDocs({
         srcDir: entry.absoluteDir,
-        ignore: args.ignore,
-        unknownFieldSeverity: args.unknownFieldSeverity,
+        ignore: effectiveIgnore,
+        unknownFieldSeverity,
         knownComponents,
+        rules,
         schemas: entry.collection.schema
           ? { frontmatter: entry.collection.schema }
           : undefined,
@@ -205,23 +287,45 @@ export async function runLintCommand(
         });
       }
       filesScanned += each.summary.filesScanned;
-      errors += each.summary.errors;
-      warnings += each.summary.warnings;
     }
-    result = {
-      violations: combined,
-      summary: { filesScanned, errors, warnings },
-    };
+    result = summarize(combined, filesScanned);
   } else {
     result = await lintDocs({
       srcDir: resolvedSrcDir,
       changelogDir: args.changelogDir
         ? resolve(resolvedSrcDir, args.changelogDir)
         : undefined,
-      ignore: args.ignore,
-      unknownFieldSeverity: args.unknownFieldSeverity,
+      ignore: effectiveIgnore,
+      unknownFieldSeverity,
       knownComponents,
+      mounts,
+      assumeValidLinkPrefixes,
+      rules,
     });
+
+    // Config-owned links (navigation, llms sections, feeds, redirects) are
+    // validated against the same route set as page links.
+    if (loaded) {
+      const routeSet = await collectRouteSet({
+        srcDir: resolvedSrcDir,
+        ignore: effectiveIgnore,
+        mounts,
+      });
+      const configViolations = applyRuleOverrides(
+        await lintConfigLinks({
+          config: loaded.config,
+          configFile: relative(cwd, loaded.path) || loaded.path,
+          srcDir: resolvedSrcDir,
+          routeSet,
+          assumeValidLinkPrefixes,
+        }),
+        rules
+      );
+      result = summarize(
+        [...configViolations, ...result.violations],
+        result.summary.filesScanned + 1
+      );
+    }
   }
 
   const output = renderReport(args.format, result);

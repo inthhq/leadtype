@@ -1,5 +1,6 @@
 /** @biome-ignore lint/performance/noBarrelFile: package entry point */
 
+export { type ConfigLintOptions, lintConfigLinks } from "./config-lint";
 export {
   githubReporter,
   jsonReporter,
@@ -8,10 +9,14 @@ export {
   renderReport,
 } from "./reporters";
 export {
+  applyRuleOverrides,
+  collectRouteSet,
   DEFAULT_IGNORE_GLOBS,
   type LintOptions,
   type LintResult,
   type LintRule,
+  type LintRuleOverrides,
+  type LintRuleSeverity,
   type LintSeverity,
   type LintSummary,
   type LintViolation,
