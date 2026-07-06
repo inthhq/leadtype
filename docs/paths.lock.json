@@ -23,7 +23,7 @@
     },
     {
       "path": "/docs/aeo/optimize-docs-for-agents",
-      "hash": "e4d108a20fa88963"
+      "hash": "f06974bfbbe12a5c"
     },
     {
       "path": "/docs/aeo/overview",
@@ -91,7 +91,7 @@
     },
     {
       "path": "/docs/pipeline/localize-docs",
-      "hash": "2e4673add6b6a204"
+      "hash": "254a1b6aa5ed6eae"
     },
     {
       "path": "/docs/pipeline/redirects",
@@ -131,7 +131,7 @@
     },
     {
       "path": "/docs/reference/lint",
-      "hash": "0a7cf0c2a5f71547"
+      "hash": "cec497ea566bf69d"
     },
     {
       "path": "/docs/reference/llm",
