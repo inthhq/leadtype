@@ -115,13 +115,22 @@ jobs:
         run: |
           set -euo pipefail
           URL="https://registry.npmjs.org/leadtype/-/leadtype-${VERSION}.tgz"
+          downloaded=false
           for i in 1 2 3 4 5 6 7 8 9 10; do
+            # Clear any partial tarball a failed curl left behind so a
+            # truncated download can never be hashed into the formula.
+            rm -f leadtype.tgz
             if curl -fSL --connect-timeout 10 --max-time 60 "$URL" -o leadtype.tgz; then
+              downloaded=true
               break
             fi
             echo "Attempt $i: tarball not ready yet, sleeping..."
             sleep $((i * 6))
           done
+          if [ "$downloaded" != "true" ]; then
+            echo "Tarball never became available at $URL; giving up."
+            exit 1
+          fi
           test -s leadtype.tgz
           SHA="$(shasum -a 256 leadtype.tgz | awk '{print $1}')"
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
@@ -148,11 +157,24 @@ jobs:
             const fs = require("node:fs");
             const path = "Formula/leadtype.rb";
             const src = fs.readFileSync(path, "utf8");
+            let replacedUrl = false;
+            let replacedSha = false;
             const next = src
-              .replace(/^(\s*url\s+).*$/m, `$1"${process.env.URL}"`)
-              .replace(/^(\s*sha256\s+).*$/m, `$1"${process.env.SHA}"`);
-            if (next === src) {
-              console.error("Formula did not change; refusing to commit.");
+              .replace(/^(\s*url\s+).*$/m, (_, prefix) => {
+                replacedUrl = true;
+                return `${prefix}"${process.env.URL}"`;
+              })
+              .replace(/^(\s*sha256\s+).*$/m, (_, prefix) => {
+                replacedSha = true;
+                return `${prefix}"${process.env.SHA}"`;
+              });
+            // Both fields must be rewritten together: a formula drift that
+            // breaks one regex must not ship a new url with a stale sha256
+            // (or vice versa).
+            if (!(replacedUrl && replacedSha)) {
+              console.error(
+                `Formula update incomplete (url: ${replacedUrl}, sha256: ${replacedSha}); refusing to commit.`
+              );
               process.exit(1);
             }
             fs.writeFileSync(path, next);
