@@ -3,17 +3,20 @@
  *
  * These describe the **author surface** — the attributes that appear on a tag
  * in source MDX (e.g. `<Callout variant="warning">…</Callout>`). They are
- * framework-neutral on purpose: `children` is typed as `unknown` so consumers
- * can intersect with their renderer's specific child type.
+ * framework-neutral on purpose: leadtype ships no renderer dependency, so
+ * `children` defaults to `unknown`.
  *
- * React consumers typically intersect with React's HTML attribute types, e.g.
+ * Register your renderer's child type **once per project** via the
+ * {@link ChildrenTypeRegistry} augmentation and every tag's `children`
+ * becomes that type — no casts, no per-component generics:
  *
  * ```ts
- * import type { CalloutProps } from "leadtype/mdx";
- * import type { HTMLAttributes, ReactNode } from "react";
- *
- * type ReactCalloutProps = Omit<CalloutProps, "children"> &
- *   HTMLAttributes<HTMLElement> & { children?: ReactNode };
+ * // types.d.ts — register your renderer's child type (e.g. React's ReactNode)
+ * declare module "leadtype/mdx" {
+ *   interface ChildrenTypeRegistry {
+ *     type: YourFrameworkChildType;
+ *   }
+ * }
  * ```
  *
  * Every tag type is part of the 1.0 contract — bumping the prop shape is a
@@ -30,6 +33,35 @@ import type {
   OpenApiSecurityRequirement,
   OpenApiSecurityScheme,
 } from "../openapi";
+
+// ---------------------------------------------------------------------------
+// Children typing
+// ---------------------------------------------------------------------------
+
+/**
+ * Augmentation hook for the `children` type used by every tag's props.
+ * Leadtype ships no renderer dependency, so this interface is empty by
+ * default and `children` is `unknown`. Declare a `type` member for your
+ * renderer once per project and every prop type picks it up:
+ *
+ * ```ts
+ * declare module "leadtype/mdx" {
+ *   interface ChildrenTypeRegistry {
+ *     type: YourFrameworkChildType; // e.g. React's ReactNode
+ *   }
+ * }
+ * ```
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: augmentation hook by design
+export interface ChildrenTypeRegistry {}
+
+/**
+ * The `children` type for all tag props: whatever the project registered in
+ * {@link ChildrenTypeRegistry}, or `unknown` when nothing is registered.
+ */
+export type TagChildren = ChildrenTypeRegistry extends { type: infer T }
+  ? T
+  : unknown;
 
 // ---------------------------------------------------------------------------
 // Callout
@@ -58,7 +90,7 @@ export type CalloutProps = {
   /** @deprecated use {@link CalloutProps.variant} */
   type?: CalloutTypeAlias;
   title?: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -72,13 +104,13 @@ export type TabsProps = {
   defaultIndex?: number;
   /** Shared id used to sync active tab across multiple `<Tabs>` instances. */
   groupId?: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 export type TabProps = {
   /** Identifier matched against the parent `<Tabs items>` list. */
   value: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -86,13 +118,13 @@ export type TabProps = {
 // ---------------------------------------------------------------------------
 
 export type StepsProps = {
-  children?: unknown;
+  children?: TagChildren;
 };
 
 export type StepProps = {
   /** Optional heading rendered above the step body. */
   title?: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -195,7 +227,7 @@ export type ApiTryItProps = {
 export type MermaidProps = {
   /** Mermaid source. Falls back to `children` when omitted. */
   chart?: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -203,13 +235,13 @@ export type MermaidProps = {
 // ---------------------------------------------------------------------------
 
 export type AccordionProps = {
-  children?: unknown;
+  children?: TagChildren;
 };
 
 export type AccordionItemProps = {
   title: string;
   defaultOpen?: boolean;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -217,7 +249,7 @@ export type AccordionItemProps = {
 // ---------------------------------------------------------------------------
 
 export type CardsProps = {
-  children?: unknown;
+  children?: TagChildren;
 };
 
 /** Built-in card layouts. Arbitrary strings still type-check for forward compat. */
@@ -230,7 +262,7 @@ export type CardProps = {
   /** Renderer decides how to display this; usually a small inline node. */
   icon?: unknown;
   variant?: CardVariant;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -240,14 +272,14 @@ export type CardProps = {
 export type FileTreeProps = {
   /** Label for the implicit root folder. */
   root?: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 export type FolderProps = {
   name: string;
   /** Render the folder open by default. */
   defaultOpen?: boolean;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 export type FileProps = {
@@ -262,7 +294,7 @@ export type AudienceTarget = "agent" | "human";
 
 export type AudienceProps = {
   target: AudienceTarget;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -324,7 +356,7 @@ export type TopicSwitcherProps = {
 export type PromptProps = {
   title?: string;
   description?: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -346,7 +378,7 @@ export type ExampleProps = {
   code?: string;
   /** Multi-file tabbed view; takes precedence over single-file `code`. */
   sourceFiles?: ExampleSourceFile[];
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -356,7 +388,7 @@ export type ExampleProps = {
 export type SectionProps = {
   /** Anchor id consumed by `<include src="…#id" />`. */
   id: string;
-  children?: unknown;
+  children?: TagChildren;
 };
 
 // ---------------------------------------------------------------------------
@@ -365,5 +397,5 @@ export type SectionProps = {
 
 export type DetailsProps = {
   /** First `<summary>` child becomes the disclosure label. */
-  children?: unknown;
+  children?: TagChildren;
 };
