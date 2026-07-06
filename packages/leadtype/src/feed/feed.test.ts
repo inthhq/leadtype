@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { setLogStreams } from "../internal/logger";
+import { setLogFormat, setLogStreams } from "../internal/logger";
 import {
   type DocsFeedConfig,
   type FeedEntry,
@@ -416,6 +416,14 @@ describe("generateFeedArtifacts", () => {
     );
 
     let stderrOutput = "";
+    // The log format is module-global state that CLI tests flip to "json"
+    // (`generate --format json` never restores it). Bun shards test files
+    // across CPU-count worker processes, so whether one of those tests runs
+    // before this one in the same worker depends on the machine — the exact
+    // flake that broke the Release workflow's pre-commit suite on 4-core CI
+    // runners while passing everywhere locally. Pin the format this
+    // assertion depends on.
+    setLogFormat("human");
     setLogStreams({
       stderr: {
         write(chunk: string) {
