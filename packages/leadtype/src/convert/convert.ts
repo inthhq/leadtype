@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, realpath } from "node:fs/promises";
+import { mkdir, readFile, realpath, rm, rmdir } from "node:fs/promises";
 import { cpus } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -18,6 +18,11 @@ import {
   parseFrontmatter,
   stringifyFrontmatter,
 } from "../internal/frontmatter";
+import {
+  acquireGenerateLock,
+  type GenerateLock,
+  isGenerateLockHeld,
+} from "../internal/generate-lock";
 import { logger } from "../internal/logger";
 import {
   createMdastTransforms,
@@ -320,6 +325,23 @@ export type MdxToMarkdownOptions = {
   concurrency?: number;
   /** Throw after batch conversion if any file fails. */
   failOnError?: boolean;
+  /**
+   * After a fully successful batch, delete `.md` files under `outDir` whose
+   * source `.mdx` no longer exists (deleted or renamed pages). Skipped — with
+   * a warning — when any file fails to convert or when `srcDir` resolves to
+   * zero pages, so a partial or misconfigured run never mass-deletes output.
+   * While pruning, the run holds the same per-outDir lock as
+   * `leadtype generate` (opt out with `LEADTYPE_NO_LOCK=1`). Only affects
+   * `convertAllMdx`. Default `false`.
+   */
+  prune?: boolean;
+  /**
+   * Glob patterns (relative to `outDir`) for `.md` files `prune` must keep,
+   * e.g. mirrors or aliases written into the same `outDir` by other tools
+   * after conversion (generated sitemaps, agent page mirrors, locale
+   * aliases).
+   */
+  pruneKeep?: string[];
   /** Build-time lifecycle hooks for frontmatter, AST, and markdown output. */
   transformers?: DocsTransformerOptions["transformers"];
   /** Optional schema used to validate resolved frontmatter before exposing it. */
@@ -1185,6 +1207,56 @@ export async function writeMdxFileAsMarkdown(
 }
 
 /**
+ * Delete `.md` files under `outDir` that this batch did not produce, then
+ * best-effort remove directories the deletions emptied. Non-`.md` files are
+ * never touched, and `keepPatterns` are exempt. Symlinks are not followed —
+ * a link inside `outDir` must never let prune delete files outside it.
+ */
+async function pruneOrphanedOutputs(
+  outDir: string,
+  expectedOutputs: Set<string>,
+  keepPatterns: string[]
+): Promise<string[]> {
+  const existing = await fg("**/*.md", {
+    cwd: outDir,
+    absolute: true,
+    onlyFiles: true,
+    followSymbolicLinks: false,
+  });
+  const keep = new Set(
+    await fg(keepPatterns, {
+      cwd: outDir,
+      absolute: true,
+      onlyFiles: true,
+      followSymbolicLinks: false,
+    })
+  );
+  const orphans = existing.filter(
+    (filePath) =>
+      !(expectedOutputs.has(resolve(filePath)) || keep.has(filePath))
+  );
+
+  await Promise.all(orphans.map((filePath) => rm(filePath, { force: true })));
+
+  // Deleting the last page of a section leaves an empty directory behind;
+  // sweep upward until a non-empty parent (or outDir) stops the walk.
+  const resolvedOutDir = resolve(outDir);
+  const parents = new Set(orphans.map((filePath) => dirname(filePath)));
+  for (let dir of parents) {
+    while (dir !== resolvedOutDir && dir.startsWith(resolvedOutDir + sep)) {
+      try {
+        await rmdir(dir);
+      } catch {
+        break;
+      }
+      dir = dirname(dir);
+    }
+  }
+
+  return orphans;
+}
+
+/**
  * Convert every .mdx file under srcDir to .md under outDir (preserving the
  * relative directory structure).
  */
@@ -1213,9 +1285,99 @@ export async function convertAllMdx(
   });
 
   if (mdxFiles.length === 0) {
+    if (config.prune) {
+      logger.warn({
+        human: {
+          message: `prune skipped: no .mdx sources under ${srcDir} — refusing to treat every output in ${outDir} as orphaned. Check srcDir if this is unexpected.`,
+        },
+        json: {
+          event: "convert.prune.skip_no_sources",
+          fields: { srcDir, outDir },
+        },
+      });
+    }
     return;
   }
 
+  // Pruning must not race another writer sharing this outDir (another prune
+  // deleting outputs this run just wrote, or a `leadtype generate` run whose
+  // artifacts would look orphaned mid-write), so it serializes on the same
+  // per-outDir lock generate uses — unless this process already holds it
+  // (generate calling convertAllMdx), where a second acquire would deadlock.
+  const needsLock =
+    Boolean(config.prune) &&
+    process.env.LEADTYPE_NO_LOCK !== "1" &&
+    !isGenerateLockHeld(outDir);
+  const generateLock: GenerateLock | undefined = needsLock
+    ? await acquireGenerateLock(outDir)
+    : undefined;
+
+  try {
+    const failed = await convertMdxBatch(config, srcDir, outDir, mdxFiles);
+
+    if (config.prune) {
+      await pruneAfterBatch(config, srcDir, outDir, mdxFiles, failed);
+    }
+
+    if (failed > 0 && config.failOnError) {
+      throw new Error(`Failed to convert ${failed} docs file(s).`);
+    }
+  } finally {
+    await generateLock?.release();
+  }
+}
+
+/** Prune orphaned outputs after a batch, or explain why pruning was skipped. */
+async function pruneAfterBatch(
+  config: MdxToMarkdownOptions,
+  srcDir: string,
+  outDir: string,
+  mdxFiles: string[],
+  failed: number
+): Promise<void> {
+  if (failed > 0) {
+    logger.warn({
+      human: {
+        message: `prune skipped: ${failed} file(s) failed to convert, so the expected output set is incomplete.`,
+      },
+      json: {
+        event: "convert.prune.skip_failed",
+        fields: { outDir, failed },
+      },
+    });
+    return;
+  }
+
+  const expectedOutputs = new Set(
+    mdxFiles.map((mdxFilePath) =>
+      resolve(deriveOutputPath(mdxFilePath, srcDir, outDir))
+    )
+  );
+  const pruned = await pruneOrphanedOutputs(
+    outDir,
+    expectedOutputs,
+    config.pruneKeep ?? []
+  );
+  if (pruned.length > 0) {
+    logger.info({
+      human: {
+        message: `Pruned ${pruned.length} orphaned .md file(s) from ${outDir}`,
+      },
+      json: {
+        event: "convert.prune",
+        fields: { outDir, count: pruned.length, files: pruned },
+      },
+    });
+  }
+}
+
+/** Run the conversion batch and return the number of failed files. */
+async function convertMdxBatch(
+  config: MdxToMarkdownOptions,
+  srcDir: string,
+  outDir: string,
+  mdxFiles: string[]
+): Promise<number> {
   const markdownTransforms = resolveMarkdownTransforms(config);
   const enrichFromGitFlag = config.enrichFrontmatterFromGit ?? false;
   const concurrency = config.concurrency ?? DEFAULT_CONCURRENCY;
@@ -1314,7 +1476,5 @@ export async function convertAllMdx(
     },
   });
 
-  if (failed > 0 && config.failOnError) {
-    throw new Error(`Failed to convert ${failed} docs file(s).`);
-  }
+  return failed;
 }
