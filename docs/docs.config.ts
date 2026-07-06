@@ -112,6 +112,12 @@ const config: DocsConfig = {
               "Run the site-mode CLI from a build pipeline to write llms.txt, markdown mirrors, search, sitemap, and Agent Readability files.",
           },
           {
+            urlPath: "/docs/pipeline/validate-in-ci",
+            title: "CI for your docs",
+            description:
+              "Lint every internal link against the real route graph and typecheck code snippets against installed packages — docs that can't silently rot.",
+          },
+          {
             urlPath: "/docs/pipeline/redirects",
             title: "Redirect renamed pages",
             description:
