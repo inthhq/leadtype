@@ -1940,8 +1940,8 @@ lastModified: 2026-05-01T12:00:00.000Z
     ).toContain('last_updated: "2026-05-02T00:00:00.000Z"');
   });
 
-  it("uses now when enriching markdown without page freshness metadata", async () => {
-    const manifestWithoutLastModified = {
+  const manifestWithoutPageLastModified = () =>
+    ({
       ...manifest,
       pages: [
         {
@@ -1949,12 +1949,13 @@ lastModified: 2026-05-01T12:00:00.000Z
           lastModified: undefined,
         },
       ],
-    } as unknown as typeof manifest;
+    }) as unknown as typeof manifest;
 
+  it("uses now when enriching markdown without page freshness metadata", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
       headers: { accept: "text/markdown" },
-      manifest: manifestWithoutLastModified,
+      manifest: manifestWithoutPageLastModified(),
       now: new Date("2026-05-03T00:00:00.000Z"),
       readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
     });
@@ -1965,20 +1966,10 @@ lastModified: 2026-05-01T12:00:00.000Z
   });
 
   it("prefers a mirror's authored frontmatter date over now", async () => {
-    const manifestWithoutLastModified = {
-      ...manifest,
-      pages: [
-        {
-          ...manifest.pages[0],
-          lastModified: undefined,
-        },
-      ],
-    } as unknown as typeof manifest;
-
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
       headers: { accept: "text/markdown" },
-      manifest: manifestWithoutLastModified,
+      manifest: manifestWithoutPageLastModified(),
       now: new Date("2026-05-03T00:00:00.000Z"),
       readMarkdownFile: () =>
         "---\ntitle: Quickstart\nlastModified: 2026-04-01T00:00:00.000Z\n---\n# Quickstart\n",

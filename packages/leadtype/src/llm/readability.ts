@@ -1347,7 +1347,7 @@ export async function createAgentMarkdownResponse(
           // mirror's own authored frontmatter date always wins over the
           // request/generation time.
           lastUpdated: page?.lastModified,
-          ...(config.now ? { now: config.now } : {}),
+          now: config.now,
         })
       : renderMissingMarkdown({
           urlPath: target.urlPath,
