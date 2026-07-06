@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import type { PluggableList } from "unified";
 import { type LoadedDocsConfig, loadDocsConfig } from "../cli/generate";
+import type { DocsPathMount } from "../internal/docs-url";
 import { setLogFormat, setVerbose } from "../internal/logger";
 import { getFlattenerNames } from "../internal/remark-phase";
 import type { DocsConfig } from "../llm/llm";
@@ -166,10 +167,17 @@ function openApiLinkPrefixes(openapi: DocsConfig["openapi"]): string[] {
     return [];
   }
   const inputs = Array.isArray(openapi) ? openapi : [openapi];
+  // Mirrors the OpenAPI generator's defaults: pages live under
+  // `<urlPrefix>/<output>` with urlPrefix defaulting to "/docs" and output
+  // to "api".
   return inputs.map((input) => {
-    const output = typeof input === "string" ? undefined : input.output?.trim();
-    // Mirrors the OpenAPI generator's default output directory ("api").
-    return `/docs/${output || "api"}`;
+    if (typeof input === "string") {
+      return "/docs/api";
+    }
+    const output = input.output?.trim() || "api";
+    const rawPrefix = input.urlPrefix?.trim().replace(/\/+$/, "") || "/docs";
+    const prefix = rawPrefix.startsWith("/") ? rawPrefix : `/${rawPrefix}`;
+    return prefix === "/" ? `/${output}` : `${prefix}/${output}`;
   });
 }
 
@@ -264,6 +272,25 @@ export async function runLintCommand(
   if (loaded && collections && Object.keys(collections).length > 0) {
     const configDir = resolve(loaded.path, "..");
     const resolved = resolveAllCollections(collections, configDir);
+    // Each collection publishes its whole tree under its urlPrefix, with the
+    // collection's own mounts taking precedence for their subpaths (the
+    // catch-all sorts last). Routes and prefixes are unioned across
+    // collections so cross-collection links validate against real routes.
+    const mountsFor = (entry: (typeof resolved)[number]): DocsPathMount[] => [
+      ...(entry.collection.mounts ?? []),
+      { pathPrefix: "", urlPrefix: entry.urlPrefix },
+    ];
+    const allMounts = resolved.flatMap(mountsFor);
+    const routeSets = await Promise.all(
+      resolved.map((entry) =>
+        collectRouteSet({
+          srcDir: entry.absoluteDir,
+          ignore: effectiveIgnore,
+          mounts: mountsFor(entry),
+        })
+      )
+    );
+    const combinedRouteSet = new Set(routeSets.flatMap((set) => [...set]));
     const combined: LintViolation[] = [];
     let filesScanned = 0;
     for (const entry of resolved) {
@@ -275,6 +302,9 @@ export async function runLintCommand(
         ignore: effectiveIgnore,
         unknownFieldSeverity,
         knownComponents,
+        mounts: allMounts,
+        routeSet: combinedRouteSet,
+        assumeValidLinkPrefixes,
         rules,
         schemas: entry.collection.schema
           ? { frontmatter: entry.collection.schema }

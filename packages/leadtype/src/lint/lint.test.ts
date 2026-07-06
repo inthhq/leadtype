@@ -1008,6 +1008,88 @@ describe("runLintCommand config discovery", () => {
     ]);
   });
 
+  it("validates cross-collection links against every collection's routes", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      "leadtype.config.ts",
+      `export default {
+  product: { name: "T", tagline: "t" },
+  collections: {
+    guides: { dir: "./guides" },
+    changelog: { dir: "./changelog" },
+  },
+};
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("guides", "index.mdx"),
+      "---\ntitle: Guides\n---\n[v1](/changelog/v1) and [missing](/changelog/v2)\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("changelog", "v1.mdx"),
+      "---\ntitle: V1\n---\nBody\n"
+    );
+
+    const capture = createCapture();
+    const code = await runLintCommand(
+      ["--src", projectDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const report = JSON.parse(capture.stdout()) as {
+      violations: { rule: string; message: string }[];
+    };
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        rule: "invalid-link",
+        message: expect.stringContaining("/changelog/v2"),
+      }),
+    ]);
+  });
+
+  it("scopes the OpenAPI link exemption to the configured urlPrefix", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "docs.config.ts"),
+      `export default {
+  product: { name: "T", tagline: "t" },
+  navigation: ["index"],
+  openapi: { input: "./openapi/api.yaml", output: "rest-api", urlPrefix: "/reference" },
+};
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[stale](/docs/rest-api/endpoints)\n"
+    );
+
+    const capture = createCapture();
+    const code = await runLintCommand(
+      ["--src", srcDir, "--format", "json"],
+      capture.io
+    );
+
+    // With urlPrefix "/reference", generated pages live under
+    // /reference/rest-api — the old /docs/rest-api path is a real broken link.
+    expect(code).toBe(1);
+    const report = JSON.parse(capture.stdout()) as {
+      violations: { rule: string; message: string }[];
+    };
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        rule: "invalid-link",
+        message: expect.stringContaining("/docs/rest-api/endpoints"),
+      }),
+    ]);
+  });
+
   it("reports an invalid docs config instead of crashing", async () => {
     const projectDir = await createTempProject();
     const srcDir = path.join(projectDir, "docs");
