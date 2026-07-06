@@ -1,11 +1,14 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
 import { convertAllMdx } from "../convert";
+import type { ConvertCacheOptions } from "../convert/incremental";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
@@ -90,6 +93,7 @@ import {
   syncCollections,
 } from "../sync/sync";
 import type { DocsTransformer } from "../transformers";
+import { watchInputs } from "./watch";
 
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
@@ -195,6 +199,10 @@ export type GenerateArgs = {
    */
   syncMode: SyncMode;
   verbose: boolean;
+  /** Re-run generation whenever docs sources or the config file change. */
+  watch: boolean;
+  /** Ignore the incremental cache and reconvert every file. */
+  force: boolean;
 };
 
 export type GenerateIo = {
@@ -366,10 +374,19 @@ Options:
   --sync             Clone missing remote sources before generating (collections mode)
   --refresh          Re-fetch and fast-forward every remote source (collections mode)
   --offline          Fail if any remote source cache is missing or stale; never touch the network
+  -w, --watch        Rebuild whenever docs sources or the config file change.
+                     Files whose config-declared transformers/flatteners import
+                     other modules need a restart (or --force) to pick up edits
+                     to those modules.
+  --force            Ignore the incremental cache and reconvert every file
   --format <fmt>     text | json (default: text)
   --json             Alias for --format json
   -v, --verbose      Print per-file progress events to stderr
   -h, --help         Show this help
+
+Repeat runs are incremental: unchanged MDX files (including their <include>
+targets and type-table TypeScript sources) are skipped using a cache under
+node_modules/.cache/leadtype/. Use --force to rebuild everything.
 `;
 
 function readValue(argv: string[], index: number, flag: string): string {
@@ -399,6 +416,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     srcDir: ".",
     syncMode: "missing",
     verbose: false,
+    watch: false,
+    force: false,
   };
   const syncFlags: string[] = [];
 
@@ -446,6 +465,10 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.format = value;
     } else if (arg === "--json") {
       args.format = "json";
+    } else if (arg === "--watch" || arg === "-w") {
+      args.watch = true;
+    } else if (arg === "--force") {
+      args.force = true;
     } else if (arg === "--verbose" || arg === "-v") {
       args.verbose = true;
     } else if (arg) {
@@ -2494,6 +2517,111 @@ function renderBundlePointerGuidance(packageName: string): string {
   ].join("\n");
 }
 
+type GenerateOutcome = {
+  code: number;
+  /** Directories and files a --watch session should observe. */
+  watchPaths: string[];
+};
+
+function defaultWatchPaths(srcDir: string): string[] {
+  return [
+    path.join(srcDir, DEFAULT_DOCS_DIR),
+    ...LEADTYPE_CONFIG_FILENAMES.map((filename) => path.join(srcDir, filename)),
+  ].filter((candidate) => existsSync(candidate));
+}
+
+function readLeadtypeVersion(): string {
+  try {
+    const requireFromHere = createRequire(import.meta.url);
+    const packageJson = requireFromHere("leadtype/package.json") as {
+      version?: unknown;
+    };
+    return typeof packageJson.version === "string"
+      ? packageJson.version
+      : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function hashText(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+/**
+ * Build the incremental-cache options for this run, or undefined when there
+ * is no conventional cache home (`node_modules/`) to write into.
+ *
+ * The fingerprint invalidates the whole cache when anything the per-file
+ * checks can't see changes: the leadtype version, the docs config file
+ * (transformers/flatteners are functions, so the config's content hash
+ * stands in for them), or flags that alter conversion output.
+ */
+/**
+ * Nearest `node_modules` walking upward from `startDir`, mirroring Node's own
+ * module resolution — hoisted monorepo layouts keep dependencies at the
+ * workspace root, so a subpackage `--src` without its own `node_modules`
+ * still gets a cache home.
+ */
+function findNearestNodeModules(startDir: string): string | undefined {
+  let dir = path.resolve(startDir);
+  for (;;) {
+    const candidate = path.join(dir, "node_modules");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return;
+    }
+    dir = parent;
+  }
+}
+
+async function resolveConvertCache(opts: {
+  srcDir: string;
+  outDir: string;
+  args: GenerateArgs;
+  configPath?: string;
+}): Promise<ConvertCacheOptions | undefined> {
+  const nodeModulesDir = findNearestNodeModules(opts.srcDir);
+  if (!nodeModulesDir) {
+    return;
+  }
+  const cacheId = hashText(
+    JSON.stringify({
+      outDir: opts.outDir,
+      docsDirs: opts.args.docsDirs,
+      include: opts.args.include,
+      exclude: opts.args.exclude,
+      bundle: opts.args.bundle,
+    })
+  ).slice(0, 16);
+  let configHash = "no-config";
+  if (opts.configPath) {
+    try {
+      configHash = hashText(await readFile(opts.configPath, "utf8"));
+    } catch {
+      configHash = "unreadable-config";
+    }
+  }
+  const fingerprint = [
+    readLeadtypeVersion(),
+    configHash,
+    JSON.stringify({ enrichGit: opts.args.enrichGit }),
+  ].join("|");
+  return {
+    file: path.join(
+      nodeModulesDir,
+      ".cache",
+      "leadtype",
+      `generate-${cacheId}.json`
+    ),
+    fingerprint,
+    ...(opts.args.force ? { force: true } : {}),
+  };
+}
+
 export async function runGenerateCommand(
   argv: string[],
   io: GenerateIo = { stderr: process.stderr, stdout: process.stdout }
@@ -2545,7 +2673,108 @@ export async function runGenerateCommand(
     });
   }
 
+  if (!args.watch) {
+    return (await executeGenerate(args, io)).code;
+  }
+  return await runGenerateWatch(args, io);
+}
+
+/**
+ * Run generation once, then keep the process alive and re-run on changes to
+ * the docs sources or config file. A failing build does not exit — the next
+ * change gets another chance, which is the loop docs authors iterate in.
+ */
+async function runGenerateWatch(
+  args: GenerateArgs,
+  io: GenerateIo
+): Promise<number> {
+  const outDir = path.resolve(args.outDir);
+  let outcome = await executeGenerate(args, io);
+  // `--force` applies to the initial build only: watch-triggered rebuilds
+  // stay incremental, which is the point of watching.
+  const rerunArgs: GenerateArgs = { ...args, force: false };
+  let watcher: ReturnType<typeof watchInputs> | undefined;
+  let running = false;
+  let queued = false;
+
+  const armWatcher = (): ReturnType<typeof watchInputs> =>
+    watchInputs({
+      paths: outcome.watchPaths,
+      ignorePaths: [outDir],
+      onChange: (changedPaths) => {
+        logger.info({
+          human: {
+            message: `change detected (${changedPaths.length} path${changedPaths.length === 1 ? "" : "s"}) — regenerating`,
+          },
+          json: {
+            event: "generate.watch_rebuild",
+            fields: { changed: changedPaths.slice(0, 20) },
+          },
+        });
+        scheduleRerun();
+      },
+    });
+
+  const scheduleRerun = (): void => {
+    rerun().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({
+        human: { message: `watch rebuild failed: ${message}` },
+        json: { event: "generate.watch_error", fields: { message } },
+      });
+    });
+  };
+
+  const rerun = async (): Promise<void> => {
+    if (running) {
+      queued = true;
+      return;
+    }
+    running = true;
+    try {
+      const previousWatchPaths = outcome.watchPaths.join("\0");
+      outcome = await executeGenerate(rerunArgs, io);
+      // A config edit can add or remove docs sources — re-arm so the new
+      // set is observed.
+      if (outcome.watchPaths.join("\0") !== previousWatchPaths) {
+        watcher?.close();
+        watcher = armWatcher();
+      }
+    } finally {
+      running = false;
+      if (queued) {
+        queued = false;
+        scheduleRerun();
+      }
+    }
+  };
+
+  watcher = armWatcher();
+  logger.info({
+    human: { message: "watching for changes — press Ctrl+C to stop" },
+    json: {
+      event: "generate.watch_start",
+      fields: { paths: outcome.watchPaths },
+    },
+  });
+
+  await new Promise<void>((resolvePromise) => {
+    const stop = (): void => {
+      watcher?.close();
+      resolvePromise();
+    };
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+  });
+  return 0;
+}
+
+async function executeGenerate(
+  args: GenerateArgs,
+  io: GenerateIo
+): Promise<GenerateOutcome> {
   const srcDir = path.resolve(args.srcDir);
+  let watchPaths = defaultWatchPaths(srcDir);
 
   const reportFailure = (message: string): void => {
     if (args.format === "json") {
@@ -2605,8 +2834,12 @@ export async function runGenerateCommand(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     reportFailure(message);
-    return 1;
+    return { code: 1, watchPaths };
   }
+  watchPaths = [
+    ...docsSources.map((source) => source.docsDir),
+    ...(loadedConfig ? [loadedConfig.path] : []),
+  ];
   const docsDir =
     docsSources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
   const docsDirs = docsSources.map((source) => source.docsDir);
@@ -2628,7 +2861,7 @@ export async function runGenerateCommand(
         `leadtype generate: docs directory not found at ${missingDocsDir}\n`
       );
     }
-    return 1;
+    return { code: 1, watchPaths };
   }
 
   // Serialize concurrent generate runs targeting the same outDir (parallel CI
@@ -2648,7 +2881,7 @@ export async function runGenerateCommand(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       reportFailure(message);
-      return 1;
+      return { code: 1, watchPaths };
     }
   }
 
@@ -2762,9 +2995,17 @@ export async function runGenerateCommand(
       }
     }
 
+    const convertCache = await resolveConvertCache({
+      srcDir,
+      outDir,
+      args,
+      configPath: loadedConfig?.path,
+    });
+
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
+      ...(convertCache ? { cache: convertCache } : {}),
       // Redirect tracking diffs the emitted page set, so stale mirrors from
       // renamed/deleted sources must be garbage-collected or the old path
       // never "disappears" and rename detection can't fire. The pipeline's
@@ -3177,10 +3418,10 @@ export async function runGenerateCommand(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     reportFailure(message);
-    return 1;
+    return { code: 1, watchPaths };
   } finally {
     await sourceMirror?.cleanup();
     await generateLock?.release();
   }
-  return 0;
+  return { code: 0, watchPaths };
 }

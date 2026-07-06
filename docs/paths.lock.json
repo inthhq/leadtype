@@ -19,7 +19,7 @@
     },
     {
       "path": "/docs/aeo/generate-artifacts-without-docs",
-      "hash": "36d71ea85879fa2c"
+      "hash": "aef74f387729fb27"
     },
     {
       "path": "/docs/aeo/optimize-docs-for-agents",
@@ -115,7 +115,7 @@
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "7ef1850f98694b7a"
+      "hash": "6490b47d8e9325a0"
     },
     {
       "path": "/docs/reference/convert",
@@ -135,7 +135,7 @@
     },
     {
       "path": "/docs/reference/llm",
-      "hash": "cf5d1c88c6f09223"
+      "hash": "aa939d1a03331ded"
     },
     {
       "path": "/docs/reference/markdown",
