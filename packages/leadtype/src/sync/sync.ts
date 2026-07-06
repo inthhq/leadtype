@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import { normalizeUrlPrefix } from "../internal/docs-url";
 import type { DocsCollection } from "../llm";
 
@@ -212,7 +213,7 @@ export async function writeSyncManifest(
   manifest: SyncManifest
 ): Promise<void> {
   await mkdir(cacheDir, { recursive: true });
-  await writeFile(
+  await writeFileAtomic(
     path.join(cacheDir, SYNC_MANIFEST_FILE),
     `${JSON.stringify(manifest, null, 2)}\n`
   );

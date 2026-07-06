@@ -35,6 +35,11 @@
       "import": "./dist/mdx/source.js",
       "default": "./dist/mdx/source.js"
     },
+    "./mdx/openapi": {
+      "types": "./dist/mdx/openapi.d.ts",
+      "import": "./dist/mdx/openapi.js",
+      "default": "./dist/mdx/openapi.js"
+    },
     "./feed": {
       "types": "./dist/feed/index.d.ts",
       "import": "./dist/feed/index.js"
@@ -67,6 +72,10 @@
       "types": "./dist/markdown/index.d.ts",
       "import": "./dist/markdown/index.js"
     },
+    "./openapi": {
+      "types": "./dist/openapi/index.d.ts",
+      "import": "./dist/openapi/index.js"
+    },
     "./transformers": {
       "types": "./dist/transformers.d.ts",
       "import": "./dist/transformers.js"
@@ -86,6 +95,14 @@
     "./navigation": {
       "types": "./dist/navigation/index.d.ts",
       "import": "./dist/navigation/index.js"
+    },
+    "./redirects": {
+      "types": "./dist/redirects/index.d.ts",
+      "import": "./dist/redirects/index.js"
+    },
+    "./redirects/node": {
+      "types": "./dist/redirects/node-index.d.ts",
+      "import": "./dist/redirects/node-index.js"
     },
     "./search": {
       "types": "./dist/search/index.d.ts",

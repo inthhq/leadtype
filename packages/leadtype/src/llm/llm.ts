@@ -1,12 +1,5 @@
 import { existsSync } from "node:fs";
-import {
-  mkdir,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import type { PluggableList } from "unified";
 import type { DocsFeedConfig } from "../feed";
@@ -20,6 +13,7 @@ import {
   outputRelativePathForLocale,
   toLocalizedDocsUrlPath,
 } from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import { slugifyDocsHeading } from "../internal/docs-heading";
 import {
   type DocsPathMount,
@@ -36,6 +30,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { DocsOpenApiConfig } from "../openapi";
 import {
   type DocsFrontmatterSchema,
   type DocsLlmsTxtArtifact,
@@ -479,6 +474,11 @@ export type DocsConfig<
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
    */
   collections?: Record<string, DocsCollection>;
+  /**
+   * OpenAPI specs to generate into the docs source before conversion. Generated
+   * pages use native MDX API components and flatten into agent-readable markdown.
+   */
+  openapi?: DocsOpenApiConfig;
   i18n?: DocsI18nConfig;
   /**
    * Optional base directory for ExtractedTypeTable / AutoTypeTable path
@@ -491,6 +491,27 @@ export type DocsConfig<
   git?: DocsGitConfig;
   /** Agent-surface options (robots policy / Content-Signals, …). All optional. */
   agents?: DocsAgentsConfig;
+  /**
+   * Opt-in redirect tracking for renamed/deleted pages. When present,
+   * generate maintains a committed paths lockfile, auto-detects pure moves by
+   * content hash, emits `docs/redirects.json`, and fails loudly when a page
+   * disappears without a successor.
+   */
+  redirects?: DocsRedirectsConfig;
+};
+
+export type DocsRedirectsConfig = {
+  /**
+   * Lockfile location, resolved relative to the docs source directory.
+   * Defaults to `paths.lock.json` inside it. Commit this file — it is the
+   * record of previously published paths that rename detection diffs against.
+   */
+  lockfile?: string;
+  /**
+   * Paths acknowledged as intentionally deleted, e.g. `/docs/old-guide`.
+   * Served as 410 Gone instead of failing the build.
+   */
+  removed?: string[];
 };
 
 export type DocsGitConfig = {
@@ -817,6 +838,13 @@ export type AgentReadabilityConfig = {
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
   seo?: SeoMeta;
+  /**
+   * Pin manifest `generatedAt` and the per-page `lastModified` fallback (used
+   * when a page's frontmatter carries no date, instead of the file mtime) so
+   * repeated runs produce reproducible output. Accepts a date string or a
+   * Date. Defaults to the current time.
+   */
+  generatedAt?: string | Date;
   /** Write origin-root crawler files. Defaults to true for the default locale. */
   emitRootCrawlerFiles?: boolean;
 };
@@ -838,6 +866,11 @@ export type ResolveDocsNavigationConfig = {
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
   nav?: DocsNavEntry[];
+  /**
+   * Additional directories whose pages are treated as if they lived in the docs
+   * dir. Intended for generated-page overlays.
+   */
+  extraDocsDirs?: string[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -1056,6 +1089,19 @@ function normalizeDate(value: unknown): string | undefined {
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
   }
   return;
+}
+
+function resolveGeneratedAt(value?: string | Date): Date {
+  if (value === undefined) {
+    return new Date();
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(
+      `generatedAt must be a valid Date or date string; received ${JSON.stringify(value)}.`
+    );
+  }
+  return date;
 }
 
 function readLastModified(
@@ -1299,6 +1345,11 @@ type LocaleReadOptions = {
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   includeFallback?: boolean;
+  /**
+   * Used as the per-page `lastModified` when frontmatter carries no date,
+   * instead of the file's mtime (which changes on every fresh checkout).
+   */
+  lastModifiedFallback?: Date;
 };
 
 function resolveLocaleReadOptions(options: LocaleReadOptions): {
@@ -1625,7 +1676,10 @@ async function readMarkdownDocs(
           : { isFallback: file.isFallback }),
         ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
         content: parsed.content.trim(),
-        lastModified: readLastModified(parsed.data, fileStat.mtime),
+        lastModified: readLastModified(
+          parsed.data,
+          localeOptions.lastModifiedFallback ?? fileStat.mtime
+        ),
       };
     })
   );
@@ -2274,13 +2328,13 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
       (transformer, value, context) =>
         transformer.beforeLlmsTxt?.(value, context)
     );
-    await writeFile(outputPath, artifact.content);
+    await writeFileAtomic(outputPath, artifact.content);
     // Publish a discovery copy at the well-known location so agents can find
     // llms.txt without guessing the root path. Served statically from the
     // output (public) dir; no route handler needed.
     const wellKnownPath = path.join(outDir, ".well-known", "llms.txt");
     await mkdir(path.dirname(wellKnownPath), { recursive: true });
-    await writeFile(wellKnownPath, artifact.content);
+    await writeFileAtomic(wellKnownPath, artifact.content);
   }
 
   if (hasNav || resolved.length > 0) {
@@ -2330,7 +2384,7 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
       (transformer, value, context) =>
         transformer.beforeLlmsTxt?.(value, context)
     );
-    await writeFile(docsLlmsPath, artifact.content);
+    await writeFileAtomic(docsLlmsPath, artifact.content);
   }
 }
 
@@ -2372,7 +2426,19 @@ export async function generateLLMFullContextFiles(
       navigation
     );
   } else {
-    resolveGroups(config.groups ?? []);
+    // Keep parity with the agent-readability manifest: group order applies in
+    // legacy groups mode too, not just under curated nav.
+    const resolved = resolveGroups(config.groups ?? []);
+    const navigation = buildNavigationFromMarkdownDocs(
+      markdownDocs,
+      resolved,
+      "groups",
+      config.groups
+    );
+    orderedMarkdownDocs = orderMarkdownDocsByNavigation(
+      markdownDocs,
+      navigation
+    );
   }
 
   if (!i18n || locale === i18n.defaultLocale) {
@@ -2392,11 +2458,11 @@ export async function generateLLMFullContextFiles(
       (transformer, value, context) =>
         transformer.beforeLlmsFull?.(value, context)
     );
-    await writeFile(outputPath, artifact.content);
+    await writeFileAtomic(outputPath, artifact.content);
     // Discovery copy at the well-known location, alongside .well-known/llms.txt.
     const wellKnownFull = path.join(outDir, ".well-known", "llms-full.txt");
     await mkdir(path.dirname(wellKnownFull), { recursive: true });
-    await writeFile(wellKnownFull, artifact.content);
+    await writeFileAtomic(wellKnownFull, artifact.content);
     return;
   }
 
@@ -2419,7 +2485,7 @@ export async function generateLLMFullContextFiles(
     (transformer, value, context) =>
       transformer.beforeLlmsFull?.(value, context)
   );
-  await writeFile(localeFullPath, artifact.content);
+  await writeFileAtomic(localeFullPath, artifact.content);
 }
 
 function toAgentReadabilityPage(
@@ -2497,16 +2563,25 @@ export async function generateAgentReadabilityArtifacts(
 ): Promise<AgentReadabilityResult> {
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const generatedAt = resolveGeneratedAt(config.generatedAt);
   const i18n = normalizeDocsI18nConfig(config.i18n);
   const locale = config.locale ?? i18n?.defaultLocale;
   const docsDir =
     i18n && locale && locale !== i18n.defaultLocale
       ? path.join(outDir, DOCS_DIRNAME, locale)
       : path.join(outDir, DOCS_DIRNAME);
+  // Deliberately asymmetric with generateAgentArtifacts: here the default
+  // per-page date fallback is the mirror's file mtime, so generatedAt only
+  // replaces it when the caller explicitly pins a timestamp.
+  // generateAgentArtifacts has no file mtimes (in-memory pages) and always
+  // uses the resolved timestamp — don't "normalize" the two.
   const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
     i18n: config.i18n,
     locale,
     includeFallback: false,
+    ...(config.generatedAt === undefined
+      ? {}
+      : { lastModifiedFallback: generatedAt }),
   });
 
   if (markdownDocs.length === 0) {
@@ -2527,12 +2602,15 @@ export async function generateAgentReadabilityArtifacts(
     config.groups,
     resolvedNav?.rootPageEntries ?? []
   );
-  const pages = markdownDocs.map((doc) =>
+  // Navigation order is the authored reading order; docs arrive sorted by
+  // urlPath, so pages outside the navigation keep that deterministic tail.
+  const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
+  const pages = orderedDocs.map((doc) =>
     toAgentReadabilityPage(doc, baseUrl, config.mounts)
   );
   const manifest: AgentReadabilityManifest = {
     version: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt: generatedAt.toISOString(),
     baseUrl,
     product: config.product,
     ...(locale ? { locale } : {}),
@@ -2569,10 +2647,10 @@ export async function generateAgentReadabilityArtifacts(
   if (shouldEmitRootCrawlerFiles) {
     await mkdir(outDir, { recursive: true });
     await mkdir(path.dirname(files.apiCatalog), { recursive: true });
-    await writeFile(files.apiCatalog, renderApiCatalog({ manifest }));
-    await writeFile(files.sitemapXml, sitemapXml);
-    await writeFile(files.sitemapMd, sitemapMd);
-    await writeFile(
+    await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    await writeFileAtomic(files.sitemapXml, sitemapXml);
+    await writeFileAtomic(files.sitemapMd, sitemapMd);
+    await writeFileAtomic(
       files.robotsTxt,
       renderRobotsTxt({
         baseUrl,
@@ -2583,7 +2661,10 @@ export async function generateAgentReadabilityArtifacts(
       })
     );
   }
-  await writeFile(files.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(
+    files.manifest,
+    `${JSON.stringify(manifest, null, 2)}\n`
+  );
 
   return {
     files: {
@@ -2639,6 +2720,12 @@ export type GenerateAgentArtifactsConfig = {
   /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
   groups?: DocsGroup[];
   agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  /**
+   * Pin manifest `generatedAt` and per-page `lastModified` fallbacks so
+   * repeated runs can produce reproducible output. Accepts a date string or a
+   * Date. Defaults to the current time.
+   */
+  generatedAt?: string | Date;
   /**
    * Emit root `/robots.txt`, `/sitemap.xml`, and `/sitemap.md`. Disable when a
    * host app merges several artifact sets (docs, blog, marketing) and serves
@@ -2822,7 +2909,7 @@ export async function generateAgentArtifacts(
   }
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const generatedAt = new Date();
+  const generatedAt = resolveGeneratedAt(config.generatedAt);
 
   const docs: MarkdownDoc[] = [];
   const byUrlPath = new Map<string, MarkdownDoc>();
@@ -2862,7 +2949,7 @@ export async function generateAgentArtifacts(
         ...markdownUrlPath.slice(1).split("/")
       );
       await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, renderAgentPageMirror(doc));
+      await writeFileAtomic(filePath, renderAgentPageMirror(doc));
       return filePath;
     })
   );
@@ -2870,10 +2957,10 @@ export async function generateAgentArtifacts(
   await mkdir(outDir, { recursive: true });
   const llmsTxt = renderAgentPagesLlmsTxt(inputs.product, docs, resolved);
   const llmsTxtPath = path.join(outDir, "llms.txt");
-  await writeFile(llmsTxtPath, llmsTxt);
+  await writeFileAtomic(llmsTxtPath, llmsTxt);
   const wellKnownLlmsTxtPath = path.join(outDir, ".well-known", "llms.txt");
   await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
-  await writeFile(wellKnownLlmsTxtPath, llmsTxt);
+  await writeFileAtomic(wellKnownLlmsTxtPath, llmsTxt);
 
   const manifest: AgentReadabilityManifest = {
     version: 1,
@@ -2892,7 +2979,7 @@ export async function generateAgentArtifacts(
     ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
   };
   const manifestPath = path.join(outDir, AGENT_READABILITY_MANIFEST_FILE);
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
   if (!(config.emitRootCrawlerFiles ?? true)) {
     return {
@@ -2911,13 +2998,13 @@ export async function generateAgentArtifacts(
   const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
   const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
   await mkdir(path.dirname(apiCatalogPath), { recursive: true });
-  await writeFile(apiCatalogPath, renderApiCatalog({ manifest }));
-  await writeFile(sitemapXmlPath, renderSitemapXml(pages));
-  await writeFile(
+  await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  await writeFileAtomic(sitemapXmlPath, renderSitemapXml(pages));
+  await writeFileAtomic(
     sitemapMdPath,
     renderSitemapMarkdown({ product: inputs.product, navigation, pages })
   );
-  await writeFile(
+  await writeFileAtomic(
     robotsTxtPath,
     renderRobotsTxt({
       baseUrl,
@@ -3210,7 +3297,7 @@ export async function generateAgentsMd(
     (transformer, value, context) =>
       transformer.beforeAgentsMd?.(value, context)
   );
-  await writeFile(outputPath, artifact.content);
+  await writeFileAtomic(outputPath, artifact.content);
   return { outputPath };
 }
 
@@ -3378,17 +3465,37 @@ export async function resolveDocsNavigation(
 ): Promise<DocsNavigation> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const localeOptions = {
+    i18n: config.i18n,
+    locale: config.locale,
+    includeFallback: config.includeFallback ?? true,
+  };
   const sourceDocs = await readSourceDocs(
     srcDir,
     baseUrl,
     config.mounts,
     config.docsDirName,
-    {
-      i18n: config.i18n,
-      locale: config.locale,
-      includeFallback: config.includeFallback ?? true,
-    }
+    localeOptions
   );
+  for (const extraDocsDir of config.extraDocsDirs ?? []) {
+    const resolvedExtraDocsDir = path.resolve(extraDocsDir);
+    const extraDocs = await readSourceDocs(
+      path.dirname(resolvedExtraDocsDir),
+      baseUrl,
+      config.mounts,
+      path.basename(resolvedExtraDocsDir),
+      localeOptions
+    );
+    for (const [urlPath, doc] of extraDocs) {
+      const existing = sourceDocs.get(urlPath);
+      if (existing) {
+        throw new Error(
+          `Duplicate documentation route "${urlPath}" from extra docs dir "${resolvedExtraDocsDir}" — existing page "${existing.relativePath}" conflicts with overlay page "${doc.relativePath}". Rename one or remove it.`
+        );
+      }
+      sourceDocs.set(urlPath, doc);
+    }
+  }
   const tocOptions = resolveNavigationTocOptions(config.toc);
   const tocByUrlPath = new Map<string, DocsTableOfContentsItem[]>();
   const docs = [...sourceDocs.values()];

@@ -71,6 +71,8 @@ export type LeadtypeFumadocsSource = Source<LeadtypeFumadocsSourceConfig> & {
   leadtype: DocsSource;
   /** Convenience: resolve a fumadocs page → leadtype `DocsPage`. */
   loadPage(slug: string | string[]): Promise<DocsPage | null>;
+  /** Remove generated temp overlay files from the underlying source. */
+  cleanup(): Promise<void>;
 };
 
 /**
@@ -112,6 +114,7 @@ export async function fumadocsSource(
     files: [...pageFiles, ...metaFiles],
     leadtype,
     loadPage: leadtype.loadPage,
+    cleanup: leadtype.cleanup,
   };
 }
 

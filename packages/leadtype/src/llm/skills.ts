@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import type { DocsSkillSpec } from "./llm";
 
 const NON_SLUG_PATTERN = /[^a-z0-9]+/g;
@@ -228,15 +229,15 @@ export async function generateSkillArtifacts(
     }
     const body = await resolveBody(docsSkill, config.srcDir);
     const skillPath = path.join(outDir, "SKILL.md");
-    await writeFile(skillPath, renderSkillMd(docsSkill, body));
+    await writeFileAtomic(skillPath, renderSkillMd(docsSkill, body));
     return { files: [skillPath], skills: [docsSkill.name] };
   }
 
   const skillsRoot = path.join(outDir, WELL_KNOWN_DIR, SKILLS_DIR);
   const cardPath = path.join(outDir, WELL_KNOWN_DIR, "agent-card.json");
 
-  // Validate every skill before touching the existing surface — a throw after
-  // the rm below would erase the last good output and leave a partial rewrite.
+  // Validate every skill before touching the existing surface — a throw
+  // mid-write would otherwise leave a partially updated discovery surface.
   for (const skill of skills) {
     if (!SKILL_NAME_PATTERN.test(skill.name)) {
       throw new Error(
@@ -252,13 +253,9 @@ export async function generateSkillArtifacts(
     }
   }
 
-  // Clear generated artifacts first on every run, so skills/cards the config no
-  // longer emits (renamed, removed, or fully disabled) don't linger and keep
-  // getting discovered by clients.
-  await rm(skillsRoot, { recursive: true, force: true });
-
   if (skills.length === 0) {
-    // Whole surface disabled — also drop a stale agent card from a prior run.
+    // Whole surface disabled — drop the generated artifacts from prior runs.
+    await rm(skillsRoot, { recursive: true, force: true });
     await rm(cardPath, { force: true });
     return { files: [], skills: [] };
   }
@@ -281,7 +278,7 @@ export async function generateSkillArtifacts(
     const dir = path.join(skillsRoot, skill.name);
     await mkdir(dir, { recursive: true });
     const skillPath = path.join(dir, "SKILL.md");
-    await writeFile(skillPath, content);
+    await writeFileAtomic(skillPath, content);
     files.push(skillPath);
     manifestEntries.push({
       name: skill.name,
@@ -296,7 +293,7 @@ export async function generateSkillArtifacts(
   }
 
   const indexPath = path.join(skillsRoot, "index.json");
-  await writeFile(
+  await writeFileAtomic(
     indexPath,
     `${JSON.stringify(
       {
@@ -309,11 +306,25 @@ export async function generateSkillArtifacts(
   );
   files.push(indexPath);
 
+  // Prune skills the config no longer emits (renamed or removed) so they don't
+  // keep getting discovered. Pruning runs after the new surface is fully in
+  // place — deleting first would leave a window where concurrent readers see
+  // no skills at all.
+  const keep = new Set([...skills.map((skill) => skill.name), "index.json"]);
+  const existingEntries = await readdir(skillsRoot);
+  await Promise.all(
+    existingEntries
+      .filter((entry) => !keep.has(entry))
+      .map((entry) =>
+        rm(path.join(skillsRoot, entry), { force: true, recursive: true })
+      )
+  );
+
   if (config.skills?.agentCard === false) {
     // Card disabled but skills exist — remove any stale card from a prior run.
     await rm(cardPath, { force: true });
   } else {
-    await writeFile(
+    await writeFileAtomic(
       cardPath,
       `${JSON.stringify(buildAgentCard(config, skills), null, 2)}\n`
     );

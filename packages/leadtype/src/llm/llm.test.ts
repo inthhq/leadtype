@@ -713,6 +713,49 @@ describe("generateLLMFullContextFiles", () => {
     expect(wellKnownFull).toBe(llmsFull);
   });
 
+  it("orders content by group in legacy groups mode, matching the manifest", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "client-modes.md",
+        frontmatter:
+          "title: Client Modes\ndescription: Modes.\ngroup: concepts\norder: 20",
+        body: "# Client Modes\n\nBody.\n",
+      },
+      {
+        relativePath: "initialization-flow.md",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\ngroup: concepts\norder: 10",
+        body: "# Initialization Flow\n\nBody.\n",
+      },
+      {
+        relativePath: "about.md",
+        frontmatter: "title: About\ndescription: Ungrouped.",
+        body: "# About\n\nBody.\n",
+      },
+    ]);
+
+    await generateLLMFullContextFiles({
+      outDir: projectDir,
+      baseUrl: "https://c15t.com",
+      product: { name: "c15t" },
+      groups: [{ slug: "concepts", title: "Concepts" }],
+    });
+
+    const llmsFull = await readFile(
+      path.join(projectDir, "llms-full.txt"),
+      "utf8"
+    );
+    // Group pages honor `order:` and lead; ungrouped pages trail.
+    const positions = [
+      llmsFull.indexOf("# Initialization Flow"),
+      llmsFull.indexOf("# Client Modes"),
+      llmsFull.indexOf("# About"),
+    ];
+    expect(positions.every((index) => index >= 0)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
   it("inlines a multi-group page only once", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
@@ -989,6 +1032,211 @@ describe("generateAgentReadabilityArtifacts", () => {
         urlPath: "/docs/quickstart",
       })
     );
+  });
+
+  it("uses Date generatedAt for deterministic docs-scoped manifests", async () => {
+    const firstProjectDir = await createTempProject();
+    const secondProjectDir = await createTempProject();
+    const generatedAt = new Date("2026-06-15T10:30:00.000Z");
+    const docs = [
+      {
+        relativePath: "quickstart.md",
+        frontmatter:
+          "title: Quickstart\ndescription: Install.\nlastModified: 2026-05-01T12:00:00.000Z",
+        body: "# Quickstart\n",
+      },
+    ];
+    await seedDocs(firstProjectDir, docs);
+    await seedDocs(secondProjectDir, docs);
+
+    const first = await generateAgentReadabilityArtifacts({
+      outDir: firstProjectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      generatedAt,
+    });
+    const second = await generateAgentReadabilityArtifacts({
+      outDir: secondProjectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      generatedAt,
+    });
+
+    const firstManifest = await readFile(first.files.manifest, "utf8");
+    const secondManifest = await readFile(second.files.manifest, "utf8");
+    expect(firstManifest).toBe(secondManifest);
+    expect(first.manifest.generatedAt).toBe("2026-06-15T10:30:00.000Z");
+  });
+
+  it("pins the lastModified fallback for pages without frontmatter dates", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      generatedAt: "2026-06-15T10:30:00.000Z",
+    });
+
+    expect(result.manifest.pages[0]?.lastModified).toBe(
+      "2026-06-15T10:30:00.000Z"
+    );
+    if (!result.files.sitemapXml) {
+      throw new Error("Expected sitemap.xml to be emitted.");
+    }
+    expect(await readFile(result.files.sitemapXml, "utf8")).toContain(
+      "<lastmod>2026-06-15T10:30:00.000Z</lastmod>"
+    );
+  });
+
+  it("rejects invalid generatedAt strings", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    await expect(
+      generateAgentReadabilityArtifacts({
+        outDir: projectDir,
+        baseUrl: "https://leadtype.dev",
+        product: { name: "Leadtype", summary: "Docs pipeline." },
+        generatedAt: "not-a-date",
+      })
+    ).rejects.toThrow("generatedAt must be a valid Date or date string");
+  });
+
+  it("sorts manifest pages in nav order with non-nav pages appended by urlPath", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "advanced.md",
+        frontmatter: "title: Advanced\ndescription: Advanced usage.",
+      },
+      {
+        relativePath: "zulu.md",
+        frontmatter: "title: Zulu\ndescription: Listed first in nav.",
+      },
+      {
+        relativePath: "beta.md",
+        frontmatter: "title: Beta\ndescription: Not in nav.",
+      },
+      {
+        relativePath: "alpha.md",
+        frontmatter: "title: Alpha\ndescription: Not in nav.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      nav: [{ title: "Guide", pages: ["zulu", "advanced"] }],
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/zulu",
+      "/docs/advanced",
+      "/docs/alpha",
+      "/docs/beta",
+    ]);
+
+    // sitemap.xml is rendered from the same list, so it shares the order.
+    const sitemapXml = await readFile(result.files.sitemapXml, "utf8");
+    const locOrder = ["zulu", "advanced", "alpha", "beta"].map((slug) =>
+      sitemapXml.indexOf(`<loc>https://leadtype.dev/docs/${slug}</loc>`)
+    );
+    expect(locOrder.every((index) => index >= 0)).toBe(true);
+    expect([...locOrder].sort((a, b) => a - b)).toEqual(locOrder);
+  });
+
+  it("flattens nested nav depth-first, dedupes shared pages, and trails root pages", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "index.md",
+        frontmatter: "title: Home\ndescription: Root page.",
+      },
+      {
+        relativePath: "intro.md",
+        frontmatter: "title: Intro\ndescription: Intro.",
+      },
+      {
+        relativePath: "shared.md",
+        frontmatter: "title: Shared\ndescription: Referenced by two groups.",
+      },
+      {
+        relativePath: "deep.md",
+        frontmatter: "title: Deep\ndescription: Nested child page.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      nav: [
+        "index",
+        {
+          title: "First",
+          pages: ["intro", "shared"],
+          children: [{ title: "Nested", pages: ["deep"] }],
+        },
+        { title: "Second", pages: ["shared"] },
+      ],
+    });
+
+    // Groups flatten depth-first, a page shared across branches appears once
+    // at its first position, and root pages trail (they land in `ungrouped`).
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/intro",
+      "/docs/shared",
+      "/docs/deep",
+      "/docs",
+    ]);
+  });
+
+  it("sorts manifest pages by group order in legacy groups mode", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "client-modes.md",
+        frontmatter:
+          "title: Client Modes\ndescription: Modes.\ngroup: concepts\norder: 20",
+      },
+      {
+        relativePath: "initialization-flow.md",
+        frontmatter:
+          "title: Initialization Flow\ndescription: Flow.\ngroup: concepts\norder: 10",
+      },
+      {
+        relativePath: "about.md",
+        frontmatter: "title: About\ndescription: Ungrouped.",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      groups: [{ slug: "concepts", title: "Concepts" }],
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/initialization-flow",
+      "/docs/client-modes",
+      "/docs/about",
+    ]);
   });
 
   it("applies a robotsPolicy + content signals to the emitted robots.txt", async () => {
@@ -1692,6 +1940,46 @@ lastModified: 2026-05-01T12:00:00.000Z
     ).toContain('last_updated: "2026-05-02T00:00:00.000Z"');
   });
 
+  const manifestWithoutPageLastModified = () =>
+    ({
+      ...manifest,
+      pages: [
+        {
+          ...manifest.pages[0],
+          lastModified: undefined,
+        },
+      ],
+    }) as unknown as typeof manifest;
+
+  it("uses now when enriching markdown without page freshness metadata", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { accept: "text/markdown" },
+      manifest: manifestWithoutPageLastModified(),
+      now: new Date("2026-05-03T00:00:00.000Z"),
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+
+    expect(await response?.text()).toContain(
+      'last_updated: "2026-05-03T00:00:00.000Z"'
+    );
+  });
+
+  it("prefers a mirror's authored frontmatter date over now", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { accept: "text/markdown" },
+      manifest: manifestWithoutPageLastModified(),
+      now: new Date("2026-05-03T00:00:00.000Z"),
+      readMarkdownFile: () =>
+        "---\ntitle: Quickstart\nlastModified: 2026-04-01T00:00:00.000Z\n---\n# Quickstart\n",
+    });
+
+    expect(await response?.text()).toContain(
+      'last_updated: "2026-04-01T00:00:00.000Z"'
+    );
+  });
+
   it("supports async readMarkdownFile for edge runtimes", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
@@ -1701,6 +1989,87 @@ lastModified: 2026-05-01T12:00:00.000Z
         Promise.resolve("---\ntitle: Quickstart\n---\n# Quickstart from KV\n"),
     });
     expect(await response?.text()).toContain("# Quickstart from KV");
+  });
+
+  it("redirects agent requests for renamed pages, including .md mirrors", async () => {
+    const redirects = [
+      { from: "/docs/old-quickstart", to: "/docs/quickstart", status: 308 },
+      { from: "/docs/legacy", status: 410 },
+    ];
+
+    const moved = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(moved?.status).toBe(308);
+    expect(moved?.headers.get("location")).toBe(
+      "https://example.com/docs/quickstart"
+    );
+
+    const mirror = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart.md",
+      headers: {},
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(mirror?.status).toBe(308);
+    expect(mirror?.headers.get("location")).toBe(
+      "https://example.com/docs/quickstart.md"
+    );
+
+    const gone = await createAgentMarkdownResponse({
+      urlPath: "/docs/legacy",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(gone?.status).toBe(410);
+
+    // Non-agent requests fall through so the host app's HTML routing runs.
+    const html = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart",
+      headers: { accept: "text/html" },
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(html).toBeNull();
+  });
+
+  it("redirects .md requests to the target's recorded mirror for index routes", async () => {
+    const manifestWithIndexPage = {
+      ...manifest,
+      pages: [
+        ...manifest.pages,
+        {
+          ...manifest.pages[0],
+          title: "Docs home",
+          urlPath: "/docs",
+          absoluteUrl: "https://example.com/docs",
+          markdownUrlPath: "/docs/index.md",
+          markdownAbsoluteUrl: "https://example.com/docs/index.md",
+          relativePath: "index",
+        },
+      ],
+    } as unknown as typeof manifest;
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-home.md",
+      headers: {},
+      manifest: manifestWithIndexPage,
+      redirects: [{ from: "/docs/old-home", to: "/docs", status: 308 }],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/index.md"
+    );
   });
 
   it("HEAD method returns headers with empty body", async () => {

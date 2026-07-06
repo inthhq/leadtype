@@ -2,7 +2,11 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { type AgentPageInput, generateAgentArtifacts } from "./llm";
+import {
+  type AgentPageInput,
+  type GenerateAgentArtifactsResult,
+  generateAgentArtifacts,
+} from "./llm";
 import { normalizeAgentReadabilityManifest } from "./readability";
 
 const tempDirs: string[] = [];
@@ -61,6 +65,33 @@ function baseConfig(outDir: string) {
   };
 }
 
+async function readGeneratedContents(
+  outDir: string,
+  result: GenerateAgentArtifactsResult
+): Promise<Record<string, string>> {
+  const filePaths = [
+    result.files.llmsTxt,
+    result.files.wellKnownLlmsTxt,
+    result.files.manifest,
+    ...result.files.markdown,
+    result.files.apiCatalog,
+    result.files.robotsTxt,
+    result.files.sitemapMd,
+    result.files.sitemapXml,
+  ].filter((filePath): filePath is string => Boolean(filePath));
+  const entries = await Promise.all(
+    filePaths.map(
+      async (filePath): Promise<readonly [string, string]> => [
+        path.relative(outDir, filePath),
+        await readFile(filePath, "utf-8"),
+      ]
+    )
+  );
+  return Object.fromEntries(
+    entries.sort(([left], [right]) => left.localeCompare(right))
+  );
+}
+
 describe("generateAgentArtifacts", () => {
   it("emits the full artifact set from an in-memory page list", async () => {
     const outDir = await createTempOutDir();
@@ -97,6 +128,25 @@ describe("generateAgentArtifacts", () => {
     const sitemapMd = await readFile(result.files.sitemapMd ?? "", "utf-8");
     expect(sitemapMd).toContain("# Sitemap");
     expect(sitemapMd).toContain("## Benchmarks");
+  });
+
+  it("keeps manifest pages in the authored input order", async () => {
+    const outDir = await createTempOutDir();
+    // Neither alphabetical nor group-navigation order (firefox has order: 1,
+    // so nav order would move it ahead of chrome and trail the root page).
+    const reordered = [PAGES[2], PAGES[0], PAGES[1]].filter(
+      (page): page is AgentPageInput => page !== undefined
+    );
+    const result = await generateAgentArtifacts({
+      ...baseConfig(outDir),
+      pages: reordered,
+    });
+
+    expect(result.manifest.pages.map((page) => page.urlPath)).toEqual([
+      "/benchmarks/firefox",
+      "/",
+      "/benchmarks/chrome",
+    ]);
   });
 
   it("writes markdown mirrors at urlPath locations with spec frontmatter", async () => {
@@ -156,6 +206,32 @@ describe("generateAgentArtifacts", () => {
     const robots = await readFile(result.files.robotsTxt ?? "", "utf-8");
     expect(robots).toContain("User-agent: GPTBot\nDisallow: /");
     expect(robots).toContain("ai-train=no");
+  });
+
+  it("uses string generatedAt for deterministic artifacts and timestamp fallbacks", async () => {
+    const firstOutDir = await createTempOutDir();
+    const secondOutDir = await createTempOutDir();
+    const generatedAt = "2026-06-15T10:30:00.000Z";
+
+    const first = await generateAgentArtifacts({
+      ...baseConfig(firstOutDir),
+      generatedAt,
+    });
+    const second = await generateAgentArtifacts({
+      ...baseConfig(secondOutDir),
+      generatedAt,
+    });
+
+    expect(await readGeneratedContents(firstOutDir, first)).toEqual(
+      await readGeneratedContents(secondOutDir, second)
+    );
+    expect(first.manifest.generatedAt).toBe(generatedAt);
+    expect(
+      first.manifest.pages.find((page) => page.urlPath === "/")?.lastModified
+    ).toBe(generatedAt);
+    expect(
+      await readFile(path.join(firstOutDir, "index.md"), "utf-8")
+    ).toContain('last_updated: "2026-06-15T10:30:00.000Z"');
   });
 
   it("falls back to frontmatter fields when explicit ones are omitted", async () => {
@@ -242,6 +318,17 @@ Body text.`,
     await expect(
       generateAgentArtifacts({ ...baseConfig(outDir), pages: [] })
     ).rejects.toThrow("config.pages is empty");
+  });
+
+  it("rejects invalid generatedAt strings", async () => {
+    const outDir = await createTempOutDir();
+
+    await expect(
+      generateAgentArtifacts({
+        ...baseConfig(outDir),
+        generatedAt: "not-a-date",
+      })
+    ).rejects.toThrow("generatedAt must be a valid Date or date string");
   });
 
   it("rejects traversal segments so mirrors cannot escape outDir", async () => {

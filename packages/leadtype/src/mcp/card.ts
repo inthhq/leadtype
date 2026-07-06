@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomic } from "../internal/atomic-fs.js";
 import { normalizeBaseUrl } from "../internal/docs-url.js";
 import type { LlmsProductInfo } from "../llm/llm.js";
 import {
@@ -229,8 +230,8 @@ export async function generateMcpServerCard(
   const card = createMcpServerCard(options);
   const json = `${JSON.stringify(card, null, 2)}\n`;
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, json);
-  await writeFile(rootPath, json);
-  await writeFile(wellKnownPath, json);
+  await writeFileAtomic(outputPath, json);
+  await writeFileAtomic(rootPath, json);
+  await writeFileAtomic(wellKnownPath, json);
   return { outputPath, rootPath, wellKnownPath, card };
 }

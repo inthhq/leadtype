@@ -22,6 +22,7 @@ import { remarkDetailsToMarkdown } from "./plugins/details";
 import { remarkExampleToMarkdown } from "./plugins/example";
 import { remarkFileTreeToMarkdown } from "./plugins/file-tree";
 import { remarkMermaidToMarkdown } from "./plugins/mermaid";
+import { openApiToMarkdown } from "./plugins/openapi";
 import { remarkPromptToMarkdown } from "./plugins/prompt";
 import { remarkSectionToMarkdown } from "./plugins/section";
 import { remarkStepsToMarkdown } from "./plugins/steps";
@@ -55,6 +56,15 @@ tagFlattenerNames(remarkTopicSwitcherToMarkdown, ["TopicSwitcher"]);
 tagFlattenerNames(remarkFileTreeToMarkdown, ["File", "FileTree", "Folder"]);
 tagFlattenerNames(remarkPromptToMarkdown, ["Prompt"]);
 tagFlattenerNames(remarkExampleToMarkdown, ["Example"]);
+tagFlattenerNames(openApiToMarkdown, [
+  "ApiAuth",
+  "ApiCodeSamples",
+  "ApiEndpoint",
+  "ApiParameters",
+  "ApiRequestBody",
+  "ApiResponses",
+  "ApiTryIt",
+]);
 
 const resolvePlugins = [
   remarkRemoveImports,
@@ -82,6 +92,7 @@ export const builtinMarkdownFlattenerTransforms = [
   remarkFileTreeToMarkdown,
   remarkPromptToMarkdown,
   remarkExampleToMarkdown,
+  openApiToMarkdown,
 ];
 
 /**
@@ -94,6 +105,13 @@ export const builtinMarkdownFlattenerTransforms = [
 export const BUILTIN_FLATTENER_COMPONENT_NAMES = [
   "Accordion",
   "AccordionItem",
+  "ApiAuth",
+  "ApiCodeSamples",
+  "ApiEndpoint",
+  "ApiParameters",
+  "ApiRequestBody",
+  "ApiResponses",
+  "ApiTryIt",
   "Audience",
   "AutoTypeTable",
   "Callout",

@@ -58,6 +58,10 @@ export const defaultFrontmatterSchema = v.object({
   // Search visibility. `search: false` excludes a page from public search and
   // answer citations; `search: true` opts `shared`/`_shared` routes back in.
   search: v.optional(v.boolean()),
+  // Old public paths this page took over, e.g. ["/docs/guides/old-name"].
+  // Consumed by redirect tracking (`redirects` in the docs config) to emit
+  // permanent redirects when rename detection can't match by content hash.
+  redirectFrom: v.optional(v.array(nonEmptyString)),
   // Stable publication date for feeds. Use generated `lastModified` only when
   // the feed should track source edits instead of a fixed publish date.
   date: v.optional(isoDate),

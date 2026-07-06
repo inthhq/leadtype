@@ -1,8 +1,10 @@
 /** biome-ignore-all lint/style/useFilenamingConvention: TanStack Router catch-all route convention */
 
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { resolveRedirect } from "leadtype/redirects";
 import type { ComponentType } from "react";
 import docsPages from "@/generated/docs-pages.json";
+import redirectsData from "@/generated/redirects.json";
 import { createDocsHead } from "@/lib/docs-head";
 
 interface DocsPage {
@@ -31,10 +33,23 @@ const TRAILING_SLASH_RE = /\/+$/;
  * exactly. (Trade-off: all docs ship in the `/docs` chunk — ideal for a docs
  * site you browse page-to-page; revisit lazy loading only for a huge corpus.)
  */
-const mdxModules = import.meta.glob<{ default: ComponentType }>(
+const authoredMdxModules = import.meta.glob<{ default: ComponentType }>(
   "../../../../../docs/**/*.mdx",
   { eager: true }
 );
+
+/**
+ * Generated OpenAPI reference pages live in the app-local generated dir
+ * (written by `pipeline:source-manifest`) because Vite globs are static —
+ * they can't reach into the temp staging dir `createDocsSource({ openapi })`
+ * uses. Manifest `globKey`s point into whichever map owns the page.
+ */
+const openapiMdxModules = import.meta.glob<{ default: ComponentType }>(
+  "../../generated/openapi-docs/**/*.mdx",
+  { eager: true }
+);
+
+const mdxModules = { ...authoredMdxModules, ...openapiMdxModules };
 
 function resolvePage(
   urlPrefix: "/changelog" | "/docs",
@@ -59,6 +74,16 @@ function MissingMdxModule({ urlPath }: { urlPath: string }) {
 export const Route = createFileRoute("/docs/$")({
   beforeLoad: ({ params }) => {
     if (!resolvePage("/docs", params._splat)) {
+      // Renamed pages get a permanent redirect from the generated map before
+      // 404ing; acknowledged removals (410 entries, no `to`) fall through to
+      // notFound so old links land on the not-found page, not a broken route.
+      const entry = resolveRedirect(
+        `/docs/${(params._splat ?? "").replace(TRAILING_SLASH_RE, "")}`,
+        redirectsData.redirects
+      );
+      if (entry?.to) {
+        throw redirect({ href: entry.to, statusCode: 308 });
+      }
       throw notFound();
     }
   },

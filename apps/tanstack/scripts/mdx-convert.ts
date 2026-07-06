@@ -15,12 +15,16 @@ import {
   includeMarkdown,
   nativeMarkdownComponentsToMarkdown,
 } from "leadtype/markdown";
+import { normalizeOpenApiConfig, writeOpenApiPages } from "leadtype/openapi";
+import docsConfig from "../../../docs/docs.config";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(scriptsRoot, "..");
 const repoRoot = join(appRoot, "..", "..");
 const srcDir = join(repoRoot, "docs");
 const outDir = join(appRoot, "public", "docs");
+const openapiDocsDir = join(appRoot, "src", "generated", "openapi-docs");
+const baseUrl = process.env.BASE_URL?.trim() || "https://leadtype.dev";
 const typeTableMarkdownTransform: NonNullable<
   MdxToMarkdownOptions["markdownTransforms"]
 >[number] = [
@@ -42,11 +46,39 @@ if (!existsSync(srcDir)) {
   process.exit(1);
 }
 
-await rm(outDir, { recursive: true, force: true });
+const openapiConfigs =
+  docsConfig.openapi === undefined
+    ? []
+    : normalizeOpenApiConfig(docsConfig.openapi, srcDir, { baseUrl });
 
+// Prune replaces the old `rm -rf outDir` sweep: orphaned .md outputs from
+// renamed/deleted pages are garbage-collected without a window where the dev
+// server serves an empty docs tree. The generated OpenAPI pages convert in a
+// second pass below, so their subtrees are exempt here.
 await convertAllMdx({
   srcDir,
   outDir,
   markdownTransforms,
   enrichFrontmatterFromGit: true,
+  prune: true,
+  pruneKeep: openapiConfigs.map((config) => `${config.output}/**`),
 });
+
+// Generated OpenAPI reference pages: write the MDX into the app-local
+// generated dir (Vite renders it via import.meta.glob), then flatten the same
+// pages into the public markdown mirrors so agents and search see them too.
+// Authored docs keep git-enriched frontmatter above; generated pages have no
+// git history, so enrichment stays off here.
+if (openapiConfigs.length > 0) {
+  await rm(openapiDocsDir, { force: true, recursive: true });
+  await writeOpenApiPages({
+    configs: openapiConfigs,
+    docsDir: openapiDocsDir,
+  });
+  await convertAllMdx({
+    srcDir: openapiDocsDir,
+    outDir,
+    markdownTransforms,
+    enrichFrontmatterFromGit: false,
+  });
+}

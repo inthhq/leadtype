@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -12,12 +12,21 @@ import type { ConvertCacheOptions } from "../convert/incremental";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
+  copyFileAtomic,
+  sweepLeakedTempFiles,
+  writeFileAtomic,
+} from "../internal/atomic-fs";
+import {
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
+import {
+  acquireGenerateLock,
+  type GenerateLock,
+} from "../internal/generate-lock";
 import {
   logger,
   setLogFormat,
@@ -65,6 +74,16 @@ import {
   generateNlwebArtifacts,
   NLWEB_SCHEMA_MAP_PATH,
 } from "../nlweb/artifacts";
+import {
+  type DocsOpenApiConfig,
+  normalizeOpenApiConfig,
+  validateDocsOpenApiConfig,
+  writeOpenApiPages,
+} from "../openapi";
+import {
+  type UpdateDocsRedirectsResult,
+  updateDocsRedirects,
+} from "../redirects/node";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
@@ -229,6 +248,8 @@ type GenerateResult = {
     mcpWellKnown?: string;
     nlwebSchemaFeed?: string;
     nlwebSchemaMap?: string;
+    redirectsJson?: string;
+    redirectsLockfile?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavEntry[];
@@ -299,10 +320,12 @@ type ResolvedGenerateMetadata = {
   mounts?: DocsPathMount[];
   feeds?: DocsFeedConfig[];
   git?: DocsConfig["git"];
+  openapi?: DocsOpenApiConfig;
   transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
   agents?: DocsConfig["agents"];
+  redirects?: DocsConfig["redirects"];
 };
 
 type CollectionFrontmatterSchema = {
@@ -1255,6 +1278,34 @@ function validateGitConfig(
   };
 }
 
+function validateRedirectsConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["redirects"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": redirects must be an object`
+    );
+  }
+  if (value.lockfile !== undefined && typeof value.lockfile !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": redirects.lockfile must be a string`
+    );
+  }
+  if (value.removed !== undefined && !isStringArray(value.removed)) {
+    throw new Error(
+      `docs config at "${configPath}": redirects.removed must be an array of strings`
+    );
+  }
+  return {
+    ...(value.lockfile === undefined ? {} : { lockfile: value.lockfile }),
+    ...(value.removed === undefined ? {} : { removed: value.removed }),
+  };
+}
+
 function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -1267,6 +1318,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
 
   const collections = validateCollections(value.collections, configPath);
+  const openapi = validateDocsOpenApiConfig(
+    value.openapi,
+    `docs config at "${configPath}"`
+  );
   const hasGroups = value.groups !== undefined;
   const hasNav = value.navigation !== undefined;
 
@@ -1286,7 +1341,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (collections === undefined) {
     groups = validateDocsGroups(value.groups);
     nav = validateDocsNav(value.navigation);
-    if (!(groups || nav)) {
+    if (!(groups || nav || openapi)) {
       throw new Error(
         `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
       );
@@ -1309,6 +1364,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
+  const redirects = validateRedirectsConfig(value.redirects, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -1326,6 +1382,8 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(mounts ? { mounts } : {}),
     ...(feeds ? { feeds } : {}),
     ...(git ? { git } : {}),
+    ...(redirects ? { redirects } : {}),
+    ...(openapi ? { openapi } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
       : {
@@ -1860,6 +1918,7 @@ async function resolveGenerateMetadata(
       mounts: loaded.config.mounts,
       feeds: loaded.config.feeds,
       git: loaded.config.git,
+      openapi: loaded.config.openapi,
       ...agentInputs,
       transformers: loaded.config.transformers,
       typeTableBasePath: loaded.config.typeTableBasePath
@@ -1867,6 +1926,7 @@ async function resolveGenerateMetadata(
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
       agents: loaded.config.agents,
+      redirects: loaded.config.redirects,
     };
   }
   return readPackageProduct(srcDir, args).then((product) => ({
@@ -2165,10 +2225,21 @@ async function copyMountedMarkdownMirrors(
           `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
         );
       }
-      await rm(targetDir, { force: true, recursive: true });
+      // A mount whose urlPrefix resolves inside its own source subtree (e.g.
+      // pathPrefix "guides" with urlPrefix "/docs/guides/public") nests
+      // targetDir under sourceDir. Exclude the mirror from the source glob so
+      // a previous run's mirror output is never re-mirrored into itself.
+      const targetRelativeToSource = path.relative(sourceDir, targetDir);
+      const targetInsideSource =
+        targetRelativeToSource.length > 0 &&
+        !targetRelativeToSource.startsWith("..") &&
+        !path.isAbsolute(targetRelativeToSource);
       const files = await fg("**/*.md", {
         absolute: false,
         cwd: sourceDir,
+        ignore: targetInsideSource
+          ? [`${normalizeDocsPath(targetRelativeToSource)}/**`]
+          : [],
         onlyFiles: true,
       });
       await Promise.all(
@@ -2176,11 +2247,58 @@ async function copyMountedMarkdownMirrors(
           const sourcePath = path.join(sourceDir, file);
           const targetPath = path.join(targetDir, file);
           await mkdir(path.dirname(targetPath), { recursive: true });
-          await cp(sourcePath, targetPath);
+          await copyFileAtomic(sourcePath, targetPath);
         })
       );
+      // Prune mirror files whose source pages no longer exist. Pruning after
+      // the copy (instead of rm -rf on the whole mirror before it) keeps the
+      // mirror readable throughout — a concurrent reader never sees the
+      // directory disappear mid-generation.
+      const currentFiles = new Set(files);
+      const mirroredFiles = await fg("**/*.md", {
+        absolute: false,
+        cwd: targetDir,
+        onlyFiles: true,
+      });
+      const staleFiles = mirroredFiles.filter(
+        (file) => !currentFiles.has(file)
+      );
+      await Promise.all(
+        staleFiles.map((file) =>
+          rm(path.join(targetDir, file), { force: true })
+        )
+      );
+      await removeEmptyMirrorDirs(targetDir, staleFiles);
     })
   );
+}
+
+/**
+ * Remove directories left empty after pruning stale mirror files, walking
+ * each pruned file's parent chain up to (but never including) the mirror
+ * root. A non-empty directory stops the walk — everything above it is
+ * non-empty too.
+ */
+async function removeEmptyMirrorDirs(
+  targetDir: string,
+  prunedFiles: string[]
+): Promise<void> {
+  const parents = new Set(
+    prunedFiles.map((file) => path.dirname(path.join(targetDir, file)))
+  );
+  for (const parent of [...parents].sort(
+    (left, right) => right.length - left.length
+  )) {
+    let current = parent;
+    while (current.startsWith(`${targetDir}${path.sep}`)) {
+      try {
+        await rmdir(current);
+      } catch {
+        break;
+      }
+      current = path.dirname(current);
+    }
+  }
 }
 
 async function hasMarkdownFiles(dir: string): Promise<boolean> {
@@ -2226,7 +2344,7 @@ async function copyDefaultLocaleMarkdownAliases(
       const sourcePath = path.join(defaultLocaleDir, file);
       const targetPath = path.join(docsDir, file);
       await mkdir(path.dirname(targetPath), { recursive: true });
-      await cp(sourcePath, targetPath);
+      await copyFileAtomic(sourcePath, targetPath);
     })
   );
   await rm(defaultLocaleDir, { force: true, recursive: true });
@@ -2271,14 +2389,15 @@ async function writeI18nManifest(
   }
   const outputPath = path.join(outDir, DEFAULT_DOCS_DIR, "i18n-manifest.json");
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return outputPath;
 }
 
 async function createSourceMirror(
   srcDir: string,
   sources: ResolvedDocsSource[],
-  args: GenerateArgs
+  args: GenerateArgs,
+  forceStaging = false
 ): Promise<SourceMirror> {
   const filters = {
     exclude: [...args.exclude],
@@ -2292,7 +2411,7 @@ async function createSourceMirror(
     path.resolve(sources[0]?.docsDir ?? "") ===
       path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
-  if (isDefaultSingleSource && !hasFilters) {
+  if (isDefaultSingleSource && !hasFilters && !forceStaging) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
     return {
       cleanup: async () => {
@@ -2721,17 +2840,91 @@ async function executeGenerate(
     return { code: 1, watchPaths };
   }
 
+  // Serialize concurrent generate runs targeting the same outDir (parallel CI
+  // task graphs commonly fan out lint/typecheck/build, each regenerating docs).
+  // Atomic per-file writes keep individual artifacts readable at all times;
+  // the lock keeps whole runs from interleaving their read-back phases.
+  let generateLock: GenerateLock | undefined;
+  if (process.env.LEADTYPE_NO_LOCK !== "1") {
+    try {
+      const waitTimeoutMs = Number(process.env.LEADTYPE_LOCK_TIMEOUT_MS);
+      generateLock = await acquireGenerateLock(
+        outDir,
+        Number.isFinite(waitTimeoutMs) && waitTimeoutMs > 0
+          ? { waitTimeoutMs }
+          : {}
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      reportFailure(message);
+      return { code: 1, watchPaths };
+    }
+  }
+
   let sourceMirror: SourceMirror | undefined;
   try {
+    if (generateLock) {
+      // With the lock held, no other run is in flight — safe to sweep temp
+      // files leaked into the output tree by a previous hard-killed run.
+      await sweepLeakedTempFiles(outDir);
+    }
     const metadata = await resolveGenerateMetadata(
       srcDir,
       loadedConfig,
       args,
       docsSources
     );
-    sourceMirror = await createSourceMirror(srcDir, docsSources, args);
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
+    // A filtered run's page set is partial by design: diffing it against the
+    // lockfile would flag every excluded page as disappeared, and pruning
+    // would delete their outputs. Redirect tracking only runs on full builds.
+    const redirectsEnabled =
+      metadata.redirects !== undefined && !hasExplicitPathFilters;
+    sourceMirror = await createSourceMirror(
+      srcDir,
+      docsSources,
+      args,
+      metadata.openapi !== undefined && !hasExplicitPathFilters
+    );
+    const generatedOpenApi =
+      metadata.openapi === undefined || hasExplicitPathFilters
+        ? { indexPages: [], nav: [], pages: [] }
+        : await writeOpenApiPages({
+            configs: normalizeOpenApiConfig(
+              metadata.openapi,
+              metadata.configPath ? path.dirname(metadata.configPath) : docsDir,
+              args.baseUrl ? { baseUrl: args.baseUrl } : {}
+            ),
+            docsDir: sourceMirror.docsDir,
+          });
+    if (metadata.openapi !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "OpenAPI generation is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.openapi_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
+    // Emitted after source-mirror creation (like the OpenAPI skip above) so a
+    // run that fails on empty filter matches doesn't log a skip for a step it
+    // never reached.
+    if (metadata.redirects !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "Redirect tracking is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.redirects_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
     // Collections-mode configs may omit per-collection `groups` and lean on
     // the same frontmatter-discovery path used when no config is present.
     // Filtered single-folder runs also disable curated nav, so infer groups
@@ -2750,7 +2943,9 @@ async function executeGenerate(
           }
         : metadata;
     const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
-    const effectiveNav = hasExplicitPathFilters ? undefined : nav;
+    const effectiveNav = hasExplicitPathFilters
+      ? undefined
+      : [...(nav ?? []), ...generatedOpenApi.nav];
     const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
@@ -2787,6 +2982,14 @@ async function executeGenerate(
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
       ...(convertCache ? { cache: convertCache } : {}),
+      // Redirect tracking diffs the emitted page set, so stale mirrors from
+      // renamed/deleted sources must be garbage-collected or the old path
+      // never "disappears" and rename detection can't fire. The pipeline's
+      // own generated sitemaps (docs-scoped and per-locale) are written into
+      // this outDir after conversion, so keep them out of the sweep.
+      ...(redirectsEnabled
+        ? { prune: true, pruneKeep: ["**/sitemap.md"] }
+        : {}),
       markdownTransforms: createGenerateMarkdownTransforms({
         sourceRoot: srcDir,
         typeTableBasePath,
@@ -3086,11 +3289,44 @@ async function executeGenerate(
         i18n: metadata.i18n,
       });
 
+      // Redirect tracking (opt-in via `redirects` in the docs config): diff
+      // this run's pages against the committed lockfile, auto-redirect pure
+      // moves, and fail loudly on unexplained disappearances.
+      let redirectsUpdate: UpdateDocsRedirectsResult | undefined;
+      if (redirectsEnabled && metadata.redirects) {
+        redirectsUpdate = await updateDocsRedirects({
+          lockfilePath: path.resolve(
+            docsDir,
+            metadata.redirects.lockfile ?? "paths.lock.json"
+          ),
+          outDir,
+          pages: agentReadability.manifest.pages.map((page) => ({
+            urlPath: page.urlPath,
+            relativePath: page.relativePath,
+          })),
+          removed: metadata.redirects.removed,
+        });
+        for (const move of redirectsUpdate.moved) {
+          logger.info({
+            human: {
+              message: `redirect: ${move.from} → ${move.to} (rename detected)`,
+            },
+            json: { event: "generate.redirect_detected", fields: move },
+          });
+        }
+      }
+
       result = {
         docsDir,
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
+          ...(redirectsUpdate
+            ? {
+                redirectsJson: redirectsUpdate.redirectsPath,
+                redirectsLockfile: redirectsUpdate.lockfilePath,
+              }
+            : {}),
           ...(agentReadability.files.apiCatalog
             ? { apiCatalog: agentReadability.files.apiCatalog }
             : {}),
@@ -3161,6 +3397,7 @@ async function executeGenerate(
     return { code: 1, watchPaths };
   } finally {
     await sourceMirror?.cleanup();
+    await generateLock?.release();
   }
   return { code: 0, watchPaths };
 }

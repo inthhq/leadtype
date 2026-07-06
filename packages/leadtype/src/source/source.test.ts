@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +9,33 @@ import { createDocsSource } from "./index";
 async function writeMdx(filePath: string, content: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, content);
+}
+
+async function writeOpenApiSpec(filePath: string): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(
+    filePath,
+    `openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  /pets/{id}:
+    get:
+      operationId: readPet
+      summary: Read a pet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok
+`,
+    "utf8"
+  );
 }
 
 describe("createDocsSource", () => {
@@ -386,6 +414,94 @@ describe("createDocsSource", () => {
     expect(search.index.documents.map((entry) => entry[3])).toEqual([
       "/docs/zh/quickstart",
     ]);
+  });
+
+  it("overlays generated OpenAPI pages while keeping authored pages live", async () => {
+    const authoredPath = path.join(contentDir, "guide.mdx");
+    await writeMdx(authoredPath, "---\ntitle: Guide\n---\nOriginal body.\n");
+    await writeOpenApiSpec(path.join(contentDir, "openapi", "pets.yaml"));
+
+    const source = await createDocsSource({
+      contentDir,
+      openapi: {
+        input: "./openapi/pets.yaml",
+        output: "api",
+        title: "API",
+        groupByTags: false,
+      },
+    });
+
+    try {
+      expect(source.contentDir).toBe(contentDir);
+      const pages = await source.listPages();
+      expect(pages.map((page) => page.slug.join("/")).sort()).toEqual([
+        "api",
+        "api/read-pet",
+        "guide",
+      ]);
+
+      const authoredMeta = pages.find(
+        (page) => page.slug.join("/") === "guide"
+      );
+      const generatedMeta = pages.find(
+        (page) => page.slug.join("/") === "api/read-pet"
+      );
+      expect(authoredMeta).toBeDefined();
+      expect(generatedMeta).toBeDefined();
+      if (!(authoredMeta && generatedMeta)) {
+        throw new Error("Expected authored and generated metadata.");
+      }
+      expect(authoredMeta.filePath).toBe(authoredPath);
+      expect(generatedMeta.filePath).toContain("leadtype-openapi-");
+      expect(generatedMeta.filePath.startsWith(contentDir)).toBe(false);
+
+      const navigation = await source.getNavigation();
+      const generatedGroup = navigation.groups.find(
+        (group) => group.title === "API"
+      );
+      expect(generatedGroup?.pages.map((page) => page.relativePath)).toEqual([
+        "api/index",
+        "api/read-pet",
+      ]);
+
+      await writeMdx(authoredPath, "---\ntitle: Guide\n---\nUpdated body.\n");
+      const loaded = await source.loadPage("guide");
+      expect(loaded?.markdown).toContain("Updated body.");
+
+      const overlayDir = path.dirname(path.dirname(generatedMeta.filePath));
+      expect(existsSync(overlayDir)).toBe(true);
+      await source.cleanup();
+      await source.cleanup();
+      expect(existsSync(overlayDir)).toBe(false);
+    } finally {
+      await source.cleanup();
+    }
+  });
+
+  it("rejects authored pages that collide with generated OpenAPI slugs", async () => {
+    await writeMdx(
+      path.join(contentDir, "api/index.mdx"),
+      "---\ntitle: Authored API\n---\nAuthored body.\n"
+    );
+    await writeOpenApiSpec(path.join(contentDir, "openapi", "pets.yaml"));
+
+    const source = await createDocsSource({
+      contentDir,
+      openapi: {
+        input: "./openapi/pets.yaml",
+        output: "api",
+        title: "API",
+        groupByTags: false,
+      },
+    });
+
+    try {
+      await expect(source.listPages()).rejects.toThrow(
+        /Duplicate slug "\/api"/
+      );
+    } finally {
+      await source.cleanup();
+    }
   });
 
   it("rejects duplicate localized source files for the same locale and logical path", async () => {

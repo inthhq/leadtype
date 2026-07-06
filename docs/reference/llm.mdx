@@ -265,6 +265,9 @@ await generateAgentReadabilityArtifacts({
   baseUrl: "https://leadtype.dev",
   product,
   nav: docsConfig.navigation,
+  generatedAt: process.env.SOURCE_DATE_EPOCH
+    ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000)
+    : undefined,
   jsonLd, // bakes the site graph into the manifest for renderSiteJsonLd
 });
 ```
@@ -329,10 +332,13 @@ const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
   product: resolveAgentInputs(docsConfig).product,
+  generatedAt: "2026-06-15T10:30:00.000Z",
 });
 ```
 
 Writes crawler files at the output root (`<outDir>/robots.txt`, `<outDir>/sitemap.xml`, `<outDir>/sitemap.md`). The returned manifest contains the docs pages, markdown mirror URLs, group navigation, and freshness dates. Host apps can still merge `result.manifest.pages` with non-docs routes before serving custom root-level `/sitemap.xml`, `/sitemap.md`, and `/robots.txt`.
+
+Pass `generatedAt` (`string | Date`) when your build needs reproducible output. It fixes `manifest.generatedAt` and the per-page `lastModified` fallback for pages whose frontmatter carries no date (otherwise the file mtime leaks in, and mtimes change on every fresh checkout). The CLI currently uses the default current time.
 
 ## generateAgentArtifacts
 
@@ -344,6 +350,7 @@ import { generateAgentArtifacts } from "leadtype/llm";
 await generateAgentArtifacts({
   outDir: "public",
   baseUrl: "https://example.com",
+  generatedAt: "2026-06-15T10:30:00.000Z",
   product: { name: "Example", tagline: "One-line summary." },
   agents: { robots: { policy: "block-training" } },
   pages: posts.map((post) => ({
@@ -355,6 +362,8 @@ await generateAgentArtifacts({
   })),
 });
 ```
+
+Pass `generatedAt` (`string | Date`) for deterministic builds. It fixes `manifest.generatedAt` and the `lastModified` fallback for pages that do not provide their own content date.
 
 Set `emitRootCrawlerFiles: false` when the site is one fragment of a larger origin (microfrontends) and the host app owns the root crawler files. See [Generate artifacts without a docs tree](/docs/aeo/generate-artifacts-without-docs) for page-input fallback rules and the merge story.
 
