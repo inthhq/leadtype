@@ -190,6 +190,9 @@ describe("generateFeedArtifacts", () => {
 
   afterEach(async () => {
     setLogStreams({ stderr: process.stderr });
+    // Restore the module-init default so the pin in the no-pages test can't
+    // leak state onto later tests in the same worker.
+    setLogFormat(process.env.LEADTYPE_LOG_FORMAT === "json" ? "json" : "human");
     await Promise.all(
       tempDirs.splice(0).map((dir) => rm(dir, { force: true, recursive: true }))
     );
