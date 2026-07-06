@@ -264,7 +264,7 @@ export async function runLintCommand(
   const unknownFieldSeverity = args.unknownFieldSeverityExplicit
     ? args.unknownFieldSeverity
     : (lintConfig?.unknownFieldSeverity ?? args.unknownFieldSeverity);
-  const rules = lintConfig?.rules as LintRuleOverrides | undefined;
+  const configRules = lintConfig?.rules as LintRuleOverrides | undefined;
   const mounts = loaded?.config.mounts;
   const assumeValidLinkPrefixes = openApiLinkPrefixes(loaded?.config.openapi);
   // External-link probing is opt-in: the --external-links flag (scheduled CI
@@ -273,6 +273,16 @@ export async function runLintCommand(
   const externalLinksEnabled =
     args.externalLinks ||
     (externalLinkRule !== undefined && externalLinkRule !== "off");
+  // The flag is a force-on: a shared config's `"external-link": "off"` must
+  // not silently swallow the violations of an explicit scheduled run.
+  const rules =
+    args.externalLinks && externalLinkRule === "off"
+      ? Object.fromEntries(
+          Object.entries(configRules ?? {}).filter(
+            ([rule]) => rule !== "external-link"
+          )
+        )
+      : configRules;
   const externalLinksNodeModules = findNearestNodeModules(resolvedSrcDir);
   const externalLinksOptions = externalLinksEnabled
     ? {
@@ -362,6 +372,9 @@ export async function runLintCommand(
         routeSet: combinedRouteSet,
         assumeValidLinkPrefixes,
         rules,
+        ...(externalLinksOptions
+          ? { externalLinks: externalLinksOptions }
+          : {}),
         schemas: entry.collection.schema
           ? { frontmatter: entry.collection.schema }
           : undefined,

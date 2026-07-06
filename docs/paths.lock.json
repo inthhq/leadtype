@@ -107,7 +107,7 @@
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
-      "hash": "54eccf99733d545e"
+      "hash": "c8fc71db3c1d438e"
     },
     {
       "path": "/docs/quickstart",
@@ -131,7 +131,7 @@
     },
     {
       "path": "/docs/reference/lint",
-      "hash": "6ee76ea6c3a206a3"
+      "hash": "ba0500512a0f949a"
     },
     {
       "path": "/docs/reference/llm",

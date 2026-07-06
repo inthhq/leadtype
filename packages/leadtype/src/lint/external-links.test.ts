@@ -41,7 +41,13 @@ function stubFetcher(routes: Record<string, StubRoute>): {
     if (result instanceof Error) {
       return Promise.reject(result);
     }
-    return Promise.resolve(new Response(null, { status: result.status }));
+    // Not a real Response: the WHATWG constructor rejects statuses outside
+    // 200-599, but live servers do send e.g. LinkedIn's 999 bot-block.
+    const { status } = result;
+    return Promise.resolve({
+      status,
+      ok: status >= 200 && status < 300,
+    } as Response);
   }) as typeof fetch;
   return { fetcher, calls };
 }
@@ -89,13 +95,21 @@ describe("checkExternalLinks", () => {
     ]);
   });
 
-  it("treats rate limiting as skip, not failure", async () => {
+  it("treats rate-limited and auth/bot-gated responses as skip, not failure", async () => {
     const { fetcher } = stubFetcher({
       "https://busy.example/": () => ({ status: 429 }),
+      "https://gated.example/": () => ({ status: 403 }),
+      "https://members.example/": () => ({ status: 401 }),
+      "https://linkedin.example/": () => ({ status: 999 }),
     });
 
     const issues = await checkExternalLinks({
-      links: [link("https://busy.example/")],
+      links: [
+        link("https://busy.example/"),
+        link("https://gated.example/"),
+        link("https://members.example/"),
+        link("https://linkedin.example/"),
+      ],
       fetcher,
     });
 

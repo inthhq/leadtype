@@ -35,6 +35,8 @@ const RETRY_DELAY_MS = 500;
 const USER_AGENT =
   "leadtype-lint/1.0 (+https://leadtype.dev/docs/pipeline/validate-in-ci)";
 const CACHE_VERSION = 1;
+// 999 is LinkedIn's infamous bot-block status.
+const GATED_STATUSES = new Set([401, 403, 429, 999]);
 
 /** Collect absolute http(s) links (inline, reference, image) with positions. */
 export function collectExternalLinks(
@@ -174,8 +176,9 @@ async function probe(
       detail: error instanceof Error ? error.message : String(error),
     };
   }
-  if (response.status === 429) {
-    // Rate limited is not dead; don't fail and don't cache.
+  if (GATED_STATUSES.has(response.status)) {
+    // Rate-limited, auth-walled, or bot-blocked (Cloudflare and friends 403
+    // non-browser clients for live pages) — unverifiable is not dead.
     return { kind: "skipped" };
   }
   if (response.ok || (response.status >= 300 && response.status < 400)) {

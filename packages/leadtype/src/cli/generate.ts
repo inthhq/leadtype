@@ -1363,12 +1363,15 @@ function validateLintConfig(
         `docs config at "${configPath}": lint.externalLinks.ignore must be an array of strings`
       );
     }
+    const ttlHours = value.externalLinks.ttlHours;
     if (
-      value.externalLinks.ttlHours !== undefined &&
-      typeof value.externalLinks.ttlHours !== "number"
+      ttlHours !== undefined &&
+      (typeof ttlHours !== "number" ||
+        !Number.isFinite(ttlHours) ||
+        ttlHours < 0)
     ) {
       throw new Error(
-        `docs config at "${configPath}": lint.externalLinks.ttlHours must be a number`
+        `docs config at "${configPath}": lint.externalLinks.ttlHours must be a non-negative finite number`
       );
     }
     externalLinks = value.externalLinks as {

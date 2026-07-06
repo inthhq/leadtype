@@ -41,7 +41,7 @@ jobs:
       - run: bunx leadtype lint --external-links --format github
 ```
 
-Live URLs are cached between runs (default 7 days), failures never are, rate-limited hosts are skipped rather than failed, and `lint.externalLinks.ignore` mutes known-flaky prefixes.
+Live URLs are cached between runs (default 7 days), failures never are, rate-limited and bot-gated hosts are skipped rather than failed, and `lint.externalLinks.ignore` mutes known-flaky prefixes.
 
 Lint discovers your docs config the same way `generate` does, so a bare `leadtype lint` lints the configured source tree with mounts, custom schemas, and `lint.rules` severity overrides applied — no flags needed.
 
