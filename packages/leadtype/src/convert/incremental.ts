@@ -76,6 +76,22 @@ export function hashFileCached(
   return pending;
 }
 
+function isEntryShape(value: unknown): value is ConvertCacheEntry {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.sourceHash === "string" &&
+    typeof entry.enrichment === "string" &&
+    typeof entry.output === "string" &&
+    entry.output.length > 0 &&
+    typeof entry.deps === "object" &&
+    entry.deps !== null &&
+    Object.values(entry.deps).every((hash) => typeof hash === "string")
+  );
+}
+
 function isManifestShape(value: unknown): value is ConvertCacheManifest {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -85,18 +101,26 @@ function isManifestShape(value: unknown): value is ConvertCacheManifest {
     manifest.version === CONVERT_CACHE_VERSION &&
     typeof manifest.fingerprint === "string" &&
     typeof manifest.entries === "object" &&
-    manifest.entries !== null
+    manifest.entries !== null &&
+    // A partially-written or hand-edited entry must reject the whole
+    // manifest: downstream pruning resolves `entry.output` unconditionally,
+    // and "manifest issues degrade to a full rebuild, never an error" is
+    // this module's contract.
+    Object.values(manifest.entries).every(isEntryShape)
   );
 }
 
 /**
  * Read a manifest, returning null when it's missing, unreadable, from a
- * different cache version, or built with a different fingerprint — every
- * miss degrades to a full rebuild, never an error.
+ * different cache version, or (when `fingerprint` is given) built with a
+ * different fingerprint — every miss degrades to a full rebuild, never an
+ * error. Callers that need the last run's entries regardless of validity —
+ * stale-output pruning must work across `--force` and fingerprint changes —
+ * omit `fingerprint` and gate reuse themselves.
  */
 export async function loadConvertCacheManifest(
   filePath: string,
-  fingerprint: string
+  fingerprint?: string
 ): Promise<ConvertCacheManifest | null> {
   let raw: string;
   try {
@@ -106,7 +130,10 @@ export async function loadConvertCacheManifest(
   }
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (isManifestShape(parsed) && parsed.fingerprint === fingerprint) {
+    if (
+      isManifestShape(parsed) &&
+      (fingerprint === undefined || parsed.fingerprint === fingerprint)
+    ) {
       return parsed;
     }
   } catch {

@@ -1430,17 +1430,24 @@ async function convertMdxBatch(
     Array.from(outputDirs, (dir) => mkdir(dir, { recursive: true }))
   );
 
-  const cacheState = config.cache
+  const cacheOptions = config.cache;
+  const manifestOnDisk = cacheOptions
+    ? await loadConvertCacheManifest(cacheOptions.file)
+    : null;
+  const manifestReusable =
+    cacheOptions &&
+    !cacheOptions.force &&
+    manifestOnDisk?.fingerprint === cacheOptions.fingerprint;
+  const cacheState = cacheOptions
     ? {
-        options: config.cache,
-        previousEntries: config.cache.force
-          ? {}
-          : ((
-              await loadConvertCacheManifest(
-                config.cache.file,
-                config.cache.fingerprint
-              )
-            )?.entries ?? {}),
+        options: cacheOptions,
+        previousEntries: manifestReusable ? manifestOnDisk.entries : {},
+        // Stale-output pruning works from whatever the last run recorded even
+        // when `--force` or a fingerprint change disables entry reuse — a
+        // source deleted before an invalidated run must still have its output
+        // garbage-collected, or it lingers forever (the rewritten manifest no
+        // longer knows about it).
+        pruneEntries: manifestOnDisk?.entries ?? {},
         nextEntries: {} as Record<string, ConvertCacheEntry>,
         hashCache: createFileHashCache(),
       }
@@ -1569,7 +1576,7 @@ async function convertMdxBatch(
       )
     );
     pruned = await pruneStaleOutputs(
-      cacheState.previousEntries,
+      cacheState.pruneEntries,
       cacheState.nextEntries,
       currentKeys,
       outDir

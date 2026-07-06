@@ -58,7 +58,7 @@ leadtype generate [options]
 | `--refresh` | off | Collections mode only. Re-fetch and fast-forward every remote source's cache. Mutually exclusive with `--sync` and `--offline`. |
 | `--offline` | off | Collections mode only. Never touch the network; error if any remote cache is missing or its `ref` has drifted. Mutually exclusive with `--sync` and `--refresh`. |
 | `-w`, `--watch` | off | Rebuild whenever the docs sources or the config file change. The process stays alive until Ctrl+C; a failing rebuild keeps watching. |
-| `--force` | off | Ignore the incremental cache and reconvert every file. |
+| `--force` | off | Ignore the incremental cache and reconvert every file. With `--watch`, only the initial build is forced — watch-triggered rebuilds stay incremental. |
 | `--format <fmt>` | `text` | `text` or `json`. JSON prints a single result object on stdout. |
 | `--json` | — | Alias for `--format json`. |
 | `-h`, `--help` | — | Print usage. |
@@ -71,7 +71,7 @@ When the project root has a `leadtype.config.{ts,js,mjs,cjs}` that declares `col
 
 Repeat `generate` runs are incremental. Each converted file's inputs — the MDX source, every `<include>` target it pulls in, the TypeScript files its type tables extract from, and the git enrichment written into its frontmatter — are content-hashed into a manifest under `node_modules/.cache/leadtype/`. Files whose inputs are unchanged are skipped, and outputs whose source file was deleted are pruned. Site artifacts (`llms.txt`, search index, sitemaps) are always regenerated from the converted markdown; they are cheap relative to conversion.
 
-The whole cache is invalidated when the leadtype version, the docs config file, or conversion-relevant flags change. One caveat: config-declared `transformers` and `flatteners` are functions, so only the config file's own content is fingerprinted — if a transformer imports another module and you edit *that* module, run `--force` once (or restart `--watch`). Projects without a `node_modules/` directory skip caching entirely.
+The whole cache is invalidated when the leadtype version, the docs config file, or conversion-relevant flags change. One caveat: config-declared `transformers` and `flatteners` are functions, so only the config file's own content is fingerprinted — if a transformer imports another module and you edit *that* module, run `--force` once (or restart `--watch`). The manifest lives in the nearest `node_modules/` walking up from `--src` (hoisted monorepo layouts resolve to the workspace root); with no `node_modules/` anywhere above, caching is skipped entirely.
 
 ### Watch mode
 

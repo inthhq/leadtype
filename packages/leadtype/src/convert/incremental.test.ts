@@ -183,6 +183,75 @@ describe("convertAllMdx incremental cache", () => {
     expect(existsSync(path.join(project.outDir, "beta.md"))).toBe(true);
   });
 
+  it("prunes a deleted source's output on a --force run", async () => {
+    const project = await createCacheProject();
+    const alphaSrc = path.join(project.srcDir, "alpha.mdx");
+    await writeFile(alphaSrc, "---\ntitle: Alpha\n---\n\n# Alpha\n");
+    await writeFile(
+      path.join(project.srcDir, "beta.mdx"),
+      "---\ntitle: Beta\n---\n\n# Beta\n"
+    );
+
+    await runConvert(project);
+    const alphaOut = path.join(project.outDir, "alpha.md");
+    expect(existsSync(alphaOut)).toBe(true);
+
+    // Force empties the reusable entry set — pruning must still see the last
+    // run's manifest or the deleted source's output lingers forever.
+    await rm(alphaSrc);
+    await runConvert(project, { force: true });
+
+    expect(existsSync(alphaOut)).toBe(false);
+    expect(existsSync(path.join(project.outDir, "beta.md"))).toBe(true);
+  });
+
+  it("prunes a deleted source's output across a fingerprint change", async () => {
+    const project = await createCacheProject();
+    const alphaSrc = path.join(project.srcDir, "alpha.mdx");
+    await writeFile(alphaSrc, "---\ntitle: Alpha\n---\n\n# Alpha\n");
+    await writeFile(
+      path.join(project.srcDir, "beta.mdx"),
+      "---\ntitle: Beta\n---\n\n# Beta\n"
+    );
+
+    await runConvert(project);
+    const alphaOut = path.join(project.outDir, "alpha.md");
+    expect(existsSync(alphaOut)).toBe(true);
+
+    await rm(alphaSrc);
+    await runConvert(project, { fingerprint: "different-fingerprint" });
+
+    expect(existsSync(alphaOut)).toBe(false);
+    expect(existsSync(path.join(project.outDir, "beta.md"))).toBe(true);
+  });
+
+  it("rejects a manifest whose entries are malformed instead of crashing", async () => {
+    const project = await createCacheProject();
+    await writeFile(
+      path.join(project.srcDir, "alpha.mdx"),
+      "---\ntitle: Alpha\n---\n\n# Alpha\n"
+    );
+    await runConvert(project);
+
+    // Hand-corrupt one entry: syntactically valid JSON, missing `output`.
+    // Pruning resolves `entry.output` unconditionally, so a partially-written
+    // entry must reject the whole manifest (full rebuild), never throw.
+    const manifest = JSON.parse(await readFile(project.cacheFile, "utf8")) as {
+      entries: Record<string, Record<string, unknown>>;
+    };
+    const firstKey = Object.keys(manifest.entries)[0] as string;
+    manifest.entries[firstKey] = { sourceHash: "abc" };
+    await writeFile(project.cacheFile, JSON.stringify(manifest));
+
+    expect(await loadConvertCacheManifest(project.cacheFile)).toBeNull();
+
+    const alphaOut = path.join(project.outDir, "alpha.md");
+    await tamper(alphaOut);
+    await runConvert(project);
+    // Rejected manifest → full rebuild → the tampered output is rewritten.
+    expect(await isTampered(alphaOut)).toBe(false);
+  });
+
   it("rebuilds everything with force", async () => {
     const project = await createCacheProject();
     await writeFile(

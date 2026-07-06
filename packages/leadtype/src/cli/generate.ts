@@ -2557,14 +2557,35 @@ function hashText(value: string): string {
  * (transformers/flatteners are functions, so the config's content hash
  * stands in for them), or flags that alter conversion output.
  */
+/**
+ * Nearest `node_modules` walking upward from `startDir`, mirroring Node's own
+ * module resolution — hoisted monorepo layouts keep dependencies at the
+ * workspace root, so a subpackage `--src` without its own `node_modules`
+ * still gets a cache home.
+ */
+function findNearestNodeModules(startDir: string): string | undefined {
+  let dir = path.resolve(startDir);
+  for (;;) {
+    const candidate = path.join(dir, "node_modules");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return;
+    }
+    dir = parent;
+  }
+}
+
 async function resolveConvertCache(opts: {
   srcDir: string;
   outDir: string;
   args: GenerateArgs;
   configPath?: string;
 }): Promise<ConvertCacheOptions | undefined> {
-  const nodeModulesDir = path.join(opts.srcDir, "node_modules");
-  if (!existsSync(nodeModulesDir)) {
+  const nodeModulesDir = findNearestNodeModules(opts.srcDir);
+  if (!nodeModulesDir) {
     return;
   }
   const cacheId = hashText(
@@ -2669,6 +2690,9 @@ async function runGenerateWatch(
 ): Promise<number> {
   const outDir = path.resolve(args.outDir);
   let outcome = await executeGenerate(args, io);
+  // `--force` applies to the initial build only: watch-triggered rebuilds
+  // stay incremental, which is the point of watching.
+  const rerunArgs: GenerateArgs = { ...args, force: false };
   let watcher: ReturnType<typeof watchInputs> | undefined;
   let running = false;
   let queued = false;
@@ -2709,7 +2733,7 @@ async function runGenerateWatch(
     running = true;
     try {
       const previousWatchPaths = outcome.watchPaths.join("\0");
-      outcome = await executeGenerate(args, io);
+      outcome = await executeGenerate(rerunArgs, io);
       // A config edit can add or remove docs sources — re-arm so the new
       // set is observed.
       if (outcome.watchPaths.join("\0") !== previousWatchPaths) {
