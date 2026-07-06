@@ -96,6 +96,14 @@
       "types": "./dist/navigation/index.d.ts",
       "import": "./dist/navigation/index.js"
     },
+    "./redirects": {
+      "types": "./dist/redirects/index.d.ts",
+      "import": "./dist/redirects/index.js"
+    },
+    "./redirects/node": {
+      "types": "./dist/redirects/node-index.d.ts",
+      "import": "./dist/redirects/node-index.js"
+    },
     "./search": {
       "types": "./dist/search/index.d.ts",
       "import": "./dist/search/index.js"

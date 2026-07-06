@@ -112,6 +112,12 @@ const config: DocsConfig = {
               "Run the site-mode CLI from a build pipeline to write llms.txt, markdown mirrors, search, sitemap, and Agent Readability files.",
           },
           {
+            urlPath: "/docs/pipeline/redirects",
+            title: "Redirect renamed pages",
+            description:
+              "Track renamed and deleted pages with a committed lockfile, emit redirects.json, and serve 308/410 responses.",
+          },
+          {
             urlPath: "/docs/aeo/overview",
             title: "AEO & Agent Readability overview",
             description:
@@ -283,6 +289,11 @@ const config: DocsConfig = {
       },
     },
   ],
+  // Dogfood redirect tracking: the pipeline maintains docs/paths.lock.json
+  // (committed), auto-redirects pure renames by content hash, and fails the
+  // build when a page disappears without a successor. Acknowledge intentional
+  // deletions under `removed` to serve 410 Gone.
+  redirects: {},
   agents: {
     // Library default for the repo's own example output. The deployed site's
     // robots policy is host-owned: the consuming app's leadtype.config.ts

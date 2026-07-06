@@ -1991,6 +1991,87 @@ lastModified: 2026-05-01T12:00:00.000Z
     expect(await response?.text()).toContain("# Quickstart from KV");
   });
 
+  it("redirects agent requests for renamed pages, including .md mirrors", async () => {
+    const redirects = [
+      { from: "/docs/old-quickstart", to: "/docs/quickstart", status: 308 },
+      { from: "/docs/legacy", status: 410 },
+    ];
+
+    const moved = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(moved?.status).toBe(308);
+    expect(moved?.headers.get("location")).toBe(
+      "https://example.com/docs/quickstart"
+    );
+
+    const mirror = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart.md",
+      headers: {},
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(mirror?.status).toBe(308);
+    expect(mirror?.headers.get("location")).toBe(
+      "https://example.com/docs/quickstart.md"
+    );
+
+    const gone = await createAgentMarkdownResponse({
+      urlPath: "/docs/legacy",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(gone?.status).toBe(410);
+
+    // Non-agent requests fall through so the host app's HTML routing runs.
+    const html = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart",
+      headers: { accept: "text/html" },
+      manifest,
+      redirects,
+      readMarkdownFile: () => null,
+    });
+    expect(html).toBeNull();
+  });
+
+  it("redirects .md requests to the target's recorded mirror for index routes", async () => {
+    const manifestWithIndexPage = {
+      ...manifest,
+      pages: [
+        ...manifest.pages,
+        {
+          ...manifest.pages[0],
+          title: "Docs home",
+          urlPath: "/docs",
+          absoluteUrl: "https://example.com/docs",
+          markdownUrlPath: "/docs/index.md",
+          markdownAbsoluteUrl: "https://example.com/docs/index.md",
+          relativePath: "index",
+        },
+      ],
+    } as unknown as typeof manifest;
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-home.md",
+      headers: {},
+      manifest: manifestWithIndexPage,
+      redirects: [{ from: "/docs/old-home", to: "/docs", status: 308 }],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/index.md"
+    );
+  });
+
   it("HEAD method returns headers with empty body", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",

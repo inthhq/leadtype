@@ -1,8 +1,10 @@
 /** biome-ignore-all lint/style/useFilenamingConvention: TanStack Router catch-all route convention */
 
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { resolveRedirect } from "leadtype/redirects";
 import type { ComponentType } from "react";
 import docsPages from "@/generated/docs-pages.json";
+import redirectsData from "@/generated/redirects.json";
 import { createDocsHead } from "@/lib/docs-head";
 
 interface DocsPage {
@@ -72,6 +74,16 @@ function MissingMdxModule({ urlPath }: { urlPath: string }) {
 export const Route = createFileRoute("/docs/$")({
   beforeLoad: ({ params }) => {
     if (!resolvePage("/docs", params._splat)) {
+      // Renamed pages get a permanent redirect from the generated map before
+      // 404ing; acknowledged removals (410 entries, no `to`) fall through to
+      // notFound so old links land on the not-found page, not a broken route.
+      const entry = resolveRedirect(
+        `/docs/${(params._splat ?? "").replace(TRAILING_SLASH_RE, "")}`,
+        redirectsData.redirects
+      );
+      if (entry?.to) {
+        throw redirect({ href: entry.to, statusCode: 308 });
+      }
       throw notFound();
     }
   },

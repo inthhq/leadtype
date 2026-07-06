@@ -12,6 +12,7 @@ import {
   stripTrailingSlashes,
   toAbsoluteUrl,
 } from "../internal/docs-url";
+import { type DocsRedirect, resolveRedirect } from "../redirects/redirects";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
 
@@ -272,6 +273,14 @@ export type CreateAgentMarkdownResponseConfig = {
   userAgentPattern?: RegExp;
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
+  /**
+   * Redirect entries from the generated `docs/redirects.json`. Agent-shaped
+   * requests for a renamed page (including its `.md` mirror) get a 308 to the
+   * new location; acknowledged removals get 410 Gone. Non-agent requests
+   * still fall through so the host app can redirect the HTML route itself
+   * with `resolveRedirect` from `leadtype/redirects`.
+   */
+  redirects?: DocsRedirect[];
 };
 
 export type AgentArtifactResponseConfig = {
@@ -1331,6 +1340,48 @@ export async function createAgentMarkdownResponse(
     resolveManifestMarkdownMirrorTarget(pathname, config.manifest) ??
     resolveMarkdownMirrorTarget(pathname);
   const isHead = config.method === "HEAD";
+
+  // Renamed/removed pages: answer agent-shaped requests before the
+  // missing-page fallback would serve a "not found" body for a URL that has
+  // a real successor. Non-agent requests keep falling through to the host
+  // app's own routing.
+  if (config.redirects && (wantsMarkdown || pathname.endsWith(".md"))) {
+    const redirect = resolveRedirect(pathname, config.redirects);
+    if (redirect) {
+      if (redirect.to === undefined) {
+        return new Response(isHead ? null : "Gone\n", {
+          status: redirect.status,
+          headers: { "content-type": "text/plain; charset=utf-8" },
+        });
+      }
+      // On the .md surface, prefer the target page's recorded mirror path —
+      // resolveRedirect's `${to}.md` heuristic is wrong for index routes,
+      // whose mirrors live at `${to}/index.md`.
+      let toPath = redirect.to;
+      if (pathname.endsWith(".md")) {
+        const targetUrlPath =
+          redirect.to
+            .replace(MD_ONLY_EXTENSION_PATTERN, "")
+            .replace(TRAILING_SLASH_PATTERN, "") || "/";
+        const targetPage = config.manifest.pages.find(
+          (entry) => entry.urlPath === targetUrlPath
+        );
+        if (targetPage) {
+          toPath = targetPage.markdownUrlPath;
+        }
+      }
+      const location = toAbsoluteUrl(
+        toPath,
+        config.requestOrigin
+          ? stripTrailingSlashes(config.requestOrigin)
+          : config.manifest.baseUrl
+      );
+      return new Response(null, {
+        status: redirect.status,
+        headers: { location },
+      });
+    }
+  }
 
   if (target && (wantsMarkdown || pathname.endsWith(".md"))) {
     const page = config.manifest.pages.find(

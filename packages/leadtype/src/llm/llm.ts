@@ -491,6 +491,27 @@ export type DocsConfig<
   git?: DocsGitConfig;
   /** Agent-surface options (robots policy / Content-Signals, …). All optional. */
   agents?: DocsAgentsConfig;
+  /**
+   * Opt-in redirect tracking for renamed/deleted pages. When present,
+   * generate maintains a committed paths lockfile, auto-detects pure moves by
+   * content hash, emits `docs/redirects.json`, and fails loudly when a page
+   * disappears without a successor.
+   */
+  redirects?: DocsRedirectsConfig;
+};
+
+export type DocsRedirectsConfig = {
+  /**
+   * Lockfile location, resolved relative to the docs source directory.
+   * Defaults to `paths.lock.json` inside it. Commit this file — it is the
+   * record of previously published paths that rename detection diffs against.
+   */
+  lockfile?: string;
+  /**
+   * Paths acknowledged as intentionally deleted, e.g. `/docs/old-guide`.
+   * Served as 410 Gone instead of failing the build.
+   */
+  removed?: string[];
 };
 
 export type DocsGitConfig = {

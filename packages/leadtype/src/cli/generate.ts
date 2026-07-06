@@ -77,6 +77,10 @@ import {
   validateDocsOpenApiConfig,
   writeOpenApiPages,
 } from "../openapi";
+import {
+  type UpdateDocsRedirectsResult,
+  updateDocsRedirects,
+} from "../redirects/node";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
@@ -236,6 +240,8 @@ type GenerateResult = {
     mcpWellKnown?: string;
     nlwebSchemaFeed?: string;
     nlwebSchemaMap?: string;
+    redirectsJson?: string;
+    redirectsLockfile?: string;
   };
   groups: DocsGroup[];
   nav?: DocsNavEntry[];
@@ -311,6 +317,7 @@ type ResolvedGenerateMetadata = {
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
   agents?: DocsConfig["agents"];
+  redirects?: DocsConfig["redirects"];
 };
 
 type CollectionFrontmatterSchema = {
@@ -1248,6 +1255,34 @@ function validateGitConfig(
   };
 }
 
+function validateRedirectsConfig(
+  value: unknown,
+  configPath: string
+): DocsConfig["redirects"] | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": redirects must be an object`
+    );
+  }
+  if (value.lockfile !== undefined && typeof value.lockfile !== "string") {
+    throw new Error(
+      `docs config at "${configPath}": redirects.lockfile must be a string`
+    );
+  }
+  if (value.removed !== undefined && !isStringArray(value.removed)) {
+    throw new Error(
+      `docs config at "${configPath}": redirects.removed must be an array of strings`
+    );
+  }
+  return {
+    ...(value.lockfile === undefined ? {} : { lockfile: value.lockfile }),
+    ...(value.removed === undefined ? {} : { removed: value.removed }),
+  };
+}
+
 function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -1306,6 +1341,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
+  const redirects = validateRedirectsConfig(value.redirects, configPath);
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -1323,6 +1359,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
     ...(mounts ? { mounts } : {}),
     ...(feeds ? { feeds } : {}),
     ...(git ? { git } : {}),
+    ...(redirects ? { redirects } : {}),
     ...(openapi ? { openapi } : {}),
     ...(value.frontmatterSchema === undefined
       ? {}
@@ -1866,6 +1903,7 @@ async function resolveGenerateMetadata(
         : undefined,
       typeTableStrict: loaded.config.typeTableStrict,
       agents: loaded.config.agents,
+      redirects: loaded.config.redirects,
     };
   }
   return readPackageProduct(srcDir, args).then((product) => ({
@@ -2629,6 +2667,11 @@ export async function runGenerateCommand(
     );
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
+    // A filtered run's page set is partial by design: diffing it against the
+    // lockfile would flag every excluded page as disappeared, and pruning
+    // would delete their outputs. Redirect tracking only runs on full builds.
+    const redirectsEnabled =
+      metadata.redirects !== undefined && !hasExplicitPathFilters;
     sourceMirror = await createSourceMirror(
       srcDir,
       docsSources,
@@ -2654,6 +2697,21 @@ export async function runGenerateCommand(
         },
         json: {
           event: "generate.openapi_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
+    // Emitted after source-mirror creation (like the OpenAPI skip above) so a
+    // run that fails on empty filter matches doesn't log a skip for a step it
+    // never reached.
+    if (metadata.redirects !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "Redirect tracking is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.redirects_skipped",
           fields: { exclude: args.exclude, include: args.include },
         },
       });
@@ -2707,6 +2765,14 @@ export async function runGenerateCommand(
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
+      // Redirect tracking diffs the emitted page set, so stale mirrors from
+      // renamed/deleted sources must be garbage-collected or the old path
+      // never "disappears" and rename detection can't fire. The pipeline's
+      // own generated sitemaps (docs-scoped and per-locale) are written into
+      // this outDir after conversion, so keep them out of the sweep.
+      ...(redirectsEnabled
+        ? { prune: true, pruneKeep: ["**/sitemap.md"] }
+        : {}),
       markdownTransforms: createGenerateMarkdownTransforms({
         sourceRoot: srcDir,
         typeTableBasePath,
@@ -3006,11 +3072,44 @@ export async function runGenerateCommand(
         i18n: metadata.i18n,
       });
 
+      // Redirect tracking (opt-in via `redirects` in the docs config): diff
+      // this run's pages against the committed lockfile, auto-redirect pure
+      // moves, and fail loudly on unexplained disappearances.
+      let redirectsUpdate: UpdateDocsRedirectsResult | undefined;
+      if (redirectsEnabled && metadata.redirects) {
+        redirectsUpdate = await updateDocsRedirects({
+          lockfilePath: path.resolve(
+            docsDir,
+            metadata.redirects.lockfile ?? "paths.lock.json"
+          ),
+          outDir,
+          pages: agentReadability.manifest.pages.map((page) => ({
+            urlPath: page.urlPath,
+            relativePath: page.relativePath,
+          })),
+          removed: metadata.redirects.removed,
+        });
+        for (const move of redirectsUpdate.moved) {
+          logger.info({
+            human: {
+              message: `redirect: ${move.from} → ${move.to} (rename detected)`,
+            },
+            json: { event: "generate.redirect_detected", fields: move },
+          });
+        }
+      }
+
       result = {
         docsDir,
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
+          ...(redirectsUpdate
+            ? {
+                redirectsJson: redirectsUpdate.redirectsPath,
+                redirectsLockfile: redirectsUpdate.lockfilePath,
+              }
+            : {}),
           ...(agentReadability.files.apiCatalog
             ? { apiCatalog: agentReadability.files.apiCatalog }
             : {}),
