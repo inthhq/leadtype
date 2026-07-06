@@ -147,6 +147,7 @@ Use the generated artifact manifest for prerender entries, render generated mark
 ```ts title="src/routes/docs/[...slug]/+page.server.ts"
 import { readFile } from "node:fs/promises";
 import { renderMarkdown } from "$lib/markdown";
+import { error } from "@sveltejs/kit";
 import { manifest, pageForUrlPath } from "$lib/manifest";
 import type { AgentReadabilityPage } from "leadtype/llm/readability";
 
@@ -161,7 +162,7 @@ export const load = async ({ params }: LoadEvent) => {
   const urlPath = params.slug ? `/docs/${params.slug}` : "/docs";
   const page = pageForUrlPath(urlPath);
   if (!page) {
-    throw new Error(`Missing docs page: ${urlPath}`);
+    error(404, `Missing docs page: ${urlPath}`);
   }
   const markdown = await readFile(`static/docs/${page.relativePath}.md`, "utf8");
 

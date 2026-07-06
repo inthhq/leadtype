@@ -142,7 +142,7 @@ export default manifestJson;
 // ---cut---
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { eventHandler, getHeaders, getRequestURL } from "h3";
+import { eventHandler, getHeaders, getRequestURL, type H3Event } from "h3";
 import manifestJson from "./agent-readability";
 import {
   createAgentMarkdownResponse,
@@ -170,7 +170,7 @@ async function readMarkdownFile(
   }
 }
 
-export default eventHandler((event: Parameters<typeof getRequestURL>[0]) =>
+export default eventHandler((event: H3Event) =>
   createAgentMarkdownResponse({
     urlPath: getRequestURL(event).pathname,
     method: event.method,
