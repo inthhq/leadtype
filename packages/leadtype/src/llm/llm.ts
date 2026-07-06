@@ -498,6 +498,25 @@ export type DocsConfig<
    * disappears without a successor.
    */
   redirects?: DocsRedirectsConfig;
+  /** Options for `leadtype lint` — ignore globs and per-rule severities. */
+  lint?: DocsLintConfig;
+};
+
+export type DocsLintConfig = {
+  /**
+   * Glob patterns (relative to the docs source dir) lint skips — include-only
+   * partials, drafts. Replaces the built-in defaults when set; the `--ignore`
+   * flag overrides both.
+   */
+  ignore?: string[];
+  /** Severity for frontmatter fields not in the schema. Default `warn`. */
+  unknownFieldSeverity?: "warn" | "error";
+  /**
+   * Per-rule severity overrides keyed by rule id (e.g. `"invalid-link"`,
+   * `"geo:image-alt"`). `"off"` disables the rule, `"warn"`/`"error"` remap
+   * its severity.
+   */
+  rules?: Record<string, "off" | "warn" | "error">;
 };
 
 export type DocsRedirectsConfig = {
