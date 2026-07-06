@@ -1045,6 +1045,54 @@ describe("lintDocs snippet parse checks", () => {
     expect(violations[1]?.message).toContain("yaml");
   });
 
+  it("lints jsonc fences with comment tolerance", async () => {
+    const violations = await lintSnippet(
+      [
+        "```jsonc",
+        "{",
+        "  // tolerated",
+        '  "a": 1,',
+        "}",
+        "```",
+        "",
+        "```jsonc",
+        "{ broken",
+        "```",
+        "",
+      ].join("\n")
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.message).toContain("jsonc");
+  });
+
+  it("checks snippets contributed by include targets", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      '---\ntitle: Home\n---\n```ts\nconst ok = 1;\n```\n\n<include src="./_partials/broken.mdx" />\n'
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "_partials", "broken.mdx"),
+      "```ts\nconst broken = ;\n```\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+    const snippets = result.violations.filter(
+      (violation) => violation.rule === "snippet:parse"
+    );
+
+    // Exactly one violation: the include-contributed fence, attributed to the
+    // including page; the directly-authored fence isn't double-reported.
+    expect(snippets).toEqual([
+      expect.objectContaining({
+        file: "index.mdx",
+        message: expect.stringContaining("from an included file"),
+      }),
+    ]);
+  });
+
   it("can be disabled via rules overrides", async () => {
     const projectDir = await createTempProject();
     await writeProjectFile(

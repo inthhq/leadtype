@@ -36,7 +36,7 @@ import {
   defaultFrontmatterSchema,
   defaultMetaSchema,
 } from "./schema";
-import { collectSnippetIssues } from "./snippet-lint";
+import { collectFenceValues, collectSnippetIssues } from "./snippet-lint";
 
 export type LintSeverity = "error" | "warn";
 
@@ -892,6 +892,21 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
         ...defaultMarkdownTransforms,
       ]);
       const rendered = parseFrontmatter(converted.markdown);
+      // Snippets contributed by <include> targets only exist post-expansion
+      // (partials are ignored files); check them here, deduped against the
+      // source pass so directly-authored fences aren't reported twice.
+      for (const issue of collectSnippetIssues(parseMdxBody(rendered.content), {
+        skipValues: collectFenceValues(bodyTree),
+        fromRendered: true,
+      })) {
+        violations.push({
+          file: relativeFile,
+          kind: "content",
+          severity: "error",
+          rule: issue.rule,
+          message: issue.message,
+        });
+      }
       const currentFramework = deriveDocContext(file).framework;
       const sourceRelPath = toRelative(srcDir, file);
       const currentRoute = toDocsUrlPath(

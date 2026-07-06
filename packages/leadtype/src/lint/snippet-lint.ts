@@ -187,13 +187,15 @@ function checkSnippet(lang: string, code: string): SnippetError | null {
   if (tsFileName) {
     return checkTypeScriptSnippet(code, tsFileName);
   }
-  if (lang === "json") {
+  if (lang === "json" || lang === "jsonc") {
     try {
       JSON.parse(code);
       return null;
     } catch (error) {
       // JSON-with-comments is the pervasive docs idiom for config files
-      // (tsconfig, editor settings) — accept it before reporting.
+      // (tsconfig, editor settings) — accept it before reporting. `jsonc`
+      // fences take the same path, so they are actually linted rather than
+      // skipped.
       try {
         JSON.parse(stripJsonComments(code));
         return null;
@@ -223,11 +225,37 @@ function checkSnippet(lang: string, code: string): SnippetError | null {
   return null;
 }
 
+/** Fence values present in a tree — the source pass's dedupe key. */
+export function collectFenceValues(tree: Root | null): Set<string> {
+  const values = new Set<string>();
+  if (!tree) {
+    return values;
+  }
+  visit(tree, "code", (node) => {
+    const value = (node as { value?: unknown }).value;
+    if (typeof value === "string") {
+      values.add(value);
+    }
+  });
+  return values;
+}
+
 /**
  * Walk fenced code blocks in a parsed markdown body and report snippets that
  * fail to parse in their declared language.
  */
-export function collectSnippetIssues(tree: Root | null): SnippetIssue[] {
+export function collectSnippetIssues(
+  tree: Root | null,
+  options: {
+    /**
+     * Fence values already checked (from the source pass) — used by the
+     * rendered-tree pass to report only fences contributed by includes.
+     */
+    skipValues?: ReadonlySet<string>;
+    /** Suffix issues without line numbers (rendered-tree pass). */
+    fromRendered?: boolean;
+  } = {}
+): SnippetIssue[] {
   if (!tree) {
     return [];
   }
@@ -244,6 +272,9 @@ export function collectSnippetIssues(tree: Root | null): SnippetIssue[] {
     if (!lang || value.trim().length === 0) {
       return;
     }
+    if (options.skipValues?.has(value)) {
+      return;
+    }
     if (NO_ERRORS_DIRECTIVE_PATTERN.test(value)) {
       return;
     }
@@ -253,14 +284,18 @@ export function collectSnippetIssues(tree: Root | null): SnippetIssue[] {
     }
     const fenceLine = code.position?.start?.line;
     // Snippet content starts on the line after the opening fence.
-    const line =
-      fenceLine !== undefined && failure.snippetLine !== undefined
-        ? fenceLine + failure.snippetLine
-        : fenceLine;
+    let line: number | undefined;
+    if (!options.fromRendered) {
+      line =
+        fenceLine !== undefined && failure.snippetLine !== undefined
+          ? fenceLine + failure.snippetLine
+          : fenceLine;
+    }
+    const origin = options.fromRendered ? " (from an included file)" : "";
     issues.push({
       rule: "snippet:parse",
       line,
-      message: `\`${lang}\` snippet does not parse: ${failure.message} — fix it or mark a deliberate fragment with \`// @noErrors\``,
+      message: `\`${lang}\` snippet${origin} does not parse: ${failure.message} — fix it or mark a deliberate fragment with \`// @noErrors\``,
     });
   });
   return issues;
