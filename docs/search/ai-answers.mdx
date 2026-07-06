@@ -94,15 +94,15 @@ import {
 declare const index: DocsSearchIndex;
 declare const content: DocsSearchContentStore;
 declare const query: string;
-declare const env: {
-  AI: Parameters<typeof createCloudflareDocsAdapter>[0]["options"];
-};
+// The Workers AI binding is ambient in a real Worker (wrangler types it);
+// `never` keeps this stub assignable without restating Cloudflare's types.
+declare const env: { AI: never };
 
 // ---cut---
 const adapter = createCloudflareDocsAdapter({
   provider: "workers-ai", // or anthropic | openai | gemini | grok | openrouter
   model: "@cf/meta/llama-3.1-8b-instruct",
-  options: env.AI,
+  options: { binding: env.AI },
 });
 
 const { response, sources } = streamDocsAnswer({

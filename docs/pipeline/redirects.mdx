@@ -71,18 +71,19 @@ const redirects = {
 export default redirects;
 
 // @filename: main.ts
-declare const url: URL;
-
 // ---cut---
 import { resolveRedirect } from "leadtype/redirects";
 import redirects from "./generated/redirects";
 
-const redirect = resolveRedirect(url.pathname, redirects.redirects);
-const response = redirect
-  ? redirect.to
+function serveRedirect(url: URL): Response | null {
+  const redirect = resolveRedirect(url.pathname, redirects.redirects);
+  if (!redirect) {
+    return null; // fall through to normal routing / 404
+  }
+  return redirect.to
     ? Response.redirect(new URL(redirect.to, url.origin), redirect.status)
-    : new Response("Gone", { status: 410 })
-  : undefined;
+    : new Response("Gone", { status: 410 });
+}
 ```
 
 `leadtype/redirects` is edge-safe (no Node built-ins), so the resolver runs in Cloudflare Workers and Vercel Edge routes; the generate-time lockfile helpers live under `leadtype/redirects/node`.
