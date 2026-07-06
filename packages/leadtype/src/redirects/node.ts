@@ -78,8 +78,13 @@ export type UpdateDocsRedirectsConfig = {
   lockfilePath: string;
   /** Generate output root; `docs/redirects.json` is written beneath it. */
   outDir: string;
-  /** Live pages with their emitted `.md` mirror paths (from the readability manifest). */
-  pages: { urlPath: string; markdownUrlPath: string }[];
+  /**
+   * Live pages from the readability manifest. `relativePath` locates the
+   * emitted mirror file (`<outDir>/docs/<relativePath>.md`) — the manifest's
+   * `markdownUrlPath` is the *served* URL, which diverges from the file
+   * location for index routes (`/docs/rest-api.md` vs `rest-api/index.md`).
+   */
+  pages: { urlPath: string; relativePath: string }[];
   /** Paths acknowledged as intentionally deleted → 410 Gone. */
   removed?: string[];
 };
@@ -103,7 +108,8 @@ export async function updateDocsRedirects(
     config.pages.map(async (page) => {
       const mirrorPath = path.join(
         config.outDir,
-        ...page.markdownUrlPath.replace(/^\//, "").split("/")
+        "docs",
+        ...`${page.relativePath}.md`.split("/")
       );
       const markdown = await readFile(mirrorPath, "utf8");
       const { data } = parseFrontmatter(markdown);

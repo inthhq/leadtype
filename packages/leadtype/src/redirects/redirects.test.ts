@@ -235,9 +235,7 @@ describe("updateDocsRedirects", () => {
     const first = await updateDocsRedirects({
       lockfilePath,
       outDir,
-      pages: [
-        { urlPath: "/docs/guides/x", markdownUrlPath: "/docs/guides/x.md" },
-      ],
+      pages: [{ urlPath: "/docs/guides/x", relativePath: "guides/x" }],
     });
     expect(first.redirects).toEqual([]);
     expect(await readPathsLockfile(lockfilePath)).toBeDefined();
@@ -252,9 +250,7 @@ describe("updateDocsRedirects", () => {
     const second = await updateDocsRedirects({
       lockfilePath,
       outDir,
-      pages: [
-        { urlPath: "/docs/concepts/x", markdownUrlPath: "/docs/concepts/x.md" },
-      ],
+      pages: [{ urlPath: "/docs/concepts/x", relativePath: "concepts/x" }],
     });
     expect(second.moved).toEqual([
       { from: "/docs/guides/x", to: "/docs/concepts/x" },
@@ -271,6 +267,29 @@ describe("updateDocsRedirects", () => {
     ]);
   });
 
+  it("reads index-route mirrors by relativePath, not the served URL", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    // Served at /docs/rest-api (and /docs/rest-api.md), but the emitted file
+    // lives at docs/rest-api/index.md — the divergence that broke reading
+    // mirrors via markdownUrlPath.
+    await seedMirror(
+      outDir,
+      "rest-api/index.md",
+      "---\ntitle: REST API\n---\n# REST API\n"
+    );
+
+    const result = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      pages: [{ urlPath: "/docs/rest-api", relativePath: "rest-api/index" }],
+    });
+
+    expect(result.lockfile.pages).toHaveLength(1);
+    expect(result.lockfile.pages[0]?.path).toBe("/docs/rest-api");
+  });
+
   it("fails loudly when a page disappears without a successor", async () => {
     const dir = await createTempDir();
     const outDir = path.join(dir, "public");
@@ -279,7 +298,7 @@ describe("updateDocsRedirects", () => {
     await updateDocsRedirects({
       lockfilePath,
       outDir,
-      pages: [{ urlPath: "/docs/a", markdownUrlPath: "/docs/a.md" }],
+      pages: [{ urlPath: "/docs/a", relativePath: "a" }],
     });
 
     await rm(path.join(outDir, "docs", "a.md"));
@@ -288,7 +307,7 @@ describe("updateDocsRedirects", () => {
       updateDocsRedirects({
         lockfilePath,
         outDir,
-        pages: [{ urlPath: "/docs/b", markdownUrlPath: "/docs/b.md" }],
+        pages: [{ urlPath: "/docs/b", relativePath: "b" }],
       })
     ).rejects.toThrow("disappeared without a redirect");
   });
@@ -301,7 +320,7 @@ describe("updateDocsRedirects", () => {
     await updateDocsRedirects({
       lockfilePath,
       outDir,
-      pages: [{ urlPath: "/docs/old", markdownUrlPath: "/docs/old.md" }],
+      pages: [{ urlPath: "/docs/old", relativePath: "old" }],
     });
 
     await rm(path.join(outDir, "docs", "old.md"));
@@ -313,7 +332,7 @@ describe("updateDocsRedirects", () => {
     const result = await updateDocsRedirects({
       lockfilePath,
       outDir,
-      pages: [{ urlPath: "/docs/new", markdownUrlPath: "/docs/new.md" }],
+      pages: [{ urlPath: "/docs/new", relativePath: "new" }],
     });
     expect(result.redirects).toEqual([
       { from: "/docs/old", to: "/docs/new", status: REDIRECT_STATUS_MOVED },

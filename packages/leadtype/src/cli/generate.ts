@@ -2667,6 +2667,11 @@ export async function runGenerateCommand(
     );
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
+    // A filtered run's page set is partial by design: diffing it against the
+    // lockfile would flag every excluded page as disappeared, and pruning
+    // would delete their outputs. Redirect tracking only runs on full builds.
+    const redirectsEnabled =
+      metadata.redirects !== undefined && !hasExplicitPathFilters;
     sourceMirror = await createSourceMirror(
       srcDir,
       docsSources,
@@ -2692,6 +2697,21 @@ export async function runGenerateCommand(
         },
         json: {
           event: "generate.openapi_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
+    // Emitted after source-mirror creation (like the OpenAPI skip above) so a
+    // run that fails on empty filter matches doesn't log a skip for a step it
+    // never reached.
+    if (metadata.redirects !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "Redirect tracking is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.redirects_skipped",
           fields: { exclude: args.exclude, include: args.include },
         },
       });
@@ -2750,7 +2770,7 @@ export async function runGenerateCommand(
       // never "disappears" and rename detection can't fire. The pipeline's
       // own generated sitemaps (docs-scoped and per-locale) are written into
       // this outDir after conversion, so keep them out of the sweep.
-      ...(metadata.redirects
+      ...(redirectsEnabled
         ? { prune: true, pruneKeep: ["**/sitemap.md"] }
         : {}),
       markdownTransforms: createGenerateMarkdownTransforms({
@@ -3056,7 +3076,7 @@ export async function runGenerateCommand(
       // this run's pages against the committed lockfile, auto-redirect pure
       // moves, and fail loudly on unexplained disappearances.
       let redirectsUpdate: UpdateDocsRedirectsResult | undefined;
-      if (metadata.redirects) {
+      if (redirectsEnabled && metadata.redirects) {
         redirectsUpdate = await updateDocsRedirects({
           lockfilePath: path.resolve(
             docsDir,
@@ -3065,7 +3085,7 @@ export async function runGenerateCommand(
           outDir,
           pages: agentReadability.manifest.pages.map((page) => ({
             urlPath: page.urlPath,
-            markdownUrlPath: page.markdownUrlPath,
+            relativePath: page.relativePath,
           })),
           removed: metadata.redirects.removed,
         });

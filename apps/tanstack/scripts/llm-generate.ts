@@ -21,6 +21,7 @@ import {
   resolveDocsNavigation,
 } from "leadtype/llm";
 import { stageOpenApiDocs } from "leadtype/openapi";
+import { updateDocsRedirects } from "leadtype/redirects/node";
 import docsConfig from "../../../docs/docs.config";
 
 const scriptsRoot = dirname(fileURLToPath(import.meta.url));
@@ -149,6 +150,26 @@ try {
 
   await copyMountedMarkdownMirrors();
 
+  // Redirect tracking (dogfooding leadtype's own feature): diff this run's
+  // pages against the committed lockfile in /docs, auto-redirect pure moves,
+  // and fail the build when a page disappears without a successor. The
+  // redirect map is also written into `src/generated` so the docs routes can
+  // consult it before throwing notFound().
+  const redirectsUpdate = await updateDocsRedirects({
+    lockfilePath: join(repoRoot, "docs", "paths.lock.json"),
+    outDir,
+    pages: agentReadability.manifest.pages.map((page) => ({
+      urlPath: page.urlPath,
+      relativePath: page.relativePath,
+    })),
+    removed: docsConfig.redirects?.removed,
+  });
+  for (const move of redirectsUpdate.moved) {
+    process.stdout.write(
+      `redirect: ${move.from} -> ${move.to} (rename detected)\n`
+    );
+  }
+
   await generateFeedArtifacts({
     outDir,
     baseUrl,
@@ -184,6 +205,14 @@ try {
   await writeFile(
     join(generatedDir, "agent-readability.json"),
     `${JSON.stringify(agentReadability.manifest, null, 2)}\n`
+  );
+  await writeFile(
+    join(generatedDir, "redirects.json"),
+    `${JSON.stringify(
+      { version: 1, redirects: redirectsUpdate.redirects },
+      null,
+      2
+    )}\n`
   );
 
   // Static copies would be served by Vite/nitro before the middleware runs,

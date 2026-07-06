@@ -50,6 +50,8 @@ Redirects accumulate in the lockfile across generates: when `/docs/a` moved to `
 
 Ambiguity is never guessed: if two pages with identical content disappear and reappear, the build fails and asks for explicit `redirectFrom` instead of picking one.
 
+Filtered generates (`--include` / `--exclude`) skip redirect tracking and pruning entirely — a partial page set would make every excluded page look deleted. Only full builds touch the lockfile.
+
 ## Serve the redirects
 
 The generate step emits data; serving is one helper call. For HTML routes, consult the map in your catch-all before rendering a 404:

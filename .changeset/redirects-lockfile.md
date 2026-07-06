@@ -33,4 +33,7 @@ sources) recording every published path with a content hash, and emits
 - Enabling `redirects` also enables conversion pruning, since rename
   detection requires stale mirrors of renamed sources to be
   garbage-collected from the output set.
+- Filtered generates (`--include` / `--exclude`) skip redirect tracking and
+  pruning with a warning — a partial page set would make every excluded page
+  look deleted.
 - `redirectFrom` is now part of the default frontmatter lint schema.
