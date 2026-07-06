@@ -17,6 +17,7 @@
  *     type: YourFrameworkChildType;
  *   }
  * }
+ * export {}; // marks the file as a module so this augments, not replaces
  * ```
  *
  * Every tag type is part of the 1.0 contract — bumping the prop shape is a
@@ -50,6 +51,7 @@ import type {
  *     type: YourFrameworkChildType; // e.g. React's ReactNode
  *   }
  * }
+ * export {}; // marks the file as a module so this augments, not replaces
  * ```
  */
 // biome-ignore lint/suspicious/noEmptyInterface: augmentation hook by design

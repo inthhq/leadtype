@@ -15,6 +15,7 @@ declare module "leadtype/mdx" {
     type: import("react").ReactNode;
   }
 }
+export {}; // module marker: augments the package instead of replacing it
 ```
 
 After that single declaration, every tag prop type (`CalloutProps`,

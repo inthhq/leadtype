@@ -56,6 +56,9 @@ declare module "leadtype/mdx" {
     type: import("react").ReactNode; // or your framework's child type
   }
 }
+// The export marker makes this file a module, so the declaration *augments*
+// the package instead of replacing its types.
+export {};
 ```
 
 The same shape works in React, Vue, Svelte, Solid, Astro, Qwik, or anything else with an MDX compiler that accepts remark plugins.
