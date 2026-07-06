@@ -12,6 +12,7 @@ import { remarkResolveDocPlaceholders } from "../remark/plugins/doc-placeholders
 import { remarkInclude as includeMarkdown } from "../remark/plugins/include.remark";
 import { remarkRemoveImports } from "../remark/plugins/remove-imports.remark";
 import { remarkRemoveJsxComments } from "../remark/plugins/remove-jsx-comments.remark";
+import { remarkStripSnippetDirectives } from "../remark/plugins/strip-snippet-directives.remark";
 import { nativeMarkdownComponentsToMarkdown } from "./component-dispatcher";
 import { remarkAccordionToMarkdown } from "./plugins/accordion";
 import { remarkAudienceToMarkdown } from "./plugins/audience";
@@ -37,6 +38,7 @@ tagPhase(includeMarkdown, "resolve");
 tagFlattenerNames(includeMarkdown, ["import", "include-c15t", "include"]);
 tagPhase(remarkRemoveImports, "resolve");
 tagPhase(remarkRemoveJsxComments, "resolve");
+tagPhase(remarkStripSnippetDirectives, "resolve");
 tagPhase(remarkResolveDocPlaceholders, "resolve");
 tagFlattenerNames(remarkAudienceToMarkdown, ["Audience"]);
 tagFlattenerNames(remarkSectionToMarkdown, ["Section", "section"]);
@@ -69,6 +71,7 @@ tagFlattenerNames(openApiToMarkdown, [
 const resolvePlugins = [
   remarkRemoveImports,
   remarkRemoveJsxComments,
+  remarkStripSnippetDirectives,
   remarkResolveDocPlaceholders,
 ];
 

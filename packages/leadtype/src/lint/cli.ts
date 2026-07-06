@@ -360,6 +360,9 @@ export async function runLintCommand(
       rules,
       redirects,
       ...(routeSet ? { routeSet } : {}),
+      ...(loaded && lintConfig?.snippets?.typecheck
+        ? { snippetTypecheck: { projectRoot: dirname(loaded.path) } }
+        : {}),
     });
 
     // Config-owned links (navigation, llms sections, feeds, redirects) are

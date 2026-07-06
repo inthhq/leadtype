@@ -517,6 +517,16 @@ export type DocsLintConfig = {
    * its severity.
    */
   rules?: Record<string, "off" | "warn" | "error">;
+  /** Code snippet checking options. */
+  snippets?: {
+    /**
+     * Typecheck module-shaped `ts`/`tsx` snippets against this project's
+     * `tsconfig.json` and installed packages, so API drift in doc examples
+     * fails lint. Fragments opt in with `// @check`; anything opts out with
+     * `// @noErrors`.
+     */
+    typecheck?: boolean;
+  };
 };
 
 export type DocsRedirectsConfig = {

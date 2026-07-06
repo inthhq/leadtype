@@ -30,6 +30,7 @@ import {
   includeMarkdown,
 } from "../markdown";
 import type { DocsRedirect } from "../redirects/redirects";
+import { remarkStripSnippetDirectives } from "../remark/plugins/strip-snippet-directives.remark";
 import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
@@ -37,6 +38,11 @@ import {
   defaultMetaSchema,
 } from "./schema";
 import { collectFenceValues, collectSnippetIssues } from "./snippet-lint";
+import {
+  collectTypecheckSnippets,
+  type TypecheckSnippet,
+  typecheckSnippets,
+} from "./snippet-typecheck";
 
 export type LintSeverity = "error" | "warn";
 
@@ -53,6 +59,7 @@ export type LintRule =
   | "config-link"
   | "invalid-anchor"
   | "snippet:parse"
+  | "snippet:types"
   | "geo:heading-skip"
   | "geo:code-language"
   | "geo:image-alt";
@@ -131,6 +138,13 @@ export type LintOptions = {
    * missing-route message.
    */
   redirects?: DocsRedirect[];
+  /**
+   * Opt-in snippet typechecking (`snippet:types`): module-shaped `ts`/`tsx`
+   * snippets typecheck against `projectRoot`'s `tsconfig.json` and
+   * `node_modules`, so API drift in doc examples fails lint. Enabled via
+   * `lint.snippets.typecheck` in the docs config.
+   */
+  snippetTypecheck?: { projectRoot: string };
   /** Custom schemas override the defaults */
   schemas?: {
     frontmatter?: v.ObjectSchema<
@@ -773,6 +787,7 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
   };
   const pendingLinkChecks: PendingLinkCheck[] = [];
   const anchorsByRoute = new Map<string, ReadonlySet<string>>();
+  const typecheckQueue: TypecheckSnippet[] = [];
   const assumeValidLinkPrefixes = (options.assumeValidLinkPrefixes ?? []).map(
     (prefix) => normalizeInternalPrefix(prefix)
   );
@@ -873,6 +888,12 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
       });
     }
 
+    if (options.snippetTypecheck) {
+      typecheckQueue.push(
+        ...collectTypecheckSnippets(bodyTree, relativeFile, bodyLineOffset)
+      );
+    }
+
     // Parse-level snippet checks (error): a fenced block with a known
     // language must parse. `// @noErrors` marks deliberate fragments.
     for (const issue of collectSnippetIssues(bodyTree)) {
@@ -887,9 +908,14 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     }
 
     try {
+      // Lint renders WITHOUT directive stripping: `// @noErrors` and friends
+      // are exactly what the snippet checks need to see, and stripping would
+      // desync the rendered fences from their source values.
       const converted = await convertMdxToMarkdown(file, [
         includeMarkdown,
-        ...defaultMarkdownTransforms,
+        ...defaultMarkdownTransforms.filter(
+          (transform) => transform !== remarkStripSnippetDirectives
+        ),
       ]);
       const rendered = parseFrontmatter(converted.markdown);
       // Snippets contributed by <include> targets only exist post-expansion
@@ -997,6 +1023,21 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
         unknownFieldSeverity
       )
     );
+  }
+
+  if (options.snippetTypecheck && typecheckQueue.length > 0) {
+    for (const issue of typecheckSnippets({
+      snippets: typecheckQueue,
+      projectRoot: options.snippetTypecheck.projectRoot,
+    })) {
+      violations.push({
+        file: issue.file,
+        kind: "content",
+        severity: "error",
+        rule: issue.rule,
+        message: `${issue.message}${issue.line ? ` (line ${issue.line})` : ""}`,
+      });
+    }
   }
 
   const effective = applyRuleOverrides(violations, options.rules);

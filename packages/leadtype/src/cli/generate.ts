@@ -1348,6 +1348,23 @@ function validateLintConfig(
     }
     rules = value.rules as Record<string, "off" | "warn" | "error">;
   }
+  let snippets: { typecheck?: boolean } | undefined;
+  if (value.snippets !== undefined) {
+    if (!isPlainRecord(value.snippets)) {
+      throw new Error(
+        `docs config at "${configPath}": lint.snippets must be an object`
+      );
+    }
+    if (
+      value.snippets.typecheck !== undefined &&
+      typeof value.snippets.typecheck !== "boolean"
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": lint.snippets.typecheck must be a boolean`
+      );
+    }
+    snippets = value.snippets as { typecheck?: boolean };
+  }
   return {
     ...(value.ignore === undefined ? {} : { ignore: value.ignore }),
     ...(value.unknownFieldSeverity === undefined
@@ -1356,6 +1373,7 @@ function validateLintConfig(
           unknownFieldSeverity: value.unknownFieldSeverity as "warn" | "error",
         }),
     ...(rules ? { rules } : {}),
+    ...(snippets ? { snippets } : {}),
   };
 }
 
