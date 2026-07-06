@@ -17,6 +17,7 @@ import { generateAgentArtifacts } from "leadtype/llm";
 await generateAgentArtifacts({
   outDir: "public",
   baseUrl: "https://cookiebench.com",
+  generatedAt: "2026-06-15T10:30:00.000Z",
   product: {
     name: "CookieBench",
     tagline: "Benchmarks for consent banner performance.",
@@ -50,6 +51,7 @@ Each page needs a `urlPath` and markdown `content`. Everything else falls back:
 - `title` — explicit value, then frontmatter `title:` inside `content`, then the URL slug.
 - `description` — explicit value, then frontmatter `description:`.
 - `lastModified` — explicit `string | Date`, then frontmatter `last_updated:` / `lastModified:`, then the generation time. Pass real content dates when you have them; agents use `last_updated` to judge staleness, and `sitemap.xml` reuses it for `lastmod`.
+- `generatedAt` — optional `string | Date` on the generator config. Pass it for deterministic builds; it fixes `manifest.generatedAt` and the `lastModified` fallback for pages without their own content date.
 - `groups` / `order` — match the `groups` config exactly like frontmatter `group:` and `order:` in the docs pipeline. Ungrouped pages render under `## Other` (or `## Pages` when no groups are configured).
 
 Frontmatter already present in `content` is parsed and stripped — explicit fields win, and the mirror is written with a single normalized frontmatter block.

@@ -1034,6 +1034,88 @@ describe("generateAgentReadabilityArtifacts", () => {
     );
   });
 
+  it("uses Date generatedAt for deterministic docs-scoped manifests", async () => {
+    const firstProjectDir = await createTempProject();
+    const secondProjectDir = await createTempProject();
+    const generatedAt = new Date("2026-06-15T10:30:00.000Z");
+    const docs = [
+      {
+        relativePath: "quickstart.md",
+        frontmatter:
+          "title: Quickstart\ndescription: Install.\nlastModified: 2026-05-01T12:00:00.000Z",
+        body: "# Quickstart\n",
+      },
+    ];
+    await seedDocs(firstProjectDir, docs);
+    await seedDocs(secondProjectDir, docs);
+
+    const first = await generateAgentReadabilityArtifacts({
+      outDir: firstProjectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      generatedAt,
+    });
+    const second = await generateAgentReadabilityArtifacts({
+      outDir: secondProjectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      generatedAt,
+    });
+
+    const firstManifest = await readFile(first.files.manifest, "utf8");
+    const secondManifest = await readFile(second.files.manifest, "utf8");
+    expect(firstManifest).toBe(secondManifest);
+    expect(first.manifest.generatedAt).toBe("2026-06-15T10:30:00.000Z");
+  });
+
+  it("pins the lastModified fallback for pages without frontmatter dates", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      generatedAt: "2026-06-15T10:30:00.000Z",
+    });
+
+    expect(result.manifest.pages[0]?.lastModified).toBe(
+      "2026-06-15T10:30:00.000Z"
+    );
+    if (!result.files.sitemapXml) {
+      throw new Error("Expected sitemap.xml to be emitted.");
+    }
+    expect(await readFile(result.files.sitemapXml, "utf8")).toContain(
+      "<lastmod>2026-06-15T10:30:00.000Z</lastmod>"
+    );
+  });
+
+  it("rejects invalid generatedAt strings", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    await expect(
+      generateAgentReadabilityArtifacts({
+        outDir: projectDir,
+        baseUrl: "https://leadtype.dev",
+        product: { name: "Leadtype", summary: "Docs pipeline." },
+        generatedAt: "not-a-date",
+      })
+    ).rejects.toThrow("generatedAt must be a valid Date or date string");
+  });
+
   it("sorts manifest pages in nav order with non-nav pages appended by urlPath", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
@@ -1856,6 +1938,46 @@ lastModified: 2026-05-01T12:00:00.000Z
         lastUpdated: "2026-05-02T00:00:00.000Z",
       })
     ).toContain('last_updated: "2026-05-02T00:00:00.000Z"');
+  });
+
+  const manifestWithoutPageLastModified = () =>
+    ({
+      ...manifest,
+      pages: [
+        {
+          ...manifest.pages[0],
+          lastModified: undefined,
+        },
+      ],
+    }) as unknown as typeof manifest;
+
+  it("uses now when enriching markdown without page freshness metadata", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { accept: "text/markdown" },
+      manifest: manifestWithoutPageLastModified(),
+      now: new Date("2026-05-03T00:00:00.000Z"),
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+
+    expect(await response?.text()).toContain(
+      'last_updated: "2026-05-03T00:00:00.000Z"'
+    );
+  });
+
+  it("prefers a mirror's authored frontmatter date over now", async () => {
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { accept: "text/markdown" },
+      manifest: manifestWithoutPageLastModified(),
+      now: new Date("2026-05-03T00:00:00.000Z"),
+      readMarkdownFile: () =>
+        "---\ntitle: Quickstart\nlastModified: 2026-04-01T00:00:00.000Z\n---\n# Quickstart\n",
+    });
+
+    expect(await response?.text()).toContain(
+      'last_updated: "2026-04-01T00:00:00.000Z"'
+    );
   });
 
   it("supports async readMarkdownFile for edge runtimes", async () => {

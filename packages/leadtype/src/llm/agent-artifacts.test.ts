@@ -2,7 +2,11 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { type AgentPageInput, generateAgentArtifacts } from "./llm";
+import {
+  type AgentPageInput,
+  type GenerateAgentArtifactsResult,
+  generateAgentArtifacts,
+} from "./llm";
 import { normalizeAgentReadabilityManifest } from "./readability";
 
 const tempDirs: string[] = [];
@@ -59,6 +63,33 @@ function baseConfig(outDir: string) {
     pages: PAGES,
     groups: [{ slug: "benchmarks", title: "Benchmarks" }],
   };
+}
+
+async function readGeneratedContents(
+  outDir: string,
+  result: GenerateAgentArtifactsResult
+): Promise<Record<string, string>> {
+  const filePaths = [
+    result.files.llmsTxt,
+    result.files.wellKnownLlmsTxt,
+    result.files.manifest,
+    ...result.files.markdown,
+    result.files.apiCatalog,
+    result.files.robotsTxt,
+    result.files.sitemapMd,
+    result.files.sitemapXml,
+  ].filter((filePath): filePath is string => Boolean(filePath));
+  const entries = await Promise.all(
+    filePaths.map(
+      async (filePath): Promise<readonly [string, string]> => [
+        path.relative(outDir, filePath),
+        await readFile(filePath, "utf-8"),
+      ]
+    )
+  );
+  return Object.fromEntries(
+    entries.sort(([left], [right]) => left.localeCompare(right))
+  );
 }
 
 describe("generateAgentArtifacts", () => {
@@ -177,6 +208,32 @@ describe("generateAgentArtifacts", () => {
     expect(robots).toContain("ai-train=no");
   });
 
+  it("uses string generatedAt for deterministic artifacts and timestamp fallbacks", async () => {
+    const firstOutDir = await createTempOutDir();
+    const secondOutDir = await createTempOutDir();
+    const generatedAt = "2026-06-15T10:30:00.000Z";
+
+    const first = await generateAgentArtifacts({
+      ...baseConfig(firstOutDir),
+      generatedAt,
+    });
+    const second = await generateAgentArtifacts({
+      ...baseConfig(secondOutDir),
+      generatedAt,
+    });
+
+    expect(await readGeneratedContents(firstOutDir, first)).toEqual(
+      await readGeneratedContents(secondOutDir, second)
+    );
+    expect(first.manifest.generatedAt).toBe(generatedAt);
+    expect(
+      first.manifest.pages.find((page) => page.urlPath === "/")?.lastModified
+    ).toBe(generatedAt);
+    expect(
+      await readFile(path.join(firstOutDir, "index.md"), "utf-8")
+    ).toContain('last_updated: "2026-06-15T10:30:00.000Z"');
+  });
+
   it("falls back to frontmatter fields when explicit ones are omitted", async () => {
     const outDir = await createTempOutDir();
     const result = await generateAgentArtifacts({
@@ -261,6 +318,17 @@ Body text.`,
     await expect(
       generateAgentArtifacts({ ...baseConfig(outDir), pages: [] })
     ).rejects.toThrow("config.pages is empty");
+  });
+
+  it("rejects invalid generatedAt strings", async () => {
+    const outDir = await createTempOutDir();
+
+    await expect(
+      generateAgentArtifacts({
+        ...baseConfig(outDir),
+        generatedAt: "not-a-date",
+      })
+    ).rejects.toThrow("generatedAt must be a valid Date or date string");
   });
 
   it("rejects traversal segments so mirrors cannot escape outDir", async () => {
