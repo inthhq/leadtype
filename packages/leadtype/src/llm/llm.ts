@@ -2549,6 +2549,11 @@ export async function generateAgentReadabilityArtifacts(
     i18n && locale && locale !== i18n.defaultLocale
       ? path.join(outDir, DOCS_DIRNAME, locale)
       : path.join(outDir, DOCS_DIRNAME);
+  // Deliberately asymmetric with generateAgentArtifacts: here the default
+  // per-page date fallback is the mirror's file mtime, so generatedAt only
+  // replaces it when the caller explicitly pins a timestamp.
+  // generateAgentArtifacts has no file mtimes (in-memory pages) and always
+  // uses the resolved timestamp — don't "normalize" the two.
   const markdownDocs = await readMarkdownDocs(outDir, baseUrl, config.mounts, {
     i18n: config.i18n,
     locale,

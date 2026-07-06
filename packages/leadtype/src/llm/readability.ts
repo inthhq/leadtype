@@ -243,6 +243,13 @@ const DEFAULT_LLMS_TXT_PATH = "/llms.txt";
 export type EnrichMarkdownFrontmatterConfig = {
   canonicalUrl: string;
   lastUpdated?: string | Date;
+  /**
+   * Final `last_updated` fallback when neither `lastUpdated` nor the
+   * markdown's own frontmatter carries a date. Unlike `lastUpdated`, this
+   * never overrides an authored frontmatter date. Defaults to the current
+   * time.
+   */
+  now?: Date;
 };
 
 export type RenderMissingMarkdownConfig = {
@@ -845,7 +852,7 @@ export function enrichMarkdownFrontmatter(
         "lastUpdated",
         "last_modified",
       ]) ??
-      new Date().toISOString();
+      (config.now ?? new Date()).toISOString();
     aliases.push(`last_updated: ${toYamlScalar(lastUpdated)}`);
   }
 
@@ -1336,7 +1343,11 @@ export async function createAgentMarkdownResponse(
     const body = markdown
       ? enrichMarkdownFrontmatter(markdown, {
           canonicalUrl,
-          lastUpdated: page?.lastModified ?? config.now,
+          // `now` stays a last-resort fallback inside the enricher so a
+          // mirror's own authored frontmatter date always wins over the
+          // request/generation time.
+          lastUpdated: page?.lastModified,
+          ...(config.now ? { now: config.now } : {}),
         })
       : renderMissingMarkdown({
           urlPath: target.urlPath,

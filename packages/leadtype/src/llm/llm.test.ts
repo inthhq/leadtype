@@ -1964,6 +1964,31 @@ lastModified: 2026-05-01T12:00:00.000Z
     );
   });
 
+  it("prefers a mirror's authored frontmatter date over now", async () => {
+    const manifestWithoutLastModified = {
+      ...manifest,
+      pages: [
+        {
+          ...manifest.pages[0],
+          lastModified: undefined,
+        },
+      ],
+    } as unknown as typeof manifest;
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart",
+      headers: { accept: "text/markdown" },
+      manifest: manifestWithoutLastModified,
+      now: new Date("2026-05-03T00:00:00.000Z"),
+      readMarkdownFile: () =>
+        "---\ntitle: Quickstart\nlastModified: 2026-04-01T00:00:00.000Z\n---\n# Quickstart\n",
+    });
+
+    expect(await response?.text()).toContain(
+      'last_updated: "2026-04-01T00:00:00.000Z"'
+    );
+  });
+
   it("supports async readMarkdownFile for edge runtimes", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
