@@ -436,6 +436,14 @@ function collectAnchors(content: string, urlPath: string): ReadonlySet<string> {
 }
 
 /**
+ * A trailing extension that marks a relative link as a non-doc asset
+ * (`./api.pdf`, `./schema.json`) rather than a page. `.md`/`.mdx` stay doc
+ * candidates, and a dotted page name like `./v0.4` doesn't count as an
+ * extension (extensions start with a letter).
+ */
+const NON_DOC_EXTENSION_PATTERN = /\.(?!mdx?$)[a-z][a-z0-9]*$/i;
+
+/**
  * Resolve a `./x` / `../x` link against its source file's directory into a
  * docs-relative path (extension stripped). Returns null when the link climbs
  * out of the docs tree.
@@ -528,6 +536,11 @@ function validateDocUrls(options: ValidateDocUrlsOptions): LintViolation[] {
     } else if (isInternalDocsUrl(pathPart, internalPrefixes)) {
       targetRoute = normalizeDocsUrl(pathPart);
     } else if (pathPart.startsWith("./") || pathPart.startsWith("../")) {
+      // Relative links to non-doc assets aren't routes — skip them like
+      // external links.
+      if (NON_DOC_EXTENSION_PATTERN.test(pathPart)) {
+        continue;
+      }
       const resolved = resolveRelativeDocPath(sourceRelPath, pathPart);
       if (resolved === null) {
         pushViolation(

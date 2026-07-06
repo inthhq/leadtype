@@ -817,6 +817,26 @@ describe("lintDocs relative links and anchors", () => {
     ]);
   });
 
+  it("skips relative links to non-doc assets", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[spec](./api.pdf) and [page](./v0.4)\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "v0.4.mdx"),
+      "---\ntitle: V0.4\n---\nBody\n"
+    );
+
+    const result = await lintDocs({ srcDir: path.join(projectDir, "docs") });
+
+    // ./api.pdf is an asset, not a route; ./v0.4 is a real dotted page name
+    // and validates cleanly.
+    expect(result.violations).toEqual([]);
+  });
+
   it("flags relative links that climb out of the docs tree", async () => {
     const projectDir = await createTempProject();
     await writeProjectFile(
