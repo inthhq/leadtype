@@ -1,14 +1,13 @@
 import JSON5 from "json5";
 import type { Code, ListItem, Root, RootContent } from "mdast";
 import type { Transformer } from "unified";
+import { flattenApiSchemaRows } from "../../mdx/openapi-schema-rows";
 import type {
   OpenApiCodeSample,
   OpenApiMediaType,
   OpenApiParameter,
   OpenApiRequestBody,
   OpenApiResponse,
-  OpenApiSchemaProperty,
-  OpenApiSchemaSummary,
   OpenApiSecurityRequirement,
   OpenApiSecurityScheme,
 } from "../../openapi";
@@ -24,8 +23,6 @@ import {
   getAttributeValue,
   type MdxNode,
 } from "../libs";
-
-const MAX_SCHEMA_DEPTH = 6;
 
 function createCodeBlock(value: string, lang: string): Code {
   return { type: "code", lang, value };
@@ -57,50 +54,6 @@ function schemaLabel(
     : (schema.type ?? "");
 }
 
-type SchemaRow = (string | ReturnType<typeof createInlineCode>[])[];
-
-function appendSchemaRows(
-  rows: SchemaRow[],
-  properties: OpenApiSchemaProperty[],
-  prefix: string,
-  depth: number
-): void {
-  if (depth > MAX_SCHEMA_DEPTH) {
-    return;
-  }
-  for (const property of properties) {
-    const name = `${prefix}${property.name}`;
-    rows.push([
-      [createInlineCode(name)],
-      schemaLabel(property),
-      requiredLabel(property.required),
-      property.description ?? "",
-    ]);
-    if (property.properties) {
-      appendSchemaRows(rows, property.properties, `${name}.`, depth + 1);
-    }
-    if (property.items?.properties) {
-      appendSchemaRows(
-        rows,
-        property.items.properties,
-        `${name}[].`,
-        depth + 1
-      );
-    }
-  }
-}
-
-function schemaRows(schema: OpenApiSchemaSummary | undefined): SchemaRow[] {
-  const rows: SchemaRow[] = [];
-  if (schema?.properties) {
-    appendSchemaRows(rows, schema.properties, "", 0);
-  } else if (schema?.items?.properties) {
-    // Root-level arrays: render item fields with an `[]` prefix.
-    appendSchemaRows(rows, schema.items.properties, "[].", 0);
-  }
-  return rows;
-}
-
 function renderParameterTable(parameters: OpenApiParameter[]): RootContent[] {
   if (parameters.length === 0) {
     return [createParagraph("No parameters.")];
@@ -128,7 +81,12 @@ function renderMediaType(media: OpenApiMediaType): RootContent[] {
   const nodes: RootContent[] = [
     createParagraph(`Content type: ${media.mediaType}`),
   ];
-  const rows = schemaRows(media.schema);
+  const rows = flattenApiSchemaRows(media.schema).map((row) => [
+    [createInlineCode(row.name)],
+    row.type,
+    requiredLabel(row.required),
+    row.description ?? "",
+  ]);
   if (rows.length > 0) {
     nodes.push(
       createTable(["Property", "Type", "Required", "Description"], rows)

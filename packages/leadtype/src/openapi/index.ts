@@ -14,6 +14,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import YAML from "yaml";
 import { normalizeDocsPath, stripDocsExtension } from "../internal/docs-url";
+import { stringifyFrontmatter } from "../internal/frontmatter";
 import type { DocsNavNode } from "../llm";
 
 const HTTP_METHODS = [
@@ -443,7 +444,14 @@ async function readInput(input: string, cwd: string): Promise<LoadedDocument> {
 
   const filePath = path.isAbsolute(input) ? input : path.resolve(cwd, input);
   if (!existsSync(filePath)) {
-    throw new Error(`OpenAPI: spec not found at "${filePath}"`);
+    throw new Error(
+      [
+        `OpenAPI: spec not found at "${filePath}".`,
+        `Resolved input "${input}" from base directory "${cwd}".`,
+        "Relative inputs resolve from the docs contentDir here; pass openapiCwd (createDocsSource/fumadocsSource) or cwd (stageOpenApiDocs) if your config lives elsewhere.",
+        "Note: leadtype generate resolves relative OpenAPI inputs from the config file directory.",
+      ].join(" ")
+    );
   }
   const raw = await readFile(filePath, "utf8");
   const parsed = YAML.parse(raw) as unknown;
@@ -1076,7 +1084,18 @@ function requiredQueryString(operation: OpenApiOperation): string {
 function codeSampleUrl(operation: OpenApiOperation): string {
   const server =
     operation.serverUrl?.replace(TRAILING_SLASHES_PATTERN, "") ?? "";
-  return `${server}${operation.path}${requiredQueryString(operation)}`;
+  let samplePath = operation.path;
+  for (const parameter of operation.parameters) {
+    if (parameter.in !== "path") {
+      continue;
+    }
+    const sample = sampleParameterValue(parameter);
+    if (sample === `<${parameter.name}>`) {
+      continue;
+    }
+    samplePath = samplePath.replaceAll(`{${parameter.name}}`, sample);
+  }
+  return `${server}${samplePath}${requiredQueryString(operation)}`;
 }
 
 function authorizationHeader(scheme: OpenApiSecurityScheme): string[] | null {
@@ -1216,8 +1235,7 @@ function normalizeOperation(
   const { method, operation, path: apiPath, pathParameters } = candidate;
   const title = resolveOperationTitle(operation, method, apiPath);
   const description = resolveOperationDescription(operation, title);
-  const parameters: OpenApiParameter[] = [];
-  const seenParameters = new Set<string>();
+  const parametersByKey = new Map<string, OpenApiParameter>();
   const allParameters = [
     ...pathParameters,
     ...(Array.isArray(operation.parameters) ? operation.parameters : []),
@@ -1228,12 +1246,9 @@ function normalizeOperation(
       continue;
     }
     const key = `${normalized.in}:${normalized.name}`;
-    if (seenParameters.has(key)) {
-      continue;
-    }
-    seenParameters.add(key);
-    parameters.push(normalized);
+    parametersByKey.set(key, normalized);
   }
+  const parameters = [...parametersByKey.values()];
 
   const security = normalizeSecurity(operation.security ?? document.security);
   const selectedSchemeNames = new Set(
@@ -1503,10 +1518,6 @@ function mdxProp(name: string, value: unknown): string {
   return `${name}={${serializeMdxExpression(value)}}`;
 }
 
-function yamlString(value: string): string {
-  return JSON.stringify(value);
-}
-
 const MAX_SHORT_DESCRIPTION_LENGTH = 250;
 
 /**
@@ -1542,48 +1553,46 @@ function renderFrontmatter(
   index: number,
   relativePath: string
 ): string {
-  const lines = [
-    "---",
-    `title: ${yamlString(operation.title)}`,
-    `description: ${yamlString(shortDescription(operation))}`,
-  ];
+  const frontmatter: Record<string, unknown> = {
+    title: operation.title,
+    description: shortDescription(operation),
+  };
   if (config.group) {
-    lines.push(`group: ${JSON.stringify(config.group)}`);
+    frontmatter.group = config.group;
   }
   if (config.order !== undefined) {
-    lines.push(`order: ${config.order + index}`);
+    frontmatter.order = config.order + index;
   }
   // Machine-scannable operation metadata: agents can route to the right
   // endpoint from frontmatter alone, without parsing the page body. `source`
   // points at the OpenAPI document this page was generated from.
-  lines.push("type: api-reference");
-  lines.push(`source: ${yamlString(config.input)}`);
-  lines.push(`method: ${yamlString(operation.method)}`);
-  lines.push(`path: ${yamlString(operation.path)}`);
+  frontmatter.type = "api-reference";
+  frontmatter.source = config.input;
+  frontmatter.method = operation.method;
+  frontmatter.path = operation.path;
   if (operation.operationId) {
-    lines.push(`operationId: ${yamlString(operation.operationId)}`);
+    frontmatter.operationId = operation.operationId;
   }
   if (operation.serverUrl) {
-    lines.push(`server: ${yamlString(operation.serverUrl)}`);
+    frontmatter.server = operation.serverUrl;
   }
   if (operation.apiVersion) {
-    lines.push(`apiVersion: ${yamlString(operation.apiVersion)}`);
+    frontmatter.apiVersion = operation.apiVersion;
   }
   if (operation.tags.length > 0) {
-    lines.push(`tags: ${JSON.stringify(operation.tags)}`);
+    frontmatter.tags = operation.tags;
   }
   if (operation.deprecated) {
-    lines.push("deprecated: true");
+    frontmatter.deprecated = true;
   }
   const canonicalUrl = canonicalUrlFor(config, relativePath);
   if (canonicalUrl) {
-    lines.push(`canonicalUrl: ${yamlString(canonicalUrl)}`);
+    frontmatter.canonicalUrl = canonicalUrl;
   }
   if (operation.lastModified) {
-    lines.push(`lastModified: ${yamlString(operation.lastModified)}`);
+    frontmatter.lastModified = operation.lastModified;
   }
-  lines.push("---");
-  return lines.join("\n");
+  return `---\n${stringifyFrontmatter(frontmatter)}\n---`;
 }
 
 function renderMdxComponent(
@@ -1766,18 +1775,25 @@ function renderIndexMdx(
   const canonicalUrl = config.baseUrl
     ? `${config.baseUrl}${overviewUrlPath(config)}`
     : undefined;
-  const lines = [
-    "---",
-    `title: ${yamlString(config.title)}`,
-    `description: ${yamlString(description)}`,
-    ...(config.group ? [`group: ${JSON.stringify(config.group)}`] : []),
-    "type: api-reference",
-    `source: ${yamlString(config.input)}`,
-    ...(version ? [`apiVersion: ${yamlString(version)}`] : []),
-    ...(canonicalUrl ? [`canonicalUrl: ${yamlString(canonicalUrl)}`] : []),
-    ...(lastModified ? [`lastModified: ${yamlString(lastModified)}`] : []),
-    "---",
-  ];
+  const frontmatter: Record<string, unknown> = {
+    title: config.title,
+    description,
+  };
+  if (config.group) {
+    frontmatter.group = config.group;
+  }
+  frontmatter.type = "api-reference";
+  frontmatter.source = config.input;
+  if (version) {
+    frontmatter.apiVersion = version;
+  }
+  if (canonicalUrl) {
+    frontmatter.canonicalUrl = canonicalUrl;
+  }
+  if (lastModified) {
+    frontmatter.lastModified = lastModified;
+  }
+  const lines = [`---\n${stringifyFrontmatter(frontmatter)}\n---`];
   // Docs renderers print the frontmatter description under the title; only
   // repeat the spec's own description when it adds something beyond that.
   if (infoDescription && infoDescription !== description) {

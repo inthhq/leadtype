@@ -111,7 +111,7 @@ describe("OpenAPI page generation", () => {
       "read-access-group.mdx"
     );
     const page = await readFile(pagePath, "utf8");
-    expect(page).toContain('title: "Reads an access group"');
+    expect(page).toContain("title: Reads an access group");
     expect(page).toContain("<ApiEndpoint");
     expect(page).toContain('method="get"');
     expect(page).toContain("<ApiAuth");
@@ -123,12 +123,12 @@ describe("OpenAPI page generation", () => {
     // Machine-scannable operation metadata in frontmatter. `source` points
     // at the spec the page was generated from.
     expect(page).toContain("type: api-reference");
-    expect(page).toContain('source: "openapi.yaml"');
+    expect(page).toContain("source: openapi.yaml");
     expect(page).not.toContain("generated:");
-    expect(page).toContain('method: "get"');
-    expect(page).toContain('path: "/access-groups/{id}"');
-    expect(page).toContain('operationId: "readAccessGroup"');
-    expect(page).toContain('apiVersion: "1.0.0"');
+    expect(page).toContain("method: get");
+    expect(page).toContain("path: /access-groups/{id}");
+    expect(page).toContain("operationId: readAccessGroup");
+    expect(page).toContain("apiVersion: 1.0.0");
     // Related links back to the generated overview.
     expect(page).toContain("## Related");
     expect(page).toContain("(/docs/rest-api)");
@@ -143,7 +143,7 @@ describe("OpenAPI page generation", () => {
       path.join(docsDir, "rest-api", "index.mdx"),
       "utf8"
     );
-    expect(index).toContain('title: "API Reference"');
+    expect(index).toContain("title: API Reference");
     expect(index).toContain("## Access Groups");
     expect(index).toContain(
       "[Reads an access group](/docs/rest-api/access-groups/read-access-group)"
@@ -165,15 +165,13 @@ describe("OpenAPI page generation", () => {
 
     const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
     expect(page).toContain(
-      'canonicalUrl: "https://example.com/docs/rest-api/access-groups/read-access-group"'
+      "canonicalUrl: https://example.com/docs/rest-api/access-groups/read-access-group"
     );
     // Temp fixture is not a git checkout — falls back to the file mtime.
     expect(page).toMatch(/lastModified: "2\d{3}-/);
 
     const index = await readFile(result.indexPages[0]?.filePath ?? "", "utf8");
-    expect(index).toContain(
-      'canonicalUrl: "https://example.com/docs/rest-api"'
-    );
+    expect(index).toContain("canonicalUrl: https://example.com/docs/rest-api");
     expect(index).toMatch(/lastModified: "2\d{3}-/);
   });
 
@@ -521,6 +519,117 @@ paths:
     expect(curl).toContain('"query": "string"');
   });
 
+  it("substitutes path parameter examples in generated code sample URLs", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Samples, version: 1.0.0 }
+servers:
+  - url: https://api.example.com
+paths:
+  /api/docs/pages/{urlPath}:
+    get:
+      operationId: readPage
+      parameters:
+        - name: urlPath
+          in: path
+          required: true
+          example: docs/quickstart
+          schema:
+            type: string
+      responses: { "200": { description: ok } }
+`;
+    const { result } = await generateFixturePages(spec);
+    const samples = result.pages[0]?.operation.codeSamples ?? [];
+    const curl = samples.find((sample) => sample.language === "bash")?.code;
+    const fetch = samples.find((sample) => sample.label === "JavaScript")?.code;
+
+    expect(curl).toContain(
+      'curl -X GET "https://api.example.com/api/docs/pages/docs/quickstart"'
+    );
+    expect(fetch).toContain(
+      'fetch("https://api.example.com/api/docs/pages/docs/quickstart"'
+    );
+  });
+
+  it("keeps path parameter placeholders without a resolvable sample value", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Samples, version: 1.0.0 }
+servers:
+  - url: https://api.example.com
+paths:
+  /api/docs/pages/{urlPath}:
+    get:
+      operationId: readPage
+      parameters:
+        - name: urlPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses: { "200": { description: ok } }
+`;
+    const { result } = await generateFixturePages(spec);
+    const samples = result.pages[0]?.operation.codeSamples ?? [];
+    const curl = samples.find((sample) => sample.language === "bash")?.code;
+    const fetch = samples.find((sample) => sample.label === "JavaScript")?.code;
+
+    expect(curl).toContain(
+      'curl -X GET "https://api.example.com/api/docs/pages/{urlPath}"'
+    );
+    expect(fetch).toContain(
+      'fetch("https://api.example.com/api/docs/pages/{urlPath}"'
+    );
+  });
+
+  it("uses operation-level parameters over path-item parameters in original order", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Parameters, version: 1.0.0 }
+paths:
+  /items:
+    parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Path-level limit.
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        required: false
+        description: Cursor from path item.
+        schema:
+          type: string
+    get:
+      operationId: listItems
+      parameters:
+        - name: limit
+          in: query
+          required: true
+          description: Operation-level limit.
+          schema:
+            type: integer
+      responses: { "200": { description: ok } }
+`;
+    const { result } = await generateFixturePages(spec);
+    const parameters = result.pages[0]?.operation.parameters ?? [];
+    expect(parameters.map((parameter) => parameter.name)).toEqual([
+      "limit",
+      "cursor",
+    ]);
+    expect(parameters[0]).toMatchObject({
+      description: "Operation-level limit.",
+      required: true,
+      schema: { type: "integer" },
+    });
+
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+    expect(page).toContain('"description": "Operation-level limit."');
+    expect(page).toContain('"type": "integer"');
+    expect(page).not.toContain("Path-level limit.");
+  });
+
   it("accepts webhooks-only OpenAPI 3.1 documents", async () => {
     const spec = `
 openapi: 3.1.0
@@ -581,6 +690,24 @@ describe("stageOpenApiDocs", () => {
 
     await staged.cleanup();
     expect(existsSync(staged.contentDir)).toBe(false);
+  });
+
+  it("reports the resolved spec path and cwd hint when a local spec is missing", async () => {
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    const resolvedPath = path.join(docsDir, "missing.yaml");
+
+    await expect(
+      stageOpenApiDocs({
+        contentDir: docsDir,
+        openapi: { input: "./missing.yaml" },
+      })
+    ).rejects.toThrow(
+      new RegExp(
+        `${resolvedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}.*openapiCwd`
+      )
+    );
   });
 });
 

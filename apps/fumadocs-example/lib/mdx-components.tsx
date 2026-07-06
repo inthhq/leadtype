@@ -14,7 +14,6 @@ import type {
   ApiParametersProps,
   ApiRequestBodyProps,
   ApiResponsesProps,
-  ApiSchemaProperty,
   ApiTryItProps,
   AudienceProps,
   CommandTabsProps,
@@ -25,6 +24,7 @@ import type {
   TopicSwitcherProps,
   TypeTableProps,
 } from "leadtype/mdx";
+import { flattenApiSchemaRows } from "leadtype/mdx/openapi";
 import type { ComponentProps, ComponentType, ReactNode } from "react";
 
 /**
@@ -122,50 +122,8 @@ function TypeTable({
   );
 }
 
-const MAX_SCHEMA_DEPTH = 6;
-
-interface FlattenedSchemaRow {
-  description?: string;
-  name: string;
-  required: boolean;
-  type: string;
-}
-
-// Flatten nested object/array-item properties into dotted rows
-// (`results[].title`) so deep schemas stay fully documented.
-function flattenSchemaRows(
-  properties: ApiSchemaProperty[],
-  prefix = "",
-  depth = 0
-): FlattenedSchemaRow[] {
-  if (depth > MAX_SCHEMA_DEPTH) {
-    return [];
-  }
-  const rows: FlattenedSchemaRow[] = [];
-  for (const property of properties) {
-    const name = `${prefix}${property.name}`;
-    rows.push({
-      description: property.description,
-      name,
-      required: property.required === true,
-      type: formatApiSchemaType(property),
-    });
-    if (property.properties) {
-      rows.push(
-        ...flattenSchemaRows(property.properties, `${name}.`, depth + 1)
-      );
-    }
-    if (property.items?.properties) {
-      rows.push(
-        ...flattenSchemaRows(property.items.properties, `${name}[].`, depth + 1)
-      );
-    }
-  }
-  return rows;
-}
-
-function SchemaRows({ properties = [] }: { properties?: ApiSchemaProperty[] }) {
-  const rows = flattenSchemaRows(properties);
+function SchemaRows({ schema }: { schema?: ApiMediaType["schema"] }) {
+  const rows = flattenApiSchemaRows(schema);
   if (rows.length === 0) {
     return null;
   }
@@ -197,13 +155,16 @@ function SchemaRows({ properties = [] }: { properties?: ApiSchemaProperty[] }) {
   );
 }
 
-function formatApiSchemaType(
-  schema?: Pick<ApiSchemaProperty, "format" | "type">
-): string {
+function formatApiSchemaType(schema?: {
+  format?: string;
+  type?: string;
+}): string {
   if (!schema) {
     return "unknown";
   }
-  return schema.format ? `${schema.type} (${schema.format})` : schema.type;
+  return schema.format
+    ? `${schema.type ?? "unknown"} (${schema.format})`
+    : (schema.type ?? "unknown");
 }
 
 function ApiEndpoint({
@@ -359,9 +320,7 @@ function MediaType({ media }: { media: ApiMediaType }) {
       <p className="text-sm">
         Content type <code>{media.mediaType}</code>
       </p>
-      <SchemaRows
-        properties={media.schema?.properties ?? media.schema?.items?.properties}
-      />
+      <SchemaRows schema={media.schema} />
       <MediaTypeExamples media={media} />
       {media.rawSchema === undefined ? null : (
         <details className="my-2 rounded-lg border p-3 text-sm">

@@ -15,7 +15,9 @@
  * `listPages()`. Page bodies are loaded on demand.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Root } from "mdast";
 import { glob as fg } from "tinyglobby";
@@ -46,7 +48,11 @@ import type {
 import { extractDocsTableOfContents, resolveDocsNavigation } from "../llm";
 import type { DocsNavigation } from "../llm/readability";
 import { createMdxSourcePlugins } from "../mdx/source-preset";
-import { type DocsOpenApiConfig, stageOpenApiDocs } from "../openapi";
+import {
+  type DocsOpenApiConfig,
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "../openapi";
 import {
   type IncludeResolution,
   type ResolveIncludeOptions,
@@ -62,6 +68,28 @@ import {
 import type { DocsFrontmatter, DocsTransformerOptions } from "../transformers";
 
 const DOC_EXTENSIONS = [".md", ".mdx"] as const;
+const pendingOpenApiOverlayDirs = new Set<string>();
+let openApiOverlayCleanupRegistered = false;
+
+function cleanupPendingOpenApiOverlayDirs(): void {
+  for (const dir of pendingOpenApiOverlayDirs) {
+    try {
+      rmSync(dir, { force: true, recursive: true });
+    } catch {
+      // Best-effort process shutdown cleanup.
+    }
+  }
+  pendingOpenApiOverlayDirs.clear();
+}
+
+function registerOpenApiOverlayDir(dir: string): void {
+  pendingOpenApiOverlayDirs.add(dir);
+  if (openApiOverlayCleanupRegistered) {
+    return;
+  }
+  process.on("exit", cleanupPendingOpenApiOverlayDirs);
+  openApiOverlayCleanupRegistered = true;
+}
 
 export type DocsPageMeta<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
@@ -144,9 +172,9 @@ export type CreateDocsSourceConfig<
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   /**
-   * OpenAPI specs to generate API reference pages from. Pages are staged into
-   * a temp copy of `contentDir` (the source directory is never modified) and
-   * their navigation nodes are appended to `nav`.
+   * OpenAPI specs to generate API reference pages from. Pages are written into
+   * a temp overlay (the source directory is never modified) and their
+   * navigation nodes are appended to `nav`.
    */
   openapi?: DocsOpenApiConfig;
   /**
@@ -180,6 +208,8 @@ export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
       specifier: string,
       options?: Partial<ResolveIncludeOptions>
     ): Promise<IncludeResolution>;
+    /** Remove generated temp overlay files. Safe to call more than once. */
+    cleanup(): Promise<void>;
   };
 
 function isDocFile(filePath: string): boolean {
@@ -399,20 +429,34 @@ export async function createDocsSource<
     );
   }
 
-  // OpenAPI generation stages a temp copy of the source so generated pages
-  // exist on disk without polluting the authored docs. Nav nodes for the
-  // generated pages are appended to the curated nav.
-  let contentDir = sourceContentDir;
+  // OpenAPI generation writes into a temp overlay so generated pages exist on
+  // disk without polluting or freezing the authored docs tree.
+  const contentDir = sourceContentDir;
+  const contentRoots = [sourceContentDir];
   let nav = config.nav;
+  let openApiOverlayDir: string | undefined;
   if (config.openapi !== undefined) {
-    const staged = await stageOpenApiDocs({
-      contentDir: sourceContentDir,
-      cwd: config.openapiCwd,
-      openapi: config.openapi,
-      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
-    });
-    contentDir = staged.contentDir;
-    nav = [...(config.nav ?? []), ...staged.nav];
+    openApiOverlayDir = await mkdtemp(path.join(tmpdir(), "leadtype-openapi-"));
+    let generated: Awaited<ReturnType<typeof writeOpenApiPages>>;
+    try {
+      generated = await writeOpenApiPages({
+        configs: normalizeOpenApiConfig(
+          config.openapi,
+          config.openapiCwd ?? sourceContentDir,
+          {
+            ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+          }
+        ),
+        docsDir: openApiOverlayDir,
+      });
+    } catch (error) {
+      await rm(openApiOverlayDir, { force: true, recursive: true });
+      openApiOverlayDir = undefined;
+      throw error;
+    }
+    contentRoots.push(openApiOverlayDir);
+    nav = [...(config.nav ?? []), ...generated.nav];
+    registerOpenApiOverlayDir(openApiOverlayDir);
   }
 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
@@ -434,23 +478,47 @@ export async function createDocsSource<
   const tocOptions: DocsTableOfContentsOptions | false =
     config.toc === false ? false : (config.toc ?? {});
 
+  let cachedFilesByRoot: Array<{
+    contentDir: string;
+    files: string[];
+  }> | null = null;
   let cachedFiles: string[] | null = null;
   let cachedMetas: DocsPageMeta<TFrontmatter>[] | null = null;
   // Slug → meta lookup populated alongside cachedMetas so loadPage runs in O(1).
   let cachedMetaBySlug: Map<string, DocsPageMeta<TFrontmatter>> | null = null;
 
-  async function listFiles(): Promise<string[]> {
-    if (cachedFiles) {
-      return cachedFiles;
+  async function listFilesByRoot(): Promise<
+    Array<{
+      contentDir: string;
+      files: string[];
+    }>
+  > {
+    if (cachedFilesByRoot) {
+      return cachedFilesByRoot;
     }
-    const matches = await fg("**/*.{md,mdx}", {
-      absolute: true,
-      cwd: contentDir,
-      onlyFiles: true,
-    });
-    cachedFiles = matches
-      .filter(isDocFile)
-      .sort((left, right) => left.localeCompare(right));
+    cachedFilesByRoot = await Promise.all(
+      contentRoots.map(async (root) => {
+        const matches = await fg("**/*.{md,mdx}", {
+          absolute: true,
+          cwd: root,
+          onlyFiles: true,
+        });
+        const files = matches
+          .filter(isDocFile)
+          .sort((left, right) => left.localeCompare(right));
+        return { contentDir: root, files };
+      })
+    );
+    return cachedFilesByRoot;
+  }
+
+  async function listFiles(): Promise<string[]> {
+    if (!cachedFiles) {
+      const filesByRoot = await listFilesByRoot();
+      cachedFiles = filesByRoot
+        .flatMap((entry) => entry.files)
+        .sort((left, right) => left.localeCompare(right));
+    }
     return cachedFiles;
   }
 
@@ -458,13 +526,20 @@ export async function createDocsSource<
     if (cachedMetas) {
       return cachedMetas;
     }
-    const files = await listFiles();
-    const selectedFiles = selectSourceFiles(
-      files,
-      contentDir,
-      config.i18n,
-      config.locale
-    );
+    await listFiles();
+    const filesByRoot = await listFilesByRoot();
+    const selectedFiles = filesByRoot
+      .flatMap((entry) =>
+        selectSourceFiles(
+          entry.files,
+          entry.contentDir,
+          config.i18n,
+          config.locale
+        )
+      )
+      .sort((left, right) =>
+        left.outputRelativePath.localeCompare(right.outputRelativePath)
+      );
     const metas = await Promise.all(
       selectedFiles.map((file) =>
         readPageMeta(file, config.mounts, config.i18n, {
@@ -520,6 +595,7 @@ export async function createDocsSource<
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
       nav,
+      extraDocsDirs: openApiOverlayDir ? [openApiOverlayDir] : undefined,
       mounts: config.mounts,
       i18n: config.i18n,
       locale: config.locale,
@@ -656,6 +732,25 @@ export async function createDocsSource<
     });
   }
 
+  async function cleanup(): Promise<void> {
+    const dir = openApiOverlayDir;
+    if (!dir) {
+      return;
+    }
+    const previousNav = nav;
+    openApiOverlayDir = undefined;
+    nav = config.nav;
+    pendingOpenApiOverlayDirs.delete(dir);
+    try {
+      await rm(dir, { force: true, recursive: true });
+    } catch (error) {
+      openApiOverlayDir = dir;
+      nav = previousNav;
+      pendingOpenApiOverlayDirs.add(dir);
+      throw error;
+    }
+  }
+
   return {
     contentDir,
     getNavigation,
@@ -663,5 +758,6 @@ export async function createDocsSource<
     loadPage,
     buildSearchIndex,
     resolveInclude: resolveIncludeBound,
+    cleanup,
   };
 }

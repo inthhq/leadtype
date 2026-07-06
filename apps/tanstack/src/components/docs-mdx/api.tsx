@@ -15,71 +15,29 @@ import type {
   ApiParametersProps,
   ApiRequestBodyProps,
   ApiResponsesProps,
-  ApiSchemaProperty,
   ApiTryItProps,
 } from "leadtype/mdx";
+import { flattenApiSchemaRows } from "leadtype/mdx/openapi";
 import { Callout } from "./callout";
 import { Tab, Tabs } from "./tabs";
 
-const MAX_SCHEMA_DEPTH = 6;
-
-interface FlattenedSchemaRow {
-  description?: string;
-  name: string;
-  required: boolean;
-  type: string;
-}
-
-function formatSchemaType(
-  schema?: Pick<ApiSchemaProperty, "format" | "type">
-): string {
+function formatSchemaType(schema?: { format?: string; type?: string }): string {
   if (!schema) {
     return "unknown";
   }
-  return schema.format ? `${schema.type} (${schema.format})` : schema.type;
-}
-
-// Flatten nested object/array-item properties into dotted rows
-// (`results[].title`) so deep schemas stay fully documented.
-function flattenSchemaRows(
-  properties: ApiSchemaProperty[],
-  prefix = "",
-  depth = 0
-): FlattenedSchemaRow[] {
-  if (depth > MAX_SCHEMA_DEPTH) {
-    return [];
-  }
-  const rows: FlattenedSchemaRow[] = [];
-  for (const property of properties) {
-    const name = `${prefix}${property.name}`;
-    rows.push({
-      description: property.description,
-      name,
-      required: property.required === true,
-      type: formatSchemaType(property),
-    });
-    if (property.properties) {
-      rows.push(
-        ...flattenSchemaRows(property.properties, `${name}.`, depth + 1)
-      );
-    }
-    if (property.items?.properties) {
-      rows.push(
-        ...flattenSchemaRows(property.items.properties, `${name}[].`, depth + 1)
-      );
-    }
-  }
-  return rows;
+  return schema.format
+    ? `${schema.type ?? "unknown"} (${schema.format})`
+    : (schema.type ?? "unknown");
 }
 
 function SchemaTable({
-  properties = [],
+  schema,
   nameHeading = "Property",
 }: {
-  properties?: ApiSchemaProperty[];
+  schema?: ApiMediaType["schema"];
   nameHeading?: string;
 }) {
-  const rows = flattenSchemaRows(properties);
+  const rows = flattenApiSchemaRows(schema);
   if (rows.length === 0) {
     return null;
   }
@@ -147,9 +105,7 @@ function MediaType({ media }: { media: ApiMediaType }) {
       <p data-leadtype-api-meta="">
         Content type <code>{media.mediaType}</code>
       </p>
-      <SchemaTable
-        properties={media.schema?.properties ?? media.schema?.items?.properties}
-      />
+      <SchemaTable schema={media.schema} />
       <MediaTypeExamples media={media} />
       {media.rawSchema === undefined ? null : (
         <details data-leadtype-api-schema="">

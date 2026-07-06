@@ -35,6 +35,11 @@
       "import": "./dist/mdx/source.js",
       "default": "./dist/mdx/source.js"
     },
+    "./mdx/openapi": {
+      "types": "./dist/mdx/openapi.d.ts",
+      "import": "./dist/mdx/openapi.js",
+      "default": "./dist/mdx/openapi.js"
+    },
     "./feed": {
       "types": "./dist/feed/index.d.ts",
       "import": "./dist/feed/index.js"

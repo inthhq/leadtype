@@ -42,6 +42,12 @@ export {
   resolveInclude,
   resolveIncludePath,
 } from "../remark/plugins/include.remark";
+// Pure OpenAPI data helpers for renderer-local table implementations
+export {
+  type ApiSchemaRow,
+  type ApiSchemaRowsInput,
+  flattenApiSchemaRows,
+} from "./openapi-schema-rows";
 // Source preset for bundler consumers
 export {
   createMdxSourcePlugins,

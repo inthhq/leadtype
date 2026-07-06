@@ -83,6 +83,7 @@ describe("package surface", () => {
       "./package.json",
       "./mdx",
       "./mdx/source",
+      "./mdx/openapi",
       "./feed",
       "./fumadocs",
       "./astro",

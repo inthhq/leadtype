@@ -838,6 +838,11 @@ export type ResolveDocsNavigationConfig = {
   groups?: DocsGroup[];
   /** Curated navigation tree. Preferred over `groups` when present. */
   nav?: DocsNavEntry[];
+  /**
+   * Additional directories whose pages are treated as if they lived in the docs
+   * dir. Intended for generated-page overlays.
+   */
+  extraDocsDirs?: string[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -3396,17 +3401,37 @@ export async function resolveDocsNavigation(
 ): Promise<DocsNavigation> {
   const srcDir = path.resolve(config.srcDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const localeOptions = {
+    i18n: config.i18n,
+    locale: config.locale,
+    includeFallback: config.includeFallback ?? true,
+  };
   const sourceDocs = await readSourceDocs(
     srcDir,
     baseUrl,
     config.mounts,
     config.docsDirName,
-    {
-      i18n: config.i18n,
-      locale: config.locale,
-      includeFallback: config.includeFallback ?? true,
-    }
+    localeOptions
   );
+  for (const extraDocsDir of config.extraDocsDirs ?? []) {
+    const resolvedExtraDocsDir = path.resolve(extraDocsDir);
+    const extraDocs = await readSourceDocs(
+      path.dirname(resolvedExtraDocsDir),
+      baseUrl,
+      config.mounts,
+      path.basename(resolvedExtraDocsDir),
+      localeOptions
+    );
+    for (const [urlPath, doc] of extraDocs) {
+      const existing = sourceDocs.get(urlPath);
+      if (existing) {
+        throw new Error(
+          `Duplicate documentation route "${urlPath}" from extra docs dir "${resolvedExtraDocsDir}" — existing page "${existing.relativePath}" conflicts with overlay page "${doc.relativePath}". Rename one or remove it.`
+        );
+      }
+      sourceDocs.set(urlPath, doc);
+    }
+  }
   const tocOptions = resolveNavigationTocOptions(config.toc);
   const tocByUrlPath = new Map<string, DocsTableOfContentsItem[]>();
   const docs = [...sourceDocs.values()];

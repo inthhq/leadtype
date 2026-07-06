@@ -132,6 +132,12 @@ Leadtype exports the prop contracts from `leadtype/mdx`. Your renderer maps
 those names to local components the same way it maps `Callout`, `Tabs`, and
 `TypeTable`.
 
+For request-body and response property tables, import `flattenApiSchemaRows()`
+from `leadtype/mdx/openapi` — it derives the same nested dotted rows
+(`results[].title`) as the built-in markdown flatteners, so your rendered
+tables never disagree with the agent-readable markdown mirrors. The subpath
+has no dependencies and is safe to import from client components.
+
 ```tsx title="lib/mdx-components.tsx"
 import type {
   ApiEndpointProps,
@@ -199,9 +205,9 @@ utility classes) and `apps/tanstack/src/components/docs-mdx/api.tsx`
 ### fumadocs / createDocsSource
 
 `createDocsSource()` (and therefore `fumadocsSource()`) accepts the `openapi`
-config directly. Generated pages are staged into a temp copy of `contentDir` —
-your authored docs are never modified — and the generated navigation is
-appended to `nav` automatically:
+config directly. Generated pages are written into a temp overlay — your
+authored docs are never modified — and the generated navigation is appended to
+`nav` automatically:
 
 ```ts title="lib/source.ts"
 import { fumadocsSource } from "leadtype/fumadocs";
@@ -215,8 +221,11 @@ const source = await fumadocsSource({
 ```
 
 Relative `input` paths resolve from `contentDir` by default; pass `openapiCwd`
-when your config lives elsewhere. Because staging snapshots the docs at
-construction time, restart the dev server to pick up spec or docs edits.
+when your config lives elsewhere. Authored docs are still read live from
+`contentDir`; spec edits and regenerated API pages require recreating the
+source or restarting the dev server. Call `source.cleanup()` when disposing the
+source. A best-effort process-exit cleanup removes the temp overlay if you do
+not.
 
 ### Static-glob bundlers (TanStack Start, Vite)
 

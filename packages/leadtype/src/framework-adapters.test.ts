@@ -62,6 +62,7 @@ function buildSource(): DocsSource {
     resolveInclude: () => {
       throw new Error("not used");
     },
+    cleanup: async () => undefined,
   };
 }
 
