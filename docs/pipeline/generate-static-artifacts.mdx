@@ -174,20 +174,33 @@ Even though concurrent runs are safe, they are redundant: each waits its turn an
 The CLI is the happy path. Use the library APIs directly when you need custom plugin order, filters, or generated JSON paths. Keep conversion first — LLM files, search, and Agent Readability artifacts read the generated markdown:
 
 ```ts
+// @filename: docs.config.ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "c15t", tagline: "Developer-first consent management." },
+  navigation: ["index"],
+  feeds: [],
+});
+
+// @filename: main.ts
+// ---cut---
 import { convertAllMdx } from "leadtype/convert";
 import {
   generateAgentReadabilityArtifacts,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  resolveAgentInputs,
   resolveDocsNavigation,
 } from "leadtype/llm";
 import { generateFeedArtifacts } from "leadtype/feed";
 import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 import { generateDocsSearchFiles } from "leadtype/search/node";
-import docsConfig from "../.docs-src/c15t/docs/docs.config";
+import docsConfig from "./docs.config";
 
 const sourceRoot = ".docs-src/c15t";
 const mounts = docsConfig.mounts;
+const { product } = resolveAgentInputs({ product: docsConfig.product });
 
 await convertAllMdx({
   srcDir: `${sourceRoot}/docs`,
@@ -200,16 +213,16 @@ await generateLlmsTxt({
   srcDir: sourceRoot,
   outDir: "public",
   baseUrl: "https://docs.example.com",
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product,
+  nav: docsConfig.navigation,
   mounts,
 });
 
 await generateLLMFullContextFiles({
   outDir: "public",
   baseUrl: "https://docs.example.com",
-  product: { name: docsConfig.product.name },
-  nav: docsConfig.nav,
+  product: { name: product.name },
+  nav: docsConfig.navigation,
   mounts,
 });
 
@@ -222,8 +235,8 @@ await generateDocsSearchFiles({
 await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://docs.example.com",
-  product: docsConfig.product,
-  nav: docsConfig.nav,
+  product,
+  nav: docsConfig.navigation,
   mounts,
 });
 
@@ -237,7 +250,7 @@ await generateFeedArtifacts({
 const navigation = await resolveDocsNavigation({
   srcDir: sourceRoot,
   baseUrl: "https://docs.example.com",
-  nav: docsConfig.nav,
+  nav: docsConfig.navigation,
   mounts,
 });
 ```

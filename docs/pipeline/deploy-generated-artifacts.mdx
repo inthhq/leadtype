@@ -44,6 +44,27 @@ Static files under `public` serve `/llms.txt`, `/llms-full.txt`, `/docs/*.md`, a
 Use the Next metadata helper in the App Router page:
 
 ```tsx title="app/docs/[[...slug]]/page.tsx"
+// @filename: agent-readability.ts
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
+
+const manifestJson: AgentReadabilityManifest = {
+  version: 1,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  baseUrl: "https://example.com",
+  product: { name: "Example", summary: "Example docs." },
+  pages: [],
+  navigation: { groups: [], ungrouped: [], unknown: [] },
+  files: {
+    robotsTxt: "/robots.txt",
+    sitemapMd: "/sitemap.md",
+    sitemapXml: "/sitemap.xml",
+  },
+};
+
+export default manifestJson;
+
+// @filename: main.tsx
+// ---cut---
 import {
   createDocsJsonLd,
   normalizeAgentReadabilityManifest,
@@ -52,7 +73,7 @@ import {
 import { createGenerateMetadata, createLoadPageData } from "leadtype/next";
 import { notFound } from "next/navigation";
 import { source } from "@/lib/source";
-import manifestJson from "../../../public/docs/agent-readability.json";
+import manifestJson from "./agent-readability";
 
 const manifest = normalizeAgentReadabilityManifest(manifestJson);
 const loadPageData = createLoadPageData({ source });
@@ -73,7 +94,7 @@ export default async function Page({
 }) {
   const page = await loadPageData((await params).slug);
   if (!page) {
-    notFound();
+    return notFound();
   }
 
   const jsonLd = createDocsJsonLd({
@@ -98,12 +119,31 @@ Generate into `public` before the TanStack Start build. The example app uses the
 Keep page loading in route code and artifact serving in server middleware:
 
 ```ts title="server/middleware/agent-readability.ts"
+// @filename: agent-readability.ts
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
+
+const manifestJson: AgentReadabilityManifest = {
+  version: 1,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  baseUrl: "https://example.com",
+  product: { name: "Example", summary: "Example docs." },
+  pages: [],
+  navigation: { groups: [], ungrouped: [], unknown: [] },
+  files: {
+    robotsTxt: "/robots.txt",
+    sitemapMd: "/sitemap.md",
+    sitemapXml: "/sitemap.xml",
+  },
+};
+
+export default manifestJson;
+
+// @filename: main.ts
+// ---cut---
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { eventHandler, getHeaders, getRequestURL } from "h3";
-import manifestJson from "../public/docs/agent-readability.json" with {
-  type: "json",
-};
+import { eventHandler, getHeaders, getRequestURL, type H3Event } from "h3";
+import manifestJson from "./agent-readability";
 import {
   createAgentMarkdownResponse,
   normalizeAgentReadabilityManifest,
@@ -130,7 +170,7 @@ async function readMarkdownFile(
   }
 }
 
-export default eventHandler((event) =>
+export default eventHandler((event: H3Event) =>
   createAgentMarkdownResponse({
     urlPath: getRequestURL(event).pathname,
     method: event.method,

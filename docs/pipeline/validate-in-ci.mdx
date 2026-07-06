@@ -1,21 +1,31 @@
 ---
-title: "Validate in CI"
-description: "Run leadtype lint in CI so frontmatter, navigation, and link issues fail PRs before publish."
+title: "CI for your docs"
+description: "leadtype lint verifies every internal link against your real route graph and typechecks code snippets against your installed packages — docs that can't silently rot."
 ---
 
-`leadtype lint` reads source MDX, runs the schema and link checks, and exits non-zero on errors. Wire it into CI so docs PRs fail fast on the same rules that would otherwise blow up `leadtype generate` later in the pipeline.
+Docs rot in ways no reviewer catches: a page gets renamed and links to it 404 for months, an anchor stops matching after a heading edit, a code example keeps calling an API that changed two releases ago. `leadtype lint` makes each of those a failing PR check instead of a slow leak — a bare `leadtype lint` in CI verifies your whole docs system, config included, against the same resolution rules `generate` builds with.
+
+Everything below was tuned on leadtype's own docs, where it found real, shipped breakage: anchors broken on the live site, a JSX component in a `ts` fence, and over a hundred type-level issues in "carefully written" examples.
 
 ## What it catches
 
-- Missing or wrong-typed frontmatter fields (`schema` rule).
-- Top-level frontmatter fields not in the schema (`unknown-field`).
-- Frontmatter or `meta.json` that doesn't parse (`parse-error`).
-- Internal `/docs/...` links pointing at routes that don't exist (`invalid-link`).
-- Unresolved `{framework}` placeholders left in URLs (`unresolved-placeholder`).
-- Cross-framework links from a framework-scoped page to a different framework's docs (`cross-framework-link`).
-- Dead links owned by the config itself — curated `navigation` entries, `llms.sections` links, feed prefixes, stale `redirects.removed` paths (`config-link`).
+**The link graph** — every internal link verified against your real routes (mounts, collections, and generated pages included):
 
-Lint discovers your docs config the same way `generate` does, so a bare `leadtype lint` in CI lints the configured source tree with mounts, custom schemas, and `lint.rules` severity overrides applied — no flags needed.
+- Links to routes that don't exist, including relative `./sibling` links (`invalid-link`) — and when redirect tracking is on, a link to a renamed page tells you where it moved.
+- `#anchors` that match no heading on the target page, validated with the exact slugger the site TOC uses (`invalid-anchor`).
+- Dead links the config itself owns — curated `navigation` entries, `llms.sections` links, feed prefixes, stale `redirects.removed` paths (`config-link`). Lint catches at PR time what `generate` would crash on at build time.
+- Cross-framework links and unresolved `{framework}` placeholders (`cross-framework-link`, `unresolved-placeholder`).
+
+**Code snippets** — examples that stay true:
+
+- Every fenced block with a known language must parse — TS/JS, JSON/JSONC, YAML (`snippet:parse`). Common docs idioms (bare signatures, config excerpts, `...` ellipses) parse without any annotation.
+- Opt in to `snippet:types` and module-shaped `ts`/`tsx` examples typecheck against your **installed packages** — when your API changes, every doc example still calling the old one fails CI. See [Lint reference](/docs/reference/lint) for the twoslash directives (`// @filename:`, `// ---cut---`, `// @noErrors`).
+
+**The boring-but-vital layer** — frontmatter schema violations, unknown fields, unparseable frontmatter or `meta.json`, components that would leak raw JSX into agent markdown, invalid JSON-LD, and the structural GEO checks (heading hierarchy, code-fence languages, image alt text).
+
+External URLs are deliberately not checked in PR CI (network flakiness doesn't belong in your merge gate); a scheduled external-link rule is tracked separately.
+
+Lint discovers your docs config the same way `generate` does, so a bare `leadtype lint` lints the configured source tree with mounts, custom schemas, and `lint.rules` severity overrides applied — no flags needed.
 
 See [Lint reference](/docs/reference/lint) for the full rule list and how to extend the schema.
 

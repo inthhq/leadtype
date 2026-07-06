@@ -58,6 +58,16 @@ export const hint = defineComponentFlattener({
 Most projects generate with the `leadtype generate` CLI, so register flatteners on the config. They apply to every generated `.md` file and the `llms` artifacts:
 
 ```ts
+// @filename: flatteners.ts
+import { defineComponentFlattener } from "leadtype/markdown";
+
+export const hint = defineComponentFlattener({
+  name: "Hint",
+  toMarkdown: ({ content }) => content,
+});
+
+// @filename: main.ts
+// ---cut---
 // leadtype.config.ts
 import { defineDocsConfig } from "leadtype";
 import { hint } from "./flatteners";

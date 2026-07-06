@@ -70,6 +70,15 @@ export default defineDocsConfig({
 Pass the same schema and transformers to lower-level APIs when you are not using `leadtype generate`:
 
 ```ts
+// @filename: docs.config.ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Leadtype", tagline: "Docs tooling." },
+});
+
+// @filename: main.ts
+// ---cut---
 import { createDocsSource } from "leadtype";
 import docsConfig from "./docs.config";
 

@@ -71,6 +71,7 @@ const frameworkConceptPages = ["consent-management", "consent-banner"];
 const frameworkGuidePages = ["script-loader", "iframe-blocking"];
 
 export default defineDocsConfig({
+  product: { name: "c15t", tagline: "Developer-first consent management." },
   navigation: [
     defineFrameworkNavigation({
       title: "Frameworks",
@@ -226,6 +227,8 @@ Start with the framework quickstart.
 ## Typical sequence
 
 ```ts
+import type { DocsConfig } from "leadtype";
+import type { GenerateAgentArtifactsConfig } from "leadtype/llm";
 import { convertAllMdx } from "leadtype/convert";
 import {
   generateAgentReadabilityArtifacts,
@@ -235,6 +238,9 @@ import {
 } from "leadtype/llm";
 import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
+declare const docsConfig: DocsConfig;
+
+// ---cut---
 await convertAllMdx({
   srcDir: "docs",
   outDir: "public/docs",
@@ -243,7 +249,11 @@ await convertAllMdx({
 
 // Bridge the config identity (product/organization/llms) into the internal
 // generator inputs — the same mapping `leadtype generate` uses.
-const { product, jsonLd } = resolveAgentInputs(docsConfig);
+const { product, jsonLd } = resolveAgentInputs({
+  product: docsConfig.product,
+  organization: docsConfig.organization,
+  llms: docsConfig.llms,
+});
 
 await generateLlmsTxt({
   srcDir: ".",
@@ -326,12 +336,20 @@ await generateAgentReadabilityArtifacts({
 For hosted docs sites that need the Vercel Agent Readability discovery layer without letting leadtype own the whole website:
 
 ```ts
-import { generateAgentReadabilityArtifacts } from "leadtype/llm";
+import type { DocsConfig } from "leadtype";
+import { generateAgentReadabilityArtifacts, resolveAgentInputs } from "leadtype/llm";
 
+declare const docsConfig: DocsConfig;
+
+// ---cut---
 const result = await generateAgentReadabilityArtifacts({
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: resolveAgentInputs(docsConfig).product,
+  product: resolveAgentInputs({
+    product: docsConfig.product,
+    organization: docsConfig.organization,
+    llms: docsConfig.llms,
+  }).product,
   generatedAt: "2026-06-15T10:30:00.000Z",
 });
 ```
@@ -345,6 +363,17 @@ Pass `generatedAt` (`string | Date`) when your build needs reproducible output. 
 For sites without a `.mdx` docs tree — CMS-backed blogs, data-driven pages, marketing sites. Takes an in-memory page list instead of a source directory and emits the full artifact set: `llms.txt` (+ the `/.well-known/llms.txt` copy), one markdown mirror per page at `${urlPath}.md` with `canonical_url`/`last_updated` frontmatter, `sitemap.xml`, `sitemap.md`, `robots.txt`, and a root-level `agent-readability.json`:
 
 ```ts
+type Post = {
+  slug: string;
+  title: string;
+  summary: string;
+  markdown: string;
+  updatedAt: string;
+};
+
+declare const posts: Post[];
+
+// ---cut---
 import { generateAgentArtifacts } from "leadtype/llm";
 
 await generateAgentArtifacts({
@@ -453,7 +482,28 @@ Build JSON-LD, canonical links, markdown alternate links, and OpenGraph-style me
 Reach for `createDocsJsonLd` when your framework wants a structured object, then pass it through `stringifyJsonLd` for safe `<script type="application/ld+json">` contents. `createDocsHead` remains the generic `{ meta, links }` helper for head APIs that accept descriptor arrays.
 
 ```ts
-import manifest from "../public/docs/agent-readability.json";
+// @filename: agent-readability.ts
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
+
+const manifest: AgentReadabilityManifest = {
+  version: 1,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  baseUrl: "https://leadtype.dev",
+  product: { name: "Leadtype", summary: "Docs tooling." },
+  pages: [],
+  navigation: { groups: [], ungrouped: [], unknown: [] },
+  files: {
+    robotsTxt: "/robots.txt",
+    sitemapMd: "/sitemap.md",
+    sitemapXml: "/sitemap.xml",
+  },
+};
+
+export default manifest;
+
+// @filename: main.ts
+// ---cut---
+import manifest from "./agent-readability";
 import {
   createDocsHead,
   createDocsJsonLd,
@@ -545,12 +595,21 @@ Every helper asserts `manifest.version === 1` at the entry point and throws a cl
 For npm-bundled docs that ship inside `node_modules/<pkg>/` and need relative filesystem links:
 
 ```ts
-import { generateAgentsMd } from "leadtype/llm";
+import type { DocsConfig } from "leadtype";
+import { generateAgentsMd, resolveAgentInputs } from "leadtype/llm";
+
+declare const docsConfig: DocsConfig;
+
+// ---cut---
 
 await generateAgentsMd({
   srcDir: ".",
   outDir: "packages/my-package",
-  product: resolveAgentInputs(docsConfig).product,
+  product: resolveAgentInputs({
+    product: docsConfig.product,
+    organization: docsConfig.organization,
+    llms: docsConfig.llms,
+  }).product,
 });
 ```
 

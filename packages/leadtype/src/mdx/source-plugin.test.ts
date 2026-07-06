@@ -25,8 +25,8 @@ function captureRegistration(
 }
 
 describe("remarkLeadtypeSource", () => {
-  it("registers the full MDX source preset (include, type-table, placeholders, imports)", () => {
-    expect(captureRegistration()).toHaveLength(4);
+  it("registers the full MDX source preset (include, type-table, placeholders, imports, directive stripping)", () => {
+    expect(captureRegistration()).toHaveLength(5);
   });
 
   it("forwards the type-table base path to the type-table plugin", () => {

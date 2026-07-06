@@ -16,6 +16,9 @@ translation lives under a `/{locale}` prefix.
 ## 1. Enable i18n
 
 ```ts title="docs.config.ts"
+import { defineDocsConfig } from "leadtype";
+
+// ---cut---
 export default defineDocsConfig({
   product: { name: "My library", tagline: "..." },
   navigation: ["index"],
@@ -88,8 +91,18 @@ load (with default-locale fallback); the rest of the wiring is the same docs
 route you already have, parameterized by locale.
 
 ```ts title="lib/source.ts"
+// @filename: docs.config.ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "My library", tagline: "..." },
+  navigation: ["index"],
+});
+
+// @filename: main.ts
+// ---cut---
 import { createDocsSource } from "leadtype";
-import docsConfig from "../docs/docs.config";
+import docsConfig from "./docs.config";
 
 export function getSource(locale: string) {
   return createDocsSource({
@@ -115,6 +128,14 @@ matching page:
 
 ```ts
 import { getAlternateLocaleLinks } from "leadtype/i18n";
+import type { DocsConfig } from "leadtype";
+import type { LocalizedPageLike } from "leadtype/i18n";
+
+declare const page: LocalizedPageLike;
+declare const pagesByLocale: Map<string, LocalizedPageLike>;
+declare const docsConfig: Pick<DocsConfig, "i18n">;
+
+// ---cut---
 
 const alternates = getAlternateLocaleLinks(page, pagesByLocale, docsConfig.i18n);
 // → [{ locale: "en", urlPath: "/docs/quickstart", isFallback: false }, … ]

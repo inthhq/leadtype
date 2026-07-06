@@ -33,8 +33,17 @@ return `{ response, sources }`; they differ only in how you name the model.
 <Tabs items={["Vercel AI SDK", "TanStack AI", "Cloudflare Workers AI"]}>
   <Tab value="Vercel AI SDK">
 ```ts
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "leadtype/search";
 import { streamDocsAnswer } from "leadtype/search/vercel";
 
+declare const index: DocsSearchIndex;
+declare const content: DocsSearchContentStore;
+declare const query: string;
+
+// ---cut---
 const { response, sources } = streamDocsAnswer({
   index,
   content,
@@ -48,9 +57,18 @@ Uses the `ai` package's `streamText`. Auth via your AI Gateway / provider env.
   </Tab>
   <Tab value="TanStack AI">
 ```ts
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "leadtype/search";
 import { streamDocsAnswer } from "leadtype/search/tanstack";
 import { openai } from "@tanstack/ai-openai";
 
+declare const index: DocsSearchIndex;
+declare const content: DocsSearchContentStore;
+declare const query: string;
+
+// ---cut---
 const { response, sources } = streamDocsAnswer({
   index,
   content,
@@ -64,15 +82,27 @@ Pass an explicit `adapter` from any `@tanstack/ai-*` provider.
   </Tab>
   <Tab value="Cloudflare Workers AI">
 ```ts
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "leadtype/search";
 import {
   createCloudflareDocsAdapter,
   streamDocsAnswer,
 } from "leadtype/search/cloudflare";
 
+declare const index: DocsSearchIndex;
+declare const content: DocsSearchContentStore;
+declare const query: string;
+// The Workers AI binding is ambient in a real Worker (wrangler types it);
+// `never` keeps this stub assignable without restating Cloudflare's types.
+declare const env: { AI: never };
+
+// ---cut---
 const adapter = createCloudflareDocsAdapter({
   provider: "workers-ai", // or anthropic | openai | gemini | grok | openrouter
   model: "@cf/meta/llama-3.1-8b-instruct",
-  options: { binding: env.AI.gateway("docs") },
+  options: { binding: env.AI },
 });
 
 const { response, sources } = streamDocsAnswer({
@@ -97,6 +127,29 @@ guards. `leadtype/search` ships the building blocks; wire them into your
 framework's request handler:
 
 ```ts
+// @filename: search-data.ts
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "leadtype/search";
+
+export const docsSearchContent: DocsSearchContentStore = {
+  version: 2,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  chunks: [],
+};
+
+export const docsSearchIndex: DocsSearchIndex = {
+  version: 2,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  documents: [],
+  chunks: [],
+  terms: {},
+  averageChunkLength: 0,
+};
+
+// @filename: main.ts
+// ---cut---
 import {
   createMemoryRateLimiter,
   docsSearchDefaults,

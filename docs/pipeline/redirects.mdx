@@ -10,7 +10,11 @@ Renaming a docs page breaks every link that pointed at it — search results, ag
 Add a `redirects` block to `docs.config.ts`:
 
 ```ts
+import { defineDocsConfig } from "leadtype";
+
+// ---cut---
 export default defineDocsConfig({
+  product: { name: "My library", tagline: "..." },
   // ...
   redirects: {},
 });
@@ -57,11 +61,25 @@ Filtered generates (`--include` / `--exclude`) skip redirect tracking and prunin
 The generate step emits data; serving is one helper call. For HTML routes, consult the map in your catch-all before rendering a 404:
 
 ```ts
-import { resolveRedirect } from "leadtype/redirects";
-import redirects from "./generated/redirects.json";
+// @filename: generated/redirects.ts
+import type { DocsRedirect } from "leadtype/redirects";
 
-const redirect = resolveRedirect(url.pathname, redirects.redirects);
-if (redirect) {
+const redirects = {
+  redirects: [] as DocsRedirect[],
+};
+
+export default redirects;
+
+// @filename: main.ts
+// ---cut---
+import { resolveRedirect } from "leadtype/redirects";
+import redirects from "./generated/redirects";
+
+function serveRedirect(url: URL): Response | null {
+  const redirect = resolveRedirect(url.pathname, redirects.redirects);
+  if (!redirect) {
+    return null; // fall through to normal routing / 404
+  }
   return redirect.to
     ? Response.redirect(new URL(redirect.to, url.origin), redirect.status)
     : new Response("Gone", { status: 410 });

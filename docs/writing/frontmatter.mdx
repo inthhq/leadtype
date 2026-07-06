@@ -37,6 +37,9 @@ sidebar. The same resolved tree drives generated navigation, `llms.txt`,
 `AGENTS.md`, sitemap markdown, and Agent Readability metadata.
 
 ```ts
+import { defineDocsConfig } from "leadtype";
+
+// ---cut---
 export default defineDocsConfig({
   product: { name: "c15t", tagline: "Developer-first consent management." },
   navigation: [

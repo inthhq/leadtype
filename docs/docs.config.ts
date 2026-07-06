@@ -112,6 +112,12 @@ const config: DocsConfig = {
               "Run the site-mode CLI from a build pipeline to write llms.txt, markdown mirrors, search, sitemap, and Agent Readability files.",
           },
           {
+            urlPath: "/docs/pipeline/validate-in-ci",
+            title: "CI for your docs",
+            description:
+              "Lint every internal link against the real route graph and typecheck code snippets against installed packages — docs that can't silently rot.",
+          },
+          {
             urlPath: "/docs/pipeline/redirects",
             title: "Redirect renamed pages",
             description:
@@ -294,6 +300,7 @@ const config: DocsConfig = {
   // build when a page disappears without a successor. Acknowledge intentional
   // deletions under `removed` to serve 410 Gone.
   redirects: {},
+  lint: { snippets: { typecheck: true } },
   agents: {
     // Library default for the repo's own example output. The deployed site's
     // robots policy is host-owned: the consuming app's leadtype.config.ts

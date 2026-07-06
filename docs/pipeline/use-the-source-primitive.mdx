@@ -74,7 +74,7 @@ export default async function DocsPage({
   params,
 }: { params: Promise<{ slug?: string[] }> }) {
   const page = await loadPageData((await params).slug);
-  if (!page) notFound();
+  if (!page) return notFound();
 
   return (
     <article>
@@ -125,6 +125,7 @@ export default defineConfig({
 ```
 
 ```tsx title="src/routes/docs/$.tsx"
+// @noErrors - Vite augments import.meta.glob at build time.
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { type ComponentType, lazy, Suspense, useMemo } from "react";
 import docsPages from "@/generated/docs-pages.json";
@@ -198,6 +199,12 @@ Use `createLoadPageData` from `leadtype/tanstack-start` when you want adapter he
 ### Nuxt
 
 ```ts title="nuxt.config.ts"
+declare function defineNuxtConfig(config: {
+  modules: string[];
+  mdc: { remarkPlugins: unknown[] };
+}): unknown;
+
+// ---cut---
 import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default defineNuxtConfig({
@@ -261,16 +268,17 @@ The full tag inventory and intersection patterns for React, Vue, Svelte, Solid, 
 ## Build the sidebar from navigation
 
 ```tsx title="components/sidebar.tsx"
+import type { DocsNavigationGroup, DocsNavigationPage } from "leadtype/llm/readability";
 import { source } from "@/lib/source";
 
 export async function Sidebar({ currentUrlPath }: { currentUrlPath: string }) {
   const navigation = await source.getNavigation();
   return (
     <nav>
-      {navigation.groups.map((group) => (
+      {navigation.groups.map((group: DocsNavigationGroup) => (
         <section key={group.slug}>
           <h2>{group.title}</h2>
-          {group.pages.map((page) => (
+          {group.pages.map((page: DocsNavigationPage) => (
             <a
               key={page.urlPath}
               href={page.urlPath}

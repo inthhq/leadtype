@@ -20,6 +20,7 @@ The CLI ([`leadtype generate`](/docs/reference/cli)) calls `convertAllMdx` inter
 Batch convert a docs tree:
 
 ```ts
+import { convertAllMdx } from "leadtype/convert";
 import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
 
 await convertAllMdx({

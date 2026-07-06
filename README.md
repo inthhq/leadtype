@@ -28,6 +28,7 @@ leadtype is **not a docs website framework**. Bring your own host and UI — a c
 ## Choose your path
 
 - **[Build a docs site](https://leadtype.dev/docs/pipeline/build-a-docs-site)** — wire leadtype into your build to convert MDX, index search, and serve markdown to agents.
+- **[Put your docs under CI](https://leadtype.dev/docs/pipeline/validate-in-ci)** — `leadtype lint` verifies every internal link (routes, mounts, `#anchors`, even links your config owns) against the real route graph, parses every code fence, and optionally typechecks `ts` examples against your installed packages — so a renamed page, a dead anchor, or an outdated example fails the PR instead of shipping.
 - **[Bundle docs into your package](https://leadtype.dev/docs/package-docs/bundle)** — ship `AGENTS.md` plus topic markdown inside the npm tarball so consumers can point agents at version-matched docs in `node_modules/<your-package>/`. Agents that install your package then spend **32–54% fewer tokens** and **stop confidently guessing wrong** about your API — the win is biggest for the small, cheap models most agents run, with a smaller accuracy bump for frontier models ([evals](./FINDINGS.md)).
 
 ## Install

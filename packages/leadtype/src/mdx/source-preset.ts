@@ -19,6 +19,7 @@ import type { PluggableList } from "unified";
 import { remarkResolveDocPlaceholders } from "../remark/plugins/doc-placeholders.remark";
 import { remarkInclude } from "../remark/plugins/include.remark";
 import { remarkRemoveImports } from "../remark/plugins/remove-imports.remark";
+import { remarkStripSnippetDirectives } from "../remark/plugins/strip-snippet-directives.remark";
 import { remarkResolveTypeTableJsx } from "../remark/plugins/type-table-jsx.remark";
 
 export type MdxSourcePluginsOptions = {
@@ -51,6 +52,9 @@ export function createMdxSourcePlugins(
     ],
     remarkResolveDocPlaceholders,
     remarkRemoveImports,
+    // Twoslash lint directives (// @noErrors, // ---cut--- setup blocks) are
+    // typecheck-only authoring scaffolding — readers never see them.
+    remarkStripSnippetDirectives,
   ];
 }
 
