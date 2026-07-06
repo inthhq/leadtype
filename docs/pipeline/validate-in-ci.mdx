@@ -23,7 +23,25 @@ Everything below was tuned on leadtype's own docs, where it found real, shipped 
 
 **The boring-but-vital layer** — frontmatter schema violations, unknown fields, unparseable frontmatter or `meta.json`, components that would leak raw JSX into agent markdown, invalid JSON-LD, and the structural GEO checks (heading hierarchy, code-fence languages, image alt text).
 
-External URLs are deliberately not checked in PR CI (network flakiness doesn't belong in your merge gate); a scheduled external-link rule is tracked separately.
+**External URLs** — checked on a schedule, never in your merge gate (network flakiness doesn't belong in PR CI). Run the `external-link` rule weekly:
+
+```yaml title=".github/workflows/link-check.yml"
+name: External links
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx leadtype lint --external-links --format github
+```
+
+Live URLs are cached between runs (default 7 days), failures never are, rate-limited hosts are skipped rather than failed, and `lint.externalLinks.ignore` mutes known-flaky prefixes.
 
 Lint discovers your docs config the same way `generate` does, so a bare `leadtype lint` lints the configured source tree with mounts, custom schemas, and `lint.rules` severity overrides applied — no flags needed.
 

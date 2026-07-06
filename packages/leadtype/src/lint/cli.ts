@@ -2,7 +2,11 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import type { PluggableList } from "unified";
-import { type LoadedDocsConfig, loadDocsConfig } from "../cli/generate";
+import {
+  findNearestNodeModules,
+  type LoadedDocsConfig,
+  loadDocsConfig,
+} from "../cli/generate";
 import type { DocsPathMount } from "../internal/docs-url";
 import { setLogFormat, setVerbose } from "../internal/logger";
 import { getFlattenerNames } from "../internal/remark-phase";
@@ -38,6 +42,8 @@ type CliArgs = {
   maxWarnings: number;
   help: boolean;
   verbose: boolean;
+  /** Force the external-link rule on (scheduled CI runs). */
+  externalLinks: boolean;
 };
 
 export type LintCliIo = {
@@ -64,6 +70,7 @@ Options:
   --warn-unknown           Unknown fields warn (default)
   --error-unknown          Unknown fields error
   --max-warnings <n>       Exit non-zero if warnings exceed n (default: Infinity)
+  --external-links         Probe external http(s) URLs (for scheduled CI, not PR CI)
   -v, --verbose            Print extra progress events to stderr
   -h, --help               Show this help
 
@@ -86,6 +93,7 @@ export function parseLintArgs(argv: string[]): CliArgs {
     maxWarnings: Number.POSITIVE_INFINITY,
     help: false,
     verbose: false,
+    externalLinks: false,
   };
   let positional = 0;
   const readValue = (argv_: string[], index: number, flag: string): string => {
@@ -127,6 +135,8 @@ export function parseLintArgs(argv: string[]): CliArgs {
         throw new Error("--max-warnings must be a non-negative integer");
       }
       args.maxWarnings = parsed;
+    } else if (arg === "--external-links") {
+      args.externalLinks = true;
     } else if (arg === "--verbose" || arg === "-v") {
       args.verbose = true;
     } else if (arg && !arg.startsWith("-")) {
@@ -257,6 +267,34 @@ export async function runLintCommand(
   const rules = lintConfig?.rules as LintRuleOverrides | undefined;
   const mounts = loaded?.config.mounts;
   const assumeValidLinkPrefixes = openApiLinkPrefixes(loaded?.config.openapi);
+  // External-link probing is opt-in: the --external-links flag (scheduled CI
+  // runs) or a lint.rules["external-link"] severity in the config.
+  const externalLinkRule = lintConfig?.rules?.["external-link"];
+  const externalLinksEnabled =
+    args.externalLinks ||
+    (externalLinkRule !== undefined && externalLinkRule !== "off");
+  const externalLinksNodeModules = findNearestNodeModules(resolvedSrcDir);
+  const externalLinksOptions = externalLinksEnabled
+    ? {
+        ignore: lintConfig?.externalLinks?.ignore,
+        ...(lintConfig?.externalLinks?.ttlHours === undefined
+          ? {}
+          : {
+              ttlMs: lintConfig.externalLinks.ttlHours * 60 * 60 * 1000,
+            }),
+        ...(externalLinksNodeModules
+          ? {
+              cacheFile: resolve(
+                externalLinksNodeModules,
+                ".cache",
+                "leadtype",
+                "external-links.json"
+              ),
+            }
+          : {}),
+      }
+    : undefined;
+
   // With redirect tracking enabled, an invalid-link to a renamed page reports
   // where it moved instead of a bare missing-route message.
   let redirects: DocsRedirect[] | undefined;
@@ -359,6 +397,7 @@ export async function runLintCommand(
       assumeValidLinkPrefixes,
       rules,
       redirects,
+      ...(externalLinksOptions ? { externalLinks: externalLinksOptions } : {}),
       ...(routeSet ? { routeSet } : {}),
       ...(loaded && lintConfig?.snippets?.typecheck
         ? { snippetTypecheck: { projectRoot: dirname(loaded.path) } }

@@ -2,6 +2,13 @@
 
 export { type ConfigLintOptions, lintConfigLinks } from "./config-lint";
 export {
+  type CheckExternalLinksOptions,
+  checkExternalLinks,
+  collectExternalLinks,
+  type ExternalLink,
+  type ExternalLinkIssue,
+} from "./external-links";
+export {
   githubReporter,
   jsonReporter,
   prettyReporter,

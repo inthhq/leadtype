@@ -1348,6 +1348,34 @@ function validateLintConfig(
     }
     rules = value.rules as Record<string, "off" | "warn" | "error">;
   }
+  let externalLinks: { ignore?: string[]; ttlHours?: number } | undefined;
+  if (value.externalLinks !== undefined) {
+    if (!isPlainRecord(value.externalLinks)) {
+      throw new Error(
+        `docs config at "${configPath}": lint.externalLinks must be an object`
+      );
+    }
+    if (
+      value.externalLinks.ignore !== undefined &&
+      !isStringArray(value.externalLinks.ignore)
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": lint.externalLinks.ignore must be an array of strings`
+      );
+    }
+    if (
+      value.externalLinks.ttlHours !== undefined &&
+      typeof value.externalLinks.ttlHours !== "number"
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": lint.externalLinks.ttlHours must be a number`
+      );
+    }
+    externalLinks = value.externalLinks as {
+      ignore?: string[];
+      ttlHours?: number;
+    };
+  }
   let snippets: { typecheck?: boolean } | undefined;
   if (value.snippets !== undefined) {
     if (!isPlainRecord(value.snippets)) {
@@ -1373,6 +1401,7 @@ function validateLintConfig(
           unknownFieldSeverity: value.unknownFieldSeverity as "warn" | "error",
         }),
     ...(rules ? { rules } : {}),
+    ...(externalLinks ? { externalLinks } : {}),
     ...(snippets ? { snippets } : {}),
   };
 }
@@ -2636,7 +2665,7 @@ function hashText(value: string): string {
  * workspace root, so a subpackage `--src` without its own `node_modules`
  * still gets a cache home.
  */
-function findNearestNodeModules(startDir: string): string | undefined {
+export function findNearestNodeModules(startDir: string): string | undefined {
   let dir = path.resolve(startDir);
   for (;;) {
     const candidate = path.join(dir, "node_modules");
