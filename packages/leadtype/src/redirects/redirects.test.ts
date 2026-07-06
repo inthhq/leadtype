@@ -199,6 +199,15 @@ describe("resolveRedirect", () => {
       REDIRECT_STATUS_GONE
     );
   });
+
+  it("maps a root-route target to its /index.md mirror", () => {
+    const rootRedirects = [
+      { from: "/docs/moved-home", to: "/", status: REDIRECT_STATUS_MOVED },
+    ];
+    expect(resolveRedirect("/docs/moved-home.md", rootRedirects)?.to).toBe(
+      "/index.md"
+    );
+  });
 });
 
 describe("updateDocsRedirects", () => {

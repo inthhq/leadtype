@@ -23,6 +23,7 @@ const entries = {
   "llm/readability": "src/llm/readability.ts",
   "navigation/index": "src/navigation/index.ts",
   "redirects/index": "src/redirects/index.ts",
+  "redirects/node-index": "src/redirects/node-index.ts",
   "search/index": "src/search/index.ts",
   "search/client": "src/search/client.ts",
   "search/react": "src/search/react.ts",

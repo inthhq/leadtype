@@ -1347,8 +1347,24 @@ export async function createAgentMarkdownResponse(
           headers: { "content-type": "text/plain; charset=utf-8" },
         });
       }
+      // On the .md surface, prefer the target page's recorded mirror path —
+      // resolveRedirect's `${to}.md` heuristic is wrong for index routes,
+      // whose mirrors live at `${to}/index.md`.
+      let toPath = redirect.to;
+      if (pathname.endsWith(".md")) {
+        const targetUrlPath =
+          redirect.to
+            .replace(MD_ONLY_EXTENSION_PATTERN, "")
+            .replace(TRAILING_SLASH_PATTERN, "") || "/";
+        const targetPage = config.manifest.pages.find(
+          (entry) => entry.urlPath === targetUrlPath
+        );
+        if (targetPage) {
+          toPath = targetPage.markdownUrlPath;
+        }
+      }
       const location = toAbsoluteUrl(
-        redirect.to,
+        toPath,
         config.requestOrigin
           ? stripTrailingSlashes(config.requestOrigin)
           : config.manifest.baseUrl

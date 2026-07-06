@@ -21,12 +21,15 @@ sources) recording every published path with a content hash, and emits
 - **Redirects accumulate and self-maintain**: chains from successive renames
   collapse to the final target, entries whose target is later removed
   degrade to 410, and entries whose path comes back alive are dropped.
-- New `leadtype/redirects` entry point exports `resolveRedirect` (plus the
-  lockfile/computation primitives) for serving redirects in any framework's
-  catch-all. `createAgentMarkdownResponse` accepts the entries directly and
-  answers agent-shaped requests for renamed pages — including `.md`
-  mirrors — with the 308/410, while browser requests fall through to the
-  host app's routing.
+- New edge-safe `leadtype/redirects` entry point exports `resolveRedirect`
+  and the pure computation primitives for serving redirects in any
+  framework's catch-all (no Node built-ins, so it links in Cloudflare
+  Workers / Vercel Edge); generate-time lockfile IO lives under
+  `leadtype/redirects/node`. `createAgentMarkdownResponse` accepts the
+  entries directly and answers agent-shaped requests for renamed pages —
+  including `.md` mirrors, with index-route targets resolved to their real
+  `index.md` mirror path — with the 308/410, while browser requests fall
+  through to the host app's routing.
 - Enabling `redirects` also enables conversion pruning, since rename
   detection requires stale mirrors of renamed sources to be
   garbage-collected from the output set.

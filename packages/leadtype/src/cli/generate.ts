@@ -2747,8 +2747,12 @@ export async function runGenerateCommand(
       outDir: path.join(outDir, "docs"),
       // Redirect tracking diffs the emitted page set, so stale mirrors from
       // renamed/deleted sources must be garbage-collected or the old path
-      // never "disappears" and rename detection can't fire.
-      ...(metadata.redirects ? { prune: true } : {}),
+      // never "disappears" and rename detection can't fire. The pipeline's
+      // own generated sitemaps (docs-scoped and per-locale) are written into
+      // this outDir after conversion, so keep them out of the sweep.
+      ...(metadata.redirects
+        ? { prune: true, pruneKeep: ["**/sitemap.md"] }
+        : {}),
       markdownTransforms: createGenerateMarkdownTransforms({
         sourceRoot: srcDir,
         typeTableBasePath,

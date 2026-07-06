@@ -240,6 +240,17 @@ export function computeDocsRedirects(
 const MARKDOWN_EXTENSION_PATTERN = /\.md$/;
 
 /**
+ * Mirror path for a redirect target on the `.md` surface. Leaf routes map
+ * `path` → `path.md`; the root route's mirror lives at `/index.md`. Targets
+ * at nested index routes may use an `index.md` mirror too — handlers with a
+ * manifest should prefer the target page's recorded `markdownUrlPath`
+ * (`createAgentMarkdownResponse` does).
+ */
+function toMarkdownMirrorPath(urlPath: string): string {
+  return urlPath === "/" ? "/index.md" : `${urlPath}.md`;
+}
+
+/**
  * Look up the redirect for a request path. Handles the `.md` mirror surface:
  * `/docs/old.md` follows `/docs/old` → `/docs/new` and lands on
  * `/docs/new.md`, so agents holding stale mirror URLs are redirected too.
@@ -263,5 +274,9 @@ export function resolveRedirect(
   }
   return viaBase.to === undefined
     ? { from: normalized, status: viaBase.status }
-    : { from: normalized, to: `${viaBase.to}.md`, status: viaBase.status };
+    : {
+        from: normalized,
+        to: toMarkdownMirrorPath(viaBase.to),
+        status: viaBase.status,
+      };
 }

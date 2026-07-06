@@ -1,10 +1,9 @@
-export {
-  hashRedirectContent,
-  readPathsLockfile,
-  type UpdateDocsRedirectsConfig,
-  type UpdateDocsRedirectsResult,
-  updateDocsRedirects,
-} from "./node";
+/**
+ * Runtime-safe redirect primitives. This entry point is what route handlers
+ * import for `resolveRedirect`, so it must stay free of Node-only modules —
+ * it runs in edge runtimes (Cloudflare Workers, Vercel Edge, …). Generate-time
+ * lockfile IO and hashing live under `leadtype/redirects/node`.
+ */
 export {
   type ComputeDocsRedirectsInput,
   type ComputeDocsRedirectsResult,

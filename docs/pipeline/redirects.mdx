@@ -66,6 +66,8 @@ if (redirect) {
 }
 ```
 
+`leadtype/redirects` is edge-safe (no Node built-ins), so the resolver runs in Cloudflare Workers and Vercel Edge routes; the generate-time lockfile helpers live under `leadtype/redirects/node`.
+
 The agent surface is covered for you: pass the entries to `createAgentMarkdownResponse` and agent-shaped requests for a renamed page — including its `.md` mirror (`/docs/old.md` → `/docs/new.md`) — get the `308`/`410` directly, while browser requests still fall through to your HTML routing:
 
 ```ts

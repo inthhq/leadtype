@@ -1919,6 +1919,37 @@ lastModified: 2026-05-01T12:00:00.000Z
     expect(html).toBeNull();
   });
 
+  it("redirects .md requests to the target's recorded mirror for index routes", async () => {
+    const manifestWithIndexPage = {
+      ...manifest,
+      pages: [
+        ...manifest.pages,
+        {
+          ...manifest.pages[0],
+          title: "Docs home",
+          urlPath: "/docs",
+          absoluteUrl: "https://example.com/docs",
+          markdownUrlPath: "/docs/index.md",
+          markdownAbsoluteUrl: "https://example.com/docs/index.md",
+          relativePath: "index",
+        },
+      ],
+    } as unknown as typeof manifest;
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-home.md",
+      headers: {},
+      manifest: manifestWithIndexPage,
+      redirects: [{ from: "/docs/old-home", to: "/docs", status: 308 }],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/index.md"
+    );
+  });
+
   it("HEAD method returns headers with empty body", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
