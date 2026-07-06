@@ -44,9 +44,11 @@ describe("acquireGenerateLock", () => {
     expect(isGenerateLockHeld(outDir)).toBe(false);
 
     const lock = await acquireGenerateLock(outDir);
-    expect(isGenerateLockHeld(outDir)).toBe(true);
-
-    await lock.release();
+    try {
+      expect(isGenerateLockHeld(outDir)).toBe(true);
+    } finally {
+      await lock.release();
+    }
     expect(isGenerateLockHeld(outDir)).toBe(false);
   });
 

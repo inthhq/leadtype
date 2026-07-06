@@ -15,12 +15,13 @@ deletions emptied.
 Guardrails:
 
 - Only `.md` files are candidates; other files sharing `outDir` are never
-  touched, and `sitemap.md` is always kept.
+  touched, and symlinks are never followed.
 - Pruning is skipped (with a warning) when any page fails to convert or when
   `srcDir` resolves to zero pages, so a partial or misconfigured run never
   mass-deletes output.
 - `pruneKeep` globs (relative to `outDir`) exempt `.md` files written by
-  other tools, e.g. `pruneKeep: ["mirrors/**"]`.
+  other tools, e.g. `pruneKeep: ["sitemap.md", "mirrors/**"]`. Nothing is
+  exempted implicitly.
 - While pruning, the run holds the same per-`outDir` lock as
   `leadtype generate` (reentrant when generate itself is the caller;
   `LEADTYPE_NO_LOCK=1` opts out), so a prune cannot delete output a

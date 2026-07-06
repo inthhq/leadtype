@@ -1,11 +1,19 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import * as v from "valibot";
 import { afterEach, describe, expect, it } from "vitest";
+import { acquireGenerateLock } from "../internal/generate-lock";
 import {
   createIncludeResolutionCache,
   remarkInclude,
@@ -145,6 +153,9 @@ describe("convertAllMdx", () => {
 
     await mkdir(path.join(outDir, "assets"), { recursive: true });
     await writeFile(path.join(outDir, "assets", "diagram.svg"), "<svg/>");
+    // A generated sitemap.md gets no special exemption — a deleted source page
+    // named sitemap.mdx must prune like any other; pipelines that write a
+    // sitemap into the conversion outDir pass it via pruneKeep instead.
     await writeFile(path.join(outDir, "sitemap.md"), "# Sitemap\n");
 
     await rm(path.join(srcDir, "guides", "only-page.mdx"));
@@ -152,7 +163,7 @@ describe("convertAllMdx", () => {
 
     expect(existsSync(path.join(outDir, "guides"))).toBe(false);
     expect(existsSync(path.join(outDir, "assets", "diagram.svg"))).toBe(true);
-    expect(existsSync(path.join(outDir, "sitemap.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.md"))).toBe(false);
   });
 
   it("prune keeps outputs matching pruneKeep globs", async () => {
@@ -178,6 +189,46 @@ describe("convertAllMdx", () => {
 
     expect(existsSync(path.join(outDir, "mirrors", "external.md"))).toBe(true);
     expect(existsSync(path.join(outDir, "stale.md"))).toBe(false);
+  });
+
+  it("prune completes without deadlocking when this process already holds the generate lock", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "public");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(path.join(srcDir, "index.mdx"), "# Index\n\nBody.\n");
+    await mkdir(outDir, { recursive: true });
+    await writeFile(path.join(outDir, "orphan.md"), "# Orphan\n");
+
+    // Simulate `leadtype generate`: the per-outDir lock is already held by
+    // this process when convertAllMdx runs. A non-reentrant acquire would
+    // wait on our own lock until the timeout.
+    const lock = await acquireGenerateLock(outDir);
+    try {
+      await convertAllMdx({ srcDir, outDir, prune: true });
+    } finally {
+      await lock.release();
+    }
+
+    expect(existsSync(path.join(outDir, "index.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "orphan.md"))).toBe(false);
+  }, 10_000);
+
+  it("prune does not follow symlinked directories out of outDir", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    const outDir = path.join(projectDir, "public");
+    const externalDir = path.join(projectDir, "external");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(path.join(srcDir, "index.mdx"), "# Index\n\nBody.\n");
+    await mkdir(outDir, { recursive: true });
+    await mkdir(externalDir, { recursive: true });
+    await writeFile(path.join(externalDir, "keep-me.md"), "# External\n");
+    await symlink(externalDir, path.join(outDir, "linked"), "dir");
+
+    await convertAllMdx({ srcDir, outDir, prune: true });
+
+    expect(existsSync(path.join(externalDir, "keep-me.md"))).toBe(true);
   });
 
   it("skips pruning when any file fails to convert", async () => {

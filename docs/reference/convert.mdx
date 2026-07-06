@@ -54,7 +54,8 @@ Prune semantics, in order of what protects you:
 - **Only `.md` files are candidates.** Images, JSON artifacts, and anything else sharing `outDir` are never touched.
 - **Skipped on partial failure.** If any page fails to convert, the expected output set is incomplete, so the run warns and deletes nothing.
 - **Skipped when `srcDir` resolves to zero pages.** A typoed `srcDir` must not wipe `outDir`; the run warns instead.
-- **Exempt files.** `sitemap.md` is always kept. Use `pruneKeep` globs for `.md` files other tools write into the same `outDir` (agent page mirrors, locale aliases): `pruneKeep: ["mirrors/**"]`.
+- **Exempt files.** Use `pruneKeep` globs for `.md` files other tools write into the same `outDir` (generated sitemaps, agent page mirrors, locale aliases): `pruneKeep: ["sitemap.md", "mirrors/**"]`. Nothing is exempted implicitly — a deleted source page prunes regardless of its filename.
+- **Symlinks are never followed**, so a link inside `outDir` can't cause deletions outside it.
 - **Locked against concurrent runs.** While pruning, the run holds the same per-`outDir` lock as [`leadtype generate`](/docs/reference/cli), so a prune can't delete output a concurrent run just wrote. Set `LEADTYPE_NO_LOCK=1` to opt out.
 
 Directories emptied by pruning are removed as well.
