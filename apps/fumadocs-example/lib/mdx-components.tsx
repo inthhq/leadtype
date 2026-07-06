@@ -211,20 +211,23 @@ function ApiAuth({ requirements, schemes }: ApiAuthProps) {
   if (requirements.length === 0 && schemes.length === 0) {
     return <p>No authentication required.</p>;
   }
+  const requirementCounts = new Map<string, number>();
+  const requirementItems = requirements.map((requirement) => {
+    const names = Object.keys(requirement);
+    const label = names.length > 0 ? names.join(" + ") : "Anonymous";
+    const occurrence = requirementCounts.get(label) ?? 0;
+    requirementCounts.set(label, occurrence + 1);
+    return { key: `${label}:${occurrence}`, label };
+  });
   return (
     <div className="my-4 rounded-lg border p-4">
       {requirements.length > 0 ? (
         <>
           <h3 className="mt-0 font-medium text-base">Requirements</h3>
           <ul>
-            {requirements.map((requirement) => {
-              const names = Object.keys(requirement);
-              return (
-                <li key={names.join("+") || "anonymous"}>
-                  {names.length > 0 ? names.join(" + ") : "Anonymous"}
-                </li>
-              );
-            })}
+            {requirementItems.map((item) => (
+              <li key={item.key}>{item.label}</li>
+            ))}
           </ul>
         </>
       ) : null}

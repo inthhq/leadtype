@@ -1829,6 +1829,67 @@ description: "First release."
     expect(error.error).toContain("product.name and product.tagline");
   });
 
+  it("accepts product and openapi-only docs config", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "openapi"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "openapi", "api.yaml"),
+      `
+openapi: 3.1.0
+info: { title: Acme API, version: 1.0.0 }
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      responses: { "200": { description: ok } }
+`
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        openapi: { input: "./openapi/api.yaml", output: "api" },
+      };`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "api", "index.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "api", "list-users.md"))).toBe(
+      true
+    );
+  });
+
+  it("still rejects product-only docs config without openapi or nav", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+      };`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain("must export groups or navigation");
+  });
+
   it("rejects unsupported organization contactPoint fields", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
@@ -2001,6 +2062,8 @@ description: "First release."
     expect(
       existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
     ).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "rest-api"))).toBe(false);
+    expect(capture.stderr).toContain("generate.openapi_skipped");
   });
 
   it("applies exclude path globs after includes", async () => {

@@ -31,6 +31,8 @@ const HTTP_METHODS = [
 const DEFAULT_OUTPUT_DIR = "api";
 const DEFAULT_NAV_TITLE = "API Reference";
 const DEFAULT_URL_PREFIX = "/docs";
+const OPENAPI_FETCH_TIMEOUT_MS = 30_000;
+const OPENAPI_FETCH_TIMEOUT_SECONDS = OPENAPI_FETCH_TIMEOUT_MS / 1000;
 const DEFAULT_METHOD_ORDER = new Map<OpenApiHttpMethod, number>(
   HTTP_METHODS.map((method, index) => [method, index])
 );
@@ -428,7 +430,20 @@ function readPointer(document: unknown, pointer: string): unknown {
 
 async function readInput(input: string, cwd: string): Promise<LoadedDocument> {
   if (/^https?:\/\//i.test(input)) {
-    const response = await fetch(input);
+    let response: Response;
+    try {
+      response = await fetch(input, {
+        signal: AbortSignal.timeout(OPENAPI_FETCH_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const errorName = isRecord(error) ? asString(error.name) : undefined;
+      if (errorName === "AbortError" || errorName === "TimeoutError") {
+        throw new Error(
+          `OpenAPI: timed out fetching "${input}" after ${OPENAPI_FETCH_TIMEOUT_SECONDS}s`
+        );
+      }
+      throw error;
+    }
     if (!response.ok) {
       throw new Error(
         `OpenAPI: failed to fetch "${input}" (${response.status} ${response.statusText})`
@@ -1510,12 +1525,16 @@ function serializeMdxExpression(value: unknown): string {
 
 function mdxProp(name: string, value: unknown): string {
   if (typeof value === "string") {
-    return `${name}=${JSON.stringify(value)}`;
+    return `${name}="${encodeMdxStringAttribute(value)}"`;
   }
   if (typeof value === "boolean") {
     return value ? name : `${name}={false}`;
   }
   return `${name}={${serializeMdxExpression(value)}}`;
+}
+
+function encodeMdxStringAttribute(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
 
 const MAX_SHORT_DESCRIPTION_LENGTH = 250;
@@ -1644,7 +1663,8 @@ function renderOperationMdx(
   operation: OpenApiOperation,
   config: ResolvedOpenApiSourceConfig,
   index: number,
-  relativePath: string
+  relativePath: string,
+  overviewRelativePath: string
 ): string {
   // No body `#` heading: the docs renderer prints the frontmatter title, and a
   // second h1 would duplicate it. Description text is CommonMark from the
@@ -1732,7 +1752,7 @@ function renderOperationMdx(
     );
   }
 
-  const related = relatedLinks(config);
+  const related = relatedLinks(config, overviewRelativePath);
   if (related.length > 0) {
     blocks.push("", "## Related", "");
     for (const link of related) {
@@ -1743,13 +1763,27 @@ function renderOperationMdx(
   return `${blocks.join("\n")}\n`;
 }
 
-function overviewUrlPath(config: ResolvedOpenApiSourceConfig): string {
-  return `${config.urlPrefix}/${stripDocsExtension(config.output)}`;
+function overviewUrlPath(
+  config: ResolvedOpenApiSourceConfig,
+  overviewRelativePath: string
+): string {
+  const defaultIndexPath = stripDocsExtension(
+    normalizeDocsPath(path.posix.join(config.output, "index.mdx"))
+  );
+  const overviewPath = stripDocsExtension(overviewRelativePath);
+  const urlPath =
+    overviewPath === defaultIndexPath
+      ? stripDocsExtension(config.output)
+      : overviewPath;
+  return `${config.urlPrefix}/${urlPath}`;
 }
 
-function relatedLinks(config: ResolvedOpenApiSourceConfig): string[] {
+function relatedLinks(
+  config: ResolvedOpenApiSourceConfig,
+  overviewRelativePath: string
+): string[] {
   const links = [
-    `[${config.title} overview](${overviewUrlPath(config)}): Every operation in this API.`,
+    `[${config.title} overview](${overviewUrlPath(config, overviewRelativePath)}): Every operation in this API.`,
   ];
   if (/^https?:\/\//i.test(config.input)) {
     links.push(
@@ -1763,7 +1797,8 @@ function renderIndexMdx(
   pages: GeneratedOpenApiPage[],
   config: ResolvedOpenApiSourceConfig,
   document: Record<string, unknown>,
-  lastModified: string | undefined
+  lastModified: string | undefined,
+  relativePath: string
 ): string {
   const info = asRecord(document.info);
   const infoDescription = asString(info.description);
@@ -1773,7 +1808,7 @@ function renderIndexMdx(
     `API reference for ${config.title}.`;
   const version = asString(info.version);
   const canonicalUrl = config.baseUrl
-    ? `${config.baseUrl}${overviewUrlPath(config)}`
+    ? `${config.baseUrl}${overviewUrlPath(config, relativePath)}`
     : undefined;
   const frontmatter: Record<string, unknown> = {
     title: config.title,
@@ -1825,19 +1860,23 @@ function renderIndexMdx(
 
 function buildGeneratedNav(
   pages: GeneratedOpenApiPage[],
-  config: ResolvedOpenApiSourceConfig
+  config: ResolvedOpenApiSourceConfig,
+  indexRelativePath: string
 ): DocsNavNode | undefined {
   if (pages.length === 0) {
     return;
   }
   const base = stripDocsExtension(config.output);
+  const indexSlug = stripDocsExtension(
+    path.posix.relative(config.output, indexRelativePath)
+  );
   if (!config.groupByTags) {
     return {
       title: config.title,
       ...(config.description ? { description: config.description } : {}),
       base,
       pages: [
-        "index",
+        indexSlug,
         ...pages.map((page) =>
           stripDocsExtension(
             path.posix.relative(config.output, page.relativePath)
@@ -1859,7 +1898,7 @@ function buildGeneratedNav(
     title: config.title,
     ...(config.description ? { description: config.description } : {}),
     base,
-    pages: ["index"],
+    pages: [indexSlug],
     children: [...byTag.entries()].map(([tag, tagPages]) => ({
       title: tag,
       base: slugify(tag),
@@ -1873,6 +1912,25 @@ function buildGeneratedNav(
       ),
     })),
   };
+}
+
+function indexRelativePath(
+  config: ResolvedOpenApiSourceConfig,
+  usedPaths: Set<string>
+): string {
+  const baseSlug = "index";
+  let relativePath = normalizeDocsPath(
+    path.posix.join(config.output, `${baseSlug}.mdx`)
+  );
+  let counter = 2;
+  while (usedPaths.has(relativePath.toLowerCase())) {
+    relativePath = normalizeDocsPath(
+      path.posix.join(config.output, `${baseSlug}-${counter}.mdx`)
+    );
+    counter += 1;
+  }
+  usedPaths.add(relativePath.toLowerCase());
+  return relativePath;
 }
 
 export async function generateOpenApiPages(
@@ -1899,32 +1957,46 @@ export async function generateOpenApiPages(
       title: operation.title,
     });
   }
-  const nav = buildGeneratedNav(pages, config);
   const indexPages: GeneratedOpenApiIndexPage[] = [];
+  let nav: DocsNavNode | undefined;
   if (pages.length > 0) {
-    const relativePath = normalizeDocsPath(
-      path.posix.join(config.output, "index.mdx")
+    const relativePath = indexRelativePath(config, usedPaths);
+    const content = renderIndexMdx(
+      pages,
+      config,
+      document,
+      lastModified,
+      relativePath
     );
-    if (!usedPaths.has(relativePath.toLowerCase())) {
-      usedPaths.add(relativePath.toLowerCase());
-      const content = renderIndexMdx(pages, config, document, lastModified);
-      indexPages.push({
-        content,
-        description:
-          config.description ??
-          asString(asRecord(document.info).description) ??
-          `API reference for ${config.title}.`,
-        filePath: relativePath,
-        relativePath,
-        title: config.title,
-      });
-    }
+    indexPages.push({
+      content,
+      description:
+        config.description ??
+        asString(asRecord(document.info).description) ??
+        `API reference for ${config.title}.`,
+      filePath: relativePath,
+      relativePath,
+      title: config.title,
+    });
+    nav = buildGeneratedNav(pages, config, relativePath);
   }
   return {
     indexPages,
     pages,
     nav: nav ? [nav] : [],
   };
+}
+
+function assertGeneratedPathIsWritable(
+  outputPath: string,
+  relativePath: string
+): void {
+  if (!existsSync(outputPath)) {
+    return;
+  }
+  throw new Error(
+    `OpenAPI: generated page "${relativePath}" would overwrite existing file "${outputPath}"`
+  );
 }
 
 export type WriteOpenApiPagesConfig = {
@@ -1944,17 +2016,31 @@ export async function writeOpenApiPages({
   const usedPaths = new Set<string>();
   for (const config of configs) {
     const generated = await generateOpenApiPages(config, usedPaths);
+    const overviewRelativePath = generated.indexPages[0]?.relativePath;
     for (const [index, page] of generated.pages.entries()) {
+      if (!overviewRelativePath) {
+        throw new Error(
+          `OpenAPI: missing generated overview page for "${page.relativePath}"`
+        );
+      }
       const outputPath = path.join(docsDir, page.relativePath);
+      assertGeneratedPathIsWritable(outputPath, page.relativePath);
       await mkdir(path.dirname(outputPath), { recursive: true });
       await writeFile(
         outputPath,
-        renderOperationMdx(page.operation, config, index, page.relativePath)
+        renderOperationMdx(
+          page.operation,
+          config,
+          index,
+          page.relativePath,
+          overviewRelativePath
+        )
       );
       allPages.push({ ...page, filePath: outputPath });
     }
     for (const indexPage of generated.indexPages) {
       const outputPath = path.join(docsDir, indexPage.relativePath);
+      assertGeneratedPathIsWritable(outputPath, indexPage.relativePath);
       await mkdir(path.dirname(outputPath), { recursive: true });
       await writeFile(outputPath, indexPage.content);
       allIndexPages.push({ ...indexPage, filePath: outputPath });
@@ -2001,13 +2087,19 @@ export async function stageOpenApiDocs(
   }
   const stagedRoot = await mkdtemp(path.join(tmpdir(), "leadtype-openapi-"));
   const stagedContentDir = path.join(stagedRoot, path.basename(sourceDir));
-  await cp(sourceDir, stagedContentDir, { recursive: true });
-  const result = await writeOpenApiPages({
-    configs: normalizeOpenApiConfig(config.openapi, config.cwd ?? sourceDir, {
-      ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
-    }),
-    docsDir: stagedContentDir,
-  });
+  let result: GenerateOpenApiPagesResult;
+  try {
+    await cp(sourceDir, stagedContentDir, { recursive: true });
+    result = await writeOpenApiPages({
+      configs: normalizeOpenApiConfig(config.openapi, config.cwd ?? sourceDir, {
+        ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+      }),
+      docsDir: stagedContentDir,
+    });
+  } catch (error) {
+    await rm(stagedRoot, { force: true, recursive: true });
+    throw error;
+  }
   return {
     cleanup: async () => {
       await rm(stagedRoot, { force: true, recursive: true });

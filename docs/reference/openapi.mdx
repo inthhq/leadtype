@@ -63,6 +63,8 @@ public/docs/search-index.json
 
 The same generated pages are added to the docs navigation used by
 `llms.txt`, `AGENTS.md`, search, and Agent Readability artifacts.
+CLI path filters are for authored docs only: `leadtype generate --include ...`
+or `--exclude ...` skips OpenAPI generation.
 
 Every generated page opens with machine-scannable frontmatter, so an agent
 can pick the right endpoint — and fetch the source spec — without parsing
@@ -301,6 +303,11 @@ export default {
   ],
 };
 ```
+
+Specs and their `$ref` targets are read or fetched at build time with the docs
+author's privileges. Treat spec sources as trusted input: Leadtype does not
+sandbox local file refs or restrict `$ref` URLs. Remote fetches time out after
+30 seconds.
 
 ## Options
 

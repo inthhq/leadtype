@@ -1,5 +1,12 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -92,6 +99,13 @@ async function generateFixturePages(spec: string, output = "rest-api") {
   );
   const result = await writeOpenApiPages({ configs, docsDir });
   return { dir, docsDir, result };
+}
+
+async function listOpenApiTempRoots(): Promise<string[]> {
+  const entries = await readdir(tmpdir());
+  return entries
+    .filter((entry) => entry.startsWith("leadtype-openapi-"))
+    .sort();
 }
 
 describe("OpenAPI page generation", () => {
@@ -216,6 +230,48 @@ describe("OpenAPI page generation", () => {
     // The dereferenced JSON Schema ships as the full contract.
     expect(converted.markdown).toContain("JSON Schema:");
     expect(converted.markdown).toContain('"required": [');
+  });
+
+  it("encodes string props as JSX-safe attributes that flatten back to literal strings", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Attributes, version: 1.0.0 }
+servers:
+  - url: https://api.example.com/<tenant>/{id}?mode=a&flag=b
+paths:
+  /users&groups:
+    get:
+      operationId: 'read" injected={globalThis.evil}'
+      responses: { "200": { description: ok } }
+`;
+    const { result } = await generateFixturePages(spec);
+    const page = await readFile(result.pages[0]?.filePath ?? "", "utf8");
+
+    expect(page).toContain(
+      'operationId="read&quot; injected={globalThis.evil}"'
+    );
+    expect(page).toContain('path="/users&amp;groups"');
+    expect(page).toContain(
+      'serverUrl="https://api.example.com/<tenant>/{id}?mode=a&amp;flag=b"'
+    );
+    const apiEndpoint = page.slice(
+      page.indexOf("<ApiEndpoint"),
+      page.indexOf("/>", page.indexOf("<ApiEndpoint")) + 2
+    );
+    expect(apiEndpoint).not.toContain('" injected=');
+    expect(apiEndpoint).not.toContain("\n  injected=");
+
+    const converted = await convertMdxToMarkdown(
+      result.pages[0]?.filePath ?? "",
+      defaultMarkdownTransforms
+    );
+    expect(converted.markdown).toContain(
+      'Operation ID: `read" injected={globalThis.evil}`'
+    );
+    expect(converted.markdown).toContain("GET /users&groups");
+    expect(converted.markdown).toContain(
+      "https://api.example.com/<tenant>/{id}?mode=a&flag=b"
+    );
   });
 
   it("omits raw schemas when includeSchemas is false", async () => {
@@ -455,6 +511,104 @@ paths:
       "api/get-users-id-2.mdx",
       "api/get-users-id.mdx",
     ]);
+  });
+
+  it("suffixes shared-output overview pages and links each spec to its own overview", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Shared, version: 1.0.0 }
+paths:
+  /users/{id}:
+    get:
+      operationId: readUser
+      responses: { "200": { description: ok } }
+`;
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    await writeFixture(dir, "openapi.yaml", spec);
+    const configs = normalizeOpenApiConfig(
+      [
+        {
+          groupByTags: false,
+          input: "openapi.yaml",
+          output: "api",
+          slugStrategy: "method-path",
+          title: "First API",
+        },
+        {
+          groupByTags: false,
+          input: "openapi.yaml",
+          output: "api",
+          slugStrategy: "method-path",
+          title: "Second API",
+        },
+      ],
+      dir,
+      { baseUrl: "https://example.com/" }
+    );
+
+    const result = await writeOpenApiPages({ configs, docsDir });
+
+    expect(result.indexPages.map((page) => page.relativePath)).toEqual([
+      "api/index.mdx",
+      "api/index-2.mdx",
+    ]);
+    expect(result.nav.map((node) => node.pages)).toEqual([
+      ["index", "get-users-id"],
+      ["index-2", "get-users-id-2"],
+    ]);
+    for (const indexPage of result.indexPages) {
+      expect(existsSync(indexPage.filePath)).toBe(true);
+    }
+
+    const firstOperation = await readFile(
+      result.pages[0]?.filePath ?? "",
+      "utf8"
+    );
+    const secondOperation = await readFile(
+      result.pages[1]?.filePath ?? "",
+      "utf8"
+    );
+    expect(firstOperation).toContain("[First API overview](/docs/api)");
+    expect(secondOperation).toContain(
+      "[Second API overview](/docs/api/index-2)"
+    );
+
+    const firstIndex = await readFile(
+      result.indexPages[0]?.filePath ?? "",
+      "utf8"
+    );
+    const secondIndex = await readFile(
+      result.indexPages[1]?.filePath ?? "",
+      "utf8"
+    );
+    expect(firstIndex).toContain("canonicalUrl: https://example.com/docs/api");
+    expect(secondIndex).toContain(
+      "canonicalUrl: https://example.com/docs/api/index-2"
+    );
+  });
+
+  it("rejects generated pages that would overwrite pre-existing files", async () => {
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    const existingPath = path.join(
+      docsDir,
+      "api",
+      "access-groups",
+      "read-access-group.mdx"
+    );
+    await mkdir(path.dirname(existingPath), { recursive: true });
+    await writeFile(existingPath, "---\ntitle: Authored\n---\n");
+    await writeFixture(dir, "openapi.yaml", FIXTURE_SPEC);
+    const configs = normalizeOpenApiConfig(
+      { input: "openapi.yaml", output: "api" },
+      dir
+    );
+
+    await expect(writeOpenApiPages({ configs, docsDir })).rejects.toThrow(
+      `OpenAPI: generated page "api/access-groups/read-access-group.mdx" would overwrite existing file "${existingPath}"`
+    );
   });
 
   it("prefers x-codeSamples over generated snippets", async () => {
@@ -708,6 +862,23 @@ describe("stageOpenApiDocs", () => {
         `${resolvedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}.*openapiCwd`
       )
     );
+  });
+
+  it("removes the staged temp directory when generation fails", async () => {
+    const dir = await createTempDir();
+    const docsDir = path.join(dir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    await writeFile(path.join(docsDir, "openapi.yaml"), "openapi: [");
+    const before = await listOpenApiTempRoots();
+
+    await expect(
+      stageOpenApiDocs({
+        contentDir: docsDir,
+        openapi: { input: "./openapi.yaml" },
+      })
+    ).rejects.toThrow();
+
+    expect(await listOpenApiTempRoots()).toEqual(before);
   });
 });
 

@@ -1260,6 +1260,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
 
   const collections = validateCollections(value.collections, configPath);
+  const openapi = validateDocsOpenApiConfig(
+    value.openapi,
+    `docs config at "${configPath}"`
+  );
   const hasGroups = value.groups !== undefined;
   const hasNav = value.navigation !== undefined;
 
@@ -1279,7 +1283,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   if (collections === undefined) {
     groups = validateDocsGroups(value.groups);
     nav = validateDocsNav(value.navigation);
-    if (!(groups || nav)) {
+    if (!(groups || nav || openapi)) {
       throw new Error(
         `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
       );
@@ -1302,10 +1306,6 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
-  const openapi = validateDocsOpenApiConfig(
-    value.openapi,
-    `docs config at "${configPath}"`
-  );
 
   if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
     throw new Error(
@@ -2627,14 +2627,16 @@ export async function runGenerateCommand(
       args,
       docsSources
     );
+    const hasExplicitPathFilters =
+      args.include.length > 0 || args.exclude.length > 0;
     sourceMirror = await createSourceMirror(
       srcDir,
       docsSources,
       args,
-      metadata.openapi !== undefined
+      metadata.openapi !== undefined && !hasExplicitPathFilters
     );
     const generatedOpenApi =
-      metadata.openapi === undefined
+      metadata.openapi === undefined || hasExplicitPathFilters
         ? { indexPages: [], nav: [], pages: [] }
         : await writeOpenApiPages({
             configs: normalizeOpenApiConfig(
@@ -2644,8 +2646,18 @@ export async function runGenerateCommand(
             ),
             docsDir: sourceMirror.docsDir,
           });
-    const hasExplicitPathFilters =
-      args.include.length > 0 || args.exclude.length > 0;
+    if (metadata.openapi !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "OpenAPI generation is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.openapi_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
     // Collections-mode configs may omit per-collection `groups` and lean on
     // the same frontmatter-discovery path used when no config is present.
     // Filtered single-folder runs also disable curated nav, so infer groups

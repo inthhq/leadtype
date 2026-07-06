@@ -163,14 +163,20 @@ export function ApiAuth({ requirements, schemes }: ApiAuthProps) {
   if (requirements.length === 0 && schemes.length === 0) {
     return <p>No authentication required.</p>;
   }
+  const requirementCounts = new Map<string, number>();
+  const requirementItems = requirements.map((requirement) => {
+    const names = Object.keys(requirement);
+    const label = names.length > 0 ? names.join(" + ") : "Anonymous";
+    const occurrence = requirementCounts.get(label) ?? 0;
+    requirementCounts.set(label, occurrence + 1);
+    return { key: `${label}:${occurrence}`, label };
+  });
   return (
     <div data-leadtype-api-auth="">
       <ul>
-        {requirements.map((requirement) => {
-          const names = Object.keys(requirement);
-          const label = names.length > 0 ? names.join(" + ") : "Anonymous";
-          return <li key={label}>{label}</li>;
-        })}
+        {requirementItems.map((item) => (
+          <li key={item.key}>{item.label}</li>
+        ))}
       </ul>
       {schemes.length > 0 ? (
         <ul data-leadtype-api-schemes="">
