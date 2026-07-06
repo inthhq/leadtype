@@ -817,6 +817,13 @@ export type AgentReadabilityConfig = {
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
   seo?: SeoMeta;
+  /**
+   * Pin manifest `generatedAt` and the per-page `lastModified` fallback (used
+   * when a page's frontmatter carries no date, instead of the file mtime) so
+   * repeated runs produce reproducible output. Accepts a date string or a
+   * Date. Defaults to the current time.
+   */
+  generatedAt?: string | Date;
   /** Write origin-root crawler files. Defaults to true for the default locale. */
   emitRootCrawlerFiles?: boolean;
 };
@@ -1063,6 +1070,19 @@ function normalizeDate(value: unknown): string | undefined {
   return;
 }
 
+function resolveGeneratedAt(value?: string | Date): Date {
+  if (value === undefined) {
+    return new Date();
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(
+      `generatedAt must be a valid Date or date string; received ${JSON.stringify(value)}.`
+    );
+  }
+  return date;
+}
+
 function readLastModified(
   frontmatter: Record<string, unknown>,
   fallback: Date
@@ -1304,6 +1324,11 @@ type LocaleReadOptions = {
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   includeFallback?: boolean;
+  /**
+   * Used as the per-page `lastModified` when frontmatter carries no date,
+   * instead of the file's mtime (which changes on every fresh checkout).
+   */
+  lastModifiedFallback?: Date;
 };
 
 function resolveLocaleReadOptions(options: LocaleReadOptions): {
@@ -1630,7 +1655,10 @@ async function readMarkdownDocs(
           : { isFallback: file.isFallback }),
         ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
         content: parsed.content.trim(),
-        lastModified: readLastModified(parsed.data, fileStat.mtime),
+        lastModified: readLastModified(
+          parsed.data,
+          localeOptions.lastModifiedFallback ?? fileStat.mtime
+        ),
       };
     })
   );
@@ -2514,6 +2542,7 @@ export async function generateAgentReadabilityArtifacts(
 ): Promise<AgentReadabilityResult> {
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const generatedAt = resolveGeneratedAt(config.generatedAt);
   const i18n = normalizeDocsI18nConfig(config.i18n);
   const locale = config.locale ?? i18n?.defaultLocale;
   const docsDir =
@@ -2524,6 +2553,9 @@ export async function generateAgentReadabilityArtifacts(
     i18n: config.i18n,
     locale,
     includeFallback: false,
+    ...(config.generatedAt === undefined
+      ? {}
+      : { lastModifiedFallback: generatedAt }),
   });
 
   if (markdownDocs.length === 0) {
@@ -2552,7 +2584,7 @@ export async function generateAgentReadabilityArtifacts(
   );
   const manifest: AgentReadabilityManifest = {
     version: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt: generatedAt.toISOString(),
     baseUrl,
     product: config.product,
     ...(locale ? { locale } : {}),
@@ -2662,6 +2694,12 @@ export type GenerateAgentArtifactsConfig = {
   /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
   groups?: DocsGroup[];
   agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  /**
+   * Pin manifest `generatedAt` and per-page `lastModified` fallbacks so
+   * repeated runs can produce reproducible output. Accepts a date string or a
+   * Date. Defaults to the current time.
+   */
+  generatedAt?: string | Date;
   /**
    * Emit root `/robots.txt`, `/sitemap.xml`, and `/sitemap.md`. Disable when a
    * host app merges several artifact sets (docs, blog, marketing) and serves
@@ -2845,7 +2883,7 @@ export async function generateAgentArtifacts(
   }
   const outDir = path.resolve(config.outDir);
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const generatedAt = new Date();
+  const generatedAt = resolveGeneratedAt(config.generatedAt);
 
   const docs: MarkdownDoc[] = [];
   const byUrlPath = new Map<string, MarkdownDoc>();

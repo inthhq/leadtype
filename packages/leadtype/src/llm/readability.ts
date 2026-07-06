@@ -1336,7 +1336,7 @@ export async function createAgentMarkdownResponse(
     const body = markdown
       ? enrichMarkdownFrontmatter(markdown, {
           canonicalUrl,
-          lastUpdated: page?.lastModified,
+          lastUpdated: page?.lastModified ?? config.now,
         })
       : renderMissingMarkdown({
           urlPath: target.urlPath,
