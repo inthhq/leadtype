@@ -174,7 +174,7 @@ function openApiLinkPrefixes(openapi: DocsConfig["openapi"]): string[] {
     if (typeof input === "string") {
       return "/docs/api";
     }
-    const output = input.output?.trim() || "api";
+    const output = input.output?.trim().replace(/^\/+/, "") || "api";
     const rawPrefix = input.urlPrefix?.trim().replace(/\/+$/, "") || "/docs";
     const prefix = rawPrefix.startsWith("/") ? rawPrefix : `/${rawPrefix}`;
     return prefix === "/" ? `/${output}` : `${prefix}/${output}`;

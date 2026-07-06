@@ -1090,6 +1090,36 @@ describe("runLintCommand config discovery", () => {
     ]);
   });
 
+  it("exempts generated OpenAPI links even when output has a leading slash", async () => {
+    const projectDir = await createTempProject();
+    const srcDir = path.join(projectDir, "docs");
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "docs.config.ts"),
+      `export default {
+  product: { name: "T", tagline: "t" },
+  navigation: ["index"],
+  openapi: { input: "./openapi/api.yaml", output: "/rest-api" },
+};
+`
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\n[API](/docs/rest-api/endpoints)\n"
+    );
+
+    const capture = createCapture();
+    const code = await runLintCommand(
+      ["--src", srcDir, "--format", "json"],
+      capture.io
+    );
+
+    // The generator strips the leading slash (routes live at
+    // /docs/rest-api/...), so the exemption must match despite it.
+    expect(code).toBe(0);
+  });
+
   it("reports an invalid docs config instead of crashing", async () => {
     const projectDir = await createTempProject();
     const srcDir = path.join(projectDir, "docs");
