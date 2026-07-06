@@ -226,6 +226,10 @@ export async function runLintCommand(
       loaded = await loadDocsConfig({ cwd, docsDirs: candidates });
       if (loaded && basename(loaded.path).startsWith("docs.config")) {
         resolvedSrcDir = dirname(loaded.path);
+      } else if (loaded) {
+        // Project-root leadtype.config.*: mirror generate's default docs dir
+        // so lint and generate always target the same tree.
+        resolvedSrcDir = resolve(cwd, "docs");
       } else {
         resolvedSrcDir =
           candidates.find((dir) => existsSync(dir)) ?? resolve(cwd, "content");

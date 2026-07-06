@@ -14,6 +14,7 @@ import {
 } from "../internal/docs-context";
 import {
   type DocsPathMount,
+  matchesUrlPrefix,
   normalizeDocsPath,
   toDocsUrlPath,
 } from "../internal/docs-url";
@@ -290,9 +291,7 @@ function isInternalDocsUrl(
   value: string,
   prefixes: readonly string[]
 ): boolean {
-  return prefixes.some(
-    (prefix) => value === prefix || value.startsWith(`${prefix}/`)
-  );
+  return prefixes.some((prefix) => matchesUrlPrefix(value, prefix));
 }
 
 function looksLikeDocsUrlCandidate(

@@ -141,6 +141,11 @@ export function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
   return `${stripTrailingSlashes(baseUrl)}${urlPath}`;
 }
 
+/** True when `value` equals `prefix` or nests under it (`<prefix>/...`). */
+export function matchesUrlPrefix(value: string, prefix: string): boolean {
+  return value === prefix || value.startsWith(`${prefix}/`);
+}
+
 export function normalizeDocsUrl(url: string): string {
   const [withoutHashOrQuery] = url.split(QUERY_OR_HASH_PATTERN, 1);
   const normalized = (withoutHashOrQuery ?? "").replace(

@@ -1,5 +1,6 @@
 import { basename, dirname, resolve } from "node:path";
 import { normalizeDocsUrl } from "../internal/docs-context";
+import { matchesUrlPrefix } from "../internal/docs-url";
 import type { DocsConfig } from "../llm/llm";
 import { resolveDocsNavigation } from "../llm/llm";
 import type { LintViolation } from "./runner";
@@ -26,9 +27,7 @@ function isAssumedValid(
   url: string,
   prefixes: readonly string[] | undefined
 ): boolean {
-  return (prefixes ?? []).some(
-    (prefix) => url === prefix || url.startsWith(`${prefix}/`)
-  );
+  return (prefixes ?? []).some((prefix) => matchesUrlPrefix(url, prefix));
 }
 
 export async function lintConfigLinks(
@@ -108,9 +107,7 @@ export async function lintConfigLinks(
     const matchesAny =
       prefix === "/" ||
       isAssumedValid(prefix, options.assumeValidLinkPrefixes) ||
-      [...routeSet].some(
-        (route) => route === prefix || route.startsWith(`${prefix}/`)
-      );
+      [...routeSet].some((route) => matchesUrlPrefix(route, prefix));
     if (!matchesAny) {
       pushViolation(
         "warn",
