@@ -101,14 +101,29 @@ Add `AGENTS.md` and `docs` to `files` and run generation as a build or prepack s
 If you need full control over plugin order or custom validation, run the library APIs directly from a script:
 
 ```ts title="scripts/generate-docs.ts"
+// @filename: docs.config.ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Leadtype", tagline: "Docs tooling." },
+  navigation: ["index"],
+});
+
+// @filename: main.ts
+// ---cut---
 import { rm } from "node:fs/promises";
 import { convertAllMdx } from "leadtype/convert";
-import { generateAgentsMd, resolveDocsNavigation } from "leadtype/llm";
+import {
+  generateAgentsMd,
+  resolveAgentInputs,
+  resolveDocsNavigation,
+} from "leadtype/llm";
 import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
-import docsConfig from "../../../docs/docs.config";
+import docsConfig from "./docs.config";
 
 const REPO_ROOT = `${process.cwd()}/../..`;
 const PACKAGE_ROOT = process.cwd();
+const { product } = resolveAgentInputs({ product: docsConfig.product });
 
 await rm(`${PACKAGE_ROOT}/docs`, { recursive: true, force: true });
 await rm(`${PACKAGE_ROOT}/AGENTS.md`, { force: true });
@@ -134,7 +149,7 @@ if (navigation.unknown.length > 0) {
 await generateAgentsMd({
   srcDir: REPO_ROOT,
   outDir: PACKAGE_ROOT,
-  product: docsConfig.product,
+  product,
   nav: docsConfig.navigation,
 });
 ```

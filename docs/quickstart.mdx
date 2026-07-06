@@ -136,7 +136,7 @@ import { mdxComponents } from "@/lib/mdx-components";
 
 export async function generateStaticParams() {
   const pages = await source.listPages();
-  return pages.map((page) => ({ slug: page.slug }));
+  return pages.map((page: { slug: string[] }) => ({ slug: page.slug }));
 }
 
 export default async function DocsPage({
@@ -146,7 +146,7 @@ export default async function DocsPage({
 }) {
   const page = await source.loadPage((await params).slug ?? []);
   if (!page) {
-    notFound();
+    return notFound();
   }
 
   return (

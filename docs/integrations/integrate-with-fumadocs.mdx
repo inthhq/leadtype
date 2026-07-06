@@ -93,13 +93,15 @@ The same plugin list works with `@mdx-js/rollup`, fumadocs-mdx, and any other MD
 Use the prop types from `leadtype/mdx` so your components type-check against the same contract the source preset expects:
 
 ```tsx
+import type * as React from "react";
 import type { CalloutProps, TabsProps, StepProps } from "leadtype/mdx";
 
 export function Callout({ variant, title, children }: CalloutProps) {
   return (
     <aside data-variant={variant ?? "info"}>
       {title ? <p><strong>{title}</strong></p> : null}
-      <div>{children}</div>
+      {/* leadtype types children as unknown to stay React-free. */}
+      <div>{children as React.ReactNode}</div>
     </aside>
   );
 }

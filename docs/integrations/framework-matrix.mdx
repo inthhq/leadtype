@@ -52,8 +52,12 @@ Use `leadtype/search/react` in client search components.
 Use `createGenerateMetadata()` for App Router page metadata:
 
 ```tsx title="app/docs/[[...slug]]/page.tsx"
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
 import { createGenerateMetadata } from "leadtype/next";
 
+declare const manifest: AgentReadabilityManifest;
+
+// ---cut---
 export const generateMetadata = createGenerateMetadata({ manifest });
 ```
 
@@ -62,8 +66,12 @@ Render JSON-LD from `createDocsJsonLd()` in the page body; the deployment recipe
 Use `createDocsProxy()` when a Next Proxy owns markdown negotiation for the same route tree:
 
 ```ts title="proxy.ts"
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
 import { createDocsProxy } from "leadtype/next";
 
+declare const manifest: AgentReadabilityManifest;
+
+// ---cut---
 export const proxy = createDocsProxy({ manifest });
 ```
 
@@ -78,8 +86,12 @@ Nuxt Content is a Nuxt CMS. Leadtype is the portable artifact pipeline: use it w
 Keep Leadtype source loading and adapter helpers in Nitro server files, not Vue client bundles:
 
 ```ts title="server/api/docs.get.ts"
+import type { DocsSource } from "leadtype";
 import { createLoadPageData } from "leadtype/nuxt";
 
+declare function getSource(): Promise<DocsSource>;
+
+// ---cut---
 const source = await getSource();
 const loadPageData = createLoadPageData({ source });
 ```
@@ -91,16 +103,36 @@ Use `leadtype/search/vue` for the client search composable.
 Use `leadtype/astro` to match Astro's `getStaticPaths()` shape and endpoint signature:
 
 ```ts title="src/pages/docs/[...slug].astro"
+// @filename: source.ts
+import type { DocsSource } from "leadtype";
+
+export declare const source: DocsSource;
+
+// @filename: main.ts
+declare const Astro: { params: { slug?: string | string[] } };
+
+// ---cut---
 import { createGetStaticPaths, createLoadPageData } from "leadtype/astro";
-import { source } from "../../lib/source";
+import { source } from "./source";
 
 export const getStaticPaths = createGetStaticPaths({ source });
 const page = await createLoadPageData({ source })(Astro.params.slug);
 ```
 
 ```ts title="src/pages/docs/[...slug].md.ts"
+// @filename: source.ts
+import type { DocsSource } from "leadtype";
+
+export declare const source: DocsSource;
+
+// @filename: main.ts
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
+
+declare const manifest: AgentReadabilityManifest;
+
+// ---cut---
 import { createDocsEndpoint, createMarkdownStaticPaths } from "leadtype/astro";
-import { source } from "../../lib/source";
+import { source } from "./source";
 
 export const getStaticPaths = createMarkdownStaticPaths({ source });
 export const GET = createDocsEndpoint({ manifest });
@@ -116,15 +148,21 @@ Use the generated artifact manifest for prerender entries, render generated mark
 import { readFile } from "node:fs/promises";
 import { renderMarkdown } from "$lib/markdown";
 import { manifest, pageForUrlPath } from "$lib/manifest";
+import type { AgentReadabilityPage } from "leadtype/llm/readability";
+
+type LoadEvent = { params: { slug?: string } };
 
 export const entries = () =>
-  manifest.pages.map((page) => ({
+  manifest.pages.map((page: AgentReadabilityPage) => ({
     slug: page.urlPath === "/docs" ? "" : page.urlPath.slice("/docs/".length),
   }));
 
-export const load = async ({ params }) => {
+export const load = async ({ params }: LoadEvent) => {
   const urlPath = params.slug ? `/docs/${params.slug}` : "/docs";
   const page = pageForUrlPath(urlPath);
+  if (!page) {
+    throw new Error(`Missing docs page: ${urlPath}`);
+  }
   const markdown = await readFile(`static/docs/${page.relativePath}.md`, "utf8");
 
   return { html: await renderMarkdown(markdown), urlPath };

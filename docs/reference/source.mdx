@@ -129,7 +129,11 @@ export default createMDX({
 import { createDocsSource } from "leadtype";
 const source = await createDocsSource({ contentDir: "./content/docs" });
 
-export default async function Page({ params }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
   const { slug } = await params;
   const page = await source.loadPage(slug ?? []);
   // …
@@ -172,6 +176,12 @@ Pair with a TanStack Router catch-all (`src/routes/docs/$.tsx`) that consumes a 
 ### Nuxt
 
 ```ts title="nuxt.config.ts"
+declare function defineNuxtConfig(config: {
+  modules: string[];
+  mdc: { remarkPlugins: unknown[] };
+}): unknown;
+
+// ---cut---
 import { createMdxSourcePlugins } from "leadtype/mdx";
 
 export default defineNuxtConfig({

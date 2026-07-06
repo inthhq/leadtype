@@ -300,6 +300,7 @@ const config: DocsConfig = {
   // build when a page disappears without a successor. Acknowledge intentional
   // deletions under `removed` to serve 410 Gone.
   redirects: {},
+  lint: { snippets: { typecheck: true } },
   agents: {
     // Library default for the repo's own example output. The deployed site's
     // robots policy is host-owned: the consuming app's leadtype.config.ts

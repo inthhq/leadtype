@@ -236,8 +236,26 @@ temp staging directory — Vite resolves glob patterns at build time. Generate
 the pages into an app-local directory instead and add a second glob:
 
 ```ts title="scripts/docs-source-manifest.ts"
+// @filename: docs.config.ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Leadtype", tagline: "Docs tooling." },
+  openapi: "./openapi.json",
+});
+
+// @filename: main.ts
+// ---cut---
 import { normalizeOpenApiConfig, writeOpenApiPages } from "leadtype/openapi";
-import docsConfig from "../../docs/docs.config";
+import docsConfig from "./docs.config";
+
+const contentDir = "docs";
+const baseUrl = "https://leadtype.dev";
+const openapiDocsDir = "src/generated/openapi-docs";
+
+if (docsConfig.openapi === undefined) {
+  throw new Error("OpenAPI config is required.");
+}
 
 const generated = await writeOpenApiPages({
   configs: normalizeOpenApiConfig(docsConfig.openapi, contentDir, {

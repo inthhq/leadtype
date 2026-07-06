@@ -45,13 +45,40 @@ For server routes or any code that already has the JSON, query directly with
 `searchDocs`:
 
 ```ts
+// @filename: search-content.ts
+import type { DocsSearchContentStore } from "leadtype/search";
+
+const contentJson: DocsSearchContentStore = {
+  version: 2,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  chunks: [],
+};
+
+export default contentJson;
+
+// @filename: search-index.ts
+import type { DocsSearchIndex } from "leadtype/search";
+
+const indexJson: DocsSearchIndex = {
+  version: 2,
+  generatedAt: "2026-06-15T10:30:00.000Z",
+  documents: [],
+  chunks: [],
+  terms: {},
+  averageChunkLength: 0,
+};
+
+export default indexJson;
+
+// @filename: main.ts
+// ---cut---
 import {
   searchDocs,
   type DocsSearchContentStore,
   type DocsSearchIndex,
 } from "leadtype/search";
-import contentJson from "../public/docs/search-content.json";
-import indexJson from "../public/docs/search-index.json";
+import contentJson from "./search-content";
+import indexJson from "./search-index";
 
 const index = indexJson as DocsSearchIndex;
 const content = contentJson as DocsSearchContentStore;

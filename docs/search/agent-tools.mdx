@@ -29,9 +29,18 @@ Both factories take the same `(index, content)` and return ready-to-register
 <Tabs items={["Vercel AI SDK", "TanStack AI"]}>
   <Tab value="Vercel AI SDK">
 ```ts
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "leadtype/search";
 import { streamText } from "ai";
 import { createDocsBashTool } from "leadtype/search/bash";
 
+declare const index: DocsSearchIndex;
+declare const content: DocsSearchContentStore;
+declare const query: string;
+
+// ---cut---
 const { tools, instructions } = await createDocsBashTool(index, content);
 
 const result = streamText({
@@ -44,9 +53,19 @@ const result = streamText({
   </Tab>
   <Tab value="TanStack AI">
 ```ts
+import type {
+  DocsSearchContentStore,
+  DocsSearchIndex,
+} from "leadtype/search";
 import { chat } from "@tanstack/ai";
 import { createDocsBashTools } from "leadtype/search/bash";
 
+declare const index: DocsSearchIndex;
+declare const content: DocsSearchContentStore;
+declare const query: string;
+declare const adapter: Parameters<typeof chat>[0]["adapter"];
+
+// ---cut---
 const { tools, instructions } = await createDocsBashTools(index, content);
 
 const stream = chat({

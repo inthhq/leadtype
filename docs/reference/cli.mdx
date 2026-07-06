@@ -146,6 +146,9 @@ canonical URL prefix.
 For a task-focused walkthrough, see [Generate RSS and Atom feeds](/docs/pipeline/generate-rss-atom-feeds).
 
 ```ts
+import { defineDocsConfig } from "leadtype";
+
+// ---cut---
 export default defineDocsConfig({
   product: {
     name: "My Library",
@@ -247,15 +250,28 @@ Errors in JSON mode print `{"error": "...", ...}` to stderr.
 Custom build scripts do not auto-discover config. Import `docs.config.ts` directly and pass the values to the lower-level APIs:
 
 ```ts
-import { generateLlmsTxt } from "leadtype/llm";
+// @filename: docs.config.ts
+import { defineDocsConfig } from "leadtype";
+
+export default defineDocsConfig({
+  product: { name: "Leadtype", tagline: "Docs tooling." },
+  feeds: [],
+  navigation: ["index"],
+});
+
+// @filename: main.ts
+// ---cut---
+import { generateLlmsTxt, resolveAgentInputs } from "leadtype/llm";
 import { generateFeedArtifacts } from "leadtype/feed";
-import docsConfig from "../docs/docs.config";
+import docsConfig from "./docs.config";
+
+const { product } = resolveAgentInputs({ product: docsConfig.product });
 
 await generateLlmsTxt({
   srcDir: process.cwd(),
   outDir: "public",
   baseUrl: "https://leadtype.dev",
-  product: docsConfig.product,
+  product,
   nav: docsConfig.navigation,
 });
 
@@ -319,6 +335,12 @@ Inside each cacheDir, `leadtype sync` writes a `.leadtype-sync.json` manifest:
 Two collections that point at the same `(repository, ref)` share a single clone. The sync engine dedupes by repo+ref before issuing any git operations, so this:
 
 ```ts
+import { defineCollection, defineDocsConfig } from "leadtype";
+import type { ProductInfo } from "leadtype";
+
+declare const product: ProductInfo;
+
+// ---cut---
 const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as const;
 
 export default defineDocsConfig({

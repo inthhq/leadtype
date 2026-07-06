@@ -119,6 +119,9 @@ own, compose the primitives:
 ```ts
 import { createDocsWebMcpTools, registerWebMcpTools } from "leadtype/webmcp";
 
+declare function subscribe(input: unknown): Promise<void>;
+
+// ---cut---
 const registration = registerWebMcpTools([
   ...createDocsWebMcpTools(),
   {

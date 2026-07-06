@@ -12,6 +12,17 @@ The docs pipeline reads pages from `.md`/`.mdx` files on disk. `generateAgentArt
 Call it from a build script, after your content is available:
 
 ```ts
+type Benchmark = {
+  slug: string;
+  name: string;
+  summary: string;
+  updatedAt: string;
+};
+
+declare const benchmarks: Benchmark[];
+declare function renderMarkdown(benchmark: Benchmark): string;
+
+// ---cut---
 import { generateAgentArtifacts } from "leadtype/llm";
 
 await generateAgentArtifacts({

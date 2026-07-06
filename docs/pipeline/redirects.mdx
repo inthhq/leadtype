@@ -10,7 +10,11 @@ Renaming a docs page breaks every link that pointed at it — search results, ag
 Add a `redirects` block to `docs.config.ts`:
 
 ```ts
+import { defineDocsConfig } from "leadtype";
+
+// ---cut---
 export default defineDocsConfig({
+  product: { name: "My library", tagline: "..." },
   // ...
   redirects: {},
 });
@@ -57,15 +61,28 @@ Filtered generates (`--include` / `--exclude`) skip redirect tracking and prunin
 The generate step emits data; serving is one helper call. For HTML routes, consult the map in your catch-all before rendering a 404:
 
 ```ts
+// @filename: generated/redirects.ts
+import type { DocsRedirect } from "leadtype/redirects";
+
+const redirects = {
+  redirects: [] as DocsRedirect[],
+};
+
+export default redirects;
+
+// @filename: main.ts
+declare const url: URL;
+
+// ---cut---
 import { resolveRedirect } from "leadtype/redirects";
-import redirects from "./generated/redirects.json";
+import redirects from "./generated/redirects";
 
 const redirect = resolveRedirect(url.pathname, redirects.redirects);
-if (redirect) {
-  return redirect.to
+const response = redirect
+  ? redirect.to
     ? Response.redirect(new URL(redirect.to, url.origin), redirect.status)
-    : new Response("Gone", { status: 410 });
-}
+    : new Response("Gone", { status: 410 })
+  : undefined;
 ```
 
 `leadtype/redirects` is edge-safe (no Node built-ins), so the resolver runs in Cloudflare Workers and Vercel Edge routes; the generate-time lockfile helpers live under `leadtype/redirects/node`.

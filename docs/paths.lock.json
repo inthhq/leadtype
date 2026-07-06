@@ -31,7 +31,7 @@
     },
     {
       "path": "/docs/aeo/serve-agent-responses",
-      "hash": "9ca0e763454e2a03"
+      "hash": "a07fb930213e393c"
     },
     {
       "path": "/docs/concepts/architecture",
@@ -51,15 +51,15 @@
     },
     {
       "path": "/docs/integrations/framework-matrix",
-      "hash": "57c35877dc17e7fe"
+      "hash": "c460647ed91014d9"
     },
     {
       "path": "/docs/integrations/integrate-with-fumadocs",
-      "hash": "040d91798f99f998"
+      "hash": "b0b5c07571574a1b"
     },
     {
       "path": "/docs/package-docs/bundle",
-      "hash": "6ad5d88e3d991aae"
+      "hash": "9299f549e20107bb"
     },
     {
       "path": "/docs/pipeline/agent-setup-prompts",
@@ -71,7 +71,7 @@
     },
     {
       "path": "/docs/pipeline/collections",
-      "hash": "f7f631263e740334"
+      "hash": "bfa0c797bdb2aeb8"
     },
     {
       "path": "/docs/pipeline/configure-sources",
@@ -79,7 +79,7 @@
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
-      "hash": "f6a7d1c9ed2486b4"
+      "hash": "11cbe4b68b274424"
     },
     {
       "path": "/docs/pipeline/generate-rss-atom-feeds",
@@ -87,15 +87,15 @@
     },
     {
       "path": "/docs/pipeline/generate-static-artifacts",
-      "hash": "3d7f348c3db7dbce"
+      "hash": "078a0e5fcf0c0106"
     },
     {
       "path": "/docs/pipeline/localize-docs",
-      "hash": "254a1b6aa5ed6eae"
+      "hash": "9f2448d16b4004c9"
     },
     {
       "path": "/docs/pipeline/redirects",
-      "hash": "bb869a451ce2db60"
+      "hash": "f5bbb53dbc657ea6"
     },
     {
       "path": "/docs/pipeline/sync-docs-across-repos",
@@ -103,23 +103,23 @@
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
-      "hash": "0439796e9723de61"
+      "hash": "0749b497916da7c1"
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
-      "hash": "9d67e3d195838cd2"
+      "hash": "0316abc97935cce6"
     },
     {
       "path": "/docs/quickstart",
-      "hash": "5c1877b600d49580"
+      "hash": "f4e179d1071a8fed"
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "02b9c7034faeb8de"
+      "hash": "af61a28f41e281b8"
     },
     {
       "path": "/docs/reference/convert",
-      "hash": "b566c15748fe344c"
+      "hash": "47365b8cfe098cc0"
     },
     {
       "path": "/docs/reference/frontmatter-transformers",
@@ -135,7 +135,7 @@
     },
     {
       "path": "/docs/reference/llm",
-      "hash": "aa939d1a03331ded"
+      "hash": "de5b0091da60f051"
     },
     {
       "path": "/docs/reference/markdown",
@@ -155,7 +155,7 @@
     },
     {
       "path": "/docs/reference/openapi",
-      "hash": "0e6c04e869a0d15e"
+      "hash": "9b7f5adbe50ebf5d"
     },
     {
       "path": "/docs/reference/search",
@@ -167,7 +167,7 @@
     },
     {
       "path": "/docs/reference/source",
-      "hash": "11a9378e360b8265"
+      "hash": "3d755d399adcbd60"
     },
     {
       "path": "/docs/reference/troubleshooting",
@@ -175,7 +175,7 @@
     },
     {
       "path": "/docs/reference/webmcp",
-      "hash": "93e4b4f391d6ea5f"
+      "hash": "4d7394bddffbba76"
     },
     {
       "path": "/docs/rest-api",
@@ -191,15 +191,15 @@
     },
     {
       "path": "/docs/search/add-search",
-      "hash": "b59bf00b5e49e8c7"
+      "hash": "7fc9d787962490fd"
     },
     {
       "path": "/docs/search/agent-tools",
-      "hash": "fb998162d8ff7dd6"
+      "hash": "bdcce578592a10f3"
     },
     {
       "path": "/docs/search/ai-answers",
-      "hash": "80eda38a641a5d43"
+      "hash": "f897121e89a23fd2"
     },
     {
       "path": "/docs/writing/components",

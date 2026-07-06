@@ -77,6 +77,9 @@ Set `repository` (and optionally `ref`, `cacheDir`) to make the collection remot
 Two collections that share a `(repository, ref)` pair share one underlying clone — the sync engine dedupes acquisition:
 
 ```ts
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+// ---cut---
 const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as const;
 
 export default defineDocsConfig({
@@ -103,6 +106,9 @@ collection `dir` after cloning, then treats the source config's MDX-owned fields
 as collection-owned fields:
 
 ```ts
+import { defineCollection, defineDocsConfig } from "leadtype";
+
+// ---cut---
 export default defineDocsConfig({
   product: {
     name: "Acme",
@@ -200,6 +206,12 @@ needs its own schema or filters, or is promoted independently from the docs.
 The shape generalizes to one prefix per framework, each fed by a separate repo:
 
 ```ts
+import { defineCollection, defineDocsConfig } from "leadtype";
+import type { ProductInfo } from "leadtype";
+
+declare const product: ProductInfo;
+
+// ---cut---
 const c15t   = { repository: "https://github.com/c15t/c15t",   ref: "main" } as const;
 const swift  = { repository: "https://github.com/c15t/swift",  ref: "main" } as const;
 const kotlin = { repository: "https://github.com/c15t/kotlin", ref: "main" } as const;
@@ -222,8 +234,13 @@ export default defineDocsConfig({
 `schema` lets a collection validate its frontmatter against something other than the default. Pass a Valibot `ObjectSchema`:
 
 ```ts
+import { defineCollection, defineDocsConfig } from "leadtype";
+import type { ProductInfo } from "leadtype";
 import * as v from "valibot";
 
+declare const product: ProductInfo;
+
+// ---cut---
 const changelogFrontmatter = v.object({
   title: v.pipe(v.string(), v.minLength(1)),
   version: v.string(),
