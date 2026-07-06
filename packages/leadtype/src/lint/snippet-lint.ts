@@ -44,7 +44,7 @@ const YAML_LANGS = new Set(["yaml", "yml"]);
 // skipped rather than failing the lint run.
 let cachedTypeScript: typeof TS | null | undefined;
 
-function loadTypeScript(): typeof TS | null {
+export function loadTypeScript(): typeof TS | null {
   if (cachedTypeScript !== undefined) {
     return cachedTypeScript;
   }
