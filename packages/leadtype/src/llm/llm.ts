@@ -517,6 +517,16 @@ export type DocsLintConfig = {
    * its severity.
    */
   rules?: Record<string, "off" | "warn" | "error">;
+  /**
+   * External URL checking options for the opt-in `external-link` rule
+   * (enable via `rules: { "external-link": "error" }` or `--external-links`).
+   */
+  externalLinks?: {
+    /** URL prefixes to skip — known-flaky hosts, auth-walled URLs. */
+    ignore?: string[];
+    /** Hours a confirmed-live URL stays trusted in the cache. Default 168. */
+    ttlHours?: number;
+  };
   /** Code snippet checking options. */
   snippets?: {
     /**

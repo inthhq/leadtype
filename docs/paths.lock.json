@@ -51,11 +51,11 @@
     },
     {
       "path": "/docs/integrations/framework-matrix",
-      "hash": "c460647ed91014d9"
+      "hash": "2ab7e33d4cb8ed99"
     },
     {
       "path": "/docs/integrations/integrate-with-fumadocs",
-      "hash": "b0b5c07571574a1b"
+      "hash": "e8ffafbac5b3a67d"
     },
     {
       "path": "/docs/package-docs/bundle",
@@ -79,7 +79,7 @@
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
-      "hash": "11cbe4b68b274424"
+      "hash": "906c5b5e81691a10"
     },
     {
       "path": "/docs/pipeline/generate-rss-atom-feeds",
@@ -107,7 +107,7 @@
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
-      "hash": "0316abc97935cce6"
+      "hash": "c8fc71db3c1d438e"
     },
     {
       "path": "/docs/quickstart",
@@ -115,7 +115,7 @@
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "af61a28f41e281b8"
+      "hash": "98fe8998d4a118c0"
     },
     {
       "path": "/docs/reference/convert",
@@ -131,7 +131,7 @@
     },
     {
       "path": "/docs/reference/lint",
-      "hash": "44e6531ef9b63fcd"
+      "hash": "ba0500512a0f949a"
     },
     {
       "path": "/docs/reference/llm",

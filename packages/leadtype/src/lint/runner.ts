@@ -32,6 +32,12 @@ import {
 import type { DocsRedirect } from "../redirects/redirects";
 import { remarkStripSnippetDirectives } from "../remark/plugins/strip-snippet-directives.remark";
 import {
+  type CheckExternalLinksOptions,
+  checkExternalLinks,
+  collectExternalLinks,
+  type ExternalLink,
+} from "./external-links";
+import {
   allowedKeys,
   defaultChangelogFrontmatterSchema,
   defaultFrontmatterSchema,
@@ -60,6 +66,7 @@ export type LintRule =
   | "invalid-anchor"
   | "snippet:parse"
   | "snippet:types"
+  | "external-link"
   | "geo:heading-skip"
   | "geo:code-language"
   | "geo:image-alt";
@@ -145,6 +152,13 @@ export type LintOptions = {
    * `lint.snippets.typecheck` in the docs config.
    */
   snippetTypecheck?: { projectRoot: string };
+  /**
+   * Opt-in external URL checking (`external-link`): http(s) links are probed
+   * over the network with caching, retry, and HEAD→GET fallback. Built for
+   * scheduled CI, never PR CI. Enabled via `lint.rules["external-link"]` or
+   * the `--external-links` flag.
+   */
+  externalLinks?: Omit<CheckExternalLinksOptions, "links">;
   /** Custom schemas override the defaults */
   schemas?: {
     frontmatter?: v.ObjectSchema<
@@ -788,6 +802,7 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
   const pendingLinkChecks: PendingLinkCheck[] = [];
   const anchorsByRoute = new Map<string, ReadonlySet<string>>();
   const typecheckQueue: TypecheckSnippet[] = [];
+  const externalLinkQueue: ExternalLink[] = [];
   const assumeValidLinkPrefixes = (options.assumeValidLinkPrefixes ?? []).map(
     (prefix) => normalizeInternalPrefix(prefix)
   );
@@ -891,6 +906,12 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     if (options.snippetTypecheck) {
       typecheckQueue.push(
         ...collectTypecheckSnippets(bodyTree, relativeFile, bodyLineOffset)
+      );
+    }
+
+    if (options.externalLinks) {
+      externalLinkQueue.push(
+        ...collectExternalLinks(bodyTree, relativeFile, bodyLineOffset)
       );
     }
 
@@ -1029,6 +1050,21 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
     for (const issue of typecheckSnippets({
       snippets: typecheckQueue,
       projectRoot: options.snippetTypecheck.projectRoot,
+    })) {
+      violations.push({
+        file: issue.file,
+        kind: "content",
+        severity: "error",
+        rule: issue.rule,
+        message: `${issue.message}${issue.line ? ` (line ${issue.line})` : ""}`,
+      });
+    }
+  }
+
+  if (options.externalLinks && externalLinkQueue.length > 0) {
+    for (const issue of await checkExternalLinks({
+      ...options.externalLinks,
+      links: externalLinkQueue,
     })) {
       violations.push({
         file: issue.file,
