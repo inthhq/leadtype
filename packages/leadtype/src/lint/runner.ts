@@ -110,6 +110,12 @@ export type LintOptions = {
    * by the `lint.rules` block in `docs.config.ts`.
    */
   rules?: LintRuleOverrides;
+  /**
+   * Precomputed route set (from `collectRouteSet`) so callers that also lint
+   * config links don't glob the tree twice. Must be built with the same
+   * `srcDir`/`ignore`/`mounts`.
+   */
+  routeSet?: ReadonlySet<string>;
   /** Custom schemas override the defaults */
   schemas?: {
     frontmatter?: v.ObjectSchema<
@@ -390,7 +396,7 @@ function validateDocUrls(
   candidates: UrlCandidate[],
   file: string,
   kind: LintViolation["kind"],
-  routeSet: Set<string>,
+  routeSet: ReadonlySet<string>,
   currentFramework: string | null,
   internalPrefixes: readonly string[],
   assumeValidLinkPrefixes: readonly string[]
@@ -609,7 +615,8 @@ export async function lintDocs(options: LintOptions): Promise<LintResult> {
   const mdxFiles = await glob(srcDir, ["**/*.mdx", "**/*.md"], ignore);
   const metaFiles = await glob(srcDir, ["**/meta.json"], ignore);
   const mounts = options.mounts;
-  const routeSet = await collectRouteSet({ srcDir, ignore, mounts });
+  const routeSet =
+    options.routeSet ?? (await collectRouteSet({ srcDir, ignore, mounts }));
   const internalPrefixes = internalLinkPrefixes(mounts);
   const assumeValidLinkPrefixes = (options.assumeValidLinkPrefixes ?? []).map(
     (prefix) => normalizeInternalPrefix(prefix)

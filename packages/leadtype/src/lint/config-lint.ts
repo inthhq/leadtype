@@ -107,6 +107,7 @@ export async function lintConfigLinks(
     const prefix = normalizeDocsUrl(feed.source.urlPrefix);
     const matchesAny =
       prefix === "/" ||
+      isAssumedValid(prefix, options.assumeValidLinkPrefixes) ||
       [...routeSet].some(
         (route) => route === prefix || route.startsWith(`${prefix}/`)
       );

@@ -290,6 +290,15 @@ export async function runLintCommand(
     }
     result = summarize(combined, filesScanned);
   } else {
+    // Computed once and shared with lintDocs so the config-link path doesn't
+    // glob the tree a second time.
+    const routeSet = loaded
+      ? await collectRouteSet({
+          srcDir: resolvedSrcDir,
+          ignore: effectiveIgnore,
+          mounts,
+        })
+      : undefined;
     result = await lintDocs({
       srcDir: resolvedSrcDir,
       changelogDir: args.changelogDir
@@ -301,16 +310,12 @@ export async function runLintCommand(
       mounts,
       assumeValidLinkPrefixes,
       rules,
+      ...(routeSet ? { routeSet } : {}),
     });
 
     // Config-owned links (navigation, llms sections, feeds, redirects) are
     // validated against the same route set as page links.
-    if (loaded) {
-      const routeSet = await collectRouteSet({
-        srcDir: resolvedSrcDir,
-        ignore: effectiveIgnore,
-        mounts,
-      });
+    if (loaded && routeSet) {
       const configViolations = applyRuleOverrides(
         await lintConfigLinks({
           config: loaded.config,

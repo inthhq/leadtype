@@ -869,6 +869,39 @@ describe("lintConfigLinks", () => {
   });
 });
 
+describe("lintConfigLinks generated prefixes", () => {
+  it("does not warn on feeds selecting from a generated tree", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(
+      projectDir,
+      path.join("docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+    const srcDir = path.join(projectDir, "docs");
+
+    const violations = await lintConfigLinks({
+      config: {
+        product: { name: "T", tagline: "t" },
+        feeds: [
+          {
+            id: "api",
+            title: "API changes",
+            source: { urlPrefix: "/docs/rest-api" },
+            formats: ["rss"],
+            output: { rss: "/rest-api/rss.xml" },
+          },
+        ],
+      },
+      configFile: "docs/docs.config.ts",
+      srcDir,
+      routeSet: await collectRouteSet({ srcDir }),
+      assumeValidLinkPrefixes: ["/docs/rest-api"],
+    });
+
+    expect(violations).toEqual([]);
+  });
+});
+
 describe("runLintCommand config discovery", () => {
   function createCapture(): {
     io: {
