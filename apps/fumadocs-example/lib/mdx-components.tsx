@@ -299,17 +299,51 @@ function JsonExample({ value }: { value: unknown }) {
   );
 }
 
-function MediaTypeExamples({ media }: { media: ApiMediaType }) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isExternalOnlyExampleObject(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.hasOwn(value, "externalValue") &&
+    !Object.hasOwn(value, "value")
+  );
+}
+
+function preferredNamedExampleName(media: ApiMediaType): string | undefined {
+  const entries = Object.entries(media.examples ?? {});
+  if (entries.length === 0) {
+    return;
+  }
+  if (
+    Object.hasOwn(media.examples ?? {}, "default") &&
+    !isExternalOnlyExampleObject(media.examples?.default)
+  ) {
+    return "default";
+  }
+  return entries.find(([, value]) => !isExternalOnlyExampleObject(value))?.[0];
+}
+
+function MediaTypeExamples({
+  media,
+  omittedExampleName,
+}: {
+  media: ApiMediaType;
+  omittedExampleName?: string;
+}) {
   const namedExamples = Object.entries(media.examples ?? {});
   if (namedExamples.length > 0) {
-    return namedExamples.map(([name, value]) => (
-      <div key={name}>
-        <p className="text-sm opacity-80">
-          Example: <code>{name}</code>
-        </p>
-        <JsonExample value={value} />
-      </div>
-    ));
+    return namedExamples
+      .filter(([name]) => name !== omittedExampleName)
+      .map(([name, value]) => (
+        <div key={name}>
+          <p className="text-sm opacity-80">
+            Example: <code>{name}</code>
+          </p>
+          <JsonExample value={value} />
+        </div>
+      ));
   }
   if (media.example === undefined) {
     return null;
@@ -317,14 +351,27 @@ function MediaTypeExamples({ media }: { media: ApiMediaType }) {
   return <JsonExample value={media.example} />;
 }
 
-function MediaType({ media }: { media: ApiMediaType }) {
+function MediaType({
+  includeSingleExample = true,
+  media,
+  omittedExampleName,
+}: {
+  includeSingleExample?: boolean;
+  media: ApiMediaType;
+  omittedExampleName?: string;
+}) {
   return (
     <div className="my-3">
       <p className="text-sm">
         Content type <code>{media.mediaType}</code>
       </p>
       <SchemaRows schema={media.schema} />
-      <MediaTypeExamples media={media} />
+      {media.examples || includeSingleExample ? (
+        <MediaTypeExamples
+          media={media}
+          omittedExampleName={omittedExampleName}
+        />
+      ) : null}
       {media.rawSchema === undefined ? null : (
         <details className="my-2 rounded-lg border p-3 text-sm">
           <summary className="cursor-pointer font-medium">JSON Schema</summary>
@@ -344,7 +391,12 @@ function ApiRequestBody({ body }: ApiRequestBodyProps) {
         {body.description ? ` - ${body.description}` : ""}
       </p>
       {body.content.map((media) => (
-        <MediaType key={media.mediaType} media={media} />
+        <MediaType
+          includeSingleExample={false}
+          key={media.mediaType}
+          media={media}
+          omittedExampleName={preferredNamedExampleName(media)}
+        />
       ))}
     </div>
   );

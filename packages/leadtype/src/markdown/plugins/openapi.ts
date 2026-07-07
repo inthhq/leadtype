@@ -77,7 +77,38 @@ function renderJsonExample(value: unknown): Code {
   return createCodeBlock(text, "json");
 }
 
-function renderMediaType(media: OpenApiMediaType): RootContent[] {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isExternalOnlyExampleObject(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.hasOwn(value, "externalValue") &&
+    !Object.hasOwn(value, "value")
+  );
+}
+
+function preferredNamedExampleName(
+  media: OpenApiMediaType
+): string | undefined {
+  const entries = Object.entries(media.examples ?? {});
+  if (entries.length === 0) {
+    return;
+  }
+  if (
+    Object.hasOwn(media.examples ?? {}, "default") &&
+    !isExternalOnlyExampleObject(media.examples?.default)
+  ) {
+    return "default";
+  }
+  return entries.find(([, value]) => !isExternalOnlyExampleObject(value))?.[0];
+}
+
+function renderMediaType(
+  media: OpenApiMediaType,
+  options: { includeSingleExample?: boolean; omitExampleName?: string } = {}
+): RootContent[] {
   const nodes: RootContent[] = [
     createParagraph(`Content type: ${media.mediaType}`),
   ];
@@ -96,10 +127,16 @@ function renderMediaType(media: OpenApiMediaType): RootContent[] {
   }
   if (media.examples) {
     for (const [name, value] of Object.entries(media.examples)) {
+      if (name === options.omitExampleName) {
+        continue;
+      }
       nodes.push(createParagraph(`Example: ${name}`));
       nodes.push(renderJsonExample(value));
     }
-  } else if (media.example !== undefined) {
+  } else if (
+    (options.includeSingleExample ?? true) &&
+    media.example !== undefined
+  ) {
     nodes.push(createParagraph("Example:"));
     nodes.push(renderJsonExample(media.example));
   }
@@ -242,7 +279,12 @@ export function apiRequestBodyToMarkdown(node: MdxNode): RootContent[] {
     ),
   ];
   for (const media of body.content) {
-    nodes.push(...renderMediaType(media));
+    nodes.push(
+      ...renderMediaType(media, {
+        includeSingleExample: false,
+        omitExampleName: preferredNamedExampleName(media),
+      })
+    );
   }
   return nodes;
 }
