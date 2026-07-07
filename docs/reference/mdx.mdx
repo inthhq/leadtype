@@ -46,28 +46,51 @@ Every other custom tag (`<Callout>`, `<Tabs>`, `<Steps>`, `<Mermaid>`, …) stay
 
 ## Framework-neutral by design
 
-Tag types describe the **author surface** — the attributes that appear on a tag in source MDX. They deliberately do **not** import from any UI framework: `children` is typed as `unknown` so you can intersect with your framework's native child type.
+Tag types describe the **author surface** — the attributes that appear on a tag in source MDX. They deliberately do **not** import from any UI framework: by default `children` is typed as `unknown`.
+
+Register your renderer's child type **once per project** by augmenting `ChildrenTypeRegistry`, and every tag's `children` becomes that type — no casts, no per-component wrappers:
+
+```ts title="types.d.ts"
+declare module "leadtype/mdx" {
+  interface ChildrenTypeRegistry {
+    type: import("react").ReactNode; // or your framework's child type
+  }
+}
+// The export marker makes this file a module, so the declaration *augments*
+// the package instead of replacing its types.
+export {};
+```
 
 The same shape works in React, Vue, Svelte, Solid, Astro, Qwik, or anything else with an MDX compiler that accepts remark plugins.
 
 ### React
 
+With the registry augmentation above in place:
+
 ```tsx
+// @filename: types.d.ts
+declare module "leadtype/mdx" {
+  interface ChildrenTypeRegistry {
+    type: import("react").ReactNode;
+  }
+}
+export {};
+
+// @filename: callout.tsx
+// ---cut---
 import type { CalloutProps } from "leadtype/mdx";
-import type { HTMLAttributes, ReactNode } from "react";
 
-type ReactCalloutProps = Omit<CalloutProps, "children"> &
-  HTMLAttributes<HTMLElement> & { children?: ReactNode };
-
-export function Callout({ variant, title, children, ...rest }: ReactCalloutProps) {
+export function Callout({ variant, title, children }: CalloutProps) {
   return (
-    <aside data-variant={variant ?? "info"} {...rest}>
+    <aside data-variant={variant ?? "info"}>
       {title ? <strong>{title}</strong> : null}
       <div>{children}</div>
     </aside>
   );
 }
 ```
+
+To add framework-native attributes (`className`, event handlers), intersect as before: `CalloutProps & HTMLAttributes<HTMLElement>`.
 
 ### Vue
 
