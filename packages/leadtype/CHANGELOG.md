@@ -1,5 +1,296 @@
 # leadtype
 
+## 0.4.0
+
+### Minor Changes
+
+- 40a0215: Batch Git frontmatter enrichment during `convertAllMdx` (closes #108).
+
+  When `enrichFrontmatterFromGit` is enabled, batch conversion now reads Git history once for the docs tree and maps results back to each converted file instead of spawning `git log` per file. A 120-file synthetic docs benchmark measured the Git metadata read dropping from ~2.36s of per-file process spawning to ~12ms for the batched read; end-to-end conversion added ~27ms over no enrichment.
+
+  The enrichment remains best-effort for shallow clones, missing Git, and untracked files. `lastModified` still comes from the latest file commit, while `lastAuthor` now falls back to the latest non-bot author when the newest commit was authored by automation.
+
+- 40a0215: Add generated API catalog and homepage discovery Link helpers for agent-readable sites.
+
+  `generate` and `generateAgentArtifacts()` now emit `/.well-known/api-catalog` alongside robots and sitemap artifacts, route handlers can serve it dynamically, and `leadtype/llm/readability` exports helpers for RFC 8288 `Link` headers that advertise the catalog, service docs, service description, and sitemap. Robots output also includes scanner-friendly AI crawler aliases and renders Content-Signals in `ai-train, search, ai-input` order.
+
+- 40a0215: Use Satteri and the native markdown pipeline for agent-facing markdown conversion.
+
+  `convertAllMdx`, `convertMdxFile`, `convertMdxToMarkdown`, and `leadtype generate` now parse MDX through Satteri and run native markdown transforms/stringification for agent-facing output.
+
+  The legacy agent-side Remark conversion path has been removed. This removes `markdownEngine`, the `leadtype/remark` compatibility export, and legacy aliases such as `defaultRemarkPlugins`, `legacyDefaultMarkdownTransforms`, and `builtinFlattenerPlugins`. Source-MDX bundler APIs under `leadtype/mdx` and `leadtype/mdx/source` remain intact.
+
+- 40a0215: Add an opt-in `prune` option to `convertAllMdx` that removes orphaned `.md`
+  outputs when a source page is deleted or renamed.
+
+  Previously a renamed page left its old `.md` behind in `outDir` — a live URL
+  with stale content that leaked into sitemaps, link checks, and search
+  indexing — and every consumer had to hand-roll the same garbage-collection
+  step. With `prune: true`, `convertAllMdx` deletes any `.md` under `outDir`
+  that the current source set did not produce, then removes directories the
+  deletions emptied.
+
+  Guardrails:
+
+  - Only `.md` files are candidates; other files sharing `outDir` are never
+    touched, and symlinks are never followed.
+  - Pruning is skipped (with a warning) when any page fails to convert or when
+    `srcDir` resolves to zero pages, so a partial or misconfigured run never
+    mass-deletes output.
+  - `pruneKeep` globs (relative to `outDir`) exempt `.md` files written by
+    other tools, e.g. `pruneKeep: ["sitemap.md", "mirrors/**"]`. Nothing is
+    exempted implicitly.
+  - While pruning, the run holds the same per-`outDir` lock as
+    `leadtype generate` (reentrant when generate itself is the caller;
+    `LEADTYPE_NO_LOCK=1` opts out), so a prune cannot delete output a
+    concurrent run just wrote.
+
+- 40a0215: Add a `generatedAt` option to the agent artifact generators so manifests and
+  timestamp fallbacks can be reproduced byte-for-byte across deterministic builds.
+- 40a0215: Make `leadtype lint` config-aware, so a bare `leadtype lint` validates the
+  same source tree — with the same routing rules — that `generate` builds.
+
+  - **Config discovery**: with no `--src`, lint finds `leadtype.config.*` at
+    the project root or `docs.config.*` in `./docs` / `./content`, exactly like
+    generate, and lints that tree. Flags still override everything. A config
+    that fails to load reports a lint failure instead of crashing.
+  - **Mount-aware link checking**: routes are derived with the config's
+    `mounts` applied, and links under every mount prefix (e.g. `/changelog/v1`)
+    are validated like `/docs/...` links — including catching stale `/docs/...`
+    paths to pages that moved under a mount. Links under generated trees (the
+    OpenAPI `output` prefix) are assumed valid, since those routes only exist
+    after `leadtype generate`.
+  - **The config's own links are linted** (new `config-link` rule): curated
+    `navigation` entries matching no page and `llms.sections` links to missing
+    routes are errors; feed `source.urlPrefix` values matching no pages and
+    `redirects.removed` paths that are live again are warnings. Previously
+    these bypassed lint and only surfaced when generate blew up.
+  - **New `lint` block in the docs config**: `lint.ignore` replaces the default
+    ignore globs, `lint.unknownFieldSeverity` sets the unknown-field default,
+    and `lint.rules` remaps any rule's severity (`"off"` / `"warn"` /
+    `"error"`) across the CLI and the `lintDocs()` API (new `rules`, `mounts`,
+    and `assumeValidLinkPrefixes` options).
+
+- 7f91c26: Add the opt-in `external-link` lint rule — the scheduled-CI half of the
+  dead-link story (internal links are checked deterministically in PR CI;
+  external URLs need the network, so they run on a schedule instead of in the
+  merge gate).
+
+  - Enable with `leadtype lint --external-links` (scheduled workflows) or a
+    `lint.rules["external-link"]` severity in the docs config; a
+    copy-pasteable weekly GitHub Actions recipe ships in the validate-in-ci
+    docs.
+  - Robust by default: HEAD with GET fallback for servers that reject HEAD,
+    one retry on network hiccups, rate-limiting (429) treated as skip rather
+    than failure, per-URL dedupe across pages, and bounded concurrency.
+  - Confirmed-live URLs are cached under `node_modules/.cache/leadtype/`
+    (default 7 days, `lint.externalLinks.ttlHours`); failures are never
+    cached, so a site that comes back is noticed on the next run.
+    `lint.externalLinks.ignore` mutes known-flaky URL prefixes.
+  - Violations carry the page file and line like every other rule.
+
+- 40a0215: Expand `leadtype lint`'s internal link coverage (closes the gaps tracked in
+  #86):
+
+  - **Relative links** (`./sibling`, `../guides/x`, extension optional) resolve
+    against their source file and validate like absolute links; links that
+    climb out of the docs tree are errors.
+  - **Anchor validation** (new `invalid-anchor` rule): same-page `#fragment`
+    links and fragments on cross-page docs links must match a heading anchor on
+    the target page. Anchors are extracted from the rendered markdown with the
+    same slugger and duplicate handling that builds the site TOC — includes
+    expanded — so lint and the rendered site cannot disagree. (Running this on
+    leadtype's own docs immediately found three anchors that had been silently
+    broken on the live site.)
+  - **Redirect-aware messages**: with redirect tracking enabled, an
+    `invalid-link` whose target matches a lockfile redirect reports
+    "moved to `<new path>` — update the link" instead of a bare missing-route
+    error.
+  - Link-check scope and non-goals are documented in the lint reference.
+
+- 40a0215: Add parse-level code snippet linting (`snippet:parse`, the first tier of
+  #93): every fenced code block with a known language must parse — TS/TSX/JS
+  via the TypeScript parser (skipped when the optional `typescript` peer
+  dependency isn't installed), JSON and YAML via real parsers.
+
+  Docs snippets are deliberately fragmentary, so the checker is
+  fragment-tolerant before it reports: bare API signatures, `key: value`
+  config excerpts, object- and type-shape blocks, sibling JSX examples, and
+  `...` ellipsis lines all parse without annotation, as do JSON comments,
+  trailing commas, and multi-document YAML. Anything else can be marked
+  deliberate with a twoslash-style `// @noErrors` line — the same directive
+  the upcoming typecheck tier honors.
+
+  Tuned on leadtype's own 51-page docs corpus: zero annotations needed, and
+  the only findings were real bugs (a JSX component in a `ts` fence and
+  config excerpts that couldn't parse standalone).
+
+- 40a0215: Add opt-in TypeScript snippet typechecking (`snippet:types`) — the flagship
+  tier of code-snippet linting: with `lint: { snippets: { typecheck: true } }`
+  in the docs config, module-shaped `ts`/`tsx` snippets are assembled into
+  virtual modules and typechecked against your project's `tsconfig.json` and
+  real `node_modules`. When a package API changes, every doc example still
+  calling the old API fails lint — docs that can't rot.
+
+  - Twoslash conventions: `// @filename: name.ts` builds multi-file examples
+    (parts can import each other), `// @check` opts a fragment in,
+    `// @noErrors` opts anything out, and `// ---cut---` hides setup lines
+    from rendered output while they still typecheck. A new default markdown
+    transform strips all directives from generated mirrors and converted
+    output, so the authoring convention never reaches readers.
+  - Scope is deliberately practical: only snippets containing `import`/`export`
+    are checked by default (the copy-pasteable ones), imports of packages your
+    project doesn't install degrade to `any` instead of failing, and JSX
+    environment gaps (no React installed) are tolerated — strictness applies
+    to everything that resolves, most importantly the documented package
+    itself.
+  - All snippets check in one shared compiler program, so cost stays flat
+    regardless of snippet count.
+
+- 331a912: Add a `ChildrenTypeRegistry` augmentation hook to `leadtype/mdx`, so
+  framework consumers type `children` once per project instead of casting in
+  every component. Leadtype still ships zero renderer dependencies — the
+  registry is empty by default and `children` stays `unknown` (no behavior
+  change without opting in):
+
+  ```ts
+  // types.d.ts
+  declare module "leadtype/mdx" {
+    interface ChildrenTypeRegistry {
+      type: import("react").ReactNode;
+    }
+  }
+  export {}; // module marker: augments the package instead of replacing it
+  ```
+
+  After that single declaration, every tag prop type (`CalloutProps`,
+  `TabsProps`, `StepProps`, …) exposes correctly typed `children` — verified
+  through the published type rollup, and adopted by the React examples in the
+  docs. The resolved type is also exported as `TagChildren`.
+
+- 40a0215: Add native OpenAPI page generation for API reference docs. OpenAPI 3.x specs generate MDX operation pages with endpoint, auth, parameter, request/response, and code-sample components that render through your docs UI and flatten into agent-readable markdown (llms.txt, search, package docs bundles).
+
+  - `createDocsSource()` / `fumadocsSource()` accept `openapi` config directly, read authored docs live from `contentDir`, and overlay generated pages in a temp directory with `cleanup()` support; `stageOpenApiDocs()` keeps full-copy staging for custom pipelines.
+  - Generated pages include synthesized JSON examples, nested schema property tables (`results[].title`), and cURL/fetch samples with auth headers and real payloads; `x-codeSamples` overrides are honored.
+  - Operation prose is escaped for MDX safety, and `leadtype/openapi` plus `Api*` renderer prop types are part of the package surface. The dependency-free `leadtype/mdx/openapi` subpath exports `flattenApiSchemaRows()` so custom renderers derive the same nested property rows (`results[].title`) as the built-in markdown flatteners.
+  - OpenAPI-only docs configs are valid, remote specs and remote `$ref` targets time out after 30 seconds, and generated OpenAPI pages now fail loudly instead of overwriting pre-existing docs files.
+
+- 40a0215: Add opt-in redirect tracking for renamed and deleted docs pages, so old URLs
+  stop 404ing in search engines and agent indexes.
+
+  Enable it with a `redirects` block in `docs.config.ts`. `leadtype generate`
+  then maintains a committed lockfile (`paths.lock.json` next to the docs
+  sources) recording every published path with a content hash, and emits
+  `<out>/docs/redirects.json`:
+
+  - **Pure moves are detected automatically** — a path that disappears while
+    its content hash reappears at a new path gets a permanent 308 redirect
+    with zero authoring. Hashes exclude frontmatter, so git-enrichment churn
+    doesn't defeat the match, and ambiguous matches are never guessed.
+  - **Unexplained disappearances fail the build loudly**, listing each path
+    with the fix: add `redirectFrom: [<old path>]` frontmatter to the
+    successor page, or acknowledge intentional deletions under
+    `redirects.removed` to serve 410 Gone.
+  - **Redirects accumulate and self-maintain**: chains from successive renames
+    collapse to the final target, entries whose target is later removed
+    degrade to 410, and entries whose path comes back alive are dropped.
+  - New edge-safe `leadtype/redirects` entry point exports `resolveRedirect`
+    and the pure computation primitives for serving redirects in any
+    framework's catch-all (no Node built-ins, so it links in Cloudflare
+    Workers / Vercel Edge); generate-time lockfile IO lives under
+    `leadtype/redirects/node`. `createAgentMarkdownResponse` accepts the
+    entries directly and answers agent-shaped requests for renamed pages —
+    including `.md` mirrors, with index-route targets resolved to their real
+    `index.md` mirror path — with the 308/410, while browser requests fall
+    through to the host app's routing.
+  - Enabling `redirects` also enables conversion pruning, since rename
+    detection requires stale mirrors of renamed sources to be
+    garbage-collected from the output set.
+  - Filtered generates (`--include` / `--exclude`) skip redirect tracking and
+    pruning with a warning — a partial page set would make every excluded page
+    look deleted.
+  - `redirectFrom` is now part of the default frontmatter lint schema.
+
+- 40a0215: Add `--watch` and incremental builds to `leadtype generate`.
+
+  `leadtype generate` is now incremental by default: each converted file's inputs — the MDX source, its `<include>` targets, the TypeScript files its type tables extract from, and its git enrichment — are content-hashed into a manifest under `node_modules/.cache/leadtype/`, and unchanged files are skipped on repeat runs. Outputs whose source file was deleted are pruned. `--force` bypasses the cache; the cache also invalidates automatically on leadtype version, docs-config, or flag changes.
+
+  `leadtype generate --watch` (or `-w`) runs the pipeline, then watches the docs source directories and config file and re-runs on change (debounced). With the cache, a one-file edit rebuilds one file.
+
+  Library API: `convertAllMdx` accepts a new optional `cache` option, and conversion reports every extra file it reads (include targets via the existing `_compiler.addDependency` protocol, now also type-table TypeScript sources — exposed as `TypeTableOptions.onDependency`).
+
+### Patch Changes
+
+- 40a0215: Cache repeated `<include>` / `<import>` resolution within a conversion run.
+
+  `remarkInclude` now accepts an optional include-resolution cache and
+  `convertAllMdx()` creates one cache per batch run, so pages that reuse the same
+  partial share the raw file read and parsed markdown AST. Cache keys are scoped
+  to absolute resolved paths and parser identity, while section anchors such as
+  `file.mdx#setup` still extract independently from cloned ASTs.
+
+  The new `createIncludeResolutionCache()` helper exposes lightweight cache stats
+  for instrumentation. Current docs and c15t fixtures do not contain repeated
+  real include nodes, but a synthetic 200-page repeated-include benchmark showed
+  one raw read, one markdown parse, and roughly a 5.9x speedup in include
+  expansion time.
+
+- 40a0215: Make generation safe to invoke concurrently against a shared `outDir`.
+
+  Parallel task graphs (lint, typecheck, and build each depending on "docs are
+  generated") used to race on the shared output directory, causing intermittent
+  partial reads, ENOENT on files another run had just replaced, and half-written
+  artifacts.
+
+  - Every generated artifact (converted `docs/*.md`, `llms.txt`, `llms-full.txt`,
+    search index, sitemaps, robots, feeds, MCP card, NLWeb, skills, sync
+    manifests) is now written to a temp sibling and atomically renamed into
+    place, so concurrent readers see the old content or the new content — never
+    a truncated file.
+  - Delete-then-recreate windows are gone: the agent-skills surface and mounted
+    markdown mirrors now write the new files first and prune stale ones after,
+    instead of `rm -rf`-ing a live directory before rebuilding it.
+  - `leadtype generate` runs are single-flight per output directory via a
+    cross-process lock stored under the system temp dir (keyed by the resolved
+    `--out` path). Concurrent invocations wait for the in-flight run. Abandoned
+    locks recover fast: interrupted runs (SIGINT/SIGTERM) release on the way
+    out, hard-killed runs are reclaimed as soon as their recorded pid is gone,
+    and unidentifiable locks are reclaimed after 10 minutes. Waiting runs fail
+    loudly after 15 minutes instead of hanging CI (`LEADTYPE_LOCK_TIMEOUT_MS`
+    overrides). Set `LEADTYPE_NO_LOCK=1` to opt out. Temp files leaked by a
+    hard-killed run are swept at the start of the next locked run.
+
+- 40a0215: Sort `manifest.pages` from `generateAgentReadabilityArtifacts` in navigation
+  order instead of alphabetical `urlPath` order.
+
+  Navigation order (groups depth-first, then pages within each group) is the
+  authored reading order, which is what agent/LLM consumers of the manifest want.
+  Pages not present in the navigation are appended sorted by `urlPath`, so the
+  output stays fully deterministic. `sitemap.xml` is rendered from the same list
+  and now shares the navigation order; `sitemap.md` already followed it.
+
+  `generateLLMFullContextFiles` now applies the same ordering in legacy `groups`
+  mode (it previously only reordered under curated `nav`), so `llms-full.txt`
+  stays in sync with the manifest in both modes. The bring-your-own-pages
+  `generateAgentArtifacts` entry point is unchanged — there the input `pages`
+  order is the authored order.
+
+  Fixes #115.
+
+- 79d8fcc: Polish the docs MCP surface for MCP clients and agent-readiness scanners.
+
+  - The generated server card now carries `serverInfo.instructions` — defaulting
+    to a summary-derived "Search and read the documentation for …", overridable
+    via `agents.mcp.serverInfo.instructions` — and the live server advertises the
+    same instructions in its `initialize` response.
+  - Tool summaries on the card carry `readOnlyHint`/`idempotentHint` annotations,
+    and `agents.mcp.icon` (or its `logo` alias) sets a card icon for registries
+    and scanners.
+  - Generate additionally writes the card to a root `/mcp.json`, alongside the
+    existing card path and the `/.well-known/mcp.json` discovery copy.
+  - Invalid tool calls surface structured JSON-RPC errors with proper error codes
+    instead of generic internal errors.
+
 ## 0.3.1
 
 ### Patch Changes
