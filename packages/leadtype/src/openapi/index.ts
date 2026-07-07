@@ -1165,13 +1165,39 @@ function sampleHeaders(operation: OpenApiOperation): Map<string, string> {
   return headers;
 }
 
+function preferredMediaExample(media: OpenApiMediaType): unknown {
+  if (media.examples) {
+    if (
+      Object.hasOwn(media.examples, "default") &&
+      !isExternalOnlyExampleObject(media.examples.default)
+    ) {
+      return media.examples.default;
+    }
+    for (const value of Object.values(media.examples)) {
+      if (!isExternalOnlyExampleObject(value)) {
+        return value;
+      }
+    }
+  }
+  return media.example;
+}
+
+function isExternalOnlyExampleObject(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.hasOwn(value, "externalValue") &&
+    !Object.hasOwn(value, "value")
+  );
+}
+
 function sampleRequestBody(operation: OpenApiOperation): unknown {
   const media = operation.requestBody?.content[0];
   if (!media) {
     return;
   }
-  if (media.example !== undefined) {
-    return media.example;
+  const example = preferredMediaExample(media);
+  if (example !== undefined) {
+    return example;
   }
   if (media.schema) {
     return buildSchemaExample(media.schema);

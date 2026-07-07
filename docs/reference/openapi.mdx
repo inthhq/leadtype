@@ -99,11 +99,13 @@ Every operation page carries the full request/response contract:
   schemes those requirements reference.
 - **Parameters** — path/query/header/cookie tables. Nested object and
   array-item properties flatten into dotted rows such as `results[].title`.
-- **Request body and responses** — property tables plus a JSON example. When
-  the spec provides `example`/`examples` they are used verbatim; otherwise a
-  representative payload is synthesized from the schema (defaults, enums, and
-  formats included). The dereferenced **JSON Schema** ships alongside as the
-  precise contract (disable with `includeSchemas: false`).
+- **Request body and responses** — property tables plus response JSON examples.
+  Request body examples are folded into the generated cURL and `fetch`
+  snippets instead of repeated as a standalone block. When the spec provides
+  `example`/`examples` they are used verbatim; otherwise a representative
+  payload is synthesized from the schema (defaults, enums, and formats
+  included). The dereferenced **JSON Schema** ships alongside as the precise
+  contract (disable with `includeSchemas: false`).
 - **Code samples** — generated cURL and `fetch` snippets with real example
   bodies, required query parameters, and auth headers derived from the
   security scheme (`Authorization: Bearer <token>`, API-key headers, and so

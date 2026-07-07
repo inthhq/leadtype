@@ -673,6 +673,112 @@ paths:
     expect(curl).toContain('"query": "string"');
   });
 
+  it("uses named request body examples in generated snippets", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Examples, version: 1.0.0 }
+servers:
+  - url: https://api.example.com
+paths:
+  /sites:
+    post:
+      operationId: createSite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organizationId, name]
+              properties:
+                organizationId:
+                  type: string
+                name:
+                  type: string
+                region:
+                  type: string
+                consent:
+                  type: object
+                  properties:
+                    branding:
+                      type: string
+            examples:
+              default:
+                value:
+                  organizationId: org_123
+                  name: Website
+                  region: us-east-1
+                  consent:
+                    branding: inth
+              enterprise:
+                value:
+                  organizationId: org_456
+                  name: Enterprise
+                  region: eu-west-1
+                  consent:
+                    branding: custom
+      responses: { "201": { description: created } }
+`;
+    const { result } = await generateFixturePages(spec);
+    const samples = result.pages[0]?.operation.codeSamples ?? [];
+    const curl = samples.find((sample) => sample.label === "cURL")?.code ?? "";
+    const fetch =
+      samples.find((sample) => sample.label === "JavaScript")?.code ?? "";
+
+    expect(curl).toContain('"organizationId": "org_123"');
+    expect(curl).toContain('"branding": "inth"');
+    expect(curl).not.toContain('"organizationId": "string"');
+    expect(fetch).toContain('"organizationId": "org_123"');
+    expect(fetch).toContain('"branding": "inth"');
+
+    const converted = await convertMdxToMarkdown(
+      result.pages[0]?.filePath ?? "",
+      defaultMarkdownTransforms
+    );
+    expect(converted.markdown).not.toContain("Example: default");
+    expect(converted.markdown).toContain("Example: enterprise");
+    expect(converted.markdown).toContain('"organizationId": "org_456"');
+    expect(converted.markdown).toContain('"organizationId": "org_123"');
+  });
+
+  it("ignores external-only request body examples in generated snippets", async () => {
+    const spec = `
+openapi: 3.1.0
+info: { title: Examples, version: 1.0.0 }
+servers:
+  - url: https://api.example.com
+paths:
+  /search:
+    post:
+      operationId: search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+            examples:
+              default:
+                summary: External payload
+                externalValue: https://example.com/search-request.json
+      responses: { "200": { description: ok } }
+`;
+    const { result } = await generateFixturePages(spec);
+    const samples = result.pages[0]?.operation.codeSamples ?? [];
+    const curl = samples.find((sample) => sample.label === "cURL")?.code ?? "";
+    const fetch =
+      samples.find((sample) => sample.label === "JavaScript")?.code ?? "";
+
+    expect(curl).toContain('"query": "string"');
+    expect(curl).not.toContain("externalValue");
+    expect(fetch).toContain('"query": "string"');
+    expect(fetch).not.toContain("externalValue");
+  });
+
   it("substitutes path parameter examples in generated code sample URLs", async () => {
     const spec = `
 openapi: 3.1.0
