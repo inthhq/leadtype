@@ -1,5 +1,11 @@
 # leadtype
 
+## 0.4.1
+
+### Patch Changes
+
+- fd79078: Use named OpenAPI request body examples in generated code samples and avoid repeating them as standalone request examples before the snippets.
+
 ## 0.4.0
 
 ### Minor Changes
