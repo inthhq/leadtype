@@ -1,38 +1,343 @@
 ---
 title: "Leadtype 0.4"
-description: "Release notes in progress for the next Leadtype minor release."
+description: "Release notes for Leadtype 0.4: docs linting from links to typechecked snippets, OpenAPI reference generation, watch mode with incremental builds, redirect tracking, and the native markdown pipeline."
+date: 2026-07-07
 ---
 
-# Leadtype 0.4
+Leadtype 0.4 turns `leadtype lint` into a real quality gate — config-aware,
+covering relative links and anchors, and typechecking TypeScript snippets
+against your installed package so docs can't rot. It also adds native OpenAPI
+reference generation, `--watch` with incremental builds, redirect tracking for
+renamed and deleted pages, and moves agent-facing markdown conversion to the
+native Satteri pipeline. Generation is now safe to run concurrently against a
+shared output directory.
 
-In progress.
+## Upgrade prompts
 
-Leadtype 0.4 is the next minor release after the 0.3 line. These notes are being written as changes land.
+Hand one of these to a coding agent to move an existing Leadtype project to
+0.4. The first migrates a docs site or app; the second adopts the new lint
+gates on a docs source.
+
+<Prompt
+  title="Upgrade this docs site to Leadtype 0.4"
+  description="Use for an app or docs site already on Leadtype 0.2/0.3 — migrates breaking changes and adopts the 0.4 pipeline."
+>
+  Upgrade this project to Leadtype 0.4. Keep Leadtype as the content and
+  agent-readability layer; do not replace the docs framework or UI.
+
+  Inspect first:
+  - The installed leadtype version, package manager, framework, and every script that runs `leadtype generate` or `leadtype lint`.
+  - Any use of the removed legacy markdown surface: a `markdownEngine` option, imports from `leadtype/remark`, or the `defaultRemarkPlugins`, `legacyDefaultMarkdownTransforms`, `builtinFlattenerPlugins` aliases.
+  - Deprecated CLI flags in scripts: `leadtype generate --mcp`, `leadtype generate --enrich-git`, `leadtype init --webmcp`.
+  - Any hand-rolled serialization (mutexes, lockfiles, `&&` chains added to avoid races) around `leadtype generate` in CI or task graphs.
+
+  Implement:
+  - Upgrade `leadtype` to the latest 0.4 release.
+  - Remove `markdownEngine` and all `leadtype/remark` imports — agent-facing conversion now always runs the native markdown pipeline. Port any custom flatteners to the markdown transforms API documented in the [markdown reference](/docs/reference/markdown). Bundler-side APIs under `leadtype/mdx` and `leadtype/mdx/source` are unchanged.
+  - Replace deprecated flags with config: `agents.mcp.enabled` in `docs.config.ts` instead of `--mcp`; drop `--enrich-git` (Git enrichment is the default and best-effort).
+  - Switch the dev loop to `leadtype generate --watch`. Repeat builds are incremental by default (cache under `node_modules/.cache/leadtype/`); use `--force` only to bypass the cache. For byte-reproducible builds, pass a fixed `generatedAt` to the artifact generators.
+  - If pages have ever been renamed or removed, enable a `redirects` block in `docs.config.ts`, commit the `paths.lock.json` it maintains, and serve redirects with `resolveRedirect` from `leadtype/redirects` in the app's catch-all — or pass the entries to `createAgentMarkdownResponse` where it is already used. See [Redirects](/docs/pipeline/redirects).
+  - Delete any hand-rolled locking around `leadtype generate` — runs are now single-flight per output directory and every artifact is written atomically.
+
+  Validate:
+  - Run generate twice: the first run completes, the second mostly skips via the incremental cache.
+  - Run bare `leadtype lint` (it now discovers the config) and fix what it reports.
+  - `llms.txt` and the markdown mirrors resolve; if redirects are enabled, an old renamed URL answers with a 308 to the new path.
+  - Summarize changed files, removed legacy imports, and any lint findings left for a human.
+</Prompt>
+
+<Prompt
+  title="Adopt the Leadtype 0.4 lint gates on this docs source"
+  description="Use to turn on config-aware linting, anchor checking, snippet typechecking, and the scheduled external-link check."
+>
+  Adopt the Leadtype 0.4 lint gates for this docs source. Change docs content,
+  the docs config, and CI workflows only — do not edit app routes or UI code.
+
+  Inspect first:
+  - The docs config (`docs.config.ts` / `leadtype.config.ts`), any existing `lint` block, and how lint runs in CI today.
+  - The snippet languages used in fenced code blocks, and whether the `typescript` peer dependency is installed.
+
+  Implement:
+  - Run bare `leadtype lint` — it now discovers the config and lints the same tree generate builds, with mounts applied. Fix what it finds: broken relative links, invalid anchors (`#fragment` targets must match a real heading on the target page), stale `navigation` and `llms.sections` entries, and links reported as "moved to `<new path>`".
+  - Enable snippet typechecking with `lint: { snippets: { typecheck: true } }` in the docs config. Module-shaped `ts`/`tsx` snippets are assembled into virtual modules and typechecked against the project's `tsconfig.json` and real `node_modules`. Use twoslash directives sparingly where needed: `// @filename:` for multi-file examples, `// @check` to opt a fragment in, `// @noErrors` to opt out, `// ---cut---` to hide setup lines from readers.
+  - Tune severities with `lint.rules` (`"off"` / `"warn"` / `"error"`) and replace ad-hoc ignore lists with `lint.ignore`.
+  - Keep `leadtype lint` in PR CI, and add the weekly scheduled workflow running `leadtype lint --external-links` from the [validate-in-CI recipe](/docs/pipeline/validate-in-ci). Mute known-flaky URL prefixes with `lint.externalLinks.ignore`.
+
+  Validate:
+  - `leadtype lint` exits clean, with snippet parse and typecheck counts in the output.
+  - A deliberately broken import in one snippet fails lint, then passes again once reverted.
+  - The scheduled external-link workflow is present and runnable via workflow_dispatch.
+</Prompt>
+
+## Breaking changes
+
+- Agent-facing markdown conversion always runs the native pipeline. The
+  `markdownEngine` option, the `leadtype/remark` compatibility export, and the
+  `defaultRemarkPlugins`, `legacyDefaultMarkdownTransforms`, and
+  `builtinFlattenerPlugins` aliases are removed. Custom conversion logic moves
+  to the [markdown transforms API](/docs/reference/markdown). Source-MDX
+  bundler APIs under `leadtype/mdx` and `leadtype/mdx/source` are unchanged.
+- `leadtype generate` is incremental by default and single-flight per output
+  directory. Use `--force` to bypass the cache and `LEADTYPE_NO_LOCK=1` to opt
+  out of the lock.
+- `manifest.pages`, `sitemap.xml`, and `llms-full.txt` are now ordered by
+  navigation reading order instead of alphabetical `urlPath` order. Consumers
+  that depended on alphabetical order should sort on their side.
+
+## Docs linting
+
+Lint grew from a frontmatter checker into the merge gate for docs quality:
+every internal link, anchor, config entry, and code snippet is validated
+deterministically in PR CI, with external URLs checked on a schedule.
+
+- `leadtype lint` is config-aware: with no `--src` it discovers
+  `leadtype.config.*` or `docs.config.*` exactly like generate and lints that
+  tree with the config's `mounts` applied, so links under mounted prefixes
+  such as `/changelog` validate like `/docs` links. A config that fails to
+  load is a lint failure, not a crash.
+- The config's own links are linted (new `config-link` rule): curated
+  `navigation` entries matching no page and `llms.sections` links to missing
+  routes are errors; stale feed `source.urlPrefix` values and
+  `redirects.removed` paths that are live again are warnings.
+- Relative links (`./sibling`, `../guides/x`) resolve against their source
+  file and validate like absolute links; links that climb out of the docs
+  tree are errors.
+- Anchors are validated (new `invalid-anchor` rule): same-page `#fragment`
+  links and fragments on cross-page links must match a heading anchor on the
+  target page, extracted with the same slugger that builds the site TOC —
+  includes expanded — so lint and the rendered site cannot disagree. Running
+  this on Leadtype's own docs immediately found three silently broken anchors.
+- With redirect tracking enabled, an `invalid-link` whose target matches a
+  lockfile redirect reports "moved to `<new path>` — update the link" instead
+  of a bare missing-route error.
+- Every fenced code block with a known language must parse (`snippet:parse`):
+  TS/TSX/JS via the TypeScript parser, JSON and YAML via real parsers. The
+  checker is fragment-tolerant — bare signatures, config excerpts, sibling
+  JSX, and `...` ellipsis lines parse without annotation — and anything
+  deliberate can be marked with `// @noErrors`. Tuned on Leadtype's 51-page
+  docs corpus: zero annotations needed, and the only findings were real bugs.
+- Opt-in TypeScript snippet typechecking (`snippet:types`): with
+  `lint: { snippets: { typecheck: true } }`, module-shaped `ts`/`tsx` snippets
+  are assembled into virtual modules and typechecked against your
+  `tsconfig.json` and real `node_modules`. When a package API changes, every
+  doc example still calling the old API fails lint — docs that can't rot.
+  Twoslash conventions (`// @filename`, `// @check`, `// @noErrors`,
+  `// ---cut---`) build multi-file examples and hide setup lines, and a
+  default markdown transform strips all directives from generated output. All
+  snippets check in one shared compiler program, so cost stays flat.
+- Opt-in `external-link` rule for scheduled CI: HEAD with GET fallback, one
+  retry, 429 treated as skip, per-URL dedupe, bounded concurrency, and a
+  7-day cache of confirmed-live URLs under `node_modules/.cache/leadtype/`
+  (failures are never cached). Enable with `leadtype lint --external-links` or
+  `lint.rules["external-link"]`; a copy-pasteable weekly GitHub Actions recipe
+  ships in the [validate-in-CI guide](/docs/pipeline/validate-in-ci).
+- A new `lint` config block controls all of it: `lint.ignore` replaces the
+  default ignore globs, `lint.unknownFieldSeverity` sets the unknown-field
+  default, and `lint.rules` remaps any rule's severity across the CLI and the
+  `lintDocs()` API. See the [lint reference](/docs/reference/lint).
 
 ## OpenAPI API reference generation
 
-- Added native OpenAPI 3.x page generation: an `openapi` block in `docs.config.ts` turns a JSON/YAML spec into MDX operation pages that render through your docs UI and flatten into agent-readable markdown — the same pages flow into `llms.txt`, search, markdown mirrors, `AGENTS.md`, and Agent Readability artifacts. See the [OpenAPI reference](/docs/reference/openapi).
-- Each operation page carries the full contract: machine-scannable frontmatter (`method`, `path`, `operationId`, `apiVersion`, `canonicalUrl`, `lastModified`, and a `source` pointing at the spec), parameter and property tables with nested dotted rows (`results[].title`), the dereferenced JSON Schema per media type, named or synthesized JSON examples, response headers, and generated cURL/`fetch` samples with real bodies, path parameters substituted from spec examples, and auth headers derived from the security scheme. Redocly-style `x-codeSamples` override the generated snippets.
-- A generated overview page per spec lists every operation grouped by tag and joins the navigation as the section landing page; operation pages link back to it from a Related section.
-- Three integration shapes: `createDocsSource({ openapi })` / `fumadocsSource({ openapi })` write generated pages into a temp overlay while authored docs stay live and untouched (sources expose `cleanup()`, with a process-exit sweep as fallback), `leadtype generate` picks the config up automatically, and static-glob bundlers (TanStack Start / Vite) use `writeOpenApiPages()` into an app-local directory. `stageOpenApiDocs()` exposes the full-copy staging primitive for custom pipelines.
-- Rendering follows the existing component naming contract: seven new `Api*` tags with prop types from `leadtype/mdx`, a dependency-free `flattenApiSchemaRows()` helper from `leadtype/mdx/openapi` so custom renderers derive the same nested rows as the markdown flatteners, and copyable reference implementations in the Fumadocs and TanStack examples. Operation summaries and descriptions are treated as CommonMark and escaped, so arbitrary specs can't break the MDX build.
+- Added native OpenAPI 3.x page generation: an `openapi` block in
+  `docs.config.ts` turns a JSON/YAML spec into MDX operation pages that render
+  through your docs UI and flatten into agent-readable markdown — the same
+  pages flow into `llms.txt`, search, markdown mirrors, `AGENTS.md`, and Agent
+  Readability artifacts. See the [OpenAPI reference](/docs/reference/openapi).
+- Each operation page carries the full contract: machine-scannable frontmatter
+  (`method`, `path`, `operationId`, `apiVersion`, `canonicalUrl`,
+  `lastModified`, and a `source` pointing at the spec), parameter and property
+  tables with nested dotted rows (`results[].title`), the dereferenced JSON
+  Schema per media type, named or synthesized JSON examples, response headers,
+  and generated cURL/`fetch` samples with real bodies, path parameters
+  substituted from spec examples, and auth headers derived from the security
+  scheme. Redocly-style `x-codeSamples` override the generated snippets.
+- A generated overview page per spec lists every operation grouped by tag and
+  joins the navigation as the section landing page; operation pages link back
+  to it from a Related section.
+- Three integration shapes: `createDocsSource({ openapi })` /
+  `fumadocsSource({ openapi })` write generated pages into a temp overlay
+  while authored docs stay live and untouched (sources expose `cleanup()`,
+  with a process-exit sweep as fallback), `leadtype generate` picks the config
+  up automatically, and static-glob bundlers (TanStack Start / Vite) use
+  `writeOpenApiPages()` into an app-local directory. `stageOpenApiDocs()`
+  exposes the full-copy staging primitive for custom pipelines.
+- Rendering follows the existing component naming contract: seven new `Api*`
+  tags with prop types from `leadtype/mdx`, a dependency-free
+  `flattenApiSchemaRows()` helper from `leadtype/mdx/openapi` so custom
+  renderers derive the same nested rows as the markdown flatteners, and
+  copyable reference implementations in the Fumadocs and TanStack examples.
+  Operation summaries and descriptions are treated as CommonMark and escaped,
+  so arbitrary specs can't break the MDX build.
+- OpenAPI-only docs configs are valid, remote specs and remote `$ref` targets
+  time out after 30 seconds, and generated pages fail loudly instead of
+  overwriting pre-existing docs files.
 
-## Agent-readability artifacts
+## Watch mode and incremental builds
 
-- Sorted `manifest.pages` from `generateAgentReadabilityArtifacts` in navigation order — groups depth-first, then pages within each group — instead of alphabetical `urlPath` order. Navigation order is the authored reading order, which is what agent and LLM consumers of the manifest want. Pages not present in the navigation are appended sorted by `urlPath`, so the manifest stays fully deterministic without consumer-side re-sorting. `sitemap.xml` is rendered from the same page list and shares the order. ([#115](https://github.com/inthhq/leadtype/issues/115), [#120](https://github.com/inthhq/leadtype/pull/120))
-- Applied the same ordering to `llms-full.txt` in legacy `groups` mode. `generateLLMFullContextFiles` previously only reordered under curated `nav`, so the full-context file could disagree with the manifest when only `groups` were configured; both now share reading order in both modes.
-- Left the bring-your-own-pages `generateAgentArtifacts` entry point unchanged: there the input `pages` order is the authored order supplied by the caller, now pinned by a regression test.
+- `leadtype generate` is now incremental by default: each converted file's
+  inputs — the MDX source, its `<include>` targets, the TypeScript files its
+  type tables extract from, and its git enrichment — are content-hashed into a
+  manifest under `node_modules/.cache/leadtype/`, and unchanged files are
+  skipped on repeat runs. Outputs whose source was deleted are pruned.
+  `--force` bypasses the cache, which also invalidates automatically on
+  leadtype version, docs-config, or flag changes.
+- `leadtype generate --watch` (or `-w`) runs the pipeline, then watches the
+  docs source directories and config file and re-runs on change (debounced).
+  With the cache, a one-file edit rebuilds one file.
+- Library API: `convertAllMdx` accepts a new optional `cache` option, and
+  conversion reports every extra file it reads — include targets via the
+  existing `_compiler.addDependency` protocol, and now also type-table
+  TypeScript sources via `TypeTableOptions.onDependency`.
 
-## Conversion performance
+## Redirect tracking
 
-- Batched Git frontmatter enrichment during `convertAllMdx`. When `enrichFrontmatterFromGit` is enabled, conversion now reads Git history once for the docs tree and maps results back to each converted file instead of spawning `git log` per file. In a 120-file synthetic docs benchmark, the Git metadata read dropped from ~2.36s of per-file process spawning to ~12ms for the batched read; full conversion with enrichment added ~27ms over no enrichment.
-- Preserved best-effort Git behavior for shallow clones, missing Git, and untracked files. `lastModified` still comes from the latest file commit, while `lastAuthor` now falls back to the latest non-bot author when the newest commit was authored by automation.
-- Cached repeated `<include>` and `<import>` resolution within a conversion run. Pages that reuse the same partial now share one raw file read and one parsed markdown AST, while section anchors such as `file.mdx#setup` still extract from cloned ASTs. The current Leadtype docs and c15t fixture do not contain repeated real include nodes, but a synthetic 200-page repeated-include benchmark cut include expansion from ~400ms to ~68ms.
+- Added opt-in redirect tracking for renamed and deleted docs pages, so old
+  URLs stop 404ing in search engines and agent indexes. Enable it with a
+  `redirects` block in `docs.config.ts`; generate then maintains a committed
+  lockfile (`paths.lock.json` next to the docs sources) recording every
+  published path with a content hash, and emits `<out>/docs/redirects.json`.
+  See [Redirects](/docs/pipeline/redirects).
+- Pure moves are detected automatically: a path that disappears while its
+  content hash reappears at a new path gets a permanent 308 redirect with zero
+  authoring. Hashes exclude frontmatter so git-enrichment churn doesn't defeat
+  the match, and ambiguous matches are never guessed.
+- Unexplained disappearances fail the build loudly, listing each path with the
+  fix: add `redirectFrom: [<old path>]` frontmatter to the successor page, or
+  acknowledge intentional deletions under `redirects.removed` to serve
+  410 Gone. `redirectFrom` is part of the default frontmatter lint schema.
+- Redirects accumulate and self-maintain: chains from successive renames
+  collapse to the final target, entries whose target is later removed degrade
+  to 410, and entries whose path comes back alive are dropped.
+- A new edge-safe `leadtype/redirects` entry point exports `resolveRedirect`
+  and the pure computation primitives for serving redirects in any framework's
+  catch-all (no Node built-ins, so it links in Cloudflare Workers and Vercel
+  Edge); lockfile IO lives under `leadtype/redirects/node`.
+  `createAgentMarkdownResponse` accepts the entries directly and answers
+  agent-shaped requests for renamed pages — including `.md` mirrors — with the
+  308/410, while browser requests fall through to the host app's routing.
+- Enabling `redirects` also enables conversion pruning, since rename detection
+  requires stale mirrors of renamed sources to be garbage-collected. Filtered
+  generates (`--include` / `--exclude`) skip redirect tracking and pruning
+  with a warning.
+
+## Native markdown pipeline
+
+- `convertAllMdx`, `convertMdxFile`, `convertMdxToMarkdown`, and
+  `leadtype generate` now parse MDX through Satteri and run native markdown
+  transforms and stringification for agent-facing output. The legacy
+  agent-side Remark conversion path is removed (see Breaking changes above).
+- Batched Git frontmatter enrichment during `convertAllMdx`: when
+  `enrichFrontmatterFromGit` is enabled, conversion reads Git history once for
+  the docs tree and maps results back to each file instead of spawning
+  `git log` per file. In a 120-file synthetic benchmark the Git metadata read
+  dropped from ~2.36s of per-file process spawning to ~12ms; enrichment stays
+  best-effort for shallow clones, missing Git, and untracked files, and
+  `lastAuthor` still falls back to the latest non-bot author.
+- Cached repeated `<include>` and `<import>` resolution within a conversion
+  run: pages that reuse the same partial share one raw file read and one
+  parsed markdown AST, while section anchors such as `file.mdx#setup` still
+  extract from cloned ASTs. A synthetic 200-page repeated-include benchmark
+  cut include expansion from ~400ms to ~68ms; the new
+  `createIncludeResolutionCache()` helper exposes cache stats.
 
 ## Concurrent generation safety
 
-- Made generation safe to invoke concurrently against a shared `outDir`. Parallel task graphs where lint, typecheck, and build each depend on docs generation used to race on the output directory, causing intermittent partial reads, ENOENT on files another run had just replaced, and half-written artifacts.
-- Every generated artifact — converted `docs/*.md`, `llms.txt`, `llms-full.txt`, the search index, sitemaps, robots, feeds, the MCP server card, NLWeb artifacts, skills, and sync manifests — is now written to a temp sibling and atomically renamed into place, so concurrent readers (including a sibling `tsc` or framework build reading `public/`) see the old content or the new content, never a truncated file.
-- Removed delete-then-recreate windows: the agent-skills surface and mounted markdown mirrors write the new files first and prune stale entries after, instead of `rm -rf`-ing a live directory before rebuilding it.
-- `leadtype generate` runs are now single-flight per output directory via a cross-process lock stored under the system temp dir, keyed by the resolved `--out` path. Concurrent invocations wait for the in-flight run. Abandoned locks recover fast: interrupted runs release on the way out, hard-killed runs are reclaimed as soon as their recorded process is gone, and unidentifiable locks are reclaimed after 10 minutes. Waiting runs fail loudly after 15 minutes instead of hanging CI (`LEADTYPE_LOCK_TIMEOUT_MS` overrides). Set `LEADTYPE_NO_LOCK=1` to opt out.
-- Overhead is negligible: the atomic write adds one rename per file (~0.1–0.2ms) and the lock a fixed ~8ms per run — about 1–2% end to end on a 300-page site.
+- Made generation safe to invoke concurrently against a shared `outDir`.
+  Parallel task graphs where lint, typecheck, and build each depend on docs
+  generation used to race on the output directory, causing intermittent
+  partial reads, ENOENT on files another run had just replaced, and
+  half-written artifacts.
+- Every generated artifact — converted `docs/*.md`, `llms.txt`,
+  `llms-full.txt`, the search index, sitemaps, robots, feeds, the MCP server
+  card, NLWeb artifacts, skills, and sync manifests — is now written to a temp
+  sibling and atomically renamed into place, so concurrent readers (including
+  a sibling `tsc` or framework build reading `public/`) see the old content or
+  the new content, never a truncated file.
+- Removed delete-then-recreate windows: the agent-skills surface and mounted
+  markdown mirrors write the new files first and prune stale entries after,
+  instead of `rm -rf`-ing a live directory before rebuilding it.
+- `leadtype generate` runs are single-flight per output directory via a
+  cross-process lock stored under the system temp dir, keyed by the resolved
+  `--out` path. Concurrent invocations wait for the in-flight run. Abandoned
+  locks recover fast: interrupted runs release on the way out, hard-killed
+  runs are reclaimed as soon as their recorded process is gone, and
+  unidentifiable locks are reclaimed after 10 minutes. Waiting runs fail
+  loudly after 15 minutes instead of hanging CI (`LEADTYPE_LOCK_TIMEOUT_MS`
+  overrides). Set `LEADTYPE_NO_LOCK=1` to opt out.
+- Overhead is negligible: the atomic write adds one rename per file
+  (~0.1–0.2ms) and the lock a fixed ~8ms per run — about 1–2% end to end on a
+  300-page site.
+
+## Output hygiene and determinism
+
+- Added an opt-in `prune` option to `convertAllMdx` that removes orphaned
+  `.md` outputs when a source page is deleted or renamed, ending the
+  hand-rolled garbage-collection step every consumer needed. Only `.md` files
+  are candidates, symlinks are never followed, pruning is skipped with a
+  warning when any page fails to convert or the source resolves to zero pages,
+  and `pruneKeep` globs exempt `.md` files written by other tools. Pruning
+  holds the same per-`outDir` lock as generate.
+- Added a `generatedAt` option to the agent artifact generators so manifests
+  and timestamp fallbacks can be reproduced byte-for-byte across deterministic
+  builds.
+
+## Agent discovery and MCP
+
+- `generate` and `generateAgentArtifacts()` now emit
+  `/.well-known/api-catalog` alongside robots and sitemap artifacts, route
+  handlers can serve it dynamically, and `leadtype/llm/readability` exports
+  helpers for RFC 8288 `Link` headers that advertise the catalog, service
+  docs, service description, and sitemap. Robots output includes
+  scanner-friendly AI crawler aliases and renders Content-Signals in
+  `ai-train, search, ai-input` order.
+- The MCP server card carries `serverInfo.instructions` (defaulting to a
+  summary-derived line, overridable via `agents.mcp.serverInfo.instructions`),
+  and the live server advertises the same instructions in its `initialize`
+  response. Tool summaries carry `readOnlyHint`/`idempotentHint` annotations,
+  `agents.mcp.icon` (or its `logo` alias) sets a card icon, and the card is
+  additionally written to a root `/mcp.json` alongside the
+  `/.well-known/mcp.json` discovery copy.
+- Invalid MCP tool calls surface structured JSON-RPC errors with proper error
+  codes instead of generic internal errors.
+
+## Agent-readability artifacts
+
+- Sorted `manifest.pages` from `generateAgentReadabilityArtifacts` in
+  navigation order — groups depth-first, then pages within each group —
+  instead of alphabetical `urlPath` order. Navigation order is the authored
+  reading order, which is what agent and LLM consumers of the manifest want.
+  Pages not present in the navigation are appended sorted by `urlPath`, so the
+  manifest stays fully deterministic without consumer-side re-sorting.
+  `sitemap.xml` is rendered from the same page list and shares the order.
+  ([#115](https://github.com/inthhq/leadtype/issues/115),
+  [#120](https://github.com/inthhq/leadtype/pull/120))
+- Applied the same ordering to `llms-full.txt` in legacy `groups` mode.
+  `generateLLMFullContextFiles` previously only reordered under curated `nav`,
+  so the full-context file could disagree with the manifest when only `groups`
+  were configured; both now share reading order in both modes.
+- Left the bring-your-own-pages `generateAgentArtifacts` entry point
+  unchanged: there the input `pages` order is the authored order supplied by
+  the caller, now pinned by a regression test.
+
+## MDX children typing
+
+- Added a `ChildrenTypeRegistry` augmentation hook to `leadtype/mdx`, so
+  framework consumers type `children` once per project instead of casting in
+  every component. The registry is empty by default and `children` stays
+  `unknown` — no behavior change without opting in, and Leadtype still ships
+  zero renderer dependencies:
+
+  ```ts
+  // types.d.ts
+  declare module "leadtype/mdx" {
+    interface ChildrenTypeRegistry {
+      type: import("react").ReactNode;
+    }
+  }
+  export {}; // module marker: augments the package instead of replacing it
+  ```
+
+- After that single declaration, every tag prop type (`CalloutProps`,
+  `TabsProps`, `StepProps`, …) exposes correctly typed `children`, verified
+  through the published type rollup and adopted by the React examples in the
+  docs. The resolved type is also exported as `TagChildren`.
