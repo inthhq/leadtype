@@ -63,6 +63,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+          # The action commits "Version Packages" via git-cli, which fires the
+          # husky pre-commit hook. Its test suite needs a built leadtype dist
+          # (the repo docs lint typechecks snippets against the package), and
+          # this job never builds one — CI already runs the suite on the PR,
+          # so skip git hooks here.
+          HUSKY: "0"
 
       - name: Print changeset outputs
         if: steps.changesets.outputs.published == 'true'
