@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { lintDocs } from "./runner";
+import { toPosixPath } from "./snippet-typecheck";
 
 const tempDirs: string[] = [];
 
@@ -187,5 +188,13 @@ describe("snippet typechecking", () => {
       ].join("\n")
     );
     expect(violations).toEqual([]);
+  });
+
+  describe("toPosixPath", () => {
+    it("converts Windows backslash paths to POSIX forward slash paths", () => {
+      expect(
+        toPosixPath("C:\\project\\root\\.leadtype-snippet-0\\main.ts")
+      ).toBe("C:/project/root/.leadtype-snippet-0/main.ts");
+    });
   });
 });
