@@ -190,6 +190,34 @@ describe("snippet typechecking", () => {
     expect(violations).toEqual([]);
   });
 
+  it("catches typecheck errors when projectRoot contains Windows-style backslashes (Windows regression integration test)", async () => {
+    const { projectRoot, srcDir } = await createTypecheckProject();
+
+    // Create a path containing backslashes to simulate a Windows environment path separator mismatch
+    const backslashedProjectRoot = `${projectRoot}${path.sep}subdir\\subsubdir`;
+
+    const violations = await lintWithTypecheck(
+      backslashedProjectRoot,
+      srcDir,
+      [
+        "```ts",
+        "// @check",
+        'const x: number = "this is a string";',
+        "```",
+        "",
+      ].join("\n")
+    );
+
+    // This should successfully detect the type error
+    expect(violations).toEqual([
+      expect.objectContaining({
+        rule: "snippet:types",
+        severity: "error",
+        message: expect.stringContaining("string"),
+      }),
+    ]);
+  });
+
   describe("toPosixPath", () => {
     it("converts Windows backslash paths to POSIX forward slash paths", () => {
       expect(
