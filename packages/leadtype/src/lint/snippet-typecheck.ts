@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import type { Root } from "mdast";
 import type * as TS from "typescript";
 import { visit } from "unist-util-visit";
+import { normalizeDocsPath } from "../internal/docs-url";
 import { loadTypeScript } from "./snippet-lint";
 
 /**
@@ -229,7 +230,7 @@ export function typecheckSnippets(
   for (const [index, snippet] of options.snippets.entries()) {
     const virtualDir = `${projectRoot}/.leadtype-snippet-${index}`;
     for (const file of toVirtualFiles(snippet, virtualDir)) {
-      virtualFiles.set(file.path, file);
+      virtualFiles.set(normalizeDocsPath(file.path), file);
     }
   }
 
@@ -245,16 +246,17 @@ export function typecheckSnippets(
   const baseGetSourceFile = host.getSourceFile.bind(host);
   const baseDirectoryExists = host.directoryExists?.bind(host);
   host.fileExists = (fileName) =>
-    virtualFiles.has(fileName) || baseFileExists(fileName);
+    virtualFiles.has(normalizeDocsPath(fileName)) || baseFileExists(fileName);
   host.readFile = (fileName) =>
-    virtualFiles.get(fileName)?.content ?? baseReadFile(fileName);
+    virtualFiles.get(normalizeDocsPath(fileName))?.content ??
+    baseReadFile(fileName);
   // Module resolution probes the containing directory; virtual dirs never
   // exist on disk, so sibling imports (`./helpers`) need this to resolve.
   host.directoryExists = (directoryName) =>
-    virtualDirs.has(directoryName) ||
+    virtualDirs.has(normalizeDocsPath(directoryName)) ||
     (baseDirectoryExists?.(directoryName) ?? false);
   host.getSourceFile = (fileName, languageVersion, ...rest) => {
-    const virtual = virtualFiles.get(fileName);
+    const virtual = virtualFiles.get(normalizeDocsPath(fileName));
     if (virtual) {
       return ts.createSourceFile(fileName, virtual.content, languageVersion);
     }
@@ -287,7 +289,9 @@ export function typecheckSnippets(
       continue;
     }
     const fileName = diagnostic.file?.fileName;
-    const virtual = fileName ? virtualFiles.get(fileName) : undefined;
+    const virtual = fileName
+      ? virtualFiles.get(normalizeDocsPath(fileName))
+      : undefined;
     if (!virtual) {
       continue; // diagnostics from real project files aren't lint's business
     }
