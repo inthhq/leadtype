@@ -1282,7 +1282,7 @@ async function pruneOrphanedOutputs(
       } catch {
         break;
       }
-      dir = resolve(dirname(dir));
+      dir = dirname(dir);
     }
   }
 
