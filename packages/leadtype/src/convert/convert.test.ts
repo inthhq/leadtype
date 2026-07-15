@@ -22,6 +22,7 @@ import {
   convertAllMdx,
   convertMdxFile,
   resolveMdxFrontmatter,
+  resolvePruneParentDirectories,
 } from "./convert";
 
 const execFileAsync = promisify(execFile);
@@ -82,6 +83,18 @@ afterEach(async () => {
 });
 
 describe("convertAllMdx", () => {
+  it("normalizes glob paths before pruning directories on Windows", () => {
+    const parents = resolvePruneParentDirectories(
+      [
+        "C:/repo/public/guides/orphan.md",
+        "C:\\repo\\public\\guides\\another-orphan.md",
+      ],
+      path.win32
+    );
+
+    expect([...parents]).toEqual(["C:\\repo\\public\\guides"]);
+  });
+
   it("defaults to the framework-neutral docs directory", async () => {
     const projectDir = await createTempProject();
     const previousCwd = process.cwd();
