@@ -1,5 +1,12 @@
 # leadtype
 
+## 0.4.2
+
+### Patch Changes
+
+- 68f12d0: Fix snippet typechecking on Windows by normalizing virtual file paths before TypeScript compiler host lookups.
+- 646ae9f: Fix `convertAllMdx()` directory pruning on Windows by normalizing globbed paths before comparing them with the output directory.
+
 ## 0.4.1
 
 ### Patch Changes
