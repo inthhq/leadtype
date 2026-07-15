@@ -1272,9 +1272,7 @@ async function pruneOrphanedOutputs(
   // Deleting the last page of a section leaves an empty directory behind;
   // sweep upward until a non-empty parent (or outDir) stops the walk.
   const resolvedOutDir = resolve(outDir);
-  const parents = new Set(
-    orphans.map((filePath) => resolve(dirname(filePath)))
-  );
+  const parents = resolvePruneParentDirectories(orphans);
   for (let dir of parents) {
     while (dir !== resolvedOutDir && dir.startsWith(resolvedOutDir + sep)) {
       try {
@@ -1287,6 +1285,21 @@ async function pruneOrphanedOutputs(
   }
 
   return orphans;
+}
+
+interface PrunePathApi {
+  dirname: (filePath: string) => string;
+  resolve: (...paths: string[]) => string;
+}
+
+/** Normalize glob output before comparing it with native filesystem paths. */
+export function resolvePruneParentDirectories(
+  filePaths: readonly string[],
+  pathApi: PrunePathApi = { dirname, resolve }
+): Set<string> {
+  return new Set(
+    filePaths.map((filePath) => pathApi.resolve(pathApi.dirname(filePath)))
+  );
 }
 
 /**
