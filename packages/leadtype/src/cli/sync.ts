@@ -134,10 +134,38 @@ export async function runSyncCommand(
       refreshed: "refreshed",
       cached: "cached",
     } as const;
+    // Report the resolved source id and its dependent collections, so one line
+    // of output answers "what did this clone, and what reads from it?" — the
+    // same ids the config, JSON output, and error messages use.
+    const resolvedById = new Map(
+      loaded.resolved.sources
+        .filter((source) => source.kind === "git")
+        .map((source) => [`${source.repository}#${source.ref}`, source])
+    );
+    const mutable: string[] = [];
     for (const entry of result.sources) {
       const label = labels[entry.status];
+      const resolved = resolvedById.get(
+        `${entry.source.repository}#${entry.source.ref}`
+      );
+      const dependents = (
+        resolved?.collectionKeys ?? entry.source.collectionKeys
+      ).join(", ");
+      const id = resolved?.id ?? entry.source.repository;
       io.stdout.write(
-        `${label}  ${entry.source.repository}@${entry.source.ref}  ${entry.commit.slice(0, 7)}  → ${entry.source.cacheDir}\n`
+        `${label}  ${id}  ${entry.source.repository}@${entry.source.ref}  ${entry.commit.slice(0, 7)}  → ${entry.source.cacheDir}\n` +
+          `          collections: ${dependents}\n`
+      );
+      if (resolved?.kind === "git" && resolved.refKind === "mutable") {
+        mutable.push(`${id} (${entry.source.ref})`);
+      }
+    }
+    if (mutable.length > 0) {
+      // A branch or moving tag resolves to a different commit tomorrow, which
+      // is fine locally and a reproducibility hazard for a published build.
+      io.stderr.write(
+        `\nWarning: ${mutable.length} source${mutable.length === 1 ? " tracks a" : "s track"} mutable ref${mutable.length === 1 ? "" : "s"}: ${mutable.join(", ")}\n` +
+          "  → Pin `ref` to a commit SHA or an immutable tag for reproducible published builds.\n"
       );
     }
     if (result.skipped.length > 0) {

@@ -29,6 +29,12 @@ const markdownEntry = path.join(
   "index.ts"
 );
 const valibotEntry = fileURLToPath(import.meta.resolve("valibot"));
+// Fixture configs import `gitSource` from source rather than `"leadtype"` so
+// they exercise the working tree, not whatever dist happens to be built.
+const leadtypeEntry = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "index.ts"
+);
 const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_COMMON_DIR",
@@ -2631,6 +2637,88 @@ export default {
     expect(capture.stderr).toContain(
       "collections.docs.prefix → collections.docs.routePrefix"
     );
+  });
+
+  it("clones once for a gitSource group and mounts every child collection", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Docs"\n---\n\nDocs body.\n',
+      "changelog/1-0.mdx": '---\ntitle: "1.0"\n---\n\nRelease body.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import { gitSource } from ${JSON.stringify(leadtypeEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  sources: {
+    upstream: gitSource({
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/upstream",
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog" },
+      },
+    }),
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    // Acquisition is declared once; both collections stage from the one clone.
+    expect(existsSync(path.join(srcDir, ".leadtype", "upstream", ".git"))).toBe(
+      true
+    );
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Docs body.");
+    expect(
+      await readFile(path.join(outDir, "docs", "changelog", "1-0.md"), "utf8")
+    ).toContain("Release body.");
+  });
+
+  it("names the dependent collections when a source cannot be acquired", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import { gitSource } from ${JSON.stringify(leadtypeEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  sources: {
+    upstream: gitSource({
+      repository: "https://example.invalid/missing.git",
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog" },
+      },
+    }),
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    // One failed clone must name everything that depended on it, not just the
+    // collection that happened to be resolved first.
+    expect(capture.stderr).toContain("docs");
+    expect(capture.stderr).toContain("changelog");
   });
 
   it("runs a collections config authored entirely in canonical field names", async () => {

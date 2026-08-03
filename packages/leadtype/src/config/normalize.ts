@@ -16,7 +16,7 @@
  */
 
 import { normalizeUrlPrefix } from "../internal/docs-url";
-import type { DocsCollection, DocsConfig } from "../llm/llm";
+import type { DocsCollection, DocsConfig, GitSourceSpec } from "../llm/llm";
 import { isShaRef } from "../sync/sync";
 import {
   type ConfigDeprecation,
@@ -201,12 +201,18 @@ function resolveCollectionEntry(
  */
 function resolveSources(
   collections: Record<string, DocsCollection>,
-  configPath: string | undefined
+  configPath: string | undefined,
+  /** Collection key → authored source name, for collections under a `gitSource`. */
+  authoredSourceNames: ReadonlyMap<string, string> = new Map()
 ): { sources: ResolvedSource[]; sourceIdByCollection: Map<string, string> } {
   const sources: ResolvedSource[] = [];
   const gitByRepoRef = new Map<string, ResolvedGitSource>();
   const sourceIdByCollection = new Map<string, string>();
   const localKeys: string[] = [];
+  // Which authored source name (if any) claimed each resolved acquisition, so
+  // two named sources for one clone can be rejected rather than silently
+  // merged under whichever name happened to come first.
+  const authoredNameByRepoRef = new Map<string, string>();
 
   for (const [key, collection] of Object.entries(collections)) {
     if (!collection.repository) {
@@ -216,6 +222,7 @@ function resolveSources(
     }
     const ref = collection.ref ?? "main";
     const repoRefKey = `${collection.repository}#${ref}`;
+    const authoredName = authoredSourceNames.get(key);
     const existing = gitByRepoRef.get(repoRefKey);
     if (existing) {
       if (
@@ -227,13 +234,22 @@ function resolveSources(
           `${configLabel(configPath)}: collections [${existing.collectionKeys.join(", ")}] and "${key}" target ${collection.repository}@${ref} but set different cacheDir values ("${existing.cacheDir}" vs "${collection.cacheDir}"). Make them match or remove the explicit cacheDir.`
         );
       }
+      const claimedBy = authoredNameByRepoRef.get(repoRefKey);
+      if (authoredName && claimedBy && authoredName !== claimedBy) {
+        throw new Error(
+          `${configLabel(configPath)}: sources "${claimedBy}" and "${authoredName}" both target ${collection.repository}@${ref}. That is one acquisition declared twice — merge their collections into a single source.`
+        );
+      }
       existing.cacheDir ??= collection.cacheDir;
       existing.collectionKeys.push(key);
       sourceIdByCollection.set(key, existing.id);
       continue;
     }
+    // A named source keeps its authored id; an anonymous one is identified by
+    // what it actually is. Either way the id is stable and appears verbatim in
+    // human output, JSON output, and sync diagnostics.
     const source: ResolvedGitSource = {
-      id: repoRefKey,
+      id: authoredName ?? repoRefKey,
       kind: "git",
       repository: collection.repository,
       ref,
@@ -241,6 +257,9 @@ function resolveSources(
       ...(collection.cacheDir ? { cacheDir: collection.cacheDir } : {}),
       collectionKeys: [key],
     };
+    if (authoredName) {
+      authoredNameByRepoRef.set(repoRefKey, authoredName);
+    }
     gitByRepoRef.set(repoRefKey, source);
     sources.push(source);
     sourceIdByCollection.set(key, source.id);
@@ -269,6 +288,7 @@ const TOP_LEVEL_PROVENANCE_FIELDS = [
   "mounts",
   "feeds",
   "collections",
+  "sources",
   "openapi",
   "i18n",
   "git",
@@ -276,6 +296,64 @@ const TOP_LEVEL_PROVENANCE_FIELDS = [
   "redirects",
   "lint",
 ] as const;
+
+/**
+ * Flatten `sources` into the collections map.
+ *
+ * A source group is pure sugar over the flat form: acquisition fields cascade
+ * onto every child, and a child may override the source's inheritance policy
+ * (including opting out with `false`). Collection ids stay flat and global
+ * because they name staging mounts, error messages, and JSON output — a
+ * silently namespaced id would show up in all three.
+ */
+function expandGitSources(
+  sources: Record<string, GitSourceSpec>,
+  existing: Record<string, DocsCollection>,
+  configPath: string | undefined
+): {
+  collections: Record<string, DocsCollection>;
+  sourceIdByCollection: Map<string, string>;
+} {
+  const collections: Record<string, DocsCollection> = { ...existing };
+  const sourceIdByCollection = new Map<string, string>();
+  const ownerOfKey = new Map<string, string>(
+    Object.keys(existing).map((key) => [key, "collections"])
+  );
+
+  for (const [sourceId, source] of Object.entries(sources)) {
+    if (Object.keys(source.collections).length === 0) {
+      throw new Error(
+        `${configLabel(configPath)}: source "${sourceId}" declares no collections. A source exists to be read from — remove it or add one.`
+      );
+    }
+    for (const [key, child] of Object.entries(source.collections)) {
+      const owner = ownerOfKey.get(key);
+      if (owner) {
+        throw new Error(
+          `${configLabel(configPath)}: collection id "${key}" is declared by both ${owner === "collections" ? '"collections"' : `source "${owner}"`} and source "${sourceId}". Collection ids are global — rename one.`
+        );
+      }
+      ownerOfKey.set(key, sourceId);
+      sourceIdByCollection.set(key, sourceId);
+      // A child's own policy wins, including `false` to opt out of a
+      // source-level default — hence comparing against undefined rather than
+      // relying on falsiness.
+      const inheritConfig =
+        child.inheritConfig === undefined
+          ? source.inheritConfig
+          : child.inheritConfig;
+      collections[key] = {
+        ...child,
+        repository: source.repository,
+        ...(source.ref === undefined ? {} : { ref: source.ref }),
+        ...(source.cacheDir === undefined ? {} : { cacheDir: source.cacheDir }),
+        ...(inheritConfig === undefined ? {} : { inheritConfig }),
+      };
+    }
+  }
+
+  return { collections, sourceIdByCollection };
+}
 
 export function normalizeDocsConfig(
   config: DocsConfig,
@@ -289,7 +367,7 @@ export function normalizeDocsConfig(
     recordExplicit(provenance, field, config[field], configPath);
   }
 
-  if (!config.collections) {
+  if (!(config.collections || config.sources)) {
     // Single-source: the content root comes from the host (`--docs-dir` for the
     // CLI, `contentDir` for the runtime source), so the resolved collection
     // carries no `dir`. Everything else about it is authored at the top level.
@@ -345,9 +423,20 @@ export function normalizeDocsConfig(
     };
   }
 
+  // Source groups are sugar over the flat map: expand first, then everything
+  // downstream sees one collections map regardless of how it was authored.
+  const {
+    collections: flatCollections,
+    sourceIdByCollection: authoredSourceNames,
+  } = expandGitSources(
+    config.sources ?? {},
+    config.collections ?? {},
+    configPath
+  );
+
   const canonicalCollections: Record<string, DocsCollection> = {};
   const aliasProvenance = new Map<string, Record<string, FieldProvenance>>();
-  for (const [key, collection] of Object.entries(config.collections)) {
+  for (const [key, collection] of Object.entries(flatCollections)) {
     const collectionAliasProvenance: Record<string, FieldProvenance> = {};
     canonicalCollections[key] = applyCollectionAliases(
       key,
@@ -361,7 +450,8 @@ export function normalizeDocsConfig(
 
   const { sources, sourceIdByCollection } = resolveSources(
     canonicalCollections,
-    configPath
+    configPath,
+    authoredSourceNames
   );
 
   const collections = Object.entries(canonicalCollections).map(
@@ -386,8 +476,11 @@ export function normalizeDocsConfig(
 
   assertUniqueRoutePrefixes(collections, configPath);
 
+  // `sources` is dropped from the canonical config: its collections are now in
+  // the flat map, and leaving both would let a consumer read the project twice.
+  const { sources: _authoredSources, ...withoutSources } = config;
   return {
-    config: { ...config, collections: canonicalCollections },
+    config: { ...withoutSources, collections: canonicalCollections },
     resolved: {
       mode: "multi-source",
       ...(configPath ? { configPath } : {}),

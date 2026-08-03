@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DocsConfig } from "../llm/llm";
+import { type DocsConfig, gitSource } from "../llm/llm";
 import { formatDeprecationWarning, normalizeDocsConfig } from "./normalize";
 import { serializeResolvedConfig } from "./types";
 
@@ -263,6 +263,204 @@ describe("source graph", () => {
     expect(resolved.sources).toEqual([
       { id: "local", kind: "local", collectionKeys: ["docs", "guides"] },
     ]);
+  });
+});
+
+describe("git source groups", () => {
+  const grouped: DocsConfig = {
+    product,
+    sources: {
+      c15t: gitSource({
+        repository: "https://github.com/c15t/c15t.git",
+        ref: "main",
+        cacheDir: ".leadtype/c15t",
+        inheritConfig: true,
+        collections: {
+          docs: { dir: "docs", routePrefix: "/docs" },
+          changelog: { dir: "changelog", routePrefix: "/changelog" },
+        },
+      }),
+    },
+  };
+
+  const flat: DocsConfig = {
+    product,
+    collections: {
+      docs: {
+        repository: "https://github.com/c15t/c15t.git",
+        ref: "main",
+        cacheDir: ".leadtype/c15t",
+        dir: "docs",
+        routePrefix: "/docs",
+        inheritConfig: true,
+      },
+      changelog: {
+        repository: "https://github.com/c15t/c15t.git",
+        ref: "main",
+        cacheDir: ".leadtype/c15t",
+        dir: "changelog",
+        routePrefix: "/changelog",
+        inheritConfig: true,
+      },
+    },
+  };
+
+  it("resolves to the same collections as the equivalent flat config", () => {
+    const fromGroup = normalize(grouped).resolved;
+    const fromFlat = normalize(flat).resolved;
+
+    // `sourceId` is the one intended difference: a named source keeps its
+    // authored id, an anonymous one is identified by repository@ref. Both
+    // still resolve to exactly one shared acquisition.
+    const strip = (resolved: typeof fromGroup) =>
+      resolved.collections.map(({ sourceId: _sourceId, ...rest }) => rest);
+
+    expect(strip(fromGroup)).toEqual(strip(fromFlat));
+    expect(fromGroup.sources).toHaveLength(1);
+    expect(fromFlat.sources).toHaveLength(1);
+  });
+
+  it("performs one acquisition for both collections", () => {
+    const { resolved } = normalize(grouped);
+    expect(resolved.sources).toHaveLength(1);
+    expect(resolved.sources[0]).toMatchObject({
+      kind: "git",
+      repository: "https://github.com/c15t/c15t.git",
+      ref: "main",
+      cacheDir: ".leadtype/c15t",
+      collectionKeys: ["docs", "changelog"],
+    });
+  });
+
+  it("names the resolved source after the authored source id", () => {
+    const { resolved } = normalize(grouped);
+    expect(resolved.sources[0].id).toBe("c15t");
+    expect(
+      resolved.collections.map((collection) => collection.sourceId)
+    ).toEqual(["c15t", "c15t"]);
+  });
+
+  it("cascades acquisition and inheritance onto every child", () => {
+    const { config } = normalize(grouped);
+    expect(config.collections?.changelog).toMatchObject({
+      repository: "https://github.com/c15t/c15t.git",
+      ref: "main",
+      cacheDir: ".leadtype/c15t",
+      inheritConfig: true,
+    });
+    // The expanded flat map is the canonical form; `sources` does not survive
+    // normalization, so nothing downstream can read the project twice.
+    expect(config).not.toHaveProperty("sources");
+  });
+
+  it("lets a child opt out of the source's inheritance policy", () => {
+    const { config } = normalize({
+      product,
+      sources: {
+        c15t: gitSource({
+          repository: "https://github.com/c15t/c15t.git",
+          inheritConfig: true,
+          collections: {
+            docs: { dir: "docs", routePrefix: "/docs" },
+            changelog: {
+              dir: "changelog",
+              routePrefix: "/changelog",
+              inheritConfig: false,
+            },
+          },
+        }),
+      },
+    });
+    expect(config.collections?.docs.inheritConfig).toBe(true);
+    expect(config.collections?.changelog.inheritConfig).toBe(false);
+  });
+
+  it("supports a source group and a flat collection side by side", () => {
+    const { resolved } = normalize({
+      product,
+      collections: { local: { dir: "docs", routePrefix: "/local" } },
+      sources: {
+        remote: gitSource({
+          repository: "https://github.com/acme/acme.git",
+          collections: { guides: { dir: "docs", routePrefix: "/guides" } },
+        }),
+      },
+    });
+    expect(resolved.sources.map((source) => source.id)).toEqual([
+      "local",
+      "remote",
+    ]);
+  });
+
+  it("rejects a collection id claimed by two sources", () => {
+    expect(() =>
+      normalize({
+        product,
+        sources: {
+          a: gitSource({
+            repository: "https://github.com/acme/a.git",
+            collections: { docs: { dir: "docs", routePrefix: "/a" } },
+          }),
+          b: gitSource({
+            repository: "https://github.com/acme/b.git",
+            collections: { docs: { dir: "docs", routePrefix: "/b" } },
+          }),
+        },
+      })
+    ).toThrow(
+      /collection id "docs" is declared by both source "a" and source "b"/
+    );
+  });
+
+  it("rejects a collection id claimed by both a source and the flat map", () => {
+    expect(() =>
+      normalize({
+        product,
+        collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+        sources: {
+          remote: gitSource({
+            repository: "https://github.com/acme/a.git",
+            collections: { docs: { dir: "docs", routePrefix: "/remote" } },
+          }),
+        },
+      })
+    ).toThrow(/declared by both "collections" and source "remote"/);
+  });
+
+  it("rejects two named sources that are the same acquisition", () => {
+    expect(() =>
+      normalize({
+        product,
+        sources: {
+          docsRepo: gitSource({
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+          }),
+          changelogRepo: gitSource({
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            collections: {
+              changelog: { dir: "changelog", routePrefix: "/changelog" },
+            },
+          }),
+        },
+      })
+    ).toThrow(/both target https:\/\/github.com\/acme\/acme.git@main/);
+  });
+
+  it("rejects a source with no collections", () => {
+    expect(() =>
+      normalize({
+        product,
+        sources: {
+          empty: gitSource({
+            repository: "https://github.com/acme/acme.git",
+            collections: {},
+          }),
+        },
+      })
+    ).toThrow(/source "empty" declares no collections/);
   });
 });
 

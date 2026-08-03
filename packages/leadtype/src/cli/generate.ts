@@ -18,7 +18,7 @@ import {
   formatDeprecationWarning,
   normalizeDocsConfig,
 } from "../config/normalize";
-import type { ResolvedDocsConfig } from "../config/types";
+import type { ResolvedDocsConfig, ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
@@ -56,6 +56,7 @@ import type {
   DocsNavigation,
   DocsNavNode,
   DocsNavPageEntry,
+  GitSourceSpec,
   LlmsProductInfo,
   OrganizationInfo,
   ProductInfo,
@@ -68,6 +69,7 @@ import {
   generateLLMFullContextFiles,
   generateLlmsTxt,
   generateSkillArtifacts,
+  isGitSourceSpec,
   resolveAgentInputs,
   resolveDocsNavigation,
 } from "../llm";
@@ -275,6 +277,12 @@ type GenerateResult = {
   product: LlmsProductInfo;
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
+  /**
+   * The resolved acquisition graph, present for multi-source projects. Source
+   * and collection ids here are the same ones human output and error messages
+   * use, so automation and a reader can talk about the same thing.
+   */
+  sources?: ResolvedSource[];
 };
 
 function createGenerateMarkdownTransforms({
@@ -1138,12 +1146,12 @@ function validateSourceConfigInheritance(
   /** The field name as authored, so the error points at the user's own line. */
   fieldName: string
 ): void {
-  if (value === undefined || value === true) {
+  if (value === undefined || typeof value === "boolean") {
     return;
   }
   if (!isPlainRecord(value)) {
     throw new Error(
-      `docs config at "${configPath}": collection "${collectionKey}" ${fieldName} must be true or an object`
+      `docs config at "${configPath}": collection "${collectionKey}" ${fieldName} must be a boolean or an object`
     );
   }
   if (
@@ -1283,6 +1291,75 @@ function validateCollections(
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+/**
+ * Validate `sources` by checking the source-owned acquisition fields, then
+ * reusing the collection validator on each child with the source's fields
+ * cascaded in — so a grouped config and its flat equivalent produce identical
+ * errors instead of two dialects of the same message.
+ */
+function validateGitSources(
+  value: unknown,
+  configPath: string
+): Record<string, GitSourceSpec> | undefined {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}" must export "sources" as an object map`
+    );
+  }
+  for (const [sourceId, entry] of Object.entries(value)) {
+    if (!isGitSourceSpec(entry)) {
+      throw new Error(
+        `docs config at "${configPath}": source "${sourceId}" must be built with gitSource({ … }).`
+      );
+    }
+    if (typeof entry.repository !== "string" || entry.repository.length === 0) {
+      throw new Error(
+        `docs config at "${configPath}": source "${sourceId}" must set "repository" to a non-empty string`
+      );
+    }
+    if (entry.repository.startsWith("-")) {
+      throw new Error(
+        `docs config at "${configPath}": source "${sourceId}" repository must not begin with "-"`
+      );
+    }
+    if (entry.ref !== undefined && typeof entry.ref !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": source "${sourceId}" ref must be a string`
+      );
+    }
+    if (typeof entry.ref === "string" && entry.ref.startsWith("-")) {
+      throw new Error(
+        `docs config at "${configPath}": source "${sourceId}" ref must not begin with "-"`
+      );
+    }
+    if (!isPlainRecord(entry.collections)) {
+      throw new Error(
+        `docs config at "${configPath}": source "${sourceId}" must export "collections" as an object map`
+      );
+    }
+    validateSourceConfigInheritance(
+      entry.inheritConfig,
+      configPath,
+      sourceId,
+      "inheritConfig"
+    );
+    // Children inherit `repository` at expansion time, and the collection
+    // validator rejects `inheritConfig` on a local collection — so cascade it
+    // here to validate the shape the project will actually run.
+    const cascaded = Object.fromEntries(
+      Object.entries(entry.collections).map(([key, child]) => [
+        key,
+        { ...(child as Record<string, unknown>), repository: entry.repository },
+      ])
+    );
+    validateCollections(cascaded, configPath);
+  }
+  return value as Record<string, GitSourceSpec>;
 }
 
 function validateGitConfig(
@@ -1453,6 +1530,10 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   }
 
   const collections = validateCollections(value.collections, configPath);
+  const sources = validateGitSources(value.sources, configPath);
+  // A source group is a collections declaration in acquisition-first form, so
+  // it participates in the same single-source / multi-source exclusivity.
+  const isMultiSource = Boolean(collections || sources);
   const openapi = validateDocsOpenApiConfig(
     value.openapi,
     `docs config at "${configPath}"`
@@ -1460,20 +1541,20 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   const hasGroups = value.groups !== undefined;
   const hasNav = value.navigation !== undefined;
 
-  if (collections && hasGroups) {
+  if (isMultiSource && hasGroups) {
     throw new Error(
-      `docs config at "${configPath}" sets both "groups" and "collections". Move groups into the relevant collection(s) — top-level groups is for the single-collection shape only.`
+      `docs config at "${configPath}" sets both "groups" and "collections"/"sources". Move groups into the relevant collection(s) — top-level groups is for the single-collection shape only.`
     );
   }
-  if (collections && hasNav) {
+  if (isMultiSource && hasNav) {
     throw new Error(
-      `docs config at "${configPath}" sets both "navigation" and "collections". Move navigation into the relevant collection(s) — top-level navigation is for the single-collection shape only.`
+      `docs config at "${configPath}" sets both "navigation" and "collections"/"sources". Move navigation into the relevant collection(s) — top-level navigation is for the single-collection shape only.`
     );
   }
 
   let groups: DocsGroup[] | undefined;
   let nav: DocsNavEntry[] | undefined;
-  if (collections === undefined) {
+  if (!isMultiSource) {
     // A config with identity and nothing else is the documented common path:
     // navigation and the llms.txt body are derived from the content tree until
     // they are authored. Requiring `groups` or `navigation` here would reject
@@ -1509,6 +1590,7 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
 
   return {
     ...(collections ? { collections } : {}),
+    ...(sources ? { sources } : {}),
     ...(groups ? { groups } : {}),
     ...(nav ? { navigation: nav } : {}),
     ...(organization ? { organization } : {}),
@@ -1615,7 +1697,7 @@ function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
     return [];
   }
   const baseDir = entry.absoluteDir;
-  if (sourceConfig !== true && sourceConfig.path) {
+  if (typeof sourceConfig === "object" && sourceConfig.path) {
     if (path.isAbsolute(sourceConfig.path)) {
       throw new Error(
         `collection "${entry.key}" inheritConfig.path must be relative to the collection dir`
@@ -1641,7 +1723,7 @@ function sourceConfigInheritFields(
   collection: DocsCollection
 ): SourceConfigInheritField[] {
   const sourceConfig = collection.inheritConfig;
-  if (!sourceConfig || sourceConfig === true || !sourceConfig.inherit) {
+  if (typeof sourceConfig !== "object" || !sourceConfig.inherit) {
     return DEFAULT_SOURCE_CONFIG_INHERIT;
   }
   return sourceConfig.inherit;
@@ -3651,6 +3733,13 @@ async function executeGenerate(
         search,
         srcDir,
       };
+    }
+
+    // Multi-source projects report the acquisition graph so `--json` names the
+    // same source and collection ids as the human output and error messages.
+    const resolvedSources = loadedConfig?.resolved.sources;
+    if (resolvedSources?.some((source) => source.kind === "git")) {
+      result.sources = resolvedSources;
     }
 
     if (args.format === "json") {

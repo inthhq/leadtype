@@ -94,6 +94,76 @@ export default defineDocsConfig({
 This shape is useful when a docs UI repo needs to render and package content
 from one or more product repos.
 
+## Source groups
+
+The config above works, but it puts acquisition and content mapping in the same
+object: a shared spread reduces the repetition without making the relationship
+visible, and a reader still has to know that matching `(repository, ref)` pairs
+are deduped into one clone.
+
+`gitSource()` declares the acquisition once and nests the content beneath it:
+
+```ts
+import { defineLeadtypeConfig, gitSource } from "leadtype";
+
+export default defineLeadtypeConfig({
+  product: { name: "c15t", tagline: "..." },
+  sources: {
+    c15t: gitSource({
+      repository: "https://github.com/c15t/c15t.git",
+      ref: "main",
+      cacheDir: ".leadtype/c15t",
+      inheritConfig: true,
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog", inheritConfig: false },
+      },
+    }),
+  },
+});
+```
+
+The split follows ownership:
+
+| The source owns | Each collection owns |
+| --- | --- |
+| `repository`, `ref`, `cacheDir` | `dir`, `include`/`exclude` |
+| One clone lifecycle for all its children | `routePrefix` and `mounts` |
+| The default `inheritConfig` policy | `navigation`, `frontmatterSchema`, `flatteners` |
+| | Its own `inheritConfig` exception, including `false` to opt out |
+
+Both forms normalize to the same source graph, so nothing downstream can tell
+them apart. `sources` and `collections` may be used together — a local
+collection beside a remote group is fine.
+
+Collection ids are **global**, not scoped to their source: they name staging
+mounts, error messages, and JSON output, so a silently namespaced id would show
+up in all three. Two sources declaring a `docs` collection is an error naming
+both, not an auto-rename.
+
+Two named sources with the same `(repository, ref)` is also an error — that is
+one acquisition declared twice, and merging their collections into a single
+source is what you meant.
+
+### Pinning
+
+`ref` accepts a branch, a tag, or a commit SHA. `leadtype sync` reports which
+sources track a mutable ref:
+
+```text
+cloned  c15t  https://github.com/c15t/c15t.git@main  a1b2c3d  → .leadtype/c15t
+        collections: docs, changelog
+
+Warning: 1 source tracks a mutable ref: c15t (main)
+  → Pin `ref` to a commit SHA or an immutable tag for reproducible published builds.
+```
+
+A branch is fine while you iterate. For a published build it means today's
+deploy and tomorrow's deploy render different content from the same config.
+
+A failed acquisition names every collection that depended on it, so one clone
+error does not read as one collection's problem.
+
 ### Inherit source-owned docs config
 
 When a package/source repo owns both the MDX files and their information

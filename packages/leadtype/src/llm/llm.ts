@@ -352,7 +352,7 @@ export type SourceConfigInheritField =
   | "mounts";
 
 export type SourceConfigInheritance =
-  | true
+  | boolean
   | {
       /**
        * Config file path relative to the collection `dir`. Defaults to
@@ -493,8 +493,19 @@ export type DocsConfig<
   /**
    * Multi-source content sets, keyed by collection id. Each collection owns
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
+   *
+   * When several collections come from one repository, prefer {@link sources}
+   * with {@link gitSource} — it declares the acquisition once. Both forms
+   * resolve to the same source graph and may be combined.
    */
   collections?: Record<string, DocsCollection>;
+  /**
+   * Acquisition-first content sets, keyed by source id. Each source declares
+   * one git clone and the collections that read from it. Normalized into the
+   * same graph as {@link collections}; a config may use either or both, as
+   * long as collection ids stay unique.
+   */
+  sources?: Record<string, GitSourceSpec>;
   /**
    * OpenAPI specs to generate into the docs source before conversion. Generated
    * pages use native MDX API components and flatten into agent-readable markdown.
@@ -704,6 +715,85 @@ export function defineLeadtypeConfig<
  */
 export function defineCollection(collection: DocsCollection): DocsCollection {
   return collection;
+}
+
+/**
+ * A collection declared beneath a {@link gitSource}. Acquisition fields
+ * (`repository`, `ref`, `cacheDir`) belong to the source, not here — that is
+ * the whole point of the grouping. Everything else is collection-owned.
+ */
+export type GitSourceCollection = Omit<
+  DocsCollection,
+  "cacheDir" | "prefix" | "ref" | "repository" | "schema" | "sourceConfig"
+>;
+
+/**
+ * One git acquisition and the content collections that read from it.
+ *
+ * The flat `collections` map makes every collection carry `repository`, `ref`,
+ * and `cacheDir` even when several come from the same repository — so a config
+ * repeats acquisition three times for one clone, and a reader has to notice
+ * that matching `(repository, ref)` pairs are deduped. This declares the clone
+ * once and nests the content beneath it, which is the model leadtype already
+ * used internally.
+ */
+export type GitSourceConfig = {
+  /** https or git@ URL. */
+  repository: string;
+  /** Branch, tag, or commit SHA. Defaults to `"main"`. */
+  ref?: string;
+  /**
+   * Override the cache directory for the clone. Defaults to
+   * `.leadtype/sources/<repo-slug>@<ref>` relative to the config dir.
+   */
+  cacheDir?: string;
+  /**
+   * Default config-inheritance policy for every collection beneath this
+   * source. A collection can override it, including with `false` to opt out.
+   */
+  inheritConfig?: SourceConfigInheritance;
+  /** Content collections read from this source, keyed by collection id. */
+  collections: Record<string, GitSourceCollection>;
+};
+
+/** Brand marking a value produced by {@link gitSource}. */
+export const GIT_SOURCE_MARKER = "leadtype.gitSource" as const;
+
+export type GitSourceSpec = GitSourceConfig & {
+  readonly kind: typeof GIT_SOURCE_MARKER;
+};
+
+/**
+ * Declare one git acquisition with its content collections beneath it.
+ *
+ * ```ts
+ * sources: {
+ *   c15t: gitSource({
+ *     repository: "https://github.com/c15t/c15t.git",
+ *     ref: "main",
+ *     inheritConfig: true,
+ *     collections: {
+ *       docs: { dir: "docs", routePrefix: "/docs" },
+ *       changelog: { dir: "changelog", routePrefix: "/changelog", inheritConfig: false },
+ *     },
+ *   }),
+ * }
+ * ```
+ *
+ * Equivalent to the flat form — both normalize to the same source graph, one
+ * clone is performed either way, and a failed acquisition names every
+ * dependent collection.
+ */
+export function gitSource(config: GitSourceConfig): GitSourceSpec {
+  return { ...config, kind: GIT_SOURCE_MARKER };
+}
+
+export function isGitSourceSpec(value: unknown): value is GitSourceSpec {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === GIT_SOURCE_MARKER
+  );
 }
 
 function compactDocsNavNode(node: DocsNavNode): DocsNavNode {
