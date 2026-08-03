@@ -214,6 +214,7 @@ const config = defineDocsConfig({
             "generate-rss-atom-feeds",
             "deploy-generated-artifacts",
             "validate-in-ci",
+            "redirects",
             "localize-docs",
           ],
         },
@@ -261,6 +262,7 @@ const config = defineDocsConfig({
       base: "reference",
       pages: [
         "cli",
+        "doctor",
         "source",
         "llm",
         "convert",

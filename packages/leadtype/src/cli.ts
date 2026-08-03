@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getDoctorUsage, runDoctorCommand } from "./cli/doctor";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
 import { getInitUsage, runInitCommand } from "./cli/init";
 import { getMcpUsage, runMcpCommand } from "./cli/mcp";
@@ -21,6 +22,7 @@ Usage:
 
 Commands:
   init       Scaffold an agent-ready docs integration for your framework
+  doctor     Explain the resolved project — config, sources, routes, artifacts
   generate   Convert MDX, generate LLM files, and build search artifacts
   sync       Clone or refresh remote sources declared by collections
   lint       Validate MDX frontmatter, meta.json, and docs links
@@ -34,6 +36,9 @@ Run leadtype <command> --help for command-specific options.
 function commandUsage(command: string | undefined): string {
   if (command === "init") {
     return getInitUsage();
+  }
+  if (command === "doctor") {
+    return getDoctorUsage();
   }
   if (command === "generate") {
     return getGenerateUsage();
@@ -72,6 +77,10 @@ export async function runCli(
 
   if (command === "init") {
     return await runInitCommand(rest, io);
+  }
+
+  if (command === "doctor") {
+    return await runDoctorCommand(rest, io);
   }
 
   if (command === "generate") {

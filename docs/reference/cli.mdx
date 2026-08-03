@@ -1,13 +1,13 @@
 ---
 title: "CLI"
-description: "leadtype init, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
+description: "leadtype init, doctor, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
 ---
 
 ```bash
 leadtype <command> [options]
 ```
 
-Six commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
+Seven commands: `init` scaffolds an integration into an existing app, `doctor` explains the resolved project without changing it, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
 
 ## init
 
@@ -32,6 +32,29 @@ leadtype init [options]
 | `-h`, `--help` | — | Print usage. |
 
 Exit codes: `0` success, `2` CLI usage error or no framework detected. Existing files are never overwritten unless `--force` is passed. TanStack Start and Fumadocs are not scaffolded by `init` (heavier app-specific setup) — follow their recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive).
+
+## doctor
+
+Explain the resolved project before doing work: which config was discovered, whether it resolved single-source or multi-source, where each value came from, which collections share a git acquisition, which routes exist, and which artifacts are present or stale.
+
+```bash
+leadtype doctor
+leadtype doctor --json
+```
+
+Read-only by construction — it never clones, refreshes, writes, or generates, so an unsynced remote is a finding naming `leadtype sync` rather than a fetch.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Project root to inspect. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeatable. |
+| `--out <dir>` | `public` | Output root to check artifacts against. |
+| `--json` | — | Machine-readable report with stable issue ids. |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` no errors (warnings still print), `1` a required input is missing or invalid, `2` CLI usage error.
+
+Full finding-id table and JSON shape: [`leadtype doctor`](/docs/reference/doctor).
 
 ## generate
 
@@ -437,6 +460,7 @@ Show usage:
 
 ```bash
 leadtype help            # main usage
+leadtype help doctor
 leadtype help generate
 leadtype help lint
 leadtype help mcp

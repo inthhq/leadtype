@@ -75,7 +75,7 @@
     },
     {
       "path": "/docs/pipeline/collections",
-      "hash": "8114273c620aa826"
+      "hash": "c0385584dc467a04"
     },
     {
       "path": "/docs/pipeline/configure-sources",
@@ -119,11 +119,15 @@
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "7dcd173e5a973493"
+      "hash": "73e07d8bd071d8d0"
     },
     {
       "path": "/docs/reference/convert",
       "hash": "47365b8cfe098cc0"
+    },
+    {
+      "path": "/docs/reference/doctor",
+      "hash": "c22f48afc600e1ae"
     },
     {
       "path": "/docs/reference/frontmatter-transformers",
