@@ -124,7 +124,7 @@ leadtype generate \
 
 The first source folder is mounted at the generated docs root. Additional source folders are mounted under their folder name, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1.md`. `--include` and `--exclude` still match docs-root-relative paths after that merge, for example `--include "changelog/**"`.
 
-Use `<dir>=<url-prefix>` when a source should have its own public URL prefix:
+Use `<dir>=<url-prefix>` when a source should have its own public URL routePrefix:
 
 ```bash
 leadtype generate \
@@ -346,15 +346,15 @@ const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as cons
 export default defineDocsConfig({
   product,
   collections: {
-    docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
-    changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
+    docs:      defineCollection({ ...c15t, dir: "docs",      routePrefix: "/docs" }),
+    changelog: defineCollection({ ...c15t, dir: "changelog", routePrefix: "/changelog" }),
   },
 });
 ```
 
 …runs exactly one `git clone`, with both collections reading from `<cacheDir>/docs` and `<cacheDir>/changelog`.
 
-For a split-repo docs UI, add `sourceConfig: true` to a remote collection. After
+For a split-repo docs UI, add `inheritConfig: true` to a remote collection. After
 sync, generation loads the source repo's `docs.config.{ts,js,mjs,cjs}` from the
 collection `dir` and inherits source-owned `navigation`, legacy `groups`,
 `frontmatterSchema`, `flatteners`, and `mounts`. Keep site-owned fields such as

@@ -1,0 +1,149 @@
+---
+title: "The config model"
+description: "The canonical config vocabulary, the resolved project every subsystem reads, and how older field names keep working."
+related:
+  - title: "Collections"
+    href: "/docs/pipeline/collections"
+    description: "The multi-source config shape this page describes."
+  - title: "Configure docs sources"
+    href: "/docs/pipeline/configure-sources"
+    description: "Choosing between one folder, mounted folders, and remote collections."
+  - title: "Architecture"
+    href: "/docs/concepts/architecture"
+    description: "The core / adapter boundary the resolved config sits inside."
+---
+
+Leadtype's config started as a description of one MDX folder. It is now the project model: identity, source acquisition, navigation, feeds, redirects, agent surfaces, and multi-repo orchestration. Growth like that leaves fingerprints — a few fields carry names from the job they used to do.
+
+This page is the map: what the canonical vocabulary is, what every subsystem actually reads, and what happens to the older names.
+
+## Two config files, two owners
+
+The two entry points are structurally identical and differ in *ownership*.
+
+| File | Helper | Owned by | Declares |
+| --- | --- | --- | --- |
+| `leadtype.config.ts` (project root) | `defineLeadtypeConfig` | the site that publishes the docs | sources, routes, feeds, redirects, robots policy, agent surfaces |
+| `docs.config.ts` (in a docs dir) | `defineDocsConfig` | the repo that owns the content | navigation, frontmatter schema, flatteners, mounts |
+
+A single-repo project has one file and the distinction does not matter — use whichever name reads better. It starts mattering when a docs site pins a source repo: the source repo ships its own `docs.config.ts`, and the site inherits the content-owned half of it with `inheritConfig`. Site controls never inherit — a source repo cannot set the robots policy of a site that renders it.
+
+```ts
+// leadtype.config.ts — the docs site
+import { defineLeadtypeConfig } from "leadtype";
+
+export default defineLeadtypeConfig({
+  product: { name: "Acme", tagline: "Acme does one useful thing." },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "f4e3c2d1",
+      dir: "docs",
+      routePrefix: "/docs",
+      inheritConfig: true,
+    },
+  },
+});
+```
+
+## Canonical field names
+
+Three collection fields were renamed. Both spellings work; the canonical one is what the docs, `leadtype init`, and every diagnostic use.
+
+| Canonical | Older name | Why it changed |
+| --- | --- | --- |
+| `routePrefix` | `prefix` | The value is specifically a **public route** prefix — not a path prefix, an id prefix, or a filesystem prefix. Three different prefixes appear in one multi-collection config; only one of them shows up in a URL. |
+| `inheritConfig` | `sourceConfig` | The field declares *inheritance from the source repo*. `sourceConfig` reads like "the config of the source", which is a thing that exists and is not this field. |
+| `frontmatterSchema` | `schema` | The top-level field of the same purpose is already `frontmatterSchema`. One concept, one name. |
+
+`navigation` is the canonical information-architecture field. `groups` still works as legacy taxonomy and fallback navigation — pages declare membership in frontmatter (`group: concepts`) and ungrouped pages still resolve — but a curated `navigation` tree is what drives the sidebar, `llms.txt`, `AGENTS.md`, the sitemap, and agent-readability metadata.
+
+Shorthands are not deprecations. `agents.mcp: true` is a convenience for `agents.mcp: { enabled: true }`; both are canonical and both keep working.
+
+### Setting both is an error
+
+An older name and its replacement in the same collection fails at config load:
+
+```text
+docs config at "/repo/leadtype.config.ts": collection "docs" sets both "prefix"
+and "routePrefix". Remove "prefix" — "routePrefix" is the canonical field.
+```
+
+Silent precedence would make the effective value invisible at the call site, so there isn't any.
+
+### Removal policy
+
+Deprecated fields keep working through the next major release, and none of them will be removed before 1.0. Concretely:
+
+- They stay type-valid, with an IDE-visible `@deprecated` note pointing at the replacement.
+- Loading a config that uses them prints **one** warning per config file, listing every rename.
+- A clean config prints nothing.
+
+Renaming is a find-and-replace on your side and the resolved output is byte-for-byte identical — tests in this repo assert exactly that.
+
+## The resolved config
+
+Validation checks the shape you authored. **Normalization** turns it into the project model that generate, sync, lint, score, and the runtime source all read. There is one normalizer, so there is one answer to "what is this project?".
+
+Two things it adds beyond canonical names.
+
+### A source graph
+
+Collections declare where their content comes from; **sources** own acquisition. Collections that share a `(repository, ref)` pair resolve to one source listing both keys:
+
+```ts
+{
+  sources: [
+    {
+      id: "https://github.com/acme/acme.git#main",
+      kind: "git",
+      repository: "https://github.com/acme/acme.git",
+      ref: "main",
+      refKind: "mutable",
+      collectionKeys: ["docs", "changelog"],
+    },
+  ],
+}
+```
+
+That is what sync already did internally — one clone for both collections — now visible in the model. `refKind` distinguishes a pinned commit from a branch or moving tag, because a mutable ref resolves differently on different machines and at different times.
+
+### Provenance
+
+Every resolved value records where it came from, so "why is this value what it is?" is answerable without reading the normalizer:
+
+| Origin | Means |
+| --- | --- |
+| `explicit` | Authored in this project's config. |
+| `inherited` | Came from a source repository's own `docs.config.*`. |
+| `inferred` | Derived by Leadtype from content, `package.json`, or another config value. |
+| `default` | Nothing was authored; a documented default applies. |
+
+A value authored under a deprecated name records the name you actually typed:
+
+```ts
+resolved.collections[0].provenance.routePrefix;
+// { origin: "explicit", authoredAs: "prefix", configPath: "/repo/leadtype.config.ts" }
+```
+
+which is how a migration diagnostic can point at your line rather than the canonical name you never wrote.
+
+### Single-source projects resolve to one collection
+
+A config with no `collections` map resolves to exactly one collection, so downstream code has a single shape to handle. Its `dir` is deliberately unset: in single-source mode the content root comes from the host — `--docs-dir` for the CLI, `contentDir` for the runtime source — and the config genuinely does not know it. Provenance records that as `origin: "default"` rather than inventing a path.
+
+## Reading it yourself
+
+`normalizeDocsConfig` is exported, and `serializeResolvedConfig` gives a JSON-safe view for tooling. Function-valued fields (frontmatter schemas, flatteners, transformers) cannot cross a JSON boundary, so they are reported as presence flags — a reader still needs to know a schema is in play.
+
+```ts
+// @noErrors - `./leadtype.config` is your project's own config file.
+import { normalizeDocsConfig, serializeResolvedConfig } from "leadtype";
+import config from "./leadtype.config";
+
+const { resolved } = normalizeDocsConfig(config, {
+  configPath: "/repo/leadtype.config.ts",
+});
+
+console.log(JSON.stringify(serializeResolvedConfig(resolved), null, 2));
+```

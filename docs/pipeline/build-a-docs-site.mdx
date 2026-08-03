@@ -27,7 +27,7 @@ deployment shape:
 
 | Path | When to choose | What you wire |
 | --- | --- | --- |
-| **Pinned source docs UI** | Recommended for hosted product docs split across a source/package repo and a docs UI repo. Production needs reproducible deploys and reviewed source promotion. | Docs UI `leadtype.config.ts` remote collection with `sourceConfig: true` + `leadtype generate --sync` |
+| **Pinned source docs UI** | Recommended for hosted product docs split across a source/package repo and a docs UI repo. Production needs reproducible deploys and reviewed source promotion. | Docs UI `leadtype.config.ts` remote collection with `inheritConfig: true` + `leadtype generate --sync` |
 | **Source primitive** | Most cases. You're building a Next, TanStack Start, Nuxt, Astro, or SvelteKit app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
 | **Static artifacts** | Your runtime needs flat files on disk (CDN-only deploy, static export, agent-only consumption, multi-app sharing). | `leadtype generate` CLI in your build script |
 
@@ -53,14 +53,14 @@ export default defineDocsConfig({
       ref: "v1.2.3",
       cacheDir: ".docs-src/sdk",
       dir: "docs",
-      prefix: "/docs",
-      sourceConfig: true,
+      routePrefix: "/docs",
+      inheritConfig: true,
     }),
   },
 });
 ```
 
-`sourceConfig: true` loads the source repo's `docs/docs.config.ts` after sync,
+`inheritConfig: true` loads the source repo's `docs/docs.config.ts` after sync,
 then inherits only content-owned fields into the collection: `navigation`,
 legacy `groups`, `frontmatterSchema`, `flatteners`, and `mounts`. The docs UI
 repo keeps site-owned fields such as `product`, `organization`, `agents`,

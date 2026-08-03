@@ -187,7 +187,7 @@ const config: DocsConfig = {
     {
       title: "Concepts",
       base: "concepts",
-      pages: ["methodology", "architecture", "evals"],
+      pages: ["methodology", "architecture", "config-model", "evals"],
     },
     {
       title: "Docs Pipeline",

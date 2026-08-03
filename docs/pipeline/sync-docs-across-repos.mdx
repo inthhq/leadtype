@@ -16,8 +16,8 @@ defineCollection({
   ref: "f4e3c2d1",
   cacheDir: ".docs-src/sdk",
   dir: "docs",
-  prefix: "/docs",
-  sourceConfig: true,
+  routePrefix: "/docs",
+  inheritConfig: true,
 });
 ```
 
@@ -63,14 +63,14 @@ export default defineDocsConfig({
       ref: "f4e3c2d1",
       cacheDir: ".docs-src/sdk",
       dir: "docs",
-      prefix: "/docs",
-      sourceConfig: true,
+      routePrefix: "/docs",
+      inheritConfig: true,
     }),
   },
 });
 ```
 
-With `sourceConfig: true`, the source repo keeps the docs-specific config that
+With `inheritConfig: true`, the source repo keeps the docs-specific config that
 belongs with the content: `navigation`, legacy `groups`, `frontmatterSchema`,
 source-specific `flatteners`, and same-tree `mounts` such as
 `docs/changelog` -> `/changelog`. The docs UI repo keeps the deployment pin and
@@ -104,9 +104,9 @@ The framework apps in `apps/*` are integration examples. The production
 Leadtype docs site is a separate docs UI app that renders `leadtype.dev` and
 syncs the Leadtype source repository into `.leadtype`.
 
-Before `sourceConfig`, that app needed a custom source file (`leadtype-source.json`),
+Before `inheritConfig`, that app needed a custom source file (`leadtype-source.json`),
 a custom clone script, and a custom import of `.leadtype/docs/docs.config.ts` to
-reuse the source-owned navigation. With `sourceConfig: true`, the app can move
+reuse the source-owned navigation. With `inheritConfig: true`, the app can move
 that source ownership into first-class Leadtype config:
 
 ```ts title="leadtype.config.ts"
@@ -131,8 +131,8 @@ export default defineDocsConfig({
       ref: "leadtype@0.1.2",
       cacheDir: ".leadtype",
       dir: "docs",
-      prefix: "/docs",
-      sourceConfig: true,
+      routePrefix: "/docs",
+      inheritConfig: true,
     }),
   },
 });
@@ -309,7 +309,7 @@ Requirements:
 1. The package/source repo owns MDX and releases packages.
 2. The docs UI repo owns the rendered site.
 3. Production docs must be pinned to an explicit released source revision, not the source repo default branch.
-4. Configure `leadtype.config.ts` in the docs UI repo with a remote Leadtype collection whose `repository` points at the source repo, whose `ref` is pinned to the released commit SHA, and whose `sourceConfig` is `true`.
+4. Configure `leadtype.config.ts` in the docs UI repo with a remote Leadtype collection whose `repository` points at the source repo, whose `ref` is pinned to the released commit SHA, and whose `inheritConfig` is `true`.
 5. Keep source-owned `navigation`, legacy `groups`, `frontmatterSchema`, `flatteners`, and `mounts` in the source repo's `docs/docs.config.ts`.
 6. Keep the package version near that config when useful for reviewers, PR titles, dependency pins, or release dashboards.
 7. Run `leadtype generate --sync` before the docs UI framework build. Use `--offline` only when the cache is already present.

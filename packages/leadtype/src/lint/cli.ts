@@ -375,8 +375,8 @@ export async function runLintCommand(
         ...(externalLinksOptions
           ? { externalLinks: externalLinksOptions }
           : {}),
-        schemas: entry.collection.schema
-          ? { frontmatter: entry.collection.schema }
+        schemas: entry.collection.frontmatterSchema
+          ? { frontmatter: entry.collection.frontmatterSchema }
           : undefined,
       });
       for (const violation of each.violations) {

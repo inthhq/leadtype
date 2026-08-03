@@ -382,11 +382,17 @@ export type DocsCollection = {
    */
   cacheDir?: string;
   /**
+   * @deprecated Renamed to {@link DocsCollection.inheritConfig} — the field
+   * declares *inheritance*, not a config object. Still accepted and normalized;
+   * setting both is an error.
+   */
+  sourceConfig?: SourceConfigInheritance;
+  /**
    * For remote collections, load source-owned docs config from the synced
    * collection directory after sync and inherit content-owned fields into this
    * collection.
    */
-  sourceConfig?: SourceConfigInheritance;
+  inheritConfig?: SourceConfigInheritance;
   /**
    * Directory containing the MDX. Relative to the repo root for remote
    * collections, or relative to cwd for local-only collections.
@@ -396,15 +402,30 @@ export type DocsCollection = {
   include?: string[];
   /** Optional exclude globs. */
   exclude?: string[];
-  /** URL prefix. Defaults to `"/" + <collection-key>`. */
+  /**
+   * @deprecated Renamed to {@link DocsCollection.routePrefix} — the value is
+   * specifically a public route prefix, not a path or id prefix. Still accepted
+   * and normalized; setting both is an error.
+   */
   prefix?: string;
+  /** Public URL prefix for this collection. Defaults to `"/" + <collection-key>`. */
+  routePrefix?: string;
+  /**
+   * @deprecated Renamed to {@link DocsCollection.frontmatterSchema} to match
+   * the top-level field of the same purpose. Still accepted and normalized;
+   * setting both is an error.
+   */
+  schema?: DocsFrontmatterSchema;
   /**
    * Per-collection frontmatter schema. Defaults to the standard leadtype
    * frontmatter schema. Errors are reported as
    * `[collection:<key>] <relPath>: ...`.
    */
-  schema?: DocsFrontmatterSchema;
-  /** Per-collection navigation tree. */
+  frontmatterSchema?: DocsFrontmatterSchema;
+  /**
+   * Per-collection group taxonomy. Legacy fallback navigation — prefer
+   * {@link DocsCollection.navigation}, which is the canonical IA field.
+   */
   groups?: DocsGroup[];
   /** Per-collection curated docs UI and agent navigation tree. */
   navigation?: DocsNavEntry[];
@@ -640,12 +661,40 @@ export type DocsAgentsConfig = {
 };
 
 /**
+ * Project/site orchestration config, authored in `leadtype.config.ts` at the
+ * project root. Structurally identical to {@link DocsConfig} — the distinct
+ * name marks *ownership*: this file belongs to the site that publishes the
+ * docs, so it owns sources, routes, feeds, redirects, and agent surfaces.
+ * Source repositories declare their own content-owned config with
+ * {@link defineDocsConfig}.
+ */
+export type LeadtypeConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+> = DocsConfig<TFrontmatter>;
+
+/**
  * Identity helper that gives the config object full IDE autocomplete and
  * type-checks the docs structure at edit time.
+ *
+ * Use this for a source repository's own `docs.config.ts` — the content-owned
+ * config a docs site can inherit from. For a site or multi-repo project config
+ * in `leadtype.config.ts`, prefer {@link defineLeadtypeConfig}.
  */
 export function defineDocsConfig<
   TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
 >(config: DocsConfig<TFrontmatter>): DocsConfig<TFrontmatter> {
+  return config;
+}
+
+/**
+ * Identity helper for a project/site `leadtype.config.ts`. Accepts the same
+ * shape as {@link defineDocsConfig}; the separate name keeps the two roles
+ * legible in a multi-repo setup, where a docs site pins several source repos
+ * that each ship their own `docs.config.ts`.
+ */
+export function defineLeadtypeConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+>(config: LeadtypeConfig<TFrontmatter>): LeadtypeConfig<TFrontmatter> {
   return config;
 }
 

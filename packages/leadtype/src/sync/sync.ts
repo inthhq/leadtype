@@ -115,7 +115,7 @@ export function resolveCollection(
   collection: DocsCollection,
   configDir: string
 ): ResolvedCollection {
-  const urlPrefix = normalizeUrlPrefix(collection.prefix ?? `/${key}`);
+  const urlPrefix = normalizeUrlPrefix(collection.routePrefix ?? `/${key}`);
   if (!collection.repository) {
     return {
       key,

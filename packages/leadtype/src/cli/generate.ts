@@ -7,6 +7,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
+import {
+  formatDeprecationWarning,
+  normalizeDocsConfig,
+} from "../config/normalize";
+import type { ResolvedDocsConfig } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
@@ -298,8 +303,11 @@ function createGenerateMarkdownTransforms({
 }
 
 export type LoadedDocsConfig = {
+  /** The authored config, with deprecated aliases folded onto canonical names. */
   config: DocsConfig;
   path: string;
+  /** The resolved project: collections, source graph, provenance, deprecations. */
+  resolved: ResolvedDocsConfig;
 };
 
 type ResolvedGenerateMetadata = {
@@ -1111,14 +1119,16 @@ function validateDocsNav(value: unknown): DocsNavEntry[] | undefined {
 function validateSourceConfigInheritance(
   value: unknown,
   configPath: string,
-  collectionKey: string
+  collectionKey: string,
+  /** The field name as authored, so the error points at the user's own line. */
+  fieldName: string
 ): void {
   if (value === undefined || value === true) {
     return;
   }
   if (!isPlainRecord(value)) {
     throw new Error(
-      `docs config at "${configPath}": collection "${collectionKey}" sourceConfig must be true or an object`
+      `docs config at "${configPath}": collection "${collectionKey}" ${fieldName} must be true or an object`
     );
   }
   if (
@@ -1126,13 +1136,13 @@ function validateSourceConfigInheritance(
     (typeof value.path !== "string" || value.path.length === 0)
   ) {
     throw new Error(
-      `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.path must be a non-empty string`
+      `docs config at "${configPath}": collection "${collectionKey}" ${fieldName}.path must be a non-empty string`
     );
   }
   if (value.inherit !== undefined) {
     if (!isStringArray(value.inherit)) {
       throw new Error(
-        `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.inherit must be an array of supported field names`
+        `docs config at "${configPath}": collection "${collectionKey}" ${fieldName}.inherit must be an array of supported field names`
       );
     }
     for (const field of value.inherit) {
@@ -1140,7 +1150,7 @@ function validateSourceConfigInheritance(
         !SOURCE_CONFIG_INHERIT_FIELDS.has(field as SourceConfigInheritField)
       ) {
         throw new Error(
-          `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.inherit contains unsupported field "${field}"`
+          `docs config at "${configPath}": collection "${collectionKey}" ${fieldName}.inherit contains unsupported field "${field}"`
         );
       }
     }
@@ -1199,17 +1209,24 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" ref must not begin with "-"`
       );
     }
-    if (entry.prefix !== undefined && typeof entry.prefix !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" prefix must be a string`
-      );
+    // `prefix`/`routePrefix` and `sourceConfig`/`inheritConfig` are the same
+    // field under two names. Both spellings validate identically here; the
+    // normalizer folds them together and rejects setting both.
+    for (const field of ["prefix", "routePrefix"] as const) {
+      if (entry[field] !== undefined && typeof entry[field] !== "string") {
+        throw new Error(
+          `docs config at "${configPath}": collection "${key}" ${field} must be a string`
+        );
+      }
     }
-    if (entry.sourceConfig !== undefined && entry.repository === undefined) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" sourceConfig is only supported for remote collections`
-      );
+    for (const field of ["sourceConfig", "inheritConfig"] as const) {
+      if (entry[field] !== undefined && entry.repository === undefined) {
+        throw new Error(
+          `docs config at "${configPath}": collection "${key}" ${field} is only supported for remote collections`
+        );
+      }
+      validateSourceConfigInheritance(entry[field], configPath, key, field);
     }
-    validateSourceConfigInheritance(entry.sourceConfig, configPath, key);
     if (
       entry.groups !== undefined &&
       validateDocsGroups(entry.groups) === undefined
@@ -1579,7 +1596,7 @@ function validateSourceOwnedConfigFields(
 }
 
 function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
-  const sourceConfig = entry.collection.sourceConfig;
+  const sourceConfig = entry.collection.inheritConfig;
   if (!sourceConfig) {
     return [];
   }
@@ -1587,7 +1604,7 @@ function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
   if (sourceConfig !== true && sourceConfig.path) {
     if (path.isAbsolute(sourceConfig.path)) {
       throw new Error(
-        `collection "${entry.key}" sourceConfig.path must be relative to the collection dir`
+        `collection "${entry.key}" inheritConfig.path must be relative to the collection dir`
       );
     }
     const configPath = path.resolve(baseDir, sourceConfig.path);
@@ -1598,7 +1615,7 @@ function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
       path.isAbsolute(relativePath)
     ) {
       throw new Error(
-        `collection "${entry.key}" sourceConfig.path must stay inside the collection dir`
+        `collection "${entry.key}" inheritConfig.path must stay inside the collection dir`
       );
     }
     return [configPath];
@@ -1609,7 +1626,7 @@ function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
 function sourceConfigInheritFields(
   collection: DocsCollection
 ): SourceConfigInheritField[] {
-  const sourceConfig = collection.sourceConfig;
+  const sourceConfig = collection.inheritConfig;
   if (!sourceConfig || sourceConfig === true || !sourceConfig.inherit) {
     return DEFAULT_SOURCE_CONFIG_INHERIT;
   }
@@ -1623,7 +1640,7 @@ async function loadCollectionSourceConfig(
   const configPath = candidates.find((candidate) => existsSync(candidate));
   if (!configPath) {
     throw new Error(
-      `collection "${entry.key}" sourceConfig enabled but no source config was found. Expected ${candidates.map((candidate) => `"${candidate}"`).join(", ")}.`
+      `collection "${entry.key}" inheritConfig is enabled but no source config was found. Expected ${candidates.map((candidate) => `"${candidate}"`).join(", ")}.`
     );
   }
 
@@ -1656,9 +1673,9 @@ function mergeInheritedSourceConfig(
       ? { groups: sourceConfig.groups }
       : {}),
     ...(inherit.has("frontmatterSchema") &&
-    collection.schema === undefined &&
+    collection.frontmatterSchema === undefined &&
     sourceConfig.frontmatterSchema !== undefined
-      ? { schema: sourceConfig.frontmatterSchema }
+      ? { frontmatterSchema: sourceConfig.frontmatterSchema }
       : {}),
     ...(inherit.has("flatteners") &&
     collection.flatteners === undefined &&
@@ -1680,7 +1697,7 @@ async function inheritCollectionSourceConfigs(
   const resolved = resolveAllCollections(collections, configDir);
   const next: Record<string, DocsCollection> = { ...collections };
   for (const entry of resolved) {
-    if (!entry.collection.sourceConfig) {
+    if (!entry.collection.inheritConfig) {
       continue;
     }
     const sourceConfig = await loadCollectionSourceConfig(entry);
@@ -1706,16 +1723,65 @@ async function loadDocsConfigFromDir(
 
   try {
     const imported = await importConfigModule(configPath);
-    return {
-      config: validateDocsConfig(imported, configPath),
-      path: configPath,
-    };
+    // Validation checks the authored shape; normalization folds deprecated
+    // aliases onto canonical names and derives the resolved project. Every
+    // consumer downstream of here reads canonical fields only.
+    const { config, resolved } = normalizeDocsConfig(
+      validateDocsConfig(imported, configPath),
+      { configPath, configDir: path.dirname(configPath) }
+    );
+    const loaded: LoadedDocsConfig = { config, path: configPath, resolved };
+    // Warn here rather than at each entry point: this *is* the config load, so
+    // generate, sync, lint, and score all get the same one-time message.
+    warnConfigDeprecations(loaded);
+    return loaded;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
       `failed to load docs config at "${configPath}": ${message}`
     );
   }
+}
+
+// Deprecation warnings are per config *file*, not per command: `generate`
+// loading the same config twice in a watch loop should not stack warnings, and
+// a project whose config is clean should print nothing at all.
+const warnedConfigPaths = new Set<string>();
+
+/**
+ * Emit one actionable deprecation warning per config load. Safe to call from
+ * every CLI entry point — repeat calls for the same file are dropped.
+ */
+export function warnConfigDeprecations(loaded: LoadedDocsConfig | null): void {
+  if (!loaded || warnedConfigPaths.has(loaded.path)) {
+    return;
+  }
+  const warning = formatDeprecationWarning(loaded.resolved.deprecations);
+  if (!warning) {
+    return;
+  }
+  warnedConfigPaths.add(loaded.path);
+  logger.warn({
+    human: {
+      message: `${loaded.path}: ${warning.message}`,
+      hint: warning.hint,
+    },
+    json: {
+      event: "config.deprecated_fields",
+      fields: {
+        configPath: loaded.path,
+        fields: loaded.resolved.deprecations.map((entry) => entry.field),
+        replacements: loaded.resolved.deprecations.map(
+          (entry) => entry.replacement
+        ),
+      },
+    },
+  });
+}
+
+/** Test seam: forget which config files have already warned. */
+export function resetConfigDeprecationWarnings(): void {
+  warnedConfigPaths.clear();
 }
 
 /**
@@ -1961,14 +2027,14 @@ async function resolveCollectionFrontmatterSchemas(
   const schemas: CollectionFrontmatterSchema[] = [];
   const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
   for (const [key, collection] of Object.entries(collections)) {
-    if (!collection.schema) {
+    if (!collection.frontmatterSchema) {
       continue;
     }
     const source = sourcesByKey.get(key);
     schemas.push({
       filePaths: source ? await sourceStagedMdxPaths(source) : undefined,
       pathPrefix: source?.mountPath ?? "",
-      schema: collection.schema,
+      schema: collection.frontmatterSchema,
     });
   }
   return schemas;

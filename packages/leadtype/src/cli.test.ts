@@ -2573,7 +2573,7 @@ export default {
     expect(manifest).not.toContain("Source Navigation");
   });
 
-  it("fails clearly when sourceConfig is enabled and no source config exists", async () => {
+  it("fails clearly when inheritConfig is enabled and no source config exists", async () => {
     const sourceRepo = await createGitDocsSource({
       "docs/index.mdx": '---\ntitle: "Missing Config"\n---\n\nBody.\n',
     });
@@ -2603,8 +2603,54 @@ export default {
       capture.io
     );
     expect(code).toBe(1);
-    expect(capture.stderr).toContain('collection "docs" sourceConfig enabled');
+    // Authored with the legacy names, so the run still works — but diagnostics
+    // speak the canonical vocabulary, and the load warns once about the rename.
+    expect(capture.stderr).toContain(
+      'collection "docs" inheritConfig is enabled'
+    );
     expect(capture.stderr).toContain("docs.config.ts");
+    expect(capture.stderr).toContain(
+      "collections.docs.sourceConfig → collections.docs.inheritConfig"
+    );
+    expect(capture.stderr).toContain(
+      "collections.docs.prefix → collections.docs.routePrefix"
+    );
+  });
+
+  it("runs a collections config authored entirely in canonical field names", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Canonical"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      routePrefix: "/docs",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    // A clean config prints no migration noise at all.
+    expect(capture.stderr).not.toContain("deprecated");
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Canonical");
   });
 
   it("uses inherited frontmatterSchema as the collection schema", async () => {
