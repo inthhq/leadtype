@@ -9,6 +9,7 @@
  * same source of truth instead of hand-rolling the traversal.
  */
 
+import type { DocsNavIncludeEntry, DocsNavPageEntry } from "../llm/llm";
 import type {
   DocsNavigation,
   DocsNavigationGroup,
@@ -451,3 +452,46 @@ export function createDocsNavigation(
       isHeaderTabActive(manifest, pathname, tab),
   };
 }
+
+/**
+ * Authoring helpers for config-owned navigation.
+ *
+ * These build `DocsNavIncludeEntry` values — they do not read the filesystem.
+ * Expansion still happens once, during navigation resolution, so the sidebar,
+ * `llms.txt`, `AGENTS.md`, the sitemap, and agent-readability metadata all
+ * come from the same resolved tree. A helper that scanned the filesystem here
+ * would produce a second tree that could disagree with it.
+ */
+export const navigation = {
+  /**
+   * Include every page under a directory, without listing them.
+   *
+   * ```ts
+   * {
+   *   title: "Concepts",
+   *   pages: navigation.fromDirectory("concepts", {
+   *     pin: ["initialization-flow", "consent-models"],
+   *     exclude: "concepts/internal-*",
+   *   }),
+   * }
+   * ```
+   *
+   * `pin` places pages first, in the order given; the rest follow in `sort`
+   * order (`order` then `path` by default). Explicit page refs listed
+   * alongside the expansion keep their position, so a curated section can mix
+   * deliberate entries with a derived tail.
+   *
+   * The directory is relative to the nearest `base`, like every other nav path.
+   * Pass `"."` (or omit it) to take everything under the node's own `base`.
+   * Returns an array so it drops straight into `pages`.
+   */
+  fromDirectory(
+    dir = ".",
+    options: Omit<DocsNavIncludeEntry, "include"> = {}
+  ): DocsNavPageEntry[] {
+    const normalized = dir.replace(TRAILING_SLASH_PATTERN, "");
+    const include =
+      normalized === "." || normalized === "" ? "**" : `${normalized}/**`;
+    return [{ include, ...options }];
+  },
+} as const;

@@ -1,13 +1,13 @@
 ---
 title: "CLI"
-description: "leadtype init, doctor, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
+description: "leadtype init, doctor, nav, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
 ---
 
 ```bash
 leadtype <command> [options]
 ```
 
-Seven commands: `init` scaffolds an integration into an existing app, `doctor` explains the resolved project without changing it, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
+Eight commands: `init` scaffolds an integration into an existing app, `doctor` explains the resolved project without changing it, `nav` prints the resolved navigation tree and reports drift, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
 
 ## init
 
@@ -55,6 +55,29 @@ Read-only by construction — it never clones, refreshes, writes, or generates, 
 Exit codes: `0` no errors (warnings still print), `1` a required input is missing or invalid, `2` CLI usage error.
 
 Full finding-id table and JSON shape: [`leadtype doctor`](/docs/reference/doctor).
+
+## nav
+
+Print the tree your config actually resolves to — include globs expanded, pins applied — and report pages that drifted from it.
+
+```bash
+leadtype nav
+leadtype nav --collection changelog --json
+```
+
+Read-only: never writes config, moves content, or changes a public route.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Project root. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. |
+| `--collection <key>` | first | Inspect one collection of a multi-source project. |
+| `--json` | — | Machine-readable tree and drift report. |
+| `-h`, `--help` | — | Print usage. |
+
+Drift covers three things: **unplaced** pages that no curated entry positions (they render at the root of the sidebar by default rather than by decision), **duplicated** pages two entries both claim (they appear twice in the sidebar and in `llms.txt`), and **unknown groups** where frontmatter names a group the config never declares.
+
+Exit codes: `0` resolved — drift is reported, not fatal — `1` navigation could not be resolved, `2` CLI usage error.
 
 ## generate
 
@@ -461,6 +484,7 @@ Show usage:
 ```bash
 leadtype help            # main usage
 leadtype help doctor
+leadtype help nav
 leadtype help generate
 leadtype help lint
 leadtype help mcp

@@ -259,6 +259,18 @@ export type DocsNavIncludeEntry = {
   exclude?: string | string[];
   sort?: DocsNavSortKey[];
   required?: boolean;
+  /**
+   * Paths to place first, in this order, ahead of the sorted remainder.
+   *
+   * A large section usually has two or three pages that must lead and a long
+   * tail whose order barely matters. Without pinning, keeping those first means
+   * listing every page in the section by hand — and re-listing them whenever
+   * one is added. Pins are resolved the same way page refs are: relative to the
+   * nearest `base`, with a leading slash escaping to the collection root. A pin
+   * that matches nothing the include matched is an error, because it is
+   * silently doing nothing.
+   */
+  pin?: string[];
 };
 
 export type DocsNavPageEntry = string | DocsNavIncludeEntry;
@@ -2051,6 +2063,52 @@ function normalizeExcludePatterns(
 }
 
 /**
+ * Reorder an include expansion so pinned pages lead, in the order they were
+ * pinned. Everything else keeps its sorted position behind them, so adding a
+ * page to the directory never displaces a deliberate choice.
+ *
+ * Returns `undefined` when the entry declares no pins, so the caller keeps the
+ * unmodified sorted array rather than paying for a rebuild.
+ */
+function applyNavPins(
+  group: ResolvedGroup,
+  entry: DocsNavIncludeEntry,
+  matches: SourceDoc[]
+): SourceDoc[] | undefined {
+  if (!entry.pin || entry.pin.length === 0) {
+    return;
+  }
+  const byRelativePath = new Map(
+    matches.map((doc) => [normalizeNavPath(doc.relativePath), doc])
+  );
+  const leading: SourceDoc[] = [];
+  const pinnedPaths = new Set<string>();
+  for (const pin of entry.pin) {
+    const ref = joinNavPath(group.base, pin);
+    const doc = byRelativePath.get(ref);
+    if (!doc) {
+      const scope = group.segmentPath.join("/") || "root";
+      // A pin that matches nothing is doing nothing — usually a rename the
+      // config missed. Failing names it; warning would let it rot.
+      throw new Error(
+        `Nav pin "${pin}" under "${scope}" did not match any page included by "${entry.include}". Fix the path or remove the pin.`
+      );
+    }
+    if (pinnedPaths.has(ref)) {
+      continue;
+    }
+    pinnedPaths.add(ref);
+    leading.push(doc);
+  }
+  return [
+    ...leading,
+    ...matches.filter(
+      (doc) => !pinnedPaths.has(normalizeNavPath(doc.relativePath))
+    ),
+  ];
+}
+
+/**
  * resolveNavEntryPages is intentionally asymmetric: entries that fail
  * isNavIncludeEntry are string refs and throw when docsByRelativePath has no
  * matching page, while entry.include globs only warn unless entry.required is
@@ -2087,6 +2145,11 @@ function resolveNavEntryPages(
       );
     })
     .sort((left, right) => compareNavDocs(left, right, sort));
+
+  const pinned = applyNavPins(group, entry, matches);
+  if (pinned) {
+    return pinned;
+  }
 
   if (matches.length === 0) {
     const scope = group.segmentPath.join("/") || "root";

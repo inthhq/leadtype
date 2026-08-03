@@ -71,6 +71,43 @@ to the nearest `base`; a leading `/` starts from the docs root. Include entries
 append matching pages at that position and use `order` then path sorting by
 default.
 
+### Large sections: pin what leads, let the tail sort
+
+A curated tree is worth its cost while every entry is a decision. It stops being worth it when a section is mostly inventory — twenty pages where three must lead and the rest could be alphabetical — because then every new page has to be added twice, on disk and in the config, and the two drift.
+
+`navigation.fromDirectory()` includes a directory without listing it, and `pin` keeps the pages whose position is a decision at the front:
+
+```ts
+// @noErrors - illustrative navigation fragment.
+import { navigation } from "leadtype/navigation";
+
+{
+  title: "Concepts",
+  base: "concepts",
+  pages: navigation.fromDirectory(".", {
+    pin: ["initialization-flow", "consent-models"],
+    exclude: "internal-*",
+  }),
+}
+```
+
+Pinned pages come first in the order given; everything else follows in `sort` order (`order` then path). Adding a page to the directory appends it to the tail — it never displaces a pinned lead. Explicit page refs can sit alongside an expansion in the same `pages` array, so a section can mix deliberate entries with a derived tail.
+
+Pass a subdirectory name to expand it instead of the node's own `base`. A pin that matches nothing the include matched is an error rather than a silent no-op, because that is almost always a rename the config missed.
+
+Expansion happens once, during navigation resolution — the helper only builds config. That is what keeps the sidebar, `llms.txt`, `AGENTS.md`, the sitemap, and Agent Readability metadata derived from one resolved tree.
+
+### Seeing what you actually authored
+
+Once expansions are in play, the tree you get is several steps removed from the tree you wrote. [`leadtype nav`](/docs/reference/cli#nav) prints the resolved result and names what drifted:
+
+```bash
+leadtype nav
+leadtype nav --collection changelog --json
+```
+
+It reports pages no curated entry places (they still render, at the root of the sidebar, by default rather than by decision), pages two entries both claim (which appear twice in the sidebar and in `llms.txt`), and pages whose `group:` frontmatter names a group the config never declares. It is read-only — it never writes config, moves content, or changes a public route.
+
 ## Legacy groups
 
 Each page may declare one or more group slugs with `group: <slug>` or `group: [a, b]`, so pages can be shared across multiple taxonomy groups. In projects that have not adopted `navigation`, each group is declared once in `docs.config.ts`. `leadtype generate` loads that config automatically when it exists. The intersection produces the fallback nav tree, section headings in `llms.txt`, search metadata, and AGENTS.md grouping.
