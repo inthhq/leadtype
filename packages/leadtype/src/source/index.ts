@@ -22,6 +22,7 @@ import path from "node:path";
 import type { Root } from "mdast";
 import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
+import { inferNavigationFromContent } from "../config/infer";
 import { convertMdxFile, resolveMdxFrontmatter } from "../convert/convert";
 import {
   type DocsI18nConfig,
@@ -588,13 +589,42 @@ export async function createDocsSource<
     return cachedMetaBySlug?.get(slug.join("/")) ?? null;
   }
 
+  // Derived navigation is computed on first use, not at construction — the
+  // primitive's contract is no I/O until you ask it something.
+  let derivedNavPromise: Promise<DocsNavEntry[]> | null = null;
+
+  /**
+   * When nothing structural was configured, derive the same tree
+   * `leadtype generate` derives. Without this the rendered sidebar would stay
+   * flat while the generated `llms.txt` and sitemap gained sections — one
+   * content graph is the whole point, so both sides infer or neither does.
+   */
+  async function resolveNav(): Promise<DocsNavEntry[] | undefined> {
+    if (nav && nav.length > 0) {
+      return nav;
+    }
+    if (config.groups && config.groups.length > 0) {
+      return nav;
+    }
+    derivedNavPromise ??= inferNavigationFromContent(sourceContentDir).then(
+      (result) => result.navigation
+    );
+    const derived = await derivedNavPromise;
+    if (derived.length === 0) {
+      return nav;
+    }
+    // OpenAPI pages are generated into an overlay outside `contentDir`, so
+    // their nav nodes are appended rather than derived.
+    return [...derived, ...(nav ?? [])];
+  }
+
   async function getNavigation(): Promise<DocsNavigation> {
     return await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
-      nav,
+      nav: await resolveNav(),
       extraDocsDirs: openApiOverlayDir ? [openApiOverlayDir] : undefined,
       mounts: config.mounts,
       i18n: config.i18n,

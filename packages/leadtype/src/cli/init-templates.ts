@@ -36,32 +36,17 @@ export function isInitFramework(value: string): value is InitFramework {
 }
 
 export function sharedFiles(name: string, summary: string): InitFile[] {
+  // The smallest config that still adds value. `navigation` and
+  // `llms.sections` are derived from the content tree until you author them,
+  // so the starter file is identity only — the one thing leadtype genuinely
+  // cannot guess. See /docs/pipeline/configure-sources for the progression.
   const configBody = `import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
-  // \`product\` is the documented thing — reused in llms.txt, JSON-LD, and the agent card.
+  // The documented thing — reused in llms.txt, JSON-LD, and the agent card.
   product: {
     name: ${JSON.stringify(name)},
     tagline: ${JSON.stringify(summary)},
-  },
-  // \`navigation\` is the single source of truth for the sidebar, llms.txt, AGENTS.md,
-  // sitemap, and agent-readability metadata.
-  navigation: ["index"],
-  // \`llms.sections\` is the body of llms.txt and AGENTS.md, rendered in order.
-  llms: {
-    sections: [
-      {
-        type: "links",
-        heading: "Best Starting Points",
-        links: [
-          {
-            urlPath: "/docs",
-            title: "Start here",
-            description: "Overview and first steps.",
-          },
-        ],
-      },
-    ],
   },
 });
 `;

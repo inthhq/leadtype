@@ -8,6 +8,13 @@ import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
 import {
+  emptyInferenceReport,
+  formatInferenceReport,
+  inferLlmsBlocks,
+  inferNavigationFromContent,
+  mergeInferenceReports,
+} from "../config/infer";
+import {
   formatDeprecationWarning,
   normalizeDocsConfig,
 } from "../config/normalize";
@@ -46,6 +53,7 @@ import type {
   DocsLlmsConfig,
   DocsNavEntry,
   DocsNavIncludeEntry,
+  DocsNavigation,
   DocsNavNode,
   DocsNavPageEntry,
   LlmsProductInfo,
@@ -208,6 +216,8 @@ export type GenerateArgs = {
   watch: boolean;
   /** Ignore the incremental cache and reconvert every file. */
   force: boolean;
+  /** Print which values were derived rather than authored, and how to author them. */
+  explain: boolean;
 };
 
 export type GenerateIo = {
@@ -387,6 +397,8 @@ Options:
                      other modules need a restart (or --force) to pick up edits
                      to those modules.
   --force            Ignore the incremental cache and reconvert every file
+  --explain          Report which values were derived rather than authored, and
+                     which config field makes each one explicit
   --format <fmt>     text | json (default: text)
   --json             Alias for --format json
   -v, --verbose      Print per-file progress events to stderr
@@ -426,6 +438,7 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     verbose: false,
     watch: false,
     force: false,
+    explain: false,
   };
   const syncFlags: string[] = [];
 
@@ -477,6 +490,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.watch = true;
     } else if (arg === "--force") {
       args.force = true;
+    } else if (arg === "--explain") {
+      args.explain = true;
     } else if (arg === "--verbose" || arg === "-v") {
       args.verbose = true;
     } else if (arg) {
@@ -3146,9 +3161,34 @@ async function executeGenerate(
           }
         : metadata;
     const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
+
+    // Derived navigation: only when nothing structural was authored. Any
+    // `navigation` tree or `group:` frontmatter means the author has an
+    // information architecture in mind, and inference must not merge with it.
+    // Path filters disable curated nav entirely, so they opt out too.
+    let inference = emptyInferenceReport();
+    let derivedNav: DocsNavEntry[] | undefined;
+    if (
+      !hasExplicitPathFilters &&
+      (nav === undefined || nav.length === 0) &&
+      groups.length === 0
+    ) {
+      const inferred = await inferNavigationFromContent(sourceMirror.docsDir, {
+        // Generated OpenAPI pages already contribute their own nav node.
+        exclude: [
+          ...generatedOpenApi.pages.map((page) => page.relativePath),
+          ...generatedOpenApi.indexPages.map((page) => page.relativePath),
+        ],
+      });
+      if (inferred.navigation.length > 0) {
+        derivedNav = inferred.navigation;
+        inference = mergeInferenceReports(inference, inferred.report);
+      }
+    }
+
     const effectiveNav = hasExplicitPathFilters
       ? undefined
-      : [...(nav ?? []), ...generatedOpenApi.nav];
+      : [...(derivedNav ?? nav ?? []), ...generatedOpenApi.nav];
     const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
@@ -3157,6 +3197,7 @@ async function executeGenerate(
     const localesToValidate = i18n
       ? i18n.locales.map((locale) => locale.code)
       : [undefined];
+    let defaultLocaleNavigation: DocsNavigation | undefined;
     for (const locale of localesToValidate) {
       const navigation = await resolveDocsNavigation({
         srcDir: sourceMirror.srcDir,
@@ -3172,6 +3213,35 @@ async function executeGenerate(
           `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`
         );
       }
+      defaultLocaleNavigation ??= navigation;
+    }
+
+    // Derived llms.txt body, from the same resolved navigation the sidebar and
+    // sitemap come from — so an agent's starting points can't drift from the
+    // human entry points. Skipped entirely when `llms.sections` was authored.
+    let effectiveProduct = product;
+    if (product.blocks === undefined && defaultLocaleNavigation) {
+      const derived = inferLlmsBlocks({
+        product: { name: product.name, tagline: product.summary },
+        navigation: defaultLocaleNavigation,
+      });
+      if (derived.blocks.length > 0) {
+        effectiveProduct = { ...product, blocks: derived.blocks };
+        inference = mergeInferenceReports(inference, derived.report);
+      }
+    }
+
+    for (const warning of inference.warnings) {
+      logger.warn({
+        human: { message: warning.message, hint: warning.hint },
+        json: {
+          event: "generate.inference_ambiguous",
+          fields: { field: warning.field, message: warning.message },
+        },
+      });
+    }
+    if (args.explain) {
+      io.stdout.write(formatInferenceReport(inference));
     }
 
     const convertCache = await resolveConvertCache({
@@ -3215,7 +3285,7 @@ async function executeGenerate(
       const agents = await generateAgentsMd({
         srcDir: sourceMirror.srcDir,
         outDir,
-        product,
+        product: effectiveProduct,
         groups,
         nav: effectiveNav,
         i18n: metadata.i18n,
@@ -3240,7 +3310,7 @@ async function executeGenerate(
         const agentReadability = await generateAgentReadabilityArtifacts({
           outDir,
           baseUrl: args.baseUrl,
-          product,
+          product: effectiveProduct,
           groups,
           nav: effectiveNav,
           mounts: effectiveMounts,
@@ -3262,7 +3332,7 @@ async function executeGenerate(
         // Skill `bodyPath` resolves against the real source root (`--src`), not
         // the temp conversion mirror (which only holds the docs tree).
         srcDir,
-        product,
+        product: effectiveProduct,
         skills: metadata.agents?.skills,
         mode: "bundle",
         mcpEnabled: bundleMcpEnabled,
@@ -3280,7 +3350,7 @@ async function executeGenerate(
         mounts: effectiveMounts,
         mode: "bundle",
         outDir,
-        product,
+        product: effectiveProduct,
         srcDir,
       };
     } else {
@@ -3310,7 +3380,7 @@ async function executeGenerate(
         srcDir: sourceMirror.srcDir,
         outDir,
         baseUrl: args.baseUrl,
-        product,
+        product: effectiveProduct,
         groups,
         nav: effectiveNav,
         mounts: effectiveMounts,
@@ -3357,7 +3427,7 @@ async function executeGenerate(
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
         baseUrl: args.baseUrl,
-        product,
+        product: effectiveProduct,
         groups,
         nav: effectiveNav,
         mounts: effectiveMounts,
@@ -3377,7 +3447,7 @@ async function executeGenerate(
         ? await generateNlwebArtifacts({
             outDir,
             baseUrl: args.baseUrl,
-            product,
+            product: effectiveProduct,
             pages: agentReadability.manifest.pages,
           })
         : undefined;
@@ -3390,7 +3460,7 @@ async function executeGenerate(
         // the temp conversion mirror (which only holds the docs tree).
         srcDir,
         baseUrl: args.baseUrl,
-        product,
+        product: effectiveProduct,
         skills: {
           ...metadata.agents?.skills,
           agentCard: metadata.agents?.agentCard?.enabled,
@@ -3417,7 +3487,7 @@ async function executeGenerate(
         mcpServerCard = await generateMcpServerCard({
           outDir,
           baseUrl: args.baseUrl,
-          product,
+          product: effectiveProduct,
           config: {
             endpoint: mcpConfig.endpoint,
             icon: mcpConfig.icon,
@@ -3438,7 +3508,7 @@ async function executeGenerate(
             srcDir: sourceMirror.srcDir,
             outDir,
             baseUrl: args.baseUrl,
-            product,
+            product: effectiveProduct,
             groups,
             nav: effectiveNav,
             mounts: effectiveMounts,
@@ -3468,7 +3538,7 @@ async function executeGenerate(
           await generateAgentReadabilityArtifacts({
             outDir,
             baseUrl: args.baseUrl,
-            product,
+            product: effectiveProduct,
             groups,
             nav: effectiveNav,
             mounts: effectiveMounts,
@@ -3571,7 +3641,7 @@ async function executeGenerate(
         mounts: effectiveMounts,
         mode: "site",
         outDir,
-        product,
+        product: effectiveProduct,
         search,
         srcDir,
       };

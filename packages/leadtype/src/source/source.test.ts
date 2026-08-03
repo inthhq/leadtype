@@ -574,4 +574,69 @@ describe("createDocsSource", () => {
       createDocsSource({ contentDir: path.join(contentDir, "does-not-exist") })
     ).rejects.toThrow(/does not exist/);
   });
+
+  describe("derived navigation", () => {
+    async function writeTree(): Promise<void> {
+      await writeMdx(
+        path.join(contentDir, "index.mdx"),
+        "---\ntitle: Home\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "guides/index.mdx"),
+        "---\ntitle: Guides\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "guides/auth.mdx"),
+        "---\ntitle: Auth\n---\nBody.\n"
+      );
+    }
+
+    it("derives sections from the content tree when nothing was configured", async () => {
+      await writeTree();
+      const source = await createDocsSource({ contentDir });
+
+      const navigation = await source.getNavigation();
+
+      // Without derivation every page lands in `ungrouped` and the rendered
+      // sidebar goes flat while generated artifacts gain sections.
+      expect(navigation.groups.map((group) => group.title)).toEqual(["Guides"]);
+      expect(navigation.ungrouped.map((page) => page.title)).toEqual(["Home"]);
+    });
+
+    it("leaves an authored nav alone", async () => {
+      await writeTree();
+      const source = await createDocsSource({
+        contentDir,
+        nav: [{ title: "Everything", pages: ["index", "guides/auth"] }],
+      });
+
+      const navigation = await source.getNavigation();
+
+      expect(navigation.groups.map((group) => group.title)).toEqual([
+        "Everything",
+      ]);
+    });
+
+    it("leaves authored groups alone", async () => {
+      await writeMdx(
+        path.join(contentDir, "index.mdx"),
+        "---\ntitle: Home\ngroup: start\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "guides/auth.mdx"),
+        "---\ntitle: Auth\ngroup: start\n---\nBody.\n"
+      );
+
+      const source = await createDocsSource({
+        contentDir,
+        groups: [{ slug: "start", title: "Getting Started" }],
+      });
+
+      const navigation = await source.getNavigation();
+
+      expect(navigation.groups.map((group) => group.title)).toEqual([
+        "Getting Started",
+      ]);
+    });
+  });
 });

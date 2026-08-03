@@ -731,7 +731,9 @@ describe("leadtype CLI", () => {
       groups: Array<{ slug: string; title: string }>;
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "Configured Product",
       summary: "Configured product summary.",
     });
@@ -1051,7 +1053,9 @@ export default {
     const result = JSON.parse(capture.stdout) as {
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "CLI Product",
       summary: "CLI summary.",
     });
@@ -1085,7 +1089,9 @@ export default {
       groups: Array<{ slug: string; title: string }>;
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "fallback-docs",
       summary: "Fallback docs summary.",
     });
