@@ -11,6 +11,8 @@
     "evals:full:arms": "bun --env-file=../.env run run-eval.ts --mode bare,control,treatment,pointer --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
     "evals:llms:full": "bun --env-file=../.env run run-llms-eval.ts --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
     "evals:llms:discovery": "bun --env-file=../.env run run-llms-eval.ts --discovery --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,moonshotai/kimi-k2.6,google/gemini-3.5-flash --judge deepseek/deepseek-v4-pro --runs 10 --concurrency 20",
+    "evals:activation": "bun --env-file=../.env run run-activation-eval.ts",
+    "evals:activation:full": "bun --env-file=../.env run run-activation-eval.ts --models anthropic/claude-haiku-4.5,anthropic/claude-opus-4.8,openai/gpt-5.5,google/gemini-3.5-flash --runs 5 --concurrency 16",
     "aggregate": "bun --env-file=../.env run lib/aggregate.ts",
     "rejudge": "bun --env-file=../.env run rejudge.ts",
     "remetric": "bun run remetric.ts",

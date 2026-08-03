@@ -42,6 +42,27 @@ delta is the token cost of that guessing.**
   a real discovery signal. Read the per-fixture breakdown, not just the average,
   or drop it from the discovery headline.
 
+## 3b. Skill activation — does the right skill get *selected*? — 🟡 just added
+
+Discovery (above) asks whether an agent can *find* the docs. Activation asks a
+narrower question one layer earlier: given a skill's discovery entry — name and
+description, the only fields visible before the body loads — does a router pick
+it for a given prompt?
+
+`run-activation-eval.ts` reads the description from the real
+`.agents/skills/leadtype/SKILL.md` and routes the labelled prompts in
+`activation/cases.json`, reporting **recall** (authoring prompts that routed) and
+**precision** (activations that were wanted). The negative cases matter as much
+as the positives: two of them are docs-shaped prompts in a project with no
+leadtype signal, and two are non-docs work *inside* a leadtype repo — a
+description that wins those by activating on repository signal alone has
+overfit. Run `evals:activation`.
+
+The deterministic half runs in CI (`lib/activation.test.ts`): the shipped
+description must name the authoring verbs and the repository signals, and stay
+under the 1024-character discovery cap. That catches a narrowed description
+without spending a token.
+
 ## 4. Routing — which `llms.txt` shape routes best? — ✅ covered
 
 Five hosted shapes × context-match (judge-independent). Finding: page-links +

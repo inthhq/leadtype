@@ -67,7 +67,11 @@ function yamlString(value: string): string {
 function buildDocsSkill(config: GenerateSkillArtifactsConfig): DocsSkillSpec {
   const { product } = config;
   const name = `${slugify(product.name) || "product"}-docs`;
-  const description = `Read and search the ${product.name} documentation. Use when working with ${product.name} — its setup, configuration, API, and behavior.`;
+  // The description is the whole activation signal — a client reads it from the
+  // discovery manifest and decides whether to load the body. Naming only
+  // "read and search" left it unselected for the most common docs task there
+  // is: writing or editing the documentation itself.
+  const description = `Read, search, and maintain the ${product.name} documentation. Use when working with ${product.name} — its setup, configuration, API, and behavior — and when writing, editing, reviewing, or restructuring its documentation.`;
 
   const lines: string[] = [
     `# ${product.name} documentation`,

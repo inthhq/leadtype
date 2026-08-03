@@ -108,6 +108,27 @@ describe("generateSkillArtifacts — site mode", () => {
     expect(card.skills[0].tags).toContain("documentation");
   });
 
+  it("describes docs authoring so authoring prompts route to the docs-skill", async () => {
+    const outDir = await tempDir();
+    await generateSkillArtifacts({ outDir, product, mode: "site" });
+
+    const index = JSON.parse(
+      await readFile(
+        join(outDir, ".well-known/agent-skills/index.json"),
+        "utf8"
+      )
+    ) as { skills: { name: string; description: string }[] };
+    const { description } = index.skills[0];
+
+    // A client sees only name + description before loading the body. Naming
+    // retrieval alone loses "add a troubleshooting page" and every other
+    // authoring prompt, which is the most common docs task there is.
+    for (const verb of ["writing", "editing", "reviewing", "maintain"]) {
+      expect(description.toLowerCase()).toContain(verb);
+    }
+    expect(description).toContain(product.name);
+  });
+
   it("uses a custom MCP endpoint in the docs-skill and agent-card", async () => {
     const outDir = await tempDir();
     await generateSkillArtifacts({
