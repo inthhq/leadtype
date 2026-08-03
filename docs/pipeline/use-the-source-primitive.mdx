@@ -27,6 +27,57 @@ export const source = await createDocsSource({
 
 Wire `createMdxSourcePlugins()` into your bundler's remark stack, then call `source.loadPage(slug)` from your framework's page renderer. The "Wire into your framework" section below has minimal setups for each host.
 
+## Start from your config instead
+
+`createDocsSource()` describes **one content directory**. That is the right primitive for a custom integration, but it means your app restates what your config already says — the content root, the navigation, the mounts, the frontmatter schema — and a multi-collection app restates it per collection, plus route prefixes and source-owned inheritance.
+
+Two descriptions of one project drift. When they do, the rendered site and the generated agent artifacts disagree about what exists — which is the failure "one content graph" exists to prevent.
+
+`createDocsProject()` reads the same resolved config the artifact pipeline reads:
+
+```ts title="lib/source.ts"
+// @noErrors - `../docs/docs.config` is your project's own config file.
+import { createDocsProject } from "leadtype";
+import docsConfig from "../docs/docs.config";
+
+export const source = await createDocsProject({
+  config: docsConfig,
+  configPath: "docs/docs.config.ts",
+  baseUrl: "https://example.com",
+});
+```
+
+It returns a **superset of `DocsSource`**, so every first-party adapter takes it unchanged — `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working with no parallel code path.
+
+`configPath` fixes both the content root and where the config's relative paths resolve, using the same rules the CLI uses: a `docs.config.*` sits inside the docs directory, a `leadtype.config.*` sits at the project root above it. Pass `configDir` and `contentDir` instead when you want to be explicit.
+
+### What it adds
+
+```ts
+// @noErrors - illustrative; `project` comes from createDocsProject above.
+project.collections; // resolved collections, in config order
+project.sources; // the acquisition graph
+project.getSource("changelog"); // one collection's DocsSource
+const page = await project.loadPage("changelog/1-0");
+page?.collection; // "changelog"
+```
+
+A multi-collection app gets one merged, route-aware page API: `listPages()` returns every collection's pages tagged with where they came from, and `loadPage()` accepts either a collection-local slug (`1-0`) or the full route (`changelog/1-0`), so one handler can serve everything or you can mount a route per collection.
+
+### Remote collections are cache-only
+
+A request handler must never clone a repository. A collection whose cache is missing, unverifiable, or holds a different revision than the config asks for fails with a diagnostic naming `leadtype sync` — it does not quietly fetch:
+
+```text
+createDocsProject: the cache for collection "docs" holds
+https://github.com/acme/acme.git@v0.9, but the config asks for
+https://github.com/acme/acme.git@main. Run `leadtype sync --refresh`.
+```
+
+### Keep using `createDocsSource()` when
+
+You are wiring a single content directory that no Leadtype config describes, or you need to construct a source from paths computed at runtime. The lower-level primitive is fully supported and is what the project is built on.
+
 ## Install
 
 ```sh

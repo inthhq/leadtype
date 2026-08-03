@@ -121,6 +121,13 @@ export type {
   StageOpenApiDocsConfig,
 } from "./openapi";
 export {
+  type CreateDocsProjectConfig,
+  createDocsProject,
+  type DocsProject,
+  type DocsProjectPage,
+  type DocsProjectPageMeta,
+} from "./project";
+export {
   type CreateDocsSourceConfig,
   createDocsSource,
   type DocsPage,

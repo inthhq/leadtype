@@ -145,13 +145,12 @@ export default withMdx({ pageExtensions: ["ts", "tsx", "mdx"] });
       },
       {
         path: "lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
+        contents: `import { createDocsProject } from "leadtype";
 import docsConfig from "../docs/docs.config";
 
-export const source = await createDocsSource({
-  contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.navigation,
+export const source = await createDocsProject({
+  config: docsConfig,
+  configDir: process.cwd(),
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -249,13 +248,12 @@ export default defineConfig({
       },
       {
         path: "src/lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
+        contents: `import { createDocsProject } from "leadtype";
 import docsConfig from "../../docs/docs.config";
 
-export const source = await createDocsSource({
-  contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.navigation,
+export const source = await createDocsProject({
+  config: docsConfig,
+  configDir: process.cwd(),
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -326,16 +324,15 @@ function nuxtPlan(
       ...(options.webmcp ? [nuxtWebMcpFile()] : []),
       {
         path: "lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
+        contents: `import { createDocsProject } from "leadtype";
 import docsConfig from "../docs/docs.config";
 
-let sourcePromise: ReturnType<typeof createDocsSource> | undefined;
+let sourcePromise: ReturnType<typeof createDocsProject> | undefined;
 
 export function getSource() {
-  sourcePromise ??= createDocsSource({
-    contentDir: path.resolve(process.cwd(), "docs"),
-    nav: docsConfig.navigation,
+  sourcePromise ??= createDocsProject({
+    config: docsConfig,
+    configDir: process.cwd(),
     baseUrl: ${JSON.stringify(baseUrl)},
   });
   return sourcePromise;
@@ -465,13 +462,12 @@ export default {
       },
       {
         path: "src/lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
+        contents: `import { createDocsProject } from "leadtype";
 import docsConfig from "../../docs/docs.config";
 
-export const source = await createDocsSource({
-  contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.navigation,
+export const source = await createDocsProject({
+  config: docsConfig,
+  configDir: process.cwd(),
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
