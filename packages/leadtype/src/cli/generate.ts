@@ -1474,13 +1474,12 @@ function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
   let groups: DocsGroup[] | undefined;
   let nav: DocsNavEntry[] | undefined;
   if (collections === undefined) {
+    // A config with identity and nothing else is the documented common path:
+    // navigation and the llms.txt body are derived from the content tree until
+    // they are authored. Requiring `groups` or `navigation` here would reject
+    // the config `leadtype init` scaffolds.
     groups = validateDocsGroups(value.groups);
     nav = validateDocsNav(value.navigation);
-    if (!(groups || nav || openapi)) {
-      throw new Error(
-        `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
-      );
-    }
     if (hasGroups && !groups) {
       throw new Error(
         `docs config at "${configPath}" must export groups as an array of { slug, title } entries`

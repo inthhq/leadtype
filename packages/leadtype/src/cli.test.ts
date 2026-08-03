@@ -1873,17 +1873,25 @@ paths:
     );
   });
 
-  it("still rejects product-only docs config without openapi or nav", async () => {
+  it("accepts the identity-only config `leadtype init` scaffolds", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
     const capture = createCapture();
 
-    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await mkdir(path.join(srcDir, "docs", "guides"), { recursive: true });
     await writeFile(
       path.join(srcDir, "docs", "docs.config.ts"),
       `export default {
         product: { name: "Acme", tagline: "Acme docs." },
       };`
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "index.mdx"),
+      '---\ntitle: "Home"\ndescription: "Start here."\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "guides", "setup.mdx"),
+      '---\ntitle: "Setup"\ndescription: "Install it."\n---\n\nBody.\n'
     );
 
     const code = await runCli(
@@ -1891,9 +1899,11 @@ paths:
       capture.io
     );
 
-    expect(code).toBe(1);
-    const error = JSON.parse(capture.stderr) as { error: string };
-    expect(error.error).toContain("must export groups or navigation");
+    // Navigation and the llms.txt body are derived, so identity is enough.
+    expect(code).toBe(0);
+    const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llms).toContain("Best Starting Points");
+    expect(llms).toContain("/docs/guides/setup.md");
   });
 
   it("rejects unsupported organization contactPoint fields", async () => {
