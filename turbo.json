@@ -10,8 +10,11 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
+    // `^build` so turbo builds leadtype's dist once, ahead of every dependent.
+    // Each app used to run `--filter leadtype build` itself, and eight of those
+    // in parallel rm -rf the same dist — failing a different app every run.
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^build", "^check-types"]
     },
     "dev": {
       "cache": false,
