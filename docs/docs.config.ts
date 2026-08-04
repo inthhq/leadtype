@@ -1,6 +1,8 @@
-import type { DocsConfig } from "leadtype";
+import { defineDocsConfig } from "leadtype";
 
-const config: DocsConfig = {
+// This repo's docs are source-owned content, so `defineDocsConfig` — the same
+// helper the docs tell everyone else to use.
+const config = defineDocsConfig({
   // The documented product — reused across llms.txt, JSON-LD, and the agent card.
   product: {
     name: "Leadtype",
@@ -335,6 +337,6 @@ const config: DocsConfig = {
       ],
     },
   },
-};
+});
 
 export default config;

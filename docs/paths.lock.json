@@ -38,6 +38,10 @@
       "hash": "fb82fd07401199b9"
     },
     {
+      "path": "/docs/concepts/config-model",
+      "hash": "8585c01de32261b0"
+    },
+    {
       "path": "/docs/concepts/evals",
       "hash": "a2da3f88be4f6dd3"
     },
@@ -67,15 +71,15 @@
     },
     {
       "path": "/docs/pipeline/build-a-docs-site",
-      "hash": "fa37c5640b647f67"
+      "hash": "80b8e367dfab9d10"
     },
     {
       "path": "/docs/pipeline/collections",
-      "hash": "bfa0c797bdb2aeb8"
+      "hash": "73f146912488d6a3"
     },
     {
       "path": "/docs/pipeline/configure-sources",
-      "hash": "8837f15a670b9403"
+      "hash": "1aa07e71cf54b1f3"
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
@@ -99,7 +103,7 @@
     },
     {
       "path": "/docs/pipeline/sync-docs-across-repos",
-      "hash": "8a592c53e647530d"
+      "hash": "31af33cb9bfd1a48"
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
@@ -115,7 +119,7 @@
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "98fe8998d4a118c0"
+      "hash": "08f9c6b74ba886ef"
     },
     {
       "path": "/docs/reference/convert",
