@@ -25,17 +25,11 @@ export const leadtypeSource = fumaSource.leadtype;
 If your docs are described by a Leadtype config, pass a project instead of a content directory. The adapter accepts any `DocsSource`, and a project is one — so the content root, navigation, mounts, and OpenAPI overlay come from the config rather than being restated here:
 
 ```ts title="lib/source.ts"
-// @noErrors - `../docs/docs.config` is your project's own config file.
 import { loader } from "fumadocs-core/source";
 import { createDocsProject } from "leadtype";
 import { fumadocsSource } from "leadtype/fumadocs";
-import docsConfig from "../docs/docs.config";
 
-const project = await createDocsProject({
-  config: docsConfig,
-  configPath: "docs/docs.config.ts",
-});
-
+const project = await createDocsProject();
 const fumaSource = await fumadocsSource({ source: project });
 export const source = loader({ baseUrl: "/docs", source: fumaSource });
 export const leadtypeSource = fumaSource.leadtype;

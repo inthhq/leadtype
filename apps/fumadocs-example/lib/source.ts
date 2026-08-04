@@ -2,7 +2,6 @@ import { resolve } from "node:path";
 import { loader } from "fumadocs-core/source";
 import { createDocsProject } from "leadtype";
 import { fumadocsSource } from "leadtype/fumadocs";
-import docsConfig from "../../../docs/docs.config";
 
 // process.cwd() is the app root when Next runs build/dev.
 const repoRoot = resolve(process.cwd(), "..", "..");
@@ -14,8 +13,7 @@ const repoRoot = resolve(process.cwd(), "..", "..");
  * generated agent artifacts describe the same docs.
  */
 const project = await createDocsProject({
-  config: docsConfig,
-  configPath: resolve(repoRoot, "docs", "docs.config.ts"),
+  cwd: repoRoot,
   typeTableBasePath: repoRoot,
 });
 

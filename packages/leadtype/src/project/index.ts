@@ -144,7 +144,9 @@ function collectionMounts(
 export async function createDocsProject<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
-  input: CreateDocsProjectConfig<TFrontmatter>
+  // Every field is optional: with no arguments at all, the project discovers
+  // its config from the current directory and derives the rest.
+  input: CreateDocsProjectConfig<TFrontmatter> = {}
 ): Promise<DocsProject<TFrontmatter>> {
   // One shared pipeline: discovery, source-owned inheritance, normalization,
   // inference, and per-collection content resolution. `generate`, `doctor`,
