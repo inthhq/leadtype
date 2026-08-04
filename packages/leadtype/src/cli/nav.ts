@@ -13,12 +13,15 @@
  * moves content, or changes a public route.
  */
 
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { inferNavigationFromContent } from "../config/infer";
+import { inheritCollectionSourceConfigs } from "../config/inherit";
 import { toDocsUrlPath } from "../internal/docs-url";
 import type { DocsNavEntry } from "../llm";
 import { resolveDocsNavigation } from "../llm";
 import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
+import { resolveCollection } from "../sync/sync";
 import { loadDocsConfig } from "./generate";
 
 export type NavIo = {
@@ -53,7 +56,7 @@ export type NavReport = {
   ok: boolean;
   collection: string;
   /** How the tree was produced. */
-  origin: "explicit" | "groups" | "inferred";
+  origin: "explicit" | "groups" | "inferred" | "inherited";
   pageCount: number;
   tree: NavTreeNode[];
   drift: NavDrift;
@@ -261,14 +264,48 @@ export async function runNavCommand(
     }
 
     const configDir = loaded ? path.dirname(loaded.path) : srcDir;
-    const authored = loaded?.config.collections?.[collectionKey];
+    const declared = loaded?.config.collections;
+
+    // Source-owned inheritance decides what a pinned-source project's tree
+    // *is*, and config loading doesn't apply it — generation does, later.
+    // Without this, a project whose navigation lives in its source repo
+    // reports as "inferred" with a filesystem-derived tree the build never
+    // uses. Same shared implementation generation calls.
+    let collections = declared;
+    let navigationWasInherited = false;
+    if (declared && Object.values(declared).some((c) => c.inheritConfig)) {
+      try {
+        collections = await inheritCollectionSourceConfigs(declared, configDir);
+        navigationWasInherited =
+          collections[collectionKey]?.navigation !== undefined &&
+          declared[collectionKey]?.navigation === undefined;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        io.stderr.write(
+          `Warning: source-owned config could not be read, so inherited navigation is not shown: ${message}\n  → Run \`leadtype sync\` first.\n`
+        );
+      }
+    }
+
+    const authored = collections?.[collectionKey];
+    // A remote collection's `dir` is relative to its checkout, not the config
+    // directory — resolveCollection is what knows the difference.
     const contentDir = authored
-      ? path.resolve(configDir, authored.dir)
+      ? resolveCollection(collectionKey, authored, configDir).absoluteDir
       : (docsDirs[0] ?? srcDir);
 
-    const authoredNav = collection?.navigation;
-    const authoredGroups = collection?.groups;
-    let origin: NavReport["origin"] = "explicit";
+    if (!existsSync(contentDir)) {
+      io.stderr.write(
+        `collection "${collectionKey}" points at "${contentDir}", which does not exist. Run \`leadtype sync\` if it comes from a remote source.\n`
+      );
+      return 1;
+    }
+
+    const authoredNav = authored?.navigation ?? collection?.navigation;
+    const authoredGroups = authored?.groups ?? collection?.groups;
+    let origin: NavReport["origin"] = navigationWasInherited
+      ? "inherited"
+      : "explicit";
     let nav: DocsNavEntry[] | undefined = authoredNav;
     if (!(authoredNav && authoredNav.length > 0)) {
       if (authoredGroups && authoredGroups.length > 0) {

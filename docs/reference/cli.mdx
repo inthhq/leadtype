@@ -75,6 +75,8 @@ Read-only: never writes config, moves content, or changes a public route.
 | `--json` | — | Machine-readable tree and drift report. |
 | `-h`, `--help` | — | Print usage. |
 
+`origin` says where the tree came from — authored here, **inherited** from a source repository, derived from `groups`, or inferred from the content tree. Remote collections are read from the synced checkout, so run `leadtype sync` first.
+
 Drift covers three things: **unplaced** pages that no curated entry positions (they render at the root of the sidebar by default rather than by decision), **duplicated** pages two entries both claim (they appear twice in the sidebar and in `llms.txt`), and **unknown groups** where frontmatter names a group the config never declares.
 
 Exit codes: `0` resolved — drift is reported, not fatal — `1` navigation could not be resolved, `2` CLI usage error.

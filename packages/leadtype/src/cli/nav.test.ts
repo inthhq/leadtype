@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { writeSyncManifest } from "../sync/sync";
 import { type NavReport, parseNavArgs, runNavCommand } from "./nav";
 
 const tempDirs: string[] = [];
@@ -212,6 +213,71 @@ describe("drift", () => {
 
     expect(code).toBe(1);
     expect(capture.stderr).toContain('Nav pin "renamed"');
+  });
+});
+
+describe("remote collections", () => {
+  it("reads the synced checkout and reports inherited navigation", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      inheritConfig: true,
+    },
+  },
+};`,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      ".leadtype/acme/docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  navigation: [{ title: "Guides", base: "guides", pages: ["auth"] }],
+};`,
+      ".leadtype/acme/docs/guides/auth.mdx": page("Auth"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // A remote collection's `dir` is relative to its checkout, not the config
+    // directory — resolving it as the latter finds an empty tree, and the
+    // inherited navigation never shows up at all.
+    expect(code).toBe(0);
+    expect(report.origin).toBe("inherited");
+    expect(report.pageCount).toBe(1);
+    expect(report.tree.map((node) => node.title)).toEqual(["Guides"]);
+  });
+
+  it("says to sync when the checkout is missing", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+    },
+  },
+};`,
+    });
+
+    const capture = createCapture();
+    const code = await runNavCommand(["--src", dir], capture.io);
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("leadtype sync");
   });
 });
 
