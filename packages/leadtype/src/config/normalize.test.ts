@@ -25,7 +25,7 @@ describe("canonical and legacy configs resolve identically", () => {
         repository: "https://github.com/acme/acme.git",
         ref: "main",
         dir: "changelog",
-        routePrefix: "/changelog",
+        routePrefix: "/releases",
       },
     },
   };
@@ -44,7 +44,10 @@ describe("canonical and legacy configs resolve identically", () => {
         repository: "https://github.com/acme/acme.git",
         ref: "main",
         dir: "changelog",
-        prefix: "/changelog",
+        // Deliberately unlike the collection key: with `/changelog` the
+        // `/${key}` fallback produces the same answer, so the assertion below
+        // would pass even if the alias fold were deleted entirely.
+        prefix: "/releases",
       },
     },
   };

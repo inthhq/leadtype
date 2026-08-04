@@ -124,7 +124,7 @@ leadtype generate \
 
 The first source folder is mounted at the generated docs root. Additional source folders are mounted under their folder name, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1.md`. `--include` and `--exclude` still match docs-root-relative paths after that merge, for example `--include "changelog/**"`.
 
-Use `<dir>=<url-prefix>` when a source should have its own public URL routePrefix:
+Use `<dir>=<url-prefix>` when a source should have its own public URL prefix:
 
 ```bash
 leadtype generate \

@@ -1779,11 +1779,6 @@ export function warnConfigDeprecations(loaded: LoadedDocsConfig | null): void {
   });
 }
 
-/** Test seam: forget which config files have already warned. */
-export function resetConfigDeprecationWarnings(): void {
-  warnedConfigPaths.clear();
-}
-
 /**
  * Look for `leadtype.config.{ts,js,mjs,cjs}` in the given directory.
  * Used by the sync CLI; for `generate`, prefer {@link loadDocsConfig}.
@@ -2984,11 +2979,24 @@ async function executeGenerate(
         loadedConfig.config.collections,
         configDir
       );
+      // Re-normalize, don't just swap the collections in: `resolved` was
+      // derived from the pre-inheritance config, so carrying it through
+      // unchanged leaves every inherited navigation, schema, groups, and
+      // mounts missing from the resolved model — for the exact
+      // `inheritConfig: true` shape the docs recommend. Deprecations and the
+      // acquisition graph stay from the first pass, which is the only one that
+      // saw the authored aliases and source names.
+      const renormalized = normalizeDocsConfig(
+        { ...loadedConfig.config, collections },
+        { configPath: loadedConfig.path, configDir }
+      );
       loadedConfig = {
-        ...loadedConfig,
-        config: {
-          ...loadedConfig.config,
-          collections,
+        config: renormalized.config,
+        path: loadedConfig.path,
+        resolved: {
+          ...renormalized.resolved,
+          sources: loadedConfig.resolved.sources,
+          deprecations: loadedConfig.resolved.deprecations,
         },
       };
       docsSources = resolveDocsSourcesFromCollections(collections, configDir);
