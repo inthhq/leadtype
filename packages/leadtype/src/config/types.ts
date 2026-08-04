@@ -95,6 +95,8 @@ export type ResolvedGitSource = {
   refKind: "commit" | "mutable";
   /** Authored `cacheDir` override, relative to the config directory. */
   cacheDir?: string;
+  /** Repository-root-relative paths the checkout is limited to, if any. */
+  sparse?: string[];
   collectionKeys: string[];
 };
 

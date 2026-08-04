@@ -255,6 +255,9 @@ function resolveSources(
       ref,
       refKind: isShaRef(ref) ? "commit" : "mutable",
       ...(collection.cacheDir ? { cacheDir: collection.cacheDir } : {}),
+      ...(collection.sparse && collection.sparse.length > 0
+        ? { sparse: collection.sparse }
+        : {}),
       collectionKeys: [key],
     };
     if (authoredName) {
@@ -347,6 +350,7 @@ function expandGitSources(
         repository: source.repository,
         ...(source.ref === undefined ? {} : { ref: source.ref }),
         ...(source.cacheDir === undefined ? {} : { cacheDir: source.cacheDir }),
+        ...(source.sparse === undefined ? {} : { sparse: source.sparse }),
         ...(inheritConfig === undefined ? {} : { inheritConfig }),
       };
     }

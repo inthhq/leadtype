@@ -235,6 +235,163 @@ describe("syncCollections", () => {
     expect(manifest.commit).toBe("abc1234");
   });
 
+  it("clones blobless and selects paths when sparse is set", async () => {
+    const calls: RecordedCall[] = [];
+    const runner: GitRunner = async (args, options) => {
+      calls.push({ args, cwd: options?.cwd });
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, { "README.md": "# r\n" });
+        return ok();
+      }
+      if (args[0] === "rev-parse") {
+        return ok("abc1234\n");
+      }
+      return ok();
+    };
+
+    const result = await syncCollections({
+      mode: "auto",
+      configDir,
+      collections: {
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+          sparse: ["docs", "packages"],
+        },
+      },
+      runner,
+    });
+
+    const clone = calls.find((call) => call.args[0] === "clone");
+    // Blobless + --sparse checks out nothing up front, so git only fetches the
+    // blobs behind the selected paths — the whole point of the option.
+    expect(clone?.args).toContain("--filter=blob:none");
+    expect(clone?.args).toContain("--sparse");
+
+    const sparseSet = calls.find((call) => call.args[0] === "sparse-checkout");
+    expect(sparseSet?.args).toEqual([
+      "sparse-checkout",
+      "set",
+      "--",
+      "docs",
+      "packages",
+    ]);
+    expect(sparseSet?.cwd).toBe(result.sources[0].source.cacheDir);
+  });
+
+  it("records the sparse paths in the manifest", async () => {
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, { "README.md": "# r\n" });
+        return ok();
+      }
+      if (args[0] === "rev-parse") {
+        return ok("abc1234\n");
+      }
+      return ok();
+    };
+
+    const result = await syncCollections({
+      mode: "auto",
+      configDir,
+      collections: {
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+          sparse: ["docs"],
+        },
+      },
+      runner,
+    });
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(result.sources[0].source.cacheDir, SYNC_MANIFEST_FILE),
+        "utf8"
+      )
+    );
+    expect(manifest.sparse).toEqual(["docs"]);
+  });
+
+  it("re-clones when the cached checkout has a different path set", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, {
+      "docs/index.mdx": "---\ntitle: Hi\n---\n",
+    });
+    await writeFile(
+      path.join(cacheDir, SYNC_MANIFEST_FILE),
+      `${JSON.stringify({
+        version: 1,
+        repository: "https://github.com/example/repo",
+        ref: "main",
+        commit: "deadbeef",
+        syncedAt: "2026-05-14T00:00:00.000Z",
+        sparse: ["docs"],
+      })}\n`
+    );
+
+    const calls: RecordedCall[] = [];
+    const runner: GitRunner = async (args, options) => {
+      calls.push({ args, cwd: options?.cwd });
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, { "README.md": "# r\n" });
+        return ok();
+      }
+      if (args[0] === "rev-parse") {
+        return ok("beef999\n");
+      }
+      return ok();
+    };
+
+    const result = await syncCollections({
+      mode: "auto",
+      configDir,
+      collections: {
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+          // `packages` was added — the cached checkout does not contain it, and
+          // a checkout missing a directory looks identical to a complete one.
+          sparse: ["docs", "packages"],
+        },
+      },
+      runner,
+    });
+
+    expect(result.sources[0].status).toBe("fresh");
+    expect(calls.some((call) => call.args[0] === "clone")).toBe(true);
+  });
+
+  it("rejects collections that share an acquisition but disagree on paths", async () => {
+    await expect(
+      syncCollections({
+        mode: "auto",
+        configDir,
+        collections: {
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+            sparse: ["docs"],
+          },
+          changelog: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "changelog",
+            sparse: ["changelog"],
+          },
+        },
+        runner: async () => ok(),
+      })
+    ).rejects.toThrow(/different sparse paths.*One checkout has one path set/s);
+  });
+
   it("auto leaves an up-to-date cache untouched", async () => {
     const cacheDir = path.resolve(
       configDir,

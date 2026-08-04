@@ -1279,6 +1279,27 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" exclude must be an array of glob strings`
       );
     }
+    if (entry.sparse !== undefined) {
+      if (!isStringArray(entry.sparse)) {
+        throw new Error(
+          `docs config at "${configPath}": collection "${key}" sparse must be an array of repository-relative paths`
+        );
+      }
+      if (entry.repository === undefined) {
+        throw new Error(
+          `docs config at "${configPath}": collection "${key}" sparse is only supported for remote collections`
+        );
+      }
+      // Passed to `git sparse-checkout set` — a leading "-" would be read as a
+      // flag, and an absolute path escapes the checkout entirely.
+      for (const sparsePath of entry.sparse) {
+        if (sparsePath.startsWith("-") || path.isAbsolute(sparsePath)) {
+          throw new Error(
+            `docs config at "${configPath}": collection "${key}" sparse path "${sparsePath}" must be a relative path that does not begin with "-"`
+          );
+        }
+      }
+    }
     if (entry.flatteners !== undefined && !Array.isArray(entry.flatteners)) {
       throw new Error(
         `docs config at "${configPath}": collection "${key}" flatteners must be an array of remark plugins`
@@ -1354,7 +1375,11 @@ function validateGitSources(
     const cascaded = Object.fromEntries(
       Object.entries(entry.collections).map(([key, child]) => [
         key,
-        { ...(child as Record<string, unknown>), repository: entry.repository },
+        {
+          ...(child as Record<string, unknown>),
+          repository: entry.repository,
+          ...(entry.sparse === undefined ? {} : { sparse: entry.sparse }),
+        },
       ])
     );
     validateCollections(cascaded, configPath);

@@ -382,6 +382,19 @@ export type DocsCollection = {
    */
   cacheDir?: string;
   /**
+   * Limit the checkout to these repository-root-relative paths, via git
+   * sparse-checkout over a blobless partial clone.
+   *
+   * Pinning a docs directory out of a large monorepo otherwise downloads the
+   * whole repository to read one folder. List the docs directory plus anything
+   * the docs reach outside it — `<AutoTypeTable path="…">` reads real
+   * TypeScript sources, so those paths belong here too.
+   *
+   * Omit for a full shallow clone. Collections sharing one acquisition must
+   * agree on it.
+   */
+  sparse?: string[];
+  /**
    * @deprecated Renamed to {@link DocsCollection.inheritConfig} — the field
    * declares *inheritance*, not a config object. Still accepted and normalized;
    * setting both is an error.
@@ -724,7 +737,13 @@ export function defineCollection(collection: DocsCollection): DocsCollection {
  */
 export type GitSourceCollection = Omit<
   DocsCollection,
-  "cacheDir" | "prefix" | "ref" | "repository" | "schema" | "sourceConfig"
+  | "cacheDir"
+  | "prefix"
+  | "ref"
+  | "repository"
+  | "schema"
+  | "sourceConfig"
+  | "sparse"
 >;
 
 /**
@@ -747,6 +766,12 @@ export type GitSourceConfig = {
    * `.leadtype/sources/<repo-slug>@<ref>` relative to the config dir.
    */
   cacheDir?: string;
+  /**
+   * Limit the checkout to these repository-root-relative paths. See
+   * {@link DocsCollection.sparse} — pinning a docs directory out of a large
+   * monorepo otherwise downloads the whole repository to read one folder.
+   */
+  sparse?: string[];
   /**
    * Default config-inheritance policy for every collection beneath this
    * source. A collection can override it, including with `false` to opt out.

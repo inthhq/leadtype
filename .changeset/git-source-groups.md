@@ -24,4 +24,6 @@ The source owns acquisition and the default inheritance policy; each collection 
 
 Collection ids stay global rather than being scoped to their source, because they name staging mounts, error messages, and JSON output — two sources declaring the same id is an error naming both, not an auto-rename. So is declaring one `(repository, ref)` under two source names.
 
+`sparse` limits a checkout to the repository paths you actually need, via a blobless partial clone — pinning a docs directory out of a monorepo no longer downloads the whole repository. Collections sharing an acquisition must agree on the path set, and the set is recorded in the sync manifest so adding a path re-clones rather than reusing an incomplete cache.
+
 `leadtype sync` now reports each source id with its dependent collections, and warns when a source tracks a mutable ref instead of a pinned commit. `leadtype generate --json` reports the same acquisition graph, using the same ids. `inheritConfig: false` opts a collection out of a source-level inheritance default.

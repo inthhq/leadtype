@@ -51,6 +51,7 @@ Place this file at the project root (the cwd from which you run `leadtype`). Lea
 | `repository` | `string` | — | `https://` or `git@` URL. Set this to make the collection remote — leadtype clones it on `leadtype sync`. Omit for local collections. |
 | `ref` | `string` | `"main"` | Branch, tag, or commit SHA to check out. SHAs are detected by pattern (7–40 hex chars) and use a full clone + `checkout`; everything else uses `clone --depth 1 --branch`. |
 | `cacheDir` | `string` | `.leadtype/sources/<repo-slug>@<ref>` | Where the clone lives on disk, relative to the config dir. Override this when you want a stable on-disk path for other tooling (e.g. type-table extraction). |
+| `sparse` | `string[]` | — | Limit the checkout to these repository-root-relative paths, via git sparse-checkout over a blobless partial clone. See [Pinning one directory out of a monorepo](#pinning-one-directory-out-of-a-monorepo). |
 | `inheritConfig` | `true \| object` | — | Remote collections only. After sync, load source-owned docs config from the collection `dir` and inherit MDX-owned fields into this collection. |
 | `include` | `string[]` | all `.mdx` files | Glob patterns relative to `dir`. When set, narrows which files the collection contributes. |
 | `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
@@ -145,7 +146,31 @@ Two named sources with the same `(repository, ref)` is also an error — that is
 one acquisition declared twice, and merging their collections into a single
 source is what you meant.
 
-### Pinning
+### Pinning one directory out of a monorepo
+
+A docs directory usually lives inside a much larger repository. Cloning all of it to read one folder is slow and, in CI, repeatedly slow. `sparse` limits the checkout:
+
+```ts
+gitSource({
+  repository: "https://github.com/c15t/c15t.git",
+  ref: "2b89e689458497bc985862db21f6b4b03a918e46",
+  sparse: ["docs", "packages"],
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", inheritConfig: true },
+  },
+});
+```
+
+Leadtype clones blobless (`--filter=blob:none --sparse`) and then selects those paths, so git only fetches the blobs behind them.
+
+List the docs directory **plus anything the docs reach outside it**. `packages` is there because c15t's MDX uses `<AutoTypeTable path="./packages/…">` to render prop tables from real TypeScript sources — drop it and every type table silently degrades to nothing rather than failing.
+
+Two guarantees make this safe to change later:
+
+- Collections sharing one acquisition must agree on `sparse`. One checkout has one path set, so taking the first silently would leave the other collection reading a directory that isn't there.
+- The path set is recorded in the sync manifest. Adding a path re-clones rather than reusing the cache, because a checkout missing a directory looks identical to a complete one until something fails to resolve.
+
+### Pinning a revision
 
 `ref` accepts a branch, a tag, or a commit SHA. `leadtype sync` reports which
 sources track a mutable ref:

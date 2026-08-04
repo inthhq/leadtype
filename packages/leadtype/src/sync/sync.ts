@@ -14,6 +14,13 @@ export type SyncManifest = {
   ref: string;
   commit: string;
   syncedAt: string;
+  /**
+   * Sparse paths this checkout was created with. Recorded so a cache built for
+   * a different path set is re-cloned rather than reused — a checkout missing
+   * `packages/` looks identical to a complete one until a type table fails to
+   * resolve.
+   */
+  sparse?: string[];
 };
 
 export type GitRunResult = {
@@ -82,6 +89,8 @@ export type ResolvedRemoteSource = {
   repository: string;
   ref: string;
   cacheDir: string;
+  /** Repository-root-relative paths the checkout is limited to. */
+  sparse?: string[];
   /** All collection keys that consume this source. */
   collectionKeys: string[];
 };
@@ -136,6 +145,9 @@ export function resolveCollection(
       repository: collection.repository,
       ref,
       cacheDir,
+      ...(collection.sparse && collection.sparse.length > 0
+        ? { sparse: collection.sparse }
+        : {}),
       collectionKeys: [key],
     },
     absoluteDir: path.resolve(cacheDir, collection.dir),
@@ -150,6 +162,25 @@ export function resolveAllCollections(
   return Object.entries(collections).map(([key, collection]) =>
     resolveCollection(key, collection, configDir)
   );
+}
+
+function sameSparse(
+  left: string[] | undefined,
+  right: string[] | undefined
+): boolean {
+  if (!(left || right)) {
+    return true;
+  }
+  if (!(left && right) || left.length !== right.length) {
+    return false;
+  }
+  // Order is irrelevant to git sparse-checkout, so compare as sets.
+  const sorted = (paths: string[]) => [...paths].sort();
+  return sorted(left).every((value, index) => value === sorted(right)[index]);
+}
+
+function formatSparse(paths: string[] | undefined): string {
+  return paths ? `[${paths.join(", ")}]` : "the full repository";
 }
 
 /**
@@ -173,6 +204,13 @@ export function resolveRemoteSources(
       if (existing.cacheDir !== resolved.remote.cacheDir) {
         throw new Error(
           `Collections [${existing.collectionKeys.join(", ")}] and "${resolved.key}" target ${resolved.remote.repository}@${resolved.remote.ref} but specify different cacheDir values ("${existing.cacheDir}" vs "${resolved.remote.cacheDir}"). Make them match or remove the explicit cacheDir.`
+        );
+      }
+      // One checkout can only have one path set. Silently taking the first
+      // would leave the other collection reading a directory that isn't there.
+      if (!sameSparse(existing.sparse, resolved.remote.sparse)) {
+        throw new Error(
+          `Collections [${existing.collectionKeys.join(", ")}] and "${resolved.key}" target ${resolved.remote.repository}@${resolved.remote.ref} but specify different sparse paths (${formatSparse(existing.sparse)} vs ${formatSparse(resolved.remote.sparse)}). One checkout has one path set — make them match, or list every path both collections need.`
         );
       }
       existing.collectionKeys.push(resolved.key);
@@ -199,6 +237,15 @@ export async function readSyncManifest(
       typeof parsed.ref !== "string" ||
       typeof parsed.commit !== "string" ||
       typeof parsed.syncedAt !== "string"
+    ) {
+      return null;
+    }
+    if (
+      parsed.sparse !== undefined &&
+      !(
+        Array.isArray(parsed.sparse) &&
+        parsed.sparse.every((entry) => typeof entry === "string")
+      )
     ) {
       return null;
     }
@@ -290,6 +337,32 @@ async function readHeadCommit(
   return result.stdout.trim();
 }
 
+/**
+ * Apply the source's path set to an existing checkout. Sparse paths are
+ * repository-root-relative and passed after `--`, so a path beginning with `-`
+ * can't be read as a flag.
+ */
+async function applySparsePaths(
+  source: ResolvedRemoteSource,
+  runner: GitRunner
+): Promise<void> {
+  if (!source.sparse || source.sparse.length === 0) {
+    return;
+  }
+  const result = await runGit(
+    runner,
+    ["sparse-checkout", "set", "--", ...source.sparse],
+    { cwd: source.cacheDir }
+  );
+  if (result.exitCode !== 0) {
+    throw gitError(
+      `sparse-checkout set ${source.sparse.join(" ")}`,
+      source,
+      result
+    );
+  }
+}
+
 async function cloneRemote(
   source: ResolvedRemoteSource,
   runner: GitRunner
@@ -299,6 +372,15 @@ async function cloneRemote(
     await rm(source.cacheDir, { recursive: true, force: true });
   }
 
+  // A sparse clone is blobless and checks out nothing up front: the paths are
+  // selected after cloning, so git only ever fetches the blobs behind them.
+  // That is the difference between pulling one docs directory and pulling an
+  // entire monorepo to read it.
+  const sparseFlags =
+    source.sparse && source.sparse.length > 0
+      ? ["--filter=blob:none", "--sparse"]
+      : [];
+
   // The `--` end-of-options separator stops git from parsing the user-supplied
   // `repository` URL as a flag (a malicious config like `--upload-pack=…`
   // would otherwise be interpreted as a clone option). `source.ref` is already
@@ -306,6 +388,7 @@ async function cloneRemote(
   if (isShaRef(source.ref)) {
     const cloneResult = await runGit(runner, [
       "clone",
+      ...sparseFlags,
       "--",
       source.repository,
       source.cacheDir,
@@ -313,6 +396,7 @@ async function cloneRemote(
     if (cloneResult.exitCode !== 0) {
       throw gitError("clone", source, cloneResult);
     }
+    await applySparsePaths(source, runner);
     const checkoutResult = await runGit(runner, ["checkout", source.ref], {
       cwd: source.cacheDir,
     });
@@ -324,6 +408,7 @@ async function cloneRemote(
       "clone",
       "--depth",
       "1",
+      ...sparseFlags,
       "--branch",
       source.ref,
       "--",
@@ -333,6 +418,7 @@ async function cloneRemote(
     if (cloneResult.exitCode !== 0) {
       throw gitError(`clone --branch ${source.ref}`, source, cloneResult);
     }
+    await applySparsePaths(source, runner);
   }
 
   return readHeadCommit(source.cacheDir, runner);
@@ -342,6 +428,7 @@ async function fastForwardExisting(
   source: ResolvedRemoteSource,
   runner: GitRunner
 ): Promise<string> {
+  await applySparsePaths(source, runner);
   if (isShaRef(source.ref)) {
     const fetchResult = await runGit(runner, ["fetch", "origin"], {
       cwd: source.cacheDir,
@@ -428,10 +515,14 @@ async function syncOne(
 ): Promise<SyncSourceResult> {
   const hasCheckout = existsSync(path.join(source.cacheDir, ".git"));
   const manifest = hasCheckout ? await readSyncManifest(source.cacheDir) : null;
+  // A checkout built for a different path set is not a usable cache: one
+  // missing directory looks exactly like a complete clone until something
+  // outside the docs tree fails to resolve.
   const manifestMatches =
     manifest !== null &&
     manifest.repository === source.repository &&
-    manifest.ref === source.ref;
+    manifest.ref === source.ref &&
+    sameSparse(manifest.sparse, source.sparse);
 
   if (mode === "missing") {
     if (!(hasCheckout && manifestMatches)) {
@@ -466,6 +557,9 @@ async function syncOne(
     ref: source.ref,
     commit,
     syncedAt: new Date().toISOString(),
+    ...(source.sparse && source.sparse.length > 0
+      ? { sparse: source.sparse }
+      : {}),
   });
 
   // "refreshed" means we fast-forwarded an existing checkout. A destructive
