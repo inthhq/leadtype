@@ -3167,8 +3167,13 @@ async function executeGenerate(
     // Path filters disable curated nav entirely, so they opt out too.
     let inference = emptyInferenceReport();
     let derivedNav: DocsNavEntry[] | undefined;
+    // Not for localized projects: derivation keys sections off the first path
+    // segment, which for `docs/en/…` is the locale — while navigation resolves
+    // per locale over locale-stripped paths, so no derived section can ever
+    // match and generate fails outright.
     if (
       !hasExplicitPathFilters &&
+      metadata.i18n === undefined &&
       (nav === undefined || nav.length === 0) &&
       groups.length === 0
     ) {
@@ -3221,7 +3226,6 @@ async function executeGenerate(
     let effectiveProduct = product;
     if (product.blocks === undefined && defaultLocaleNavigation) {
       const derived = inferLlmsBlocks({
-        product: { name: product.name, tagline: product.summary },
         navigation: defaultLocaleNavigation,
       });
       if (derived.blocks.length > 0) {
@@ -3239,7 +3243,10 @@ async function executeGenerate(
         },
       });
     }
-    if (args.explain) {
+    // Text mode only: JSON output is a machine record on stdout, and a prose
+    // report written before it makes the whole stream unparseable. In JSON
+    // mode the same information rides on the result object instead.
+    if (args.explain && args.format !== "json") {
       io.stdout.write(formatInferenceReport(inference));
     }
 

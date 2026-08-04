@@ -50,12 +50,14 @@ describe("inferNavigationFromContent", () => {
       "quickstart",
       {
         title: "Guides",
+        slug: "guides",
         base: "guides",
         pages: ["index", "auth"],
         description: "About Guides.",
       },
       {
         title: "Reference",
+        slug: "reference",
         base: "reference",
         pages: ["client"],
       },
@@ -119,6 +121,24 @@ describe("inferNavigationFromContent", () => {
       typeof entry === "string" ? entry : entry.title
     );
     expect(titles).toEqual(["Zebra", "Apple"]);
+  });
+
+  it("gives a section a URL-safe slug regardless of its title", async () => {
+    const dir = await docsFixture({
+      "guides/index.mdx": page("\u6307\u5357"),
+      "guides/auth.mdx": page("Auth"),
+    });
+
+    const { navigation } = await inferNavigationFromContent(dir);
+    const section = navigation[0];
+
+    // Slugifying a title with no URL-safe characters yields an empty slug,
+    // which fails group validation and takes the whole build down. The
+    // directory name is URL-safe by construction.
+    expect(typeof section === "string" ? null : section.slug).toBe("guides");
+    expect(typeof section === "string" ? null : section.title).toBe(
+      "\u6307\u5357"
+    );
   });
 
   it("warns when page titles had to come from filenames", async () => {
@@ -196,7 +216,6 @@ describe("inferLlmsBlocks", () => {
 
   it("builds one starting-points block in resolved navigation order", () => {
     const { blocks } = inferLlmsBlocks({
-      product,
       navigation: navigationFixture(),
     });
 
@@ -219,7 +238,6 @@ describe("inferLlmsBlocks", () => {
   it("warns and truncates when navigation is larger than the block", () => {
     const navigation = navigationFixture();
     const { blocks, report } = inferLlmsBlocks({
-      product,
       navigation,
       limit: 1,
     });

@@ -27,7 +27,6 @@ import type {
   DocsNavEntry,
   DocsNavNode,
   LlmsBlock,
-  ProductInfo,
 } from "../llm/llm";
 import type { DocsNavigation } from "../llm/readability";
 
@@ -246,8 +245,14 @@ export async function inferNavigationFromContent(
     const sectionIndex = ordered.find(
       (page) => page.relativePath === `${sectionKey}/index`
     );
+    // A derived section's slug comes from its title, and a title with no
+    // URL-safe characters — `指南`, say — slugifies to nothing, which fails
+    // group validation and takes the whole build down. The directory name is
+    // already URL-safe by construction, so pin the slug to it and let the
+    // title stay whatever the author wrote.
     const node: DocsNavNode = {
       title: sectionIndex?.title ?? titleize(sectionKey),
+      slug: sectionKey,
       base: sectionKey,
       pages: ordered.map((page) =>
         page.relativePath.slice(sectionKey.length + 1)
@@ -313,14 +318,13 @@ function collectNavigationPages(
 }
 
 /**
- * Derive the `llms.txt` body from product identity plus resolved navigation.
+ * Derive the `llms.txt` body from the resolved navigation.
  *
  * One `links` block of starting points, in resolved navigation order. That is
  * the llms.txt convention and it is the block an author would otherwise write
  * by hand, one entry at a time, duplicating what navigation already says.
  */
 export function inferLlmsBlocks(config: {
-  product: ProductInfo;
   navigation: DocsNavigation;
   limit?: number;
 }): { blocks: LlmsBlock[]; report: InferenceReport } {
@@ -349,7 +353,7 @@ export function inferLlmsBlocks(config: {
 
   report.values.push({
     field: "llms.sections",
-    derivedFrom: "product identity and resolved navigation",
+    derivedFrom: "the resolved navigation",
     summary: `a "Best Starting Points" block with ${links.length} link${links.length === 1 ? "" : "s"}`,
     makeExplicit:
       "Set `llms.sections` in your docs config to write the llms.txt body yourself.",

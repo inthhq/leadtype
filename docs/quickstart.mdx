@@ -89,7 +89,7 @@ That is the whole starter config. Identity is the one thing Leadtype cannot gues
 
 - **Navigation** comes from the content tree. Root pages stay at the root; each top-level directory becomes a section titled from its `index` page. Ordering is `index` first, then frontmatter `order`, then path — never filesystem order, so every machine derives the same tree.
 - **The `llms.txt` body** becomes a "Best Starting Points" block built from that same resolved navigation, so an agent's entry points cannot drift from a reader's.
-- **Product name and tagline** fall back to `package.json`'s `name` and `description` when you have not set `product` at all.
+- **Product name and tagline** fall back to `package.json`'s `name` and `description` when there is no docs config at all. With a config present, `product` is required — it is the one field that has no sensible default.
 
 Run `leadtype generate --explain` at any point to see exactly what was derived and which field takes control of it.
 

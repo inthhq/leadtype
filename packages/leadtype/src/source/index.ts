@@ -600,7 +600,12 @@ export async function createDocsSource<
    * content graph is the whole point, so both sides infer or neither does.
    */
   async function resolveNav(): Promise<DocsNavEntry[] | undefined> {
-    if (nav && nav.length > 0) {
+    // Test the *authored* nav, not `nav`: `nav` is reassigned above to include
+    // generated OpenAPI nodes whenever `openapi` is set, so checking it meant
+    // any openapi-configured source skipped derivation entirely while
+    // `generate` derived on the same config — sidebar-versus-artifacts drift,
+    // inside the code meant to prevent it.
+    if (config.nav && config.nav.length > 0) {
       return nav;
     }
     if (config.groups && config.groups.length > 0) {
