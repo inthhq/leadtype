@@ -146,11 +146,10 @@ export default withMdx({ pageExtensions: ["ts", "tsx", "mdx"] });
       {
         path: "lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
-import docsConfig from "../docs/docs.config";
 
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
 export const source = await createDocsProject({
-  config: docsConfig,
-  configDir: process.cwd(),
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -249,11 +248,10 @@ export default defineConfig({
       {
         path: "src/lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
-import docsConfig from "../../docs/docs.config";
 
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
 export const source = await createDocsProject({
-  config: docsConfig,
-  configDir: process.cwd(),
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -325,14 +323,13 @@ function nuxtPlan(
       {
         path: "lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
-import docsConfig from "../docs/docs.config";
 
 let sourcePromise: ReturnType<typeof createDocsProject> | undefined;
 
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
 export function getSource() {
   sourcePromise ??= createDocsProject({
-    config: docsConfig,
-    configDir: process.cwd(),
     baseUrl: ${JSON.stringify(baseUrl)},
   });
   return sourcePromise;
@@ -463,11 +460,10 @@ export default {
       {
         path: "src/lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
-import docsConfig from "../../docs/docs.config";
 
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
 export const source = await createDocsProject({
-  config: docsConfig,
-  configDir: process.cwd(),
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,

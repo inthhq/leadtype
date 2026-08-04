@@ -18,14 +18,22 @@ import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { glob as fg } from "tinyglobby";
-import { inferNavigationFromContent } from "../config/infer";
-import { inheritCollectionSourceConfigs } from "../config/inherit";
-import { serializeResolvedConfig } from "../config/types";
+
+import type { LoadedDocsConfig } from "../config/load";
+import {
+  type NavigationOrigin,
+  type ResolvedProject,
+  type ResolvedProjectCollection,
+  resolveProject,
+} from "../config/project";
+import {
+  type ResolvedDocsConfig,
+  serializeResolvedConfig,
+} from "../config/types";
 import { toDocsUrlPath } from "../internal/docs-url";
 import type { DocsCollection } from "../llm";
 import { resolveDocsNavigation } from "../llm";
-import { readSyncManifest, resolveCollection } from "../sync/sync";
-import { type LoadedDocsConfig, loadDocsConfig } from "./generate";
+import { readSyncManifest } from "../sync/sync";
 
 export type DoctorIo = {
   stderr: Pick<NodeJS.WriteStream, "write">;
@@ -83,7 +91,7 @@ export type DoctorReport = {
   }[];
   navigation: {
     /** Where the tree came from. */
-    origin: "explicit" | "inherited" | "inferred" | "groups";
+    origin: NavigationOrigin;
     groups: string[];
     routedPages: number;
     unrepresentedPages: string[];
@@ -245,107 +253,148 @@ async function newestMtime(paths: string[]): Promise<number> {
   return newest;
 }
 
-type CollectionInspection = {
-  key: string;
-  routePrefix: string;
-  contentDir?: string;
-  pageCount?: number;
-  files: string[];
-};
-
-/**
- * Resolve one collection's directory without touching the network, recording
- * why it isn't usable when it isn't. Mirrors what the runtime project does, so
- * doctor reports the same problem the app would hit.
- */
-async function inspectCollection(
-  key: string,
+/** Count the files a collection's include/exclude globs actually match. */
+async function countCollectionPages(
+  collection: ResolvedProjectCollection,
   authored: DocsCollection | undefined,
-  routePrefix: string,
-  configDir: string,
-  fallbackDir: string,
   issues: DoctorIssue[]
-): Promise<CollectionInspection> {
-  let contentDir = fallbackDir;
-
-  if (authored) {
-    const resolved = resolveCollection(key, authored, configDir);
-    contentDir = resolved.absoluteDir;
-    if (resolved.remote) {
-      const { repository, ref, cacheDir } = resolved.remote;
-      if (!existsSync(path.join(cacheDir, ".git"))) {
-        issues.push({
-          id: "source.not-synced",
-          level: "error",
-          message: `collection "${key}" reads ${repository}@${ref}, which has no checkout at "${cacheDir}"`,
-          owner: `collections.${key}.repository`,
-          fix: "leadtype sync",
-        });
-        return { key, routePrefix, files: [] };
-      }
-      const manifest = await readSyncManifest(cacheDir);
-      if (!manifest) {
-        issues.push({
-          id: "source.cache-unverifiable",
-          level: "error",
-          message: `the cache for collection "${key}" at "${cacheDir}" has no sync manifest, so its revision can't be verified`,
-          owner: `collections.${key}.cacheDir`,
-          fix: "leadtype sync --refresh",
-        });
-        return { key, routePrefix, files: [] };
-      }
-      if (manifest.repository !== repository || manifest.ref !== ref) {
-        issues.push({
-          id: "source.cache-stale",
-          level: "error",
-          message: `the cache for collection "${key}" holds ${manifest.repository}@${manifest.ref}, but the config asks for ${repository}@${ref}`,
-          owner: `collections.${key}.ref`,
-          fix: "leadtype sync --refresh",
-        });
-        return { key, routePrefix, files: [] };
-      }
-    }
+): Promise<number | undefined> {
+  if (!collection.contentDir) {
+    return;
   }
-
-  if (!existsSync(contentDir)) {
-    issues.push({
-      id: "source.dir-missing",
-      level: "error",
-      message: `collection "${key}" points at "${contentDir}", which does not exist`,
-      owner: authored ? `collections.${key}.dir` : "--docs-dir",
-    });
-    return { key, routePrefix, files: [] };
-  }
-
   const include =
     authored?.include && authored.include.length > 0
       ? authored.include
       : ["**/*.{md,mdx}"];
   const files = await fg(include, {
     absolute: true,
-    cwd: contentDir,
+    cwd: collection.contentDir,
     ignore: authored?.exclude ?? [],
     onlyFiles: true,
   });
-
   if (files.length === 0) {
     issues.push({
       id: "collection.no-matches",
       level: "warn",
-      message: `collection "${key}" matches no files in "${contentDir}"`,
+      message: `collection "${collection.key}" matches no files in "${collection.contentDir}"`,
       owner:
         authored?.include && authored.include.length > 0
-          ? `collections.${key}.include`
-          : `collections.${key}.dir`,
+          ? `collections.${collection.key}.include`
+          : `collections.${collection.key}.dir`,
+    });
+  }
+  return files.length;
+}
+
+/**
+ * Resolve navigation per collection and merge, reading the tree
+ * `resolveProject` already decided on — authored, inherited, or derived.
+ */
+async function inspectNavigation(input: {
+  project: ResolvedProject;
+  issues: DoctorIssue[];
+}): Promise<DoctorReport["navigation"]> {
+  const { project, issues } = input;
+  const readable = project.collections.filter((entry) => entry.contentDir);
+  if (readable.length === 0) {
+    return null;
+  }
+
+  const groups: string[] = [];
+  const routed = new Set<string>();
+  const unrepresented: string[] = [];
+  const origins = new Set<NavigationOrigin>();
+
+  for (const collection of readable) {
+    const contentDir = collection.contentDir as string;
+    origins.add(collection.navigationOrigin);
+
+    const mounts = [
+      { pathPrefix: "", urlPrefix: collection.routePrefix },
+      ...(collection.mounts ?? []),
+    ];
+    const navigationOptions = {
+      srcDir: path.dirname(contentDir),
+      docsDirName: path.basename(contentDir),
+      mounts,
+    };
+
+    const manifest = await resolveDocsNavigation({
+      ...navigationOptions,
+      groups: collection.groups ?? [],
+      nav: collection.navigation,
+    });
+
+    for (const unknown of manifest.unknown) {
+      issues.push({
+        id: "nav.unknown-group",
+        level: "error",
+        message: `${unknown.urlPath} declares unknown group "${unknown.slug}"`,
+        owner: `collections.${collection.key}.groups`,
+        fix: "Add the group to `groups`, or fix the page's `group:` frontmatter.",
+      });
+    }
+
+    const walk = (nodes: typeof manifest.groups): void => {
+      for (const group of nodes) {
+        for (const page of group.pages) {
+          routed.add(page.urlPath);
+        }
+        walk(group.children);
+      }
+    };
+    walk(manifest.groups);
+    for (const page of manifest.ungrouped) {
+      routed.add(page.urlPath);
+    }
+    groups.push(...manifest.groups.map((group) => group.title));
+
+    // A page the curated tree never mentions still renders — it falls back to
+    // the root of `ungrouped`. That is the signal worth reporting: the page
+    // appears at the root of the sidebar and llms.txt by default rather than
+    // by decision. Only meaningful when curation was intended, and only
+    // computable when every root entry is a literal path.
+    const rootEntries =
+      collection.navigationOrigin === "inferred"
+        ? []
+        : (collection.navigation ?? []);
+    const curatable =
+      rootEntries.length > 0 &&
+      rootEntries.every(
+        (entry) => typeof entry === "string" || !("include" in entry)
+      );
+    if (curatable) {
+      const placedAtRoot = new Set(
+        rootEntries
+          .filter((entry): entry is string => typeof entry === "string")
+          .map((entry) => toDocsUrlPath(entry, mounts))
+      );
+      for (const page of manifest.ungrouped) {
+        if (!placedAtRoot.has(page.urlPath)) {
+          unrepresented.push(page.urlPath);
+        }
+      }
+    }
+  }
+
+  if (unrepresented.length > 0) {
+    issues.push({
+      id: "nav.unrepresented-page",
+      level: "warn",
+      message: `${unrepresented.length} page${unrepresented.length === 1 ? " is" : "s are"} absent from the curated navigation and fall back to the root: ${unrepresented.slice(0, 5).join(", ")}${unrepresented.length > 5 ? ", …" : ""}`,
+      owner: "navigation",
+      fix: "Place them in `navigation`, or remove the files.",
     });
   }
 
+  const origin =
+    origins.size === 1 ? ([...origins][0] as NavigationOrigin) : "explicit";
+
   return {
-    key,
-    routePrefix,
-    contentDir,
-    pageCount: files.length,
-    files,
+    origin,
+    groups,
+    routedPages: routed.size,
+    unrepresentedPages: unrepresented,
   };
 }
 
@@ -368,15 +417,18 @@ export async function runDoctorCommand(
 
   const srcDir = path.resolve(args.srcDir);
   const docsDirNames = args.docsDirs.length > 0 ? args.docsDirs : ["docs"];
-  const docsDirs = docsDirNames.map((dir) => path.resolve(srcDir, dir));
   // Resolved against cwd, not `--src` — that is what `leadtype generate` does,
   // and the two commands taking the same flag differently is its own bug.
   const outDir = path.resolve(args.outDir);
   const issues: DoctorIssue[] = [];
 
-  let loaded: LoadedDocsConfig | null = null;
+  // One call does config discovery, source-owned inheritance, normalization,
+  // inference, and per-collection content resolution. Doctor reports on the
+  // result rather than re-deriving it — re-deriving is how this command and
+  // `nav` both ended up skipping inheritance in the first place.
+  let project: ResolvedProject;
   try {
-    loaded = await loadDocsConfig({ cwd: srcDir, docsDirs });
+    project = await resolveProject({ cwd: srcDir, docsDirs: docsDirNames });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // A config that can't load is the whole answer — every later check would
@@ -404,17 +456,27 @@ export async function runDoctorCommand(
     );
   }
 
-  if (!loaded) {
+  // Environmental problems are diagnostics, not exceptions — doctor's whole
+  // job is to report them with the command that fixes each one.
+  for (const diagnostic of project.diagnostics) {
     issues.push({
-      id: "config.missing",
-      level: "warn",
-      message: `no leadtype.config.* at "${srcDir}" and no docs.config.* in ${docsDirNames.join(", ")}`,
-      fix: "leadtype init",
+      id: diagnostic.id,
+      level: diagnostic.level,
+      message: diagnostic.message,
+      ...(diagnostic.owner ? { owner: diagnostic.owner } : {}),
+      ...(diagnostic.fix ? { fix: diagnostic.fix } : {}),
     });
   }
 
-  const configDir = loaded ? path.dirname(loaded.path) : srcDir;
-  const resolved = loaded?.resolved;
+  const loaded: LoadedDocsConfig | null = project.configPath
+    ? {
+        config: project.config as LoadedDocsConfig["config"],
+        path: project.configPath,
+        resolved: project.resolved as ResolvedDocsConfig,
+      }
+    : null;
+  const configDir = project.configDir;
+  const resolved = project.resolved;
 
   for (const deprecation of resolved?.deprecations ?? []) {
     issues.push({
@@ -427,31 +489,20 @@ export async function runDoctorCommand(
   }
 
   const collections: DoctorReport["collections"] = [];
-  const inspections: CollectionInspection[] = [];
-  for (const collection of resolved?.collections ?? []) {
-    const authored = loaded?.config.collections?.[collection.key];
-    const inspection = await inspectCollection(
-      collection.key,
-      authored,
-      collection.routePrefix,
-      configDir,
-      docsDirs[0] ?? srcDir,
-      issues
-    );
-    inspections.push(inspection);
+  for (const collection of project.collections) {
+    const authored = project.config?.collections?.[collection.key];
+    const pageCount = await countCollectionPages(collection, authored, issues);
     collections.push({
       key: collection.key,
       routePrefix: collection.routePrefix,
-      ...(inspection.contentDir ? { contentDir: inspection.contentDir } : {}),
-      ...(inspection.pageCount === undefined
-        ? {}
-        : { pageCount: inspection.pageCount }),
+      ...(collection.contentDir ? { contentDir: collection.contentDir } : {}),
+      ...(pageCount === undefined ? {} : { pageCount }),
       provenance: collection.provenance,
     });
   }
 
   const sources: DoctorReport["sources"] = [];
-  for (const source of resolved?.sources ?? []) {
+  for (const source of project.sources) {
     if (source.kind === "local") {
       sources.push({
         id: source.id,
@@ -501,24 +552,9 @@ export async function runDoctorCommand(
     });
   }
 
-  // Source-owned inheritance decides what the navigation actually *is* for a
-  // pinned-source project, so doctor has to apply it before reporting — the
-  // un-inherited config would say "inferred" for a project whose tree comes
-  // from the source repo. Uses the same shared implementation generation does.
-  const inherited = await applySourceInheritance({
-    loaded,
-    configDir,
-    issues,
-  });
+  const navigation = await inspectNavigation({ project, issues });
 
-  const navigation = await inspectNavigation({
-    loaded,
-    inherited,
-    inspections,
-    issues,
-  });
-
-  const outputs = await inspectOutputs({ outDir, loaded, inspections, issues });
+  const outputs = await inspectOutputs({ outDir, project, issues });
   const framework = await detectFramework(srcDir);
 
   const report: DoctorReport = {
@@ -546,207 +582,12 @@ export async function runDoctorCommand(
   return finish(io, args, report, srcDir);
 }
 
-type InheritedCollections = {
-  /** Collections after source-owned config was merged in, keyed by id. */
-  byKey: Record<string, DocsCollection>;
-  /** Collection ids whose navigation came from their source repository. */
-  inheritedNavigation: Set<string>;
-};
-
-/**
- * Merge each collection's source-owned config, when its cache is readable.
- *
- * Doctor is read-only and must keep reporting even when a source is unsynced,
- * so a failure here is a finding rather than a throw — the collection simply
- * reports on what the project config alone says.
- */
-async function applySourceInheritance(input: {
-  loaded: LoadedDocsConfig | null;
-  configDir: string;
-  issues: DoctorIssue[];
-}): Promise<InheritedCollections> {
-  const { loaded, configDir, issues } = input;
-  const collections = loaded?.config.collections;
-  const empty: InheritedCollections = {
-    byKey: collections ?? {},
-    inheritedNavigation: new Set<string>(),
-  };
-  if (
-    !(
-      collections &&
-      Object.values(collections).some((entry) => entry.inheritConfig)
-    )
-  ) {
-    return empty;
-  }
-
-  try {
-    const byKey = await inheritCollectionSourceConfigs(collections, configDir);
-    const inheritedNavigation = new Set<string>();
-    for (const [key, collection] of Object.entries(byKey)) {
-      if (
-        collection.navigation !== undefined &&
-        collections[key]?.navigation === undefined
-      ) {
-        inheritedNavigation.add(key);
-      }
-    }
-    return { byKey, inheritedNavigation };
-  } catch (error) {
-    issues.push({
-      id: "source.inherit-failed",
-      level: "warn",
-      message: `source-owned config could not be read: ${error instanceof Error ? error.message : String(error)}`,
-      owner: "inheritConfig",
-      fix: "leadtype sync",
-    });
-    return empty;
-  }
-}
-
-/**
- * Resolve navigation the way the site and the artifacts both will, one
- * collection at a time, then merge. Reporting only the first collection would
- * make a multi-repo project look emptier than it is.
- */
-async function inspectNavigation(input: {
-  loaded: LoadedDocsConfig | null;
-  inherited: InheritedCollections;
-  inspections: CollectionInspection[];
-  issues: DoctorIssue[];
-}): Promise<DoctorReport["navigation"]> {
-  const { loaded, inherited, inspections, issues } = input;
-  const readable = inspections.filter((entry) => entry.contentDir);
-  if (readable.length === 0) {
-    return null;
-  }
-
-  const groups: string[] = [];
-  const routed = new Set<string>();
-  const unrepresented: string[] = [];
-  const origins = new Set<NonNullable<DoctorReport["navigation"]>["origin"]>();
-
-  for (const inspection of readable) {
-    const contentDir = inspection.contentDir as string;
-    const collection = loaded?.resolved.collections.find(
-      (entry) => entry.key === inspection.key
-    );
-    const merged = inherited.byKey[inspection.key];
-    const authoredNav = merged?.navigation ?? collection?.navigation;
-    const authoredGroups = merged?.groups ?? collection?.groups;
-    const isInherited = inherited.inheritedNavigation.has(inspection.key);
-
-    let nav = authoredNav;
-    if (authoredNav && authoredNav.length > 0) {
-      origins.add(isInherited ? "inherited" : "explicit");
-    } else if (authoredGroups && authoredGroups.length > 0) {
-      origins.add("groups");
-    } else {
-      origins.add("inferred");
-      nav = (await inferNavigationFromContent(contentDir)).navigation;
-    }
-
-    // A collection renders under its own route prefix, so its navigation is
-    // resolved with its own mount — the same mapping the runtime project uses.
-    const mounts = [
-      { pathPrefix: "", urlPrefix: collection?.routePrefix ?? "/docs" },
-      ...(collection?.mounts ?? []),
-    ];
-    const navigationOptions = {
-      srcDir: path.dirname(contentDir),
-      docsDirName: path.basename(contentDir),
-      mounts,
-    };
-
-    const manifest = await resolveDocsNavigation({
-      ...navigationOptions,
-      groups: authoredGroups ?? [],
-      nav,
-    });
-
-    for (const unknown of manifest.unknown) {
-      issues.push({
-        id: "nav.unknown-group",
-        level: "error",
-        message: `${unknown.urlPath} declares unknown group "${unknown.slug}"`,
-        owner: `collections.${inspection.key}.groups`,
-        fix: "Add the group to `groups`, or fix the page's `group:` frontmatter.",
-      });
-    }
-
-    const walk = (nodes: typeof manifest.groups): void => {
-      for (const group of nodes) {
-        for (const page of group.pages) {
-          routed.add(page.urlPath);
-        }
-        walk(group.children);
-      }
-    };
-    walk(manifest.groups);
-    for (const page of manifest.ungrouped) {
-      routed.add(page.urlPath);
-    }
-    groups.push(...manifest.groups.map((group) => group.title));
-
-    // A page the curated tree never mentions still renders — it falls back to
-    // the root of `ungrouped`. That is the signal worth reporting on a curated
-    // site: the page exists, appears at the root of the sidebar and llms.txt
-    // by default rather than by decision, and nobody placed it.
-    //
-    // Only meaningful when curation was intended (an authored `navigation`),
-    // and only computable when every root entry is a literal path — an include
-    // glob expands to a page set doctor would have to re-derive to compare
-    // against, so those configs skip the check instead of guessing.
-    const rootEntries = authoredNav ?? [];
-    const curatable =
-      rootEntries.length > 0 &&
-      rootEntries.every(
-        (entry) => typeof entry === "string" || !("include" in entry)
-      );
-    if (curatable) {
-      const placedAtRoot = new Set(
-        rootEntries
-          .filter((entry): entry is string => typeof entry === "string")
-          .map((entry) => toDocsUrlPath(entry, mounts))
-      );
-      for (const page of manifest.ungrouped) {
-        if (!placedAtRoot.has(page.urlPath)) {
-          unrepresented.push(page.urlPath);
-        }
-      }
-    }
-  }
-
-  if (unrepresented.length > 0) {
-    issues.push({
-      id: "nav.unrepresented-page",
-      level: "warn",
-      message: `${unrepresented.length} page${unrepresented.length === 1 ? " is" : "s are"} absent from the curated navigation and fall back to the root: ${unrepresented.slice(0, 5).join(", ")}${unrepresented.length > 5 ? ", …" : ""}`,
-      owner: "navigation",
-      fix: "Place them in `navigation`, or remove the files.",
-    });
-  }
-
-  const origin =
-    origins.size === 1
-      ? ([...origins][0] as NonNullable<DoctorReport["navigation"]>["origin"])
-      : "explicit";
-
-  return {
-    origin,
-    groups,
-    routedPages: routed.size,
-    unrepresentedPages: unrepresented,
-  };
-}
-
 async function inspectOutputs(input: {
   outDir: string;
-  loaded: LoadedDocsConfig | null;
-  inspections: CollectionInspection[];
+  project: ResolvedProject;
   issues: DoctorIssue[];
 }): Promise<DoctorReport["outputs"]> {
-  const { outDir, loaded, inspections, issues } = input;
+  const { outDir, project, issues } = input;
   const present: string[] = [];
   const missing: string[] = [];
   for (const artifact of EXPECTED_SITE_ARTIFACTS) {
@@ -767,9 +608,22 @@ async function inspectOutputs(input: {
     return { root: outDir, present, missing, stale: [] };
   }
 
+  // Freshness is measured against every source file plus the config, so a
+  // content edit or a config edit both mark artifacts stale.
+  const sourceFiles = await Promise.all(
+    project.collections
+      .filter((collection) => collection.contentDir)
+      .map((collection) =>
+        fg("**/*.{md,mdx}", {
+          absolute: true,
+          cwd: collection.contentDir as string,
+          onlyFiles: true,
+        })
+      )
+  );
   const inputPaths = [
-    ...inspections.flatMap((inspection) => inspection.files),
-    ...(loaded ? [loaded.path] : []),
+    ...sourceFiles.flat(),
+    ...(project.configPath ? [project.configPath] : []),
   ];
   const newestInput = await newestMtime(inputPaths);
   const stale: string[] = [];

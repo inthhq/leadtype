@@ -2,11 +2,8 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import type { PluggableList } from "unified";
-import {
-  findNearestNodeModules,
-  type LoadedDocsConfig,
-  loadDocsConfig,
-} from "../cli/generate";
+import { findNearestNodeModules } from "../cli/generate";
+import { type LoadedDocsConfig, loadDocsConfig } from "../config/load";
 import type { DocsPathMount } from "../internal/docs-url";
 import { setLogFormat, setVerbose } from "../internal/logger";
 import { getFlattenerNames } from "../internal/remark-phase";

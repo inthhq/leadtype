@@ -19,6 +19,14 @@ export {
   normalizeDocsConfig,
 } from "./config/normalize";
 export {
+  type NavigationOrigin,
+  type ProjectDiagnostic,
+  type ResolvedProject,
+  type ResolvedProjectCollection,
+  type ResolveProjectOptions,
+  resolveProject,
+} from "./config/project";
+export {
   type ConfigDeprecation,
   type ConfigValueOrigin,
   type FieldProvenance,

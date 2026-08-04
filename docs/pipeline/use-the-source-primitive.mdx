@@ -36,20 +36,18 @@ Two descriptions of one project drift. When they do, the rendered site and the g
 `createDocsProject()` reads the same resolved config the artifact pipeline reads:
 
 ```ts title="lib/source.ts"
-// @noErrors - `../docs/docs.config` is your project's own config file.
 import { createDocsProject } from "leadtype";
-import docsConfig from "../docs/docs.config";
 
 export const source = await createDocsProject({
-  config: docsConfig,
-  configPath: "docs/docs.config.ts",
   baseUrl: "https://example.com",
 });
 ```
 
+It discovers `leadtype.config.*` or `docs.config.*` the same way the CLI does, so an app that already has a config file does not import it just to hand it straight back. Pass `config` when you hold one already, or `cwd` when the project root isn't the working directory.
+
 It returns a **superset of `DocsSource`**, so every first-party adapter takes it unchanged — `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working with no parallel code path.
 
-`configPath` fixes both the content root and where the config's relative paths resolve, using the same rules the CLI uses: a `docs.config.*` sits inside the docs directory, a `leadtype.config.*` sits at the project root above it. Pass `configDir` and `contentDir` instead when you want to be explicit.
+The content root follows the same rule the CLI's discovery uses: a `docs.config.*` sits inside the docs directory, a `leadtype.config.*` sits at the project root above it. Pass `contentDir` to override it.
 
 ### What it adds
 

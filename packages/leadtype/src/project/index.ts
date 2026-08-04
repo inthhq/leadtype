@@ -25,11 +25,9 @@
  * `leadtype sync`, not an implicit network call.
  */
 
-import { existsSync } from "node:fs";
 import path from "node:path";
 import type { PluggableList } from "unified";
-import { inheritCollectionSourceConfigs } from "../config/inherit";
-import { normalizeDocsConfig } from "../config/normalize";
+import { resolveProject } from "../config/project";
 import type { ResolvedDocsCollection, ResolvedSource } from "../config/types";
 import type { DocsI18nConfig, LocaleCode } from "../i18n";
 import {
@@ -53,7 +51,6 @@ import {
   type DocsPageMeta,
   type DocsSource,
 } from "../source";
-import { readSyncManifest, resolveCollection } from "../sync/sync";
 import type { DocsFrontmatter, DocsTransformerOptions } from "../transformers";
 
 /** A page, plus which collection it came from. */
@@ -90,8 +87,14 @@ export type DocsProject<
 export type CreateDocsProjectConfig<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 > = {
-  /** The project's docs config, as authored. */
-  config: DocsConfig;
+  /**
+   * The project's docs config. Omit it to discover `leadtype.config.*` or
+   * `docs.config.*` from `cwd` — an app that already has a config file has no
+   * reason to import it just to hand it straight back.
+   */
+  config?: DocsConfig;
+  /** Where to discover the config from, when `config` is omitted. Defaults to cwd. */
+  cwd?: string;
   /**
    * Path to the config file this came from. Preferred over `configDir`: it
    * fixes both where relative paths resolve *and* where the content root is,
@@ -121,7 +124,6 @@ export type CreateDocsProjectConfig<
   transformers?: DocsTransformerOptions<TFrontmatter>["transformers"];
 };
 
-const DEFAULT_CONTENT_DIRNAME = "docs";
 const LEADING_SLASH = /^\//;
 
 function collectionMounts(
@@ -139,97 +141,45 @@ function collectionMounts(
   ];
 }
 
-/**
- * Resolve a collection's content directory without touching the network.
- *
- * For a remote collection that means reading the sync cache and checking the
- * manifest still matches the configured repository and ref — a cache left over
- * from a different ref would otherwise render stale content that looks fine.
- */
-async function resolveCollectionDir(
-  collection: ResolvedDocsCollection,
-  config: DocsConfig,
-  configDir: string,
-  fallbackContentDir: string
-): Promise<string> {
-  const authored = config.collections?.[collection.key];
-  if (!authored) {
-    return fallbackContentDir;
-  }
-  const resolved = resolveCollection(collection.key, authored, configDir);
-  if (!resolved.remote) {
-    if (!existsSync(resolved.absoluteDir)) {
-      throw new Error(
-        `createDocsProject: collection "${collection.key}" points at "${resolved.absoluteDir}", which does not exist. Check its \`dir\` in your docs config.`
-      );
-    }
-    return resolved.absoluteDir;
-  }
-
-  const { repository, ref, cacheDir } = resolved.remote;
-  if (!existsSync(path.join(cacheDir, ".git"))) {
-    throw new Error(
-      `createDocsProject: collection "${collection.key}" reads ${repository}@${ref}, which has not been synced (no checkout at "${cacheDir}"). Run \`leadtype sync\` first — the runtime never clones.`
-    );
-  }
-  const manifest = await readSyncManifest(cacheDir);
-  if (!manifest) {
-    throw new Error(
-      `createDocsProject: the cache for collection "${collection.key}" at "${cacheDir}" has no sync manifest, so its revision can't be verified. Run \`leadtype sync --refresh\`.`
-    );
-  }
-  if (manifest.repository !== repository || manifest.ref !== ref) {
-    throw new Error(
-      `createDocsProject: the cache for collection "${collection.key}" holds ${manifest.repository}@${manifest.ref}, but the config asks for ${repository}@${ref}. Run \`leadtype sync --refresh\`.`
-    );
-  }
-  if (!existsSync(resolved.absoluteDir)) {
-    throw new Error(
-      `createDocsProject: collection "${collection.key}" expects "${authored.dir}" inside ${repository}@${ref}, but "${resolved.absoluteDir}" does not exist. Check the collection's \`dir\`.`
-    );
-  }
-  return resolved.absoluteDir;
-}
-
 export async function createDocsProject<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
   input: CreateDocsProjectConfig<TFrontmatter>
 ): Promise<DocsProject<TFrontmatter>> {
-  const configDir = path.resolve(
-    input.configDir ??
-      (input.configPath ? path.dirname(input.configPath) : process.cwd())
-  );
-
-  // Source-owned inheritance runs before normalization, exactly as generation
-  // does it — same function, so the rendered site and the generated artifacts
-  // cannot end up with different navigation for the same collection.
-  const withInheritance: DocsConfig = input.config.collections
-    ? {
-        ...input.config,
-        collections: await inheritCollectionSourceConfigs(
-          input.config.collections,
-          configDir
-        ),
-      }
-    : input.config;
-
-  const { config, resolved } = normalizeDocsConfig(withInheritance, {
-    configDir,
+  // One shared pipeline: discovery, source-owned inheritance, normalization,
+  // inference, and per-collection content resolution. `generate`, `doctor`,
+  // and `nav` read the same result, which is what keeps the rendered site and
+  // the generated artifacts describing one project.
+  const project = await resolveProject({
+    cwd:
+      input.cwd ??
+      (input.configPath ? path.dirname(input.configPath) : undefined),
+    ...(input.configDir ? { cwd: input.configDir } : {}),
+    ...(input.contentDir ? { contentDir: input.contentDir } : {}),
+    ...(input.config ? { config: input.config } : {}),
+    ...(input.configPath ? { configPath: input.configPath } : {}),
   });
 
-  // A `docs.config.*` lives *inside* the docs directory; a `leadtype.config.*`
-  // lives at the project root above it. Same rule the CLI's config lookup
-  // uses, so a project and a `generate` run agree on the content root.
-  const configIsSourceOwned = input.configPath
-    ? path.basename(input.configPath).startsWith("docs.config.")
-    : false;
-  const fallbackContentDir = path.resolve(
-    input.contentDir ??
-      (configIsSourceOwned
-        ? configDir
-        : path.join(configDir, DEFAULT_CONTENT_DIRNAME))
-  );
+  // A resolution failure is fatal here: unlike doctor, there is nothing useful
+  // to hand back to a renderer that asked for a working source.
+  const blocking = project.diagnostics.find((entry) => entry.level === "error");
+  if (blocking) {
+    // The runtime adds context the shared diagnostic can't: a request handler
+    // reaching an unsynced source must never resolve it by cloning.
+    const runtimeNote = blocking.id.startsWith("source.")
+      ? " The runtime reads the sync cache and never clones."
+      : "";
+    throw new Error(
+      `createDocsProject: ${blocking.message}.${blocking.fix ? ` Run \`${blocking.fix}\`.` : ""}${runtimeNote}`
+    );
+  }
+  const config = project.config;
+  const resolved = project.resolved;
+  if (!(config && resolved)) {
+    throw new Error(
+      `createDocsProject: no docs config found from "${project.rootDir}". Pass \`config\`, or add a leadtype.config.* / docs.config.* file.`
+    );
+  }
 
   const shared = {
     baseUrl: input.baseUrl,
@@ -247,13 +197,8 @@ export async function createDocsProject<
   } satisfies Partial<CreateDocsSourceConfig<TFrontmatter>>;
 
   const sourcesByCollection = new Map<string, DocsSource<TFrontmatter>>();
-  for (const collection of resolved.collections) {
-    const contentDir = await resolveCollectionDir(
-      collection,
-      config,
-      configDir,
-      fallbackContentDir
-    );
+  for (const collection of project.collections) {
+    const contentDir = collection.contentDir as string;
     const authored = config.collections?.[collection.key];
     sourcesByCollection.set(
       collection.key,
@@ -276,7 +221,7 @@ export async function createDocsProject<
           ? { typeTableBasePath: input.typeTableBasePath }
           : {}),
         ...(config.openapi && resolved.mode === "single-source"
-          ? { openapi: config.openapi, openapiCwd: configDir }
+          ? { openapi: config.openapi, openapiCwd: project.configDir }
           : {}),
         ...(authored?.flatteners ? {} : {}),
       })
@@ -416,12 +361,12 @@ export async function createDocsProject<
     };
   }
 
-  const primary = getSource(resolved.collections[0]?.key ?? "");
+  const primary = getSource(project.collections[0]?.key ?? "");
 
   return {
     contentDir: primary.contentDir,
-    collections: resolved.collections,
-    sources: resolved.sources,
+    collections: project.collections,
+    sources: project.sources,
     getSource,
     getNavigation,
     listPages,

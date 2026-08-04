@@ -1,6 +1,6 @@
 import path from "node:path";
+import { loadLeadtypeConfig } from "../config/load";
 import { type SyncMode, syncCollections } from "../sync/sync";
-import { loadLeadtypeConfig } from "./generate";
 
 export type SyncCliIo = {
   stderr: Pick<NodeJS.WriteStream, "write">;

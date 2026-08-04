@@ -26,7 +26,9 @@ The two entry points are structurally identical and differ in *ownership*.
 | `leadtype.config.ts` (project root) | `defineLeadtypeConfig` | the site that publishes the docs | sources, routes, feeds, redirects, robots policy, agent surfaces |
 | `docs.config.ts` (in a docs dir) | `defineDocsConfig` | the repo that owns the content | navigation, frontmatter schema, flatteners, mounts |
 
-A single-repo project has one file and the distinction does not matter — use whichever name reads better. It starts mattering when a docs site pins a source repo: the source repo ships its own `docs.config.ts`, and the site inherits the content-owned half of it with `inheritConfig`. Site controls never inherit — a source repo cannot set the robots policy of a site that renders it.
+**If you have one repo, use `defineDocsConfig` and stop reading this section.** The two helpers accept the same shape and behave identically; the distinction is about *ownership*, and ownership only becomes a question once more than one repo is involved.
+
+It starts mattering when a docs site pins a source repo: the source repo ships its own `docs.config.ts`, and the site inherits the content-owned half of it with `inheritConfig`. Site controls never inherit — a source repo cannot set the robots policy of a site that renders it.
 
 ```ts
 // leadtype.config.ts — the docs site
@@ -131,6 +133,42 @@ which is how a migration diagnostic can point at your line rather than the canon
 ### Single-source projects resolve to one collection
 
 A config with no `collections` map resolves to exactly one collection, so downstream code has a single shape to handle. Its `dir` is deliberately unset: in single-source mode the content root comes from the host — `--docs-dir` for the CLI, `contentDir` for the runtime source — and the config genuinely does not know it. Provenance records that as `origin: "default"` rather than inventing a path.
+
+## One pipeline: `resolveProject()`
+
+Answering "what is this project?" takes five ordered steps — discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. Every command needs all five, and `resolveProject()` is the one function that runs them.
+
+```ts
+import { resolveProject } from "leadtype";
+
+const project = await resolveProject({ cwd: "." });
+
+project.configPath;                    // what was discovered
+project.collections[0].contentDir;     // resolved through the sync cache
+project.collections[0].navigationOrigin; // explicit | inherited | groups | inferred
+project.sources;                       // the acquisition graph
+project.inference;                     // what was derived, and from what
+project.diagnostics;                   // what stopped a step, and the fix
+```
+
+This exists because the alternative was tried. `generate`, `doctor`, `nav`, and `createDocsProject` each assembled those steps by hand, and the cost landed exactly where you'd predict: `doctor` and `nav` shipped with the **same two bugs**. Both skipped inheritance, so a project whose navigation lives in its source repo reported as `inferred`. Both resolved a remote collection's `dir` against the config directory instead of its checkout, so every page vanished. Two commands, written days apart, same two omissions.
+
+### Diagnostics, not exceptions
+
+`resolveProject` throws only for a genuinely malformed config — there is no project to describe. Everything environmental is a diagnostic on the result:
+
+```ts
+{
+  id: "source.not-synced",
+  level: "error",
+  message: 'collection "docs" reads …@main, which has no checkout at ".leadtype/acme"',
+  collection: "docs",
+  owner: "collections.docs.repository",
+  fix: "leadtype sync",
+}
+```
+
+That split is what lets one function serve both kinds of caller: [`leadtype doctor`](/docs/reference/doctor) reports an unsynced source and keeps going, while `createDocsProject()` refuses to hand a renderer a source it cannot read. Only the caller knows which is right, so the resolver doesn't decide.
 
 ## Reading it yourself
 

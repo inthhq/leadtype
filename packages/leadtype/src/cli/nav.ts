@@ -13,16 +13,11 @@
  * moves content, or changes a public route.
  */
 
-import { existsSync } from "node:fs";
 import path from "node:path";
-import { inferNavigationFromContent } from "../config/infer";
-import { inheritCollectionSourceConfigs } from "../config/inherit";
+import { type NavigationOrigin, resolveProject } from "../config/project";
 import { toDocsUrlPath } from "../internal/docs-url";
-import type { DocsNavEntry } from "../llm";
 import { resolveDocsNavigation } from "../llm";
 import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
-import { resolveCollection } from "../sync/sync";
-import { loadDocsConfig } from "./generate";
 
 export type NavIo = {
   stderr: Pick<NodeJS.WriteStream, "write">;
@@ -56,7 +51,7 @@ export type NavReport = {
   ok: boolean;
   collection: string;
   /** How the tree was produced. */
-  origin: "explicit" | "groups" | "inferred" | "inherited";
+  origin: NavigationOrigin;
   pageCount: number;
   tree: NavTreeNode[];
   drift: NavDrift;
@@ -249,81 +244,44 @@ export async function runNavCommand(
   const docsDirs = docsDirNames.map((dir) => path.resolve(srcDir, dir));
 
   try {
-    const loaded = await loadDocsConfig({ cwd: srcDir, docsDirs });
-    const resolved = loaded?.resolved;
-    const collectionKey =
-      args.collection ?? resolved?.collections[0]?.key ?? "docs";
-    const collection = resolved?.collections.find(
+    const project = await resolveProject({ cwd: srcDir, docsDirs });
+    const collectionKey = args.collection ?? project.collections[0]?.key;
+    const collection = project.collections.find(
       (entry) => entry.key === collectionKey
     );
-    if (args.collection && !collection) {
+    if (!collection) {
       io.stderr.write(
-        `unknown collection "${args.collection}". Declared: ${(resolved?.collections ?? []).map((entry) => entry.key).join(", ") || "(none)"}\n`
+        `unknown collection "${args.collection ?? ""}". Declared: ${project.collections.map((entry) => entry.key).join(", ") || "(none)"}\n`
       );
       return 2;
     }
 
-    const configDir = loaded ? path.dirname(loaded.path) : srcDir;
-    const declared = loaded?.config.collections;
-
-    // Source-owned inheritance decides what a pinned-source project's tree
-    // *is*, and config loading doesn't apply it — generation does, later.
-    // Without this, a project whose navigation lives in its source repo
-    // reports as "inferred" with a filesystem-derived tree the build never
-    // uses. Same shared implementation generation calls.
-    let collections = declared;
-    let navigationWasInherited = false;
-    if (declared && Object.values(declared).some((c) => c.inheritConfig)) {
-      try {
-        collections = await inheritCollectionSourceConfigs(declared, configDir);
-        navigationWasInherited =
-          collections[collectionKey]?.navigation !== undefined &&
-          declared[collectionKey]?.navigation === undefined;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        io.stderr.write(
-          `Warning: source-owned config could not be read, so inherited navigation is not shown: ${message}\n  → Run \`leadtype sync\` first.\n`
-        );
-      }
-    }
-
-    const authored = collections?.[collectionKey];
-    // A remote collection's `dir` is relative to its checkout, not the config
-    // directory — resolveCollection is what knows the difference.
-    const contentDir = authored
-      ? resolveCollection(collectionKey, authored, configDir).absoluteDir
-      : (docsDirs[0] ?? srcDir);
-
-    if (!existsSync(contentDir)) {
+    // Environmental problems belong to the collection, not the tree: an
+    // unsynced source has no content to resolve navigation against.
+    const blocking = project.diagnostics.find(
+      (entry) => entry.level === "error" && entry.collection === collection.key
+    );
+    if (!collection.contentDir) {
       io.stderr.write(
-        `collection "${collectionKey}" points at "${contentDir}", which does not exist. Run \`leadtype sync\` if it comes from a remote source.\n`
+        `${blocking?.message ?? `collection "${collection.key}" has no readable content directory`}\n${
+          blocking?.fix ? `  → ${blocking.fix}\n` : ""
+        }`
       );
       return 1;
     }
 
-    const authoredNav = authored?.navigation ?? collection?.navigation;
-    const authoredGroups = authored?.groups ?? collection?.groups;
-    let origin: NavReport["origin"] = navigationWasInherited
-      ? "inherited"
-      : "explicit";
-    let nav: DocsNavEntry[] | undefined = authoredNav;
-    if (!(authoredNav && authoredNav.length > 0)) {
-      if (authoredGroups && authoredGroups.length > 0) {
-        origin = "groups";
-      } else {
-        origin = "inferred";
-        nav = (await inferNavigationFromContent(contentDir)).navigation;
-      }
-    }
+    const contentDir = collection.contentDir;
+    const origin = collection.navigationOrigin;
+    const nav = collection.navigation;
 
     const mounts = [
-      { pathPrefix: "", urlPrefix: collection?.routePrefix ?? "/docs" },
-      ...(collection?.mounts ?? []),
+      { pathPrefix: "", urlPrefix: collection.routePrefix },
+      ...(collection.mounts ?? []),
     ];
     const manifest = await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
-      groups: authoredGroups ?? [],
+      groups: collection.groups ?? [],
       nav,
       mounts,
     });
@@ -333,7 +291,9 @@ export async function runNavCommand(
     // include glob at the root expands to a set this comparison cannot
     // reconstruct, so those configs report no unplaced pages rather than a
     // list of false positives.
-    const rootEntries = authoredNav ?? [];
+    // A derived tree places everything by construction, so only a curated one
+    // can have unplaced pages.
+    const rootEntries = origin === "inferred" ? [] : (nav ?? []);
     const rootIsLiteral =
       origin !== "explicit" ||
       rootEntries.every(
@@ -352,7 +312,7 @@ export async function runNavCommand(
 
     const report: NavReport = {
       ok: true,
-      collection: collectionKey,
+      collection: collection.key,
       origin,
       pageCount: countPages(manifest),
       tree: toTree(manifest.groups),

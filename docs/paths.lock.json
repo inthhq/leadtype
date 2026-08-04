@@ -39,7 +39,7 @@
     },
     {
       "path": "/docs/concepts/config-model",
-      "hash": "8585c01de32261b0"
+      "hash": "a386659da90a3883"
     },
     {
       "path": "/docs/concepts/evals",
@@ -107,7 +107,7 @@
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
-      "hash": "9d11498866b40b2d"
+      "hash": "fdc22ea01f060ef8"
     },
     {
       "path": "/docs/pipeline/validate-in-ci",

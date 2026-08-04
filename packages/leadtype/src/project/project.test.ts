@@ -255,7 +255,9 @@ describe("multi-collection project", () => {
         },
         configDir: dir,
       })
-    ).rejects.toThrow(/does not exist. Check its `dir`/);
+    ).rejects.toThrow(
+      /collection "docs" points at .*content\/missing.*does not exist/s
+    );
   });
 });
 
@@ -277,7 +279,7 @@ describe("remote collections are cache-only", () => {
     const dir = await fixture({ "placeholder.txt": "" });
     await expect(
       createDocsProject({ config: remoteConfig, configDir: dir })
-    ).rejects.toThrow(/has not been synced.*leadtype sync.*never clones/s);
+    ).rejects.toThrow(/no checkout at.*leadtype sync.*never clones/s);
   });
 
   it("rejects a cache holding a different revision than the config asks for", async () => {
