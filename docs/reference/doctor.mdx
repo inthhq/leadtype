@@ -57,7 +57,7 @@ Everything it reports comes from the same config loader and resolvers `generate`
 
 **Collections and routes** — that each content directory exists and is readable, that include/exclude globs actually match files, and each collection's resolved public route prefix.
 
-**Navigation** — whether the tree was authored, derived from `groups`, or inferred from the content tree; a summary of the resolved sections; and pages absent from a curated tree that fall back to the root of the sidebar rather than being placed deliberately.
+**Navigation** — whether the tree was authored here, **inherited** from a source repository, derived from `groups`, or inferred from the content tree; a summary of the resolved sections; and pages absent from a curated tree that fall back to the root of the sidebar rather than being placed deliberately.
 
 **Outputs and integrations** — the output root, which expected artifacts are present or missing, which are older than the newest source file or the config, the detected framework adapter, and which agent surfaces are enabled.
 
@@ -137,6 +137,7 @@ leadtype doctor --json
 | `source.cache-stale` | error | The cache holds a different revision than the config asks for. |
 | `source.mutable-ref` | warn | A source tracks a branch or moving tag. |
 | `source.shared-acquisition` | info | One clone is read by several collections. |
+| `source.inherit-failed` | warn | A source-owned config could not be read, so inheritance was skipped. |
 | `source.dir-missing` | error | A collection's `dir` does not exist. |
 | `collection.no-matches` | warn | A collection's globs match no files. |
 | `nav.unknown-group` | error | A page declares a `group:` that no config declares. |
@@ -151,5 +152,5 @@ leadtype doctor --json
 | --- | --- | --- |
 | `--src <dir>` | `.` | Project root to inspect. |
 | `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeatable. |
-| `--out <dir>` | `public` | Output root to check artifacts against. |
+| `--out <dir>` | `public` | Output root to check artifacts against, resolved against the current directory like `leadtype generate`. |
 | `--json` | off | Machine-readable report on stdout. Warnings stay on stderr. |

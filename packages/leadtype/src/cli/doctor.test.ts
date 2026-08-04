@@ -374,13 +374,85 @@ describe("findings", () => {
       "public/llms.txt": "# Acme\n",
     });
 
-    const { report } = await runJson(dir, ["--out", "public"]);
+    // `--out` resolves against cwd, matching `leadtype generate` — the two
+    // commands must read the same flags the same way.
+    const { report } = await runJson(dir, ["--out", path.join(dir, "public")]);
     expect(report.outputs.present).toEqual(["llms.txt"]);
     expect(report.outputs.missing.length).toBeGreaterThan(0);
     expect(
       report.issues.find((entry) => entry.id === "output.missing-artifacts")
         ?.fix
     ).toBe("leadtype generate");
+  });
+});
+
+describe("source-owned inheritance", () => {
+  const config = `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      inheritConfig: true,
+    },
+  },
+};`;
+
+  async function syncedFixture(): Promise<string> {
+    const dir = await fixture({
+      "leadtype.config.ts": config,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      ".leadtype/acme/docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  navigation: [{ title: "Guides", base: "guides", pages: ["auth"] }],
+};`,
+      ".leadtype/acme/docs/guides/auth.mdx": page("Auth"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+    return dir;
+  }
+
+  it("reports the navigation the source repo owns, not an inferred one", async () => {
+    const { report } = await runJson(await syncedFixture());
+
+    // Without applying inheritance doctor would call this "inferred" and show
+    // a filesystem-derived tree — for a pinned-source project that is exactly
+    // the question doctor exists to answer, answered wrongly.
+    expect(report.navigation?.origin).toBe("inherited");
+    expect(report.navigation?.groups).toEqual(["Guides"]);
+  });
+
+  it("keeps reporting when the source config cannot be read", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": config,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      ".leadtype/acme/docs/index.mdx": page("Home"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // Read-only means degrading to a finding, never throwing.
+    expect(code).toBe(0);
+    expect(
+      report.issues.find((entry) => entry.id === "source.inherit-failed")?.level
+    ).toBe("warn");
+    expect(report.navigation).not.toBeNull();
   });
 });
 

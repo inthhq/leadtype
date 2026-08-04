@@ -19,6 +19,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { glob as fg } from "tinyglobby";
 import { inferNavigationFromContent } from "../config/infer";
+import { inheritCollectionSourceConfigs } from "../config/inherit";
 import { serializeResolvedConfig } from "../config/types";
 import { toDocsUrlPath } from "../internal/docs-url";
 import type { DocsCollection } from "../llm";
@@ -81,8 +82,8 @@ export type DoctorReport = {
     provenance: Record<string, unknown>;
   }[];
   navigation: {
-    /** Whether the tree was authored or derived from the content tree. */
-    origin: "explicit" | "inferred" | "groups";
+    /** Where the tree came from. */
+    origin: "explicit" | "inherited" | "inferred" | "groups";
     groups: string[];
     routedPages: number;
     unrepresentedPages: string[];
@@ -368,7 +369,9 @@ export async function runDoctorCommand(
   const srcDir = path.resolve(args.srcDir);
   const docsDirNames = args.docsDirs.length > 0 ? args.docsDirs : ["docs"];
   const docsDirs = docsDirNames.map((dir) => path.resolve(srcDir, dir));
-  const outDir = path.resolve(srcDir, args.outDir);
+  // Resolved against cwd, not `--src` — that is what `leadtype generate` does,
+  // and the two commands taking the same flag differently is its own bug.
+  const outDir = path.resolve(args.outDir);
   const issues: DoctorIssue[] = [];
 
   let loaded: LoadedDocsConfig | null = null;
@@ -498,8 +501,19 @@ export async function runDoctorCommand(
     });
   }
 
+  // Source-owned inheritance decides what the navigation actually *is* for a
+  // pinned-source project, so doctor has to apply it before reporting — the
+  // un-inherited config would say "inferred" for a project whose tree comes
+  // from the source repo. Uses the same shared implementation generation does.
+  const inherited = await applySourceInheritance({
+    loaded,
+    configDir,
+    issues,
+  });
+
   const navigation = await inspectNavigation({
     loaded,
+    inherited,
     inspections,
     issues,
   });
@@ -532,6 +546,64 @@ export async function runDoctorCommand(
   return finish(io, args, report, srcDir);
 }
 
+type InheritedCollections = {
+  /** Collections after source-owned config was merged in, keyed by id. */
+  byKey: Record<string, DocsCollection>;
+  /** Collection ids whose navigation came from their source repository. */
+  inheritedNavigation: Set<string>;
+};
+
+/**
+ * Merge each collection's source-owned config, when its cache is readable.
+ *
+ * Doctor is read-only and must keep reporting even when a source is unsynced,
+ * so a failure here is a finding rather than a throw — the collection simply
+ * reports on what the project config alone says.
+ */
+async function applySourceInheritance(input: {
+  loaded: LoadedDocsConfig | null;
+  configDir: string;
+  issues: DoctorIssue[];
+}): Promise<InheritedCollections> {
+  const { loaded, configDir, issues } = input;
+  const collections = loaded?.config.collections;
+  const empty: InheritedCollections = {
+    byKey: collections ?? {},
+    inheritedNavigation: new Set<string>(),
+  };
+  if (
+    !(
+      collections &&
+      Object.values(collections).some((entry) => entry.inheritConfig)
+    )
+  ) {
+    return empty;
+  }
+
+  try {
+    const byKey = await inheritCollectionSourceConfigs(collections, configDir);
+    const inheritedNavigation = new Set<string>();
+    for (const [key, collection] of Object.entries(byKey)) {
+      if (
+        collection.navigation !== undefined &&
+        collections[key]?.navigation === undefined
+      ) {
+        inheritedNavigation.add(key);
+      }
+    }
+    return { byKey, inheritedNavigation };
+  } catch (error) {
+    issues.push({
+      id: "source.inherit-failed",
+      level: "warn",
+      message: `source-owned config could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      owner: "inheritConfig",
+      fix: "leadtype sync",
+    });
+    return empty;
+  }
+}
+
 /**
  * Resolve navigation the way the site and the artifacts both will, one
  * collection at a time, then merge. Reporting only the first collection would
@@ -539,10 +611,11 @@ export async function runDoctorCommand(
  */
 async function inspectNavigation(input: {
   loaded: LoadedDocsConfig | null;
+  inherited: InheritedCollections;
   inspections: CollectionInspection[];
   issues: DoctorIssue[];
 }): Promise<DoctorReport["navigation"]> {
-  const { loaded, inspections, issues } = input;
+  const { loaded, inherited, inspections, issues } = input;
   const readable = inspections.filter((entry) => entry.contentDir);
   if (readable.length === 0) {
     return null;
@@ -551,19 +624,21 @@ async function inspectNavigation(input: {
   const groups: string[] = [];
   const routed = new Set<string>();
   const unrepresented: string[] = [];
-  const origins = new Set<"explicit" | "inferred" | "groups">();
+  const origins = new Set<NonNullable<DoctorReport["navigation"]>["origin"]>();
 
   for (const inspection of readable) {
     const contentDir = inspection.contentDir as string;
     const collection = loaded?.resolved.collections.find(
       (entry) => entry.key === inspection.key
     );
-    const authoredNav = collection?.navigation;
-    const authoredGroups = collection?.groups;
+    const merged = inherited.byKey[inspection.key];
+    const authoredNav = merged?.navigation ?? collection?.navigation;
+    const authoredGroups = merged?.groups ?? collection?.groups;
+    const isInherited = inherited.inheritedNavigation.has(inspection.key);
 
     let nav = authoredNav;
     if (authoredNav && authoredNav.length > 0) {
-      origins.add("explicit");
+      origins.add(isInherited ? "inherited" : "explicit");
     } else if (authoredGroups && authoredGroups.length > 0) {
       origins.add("groups");
     } else {
@@ -654,7 +729,7 @@ async function inspectNavigation(input: {
 
   const origin =
     origins.size === 1
-      ? ([...origins][0] as "explicit" | "inferred" | "groups")
+      ? ([...origins][0] as NonNullable<DoctorReport["navigation"]>["origin"])
       : "explicit";
 
   return {
