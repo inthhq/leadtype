@@ -160,7 +160,32 @@ export type ActivationOutcome = {
   case: ActivationCase;
   decision: ActivationExpectation;
   correct: boolean;
+  /** Model that routed this case, so results stay analyzable per model. */
+  model?: string;
+  /** Zero-based repeat index, for measuring run-to-run variance. */
+  run?: number;
 };
+
+const DECISION_PATTERN = /^(activate|skip)$/i;
+
+/**
+ * Read a router's verdict.
+ *
+ * Deliberately exact rather than a substring search. A reply of
+ * "SKIP, not ACTIVATE" contains the word "activate", and scoring it as one
+ * inflates recall and deflates precision — an eval that reports the number you
+ * hoped for is worse than no eval. Anything that isn't exactly one of the two
+ * words is a malformed response, so it throws rather than guessing.
+ */
+export function parseDecision(text: string): ActivationExpectation {
+  const trimmed = text.trim();
+  if (!DECISION_PATTERN.test(trimmed)) {
+    throw new Error(
+      `router returned ${JSON.stringify(text)}; expected exactly "ACTIVATE" or "SKIP"`
+    );
+  }
+  return trimmed.toLowerCase() === "activate" ? "activate" : "skip";
+}
 
 export type ActivationScore = {
   total: number;

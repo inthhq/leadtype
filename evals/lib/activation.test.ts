@@ -4,6 +4,7 @@ import {
   loadRepoSkill,
   missingActivationSignals,
   missingActivationVerbs,
+  parseDecision,
   parseSkillFrontmatter,
   scoreActivation,
 } from "./activation";
@@ -115,6 +116,27 @@ describe("activation case set", () => {
     );
     // The whole point is routing prompts that never name the tool.
     expect(named).toEqual([]);
+  });
+});
+
+describe("parseDecision", () => {
+  it("accepts either verdict, in any case, with surrounding space", () => {
+    expect(parseDecision("ACTIVATE")).toBe("activate");
+    expect(parseDecision(" skip ")).toBe("skip");
+    expect(parseDecision("Activate")).toBe("activate");
+  });
+
+  it("refuses a reply that merely mentions a verdict", () => {
+    // Substring matching scored this as "activate", which inflates recall and
+    // deflates precision — the eval would report the number you hoped for.
+    for (const reply of [
+      "SKIP, not ACTIVATE",
+      "I would skip this — do not activate.",
+      "ACTIVATE or SKIP?",
+      "",
+    ]) {
+      expect(() => parseDecision(reply)).toThrow(/expected exactly/);
+    }
   });
 });
 

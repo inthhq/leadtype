@@ -40,7 +40,7 @@ It stays a thin pointer, not a third copy of the docs; progressive disclosure me
 
 ## When does a skill activate?
 
-A skill's `description` is the entire activation signal. A client reads name + description from the discovery manifest and decides whether to load the body — so the description has to name the tasks it should win, not just the subject it covers.
+A client reads a skill's **name and description** from the discovery manifest — nothing else — and decides from those two fields alone whether to load the body. The name is usually just an identifier, so the description carries the routing weight: it has to name the tasks the skill should win, not just the subject it covers.
 
 The most common miss is documentation *authoring*. A description like "read and search the Acme documentation" reliably loses prompts such as "add a troubleshooting page", "document this new option", or "rewrite the quickstart" — all of which need the docs. The auto docs-skill therefore names reading, searching, **and** maintaining:
 

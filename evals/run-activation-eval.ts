@@ -20,10 +20,10 @@ import { fileURLToPath } from "node:url";
 import { gateway, generateText } from "ai";
 import {
   type ActivationCase,
-  type ActivationExpectation,
   type ActivationOutcome,
   loadActivationCases,
   loadRepoSkill,
+  parseDecision,
   scoreActivation,
 } from "./lib/activation";
 import { namespaceModelId, parseModelList } from "./lib/models";
@@ -33,6 +33,10 @@ import { withRetry } from "./lib/retry";
 const DEFAULT_MODELS = ["anthropic/claude-haiku-4.5"];
 const DEFAULT_RUNS = 3;
 const DEFAULT_CONCURRENCY = 8;
+// Bounded because both multiply into gateway load: runs multiplies the number
+// of calls, concurrency multiplies how many land at once.
+const MAX_RUNS = 100;
+const MAX_CONCURRENCY = 64;
 const PERCENT = 100;
 const evalsRoot = fileURLToPath(new URL(".", import.meta.url));
 
@@ -51,11 +55,15 @@ function readValue(argv: string[], index: number, flag: string): string {
   return value;
 }
 
-function parsePositiveInt(value: string, flag: string): number {
+function parsePositiveInt(value: string, flag: string, max: number): number {
   if (!/^[1-9]\d*$/.test(value)) {
     throw new Error(`${flag} must be a positive integer`);
   }
-  return Number(value);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed > max) {
+    throw new Error(`${flag} must be between 1 and ${max}`);
+  }
+  return parsed;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -69,9 +77,17 @@ function parseArgs(argv: string[]): CliArgs {
     if (flag === "--models") {
       args.models = parseModelList(readValue(argv, ++index, flag));
     } else if (flag === "--runs") {
-      args.runs = parsePositiveInt(readValue(argv, ++index, flag), flag);
+      args.runs = parsePositiveInt(
+        readValue(argv, ++index, flag),
+        flag,
+        MAX_RUNS
+      );
     } else if (flag === "--concurrency") {
-      args.concurrency = parsePositiveInt(readValue(argv, ++index, flag), flag);
+      args.concurrency = parsePositiveInt(
+        readValue(argv, ++index, flag),
+        flag,
+        MAX_CONCURRENCY
+      );
     } else if (flag === "--label") {
       args.label = readValue(argv, ++index, flag);
     } else {
@@ -87,6 +103,11 @@ You are given one skill's discovery entry (its name and description — the only
 
 Answer with exactly one word: ACTIVATE if this skill should be loaded for this request, or SKIP if it should not. No punctuation, no explanation.`;
 
+/**
+ * Both `name` and `description` go in, because both are what a client reads
+ * from the discovery manifest before loading anything. Measuring the
+ * description alone would test a contract that doesn't exist.
+ */
 function buildPrompt(
   skill: { name: string; description: string },
   profileContext: string,
@@ -104,10 +125,6 @@ function buildPrompt(
     "",
     "ACTIVATE or SKIP?",
   ].join("\n");
-}
-
-function parseDecision(text: string): ActivationExpectation {
-  return /\bactivate\b/i.test(text) ? "activate" : "skip";
 }
 
 type Cell = {
@@ -160,6 +177,8 @@ async function main(): Promise<void> {
       case: cell.entry,
       decision,
       correct: decision === cell.entry.expect,
+      model: cell.model,
+      run: cell.run,
     };
     outcomes.push(outcome);
     const bucket = byModel.get(cell.model) ?? [];
@@ -222,6 +241,8 @@ async function main(): Promise<void> {
         },
         outcomes: outcomes.map((outcome) => ({
           id: outcome.case.id,
+          model: outcome.model,
+          run: outcome.run,
           expect: outcome.case.expect,
           decision: outcome.decision,
           correct: outcome.correct,
