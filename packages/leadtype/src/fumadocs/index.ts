@@ -87,10 +87,22 @@ export type LeadtypeFumadocsSource = Source<LeadtypeFumadocsSourceConfig> & {
  *   const source = await fumadocsSource({ contentDir: "./content/docs" });
  *   const loader = loader({ baseUrl: "/docs", source });
  */
+/**
+ * Accepts either a source description to build, or an already-resolved
+ * `DocsSource` — which `createDocsProject()` satisfies. Passing a project is
+ * the shorter path: it already knows the content root, navigation, mounts, and
+ * OpenAPI overlay from the config, so none of that has to be restated here
+ * only to drift from it later.
+ */
+export type FumadocsSourceConfig =
+  | (CreateDocsSourceConfig & { includeMetaJson?: boolean })
+  | { source: DocsSource; includeMetaJson?: boolean };
+
 export async function fumadocsSource(
-  config: CreateDocsSourceConfig & { includeMetaJson?: boolean }
+  config: FumadocsSourceConfig
 ): Promise<LeadtypeFumadocsSource> {
-  const leadtype = await createDocsSource(config);
+  const leadtype =
+    "source" in config ? config.source : await createDocsSource(config);
   const metas = await leadtype.listPages();
 
   const pageFiles = metas.map((meta) => ({
