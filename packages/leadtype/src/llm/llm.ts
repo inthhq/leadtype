@@ -270,7 +270,7 @@ export type DocsNavIncludeEntry = {
    * that matches nothing the include matched is an error, because it is
    * silently doing nothing.
    */
-  pin?: string[];
+  pin?: string | string[];
 };
 
 export type DocsNavPageEntry = string | DocsNavIncludeEntry;
@@ -2063,6 +2063,33 @@ function normalizeExcludePatterns(
 }
 
 /**
+ * A single pin is the common case, so accept a bare string the way `exclude`
+ * does. Without this, `pin: "setup"` iterates character by character and fails
+ * with `Nav pin "s" did not match` — an error nothing about which suggests the
+ * shape was wrong.
+ */
+function normalizeNavPins(pin: string | string[] | undefined): string[] {
+  if (pin === undefined) {
+    return [];
+  }
+  return typeof pin === "string" ? [pin] : pin;
+}
+
+/** The urlPaths an include entry pins, for conflict detection during assembly. */
+function pinnedUrlPaths(
+  group: ResolvedGroup,
+  entry: DocsNavPageEntry,
+  docsByRelativePath: Map<string, SourceDoc>
+): string[] {
+  if (!isNavIncludeEntry(entry)) {
+    return [];
+  }
+  return normalizeNavPins(entry.pin)
+    .map((pin) => docsByRelativePath.get(joinNavPath(group.base, pin))?.urlPath)
+    .filter((urlPath): urlPath is string => urlPath !== undefined);
+}
+
+/**
  * Reorder an include expansion so pinned pages lead, in the order they were
  * pinned. Everything else keeps its sorted position behind them, so adding a
  * page to the directory never displaces a deliberate choice.
@@ -2075,7 +2102,8 @@ function applyNavPins(
   entry: DocsNavIncludeEntry,
   matches: SourceDoc[]
 ): SourceDoc[] | undefined {
-  if (!entry.pin || entry.pin.length === 0) {
+  const pins = normalizeNavPins(entry.pin);
+  if (pins.length === 0) {
     return;
   }
   const byRelativePath = new Map(
@@ -2083,7 +2111,7 @@ function applyNavPins(
   );
   const leading: SourceDoc[] = [];
   const pinnedPaths = new Set<string>();
-  for (const pin of entry.pin) {
+  for (const pin of pins) {
     const ref = joinNavPath(group.base, pin);
     const doc = byRelativePath.get(ref);
     if (!doc) {
@@ -3617,6 +3645,18 @@ function buildNavigationGroupFromNav(
   const groupSeenUrlPaths = new Set<string>();
   for (const entry of group.pageEntries) {
     const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
+    // Assembly is first-entry-wins by urlPath, so a page an earlier entry
+    // already placed silently swallows a later entry's pin — the pin resolves,
+    // reorders within its own expansion, and then never reaches the tree. A
+    // pin that cannot take effect is an authoring mistake worth naming.
+    for (const urlPath of pinnedUrlPaths(group, entry, docsByRelativePath)) {
+      if (groupSeenUrlPaths.has(urlPath)) {
+        const scope = group.segmentPath.join("/") || "root";
+        throw new Error(
+          `Nav pin for "${urlPath}" under "${scope}" cannot take effect: an earlier entry in the same section already places that page. Remove the earlier entry, or move the pin onto it.`
+        );
+      }
+    }
     for (const page of pages) {
       if (groupSeenUrlPaths.has(page.urlPath)) {
         continue;

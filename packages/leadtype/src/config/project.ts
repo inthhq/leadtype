@@ -24,7 +24,7 @@
 
 import { existsSync } from "node:fs";
 import path from "node:path";
-import type { DocsConfig, DocsNavEntry } from "../llm";
+import type { DocsCollection, DocsConfig, DocsNavEntry } from "../llm";
 import {
   formatSparse,
   readSyncManifest,
@@ -41,6 +41,7 @@ import { inheritCollectionSourceConfigs } from "./inherit";
 import { type LoadedDocsConfig, loadDocsConfig } from "./load";
 import { normalizeDocsConfig } from "./normalize";
 import type {
+  FieldProvenance,
   ResolvedDocsCollection,
   ResolvedDocsConfig,
   ResolvedSource,
@@ -256,10 +257,51 @@ function emptyProject(
   };
 }
 
+/**
+ * Re-label fields a collection took from its source repository. Normalization
+ * cannot tell the difference — by the time it runs, an inherited value is just
+ * a value on the collection — so the caller stamps it after the fact.
+ */
+function stampInherited(
+  provenance: Record<string, FieldProvenance>,
+  fields: Set<string> | undefined,
+  collectionKey: string
+): Record<string, FieldProvenance> {
+  if (!fields || fields.size === 0) {
+    return provenance;
+  }
+  const stamped = { ...provenance };
+  for (const field of fields) {
+    stamped[field] = { origin: "inherited", inheritedFrom: collectionKey };
+  }
+  return stamped;
+}
+
+/**
+ * The project root implied by a config file's location. A `docs.config.*` sits
+ * inside the docs directory, so the root is its parent; a `leadtype.config.*`
+ * sits at the root already.
+ */
+function projectRootForConfig(configPath: string): string {
+  const configDir = path.dirname(configPath);
+  return path.basename(configPath).startsWith("docs.config.")
+    ? path.dirname(configDir)
+    : configDir;
+}
+
 export async function resolveProject(
   options: ResolveProjectOptions = {}
 ): Promise<ResolvedProject> {
-  const rootDir = path.resolve(options.cwd ?? process.cwd());
+  // A `docs.config.*` sits inside the docs directory, so the project root is
+  // its parent; a `leadtype.config.*` sits at the root already. Deriving the
+  // root from the basename keeps an explicit `configPath` on the same rule
+  // discovery follows.
+  const rootFromConfigPath = options.configPath
+    ? projectRootForConfig(options.configPath)
+    : undefined;
+  const rootDir = path.resolve(
+    options.cwd ?? rootFromConfigPath ?? process.cwd()
+  );
   const docsDirNames =
     options.docsDirs && options.docsDirs.length > 0
       ? options.docsDirs
@@ -296,32 +338,70 @@ export async function resolveProject(
   // before it would describe a project that never runs.
   let config = loaded.config;
   const inheritedNavigation = new Set<string>();
+  const inheritedFields = new Map<string, Set<string>>();
   const declared = loaded.config.collections;
   if (
     options.inherit !== false &&
     declared &&
     Object.values(declared).some((entry) => entry.inheritConfig)
   ) {
-    try {
-      const merged = await inheritCollectionSourceConfigs(declared, configDir);
-      for (const [key, collection] of Object.entries(merged)) {
-        if (
-          collection.navigation !== undefined &&
-          declared[key]?.navigation === undefined
-        ) {
+    // Per collection, not all at once. `inheritCollectionSourceConfigs` throws
+    // on the first unreadable source config, so inheriting the whole map in one
+    // call meant one unsynced collection silently degraded every other
+    // collection's tree to a filesystem-derived one.
+    const merged: Record<string, DocsCollection> = { ...declared };
+    // Which fields each collection actually took from its source repo, so
+    // provenance can say `inherited` rather than `explicit` — otherwise one
+    // report claims a tree is inherited and that the same field was authored
+    // here.
+    const INHERITABLE = [
+      "navigation",
+      "groups",
+      "frontmatterSchema",
+      "flatteners",
+      "mounts",
+    ] as const;
+    for (const [key, collection] of Object.entries(declared)) {
+      if (!collection.inheritConfig) {
+        continue;
+      }
+      try {
+        const inherited = await inheritCollectionSourceConfigs(
+          { [key]: collection },
+          configDir
+        );
+        const next = inherited[key];
+        if (!next) {
+          continue;
+        }
+        merged[key] = next;
+        const fields = new Set<string>();
+        for (const field of INHERITABLE) {
+          if (next[field] !== undefined && collection[field] === undefined) {
+            fields.add(field);
+          }
+        }
+        if (fields.size > 0) {
+          inheritedFields.set(key, fields);
+        }
+        if (fields.has("navigation")) {
           inheritedNavigation.add(key);
         }
+      } catch (error) {
+        // `inheritConfig` is opt-in and unsatisfiable here, which `generate`
+        // treats as fatal — so this is an error, not a warning, or CI gating
+        // on doctor would pass a project the build then fails on.
+        diagnostics.push({
+          id: "source.inherit-failed",
+          level: "error",
+          message: `collection "${key}" enables inheritConfig but its source config could not be read: ${error instanceof Error ? error.message : String(error)}`,
+          collection: key,
+          owner: `collections.${key}.inheritConfig`,
+          fix: "leadtype sync",
+        });
       }
-      config = { ...loaded.config, collections: merged };
-    } catch (error) {
-      diagnostics.push({
-        id: "source.inherit-failed",
-        level: "warn",
-        message: `source-owned config could not be read: ${error instanceof Error ? error.message : String(error)}`,
-        owner: "inheritConfig",
-        fix: "leadtype sync",
-      });
     }
+    config = { ...loaded.config, collections: merged };
   }
 
   // Re-normalize so the resolved model reflects the inherited collections.
@@ -351,6 +431,11 @@ export async function resolveProject(
       collections: renormalized.resolved.collections.map((entry) => ({
         ...entry,
         sourceId: sourceIdByCollection.get(entry.key) ?? entry.sourceId,
+        provenance: stampInherited(
+          entry.provenance,
+          inheritedFields.get(entry.key),
+          entry.key
+        ),
       })),
       sources: loaded.resolved.sources,
       deprecations: loaded.resolved.deprecations,

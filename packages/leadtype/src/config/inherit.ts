@@ -151,6 +151,14 @@ function validateDocsNavPageEntry(
   if (value.required !== undefined && typeof value.required !== "boolean") {
     return;
   }
+  // Same shape as `exclude`. Without this a wrong-typed `pin` from a JS config
+  // or an inherited source config reaches the resolver untouched.
+  if (
+    value.pin !== undefined &&
+    !(typeof value.pin === "string" || isStringArray(value.pin))
+  ) {
+    return;
+  }
   return value as DocsNavIncludeEntry;
 }
 

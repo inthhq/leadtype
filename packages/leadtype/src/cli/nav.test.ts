@@ -148,6 +148,34 @@ describe("resolved tree", () => {
   });
 });
 
+describe("projects with no config", () => {
+  it("infers a tree from disk instead of refusing", async () => {
+    const dir = await fixture({
+      "docs/index.mdx": page("Home"),
+      "docs/guides/setup.mdx": page("Setup"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // `doctor` treats a missing config as a warning and keeps reporting, so
+    // refusing here made one command reject a state the other supports.
+    expect(code).toBe(0);
+    expect(report.origin).toBe("inferred");
+    expect(report.tree.map((node) => node.title)).toEqual(["Guides"]);
+  });
+
+  it("says what to do when there is no config and no docs directory", async () => {
+    const capture = createCapture();
+    const code = await runNavCommand(
+      ["--src", await fixture({ "readme.md": "" })],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("leadtype init");
+  });
+});
+
 describe("drift", () => {
   it("names pages no curated entry places", async () => {
     const dir = await fixture({

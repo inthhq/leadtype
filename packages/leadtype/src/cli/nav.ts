@@ -13,7 +13,9 @@
  * moves content, or changes a public route.
  */
 
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { inferNavigationFromContent } from "../config/infer";
 import { type NavigationOrigin, resolveProject } from "../config/project";
 import { toDocsUrlPath } from "../internal/docs-url";
 import { resolveDocsNavigation } from "../llm";
@@ -222,6 +224,45 @@ function renderHuman(report: NavReport): string {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * Report a tree derived straight from a content directory, for a project that
+ * has no config at all. Nothing is curated, so there is no drift to report.
+ */
+async function reportInferredTree(input: {
+  contentDir: string;
+  json: boolean;
+  io: NavIo;
+}): Promise<number> {
+  const { contentDir, json, io } = input;
+  if (!existsSync(contentDir)) {
+    io.stderr.write(
+      `no docs config found, and no docs directory at "${contentDir}".\n  → Run \`leadtype init\`, or pass --docs-dir.\n`
+    );
+    return 1;
+  }
+
+  const derived = await inferNavigationFromContent(contentDir);
+  const manifest = await resolveDocsNavigation({
+    srcDir: path.dirname(contentDir),
+    docsDirName: path.basename(contentDir),
+    groups: [],
+    nav: derived.navigation,
+  });
+
+  const report: NavReport = {
+    ok: true,
+    collection: "docs",
+    origin: "inferred",
+    pageCount: countPages(manifest),
+    tree: toTree(manifest.groups),
+    drift: { unplaced: [], duplicate: [], unknownGroup: [] },
+  };
+  io.stdout.write(
+    json ? `${JSON.stringify(report, null, 2)}\n` : renderHuman(report)
+  );
+  return 0;
+}
+
 export async function runNavCommand(
   argv: string[],
   io: NavIo
@@ -245,13 +286,24 @@ export async function runNavCommand(
 
   try {
     const project = await resolveProject({ cwd: srcDir, docsDirs });
+
+    // A project with no config is a supported state — `doctor` reports it as a
+    // warning and keeps going — so infer a tree from disk rather than refusing.
+    if (project.collections.length === 0) {
+      return await reportInferredTree({
+        contentDir: docsDirs[0] ?? srcDir,
+        json: args.json,
+        io,
+      });
+    }
+
     const collectionKey = args.collection ?? project.collections[0]?.key;
     const collection = project.collections.find(
       (entry) => entry.key === collectionKey
     );
     if (!collection) {
       io.stderr.write(
-        `unknown collection "${args.collection ?? ""}". Declared: ${project.collections.map((entry) => entry.key).join(", ") || "(none)"}\n`
+        `unknown collection "${args.collection ?? ""}". Declared: ${project.collections.map((entry) => entry.key).join(", ")}\n`
       );
       return 2;
     }
@@ -291,11 +343,15 @@ export async function runNavCommand(
     // include glob at the root expands to a set this comparison cannot
     // reconstruct, so those configs report no unplaced pages rather than a
     // list of false positives.
-    // A derived tree places everything by construction, so only a curated one
-    // can have unplaced pages.
-    const rootEntries = origin === "inferred" ? [] : (nav ?? []);
+    //
+    // A tree is curated when someone wrote it — here or in the source repo it
+    // was inherited from. `inherited` is the first origin carrying real root
+    // entries, so treating it as uncurated would skip the glob guard and
+    // report every glob-placed page as unplaced.
+    const isCurated = origin === "explicit" || origin === "inherited";
+    const rootEntries = isCurated ? (nav ?? []) : [];
     const rootIsLiteral =
-      origin !== "explicit" ||
+      !isCurated ||
       rootEntries.every(
         (entry) => typeof entry === "string" || !("include" in entry)
       );

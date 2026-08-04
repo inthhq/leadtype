@@ -469,12 +469,16 @@ export const navigation = {
    * ```ts
    * {
    *   title: "Concepts",
-   *   pages: navigation.fromDirectory("concepts", {
+   *   base: "concepts",
+   *   pages: navigation.fromDirectory(".", {
    *     pin: ["initialization-flow", "consent-models"],
-   *     exclude: "concepts/internal-*",
+   *     exclude: "internal-*",
    *   }),
    * }
    * ```
+   *
+   * `pin` and `exclude` resolve against the nearest `base`, like every other
+   * nav path — so they are written relative to it, not repeated with it.
    *
    * `pin` places pages first, in the order given; the rest follow in `sort`
    * order (`order` then `path` by default). Explicit page refs listed

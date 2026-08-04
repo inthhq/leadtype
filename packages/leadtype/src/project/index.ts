@@ -177,9 +177,11 @@ export async function createDocsProject<
   // and `nav` read the same result, which is what keeps the rendered site and
   // the generated artifacts describing one project.
   const project = await resolveProject({
-    cwd:
-      input.cwd ??
-      (input.configPath ? path.dirname(input.configPath) : undefined),
+    // `configPath` names the file, so its directory is the project root only
+    // for a root-level `leadtype.config.*`; for a `docs.config.*` the root is
+    // one level up. `resolveProject` applies that rule from the basename, so
+    // pass the path through rather than pre-collapsing it to a directory.
+    ...(input.cwd ? { cwd: input.cwd } : {}),
     ...(input.configDir ? { cwd: input.configDir } : {}),
     ...(input.contentDir ? { contentDir: input.contentDir } : {}),
     ...(input.config ? { config: input.config } : {}),

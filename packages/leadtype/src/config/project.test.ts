@@ -87,6 +87,23 @@ describe("discovery", () => {
       (await resolveProject({ cwd: projectOwned })).collections[0]?.contentDir
     ).toBe(path.join(projectOwned, "docs"));
   });
+
+  it("derives the project root from an explicit configPath's basename", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default { ${IDENTITY}, navigation: ["index"] };`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    // A `docs.config.*` lives inside the docs directory, so its content root
+    // is its own directory — not `<dir>/docs/docs`, which is what deriving the
+    // root as `dirname(configPath)` produces.
+    const project = await resolveProject({
+      configPath: path.join(dir, "docs", "docs.config.ts"),
+    });
+
+    expect(project.collections[0]?.contentDir).toBe(path.join(dir, "docs"));
+    expect(project.collections[0]?.navigationOrigin).toBe("explicit");
+  });
 });
 
 describe("navigation origin", () => {

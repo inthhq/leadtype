@@ -18,6 +18,15 @@ export const SUPPORTED_FRAMEWORKS: InitFramework[] = [
 /** Frameworks with heavier, app-specific setup — pointed at a docs recipe. */
 export const RECIPE_FRAMEWORKS = ["tanstack", "fumadocs"] as const;
 
+/**
+ * `createDocsProject()` discovers the config at runtime, and loading a `.ts`
+ * config goes through `jiti` — an optional peer of `leadtype`. The app's own
+ * bundler used to compile the config because the scaffold imported it
+ * statically; now that it doesn't, a fresh scaffold needs jiti present or it
+ * throws on first render.
+ */
+const RUNTIME_CONFIG_DEPS = ["jiti"] as const;
+
 export type InitFile = { contents: string; path: string };
 
 export type FrameworkPlan = {
@@ -121,7 +130,14 @@ function nextPlan(
   return {
     outDir: "public",
     devCommand: "next dev",
-    deps: ["next", "react", "react-dom", "@next/mdx", "next-mdx-remote-client"],
+    deps: [
+      "next",
+      "react",
+      "react-dom",
+      "@next/mdx",
+      "next-mdx-remote-client",
+      ...RUNTIME_CONFIG_DEPS,
+    ],
     files: [
       ...(options.webmcp ? [nextWebMcpFile()] : []),
       {
@@ -223,7 +239,7 @@ function astroPlan(
   return {
     outDir: "public",
     devCommand: "astro dev",
-    deps: ["astro", "@astrojs/mdx"],
+    deps: ["astro", "@astrojs/mdx", ...RUNTIME_CONFIG_DEPS],
     files: [
       {
         path: "astro.config.mjs",
@@ -317,7 +333,7 @@ function nuxtPlan(
   return {
     outDir: "public",
     devCommand: "nuxt dev",
-    deps: ["nuxt", "vue"],
+    deps: ["nuxt", "vue", ...RUNTIME_CONFIG_DEPS],
     files: [
       ...(options.webmcp ? [nuxtWebMcpFile()] : []),
       {
@@ -426,6 +442,7 @@ function sveltekitPlan(
     outDir: "static",
     devCommand: "vite dev",
     deps: [
+      ...RUNTIME_CONFIG_DEPS,
       "@sveltejs/kit",
       "@sveltejs/vite-plugin-svelte",
       "@sveltejs/adapter-auto",

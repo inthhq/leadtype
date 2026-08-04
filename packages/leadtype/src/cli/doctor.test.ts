@@ -269,6 +269,47 @@ describe("findings", () => {
     ).toBe("leadtype sync --refresh");
   });
 
+  it("reports the cache path sync actually uses", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      dir: "docs",
+      routePrefix: "/docs",
+    },
+  },
+};`,
+      // The path `defaultCacheDir` derives, via repositorySlug.
+      ".leadtype/sources/acme-acme@abcdef1234567/.git/HEAD":
+        "ref: refs/heads/main\n",
+      ".leadtype/sources/acme-acme@abcdef1234567/docs/index.mdx": page("Home"),
+    });
+    await writeSyncManifest(
+      path.join(dir, ".leadtype/sources/acme-acme@abcdef1234567"),
+      {
+        version: 1,
+        repository: "https://github.com/acme/acme.git",
+        ref: "abcdef1234567",
+        commit: "abcdef1",
+        syncedAt: "2026-01-01T00:00:00.000Z",
+      }
+    );
+
+    const { report } = await runJson(dir);
+
+    // Hand-joining the raw URL produced a path that can never exist, so the
+    // Sources table said "not synced" while Findings reported nothing wrong —
+    // one report contradicting itself.
+    expect(report.sources[0].cacheDir).toContain("acme-acme@abcdef1234567");
+    expect(report.sources[0].syncedCommit).toBe("abcdef1");
+    expect(
+      report.issues.find((entry) => entry.id === "source.not-synced")
+    ).toBeUndefined();
+  });
+
   it("warns about a mutable ref and points at the collection that set it", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `export default {
@@ -431,7 +472,7 @@ describe("source-owned inheritance", () => {
     expect(report.navigation?.groups).toEqual(["Guides"]);
   });
 
-  it("keeps reporting when the source config cannot be read", async () => {
+  it("fails, but still reports, when the source config cannot be read", async () => {
     const dir = await fixture({
       "leadtype.config.ts": config,
       ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
@@ -447,12 +488,58 @@ describe("source-owned inheritance", () => {
 
     const { code, report } = await runJson(dir);
 
-    // Read-only means degrading to a finding, never throwing.
-    expect(code).toBe(0);
+    // `inheritConfig` is opt-in, and `generate` throws on a source whose config
+    // can't be read — so exiting 0 here would let CI pass a project the build
+    // then fails on. Read-only still means reporting rather than throwing.
+    expect(code).toBe(1);
     expect(
       report.issues.find((entry) => entry.id === "source.inherit-failed")?.level
-    ).toBe("warn");
+    ).toBe("error");
     expect(report.navigation).not.toBeNull();
+  });
+
+  it("keeps other collections readable when one source is unreadable", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    good: { dir: "content/good", routePrefix: "/good" },
+    bad: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/bad",
+      dir: "docs",
+      routePrefix: "/bad",
+      inheritConfig: true,
+    },
+  },
+};`,
+      "content/good/index.mdx": page("Good"),
+      ".leadtype/bad/.git/HEAD": "ref: refs/heads/main\n",
+      ".leadtype/bad/docs/index.mdx": page("Bad"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/bad"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const { report } = await runJson(dir);
+
+    // Inheritance used to run for the whole map in one call, so the first
+    // unreadable source discarded every other collection's inherited config.
+    expect(
+      report.issues.filter((entry) => entry.id === "source.inherit-failed")
+    ).toHaveLength(1);
+    expect(report.collections.map((entry) => entry.key)).toEqual([
+      "good",
+      "bad",
+    ]);
+    expect(
+      report.collections.find((entry) => entry.key === "good")?.pageCount
+    ).toBe(1);
   });
 });
 

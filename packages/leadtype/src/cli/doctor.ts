@@ -33,7 +33,7 @@ import {
 import { toDocsUrlPath } from "../internal/docs-url";
 import type { DocsCollection } from "../llm";
 import { resolveDocsNavigation } from "../llm";
-import { readSyncManifest } from "../sync/sync";
+import { defaultCacheDir, readSyncManifest } from "../sync/sync";
 
 export type DoctorIo = {
   stderr: Pick<NodeJS.WriteStream, "write">;
@@ -302,6 +302,7 @@ async function inspectNavigation(input: {
 
   const groups: string[] = [];
   const routed = new Set<string>();
+  const allGroups = project.collections.flatMap((entry) => entry.groups ?? []);
   const unrepresented: string[] = [];
   const origins = new Set<NavigationOrigin>();
 
@@ -313,16 +314,18 @@ async function inspectNavigation(input: {
       { pathPrefix: "", urlPrefix: collection.routePrefix },
       ...(collection.mounts ?? []),
     ];
-    const navigationOptions = {
+    const manifest = await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
       mounts,
-    };
-
-    const manifest = await resolveDocsNavigation({
-      ...navigationOptions,
-      groups: collection.groups ?? [],
+      // Every collection's groups, not just this one's: `generate` merges them
+      // globally before resolving, so a page whose `group:` is declared by a
+      // sibling collection resolves there and would error here.
+      groups: allGroups,
       nav: collection.navigation,
+      // Without these each translation resolves as its own page, inflating
+      // routedPages and reporting every localized file as unplaced.
+      ...(project.config?.i18n ? { i18n: project.config.i18n } : {}),
     });
 
     for (const unknown of manifest.unknown) {
@@ -358,7 +361,14 @@ async function inspectNavigation(input: {
       collection.navigationOrigin === "inferred"
         ? []
         : (collection.navigation ?? []);
+    // `resolveDocsNavigation` reads the whole directory, while `generate`
+    // stages a filtered mirror first — so with include/exclude in play the two
+    // see different file sets and every excluded page would read as unplaced.
+    const isFiltered =
+      (collection.include?.length ?? 0) > 0 ||
+      (collection.exclude?.length ?? 0) > 0;
     const curatable =
+      !isFiltered &&
       rootEntries.length > 0 &&
       rootEntries.every(
         (entry) => typeof entry === "string" || !("include" in entry)
@@ -511,10 +521,14 @@ export async function runDoctorCommand(
       });
       continue;
     }
+    // Must be the exact path `sync` uses — `defaultCacheDir` runs the
+    // repository URL through `repositorySlug`, so hand-joining it produced
+    // `.leadtype/sources/https:/github.com/acme/acme.git@main`: a path that can
+    // never exist, making every unpinned source report "not synced" while the
+    // collection checks (which resolve correctly) reported nothing wrong.
     const cacheDir = path.resolve(
       configDir,
-      source.cacheDir ??
-        path.join(".leadtype", "sources", `${source.repository}@${source.ref}`)
+      source.cacheDir ?? defaultCacheDir(source.repository, source.ref)
     );
     const manifest = existsSync(cacheDir)
       ? await readSyncManifest(cacheDir)
