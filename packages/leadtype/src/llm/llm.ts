@@ -805,9 +805,10 @@ export type GitSourceSpec = GitSourceConfig & {
  * }
  * ```
  *
- * Equivalent to the flat form — both normalize to the same source graph, one
- * clone is performed either way, and a failed acquisition names every
- * dependent collection.
+ * Equivalent to the flat form: the same source graph, one clone either way.
+ * The one visible difference is the resolved source id — a named source keeps
+ * its name, the flat form is identified by `repository#ref` — and that id is
+ * what sync output, `doctor`, and `generate --json` report.
  */
 export function gitSource(config: GitSourceConfig): GitSourceSpec {
   return { ...config, kind: GIT_SOURCE_MARKER };

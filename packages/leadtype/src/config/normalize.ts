@@ -240,6 +240,17 @@ function resolveSources(
           `${configLabel(configPath)}: sources "${claimedBy}" and "${authoredName}" both target ${collection.repository}@${ref}. That is one acquisition declared twice — merge their collections into a single source.`
         );
       }
+      // A flat collection reaches this loop before any named source (expansion
+      // spreads the existing map in first), so without this the named source
+      // silently loses its authored id and reports as `repo#ref` everywhere —
+      // sync output, doctor, and `generate --json`.
+      if (authoredName && !claimedBy) {
+        authoredNameByRepoRef.set(repoRefKey, authoredName);
+        existing.id = authoredName;
+        for (const key of existing.collectionKeys) {
+          sourceIdByCollection.set(key, authoredName);
+        }
+      }
       existing.cacheDir ??= collection.cacheDir;
       existing.collectionKeys.push(key);
       sourceIdByCollection.set(key, existing.id);

@@ -1372,6 +1372,24 @@ function validateGitSources(
     // Children inherit `repository` at expansion time, and the collection
     // validator rejects `inheritConfig` on a local collection — so cascade it
     // here to validate the shape the project will actually run.
+    // A `.js`/`.mjs`/`.cjs` config has no type checking, which is why this
+    // validator exists — so a child setting an acquisition field the source
+    // owns has to be rejected here rather than silently cascaded over.
+    for (const [key, child] of Object.entries(entry.collections)) {
+      if (!isPlainRecord(child)) {
+        continue;
+      }
+      // Indexed through a record view: the type omits these fields, which is
+      // exactly why an untyped config can still carry them.
+      const childRecord = child as Record<string, unknown>;
+      for (const owned of ["repository", "ref", "cacheDir", "sparse"]) {
+        if (childRecord[owned] !== undefined) {
+          throw new Error(
+            `docs config at "${configPath}": collection "${key}" sets "${owned}", which its source "${sourceId}" owns. Move it onto the gitSource, or declare the collection in the flat "collections" map instead.`
+          );
+        }
+      }
+    }
     const cascaded = Object.fromEntries(
       Object.entries(entry.collections).map(([key, child]) => [
         key,

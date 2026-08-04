@@ -26,4 +26,4 @@ Collection ids stay global rather than being scoped to their source, because the
 
 `sparse` limits a checkout to the repository paths you actually need, via a blobless partial clone — pinning a docs directory out of a monorepo no longer downloads the whole repository. Collections sharing an acquisition must agree on the path set, and the set is recorded in the sync manifest so adding a path re-clones rather than reusing an incomplete cache.
 
-`leadtype sync` now reports each source id with its dependent collections, and warns when a source tracks a mutable ref instead of a pinned commit. `leadtype generate --json` reports the same acquisition graph, using the same ids. `inheritConfig: false` opts a collection out of a source-level inheritance default.
+`leadtype sync` now reports each source id with its dependent collections, and warns when a source tracks a mutable ref instead of a pinned commit. `leadtype generate --json` reports the same acquisition graph, using the same ids — a named source keeps its authored name, an anonymous one is identified by `repository#ref`. `inheritConfig: false` opts a collection out of a source-level inheritance default.

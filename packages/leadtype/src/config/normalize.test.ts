@@ -427,6 +427,36 @@ describe("git source groups", () => {
     ).toThrow(/declared by both "collections" and source "remote"/);
   });
 
+  it("keeps the authored source name when a flat collection shares its acquisition", () => {
+    const { resolved } = normalize({
+      product,
+      collections: {
+        flat: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "changelog",
+          routePrefix: "/changelog",
+        },
+      },
+      sources: {
+        upstream: gitSource({
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+        }),
+      },
+    });
+
+    // Expansion spreads the flat map in first, so the flat collection reaches
+    // source resolution ahead of the named one — without a hand-off the named
+    // source loses its id everywhere it is reported.
+    expect(resolved.sources).toHaveLength(1);
+    expect(resolved.sources[0].id).toBe("upstream");
+    expect(
+      resolved.collections.every((entry) => entry.sourceId === "upstream")
+    ).toBe(true);
+  });
+
   it("rejects two named sources that are the same acquisition", () => {
     expect(() =>
       normalize({

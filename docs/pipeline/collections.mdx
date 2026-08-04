@@ -128,14 +128,20 @@ The split follows ownership:
 
 | The source owns | Each collection owns |
 | --- | --- |
-| `repository`, `ref`, `cacheDir` | `dir`, `include`/`exclude` |
+| `repository`, `ref`, `cacheDir`, `sparse` | `dir`, `include`/`exclude` |
 | One clone lifecycle for all its children | `routePrefix` and `mounts` |
 | The default `inheritConfig` policy | `navigation`, `frontmatterSchema`, `flatteners` |
 | | Its own `inheritConfig` exception, including `false` to opt out |
 
-Both forms normalize to the same source graph, so nothing downstream can tell
-them apart. `sources` and `collections` may be used together — a local
-collection beside a remote group is fine.
+Both forms resolve to the same source graph and the same acquisition. The one
+visible difference is the source's **id**: a named `gitSource` keeps its
+authored name (`c15t`), while the flat form is identified by what it is
+(`https://github.com/c15t/c15t.git#main`). That id is what `leadtype sync`
+prints, what `doctor` reports, and what `generate --json` emits — which is the
+argument for naming them.
+
+`sources` and `collections` may be used together — a local collection beside a
+remote group is fine.
 
 Collection ids are **global**, not scoped to their source: they name staging
 mounts, error messages, and JSON output, so a silently namespaced id would show
@@ -186,8 +192,10 @@ Warning: 1 source tracks a mutable ref: c15t (main)
 A branch is fine while you iterate. For a published build it means today's
 deploy and tomorrow's deploy render different content from the same config.
 
-A failed acquisition names every collection that depended on it, so one clone
-error does not read as one collection's problem.
+Before a clone is attempted, a missing or stale cache names every collection
+that depends on it, so one unsynced source does not read as one collection's
+problem. A clone that fails partway reports the git error against
+`repository@ref` — git does not know about collections.
 
 ### Inherit source-owned docs config
 
