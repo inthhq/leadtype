@@ -76,33 +76,47 @@ export type LeadtypeFumadocsSource = Source<LeadtypeFumadocsSourceConfig> & {
 };
 
 /**
- * Build a fumadocs-compatible Source from a leadtype docs directory.
+ * Either a source description to build, or an already-resolved `DocsSource` —
+ * which `createDocsProject()` satisfies.
  *
- * Walks both `.md`/`.mdx` pages **and** `meta.json` files under `contentDir`,
- * yielding fumadocs the same nav tree it would build from a colocated
+ * The two arms are mutually exclusive by construction. A plain union would
+ * relax TypeScript's excess-property check across members, so
+ * `{ source, typeTableBasePath }` would compile and silently drop the second
+ * key — the same quiet config drift passing a project is meant to end.
+ */
+export type FumadocsSourceConfig =
+  | (CreateDocsSourceConfig & {
+      includeMetaJson?: boolean;
+      source?: never;
+    })
+  | ({ source: DocsSource; includeMetaJson?: boolean } & {
+      [K in keyof CreateDocsSourceConfig]?: never;
+    });
+
+/**
+ * Build a fumadocs-compatible Source from leadtype docs.
+ *
+ * Walks both `.md`/`.mdx` pages **and** `meta.json` files under the content
+ * root, yielding fumadocs the same nav tree it would build from a colocated
  * fumadocs-mdx source. Set `includeMetaJson: false` to skip the meta walk if
  * you'd rather have fumadocs auto-build the tree from page slugs.
  *
  * @example
+ *   // From a Leadtype config — content root, nav, and mounts come with it.
+ *   const source = await fumadocsSource({ source: await createDocsProject() });
+ *   const docs = loader({ baseUrl: "/docs", source });
+ *
+ * @example
+ *   // From a bare content directory.
  *   const source = await fumadocsSource({ contentDir: "./content/docs" });
- *   const loader = loader({ baseUrl: "/docs", source });
  */
-/**
- * Accepts either a source description to build, or an already-resolved
- * `DocsSource` — which `createDocsProject()` satisfies. Passing a project is
- * the shorter path: it already knows the content root, navigation, mounts, and
- * OpenAPI overlay from the config, so none of that has to be restated here
- * only to drift from it later.
- */
-export type FumadocsSourceConfig =
-  | (CreateDocsSourceConfig & { includeMetaJson?: boolean })
-  | { source: DocsSource; includeMetaJson?: boolean };
-
 export async function fumadocsSource(
   config: FumadocsSourceConfig
 ): Promise<LeadtypeFumadocsSource> {
+  // `source?: never` on the description arm makes the discriminant a plain
+  // presence check; the cast is safe because the arms are mutually exclusive.
   const leadtype =
-    "source" in config ? config.source : await createDocsSource(config);
+    config.source ?? (await createDocsSource(config as CreateDocsSourceConfig));
   const metas = await leadtype.listPages();
 
   const pageFiles = metas.map((meta) => ({

@@ -25,7 +25,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type { DocsConfig, DocsNavEntry } from "../llm";
-import { readSyncManifest, resolveCollection } from "../sync/sync";
+import {
+  formatSparse,
+  readSyncManifest,
+  resolveCollection,
+  sameSparse,
+} from "../sync/sync";
 import {
   emptyInferenceReport,
   type InferenceReport,
@@ -194,6 +199,17 @@ async function resolveContentDir(
         message: `the cache for collection "${collection.key}" at "${cacheDir}" has no sync manifest, so its revision can't be verified`,
         collection: collection.key,
         owner: `collections.${collection.key}.cacheDir`,
+        fix: "leadtype sync --refresh",
+      });
+      return;
+    }
+    if (!sameSparse(manifest.sparse, resolvedCollection.remote.sparse)) {
+      diagnostics.push({
+        id: "source.cache-narrow",
+        level: "error",
+        message: `the cache for collection "${collection.key}" was checked out with ${formatSparse(manifest.sparse)}, but the config asks for ${formatSparse(resolvedCollection.remote.sparse)}`,
+        collection: collection.key,
+        owner: `collections.${collection.key}.sparse`,
         fix: "leadtype sync --refresh",
       });
       return;

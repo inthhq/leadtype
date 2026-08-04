@@ -210,6 +210,48 @@ describe("pinned remote sources", () => {
     expect(project.collections[0]?.contentDir).toBeUndefined();
   });
 
+  it("rejects a cache checked out with fewer paths than configured", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      sparse: ["docs", "packages"],
+    },
+  },
+};`,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      ".leadtype/acme/docs/index.mdx": page("Home"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+      // Synced before `packages` was added to the config.
+      sparse: ["docs"],
+    });
+
+    const project = await resolveProject({ cwd: dir });
+
+    // Everything the older checks looked at passes: .git exists, the manifest
+    // parses, repository and ref match, and `dir` is present. The only symptom
+    // would be `<AutoTypeTable>` silently resolving to nothing.
+    const diagnostic = project.diagnostics.find(
+      (entry) => entry.id === "source.cache-narrow"
+    );
+    expect(diagnostic?.level).toBe("error");
+    expect(diagnostic?.fix).toBe("leadtype sync --refresh");
+    expect(diagnostic?.message).toContain("[docs]");
+    expect(diagnostic?.message).toContain("[docs, packages]");
+  });
+
   it("reports a cache holding the wrong revision", async () => {
     const dir = await fixture({
       "leadtype.config.ts": config,

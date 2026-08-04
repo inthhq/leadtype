@@ -164,7 +164,14 @@ export function resolveAllCollections(
   );
 }
 
-function sameSparse(
+/**
+ * Do two path sets describe the same checkout? Order is irrelevant to git
+ * sparse-checkout, so this compares as sets. Exported because any consumer
+ * reading a cache has to accept exactly what `sync` would accept — a checkout
+ * narrower than the config asks for looks complete until something outside the
+ * selected paths fails to resolve.
+ */
+export function sameSparse(
   left: string[] | undefined,
   right: string[] | undefined
 ): boolean {
@@ -179,7 +186,8 @@ function sameSparse(
   return sorted(left).every((value, index) => value === sorted(right)[index]);
 }
 
-function formatSparse(paths: string[] | undefined): string {
+/** Render a path set for diagnostics, naming the full-repository case. */
+export function formatSparse(paths: string[] | undefined): string {
   return paths ? `[${paths.join(", ")}]` : "the full repository";
 }
 

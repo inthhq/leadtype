@@ -141,6 +141,30 @@ function collectionMounts(
   ];
 }
 
+/**
+ * Resolve a collection-local slug, which framework adapters produce when a
+ * route is mounted per collection. Ambiguous across collections by nature, so
+ * an ambiguous match is an error rather than a silent first-wins pick.
+ */
+function findByLocalSlug<TFrontmatter extends DocsFrontmatter>(
+  pages: DocsProjectPageMeta<TFrontmatter>[],
+  wanted: string
+): DocsProjectPageMeta<TFrontmatter> | undefined {
+  const matches = pages.filter((page) => page.slug.join("/") === wanted);
+  if (matches.length > 1) {
+    throw new Error(
+      `createDocsProject: slug "${wanted}" is ambiguous — collections ${matches
+        .map((page) => `"${page.collection}"`)
+        .join(" and ")} both contain it. Load it by route path (${matches
+        .map((page) => page.urlPath)
+        .join(
+          " or "
+        )}), or mount a route per collection and use that collection's source.`
+    );
+  }
+  return matches[0];
+}
+
 export async function createDocsProject<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
@@ -183,6 +207,25 @@ export async function createDocsProject<
     );
   }
 
+  // `openapi` is a top-level field with its own URL prefix, independent of any
+  // collection, so there is no collection to attach the generated pages to in
+  // multi-source mode. Generation emits them regardless — which would leave
+  // the site serving fewer routes than its own sitemap and llms.txt advertise,
+  // the precise failure this primitive exists to prevent. Fail loudly instead.
+  if (config.openapi && resolved.mode === "multi-source") {
+    throw new Error(
+      "createDocsProject: `openapi` is not yet supported alongside `collections` — generation would emit API reference pages this project cannot route. Build that collection with `createDocsSource({ openapi })` directly, or move the spec into a collection's own docs config."
+    );
+  }
+
+  // Resolved from the config when the caller doesn't override it — the same
+  // fallback `typeTableStrict` already had, and the documented place to set it.
+  const typeTableBasePath =
+    input.typeTableBasePath ??
+    (config.typeTableBasePath
+      ? path.resolve(project.configDir, config.typeTableBasePath)
+      : undefined);
+
   const shared = {
     baseUrl: input.baseUrl,
     locale: input.locale,
@@ -201,7 +244,6 @@ export async function createDocsProject<
   const sourcesByCollection = new Map<string, DocsSource<TFrontmatter>>();
   for (const collection of project.collections) {
     const contentDir = collection.contentDir as string;
-    const authored = config.collections?.[collection.key];
     sourcesByCollection.set(
       collection.key,
       await createDocsSource<TFrontmatter>({
@@ -209,6 +251,10 @@ export async function createDocsProject<
         ...shared,
         ...(collection.navigation ? { nav: collection.navigation } : {}),
         ...(collection.groups ? { groups: collection.groups } : {}),
+        // A page-existence filter, so it has to hold at runtime too — an
+        // author excluding `drafts/**` must not have them served.
+        ...(collection.include ? { include: collection.include } : {}),
+        ...(collection.exclude ? { exclude: collection.exclude } : {}),
         ...(collection.frontmatterSchema
           ? {
               frontmatterSchema:
@@ -218,14 +264,16 @@ export async function createDocsProject<
         // A single-source project mounts at its route prefix like any other;
         // a multi-collection project gets one mount set per collection, which
         // is what makes each collection's URLs correct on its own.
-        mounts: collectionMounts(collection.routePrefix, collection.mounts),
-        ...(input.typeTableBasePath
-          ? { typeTableBasePath: input.typeTableBasePath }
-          : {}),
+        // Site-wide `mounts` apply to every collection; the collection's own
+        // come first, matching the order generation composes them in.
+        mounts: collectionMounts(collection.routePrefix, [
+          ...(collection.mounts ?? []),
+          ...(config.mounts ?? []),
+        ]),
+        ...(typeTableBasePath ? { typeTableBasePath } : {}),
         ...(config.openapi && resolved.mode === "single-source"
           ? { openapi: config.openapi, openapiCwd: project.configDir }
           : {}),
-        ...(authored?.flatteners ? {} : {}),
       })
     );
   }
@@ -283,9 +331,16 @@ export async function createDocsProject<
     ).filter(Boolean);
     const wanted = segments.join("/");
     const pages = await listPages();
+    // Route path first. A collection-local slug is ambiguous across
+    // collections — two collections each holding `overview.mdx` both produce
+    // `["overview"]`, and `index.mdx` produces `[]` in every one of them — so
+    // matching it first would resolve to whichever collection was declared
+    // earliest, silently and deterministically. The route path is unique by
+    // construction, because distinct route prefixes are enforced at load.
     const target =
-      pages.find((page) => page.slug.join("/") === wanted) ??
-      pages.find((page) => page.urlPath.replace(LEADING_SLASH, "") === wanted);
+      pages.find(
+        (page) => page.urlPath.replace(LEADING_SLASH, "") === wanted
+      ) ?? findByLocalSlug(pages, wanted);
     if (!target) {
       return null;
     }

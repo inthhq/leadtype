@@ -148,6 +148,20 @@ export type CreateDocsSourceConfig<
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */
   mounts?: DocsPathMount[];
   /**
+   * Glob patterns relative to `contentDir` that select which files are pages.
+   * Defaults to every `.md`/`.mdx` file.
+   */
+  include?: string[];
+  /**
+   * Glob patterns relative to `contentDir` that are dropped after `include`.
+   *
+   * This is a page-existence filter, not a display filter: an excluded file is
+   * not listed, not loadable, and not indexed. Authors use it to keep drafts
+   * and internal notes off the site, so honouring it at build time but not at
+   * runtime would publish exactly the content it was meant to withhold.
+   */
+  exclude?: string[];
+  /**
    * Remark plugins to apply when loading pages. Defaults to Leadtype's source
    * preset (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
    * Pass `[]` to skip transforms.
@@ -499,11 +513,17 @@ export async function createDocsSource<
     }
     cachedFilesByRoot = await Promise.all(
       contentRoots.map(async (root) => {
-        const matches = await fg("**/*.{md,mdx}", {
-          absolute: true,
-          cwd: root,
-          onlyFiles: true,
-        });
+        const matches = await fg(
+          config.include && config.include.length > 0
+            ? config.include
+            : ["**/*.{md,mdx}"],
+          {
+            absolute: true,
+            cwd: root,
+            ignore: config.exclude ?? [],
+            onlyFiles: true,
+          }
+        );
         const files = matches
           .filter(isDocFile)
           .sort((left, right) => left.localeCompare(right));

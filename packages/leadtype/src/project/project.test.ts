@@ -144,6 +144,95 @@ describe("multi-collection project", () => {
     expect(doc?.collection).toBe("docs");
   });
 
+  it("honours a collection's exclude at runtime, not just at build time", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "content/docs", routePrefix: "/docs", exclude: ["drafts/**"] },
+  },
+};`,
+      "content/docs/index.mdx": page("Docs"),
+      "content/docs/drafts/secret.mdx": page("Unpublished"),
+    });
+
+    const project = await createDocsProject({ configDir: dir });
+
+    // `exclude` is a page-existence filter. Honouring it while generating but
+    // not while serving publishes exactly the content it was meant to withhold.
+    expect((await project.listPages()).map((entry) => entry.urlPath)).toEqual([
+      "/docs",
+    ]);
+    expect(await project.loadPage("drafts/secret")).toBeNull();
+  });
+
+  it("refuses an ambiguous collection-local slug instead of guessing", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    guides: { dir: "content/guides", routePrefix: "/guides" },
+    reference: { dir: "content/reference", routePrefix: "/reference" },
+  },
+};`,
+      "content/guides/overview.mdx": page("Guides overview"),
+      "content/reference/overview.mdx": page("Reference overview"),
+    });
+
+    const project = await createDocsProject({ configDir: dir });
+
+    // Route paths stay unambiguous and keep working.
+    expect((await project.loadPage("guides/overview"))?.collection).toBe(
+      "guides"
+    );
+    expect((await project.loadPage("reference/overview"))?.collection).toBe(
+      "reference"
+    );
+
+    // The bare slug exists in both. Returning the first-declared one silently
+    // would serve the wrong page through an adapter's static params.
+    await expect(project.loadPage("overview")).rejects.toThrow(
+      /slug "overview" is ambiguous.*"guides" and "reference"/s
+    );
+  });
+
+  it("applies site-wide mounts alongside a collection's own", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  mounts: [{ pathPrefix: "legal", urlPrefix: "/legal" }],
+  collections: { docs: { dir: "content/docs", routePrefix: "/docs" } },
+};`,
+      "content/docs/index.mdx": page("Docs"),
+      "content/docs/legal/terms.mdx": page("Terms"),
+    });
+
+    const project = await createDocsProject({ configDir: dir });
+
+    // Top-level `mounts` remap URLs in the generated artifacts, so dropping
+    // them here would render a different route than the sitemap advertises.
+    expect(
+      (await project.listPages()).map((entry) => entry.urlPath).sort()
+    ).toEqual(["/docs", "/legal/terms"]);
+  });
+
+  it("refuses openapi alongside collections rather than dropping the pages", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: { docs: { dir: "content/docs", routePrefix: "/docs" } },
+  openapi: { input: "./api.yaml", output: "api" },
+};`,
+      "content/docs/index.mdx": page("Docs"),
+    });
+
+    // Generation emits API pages regardless, so silently skipping them here
+    // leaves the site serving fewer routes than its own sitemap advertises.
+    await expect(createDocsProject({ configDir: dir })).rejects.toThrow(
+      /`openapi` is not yet supported alongside `collections`/
+    );
+  });
+
   it("exposes the resolved collections and acquisition graph", async () => {
     const project = await createDocsProject({
       config,
@@ -188,11 +277,20 @@ describe("multi-collection project", () => {
       bundle.index.documents.map((entry) => entry[URL_PATH]).sort()
     ).toEqual(["/changelog/1-0", "/docs", "/docs/auth"]);
 
-    // One inverted index over every collection, not two concatenated ones —
-    // postings from a merged pair would point at the wrong documents.
-    const postings = Object.values(bundle.index.terms).flat();
-    expect(postings.length).toBeGreaterThan(0);
-    expect(bundle.index.chunks.length).toBeGreaterThanOrEqual(3);
+    // One inverted index over every collection, not two concatenated ones.
+    // Chunk entries reference documents positionally, so concatenating two
+    // finished indexes leaves the second one's chunks pointing at the first
+    // one's documents — or past the end. A count assertion cannot see that;
+    // resolving every reference can.
+    const CHUNK_DOCUMENT_INDEX = 1;
+    const referenced = new Set(
+      bundle.index.chunks.map((chunk) => chunk[CHUNK_DOCUMENT_INDEX])
+    );
+    for (const index of referenced) {
+      expect(bundle.index.documents[index]).toBeDefined();
+    }
+    // And every collection's pages are reachable, not just the first's.
+    expect(referenced.size).toBe(bundle.index.documents.length);
   });
 
   it("rejects colliding route prefixes before any content is read", async () => {
