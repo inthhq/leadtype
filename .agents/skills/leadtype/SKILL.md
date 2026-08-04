@@ -40,7 +40,7 @@ Follow this route for authoring, restructuring, reviewing, or maintaining pages.
 
 1. **Establish the project.** Read the config (`leadtype.config.*` at the project root, else `docs.config.*` in the docs dir) and note the installed version in `node_modules/leadtype/package.json`, or — when the package isn't installed — from the workspace copy under `packages/leadtype/`, following the Path Priority above. Config decides the docs root, navigation, and which agent artifacts exist — do not infer them from the folder layout.
 2. **Read the smallest relevant topic**, not the whole bundle:
-   - `writing.md` / `frontmatter.md` for page structure, required frontmatter, and `related:` links.
+   - `write-for-agents.md` / `frontmatter.md` for page structure, required frontmatter, and `related:` links.
    - `components.md` for Leadtype MDX components and when each is appropriate.
    - `markdown.md` for how a component flattens into agent-readable markdown.
    - `llm.md` when the edit changes `llms.txt`, `AGENTS.md`, or navigation-derived artifacts.

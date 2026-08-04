@@ -112,13 +112,20 @@ describe("generateSkillArtifacts — site mode", () => {
     const outDir = await tempDir();
     await generateSkillArtifacts({ outDir, product, mode: "site" });
 
-    const index = JSON.parse(
+    const index: unknown = JSON.parse(
       await readFile(
         join(outDir, ".well-known/agent-skills/index.json"),
         "utf8"
       )
-    ) as { skills: { name: string; description: string }[] };
-    const { description } = index.skills[0];
+    );
+    // Validate before indexing, so malformed discovery output fails as
+    // malformed rather than as a confusing undefined-property read.
+    expect(index).toHaveProperty("skills");
+    const { skills } = index as { skills: unknown };
+    expect(Array.isArray(skills)).toBe(true);
+    const first = (skills as unknown[])[0];
+    expect(first).toHaveProperty("description");
+    const { description } = first as { description: string };
 
     // A client sees only name + description before loading the body. Naming
     // retrieval alone loses "add a troubleshooting page" and every other

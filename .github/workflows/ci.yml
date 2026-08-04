@@ -54,6 +54,14 @@ jobs:
       - name: Test
         run: bun run --filter leadtype test
 
+      # The deterministic half of the activation evals: the shipped skill
+      # description must keep naming the authoring verbs and repository
+      # signals, and stay under the discovery cap. `--filter leadtype` selects
+      # the package named `leadtype`, so this workspace needs its own step or
+      # the guard against a narrowed description never actually runs.
+      - name: Test evals
+        run: bun run --filter leadtype-evals test
+
   # Every Windows bug so far lived in runtime behavior or test assertions,
   # not the build — so this job must run the test suite, not just compile.
   validate-windows:

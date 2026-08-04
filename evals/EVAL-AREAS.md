@@ -58,10 +58,12 @@ leadtype signal, and two are non-docs work *inside* a leadtype repo — a
 description that wins those by activating on repository signal alone has
 overfit. Run `evals:activation`.
 
-The deterministic half runs in CI (`lib/activation.test.ts`): the shipped
-description must name the authoring verbs and the repository signals, and stay
-under the 1024-character discovery cap. That catches a narrowed description
-without spending a token.
+The deterministic half runs in CI as its own step (`lib/activation.test.ts`):
+the shipped description must name the authoring verbs and the repository
+signals, and stay under the 1024-character discovery cap. It needs a separate
+step because the main test job is `--filter leadtype`, which selects the
+package of that name — this workspace is `leadtype-evals`. That catches a
+narrowed description without spending a token.
 
 ## 4. Routing — which `llms.txt` shape routes best? — ✅ covered
 
