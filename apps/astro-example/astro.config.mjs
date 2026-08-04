@@ -3,8 +3,11 @@ import mdx from "@astrojs/mdx";
 import { defineConfig } from "astro/config";
 import { createMdxSourcePlugins } from "leadtype/mdx";
 
+// Kept in step with `packages/leadtype/package.json`'s range. Externalizing
+// the import means it resolves to *this app's* copy rather than leadtype's, so
+// bumping leadtype's range alone would quietly run a different parser version
+// than the package expects.
 const NATIVE_PARSER = "satteri";
-const NATIVE_PARSER_BINDING = "@bruits/satteri-";
 
 /**
  * Keep leadtype's MDX parser out of the bundle.
@@ -15,17 +18,24 @@ const NATIVE_PARSER_BINDING = "@bruits/satteri-";
  * where the binding isn't reachable — so the static build dies with "Cannot
  * find native binding".
  *
- * Declaring it in `resolve.external` isn't enough: `leadtype` is a workspace
- * package, so Astro's dependency crawl marks it `noExternal`, and noExternal
- * wins. A `resolveId` hook is unambiguous — the import stays a runtime
- * `import "satteri"` and the loader runs from node_modules, where its optional
- * binding packages actually are.
+ * This is monorepo-specific: `leadtype` is a linked workspace package, so it
+ * is bundled rather than externalized, and `satteri` comes along with it.
+ * Declaring `satteri` in `resolve.external` did not take effect here — nor did
+ * Astro 6's per-environment `environments.ssr` / `environments.prerender`
+ * equivalents, both of which I tried. A `resolveId` hook is unambiguous: the
+ * import stays a runtime `import "satteri"`, and the loader runs from
+ * node_modules where its optional binding packages actually are.
+ *
+ * Only `satteri` needs naming. Its loader reaches the platform binding through
+ * `createRequire`, so `@bruits/satteri-*` is a runtime CJS call rather than a
+ * specifier Vite ever resolves — and once `satteri` is external, Vite does not
+ * parse its loader at all.
  */
 const externalizeNativeParser = {
   name: "leadtype:externalize-native-parser",
   enforce: "pre",
   resolveId(id) {
-    if (id === NATIVE_PARSER || id.startsWith(NATIVE_PARSER_BINDING)) {
+    if (id === NATIVE_PARSER) {
       return { id, external: true };
     }
     return null;
