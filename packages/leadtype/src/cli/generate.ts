@@ -22,6 +22,7 @@ import {
   loadDocsConfig,
   loadLeadtypeConfig,
 } from "../config/load";
+import { normalizeDocsConfig } from "../config/normalize";
 import type { ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";

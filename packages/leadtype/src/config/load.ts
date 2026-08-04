@@ -1067,11 +1067,6 @@ export function warnConfigDeprecations(loaded: LoadedDocsConfig | null): void {
   });
 }
 
-/** Test seam: forget which config files have already warned. */
-export function resetConfigDeprecationWarnings(): void {
-  warnedConfigPaths.clear();
-}
-
 /**
  * Look for `leadtype.config.{ts,js,mjs,cjs}` in the given directory.
  * Used by the sync CLI; for `generate`, prefer {@link loadDocsConfig}.
