@@ -125,16 +125,29 @@ npx leadtype lint docs --max-warnings 0
 
 Keep it under a second by limiting the scan to changed files when you have many pages. The CLI accepts repeated `--ignore` globs to skip stale or generated paths.
 
-## Run before generate
+## Gate on the resolved project too
 
-When `leadtype lint` and `leadtype generate` both run in the same job, lint first:
+`lint` checks your content. [`leadtype doctor`](/docs/reference/doctor) checks the *project* — that the config resolves, that every collection's directory exists, that remote sources are synced to the revision the config asks for, and that no page declares a group nothing declares.
 
 ```bash
+npx leadtype doctor --src . --docs-dir docs
+```
+
+It is read-only by construction: it never clones, refreshes, writes, or generates, which is what makes it safe to run first in a job. Exit `1` means a required input is missing or invalid; warnings still print but do not fail the build.
+
+Worth knowing before you gate a multi-repo project on it: a config that pins a **mutable ref** — a branch rather than a commit — has a cache that is stale whenever CI hasn't synced, and doctor reports that. On a pinned commit it is a real signal; on a branch it mostly reports the CI environment. Either run `leadtype sync` first, or gate only on the repo whose docs you own.
+
+## Run before generate
+
+When these run in the same job, order them cheapest-and-most-specific first:
+
+```bash
+npx leadtype doctor --src . --docs-dir docs
 npx leadtype lint docs --error-unknown
 npx leadtype generate --src . --out public --json
 ```
 
-Generate fails noisily on unknown groups or broken includes. Lint fails specifically on content schema problems with file/line context — much easier to debug.
+Doctor fails on a project that can't resolve at all, before anything reads content. Lint then fails specifically on content schema problems with file/line context. Generate fails noisily on unknown groups or broken includes — much harder to debug than either of the two before it.
 
 ## What to fix first
 

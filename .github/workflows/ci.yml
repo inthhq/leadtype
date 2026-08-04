@@ -45,6 +45,18 @@ jobs:
       - name: Validate docs (leadtype lint)
         run: bun x leadtype lint docs --format github --error-unknown --max-warnings 0
 
+      # Doctor is read-only, so it is safe to gate on: it never clones,
+      # refreshes, writes, or generates. Exit 1 means a required input is
+      # missing or invalid — a broken config, a page declaring a group nothing
+      # declares, a collection pointing at a directory that isn't there.
+      #
+      # Only this repo's own docs are gated. The example apps pin the current
+      # git branch as their source ref, so their caches are stale by design on
+      # any branch that hasn't synced, and gating on that reports the CI
+      # environment rather than the config.
+      - name: Diagnose project (leadtype doctor)
+        run: bun x leadtype doctor --src . --docs-dir docs
+
       - name: Lint
         run: bun run --filter leadtype lint
 
