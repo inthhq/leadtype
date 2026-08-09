@@ -634,4 +634,30 @@ describe("convertMdxFile", () => {
       })
     ).rejects.toThrow(`Transformer "explode" failed in afterFrontmatter`);
   });
+
+  it("normalizes CRLF line endings in source files before parsing", async () => {
+    const dir = await createTempProject();
+    const filePath = path.join(dir, "crlf-page.mdx");
+    // Write CRLF content as a Buffer so writeFile does not re-encode it
+    await writeFile(
+      filePath,
+      Buffer.from(
+        "---\r\ntitle: CRLF Page\r\n---\r\n\r\n# Heading\r\n\r\n```ts\r\nconst x = 1;\r\nconst y = 2;\r\n```\r\n"
+      )
+    );
+
+    let capturedRaw: string | undefined;
+    const capturePlugin = () => (_tree: unknown, file: { value: string }) => {
+      capturedRaw = file.value;
+    };
+
+    const result = await convertMdxFile(filePath, [capturePlugin]);
+
+    // The raw content received by the parser must contain no \r bytes
+    expect(capturedRaw).toBeDefined();
+    expect(capturedRaw).not.toContain("\r");
+    // The final markdown output must also be CR-free
+    expect(result.markdown).not.toContain("\r");
+    expect(result.data.title).toBe("CRLF Page");
+  });
 });

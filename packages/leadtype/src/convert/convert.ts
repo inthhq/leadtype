@@ -831,7 +831,10 @@ async function prepareMdxConversion<
   enrichFromGitFlag: boolean,
   options: ConversionPrepareOptions<TFrontmatter>
 ): Promise<PreparedMdxConversion<TFrontmatter>> {
-  const rawInput = await readFile(sourcePath, "utf8");
+  const rawInput = (await readFile(sourcePath, "utf8")).replaceAll(
+    "\r\n",
+    "\n"
+  );
   const rawPage = await runTransformers(
     options.transformers,
     "beforeParse",

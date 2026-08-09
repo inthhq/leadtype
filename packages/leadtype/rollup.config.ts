@@ -1,4 +1,5 @@
 import { chmod, rm } from "node:fs/promises";
+import path from "node:path";
 import { defineConfig, type Plugin, type RenderedChunk } from "rollup";
 import dts from "rollup-plugin-dts";
 import esbuild from "rollup-plugin-esbuild";
@@ -49,7 +50,7 @@ const entries = {
 } as const;
 
 const isExternal = (id: string) =>
-  id.startsWith("node:") || !(id.startsWith(".") || id.startsWith("/"));
+  id.startsWith("node:") || !(id.startsWith(".") || path.isAbsolute(id));
 
 const cliShebang = (chunk: RenderedChunk) =>
   chunk.name === "cli" ? "#!/usr/bin/env node" : "";

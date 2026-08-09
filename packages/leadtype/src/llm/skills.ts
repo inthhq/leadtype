@@ -112,14 +112,16 @@ async function resolveBody(
   skill: DocsSkillSpec,
   srcDir: string | undefined
 ): Promise<string> {
+  let body: string;
   if (skill.body !== undefined) {
-    return skill.body;
-  }
-  if (skill.bodyPath) {
+    body = skill.body;
+  } else if (skill.bodyPath) {
     const base = srcDir ? path.resolve(srcDir) : process.cwd();
-    return await readFile(path.resolve(base, skill.bodyPath), "utf8");
+    body = await readFile(path.resolve(base, skill.bodyPath), "utf8");
+  } else {
+    body = `# ${skill.name}\n\n${skill.description}\n`;
   }
-  return `# ${skill.name}\n\n${skill.description}\n`;
+  return body.replaceAll("\r\n", "\n");
 }
 
 function renderSkillMd(skill: DocsSkillSpec, body: string): string {

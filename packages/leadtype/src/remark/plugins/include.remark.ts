@@ -296,7 +296,7 @@ async function readIncludedFile(
   cache?: IncludeResolutionCache
 ): Promise<string> {
   if (!cache) {
-    return await readFile(resolvedPath, "utf8");
+    return (await readFile(resolvedPath, "utf8")).replaceAll("\r\n", "\n");
   }
 
   const cached = cache.rawFiles.get(resolvedPath);
@@ -307,10 +307,12 @@ async function readIncludedFile(
   }
 
   cache.stats.rawFileReads += 1;
-  const pending = readFile(resolvedPath, "utf8").catch((error: unknown) => {
-    cache.rawFiles.delete(resolvedPath);
-    throw error;
-  });
+  const pending = readFile(resolvedPath, "utf8")
+    .then((content) => content.replaceAll("\r\n", "\n"))
+    .catch((error: unknown) => {
+      cache.rawFiles.delete(resolvedPath);
+      throw error;
+    });
   cache.rawFiles.set(resolvedPath, pending);
   return await pending;
 }
@@ -560,7 +562,7 @@ function readIncludeFileCached(resolvedPath: string): string {
 
   const profileEnabled = isMarkdownProfileEnabled();
   const readStartedAt = profileEnabled ? performance.now() : 0;
-  const raw = readFileSync(resolvedPath, "utf8");
+  const raw = readFileSync(resolvedPath, "utf8").replaceAll("\r\n", "\n");
   if (profileEnabled) {
     recordMarkdownProfile("include:read", performance.now() - readStartedAt);
   }

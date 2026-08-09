@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -252,6 +252,66 @@ describe("generateSkillArtifacts — site mode", () => {
     await expect(
       readFile(join(outDir, ".well-known/agent-card.json"), "utf8")
     ).rejects.toThrow();
+  });
+  it("normalizes CRLF line endings from bodyPath and inline body to LF-only", async () => {
+    const outDir = await tempDir();
+    const fixturePath = join(outDir, "custom-skill.md");
+    // Write CRLF content via Buffer.from so core.autocrlf doesn't neutralize it
+    await writeFile(
+      fixturePath,
+      Buffer.from("# Custom Skill\r\n\r\nLine 1\r\nLine 2\r\n")
+    );
+
+    await generateSkillArtifacts({
+      outDir,
+      srcDir: outDir,
+      product,
+      mode: "site",
+      skills: {
+        items: [
+          {
+            name: "from-path",
+            description: "Skill loaded from bodyPath",
+            bodyPath: "custom-skill.md",
+          },
+          {
+            name: "from-inline",
+            description: "Skill loaded from inline body",
+            body: "# Inline Skill\r\n\r\nLine A\r\nLine B\r\n",
+          },
+        ],
+      },
+    });
+
+    const pathSkillMd = await readFile(
+      join(outDir, ".well-known/agent-skills/from-path/SKILL.md"),
+      "utf8"
+    );
+    expect(pathSkillMd).not.toContain("\r");
+    expect(pathSkillMd).toContain("# Custom Skill\n\nLine 1\nLine 2\n");
+
+    const inlineSkillMd = await readFile(
+      join(outDir, ".well-known/agent-skills/from-inline/SKILL.md"),
+      "utf8"
+    );
+    expect(inlineSkillMd).not.toContain("\r");
+    expect(inlineSkillMd).toContain("# Inline Skill\n\nLine A\nLine B\n");
+
+    const index = JSON.parse(
+      await readFile(
+        join(outDir, ".well-known/agent-skills/index.json"),
+        "utf8"
+      )
+    ) as {
+      skills: { name: string; digest: string; integrity: string }[];
+    };
+
+    const pathSkillEntry = index.skills.find((s) => s.name === "from-path");
+    const pathHash = createHash("sha256").update(pathSkillMd);
+    expect(pathSkillEntry?.digest).toBe(`sha256:${pathHash.digest("hex")}`);
+    expect(pathSkillEntry?.integrity).toBe(
+      `sha256-${createHash("sha256").update(pathSkillMd).digest("base64")}`
+    );
   });
 });
 
