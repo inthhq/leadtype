@@ -253,19 +253,22 @@ function getFileDependencyReporter(
   return (filePath: string) => addDependency.call(compiler, filePath);
 }
 
+const toPosixPath = (value: string): string =>
+  normalize(value).replaceAll("\\", "/");
+
 export function resolveDefaultTypeTableBasePath(sourcePath?: string): string {
   if (!sourcePath) {
-    return process.cwd();
+    return toPosixPath(process.cwd());
   }
 
   const normalizedPath = sourcePath.replaceAll("\\", "/");
   const segments = normalizedPath.split("/");
   const docsIndex = segments.indexOf(DEFAULT_DOCS_DIR);
   if (docsIndex > 0) {
-    return normalize(segments.slice(0, docsIndex).join("/") || "/");
+    return toPosixPath(segments.slice(0, docsIndex).join("/") || "/");
   }
 
-  return process.cwd();
+  return toPosixPath(process.cwd());
 }
 
 export function createTypeTableExtractionFailureMessage({
