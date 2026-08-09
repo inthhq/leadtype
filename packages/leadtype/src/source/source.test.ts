@@ -417,7 +417,10 @@ describe("createDocsSource", () => {
   });
 
   it("overlays generated OpenAPI pages while keeping authored pages live", async () => {
-    const authoredPath = path.join(contentDir, "guide.mdx");
+    const authoredPath = path
+      .join(contentDir, "guide.mdx")
+      .replaceAll("\\", "/");
+    const posixContentDir = contentDir.replaceAll("\\", "/");
     await writeMdx(authoredPath, "---\ntitle: Guide\n---\nOriginal body.\n");
     await writeOpenApiSpec(path.join(contentDir, "openapi", "pets.yaml"));
 
@@ -453,7 +456,7 @@ describe("createDocsSource", () => {
       }
       expect(authoredMeta.filePath).toBe(authoredPath);
       expect(generatedMeta.filePath).toContain("leadtype-openapi-");
-      expect(generatedMeta.filePath.startsWith(contentDir)).toBe(false);
+      expect(generatedMeta.filePath.startsWith(posixContentDir)).toBe(false);
 
       const navigation = await source.getNavigation();
       const generatedGroup = navigation.groups.find(
