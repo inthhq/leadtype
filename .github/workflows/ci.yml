@@ -54,9 +54,12 @@ jobs:
       - name: Test
         run: bun run --filter leadtype test
 
+  # Every Windows bug so far lived in runtime behavior or test assertions,
+  # not the build — so this job must run the test suite, not just compile.
   validate-windows:
-    name: Build on Windows
+    name: Validate & test on Windows
     runs-on: windows-latest
+    timeout-minutes: 40
     steps:
       - name: Check out code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -73,3 +76,12 @@ jobs:
 
       - name: Build leadtype
         run: bun run --filter leadtype build
+
+      - name: Link CLI
+        run: bun install
+
+      - name: Validate docs (leadtype lint)
+        run: bun x leadtype lint docs --format github --error-unknown --max-warnings 0
+
+      - name: Test
+        run: bun run --filter leadtype test

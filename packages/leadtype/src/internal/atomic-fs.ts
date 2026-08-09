@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { copyFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { glob as fg } from "tinyglobby";
 
 /**
@@ -61,6 +62,49 @@ export async function sweepLeakedTempFiles(dir: string): Promise<void> {
   );
 }
 
+/**
+ * Windows refuses to replace a rename destination while another process holds
+ * an open handle on it (surfacing as EPERM/EACCES/EBUSY) — which is exactly
+ * the concurrent-reader scenario this module exists to support. Those locks
+ * are short-lived (a reader mid-read, an antivirus scan of a fresh file), so
+ * retry with backoff before surfacing the error. POSIX renames replace open
+ * files atomically and keep failing fast.
+ */
+const WINDOWS_RENAME_RETRY_DELAYS_MS = [
+  10, 20, 40, 80, 160, 320, 640, 1000, 1000, 1000,
+];
+
+function isWindowsSharingViolation(error: unknown): boolean {
+  if (!(error instanceof Error && "code" in error)) {
+    return false;
+  }
+  return (
+    error.code === "EPERM" || error.code === "EACCES" || error.code === "EBUSY"
+  );
+}
+
+async function renameReplacing(
+  tempPath: string,
+  filePath: string
+): Promise<void> {
+  if (process.platform !== "win32") {
+    await rename(tempPath, filePath);
+    return;
+  }
+  for (const delayMs of WINDOWS_RENAME_RETRY_DELAYS_MS) {
+    try {
+      await rename(tempPath, filePath);
+      return;
+    } catch (error) {
+      if (!isWindowsSharingViolation(error)) {
+        throw error;
+      }
+      await sleep(delayMs);
+    }
+  }
+  await rename(tempPath, filePath);
+}
+
 async function commitTempFile(
   tempPath: string,
   filePath: string,
@@ -68,7 +112,7 @@ async function commitTempFile(
 ): Promise<void> {
   try {
     await write();
-    await rename(tempPath, filePath);
+    await renameReplacing(tempPath, filePath);
   } catch (error) {
     try {
       await rm(tempPath, { force: true });
