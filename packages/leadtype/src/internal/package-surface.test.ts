@@ -182,16 +182,13 @@ describe("core/adapter boundary", () => {
       (file) =>
         !(
           file.endsWith(".test.ts") ||
-          // Normalize to POSIX so the exclusion matches on Windows too.
-          TEMPLATE_PAYLOAD_FILES.has(
-            path.relative(srcRoot, file).split(path.sep).join("/")
-          )
+          TEMPLATE_PAYLOAD_FILES.has(relative(file))
         )
     );
   }
 
   function relative(file: string): string {
-    return path.relative(srcRoot, file);
+    return path.relative(srcRoot, file).replaceAll(path.sep, "/");
   }
 
   function isAdapterFile(relativePath: string): boolean {
