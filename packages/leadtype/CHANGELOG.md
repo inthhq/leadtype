@@ -1,5 +1,17 @@
 # leadtype
 
+## 0.4.3
+
+### Patch Changes
+
+- 7f4d1ae: Fix Windows builds and cross-platform output determinism.
+
+  - Rollup build: classify module ids as external with `path.isAbsolute` so resolved ids (e.g. `D:/…/src/i18n/index.ts`) are treated as internal on Windows, fixing `"../i18n" is imported as an external by "src/feed/index.ts"` build failures.
+  - Normalize CRLF line endings at content read sites so emitted `.md` mirrors and content hashes are byte-identical across platforms: `convert.ts` MDX source reads, `include.remark.ts` `<include>` partial reads, and `llm/skills.ts` skill body resolution (affects `SKILL.md` `integrity`/`digest` for bodies containing `\r\n`).
+
+- 06df731: Resolve default type-table base paths with POSIX separators on Windows so type-table path resolution behaves identically across platforms.
+- a305cde: Retry atomic artifact renames on Windows sharing violations (`EPERM`/`EACCES`/`EBUSY`) with short backoff, so `writeFileAtomic`/`copyFileAtomic` — and therefore `leadtype generate` — no longer fail when a concurrent reader (parallel build step, editor, antivirus scan) briefly holds an output file open.
+
 ## 0.4.2
 
 ### Patch Changes
