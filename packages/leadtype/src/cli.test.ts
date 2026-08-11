@@ -2217,13 +2217,24 @@ This page is valid, but the output path is not a directory.
     );
     await writeFile(outDir, "not a directory");
 
-    const beforeTempDirs = new Set(
-      await fg("leadtype-generate-*", {
+    // Source-mirror staging dirs only. `leadtype-generate-*` also matches the
+    // cross-process lock protocol's dirs (`…<hash>.lock` and its
+    // `.lock.reclaim-*` trash), which any concurrent generate run — or the
+    // generate-lock tests in a parallel vitest worker — creates and removes in
+    // the shared tmpdir. Snapshotting those makes this assertion flake on
+    // whatever happens to be in flight; they have their own lifecycle
+    // (release, dead-pid reclaim, stale sweep) and are not what this test is
+    // about.
+    const listMirrorDirs = async (): Promise<string[]> => {
+      const dirs = await fg("leadtype-generate-*", {
         absolute: true,
         cwd: tmpdir(),
         onlyDirectories: true,
-      })
-    );
+      });
+      return dirs.filter((dir) => !path.basename(dir).includes(".lock"));
+    };
+
+    const beforeTempDirs = new Set(await listMirrorDirs());
 
     const code = await runCli(
       [
@@ -2240,14 +2251,8 @@ This page is valid, but the output path is not a directory.
       capture.io
     );
 
-    const afterTempDirs = new Set(
-      await fg("leadtype-generate-*", {
-        absolute: true,
-        cwd: tmpdir(),
-        onlyDirectories: true,
-      })
-    );
-    const leakedTempDirs = [...afterTempDirs].filter(
+    const afterTempDirs = await listMirrorDirs();
+    const leakedTempDirs = afterTempDirs.filter(
       (dir) => !beforeTempDirs.has(dir)
     );
 
