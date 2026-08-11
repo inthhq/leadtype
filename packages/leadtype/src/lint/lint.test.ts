@@ -1,7 +1,9 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { writeSyncManifest } from "../sync/sync";
 import { runLintCommand } from "./cli";
 import { lintConfigLinks } from "./config-lint";
 import { collectRouteSet, lintDocs } from "./runner";
@@ -1460,5 +1462,166 @@ describe("runLintCommand config discovery", () => {
 
     expect(code).toBe(1);
     expect(capture.stderr()).toContain("lint.rules.invalid-link");
+  });
+});
+
+describe("runLintCommand source-owned inheritance", () => {
+  function createCapture(): {
+    io: {
+      stderr: { write(chunk: string): boolean };
+      stdout: { write(chunk: string): boolean };
+    };
+    stderr(): string;
+    stdout(): string;
+  } {
+    let stderrText = "";
+    let stdoutText = "";
+    return {
+      io: {
+        stderr: {
+          write(chunk: string) {
+            stderrText += chunk;
+            return true;
+          },
+        },
+        stdout: {
+          write(chunk: string) {
+            stdoutText += chunk;
+            return true;
+          },
+        },
+      },
+      stderr: () => stderrText,
+      stdout: () => stdoutText,
+    };
+  }
+
+  const CONFIG = `export default {
+  product: { name: "T", tagline: "t" },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      inheritConfig: true,
+    },
+  },
+};
+`;
+
+  // The source repo's docs.config.ts, as it sits in the sync cache. Its
+  // frontmatter schema requires an `owner` field the default schema knows
+  // nothing about.
+  const SOURCE_CONFIG = `import * as v from "VALIBOT_ENTRY";
+
+export default {
+  navigation: ["index"],
+  frontmatterSchema: v.object({
+    title: v.string(),
+    owner: v.string(),
+  }),
+};
+`.replace("VALIBOT_ENTRY", fileURLToPath(import.meta.resolve("valibot")));
+
+  async function syncedProject(): Promise<string> {
+    const projectDir = await createTempProject();
+    await writeProjectFile(projectDir, "leadtype.config.ts", CONFIG);
+    await writeProjectFile(
+      projectDir,
+      path.join(".leadtype", "acme", ".git", "HEAD"),
+      "ref: refs/heads/main\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join(".leadtype", "acme", "docs", "docs.config.ts"),
+      SOURCE_CONFIG
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join(".leadtype", "acme", "docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+    await writeSyncManifest(path.join(projectDir, ".leadtype", "acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+    return projectDir;
+  }
+
+  it("lints against the frontmatter schema inherited from the source repo", async () => {
+    const projectDir = await syncedProject();
+
+    const capture = createCapture();
+    const code = await runLintCommand(
+      ["--src", projectDir, "--format", "json"],
+      capture.io
+    );
+
+    // The page has no `owner`, which only the inherited schema requires.
+    // Skipping inheritance lints against the default schema and passes a
+    // page the source repo's own contract rejects.
+    expect(code).toBe(1);
+    const report = JSON.parse(capture.stdout()) as {
+      violations: { kind: string; message: string; severity: string }[];
+    };
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        kind: "frontmatter",
+        severity: "error",
+        message: expect.stringContaining("owner"),
+      }),
+    ]);
+  });
+
+  it("fails with a sync pointer instead of linting an unsynced source", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(projectDir, "leadtype.config.ts", CONFIG);
+
+    const capture = createCapture();
+    const code = await runLintCommand(["--src", projectDir], capture.io);
+
+    // Lint never clones. Before inheritance was applied here, an unsynced
+    // source linted an empty tree and passed with zero files scanned.
+    expect(code).toBe(1);
+    expect(capture.stderr()).toContain("leadtype sync");
+  });
+
+  it("rejects a stale cache before importing its inherited config", async () => {
+    const projectDir = await createTempProject();
+    await writeProjectFile(projectDir, "leadtype.config.ts", CONFIG);
+    await writeProjectFile(
+      projectDir,
+      path.join(".leadtype", "acme", ".git", "HEAD"),
+      "ref: refs/heads/other\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join(".leadtype", "acme", "docs", "docs.config.ts"),
+      "throw new Error('SHOULD_NOT_IMPORT');\n"
+    );
+    await writeProjectFile(
+      projectDir,
+      path.join(".leadtype", "acme", "docs", "index.mdx"),
+      "---\ntitle: Home\n---\nBody\n"
+    );
+    await writeSyncManifest(path.join(projectDir, ".leadtype", "acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "v0.9",
+      commit: "abc1234",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const capture = createCapture();
+    const code = await runLintCommand(["--src", projectDir], capture.io);
+
+    expect(code).toBe(1);
+    expect(capture.stderr()).toContain("leadtype sync --refresh");
+    expect(capture.stderr()).not.toContain("SHOULD_NOT_IMPORT");
   });
 });

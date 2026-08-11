@@ -13,16 +13,13 @@ import {
   inferNavigationFromContent,
   mergeInferenceReports,
 } from "../config/infer";
-import {
-  inheritCollectionSourceConfigs,
-  LEADTYPE_CONFIG_FILENAMES,
-} from "../config/inherit";
+import { LEADTYPE_CONFIG_FILENAMES } from "../config/inherit";
 import {
   type LoadedDocsConfig,
   loadDocsConfig,
   loadLeadtypeConfig,
 } from "../config/load";
-import { normalizeDocsConfig } from "../config/normalize";
+import { resolveProjectFromLoaded } from "../config/project";
 import type { ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";
@@ -1671,31 +1668,34 @@ async function executeGenerate(
         configDir,
         sources: loadedConfig.resolved.sources,
       });
-      const collections = await inheritCollectionSourceConfigs(
-        loadedConfig.config.collections,
+      // The post-sync resolution — source-owned inheritance and the
+      // re-normalization that keeps the first pass's sources and deprecations
+      // — is the same pipeline `resolveProject` runs. Generate differs only in
+      // syncing first (so the cache the resolver reads is fresh) and in
+      // failing hard: a diagnostic doctor reports is a build error here.
+      const project = await resolveProjectFromLoaded(loadedConfig, {
+        rootDir: srcDir,
+        // Generate derives navigation itself during staging; resolving it
+        // here too would walk every content tree a second time.
+        infer: false,
+      });
+      const blocking = project.diagnostics.find(
+        (entry) => entry.level === "error"
+      );
+      if (blocking) {
+        throw new Error(
+          `${blocking.message}${blocking.fix ? `. Run \`${blocking.fix}\`.` : ""}`
+        );
+      }
+      loadedConfig = {
+        config: project.config,
+        path: loadedConfig.path,
+        resolved: project.resolved,
+      };
+      docsSources = resolveDocsSourcesFromCollections(
+        project.config.collections ?? {},
         configDir
       );
-      // Re-normalize, don't just swap the collections in: `resolved` was
-      // derived from the pre-inheritance config, so carrying it through
-      // unchanged leaves every inherited navigation, schema, groups, and
-      // mounts missing from the resolved model — for the exact
-      // `inheritConfig: true` shape the docs recommend. Deprecations and the
-      // acquisition graph stay from the first pass, which is the only one that
-      // saw the authored aliases and source names.
-      const renormalized = normalizeDocsConfig(
-        { ...loadedConfig.config, collections },
-        { configPath: loadedConfig.path, configDir }
-      );
-      loadedConfig = {
-        config: renormalized.config,
-        path: loadedConfig.path,
-        resolved: {
-          ...renormalized.resolved,
-          sources: loadedConfig.resolved.sources,
-          deprecations: loadedConfig.resolved.deprecations,
-        },
-      };
-      docsSources = resolveDocsSourcesFromCollections(collections, configDir);
     } else {
       const docsDirsToResolve =
         args.docsDirs.length > 0 ? args.docsDirs : [DEFAULT_DOCS_DIR];
