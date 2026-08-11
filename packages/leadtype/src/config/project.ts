@@ -204,7 +204,14 @@ async function resolveContentDir(
       });
       return;
     }
-    if (!sameSparse(manifest.sparse, resolvedCollection.remote.sparse)) {
+    // A manifest without `sparse` records a full clone — a superset of any
+    // sparse path set, so every configured path is present and there is
+    // nothing "narrow" to reject. Only a checkout that was itself sparse can
+    // be missing paths the config asks for.
+    if (
+      manifest.sparse !== undefined &&
+      !sameSparse(manifest.sparse, resolvedCollection.remote.sparse)
+    ) {
       diagnostics.push({
         id: "source.cache-narrow",
         level: "error",
@@ -477,7 +484,15 @@ export async function resolveProject(
         : "explicit";
     } else if (groups && groups.length > 0) {
       navigationOrigin = "groups";
-    } else if (options.infer !== false && contentDir) {
+    } else if (
+      options.infer !== false &&
+      contentDir &&
+      // Not for localized projects — the same opt-out `generate` applies.
+      // Derivation keys sections off the first path segment, which for
+      // `docs/en/…` is the locale, so nav/doctor would report a locale-keyed
+      // tree the real build never produces.
+      normalized.config.i18n === undefined
+    ) {
       const derived = await inferNavigationFromContent(contentDir);
       navigationOrigin = "inferred";
       resolvedNavigation = derived.navigation;

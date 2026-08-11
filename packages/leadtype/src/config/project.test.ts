@@ -131,6 +131,24 @@ describe("navigation origin", () => {
     );
   });
 
+  it("does not derive over a localized tree", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default { ${IDENTITY}, i18n: { defaultLocale: "en", locales: ["en", "fr"] } };`,
+      "docs/en/index.mdx": page("Home"),
+      "docs/en/guides/auth.mdx": page("Auth"),
+    });
+    const project = await resolveProject({ cwd: dir });
+
+    // Derivation keys sections off the first path segment — the locale, for a
+    // localized tree — so nav/doctor would print a locale-keyed tree the real
+    // build never produces. `generate` skips derivation for i18n projects.
+    expect(project.collections[0]?.navigationOrigin).toBe("inferred");
+    expect(project.collections[0]?.navigation).toBeUndefined();
+    expect(project.inference.values.map((entry) => entry.field)).not.toContain(
+      "navigation"
+    );
+  });
+
   it("can be told not to infer", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default { ${IDENTITY} };`,
@@ -267,6 +285,44 @@ describe("pinned remote sources", () => {
     expect(diagnostic?.fix).toBe("leadtype sync --refresh");
     expect(diagnostic?.message).toContain("[docs]");
     expect(diagnostic?.message).toContain("[docs, packages]");
+  });
+
+  it("accepts a fully-cloned cache when the config asks for sparse paths", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      sparse: ["docs", "packages"],
+    },
+  },
+};`,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      ".leadtype/acme/docs/index.mdx": page("Home"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+      // Cloned in full, before `sparse` entered the config. Every configured
+      // path is present — a superset, not a narrow checkout.
+    });
+
+    const project = await resolveProject({ cwd: dir });
+
+    expect(
+      project.diagnostics.find((entry) => entry.id === "source.cache-narrow")
+    ).toBeUndefined();
+    expect(project.collections[0]?.contentDir).toBe(
+      path.join(dir, ".leadtype/acme/docs")
+    );
   });
 
   it("reports a cache holding the wrong revision", async () => {
