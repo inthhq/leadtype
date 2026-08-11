@@ -79,8 +79,10 @@ You are wiring a single content directory that no Leadtype config describes, or 
 ## Install
 
 ```sh
-bun add leadtype
+bun add leadtype jiti
 ```
+
+`jiti` is the TypeScript loader `createDocsProject()` uses to read your `docs.config.ts` / `leadtype.config.ts` at runtime — an optional peer of leadtype, required the moment a config file is discovered. Skip it only if you stay on `createDocsSource()` with no config file.
 
 Plus an MDX integration for your bundler (`@next/mdx`, `@astrojs/mdx`, `@mdx-js/rollup`, etc.).
 

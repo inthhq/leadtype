@@ -10,7 +10,7 @@ This page covers the wiring. For everything fumadocs does after that, see fumado
 ## TL;DR
 
 ```sh
-bun add leadtype fumadocs-core fumadocs-ui
+bun add leadtype fumadocs-core fumadocs-ui jiti
 ```
 
 ```ts title="lib/source.ts"
@@ -54,10 +54,10 @@ That's the minimum. The rest of this page covers `DocsLayout` wiring, page rende
 ## Install
 
 ```sh
-bun add leadtype fumadocs-core fumadocs-ui
+bun add leadtype fumadocs-core fumadocs-ui jiti
 ```
 
-Leadtype declares `fumadocs-core >= 15` as an **optional peer dependency** — install it explicitly when you want the adapter.
+Leadtype declares `fumadocs-core >= 15` as an **optional peer dependency** — install it explicitly when you want the adapter. `jiti` is the TypeScript loader `createDocsProject()` uses to read your `docs.config.ts` / `leadtype.config.ts` at runtime — also an optional peer, and required the moment a config file is discovered.
 
 ## Wire the source
 
