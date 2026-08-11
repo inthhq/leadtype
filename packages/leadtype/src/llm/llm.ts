@@ -485,6 +485,24 @@ export type DocsConfig<
 > = {
   /** Identity of the documented product — name, tagline, links. Reused everywhere. */
   product: ProductInfo;
+  /**
+   * The site's canonical public origin, plus any path prefix it serves under —
+   * `https://acme.dev`, or `https://acme.dev/handbook`. Every absolute URL the
+   * pipeline emits joins onto it: `sitemap.xml`, `llms.txt`, feeds, search
+   * metadata, the agent card, and runtime TOC/search links.
+   *
+   * Site-owned: it says where *this* deployment publishes, so it is never
+   * inherited via `inheritConfig`, and a source-owned `docs.config.*` that
+   * several sites consume should leave it unset. An explicit `--base-url`
+   * flag or `createDocsProject({ baseUrl })` argument always overrides it.
+   * Absent everywhere, deployment URL env vars (`NEXT_PUBLIC_SITE_URL`,
+   * `VERCEL_URL`, …) and a localhost fallback apply, as before.
+   *
+   * Normalized at config load: trailing slashes are stripped, and a value
+   * that is not an absolute http(s) URL — or carries a query or fragment —
+   * is rejected.
+   */
+  baseUrl?: string;
   /** Who publishes the product. Feeds JSON-LD `Organization` + the agent-card `provider`. */
   organization?: OrganizationInfo;
   /** Authored `llms.txt` body (ordered sections). */

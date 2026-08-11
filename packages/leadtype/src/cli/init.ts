@@ -34,7 +34,8 @@ Options:
   -f, --framework <name>   Target framework: next | astro | nuxt | sveltekit.
                            Auto-detected from package.json when omitted.
       --dir <dir>          Project root to scaffold into (default: ".").
-      --base-url <url>     Base URL for generated links (default: per-framework dev URL).
+      --base-url <url>     Site base URL written once into docs/docs.config.ts
+                           (default: per-framework dev URL).
       --name <name>        Product name written into docs.config.ts.
       --summary <text>     One-line product summary.
       --force              Overwrite files that already exist.
@@ -302,7 +303,6 @@ async function mergeAgentsPointer(
 async function patchPackageJsonScript(
   projectRoot: string,
   outDir: string,
-  baseUrl: string,
   dryRun: boolean
 ): Promise<boolean> {
   const pkgPath = path.join(projectRoot, "package.json");
@@ -320,7 +320,9 @@ async function patchPackageJsonScript(
     }
     pkg.scripts = {
       ...pkg.scripts,
-      "docs:generate": `leadtype generate --src . --out ${outDir} --base-url ${baseUrl}`,
+      // No --base-url: the scaffolded docs.config.ts carries `baseUrl`, and
+      // repeating it here is exactly the drift the config field removes.
+      "docs:generate": `leadtype generate --src . --out ${outDir}`,
     };
     await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
     return true;
@@ -356,19 +358,12 @@ function renderNextSteps(
 async function runPostScaffoldGenerate(
   projectRoot: string,
   plan: FrameworkPlan,
-  baseUrl: string,
   io: InitIo
 ): Promise<boolean> {
   io.stdout.write("\nleadtype init: generating agent artifacts…\n");
+  // `baseUrl` comes from the just-scaffolded docs/docs.config.ts.
   const generateCode = await runGenerateCommand(
-    [
-      "--src",
-      projectRoot,
-      "--out",
-      path.join(projectRoot, plan.outDir),
-      "--base-url",
-      baseUrl,
-    ],
+    ["--src", projectRoot, "--out", path.join(projectRoot, plan.outDir)],
     io
   );
   if (generateCode !== 0) {
@@ -419,8 +414,8 @@ export async function runInitCommand(
   const summary = args.summary ?? DEFAULT_SUMMARY;
   const baseUrl = args.baseUrl ?? defaultBaseUrl(framework);
 
-  const plan = buildPlan(framework, baseUrl, { webmcp: args.webmcp });
-  const allFiles = [...sharedFiles(name, summary), ...plan.files];
+  const plan = buildPlan(framework, { webmcp: args.webmcp });
+  const allFiles = [...sharedFiles(name, summary, baseUrl), ...plan.files];
 
   if (args.json) {
     const agentsPointer = await planAgentsPointer(projectRoot);
@@ -452,7 +447,6 @@ export async function runInitCommand(
   const patched = await patchPackageJsonScript(
     projectRoot,
     plan.outDir,
-    baseUrl,
     dryRun
   );
   const agentsPointer = await mergeAgentsPointer(projectRoot, dryRun);
@@ -476,7 +470,7 @@ export async function runInitCommand(
 
   let ranGenerate = false;
   if (args.generate && !dryRun) {
-    ranGenerate = await runPostScaffoldGenerate(projectRoot, plan, baseUrl, io);
+    ranGenerate = await runPostScaffoldGenerate(projectRoot, plan, io);
   }
 
   io.stdout.write(`${renderNextSteps(framework, plan, ranGenerate)}\n`);

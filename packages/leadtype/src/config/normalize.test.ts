@@ -633,3 +633,66 @@ describe("formatDeprecationWarning", () => {
     expect(warning?.hint).toMatch(/next major release/);
   });
 });
+
+describe("baseUrl", () => {
+  it("keeps an authored value, normalized, with explicit provenance", () => {
+    const { config, resolved } = normalize({
+      product,
+      baseUrl: "https://acme.dev/handbook/",
+    });
+
+    expect(config.baseUrl).toBe("https://acme.dev/handbook");
+    expect(resolved.baseUrl).toBe("https://acme.dev/handbook");
+    expect(resolved.provenance.baseUrl).toEqual({
+      origin: "explicit",
+      configPath: CONFIG_PATH,
+    });
+    expect(serializeResolvedConfig(resolved).baseUrl).toBe(
+      "https://acme.dev/handbook"
+    );
+  });
+
+  it("records the env-fallback default when nothing was authored", () => {
+    const { config, resolved } = normalize({ product });
+
+    expect(config.baseUrl).toBeUndefined();
+    expect(resolved.baseUrl).toBeUndefined();
+    expect(resolved.provenance.baseUrl).toMatchObject({
+      origin: "default",
+      inferredFrom: expect.stringContaining("env vars"),
+    });
+  });
+
+  it("carries the normalized value on the canonical multi-source config", () => {
+    const { config, resolved } = normalize({
+      product,
+      baseUrl: "https://acme.dev///",
+      collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+    });
+
+    expect(config.baseUrl).toBe("https://acme.dev");
+    expect(resolved.baseUrl).toBe("https://acme.dev");
+    expect(resolved.mode).toBe("multi-source");
+  });
+
+  it("rejects a value that is not an absolute URL", () => {
+    expect(() => normalize({ product, baseUrl: "acme.dev" })).toThrow(
+      /baseUrl "acme.dev" is not an absolute URL/
+    );
+  });
+
+  it("rejects a non-http(s) protocol", () => {
+    expect(() => normalize({ product, baseUrl: "ftp://acme.dev" })).toThrow(
+      /must be an http or https URL/
+    );
+  });
+
+  it("rejects a query or fragment — the value is a join prefix", () => {
+    expect(() =>
+      normalize({ product, baseUrl: "https://acme.dev?utm=1" })
+    ).toThrow(/must not carry a query or fragment/);
+    expect(() =>
+      normalize({ product, baseUrl: "https://acme.dev#docs" })
+    ).toThrow(/must not carry a query or fragment/);
+  });
+});

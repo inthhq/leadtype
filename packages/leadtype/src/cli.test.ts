@@ -1815,7 +1815,7 @@ description: "First release."
 
       expect(code).toBe(1);
       expect(capture.stderr).toContain(
-        "configured feeds require --base-url or a deployment URL env var"
+        "configured feeds require `baseUrl` in the docs config, --base-url, or a deployment URL env var"
       );
     } finally {
       for (const [key, value] of previousBaseUrlEnv) {
@@ -3309,5 +3309,180 @@ export default {
     expect(code).toBe(0);
     // The collection banner proves we routed through the project config.
     expect(capture.stderr).toContain("Linting collection [guide]");
+  });
+});
+
+describe("config-owned baseUrl", () => {
+  async function baseUrlFixture(configBody: string): Promise<{
+    srcDir: string;
+    outDir: string;
+  }> {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(path.join(srcDir, "docs", "docs.config.ts"), configBody);
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    return { srcDir, outDir };
+  }
+
+  const configWithBaseUrl = `export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+  baseUrl: "https://config.acme.dev/",
+};`;
+
+  it("uses the config's baseUrl for site artifacts, normalized", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(configWithBaseUrl);
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const sitemap = await readFile(path.join(outDir, "sitemap.xml"), "utf8");
+    expect(sitemap).toContain("https://config.acme.dev/docs/quickstart");
+    expect(sitemap).not.toContain("acme.dev//");
+  });
+
+  it("lets --base-url override the config field", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(configWithBaseUrl);
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://preview.acme.dev",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const sitemap = await readFile(path.join(outDir, "sitemap.xml"), "utf8");
+    expect(sitemap).toContain("https://preview.acme.dev/docs/quickstart");
+    expect(sitemap).not.toContain("https://config.acme.dev");
+  });
+
+  it("satisfies configured feeds without repeating --base-url", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(`export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+  baseUrl: "https://config.acme.dev",
+  feeds: [
+    {
+      id: "docs",
+      title: "Docs",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`);
+    // Feeds only list dated pages.
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ndate: 2026-06-01'
+    );
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      const rss = await readFile(path.join(outDir, "docs", "rss.xml"), "utf8");
+      expect(rss).toContain("https://config.acme.dev/docs/quickstart");
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("rejects an invalid config baseUrl with the field named", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(`export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+  baseUrl: "not-a-url",
+};`);
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain(
+      'baseUrl "not-a-url" is not an absolute URL'
+    );
+  });
+
+  it("--explain reports the fallback when no baseUrl is set anywhere", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(`export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+};`);
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--explain"],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      expect(capture.stdout).toContain("baseUrl");
+      expect(capture.stdout).toContain("deployment URL env vars");
+      expect(capture.stdout).toContain(
+        "Set `baseUrl` in the docs config, or pass --base-url."
+      );
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("--explain stays quiet about baseUrl when the config authors it", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(configWithBaseUrl);
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--explain"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stdout).not.toContain("deployment URL env vars");
   });
 });

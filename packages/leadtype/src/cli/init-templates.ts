@@ -44,11 +44,17 @@ export function isInitFramework(value: string): value is InitFramework {
   return (SUPPORTED_FRAMEWORKS as string[]).includes(value);
 }
 
-export function sharedFiles(name: string, summary: string): InitFile[] {
+export function sharedFiles(
+  name: string,
+  summary: string,
+  baseUrl: string
+): InitFile[] {
   // The smallest config that still adds value. `navigation` and
   // `llms.sections` are derived from the content tree until you author them,
-  // so the starter file is identity only — the one thing leadtype genuinely
-  // cannot guess. See /docs/pipeline/configure-sources for the progression.
+  // so the starter file is identity plus the site's public URL — the two
+  // things leadtype genuinely cannot guess. Both the CLI and the runtime read
+  // `baseUrl` from here, so no other scaffolded file repeats it. See
+  // /docs/pipeline/configure-sources for the progression.
   const configBody = `import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
@@ -57,6 +63,9 @@ export default defineDocsConfig({
     name: ${JSON.stringify(name)},
     tagline: ${JSON.stringify(summary)},
   },
+  // Where this site publishes — absolute links in sitemap.xml, llms.txt, and
+  // search metadata join onto it. Update it when you deploy.
+  baseUrl: ${JSON.stringify(baseUrl)},
 });
 `;
 
@@ -119,10 +128,7 @@ export default defineNuxtPlugin(() => {
   };
 }
 
-function nextPlan(
-  baseUrl: string,
-  options: BuildPlanOptions = {}
-): FrameworkPlan {
+function nextPlan(options: BuildPlanOptions = {}): FrameworkPlan {
   const webmcpImport = options.webmcp
     ? 'import { LeadtypeWebMcp } from "../../../components/leadtype-webmcp";\n'
     : "";
@@ -163,11 +169,10 @@ export default withMdx({ pageExtensions: ["ts", "tsx", "mdx"] });
         path: "lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
 
-// The project discovers docs/docs.config.ts and resolves the same model the
-// CLI reads, so the rendered site and the generated artifacts can't disagree.
-export const source = await createDocsProject({
-  baseUrl: ${JSON.stringify(baseUrl)},
-});
+// The project discovers docs/docs.config.ts — baseUrl included — and
+// resolves the same model the CLI reads, so the rendered site and the
+// generated artifacts can't disagree.
+export const source = await createDocsProject();
 `,
       },
       {
@@ -231,10 +236,7 @@ ${webmcpElement}      {jsonLd ? (
   };
 }
 
-function astroPlan(
-  baseUrl: string,
-  options: BuildPlanOptions = {}
-): FrameworkPlan {
+function astroPlan(options: BuildPlanOptions = {}): FrameworkPlan {
   const webmcpScript = options.webmcp ? astroWebMcpScript() : "";
   return {
     outDir: "public",
@@ -265,11 +267,10 @@ export default defineConfig({
         path: "src/lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
 
-// The project discovers docs/docs.config.ts and resolves the same model the
-// CLI reads, so the rendered site and the generated artifacts can't disagree.
-export const source = await createDocsProject({
-  baseUrl: ${JSON.stringify(baseUrl)},
-});
+// The project discovers docs/docs.config.ts — baseUrl included — and
+// resolves the same model the CLI reads, so the rendered site and the
+// generated artifacts can't disagree.
+export const source = await createDocsProject();
 `,
       },
       {
@@ -326,10 +327,7 @@ export const HEAD = GET;
   };
 }
 
-function nuxtPlan(
-  baseUrl: string,
-  options: BuildPlanOptions = {}
-): FrameworkPlan {
+function nuxtPlan(options: BuildPlanOptions = {}): FrameworkPlan {
   return {
     outDir: "public",
     devCommand: "nuxt dev",
@@ -342,12 +340,11 @@ function nuxtPlan(
 
 let sourcePromise: ReturnType<typeof createDocsProject> | undefined;
 
-// The project discovers docs/docs.config.ts and resolves the same model the
-// CLI reads, so the rendered site and the generated artifacts can't disagree.
+// The project discovers docs/docs.config.ts — baseUrl included — and
+// resolves the same model the CLI reads, so the rendered site and the
+// generated artifacts can't disagree.
 export function getSource() {
-  sourcePromise ??= createDocsProject({
-    baseUrl: ${JSON.stringify(baseUrl)},
-  });
+  sourcePromise ??= createDocsProject();
   return sourcePromise;
 }
 `,
@@ -426,10 +423,7 @@ export default defineNuxtConfig({
   };
 }
 
-function sveltekitPlan(
-  baseUrl: string,
-  options: BuildPlanOptions = {}
-): FrameworkPlan {
+function sveltekitPlan(options: BuildPlanOptions = {}): FrameworkPlan {
   const webmcpImport = options.webmcp
     ? '  import { useLeadtypeWebMcp } from "leadtype/webmcp/svelte";\n'
     : "";
@@ -478,11 +472,10 @@ export default {
         path: "src/lib/source.ts",
         contents: `import { createDocsProject } from "leadtype";
 
-// The project discovers docs/docs.config.ts and resolves the same model the
-// CLI reads, so the rendered site and the generated artifacts can't disagree.
-export const source = await createDocsProject({
-  baseUrl: ${JSON.stringify(baseUrl)},
-});
+// The project discovers docs/docs.config.ts — baseUrl included — and
+// resolves the same model the CLI reads, so the rendered site and the
+// generated artifacts can't disagree.
+export const source = await createDocsProject();
 `,
       },
       {
@@ -561,18 +554,17 @@ export function defaultBaseUrl(framework: InitFramework): string {
 
 export function buildPlan(
   framework: InitFramework,
-  baseUrl: string,
   options: BuildPlanOptions = {}
 ): FrameworkPlan {
   switch (framework) {
     case "next":
-      return nextPlan(baseUrl, options);
+      return nextPlan(options);
     case "astro":
-      return astroPlan(baseUrl, options);
+      return astroPlan(options);
     case "nuxt":
-      return nuxtPlan(baseUrl, options);
+      return nuxtPlan(options);
     case "sveltekit":
-      return sveltekitPlan(baseUrl, options);
+      return sveltekitPlan(options);
     default: {
       const exhaustive: never = framework;
       throw new Error(`unhandled framework: ${String(exhaustive)}`);

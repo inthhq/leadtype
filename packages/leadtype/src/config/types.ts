@@ -143,6 +143,13 @@ export type ResolvedDocsConfig = {
   configDir?: string;
   product: ProductInfo;
   /**
+   * The site's canonical public base URL, normalized (no trailing slash).
+   * Absent when not authored — provenance still carries a `baseUrl` entry
+   * recording that deployment URL env vars or the localhost fallback apply
+   * at generation time.
+   */
+  baseUrl?: string;
+  /**
    * Every collection, in declaration order. A single-source project resolves
    * to exactly one collection so downstream code has one shape to handle.
    */
@@ -172,6 +179,7 @@ export type SerializableResolvedConfig = {
   mode: ResolvedProjectMode;
   configPath?: string;
   product: ProductInfo;
+  baseUrl?: string;
   collections: {
     key: string;
     dir?: string;
@@ -198,6 +206,7 @@ export function serializeResolvedConfig(
     mode: resolved.mode,
     ...(resolved.configPath ? { configPath: resolved.configPath } : {}),
     product: resolved.product,
+    ...(resolved.baseUrl ? { baseUrl: resolved.baseUrl } : {}),
     collections: resolved.collections.map((collection) => ({
       key: collection.key,
       ...(collection.dir === undefined ? {} : { dir: collection.dir }),

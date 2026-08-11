@@ -26,7 +26,11 @@ import {
   type ResolvedProjectCollection,
   resolveProject,
 } from "../config/project";
-import { serializeResolvedConfig } from "../config/types";
+import {
+  type ConfigValueOrigin,
+  serializeResolvedConfig,
+} from "../config/types";
+import { normalizeBaseUrl } from "../internal/docs-url";
 import type { LogCall } from "../internal/logger";
 import type { DocsCollection, DocsConfig } from "../llm";
 import { defaultCacheDir, readSyncManifest } from "../sync/sync";
@@ -64,6 +68,13 @@ export type DoctorReport = {
     path?: string;
     mode: "single-source" | "multi-source" | "none";
     deprecations: { field: string; replacement: string }[];
+    /**
+     * The base URL site artifacts will actually use, with where it came from:
+     * `explicit` when the config authors `baseUrl`, `default` when the value
+     * falls through to deployment URL env vars or localhost. Absent only when
+     * no config resolved at all.
+     */
+    baseUrl?: { value: string; origin: ConfigValueOrigin };
     /** Per-field origin for top-level config values. */
     provenance: Record<string, unknown>;
   };
@@ -532,6 +543,16 @@ export async function runDoctorCommand(
         field: entry.field,
         replacement: entry.replacement,
       })),
+      // The value generation will resolve, through the same fallback chain:
+      // the authored config field, else deployment URL env vars / localhost.
+      ...(resolved
+        ? {
+            baseUrl: {
+              value: normalizeBaseUrl(resolved.baseUrl),
+              origin: resolved.provenance.baseUrl?.origin ?? "default",
+            },
+          }
+        : {}),
       provenance: resolved ? serializeResolvedConfig(resolved).provenance : {},
     },
     sources,
@@ -636,6 +657,11 @@ function renderHuman(report: DoctorReport, srcDir: string): string {
       ? `  ${rel(report.config.path)}  (${report.config.mode})`
       : "  none found"
   );
+  if (report.config.baseUrl) {
+    lines.push(
+      `  baseUrl: ${report.config.baseUrl.value}  (${report.config.baseUrl.origin})`
+    );
+  }
   if (report.config.deprecations.length > 0) {
     lines.push(
       `  ${report.config.deprecations.length} deprecated field(s): ${report.config.deprecations

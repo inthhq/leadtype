@@ -479,3 +479,43 @@ describe("internal invariants", () => {
     ).toBe("/srv/docs");
   });
 });
+
+describe("baseUrl resolution", () => {
+  const files = {
+    "content/docs/index.mdx": page("Home"),
+    "content/guides/auth.mdx": page("Auth"),
+  };
+  const config: DocsConfig = {
+    product,
+    baseUrl: "https://config.acme.dev",
+    collections: {
+      docs: { dir: "content/docs", routePrefix: "/docs" },
+      guides: { dir: "content/guides", routePrefix: "/guides" },
+    },
+  };
+
+  it("reads the config's site-owned baseUrl when no argument is passed", async () => {
+    const project = await createDocsProject({
+      config,
+      configDir: await fixture(files),
+    });
+
+    const { index } = await project.buildSearchIndex();
+    const serialized = JSON.stringify(index);
+    expect(index.documents.length).toBeGreaterThan(0);
+    expect(serialized).toContain("https://config.acme.dev/guides/auth");
+  });
+
+  it("lets an explicit argument override the config field", async () => {
+    const project = await createDocsProject({
+      config,
+      configDir: await fixture(files),
+      baseUrl: "https://preview.acme.dev",
+    });
+
+    const { index } = await project.buildSearchIndex();
+    const serialized = JSON.stringify(index);
+    expect(serialized).toContain("https://preview.acme.dev/guides/auth");
+    expect(serialized).not.toContain("https://config.acme.dev");
+  });
+});

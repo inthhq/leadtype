@@ -21,7 +21,7 @@ leadtype init [options]
 | --- | --- | --- |
 | `--framework <name>`, `-f` | auto-detect | Target framework: `next`, `astro`, `nuxt`, or `sveltekit`. Inferred from `package.json` dependencies when omitted. |
 | `--dir <dir>` | `.` | Project root to scaffold into. |
-| `--base-url <url>` | per-framework dev URL | Base URL written into the source config (e.g. `http://localhost:3000`). |
+| `--base-url <url>` | per-framework dev URL | Site base URL written once into the scaffolded `docs/docs.config.ts` as `baseUrl` — the CLI and the runtime both read it from there. |
 | `--name <name>` | `My docs` | Product name written into `docs/docs.config.ts`. |
 | `--summary <text>` | placeholder | One-line product summary. |
 | `--force` | off | Overwrite files that already exist. Without it, existing files are skipped. |
@@ -96,7 +96,7 @@ leadtype generate [options]
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
 | `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips URL-anchored site artifacts like `llms.txt`, `llms-full.txt`, sitemap, and robots. |
 | `--mcp` | deprecated | Compatibility shortcut for bundle MCP artifacts. Prefer `agents.mcp.enabled` in `docs.config.ts`; this flag will be removed in the next major version. |
-| `--base-url <url>` | — | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Site mode only; ignored in `--bundle`. |
+| `--base-url <url>` | config `baseUrl` | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Overrides the config's `baseUrl` field; absent both, deployment URL env vars apply. Site mode only; ignored in `--bundle`. |
 | `--name <name>` | from `docs.config.ts` or `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). Overrides config. |
 | `--summary <text>` | from `docs.config.ts` or `package.json#description` | Product summary written into the index file. Overrides config. |
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
@@ -223,10 +223,10 @@ export default defineDocsConfig({
 });
 ```
 
-Feeds are site-mode only and require a base URL so item links are absolute. Pass
-`--base-url`, or set the same deployment URL environment variables used by the
-rest of site-mode generation, such as `NEXT_PUBLIC_SITE_URL` or Vercel URL
-variables. If neither is set and Leadtype would fall back to an implicit
+Feeds are site-mode only and require a base URL so item links are absolute. Set
+`baseUrl` in the docs config, pass `--base-url`, or set the same deployment URL
+environment variables used by the rest of site-mode generation, such as
+`NEXT_PUBLIC_SITE_URL` or Vercel URL variables. If none is set and Leadtype would fall back to an implicit
 localhost URL, feed generation fails instead of publishing accidental local
 links. Entries use generated markdown frontmatter: `title`, `description`,
 `date`, and `draft`. Every selected page must carry a `date` or

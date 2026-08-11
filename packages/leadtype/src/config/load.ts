@@ -1251,6 +1251,13 @@ export function validateDocsConfig(
     }
   }
 
+  if (value.baseUrl !== undefined && typeof value.baseUrl !== "string") {
+    // URL-validity itself is checked by normalization, which both this loader
+    // and directly-supplied configs run through — only the authored shape is
+    // this function's job.
+    throw new Error(`docs config at "${configPath}": baseUrl must be a string`);
+  }
+
   const organization = validateOrganization(value.organization, configPath);
   const llms = validateLlmsConfig(value.llms, configPath);
   const agents = validateAgentsConfig(value.agents, configPath);
@@ -1267,6 +1274,7 @@ export function validateDocsConfig(
   }
 
   return {
+    ...(typeof value.baseUrl === "string" ? { baseUrl: value.baseUrl } : {}),
     ...(collections ? { collections } : {}),
     ...(sources ? { sources } : {}),
     ...(groups ? { groups } : {}),

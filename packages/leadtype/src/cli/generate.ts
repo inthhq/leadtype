@@ -22,7 +22,10 @@ import {
   loadDocsConfig,
   loadLeadtypeConfig,
 } from "../config/load";
-import { normalizeDocsConfig } from "../config/normalize";
+import {
+  BASE_URL_DEFAULT_SOURCE,
+  normalizeDocsConfig,
+} from "../config/normalize";
 import type { ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";
@@ -148,7 +151,7 @@ function resolveFeedBaseUrl(baseUrl?: string): string {
   }
 
   throw new Error(
-    "configured feeds require --base-url or a deployment URL env var so RSS and Atom links are absolute"
+    "configured feeds require `baseUrl` in the docs config, --base-url, or a deployment URL env var so RSS and Atom links are absolute"
   );
 }
 
@@ -299,6 +302,8 @@ function createGenerateMarkdownTransforms({
 
 type ResolvedGenerateMetadata = {
   configPath?: string;
+  /** The config's site-owned `baseUrl`. The explicit `--base-url` flag wins. */
+  baseUrl?: string;
   collectionFrontmatterSchemas?: CollectionFrontmatterSchema[];
   frontmatterSchema?: DocsFrontmatterSchema;
   flatteners?: PluggableList;
@@ -352,7 +357,7 @@ Options:
   --out <dir>        Output root directory (default: public)
   --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
   --mcp              Deprecated: bundle-mode shortcut for MCP artifacts. Prefer agents.mcp.enabled in docs.config.ts
-  --base-url <url>   Base URL for generated links (site mode)
+  --base-url <url>   Base URL for generated links (site mode). Overrides the config's baseUrl
   --name <name>      Product name for generated index files
   --summary <text>   Product summary for generated index files
   --include <glob>   Include MDX paths matching this docs-root-relative glob
@@ -792,6 +797,7 @@ async function resolveGenerateMetadata(
     });
     return {
       configPath: loaded.path,
+      baseUrl: loaded.config.baseUrl,
       collectionFrontmatterSchemas:
         collectionFrontmatterSchemas && collectionFrontmatterSchemas.length > 0
           ? collectionFrontmatterSchemas
@@ -1770,6 +1776,11 @@ async function executeGenerate(
       args,
       docsSources
     );
+    // One resolved base URL for every site artifact: the explicit flag wins,
+    // then the config's site-owned `baseUrl`, then the deployment-URL env
+    // fallbacks `normalizeBaseUrl` applies at each consumer — the same order
+    // `createDocsProject` resolves its `baseUrl` argument in.
+    const baseUrl = args.baseUrl ?? metadata.baseUrl;
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
     // A filtered run's page set is partial by design: diffing it against the
@@ -1790,7 +1801,7 @@ async function executeGenerate(
             configs: normalizeOpenApiConfig(
               metadata.openapi,
               metadata.configPath ? path.dirname(metadata.configPath) : docsDir,
-              args.baseUrl ? { baseUrl: args.baseUrl } : {}
+              baseUrl ? { baseUrl } : {}
             ),
             docsDir: sourceMirror.docsDir,
           });
@@ -1919,6 +1930,24 @@ async function executeGenerate(
       }
     }
 
+    // Site artifacts embed absolute URLs, so when neither the flag nor the
+    // config supplies `baseUrl`, report what the env fallback actually
+    // resolved to — the same explain treatment other derived values get.
+    if (!args.bundle && baseUrl === undefined) {
+      inference = mergeInferenceReports(inference, {
+        values: [
+          {
+            field: "baseUrl",
+            derivedFrom: BASE_URL_DEFAULT_SOURCE,
+            summary: normalizeBaseUrl(undefined),
+            makeExplicit:
+              "Set `baseUrl` in the docs config, or pass --base-url.",
+          },
+        ],
+        warnings: [],
+      });
+    }
+
     for (const warning of inference.warnings) {
       logger.warn({
         human: { message: warning.message, hint: warning.hint },
@@ -1992,7 +2021,7 @@ async function executeGenerate(
       if (bundleMcpEnabled) {
         const search = await generateDocsSearchFiles({
           outDir,
-          baseUrl: args.baseUrl,
+          baseUrl,
           mounts: effectiveMounts,
           i18n: metadata.i18n,
           locale: i18n?.defaultLocale,
@@ -2000,7 +2029,7 @@ async function executeGenerate(
         });
         const agentReadability = await generateAgentReadabilityArtifacts({
           outDir,
-          baseUrl: args.baseUrl,
+          baseUrl,
           product: effectiveProduct,
           groups,
           nav: effectiveNav,
@@ -2047,7 +2076,7 @@ async function executeGenerate(
     } else {
       const feedBaseUrl =
         metadata.feeds && metadata.feeds.length > 0
-          ? resolveFeedBaseUrl(args.baseUrl)
+          ? resolveFeedBaseUrl(baseUrl)
           : undefined;
       if (i18n) {
         await copyDefaultLocaleMarkdownAliases(outDir, i18n.defaultLocale);
@@ -2057,20 +2086,20 @@ async function executeGenerate(
       const mcpConfig = metadata.agents?.mcp;
       const mcpEnabled = mcpConfig?.enabled === true;
       const mcpEndpoint = mcpEnabled
-        ? resolveMcpEndpoint(args.baseUrl, mcpConfig.endpoint)
+        ? resolveMcpEndpoint(baseUrl, mcpConfig.endpoint)
         : undefined;
       const nlwebConfig = metadata.agents?.nlweb;
       const nlwebEnabled = nlwebConfig?.enabled === true;
       const askEndpoint = nlwebEnabled
         ? resolveMcpEndpoint(
-            args.baseUrl,
+            baseUrl,
             nlwebConfig.endpoint ?? DEFAULT_NLWEB_ASK_PATH
           )
         : undefined;
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
-        baseUrl: args.baseUrl,
+        baseUrl,
         product: effectiveProduct,
         groups,
         nav: effectiveNav,
@@ -2083,7 +2112,7 @@ async function executeGenerate(
             ? {
                 mcpEndpoint,
                 mcpServerCardUrl: resolveMcpEndpoint(
-                  args.baseUrl,
+                  baseUrl,
                   `/${MCP_SERVER_CARD_PATH}`
                 ),
                 // Same subset the server card advertises, so the two
@@ -2097,7 +2126,7 @@ async function executeGenerate(
 
       await generateLLMFullContextFiles({
         outDir,
-        baseUrl: args.baseUrl,
+        baseUrl,
         product: { name: product.name },
         groups,
         nav: effectiveNav,
@@ -2109,7 +2138,7 @@ async function executeGenerate(
 
       const search = await generateDocsSearchFiles({
         outDir,
-        baseUrl: args.baseUrl,
+        baseUrl,
         mounts: effectiveMounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
@@ -2117,7 +2146,7 @@ async function executeGenerate(
       });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
-        baseUrl: args.baseUrl,
+        baseUrl,
         product: effectiveProduct,
         groups,
         nav: effectiveNav,
@@ -2137,7 +2166,7 @@ async function executeGenerate(
       const nlwebArtifacts = nlwebEnabled
         ? await generateNlwebArtifacts({
             outDir,
-            baseUrl: args.baseUrl,
+            baseUrl,
             product: effectiveProduct,
             pages: agentReadability.manifest.pages,
           })
@@ -2150,7 +2179,7 @@ async function executeGenerate(
         // Skill `bodyPath` resolves against the real source root (`--src`), not
         // the temp conversion mirror (which only holds the docs tree).
         srcDir,
-        baseUrl: args.baseUrl,
+        baseUrl,
         product: effectiveProduct,
         skills: {
           ...metadata.agents?.skills,
@@ -2177,7 +2206,7 @@ async function executeGenerate(
       if (mcpEnabled) {
         mcpServerCard = await generateMcpServerCard({
           outDir,
-          baseUrl: args.baseUrl,
+          baseUrl,
           product: effectiveProduct,
           config: {
             endpoint: mcpConfig.endpoint,
@@ -2198,7 +2227,7 @@ async function executeGenerate(
           await generateLlmsTxt({
             srcDir: sourceMirror.srcDir,
             outDir,
-            baseUrl: args.baseUrl,
+            baseUrl,
             product: effectiveProduct,
             groups,
             nav: effectiveNav,
@@ -2209,7 +2238,7 @@ async function executeGenerate(
           });
           await generateLLMFullContextFiles({
             outDir,
-            baseUrl: args.baseUrl,
+            baseUrl,
             product: { name: product.name },
             groups,
             nav: effectiveNav,
@@ -2220,7 +2249,7 @@ async function executeGenerate(
           });
           await generateDocsSearchFiles({
             outDir,
-            baseUrl: args.baseUrl,
+            baseUrl,
             mounts: effectiveMounts,
             i18n: metadata.i18n,
             locale: locale.code,
@@ -2228,7 +2257,7 @@ async function executeGenerate(
           });
           await generateAgentReadabilityArtifacts({
             outDir,
-            baseUrl: args.baseUrl,
+            baseUrl,
             product: effectiveProduct,
             groups,
             nav: effectiveNav,

@@ -205,6 +205,49 @@ describe("runInitCommand", () => {
     expect(config).toContain("defineDocsConfig");
   });
 
+  it("writes baseUrl once, into the config — nowhere else", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      [
+        "--dir",
+        dir,
+        "--framework",
+        "next",
+        "--base-url",
+        "https://acme.dev",
+        "--no-generate",
+      ],
+      createCapture().io
+    );
+
+    const config = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+    expect(config).toContain('baseUrl: "https://acme.dev"');
+
+    // The runtime source discovers the config, so it repeats nothing.
+    const source = await readFile(path.join(dir, "lib/source.ts"), "utf8");
+    expect(source).toContain("createDocsProject()");
+    expect(source).not.toContain("baseUrl:");
+  });
+
+  it("defaults baseUrl to the framework dev URL in the config", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "sveltekit", "--no-generate"],
+      createCapture().io
+    );
+
+    const config = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+    expect(config).toContain('baseUrl: "http://localhost:5173"');
+    const source = await readFile(path.join(dir, "src/lib/source.ts"), "utf8");
+    expect(source).not.toContain("baseUrl:");
+  });
+
   it("skips existing files unless --force", async () => {
     const dir = await createTempDir();
     const capture = createCapture();
@@ -256,6 +299,8 @@ describe("runInitCommand", () => {
     };
     expect(pkg.scripts["docs:generate"]).toContain("leadtype generate");
     expect(pkg.scripts["docs:generate"]).toContain("--out public");
+    // baseUrl lives in the scaffolded config now, not in every command.
+    expect(pkg.scripts["docs:generate"]).not.toContain("--base-url");
 
     // A project that already defines docs:generate keeps its own command.
     await writeFile(

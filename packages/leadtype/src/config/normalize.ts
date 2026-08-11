@@ -15,7 +15,7 @@
  * precedence rule a reader would have to look up.
  */
 
-import { normalizeUrlPrefix } from "../internal/docs-url";
+import { normalizeUrlPrefix, stripTrailingSlashes } from "../internal/docs-url";
 import type { DocsCollection, DocsConfig, GitSourceSpec } from "../llm/llm";
 import { isShaRef } from "../sync/sync";
 import {
@@ -75,6 +75,59 @@ export type NormalizedDocsConfig = {
 
 function configLabel(configPath: string | undefined): string {
   return configPath ? `docs config at "${configPath}"` : "docs config";
+}
+
+/**
+ * What applies when no `baseUrl` is authored anywhere — recorded in provenance
+ * so doctor and `generate --explain` can say it instead of a reader having to
+ * know `normalizeBaseUrl`'s fallback chain.
+ */
+export const BASE_URL_DEFAULT_SOURCE =
+  "deployment URL env vars (NEXT_PUBLIC_SITE_URL, VERCEL_URL, …) or localhost";
+
+/**
+ * Validate and normalize the authored `baseUrl`: an absolute http(s) origin
+ * plus optional path prefix, with trailing slashes stripped so URL joins can
+ * never produce `//` — the same normalization `normalizeBaseUrl` applies to
+ * the env fallbacks at consumption time.
+ */
+function normalizeConfigBaseUrl(
+  baseUrl: string | undefined,
+  configPath: string | undefined
+): string | undefined {
+  if (baseUrl === undefined) {
+    return;
+  }
+  const normalized = stripTrailingSlashes(baseUrl.trim());
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new Error(
+      `${configLabel(configPath)}: baseUrl "${baseUrl}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(
+      `${configLabel(configPath)}: baseUrl "${baseUrl}" must be an http or https URL — generated links are joined onto it verbatim.`
+    );
+  }
+  if (parsed.search || parsed.hash) {
+    throw new Error(
+      `${configLabel(configPath)}: baseUrl "${baseUrl}" must not carry a query or fragment — it is a prefix every generated URL joins onto.`
+    );
+  }
+  return normalized;
+}
+
+/** Carry the normalized `baseUrl` on the canonical config, when one exists. */
+function foldBaseUrl(
+  config: DocsConfig,
+  baseUrl: string | undefined
+): DocsConfig {
+  return baseUrl === undefined || config.baseUrl === baseUrl
+    ? config
+    : { ...config, baseUrl };
 }
 
 /**
@@ -382,6 +435,15 @@ export function normalizeDocsConfig(
     recordExplicit(provenance, field, config[field], configPath);
   }
 
+  // `baseUrl` always gets a provenance entry, authored or not: it is the one
+  // value with an env-var fallback chain, so "where would it come from?" has
+  // an answer even when nothing was written down.
+  const baseUrl = normalizeConfigBaseUrl(config.baseUrl, configPath);
+  provenance.baseUrl =
+    config.baseUrl === undefined
+      ? { origin: "default", inferredFrom: BASE_URL_DEFAULT_SOURCE }
+      : explicit(configPath);
+
   if (!(config.collections || config.sources)) {
     // Single-source: the content root comes from the host (`--docs-dir` for the
     // CLI, `contentDir` for the runtime source), so the resolved collection
@@ -405,12 +467,13 @@ export function normalizeDocsConfig(
     };
 
     return {
-      config,
+      config: foldBaseUrl(config, baseUrl),
       resolved: {
         mode: "single-source",
         ...(configPath ? { configPath } : {}),
         ...(options.configDir ? { configDir: options.configDir } : {}),
         product: config.product,
+        ...(baseUrl === undefined ? {} : { baseUrl }),
         collections: [
           {
             key: DEFAULT_COLLECTION_KEY,
@@ -495,12 +558,16 @@ export function normalizeDocsConfig(
   // the flat map, and leaving both would let a consumer read the project twice.
   const { sources: _authoredSources, ...withoutSources } = config;
   return {
-    config: { ...withoutSources, collections: canonicalCollections },
+    config: foldBaseUrl(
+      { ...withoutSources, collections: canonicalCollections },
+      baseUrl
+    ),
     resolved: {
       mode: "multi-source",
       ...(configPath ? { configPath } : {}),
       ...(options.configDir ? { configDir: options.configDir } : {}),
       product: config.product,
+      ...(baseUrl === undefined ? {} : { baseUrl }),
       collections,
       sources,
       deprecations,

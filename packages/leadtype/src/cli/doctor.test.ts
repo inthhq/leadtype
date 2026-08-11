@@ -1042,3 +1042,55 @@ describe("integrations", () => {
     expect(report.integrations.surfaces).toContain("robots:balanced");
   });
 });
+
+describe("baseUrl reporting", () => {
+  it("reports an authored baseUrl as explicit, normalized", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  baseUrl: "https://acme.dev/",
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const { report } = await runJson(dir);
+    expect(report.config.baseUrl).toEqual({
+      value: "https://acme.dev",
+      origin: "explicit",
+    });
+    expect(report.config.provenance.baseUrl).toMatchObject({
+      origin: "explicit",
+    });
+  });
+
+  it("reports the env/localhost fallback as the default origin", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const { report } = await runJson(dir);
+    expect(report.config.baseUrl?.origin).toBe("default");
+    expect(report.config.baseUrl?.value).toBeTruthy();
+    expect(report.config.provenance.baseUrl).toMatchObject({
+      origin: "default",
+    });
+  });
+
+  it("prints the resolved baseUrl and origin in the human report", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  baseUrl: "https://acme.dev",
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const capture = createCapture();
+    const code = await runDoctorCommand(["--src", dir], capture.io);
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("baseUrl: https://acme.dev  (explicit)");
+  });
+});
