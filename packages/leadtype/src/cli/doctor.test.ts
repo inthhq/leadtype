@@ -386,6 +386,100 @@ describe("findings", () => {
     ).toBe("warn");
   });
 
+  it("reports an unresolvable navigation as a finding, not a crash", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  navigation: [
+    { title: "Guides", base: "guides", pages: [{ include: "**", pin: ["renamed"] }] },
+  ],
+};`,
+      "docs/guides/setup.mdx": page("Setup"),
+    });
+
+    // CI gates on doctor: a pin typo has to come back as a report with a
+    // stable id, not a raw error under `--json` with no report at all.
+    // `runJson` parses stdout, so this also asserts the JSON stayed valid.
+    const { code, report } = await runJson(dir);
+
+    expect(code).toBe(1);
+    expect(report.ok).toBe(false);
+    const finding = report.issues.find(
+      (entry) => entry.id === "nav.unresolvable"
+    );
+    expect(finding?.level).toBe("error");
+    expect(finding?.message).toContain('Nav pin "renamed"');
+    expect(finding?.owner).toBe("navigation");
+    expect(finding?.fix).toContain("leadtype doctor");
+  });
+
+  it("keeps excluded pages out of the routed page count", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"], navigation: ["index"] },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/drafts/wip.mdx": page("WIP"),
+    });
+
+    const { report } = await runJson(dir);
+
+    // `generate` stages a filtered mirror before resolving navigation, so an
+    // excluded page never routes — counting it here disagreed with the
+    // collection's own page count on the same report.
+    expect(report.collections[0]?.pageCount).toBe(1);
+    expect(report.navigation?.routedPages).toBe(1);
+  });
+
+  it("lists each declared group once, however many collections read it", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "content/docs", routePrefix: "/docs", groups: [{ slug: "ref", title: "Reference" }] },
+    guides: { dir: "content/guides", routePrefix: "/guides", groups: [{ slug: "howto", title: "How-to" }] },
+  },
+};`,
+      "content/docs/api.mdx": `---\ntitle: "API"\ndescription: "API."\ngroup: ref\n---\n\nBody.\n`,
+      "content/guides/deploy.mdx": `---\ntitle: "Deploy"\ndescription: "Deploy."\ngroup: howto\n---\n\nBody.\n`,
+    });
+
+    const { report } = await runJson(dir);
+
+    // Groups merge across collections (membership is pure slug matching), and
+    // each collection's manifest emits every declared group — so without a
+    // dedupe two collections sharing two groups read `sections: Reference,
+    // How-to, Reference, How-to`.
+    expect(report.navigation?.groups).toEqual(["Reference", "How-to"]);
+  });
+
+  it("reports mixed navigation origins instead of collapsing them to explicit", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "content/docs", routePrefix: "/docs", navigation: ["index"] },
+    changelog: { dir: "content/changelog", routePrefix: "/changelog" },
+  },
+};`,
+      "content/docs/index.mdx": page("Home"),
+      "content/changelog/1-0.mdx": page("1.0"),
+    });
+
+    const { report } = await runJson(dir);
+
+    expect(report.navigation?.origin).toBe("mixed");
+    expect(
+      report.collections.map((entry) => [entry.key, entry.navigationOrigin])
+    ).toEqual([
+      ["docs", "explicit"],
+      ["changelog", "inferred"],
+    ]);
+  });
+
   it("warns when a collection's include globs match nothing", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `export default {

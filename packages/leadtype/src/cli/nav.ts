@@ -16,8 +16,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { inferNavigationFromContent } from "../config/infer";
+import {
+  findBlockingDiagnostic,
+  type NavigationDrift,
+  resolveCollectionNavigation,
+} from "../config/navigation";
 import { type NavigationOrigin, resolveProject } from "../config/project";
-import { toDocsUrlPath } from "../internal/docs-url";
 import { resolveDocsNavigation } from "../llm";
 import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
 
@@ -34,14 +38,7 @@ export type NavArgs = {
   help: boolean;
 };
 
-export type NavDrift = {
-  /** Pages on disk that no curated entry places. */
-  unplaced: string[];
-  /** Pages a curated entry names more than once. */
-  duplicate: string[];
-  /** Pages declaring a `group:` slug no config declares. */
-  unknownGroup: { urlPath: string; slug: string }[];
-};
+export type NavDrift = NavigationDrift;
 
 export type NavTreeNode = {
   title: string;
@@ -141,35 +138,6 @@ function countPages(manifest: DocsNavigation): number {
       0
     );
   return walk(manifest.groups) + manifest.ungrouped.length;
-}
-
-/**
- * Find pages a curated tree lists more than once.
- *
- * Duplicates are easy to author by accident once expansions are in play: a
- * page named explicitly *and* swept up by a sibling include appears twice in
- * the sidebar and twice in `llms.txt`.
- */
-function findDuplicates(manifest: DocsNavigation): string[] {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  const visit = (urlPath: string): void => {
-    if (seen.has(urlPath)) {
-      duplicates.add(urlPath);
-      return;
-    }
-    seen.add(urlPath);
-  };
-  const walk = (groups: DocsNavigationGroup[]): void => {
-    for (const group of groups) {
-      for (const page of group.pages) {
-        visit(page.urlPath);
-      }
-      walk(group.children);
-    }
-  };
-  walk(manifest.groups);
-  return [...duplicates].sort();
 }
 
 function renderTree(nodes: NavTreeNode[], depth = 0): string[] {
@@ -308,75 +276,50 @@ export async function runNavCommand(
       return 2;
     }
 
-    // Environmental problems belong to the collection, not the tree: an
-    // unsynced source has no content to resolve navigation against.
-    const blocking = project.diagnostics.find(
-      (entry) => entry.level === "error" && entry.collection === collection.key
-    );
-    if (!collection.contentDir) {
+    // An error-level diagnostic on the collection blocks the tree outright,
+    // whether or not the content directory resolved — `source.inherit-failed`
+    // fires against a perfectly readable checkout, and whatever origin
+    // resolution fell back to is then precisely the wrong tree, presented as
+    // fine. `doctor` fails on the same diagnostic, so `nav` staying quiet made
+    // the two commands disagree about the same project.
+    const blocking = findBlockingDiagnostic(project, collection.key);
+    if (blocking) {
       io.stderr.write(
-        `${blocking?.message ?? `collection "${collection.key}" has no readable content directory`}\n${
-          blocking?.fix ? `  → ${blocking.fix}\n` : ""
-        }`
+        `${blocking.message}\n${blocking.fix ? `  → ${blocking.fix}\n` : ""}`
+      );
+      return 1;
+    }
+    const contentDir = collection.contentDir;
+    if (!contentDir) {
+      io.stderr.write(
+        `collection "${collection.key}" has no readable content directory\n`
       );
       return 1;
     }
 
-    const contentDir = collection.contentDir;
-    const origin = collection.navigationOrigin;
-    const nav = collection.navigation;
-
-    const mounts = [
-      { pathPrefix: "", urlPrefix: collection.routePrefix },
-      ...(collection.mounts ?? []),
-    ];
-    const manifest = await resolveDocsNavigation({
-      srcDir: path.dirname(contentDir),
-      docsDirName: path.basename(contentDir),
-      groups: collection.groups ?? [],
-      nav,
-      mounts,
+    // The same manifest + drift computation `doctor` reads — merged groups,
+    // i18n, include/exclude filtering, curated-origin drift.
+    const resolved = await resolveCollectionNavigation(project, {
+      ...collection,
+      contentDir,
     });
-
-    // Pages that fall back to `ungrouped` were not placed by a curated entry.
-    // Root-level string entries are placements, so they are excluded; an
-    // include glob at the root expands to a set this comparison cannot
-    // reconstruct, so those configs report no unplaced pages rather than a
-    // list of false positives.
-    //
-    // A tree is curated when someone wrote it — here or in the source repo it
-    // was inherited from. `inherited` is the first origin carrying real root
-    // entries, so treating it as uncurated would skip the glob guard and
-    // report every glob-placed page as unplaced.
-    const isCurated = origin === "explicit" || origin === "inherited";
-    const rootEntries = isCurated ? (nav ?? []) : [];
-    const rootIsLiteral =
-      !isCurated ||
-      rootEntries.every(
-        (entry) => typeof entry === "string" || !("include" in entry)
-      );
-    const placedAtRoot = new Set(
-      rootEntries
-        .filter((entry): entry is string => typeof entry === "string")
-        .map((entry) => toDocsUrlPath(entry, mounts))
+    const failure = resolved.diagnostics.find(
+      (entry) => entry.level === "error"
     );
-    const unplaced = rootIsLiteral
-      ? manifest.ungrouped
-          .map((page) => page.urlPath)
-          .filter((urlPath) => !placedAtRoot.has(urlPath))
-      : [];
+    if (failure || !resolved.manifest) {
+      io.stderr.write(
+        `${failure?.message ?? `collection "${collection.key}" navigation did not resolve`}\n`
+      );
+      return 1;
+    }
 
     const report: NavReport = {
       ok: true,
       collection: collection.key,
-      origin,
-      pageCount: countPages(manifest),
-      tree: toTree(manifest.groups),
-      drift: {
-        unplaced,
-        duplicate: findDuplicates(manifest),
-        unknownGroup: manifest.unknown,
-      },
+      origin: resolved.origin,
+      pageCount: resolved.pageCount,
+      tree: toTree(resolved.manifest.groups),
+      drift: resolved.drift,
     };
 
     io.stdout.write(

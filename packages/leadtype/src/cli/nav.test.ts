@@ -225,6 +225,68 @@ describe("drift", () => {
     ]);
   });
 
+  it("does not count or flag pages the collection excludes", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"], navigation: ["index"] },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/drafts/wip.mdx": page("WIP"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // `generate` stages a filtered mirror before resolving navigation, so an
+    // excluded page is neither shipped nor unplaced — counting it here
+    // reported drift the build cannot produce.
+    expect(code).toBe(0);
+    expect(report.pageCount).toBe(1);
+    expect(report.drift.unplaced).toEqual([]);
+  });
+
+  it("does not report the root pages of an inferred tree as drift", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/guides/setup.mdx": page("Setup"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // A derived tree places everything by construction — its root pages are
+    // placements, not drift. Reporting them made every inferred project name
+    // its own index page as unplaced.
+    expect(code).toBe(0);
+    expect(report.origin).toBe("inferred");
+    expect(report.drift.unplaced).toEqual([]);
+  });
+
+  it("accepts a group declared by a sibling collection", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "content/docs", routePrefix: "/docs", groups: [{ slug: "ref", title: "Reference" }] },
+    guides: { dir: "content/guides", routePrefix: "/guides", groups: [{ slug: "howto", title: "How-to" }] },
+  },
+};`,
+      "content/docs/api.mdx": `---\ntitle: "API"\ndescription: "API."\ngroup: ref\n---\n\nBody.\n`,
+      "content/guides/deploy.mdx": `---\ntitle: "Deploy"\ndescription: "Deploy."\ngroup: ref\n---\n\nBody.\n`,
+    });
+
+    const { report } = await runJson(dir, ["--collection", "guides"]);
+
+    // `generate` merges every collection's groups before resolving, so a page
+    // whose `group:` a sibling collection declares resolves there — reading
+    // only this collection's groups reported it as unknown.
+    expect(report.drift.unknownGroup).toEqual([]);
+  });
+
   it("surfaces a pin that no longer matches, instead of resolving quietly", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default {
@@ -241,6 +303,29 @@ describe("drift", () => {
 
     expect(code).toBe(1);
     expect(capture.stderr).toContain('Nav pin "renamed"');
+  });
+});
+
+describe("i18n projects", () => {
+  it("resolves literal nav entries when the default locale lives under its own directory", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+  navigation: ["index"],
+};`,
+      "docs/en/index.mdx": page("Home"),
+      "docs/zh/index.mdx": page("Home (zh)"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // Without i18n forwarded, "index" matches no file — the default locale's
+    // page lives at "en/index" — and every i18n project exited 1 with
+    // 'Nav page "index" under "root" did not match a documentation page'.
+    expect(code).toBe(0);
+    expect(report.pageCount).toBe(1);
+    expect(report.drift.unplaced).toEqual([]);
   });
 });
 
@@ -284,6 +369,46 @@ describe("remote collections", () => {
     expect(report.origin).toBe("inherited");
     expect(report.pageCount).toBe(1);
     expect(report.tree.map((node) => node.title)).toEqual(["Guides"]);
+  });
+
+  it("fails on a blocking diagnostic even when the content directory resolves", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      inheritConfig: true,
+    },
+  },
+};`,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      // The checkout is perfectly readable; only the source config is broken.
+      ".leadtype/acme/docs/docs.config.ts": "export default {{{",
+      ".leadtype/acme/docs/guides/auth.mdx": page("Auth"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const capture = createCapture();
+    const code = await runNavCommand(["--src", dir], capture.io);
+
+    // `source.inherit-failed` is independent of the content directory, so
+    // checking diagnostics only when that directory was missing printed a
+    // fallback tree — precisely the wrong one — as `{ ok: true }`, while
+    // `doctor` and `createDocsProject` both failed on the same project.
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("inheritConfig");
+    expect(capture.stderr).toContain("leadtype sync");
   });
 
   it("says to sync when the checkout is missing", async () => {

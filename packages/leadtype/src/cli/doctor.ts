@@ -20,6 +20,7 @@ import path from "node:path";
 import { glob as fg } from "tinyglobby";
 
 import type { LoadedDocsConfig } from "../config/load";
+import { resolveProjectNavigation } from "../config/navigation";
 import {
   type NavigationOrigin,
   type ResolvedProject,
@@ -30,9 +31,7 @@ import {
   type ResolvedDocsConfig,
   serializeResolvedConfig,
 } from "../config/types";
-import { toDocsUrlPath } from "../internal/docs-url";
 import type { DocsCollection } from "../llm";
-import { resolveDocsNavigation } from "../llm";
 import { defaultCacheDir, readSyncManifest } from "../sync/sync";
 
 export type DoctorIo = {
@@ -87,11 +86,13 @@ export type DoctorReport = {
     routePrefix: string;
     contentDir?: string;
     pageCount?: number;
+    /** Where this collection's tree came from. */
+    navigationOrigin: NavigationOrigin;
     provenance: Record<string, unknown>;
   }[];
   navigation: {
-    /** Where the tree came from. */
-    origin: NavigationOrigin;
+    /** Where the tree came from — `"mixed"` when collections disagree. */
+    origin: NavigationOrigin | "mixed";
     groups: string[];
     routedPages: number;
     unrepresentedPages: string[];
@@ -292,106 +293,46 @@ async function countCollectionPages(
 }
 
 /**
- * Resolve navigation per collection and merge, reading the tree
- * `resolveProject` already decided on — authored, inherited, or derived.
+ * Report on the navigation `resolveProjectNavigation` computes — the same
+ * manifests, drift, and filtering `nav` reads, so the two commands cannot
+ * disagree about the same project.
  */
 async function inspectNavigation(input: {
   project: ResolvedProject;
   issues: DoctorIssue[];
 }): Promise<DoctorReport["navigation"]> {
   const { project, issues } = input;
-  const readable = project.collections.filter((entry) => entry.contentDir);
-  if (readable.length === 0) {
+  const navigation = await resolveProjectNavigation(project);
+  if (navigation.collections.length === 0 || navigation.origin === null) {
     return null;
   }
 
-  const groups: string[] = [];
-  const routed = new Set<string>();
-  const allGroups = project.collections.flatMap((entry) => entry.groups ?? []);
-  const unrepresented: string[] = [];
-  const origins = new Set<NavigationOrigin>();
-
-  for (const collection of readable) {
-    const contentDir = collection.contentDir as string;
-    origins.add(collection.navigationOrigin);
-
-    const mounts = [
-      { pathPrefix: "", urlPrefix: collection.routePrefix },
-      ...(collection.mounts ?? []),
-    ];
-    const manifest = await resolveDocsNavigation({
-      srcDir: path.dirname(contentDir),
-      docsDirName: path.basename(contentDir),
-      mounts,
-      // Every collection's groups, not just this one's: `generate` merges them
-      // globally before resolving, so a page whose `group:` is declared by a
-      // sibling collection resolves there and would error here.
-      groups: allGroups,
-      nav: collection.navigation,
-      // Without these each translation resolves as its own page, inflating
-      // routedPages and reporting every localized file as unplaced.
-      ...(project.config?.i18n ? { i18n: project.config.i18n } : {}),
+  // A tree that doesn't resolve is a finding, not a crash: CI gates on
+  // doctor, so a pin typo has to come back as a report with a stable id and
+  // the owning field, the way every other broken input does.
+  for (const diagnostic of navigation.diagnostics) {
+    issues.push({
+      id: diagnostic.id,
+      level: diagnostic.level,
+      message: diagnostic.message,
+      ...(diagnostic.owner ? { owner: diagnostic.owner } : {}),
+      ...(diagnostic.fix ? { fix: diagnostic.fix } : {}),
     });
+  }
 
-    for (const unknown of manifest.unknown) {
+  for (const collection of navigation.collections) {
+    for (const unknown of collection.drift.unknownGroup) {
       issues.push({
         id: "nav.unknown-group",
         level: "error",
         message: `${unknown.urlPath} declares unknown group "${unknown.slug}"`,
-        owner: `collections.${collection.key}.groups`,
+        owner: `collections.${collection.collectionKey}.groups`,
         fix: "Add the group to `groups`, or fix the page's `group:` frontmatter.",
       });
     }
-
-    const walk = (nodes: typeof manifest.groups): void => {
-      for (const group of nodes) {
-        for (const page of group.pages) {
-          routed.add(page.urlPath);
-        }
-        walk(group.children);
-      }
-    };
-    walk(manifest.groups);
-    for (const page of manifest.ungrouped) {
-      routed.add(page.urlPath);
-    }
-    groups.push(...manifest.groups.map((group) => group.title));
-
-    // A page the curated tree never mentions still renders — it falls back to
-    // the root of `ungrouped`. That is the signal worth reporting: the page
-    // appears at the root of the sidebar and llms.txt by default rather than
-    // by decision. Only meaningful when curation was intended, and only
-    // computable when every root entry is a literal path.
-    const rootEntries =
-      collection.navigationOrigin === "inferred"
-        ? []
-        : (collection.navigation ?? []);
-    // `resolveDocsNavigation` reads the whole directory, while `generate`
-    // stages a filtered mirror first — so with include/exclude in play the two
-    // see different file sets and every excluded page would read as unplaced.
-    const isFiltered =
-      (collection.include?.length ?? 0) > 0 ||
-      (collection.exclude?.length ?? 0) > 0;
-    const curatable =
-      !isFiltered &&
-      rootEntries.length > 0 &&
-      rootEntries.every(
-        (entry) => typeof entry === "string" || !("include" in entry)
-      );
-    if (curatable) {
-      const placedAtRoot = new Set(
-        rootEntries
-          .filter((entry): entry is string => typeof entry === "string")
-          .map((entry) => toDocsUrlPath(entry, mounts))
-      );
-      for (const page of manifest.ungrouped) {
-        if (!placedAtRoot.has(page.urlPath)) {
-          unrepresented.push(page.urlPath);
-        }
-      }
-    }
   }
 
+  const unrepresented = navigation.unplaced;
   if (unrepresented.length > 0) {
     issues.push({
       id: "nav.unrepresented-page",
@@ -402,13 +343,10 @@ async function inspectNavigation(input: {
     });
   }
 
-  const origin =
-    origins.size === 1 ? ([...origins][0] as NavigationOrigin) : "explicit";
-
   return {
-    origin,
-    groups,
-    routedPages: routed.size,
+    origin: navigation.origin,
+    groups: navigation.groups,
+    routedPages: navigation.routedPages,
     unrepresentedPages: unrepresented,
   };
 }
@@ -512,6 +450,7 @@ export async function runDoctorCommand(
       routePrefix: collection.routePrefix,
       ...(collection.contentDir ? { contentDir: collection.contentDir } : {}),
       ...(pageCount === undefined ? {} : { pageCount }),
+      navigationOrigin: collection.navigationOrigin,
       provenance: collection.provenance,
     });
   }

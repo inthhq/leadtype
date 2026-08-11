@@ -57,7 +57,7 @@ Everything it reports comes from the same config loader and resolvers `generate`
 
 **Collections and routes** — that each content directory exists and is readable, that include/exclude globs actually match files, and each collection's resolved public route prefix.
 
-**Navigation** — whether the tree was authored here, **inherited** from a source repository, derived from `groups`, or inferred from the content tree; a summary of the resolved sections; and pages absent from a curated tree that fall back to the root of the sidebar rather than being placed deliberately.
+**Navigation** — whether the tree was authored here, **inherited** from a source repository, derived from `groups`, or inferred from the content tree (`mixed` when collections disagree — each collection also reports its own origin); a summary of the resolved sections; and pages absent from a curated tree that fall back to the root of the sidebar rather than being placed deliberately.
 
 **Outputs and integrations** — the output root, which expected artifacts are present or missing, which are older than the newest source file or the config, the detected framework adapter, and which agent surfaces are enabled.
 
@@ -140,6 +140,7 @@ leadtype doctor --json
 | `source.inherit-failed` | warn | A source-owned config could not be read, so inheritance was skipped. |
 | `source.dir-missing` | error | A collection's `dir` does not exist. |
 | `collection.no-matches` | warn | A collection's globs match no files. |
+| `nav.unresolvable` | error | The navigation tree did not resolve — a pin or page entry matches nothing. |
 | `nav.unknown-group` | error | A page declares a `group:` that no config declares. |
 | `nav.unrepresented-page` | warn | A page is absent from the curated tree and falls back to the root. |
 | `output.not-generated` | warn | No artifacts under the output root. |
