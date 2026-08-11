@@ -50,9 +50,9 @@ This keeps production docs as an explicit promotion step. It is provider-neutral
 Keep the source repo and commit SHA in `leadtype.config.ts`:
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: {
     name: "Acme",
     tagline: "Docs for Acme SDKs and platform APIs.",
@@ -110,9 +110,9 @@ reuse the source-owned navigation. With `inheritConfig: true`, the app can move
 that source ownership into first-class Leadtype config:
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: {
     name: "Leadtype",
     tagline:

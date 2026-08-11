@@ -69,10 +69,10 @@ export const hint = defineComponentFlattener({
 // @filename: main.ts
 // ---cut---
 // leadtype.config.ts
-import { defineDocsConfig } from "leadtype";
+import { defineLeadtypeConfig } from "leadtype";
 import { hint } from "./flatteners";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: { name: "…", tagline: "…" },
   flatteners: [hint],
 });

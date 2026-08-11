@@ -2,6 +2,9 @@
 title: "Use the source primitive"
 description: "Wire createDocsSource into Next, TanStack Start, Nuxt, Astro, SvelteKit, or any MDX-aware bundler. Same primitive, multiple host shapes."
 related:
+  - title: "createDocsProject"
+    href: "/docs/reference/project"
+    description: "The config-first runtime entry point most apps should start from."
   - title: "createDocsSource"
     href: "/docs/reference/source"
     description: "Reference for the source object returned by the primitive."
@@ -10,42 +13,29 @@ related:
     description: "Add typed metadata and lifecycle hooks to source loading."
 ---
 
-`createDocsSource()` is the framework-neutral way to render leadtype-authored MDX in your own docs app. This page shows the wiring on top of the most common hosts. Fumadocs has its own first-party adapter — see [`leadtype/fumadocs`](/docs/integrations/integrate-with-fumadocs).
+This page shows how to render leadtype-authored MDX in your own docs app, on top of the most common hosts. Fumadocs has its own first-party adapter — see [`leadtype/fumadocs`](/docs/integrations/integrate-with-fumadocs).
 
 ## TL;DR
 
-The primitive itself is identical across frameworks:
-
-```ts title="lib/source.ts"
-import { createDocsSource } from "leadtype";
-
-export const source = await createDocsSource({
-  contentDir: "./content/docs",
-  baseUrl: "https://example.com",
-});
-```
-
-Wire `createMdxSourcePlugins()` into your bundler's remark stack, then call `source.loadPage(slug)` from your framework's page renderer. The "Wire into your framework" section below has minimal setups for each host.
-
-## Start from your config instead
-
-`createDocsSource()` describes **one content directory**. That is the right primitive for a custom integration, but it means your app restates what your config already says — the content root, the navigation, the mounts, the frontmatter schema — and a multi-collection app restates it per collection, plus route prefixes and source-owned inheritance.
-
-Two descriptions of one project drift. When they do, the rendered site and the generated agent artifacts disagree about what exists — which is the failure "one content graph" exists to prevent.
-
-`createDocsProject()` reads the same resolved config the artifact pipeline reads:
+Start from your config. The source is identical across frameworks:
 
 ```ts title="lib/source.ts"
 import { createDocsProject } from "leadtype";
 
-export const source = await createDocsProject({
-  baseUrl: "https://example.com",
-});
+export const source = await createDocsProject();
 ```
 
-It discovers `leadtype.config.*` or `docs.config.*` the same way the CLI does, so an app that already has a config file does not import it just to hand it straight back. Pass `config` when you hold one already, or `cwd` when the project root isn't the working directory.
+Wire `createMdxSourcePlugins()` into your bundler's remark stack, then use your framework's adapter helpers (or call `source.loadPage(slug)` directly) from your page renderer. The "Wire into your framework" section below has minimal setups for each host. `createDocsSource()` — the lower-level primitive the project is built on — is the fallback for content no config describes.
 
-It returns a **superset of `DocsSource`**, so every first-party adapter takes it unchanged — `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working with no parallel code path.
+## Start from your config
+
+[`createDocsProject()`](/docs/reference/project) reads the same resolved config the artifact pipeline reads. It discovers `leadtype.config.*` or `docs.config.*` the same way the CLI does, so an app that already has a config file does not import it just to hand it straight back. Pass `config` when you hold one already, or `cwd` when the project root isn't the working directory.
+
+The lower-level `createDocsSource()` describes **one content directory** instead. That is the right primitive for a custom integration, but it means your app restates what your config already says — the content root, the navigation, the mounts, the frontmatter schema — and a multi-collection app restates it per collection, plus route prefixes and source-owned inheritance.
+
+Two descriptions of one project drift. When they do, the rendered site and the generated agent artifacts disagree about what exists — which is the failure "one content graph" exists to prevent.
+
+The project returns a **superset of `DocsSource`**, so every first-party adapter takes it unchanged — `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working with no parallel code path.
 
 The content root follows the same rule the CLI's discovery uses: a `docs.config.*` sits inside the docs directory, a `leadtype.config.*` sits at the project root above it. Pass `contentDir` to override it.
 
