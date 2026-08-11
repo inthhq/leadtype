@@ -3642,23 +3642,26 @@ function buildNavigationGroup(
   };
 }
 
-function buildNavigationGroupFromNav(
+/**
+ * Resolve a group's entries into its direct pages, first-entry-wins by
+ * urlPath. Because assembly is first-entry-wins, a page an earlier entry
+ * already placed silently swallows a later entry's pin — the pin resolves,
+ * reorders within its own expansion, and then never reaches the tree. A pin
+ * that cannot take effect is an authoring mistake worth naming, at the root
+ * of `nav: [...]` exactly as inside a titled section.
+ */
+function collectNavEntryPages(
   group: ResolvedGroup,
   docs: SourceDoc[],
   docsByRelativePath: Map<string, SourceDoc>,
-  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
   referencedUrlPaths: Set<string>
-): DocsNavigationGroup {
+): SourceDoc[] {
   const directPages: SourceDoc[] = [];
-  const groupSeenUrlPaths = new Set<string>();
+  const seenUrlPaths = new Set<string>();
   for (const entry of group.pageEntries) {
     const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
-    // Assembly is first-entry-wins by urlPath, so a page an earlier entry
-    // already placed silently swallows a later entry's pin — the pin resolves,
-    // reorders within its own expansion, and then never reaches the tree. A
-    // pin that cannot take effect is an authoring mistake worth naming.
     for (const urlPath of pinnedUrlPaths(group, entry, docsByRelativePath)) {
-      if (groupSeenUrlPaths.has(urlPath)) {
+      if (seenUrlPaths.has(urlPath)) {
         const scope = group.segmentPath.join("/") || "root";
         throw new Error(
           `Nav pin for "${urlPath}" under "${scope}" cannot take effect: an earlier entry in the same section already places that page. Remove the earlier entry, or move the pin onto it.`
@@ -3666,14 +3669,30 @@ function buildNavigationGroupFromNav(
       }
     }
     for (const page of pages) {
-      if (groupSeenUrlPaths.has(page.urlPath)) {
+      if (seenUrlPaths.has(page.urlPath)) {
         continue;
       }
-      groupSeenUrlPaths.add(page.urlPath);
+      seenUrlPaths.add(page.urlPath);
       referencedUrlPaths.add(page.urlPath);
       directPages.push(page);
     }
   }
+  return directPages;
+}
+
+function buildNavigationGroupFromNav(
+  group: ResolvedGroup,
+  docs: SourceDoc[],
+  docsByRelativePath: Map<string, SourceDoc>,
+  tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
+  referencedUrlPaths: Set<string>
+): DocsNavigationGroup {
+  const directPages = collectNavEntryPages(
+    group,
+    docs,
+    docsByRelativePath,
+    referencedUrlPaths
+  );
 
   return {
     slug: group.slug,
@@ -3704,7 +3723,7 @@ function buildNavigationFromNav(
 ): DocsNavigation {
   const referencedUrlPaths = new Set<string>();
   const docsByRelativePath = createDocsByRelativePath(docs);
-  const rootPages: SourceDoc[] = [];
+  let rootPages: SourceDoc[] = [];
   if (rootPageEntries.length > 0) {
     const rootGroup: ResolvedGroup = {
       slug: "root",
@@ -3716,23 +3735,12 @@ function buildNavigationFromNav(
       base: "",
       pageEntries: rootPageEntries,
     };
-    const rootSeenUrlPaths = new Set<string>();
-    for (const entry of rootPageEntries) {
-      const pages = resolveNavEntryPages(
-        rootGroup,
-        entry,
-        docs,
-        docsByRelativePath
-      );
-      for (const page of pages) {
-        if (rootSeenUrlPaths.has(page.urlPath)) {
-          continue;
-        }
-        rootSeenUrlPaths.add(page.urlPath);
-        referencedUrlPaths.add(page.urlPath);
-        rootPages.push(page);
-      }
-    }
+    rootPages = collectNavEntryPages(
+      rootGroup,
+      docs,
+      docsByRelativePath,
+      referencedUrlPaths
+    );
   }
   const groups = resolved.map((group) =>
     buildNavigationGroupFromNav(

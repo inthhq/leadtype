@@ -164,6 +164,20 @@ describe("navigation.fromDirectory", () => {
     ).rejects.toThrow(/Nav pin "renamed-away".*did not match any page/s);
   });
 
+  it("fails when an earlier root entry shadows a pin, exactly like inside a section", async () => {
+    const srcDir = await docsFixture(["setup", "alpha"]);
+
+    // The root of `nav: [...]` assembles first-entry-wins like any titled
+    // section, so a pin an earlier entry shadows can never take effect — and
+    // used to silently no-op only at the top level.
+    await expect(
+      resolve(srcDir, [
+        "setup",
+        ...navigation.fromDirectory(".", { pin: ["setup"] }),
+      ])
+    ).rejects.toThrow(/Nav pin for "\/docs\/setup" under "root"/);
+  });
+
   it("lets explicit entries and an expansion coexist in one section", async () => {
     const srcDir = await docsFixture([
       "guides/setup",
