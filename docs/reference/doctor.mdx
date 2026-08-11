@@ -132,12 +132,13 @@ leadtype doctor --json
 | `config.missing` | warn | No config file was found. |
 | `config.invalid` | error | The config failed to load or validate. Nothing else is reported. |
 | `config.deprecated-field` | warn | A deprecated field was normalized. |
+| `config.unknown-key` | warn | A config field is not one leadtype reads — likely a typo; the message suggests the closest known field. |
 | `source.not-synced` | error | A remote collection has no checkout. |
 | `source.cache-unverifiable` | error | A checkout exists but carries no sync manifest. |
 | `source.cache-stale` | error | The cache holds a different revision than the config asks for. |
 | `source.mutable-ref` | warn | A source tracks a branch or moving tag. |
 | `source.shared-acquisition` | info | One clone is read by several collections. |
-| `source.inherit-failed` | warn | A source-owned config could not be read, so inheritance was skipped. |
+| `source.inherit-failed` | error | A collection enables `inheritConfig` but its source config could not be read. `generate` and `createDocsProject` refuse to run on this, so doctor fails too. |
 | `source.dir-missing` | error | A collection's `dir` does not exist. |
 | `collection.no-matches` | warn | A collection's globs match no files. |
 | `nav.unresolvable` | error | The navigation tree did not resolve — a pin or page entry matches nothing. |
@@ -152,6 +153,6 @@ leadtype doctor --json
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `--src <dir>` | `.` | Project root to inspect. |
-| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeatable. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeatable — the first directory mounts at the docs root and each further one under its folder name, matching `generate`. |
 | `--out <dir>` | `public` | Output root to check artifacts against, resolved against the current directory like `leadtype generate`. |
 | `--json` | off | Machine-readable report on stdout. Warnings stay on stderr. |

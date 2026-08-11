@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { DocsConfig } from "../llm";
 import { writeSyncManifest } from "../sync/sync";
-import { createDocsProject } from "./index";
+import { createDocsProject, requireResolvedContentDir } from "./index";
 
 const tempDirs: string[] = [];
 
@@ -458,5 +458,24 @@ describe("remote collections are cache-only", () => {
     expect((await project.listPages()).map((entry) => entry.urlPath)).toEqual([
       "/docs",
     ]);
+  });
+});
+
+describe("internal invariants", () => {
+  it("names the violated invariant instead of crashing on an undefined path", () => {
+    // Hypothetical future state: a collection whose directory problem was
+    // demoted to warn level, so no error-level diagnostic blocked the run.
+    // The old `collection.contentDir as string` would hand `undefined` to
+    // `createDocsSource` and crash somewhere deeper; the check must throw a
+    // named invariant error instead.
+    expect(() => requireResolvedContentDir({ key: "docs" })).toThrow(
+      /internal invariant.*collection "docs".*content directory/
+    );
+  });
+
+  it("passes a resolved content directory through untouched", () => {
+    expect(
+      requireResolvedContentDir({ key: "docs", contentDir: "/srv/docs" })
+    ).toBe("/srv/docs");
   });
 });

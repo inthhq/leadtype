@@ -19,7 +19,6 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { glob as fg } from "tinyglobby";
 
-import type { LoadedDocsConfig } from "../config/load";
 import { resolveProjectNavigation } from "../config/navigation";
 import {
   type NavigationOrigin,
@@ -27,11 +26,9 @@ import {
   type ResolvedProjectCollection,
   resolveProject,
 } from "../config/project";
-import {
-  type ResolvedDocsConfig,
-  serializeResolvedConfig,
-} from "../config/types";
-import type { DocsCollection } from "../llm";
+import { serializeResolvedConfig } from "../config/types";
+import type { LogCall } from "../internal/logger";
+import type { DocsCollection, DocsConfig } from "../llm";
 import { defaultCacheDir, readSyncManifest } from "../sync/sync";
 
 export type DoctorIo = {
@@ -214,8 +211,8 @@ async function detectFramework(srcDir: string): Promise<string | undefined> {
   }
 }
 
-function enabledSurfaces(loaded: LoadedDocsConfig | null): string[] {
-  const agents = loaded?.config.agents;
+function enabledSurfaces(config: DocsConfig | null): string[] {
+  const agents = config?.agents;
   const surfaces: string[] = [];
   if (agents?.mcp?.enabled) {
     surfaces.push("mcp");
@@ -232,13 +229,25 @@ function enabledSurfaces(loaded: LoadedDocsConfig | null): string[] {
   if (agents?.robots) {
     surfaces.push(`robots:${agents.robots.policy ?? "balanced"}`);
   }
-  if (loaded?.config.redirects) {
+  if (config?.redirects) {
     surfaces.push("redirects");
   }
-  if (loaded?.config.feeds?.length) {
-    surfaces.push(`feeds:${loaded.config.feeds.length}`);
+  if (config?.feeds?.length) {
+    surfaces.push(`feeds:${config.feeds.length}`);
   }
   return surfaces;
+}
+
+/**
+ * Load-time warnings (deprecations, unknown keys) formatted onto the injected
+ * stderr — the same shape the process logger prints, but through `io`, so they
+ * are capturable in tests and can never interleave with `--json` stdout.
+ */
+function writeLoadWarning(io: DoctorIo, call: LogCall): void {
+  io.stderr.write(`Warning: ${call.human.message}\n`);
+  if (call.human.hint) {
+    io.stderr.write(`  → ${call.human.hint}\n`);
+  }
 }
 
 async function newestMtime(paths: string[]): Promise<number> {
@@ -381,7 +390,11 @@ export async function runDoctorCommand(
   // `nav` both ended up skipping inheritance in the first place.
   let project: ResolvedProject;
   try {
-    project = await resolveProject({ cwd: srcDir, docsDirs: docsDirNames });
+    project = await resolveProject({
+      cwd: srcDir,
+      docsDirs: docsDirNames,
+      warn: (call) => writeLoadWarning(io, call),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // A config that can't load is the whole answer — every later check would
@@ -421,13 +434,6 @@ export async function runDoctorCommand(
     });
   }
 
-  const loaded: LoadedDocsConfig | null = project.configPath
-    ? {
-        config: project.config as LoadedDocsConfig["config"],
-        path: project.configPath,
-        resolved: project.resolved as ResolvedDocsConfig,
-      }
-    : null;
   const configDir = project.configDir;
   const resolved = project.resolved;
 
@@ -518,7 +524,9 @@ export async function runDoctorCommand(
   const report: DoctorReport = {
     ok: !issues.some((issue) => issue.level === "error"),
     config: {
-      ...(loaded ? { path: loaded.path } : {}),
+      // Absent for an in-memory config too — a path that names nothing on
+      // disk is worse than none.
+      ...(project.configPath ? { path: project.configPath } : {}),
       mode: resolved?.mode ?? "none",
       deprecations: (resolved?.deprecations ?? []).map((entry) => ({
         field: entry.field,
@@ -532,7 +540,7 @@ export async function runDoctorCommand(
     outputs,
     integrations: {
       ...(framework ? { framework } : {}),
-      surfaces: enabledSurfaces(loaded),
+      surfaces: enabledSurfaces(project.config),
     },
     issues,
   };

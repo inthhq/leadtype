@@ -219,6 +219,30 @@ function findByLocalSlug<TFrontmatter extends DocsFrontmatter>(
   return matches[0];
 }
 
+/**
+ * Every collection reaching source construction must have a resolved content
+ * directory: an unresolved one is supposed to carry an error-level diagnostic,
+ * which the blocking check in {@link createDocsProject} already threw on. If
+ * one ever arrives without it — say a future warn-level directory diagnostic —
+ * fail as a named invariant instead of handing `createDocsSource` an undefined
+ * path to crash on somewhere deeper.
+ *
+ * Exported for its own test; not part of the package surface (`src/index.ts`
+ * re-exports named symbols only).
+ */
+export function requireResolvedContentDir(collection: {
+  key: string;
+  contentDir?: string;
+}): string {
+  const { contentDir } = collection;
+  if (!contentDir) {
+    throw new Error(
+      `createDocsProject: internal invariant violated — collection "${collection.key}" has no resolved content directory, but no error-level diagnostic reported why. Please file a leadtype bug.`
+    );
+  }
+  return contentDir;
+}
+
 export async function createDocsProject<
   TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
 >(
@@ -305,7 +329,7 @@ export async function createDocsProject<
 
   const sourcesByCollection = new Map<string, DocsSource<TFrontmatter>>();
   for (const collection of project.collections) {
-    const contentDir = collection.contentDir as string;
+    const contentDir = requireResolvedContentDir(collection);
     sourcesByCollection.set(
       collection.key,
       await createDocsSource<TFrontmatter>({

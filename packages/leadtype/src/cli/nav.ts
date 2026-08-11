@@ -253,7 +253,18 @@ export async function runNavCommand(
   const docsDirs = docsDirNames.map((dir) => path.resolve(srcDir, dir));
 
   try {
-    const project = await resolveProject({ cwd: srcDir, docsDirs });
+    const project = await resolveProject({
+      cwd: srcDir,
+      docsDirs,
+      // Load-time warnings go through the injected io — never the process
+      // logger, which would bypass `io` and interleave with `--json` stdout.
+      warn: (call) => {
+        io.stderr.write(`Warning: ${call.human.message}\n`);
+        if (call.human.hint) {
+          io.stderr.write(`  → ${call.human.hint}\n`);
+        }
+      },
+    });
 
     // A project with no config is a supported state — `doctor` reports it as a
     // warning and keeps going — so infer a tree from disk rather than refusing.

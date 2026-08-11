@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { writeSyncManifest } from "../sync/sync";
 import { type DoctorReport, parseDoctorArgs, runDoctorCommand } from "./doctor";
 
@@ -689,6 +689,154 @@ describe("source-owned inheritance", () => {
     expect(
       report.collections.find((entry) => entry.key === "good")?.pageCount
     ).toBe(1);
+  });
+});
+
+describe("config load warnings", () => {
+  it("warns about unknown config keys with a did-you-mean", async () => {
+    const dir = await fixture({
+      // Typos at the two levels that bite hardest in an untyped config: a
+      // misspelled top-level `navigation` silently reverts the tree to
+      // inferred, and a misspelled `routePrefix` silently keeps the default.
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  navigatoin: ["index"],
+  collections: {
+    docs: { dir: "docs", routePrefx: "/docs" },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // Forward compatibility: unknown keys warn, never error.
+    expect(code).toBe(0);
+    const findings = report.issues.filter(
+      (entry) => entry.id === "config.unknown-key"
+    );
+    expect(findings.map((entry) => entry.owner).sort()).toEqual([
+      "collections.docs.routePrefx",
+      "navigatoin",
+    ]);
+    expect(findings.every((entry) => entry.level === "warn")).toBe(true);
+    expect(
+      findings.find((entry) => entry.owner === "navigatoin")?.message
+    ).toContain('did you mean "navigation"');
+    expect(
+      findings.find((entry) => entry.owner === "collections.docs.routePrefx")
+        ?.message
+    ).toContain('did you mean "routePrefix"');
+  });
+
+  it("stays silent for known keys and deliberately open surfaces", async () => {
+    const dir = await fixture({
+      // `frontmatterSchema` contents, `mounts` entries, and `llms` sections
+      // are open by design — extra keys there are the author's vocabulary,
+      // not typos of ours.
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  frontmatterSchema: { anyField: { type: "string" }, andAnother: {} },
+  mounts: [{ pathPrefix: "", urlPrefix: "/docs", futureOption: true }],
+  llms: { sections: [{ kind: "markdown", title: "Notes", body: "Body." }] },
+  navigation: ["index"],
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const { report } = await runJson(dir);
+
+    expect(
+      report.issues.filter((entry) => entry.id === "config.unknown-key")
+    ).toEqual([]);
+  });
+
+  it("routes the deprecation warning through the injected io", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: { docs: { dir: "docs", prefix: "/docs" } },
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    // The load-time warning used to go through the process-wide logger, which
+    // doctor's injected io never sees — it leaked into test output while the
+    // `--json` stdout stayed clean.
+    const realStderr = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    try {
+      const capture = createCapture();
+      const code = await runDoctorCommand(["--src", dir, "--json"], capture.io);
+
+      expect(code).toBe(0);
+      expect(capture.stderr).toContain("deprecated");
+      // Structured output stays parseable — warnings never interleave.
+      expect(() => JSON.parse(capture.stdout)).not.toThrow();
+      expect(realStderr).not.toHaveBeenCalled();
+    } finally {
+      realStderr.mockRestore();
+    }
+  });
+});
+
+describe("--docs-dir", () => {
+  it("honors every value, matching generate's legacy multi-dir shape", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+      "guides/setup.mdx": page("Setup"),
+    });
+
+    const { code, report } = await runJson(dir, [
+      "--docs-dir",
+      "docs",
+      "--docs-dir",
+      "guides",
+    ]);
+
+    // `generate` stages the first directory at the docs root and each further
+    // one under its folder name; reading only `docsDirs[0]` reported a
+    // project missing every page the build actually ships.
+    expect(code).toBe(0);
+    expect(
+      report.collections.map((entry) => [
+        entry.key,
+        entry.routePrefix,
+        entry.pageCount,
+      ])
+    ).toEqual([
+      ["docs", "/docs", 1],
+      ["guides", "/docs/guides", 1],
+    ]);
+    expect(report.navigation?.routedPages).toBe(2);
+  });
+
+  it("rejects values colliding on a mount path, with generate's message", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+      "a/guides/one.mdx": page("One"),
+      "b/guides/two.mdx": page("Two"),
+    });
+
+    const { code, report } = await runJson(dir, [
+      "--docs-dir",
+      "docs",
+      "--docs-dir",
+      "a/guides",
+      "--docs-dir",
+      "b/guides",
+    ]);
+
+    expect(code).toBe(1);
+    const issue = report.issues.find((entry) => entry.id === "config.invalid");
+    expect(issue?.message).toContain('same mount path "guides"');
   });
 });
 

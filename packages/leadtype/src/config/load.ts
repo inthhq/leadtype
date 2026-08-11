@@ -13,7 +13,8 @@
 
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { logger } from "../internal/logger";
+import { editDistanceWithin } from "../internal/edit-distance";
+import { type LogCall, logger } from "../internal/logger";
 import type {
   DocsCollection,
   DocsConfig,
@@ -47,13 +48,208 @@ import type { ResolvedDocsConfig } from "./types";
 
 const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
 
+/**
+ * A non-fatal problem found while validating a config. Errors throw; warnings
+ * ride along on the loaded config so `resolveProject` can surface them as
+ * diagnostics and `doctor` as findings with a stable id.
+ */
+export type ConfigWarning = {
+  /** Stable id, shared with `leadtype doctor` findings. */
+  id: "config.unknown-key";
+  message: string;
+  /** Field path as authored, e.g. `collections.docs.routePrefx`. */
+  owner: string;
+  /** A concrete next step. */
+  fix?: string;
+};
+
+/** Where load-time warnings go. Defaults to the process-wide logger. */
+export type ConfigWarningSink = (call: LogCall) => void;
+
 export type LoadedDocsConfig = {
   /** The authored config, with deprecated aliases folded onto canonical names. */
   config: DocsConfig;
   path: string;
   /** The resolved project: collections, source graph, provenance, deprecations. */
   resolved: ResolvedDocsConfig;
+  /** Non-fatal validation findings — unknown keys and the like. */
+  warnings?: ConfigWarning[];
 };
+
+/**
+ * Top-level `DocsConfig` keys, for unknown-key detection. Deliberately a
+ * hand-maintained list: the type is erased at runtime, and an untyped
+ * `.js`/`.mjs` config — or one written by an agent — is exactly the case
+ * where a typo'd key would otherwise vanish silently.
+ */
+const TOP_LEVEL_CONFIG_KEYS = [
+  "product",
+  "organization",
+  "llms",
+  "frontmatterSchema",
+  "transformers",
+  "flatteners",
+  "groups",
+  "navigation",
+  "mounts",
+  "feeds",
+  "collections",
+  "sources",
+  "openapi",
+  "i18n",
+  "typeTableBasePath",
+  "typeTableStrict",
+  "git",
+  "agents",
+  "redirects",
+  "lint",
+] as const satisfies readonly (keyof DocsConfig)[];
+
+const COLLECTION_KEYS = [
+  "repository",
+  "ref",
+  "cacheDir",
+  "sparse",
+  "sourceConfig",
+  "inheritConfig",
+  "dir",
+  "include",
+  "exclude",
+  "prefix",
+  "routePrefix",
+  "schema",
+  "frontmatterSchema",
+  "groups",
+  "navigation",
+  "mounts",
+  "flatteners",
+] as const satisfies readonly (keyof DocsCollection)[];
+
+// `kind` is the gitSource() brand, present on every spec by construction.
+const GIT_SOURCE_KEYS = [
+  "kind",
+  "repository",
+  "ref",
+  "cacheDir",
+  "sparse",
+  "inheritConfig",
+  "collections",
+] as const satisfies readonly (keyof GitSourceSpec)[];
+
+const NAV_NODE_KEYS = [
+  "title",
+  "slug",
+  "description",
+  "base",
+  "pages",
+  "children",
+  "optional",
+] as const;
+
+const NAV_INCLUDE_KEYS = [
+  "include",
+  "exclude",
+  "sort",
+  "required",
+  "pin",
+] as const;
+
+/** The known key a typo'd key is plausibly a misspelling of, if any. */
+function closestKnownKey(
+  key: string,
+  allowed: readonly string[]
+): string | undefined {
+  const lowered = key.toLowerCase();
+  const caseMatch = allowed.find(
+    (candidate) => candidate.toLowerCase() === lowered
+  );
+  if (caseMatch) {
+    return caseMatch;
+  }
+  // Short keys need a tight bound or everything is close to everything.
+  const maxDistance = key.length <= 4 ? 1 : 2;
+  return allowed.find((candidate) =>
+    editDistanceWithin(lowered, candidate.toLowerCase(), maxDistance)
+  );
+}
+
+/**
+ * Warn — never throw — about keys outside `allowed`. Unknown keys stay
+ * accepted for forward compatibility (an older CLI reading a newer config
+ * must not refuse it), but silence is what turns `navigatoin:` into a nav
+ * tree that quietly reverts to inferred.
+ */
+function warnUnknownKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  fieldPath: string,
+  configPath: string,
+  warnings: ConfigWarning[] | undefined
+): void {
+  if (!warnings) {
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (allowed.includes(key)) {
+      continue;
+    }
+    const owner = fieldPath ? `${fieldPath}.${key}` : key;
+    const suggestion = closestKnownKey(key, allowed);
+    warnings.push({
+      id: "config.unknown-key",
+      message: `docs config at "${configPath}": unknown field "${owner}"${suggestion ? ` — did you mean "${suggestion}"?` : ""}`,
+      owner,
+      ...(suggestion
+        ? { fix: `Rename "${key}" to "${suggestion}", or remove it.` }
+        : {
+            fix: `Remove "${key}", or check the field name against the DocsConfig reference.`,
+          }),
+    });
+  }
+}
+
+/**
+ * Walk authored navigation entries for unknown keys. Nav objects are the most
+ * typo-prone surface after the top level — `childrens`, `pin` vs `pins` — and
+ * a bad key here degrades to "entry ignored", which reads as a missing page.
+ */
+function warnUnknownNavKeys(
+  entries: unknown,
+  fieldPath: string,
+  configPath: string,
+  warnings: ConfigWarning[] | undefined
+): void {
+  if (!(warnings && Array.isArray(entries))) {
+    return;
+  }
+  for (const [index, entry] of entries.entries()) {
+    if (!isPlainRecord(entry)) {
+      continue;
+    }
+    const entryPath = `${fieldPath}[${index}]`;
+    if (typeof entry.include === "string") {
+      warnUnknownKeys(entry, NAV_INCLUDE_KEYS, entryPath, configPath, warnings);
+      continue;
+    }
+    warnUnknownKeys(entry, NAV_NODE_KEYS, entryPath, configPath, warnings);
+    if (Array.isArray(entry.pages)) {
+      warnUnknownNavKeys(
+        entry.pages,
+        `${entryPath}.pages`,
+        configPath,
+        warnings
+      );
+    }
+    if (Array.isArray(entry.children)) {
+      warnUnknownNavKeys(
+        entry.children,
+        `${entryPath}.children`,
+        configPath,
+        warnings
+      );
+    }
+  }
+}
 
 function validateOptionalStringField(
   value: Record<string, unknown>,
@@ -509,7 +705,10 @@ function validateSourceConfigInheritance(
 
 function validateCollections(
   value: unknown,
-  configPath: string
+  configPath: string,
+  warnings?: ConfigWarning[],
+  /** Field path collections live under, for grouped-source warnings. */
+  fieldPathPrefix = "collections"
 ): Record<string, DocsCollection> | undefined {
   if (value === undefined) {
     return;
@@ -526,6 +725,19 @@ function validateCollections(
         `docs config at "${configPath}": collection "${key}" must be an object`
       );
     }
+    warnUnknownKeys(
+      entry,
+      COLLECTION_KEYS,
+      `${fieldPathPrefix}.${key}`,
+      configPath,
+      warnings
+    );
+    warnUnknownNavKeys(
+      entry.navigation,
+      `${fieldPathPrefix}.${key}.navigation`,
+      configPath,
+      warnings
+    );
     if (typeof entry.dir !== "string" || entry.dir.length === 0) {
       throw new Error(
         `docs config at "${configPath}": collection "${key}" must set "dir" to a non-empty string`
@@ -645,7 +857,8 @@ function validateCollections(
  */
 function validateGitSources(
   value: unknown,
-  configPath: string
+  configPath: string,
+  warnings?: ConfigWarning[]
 ): Record<string, GitSourceSpec> | undefined {
   if (value === undefined) {
     return;
@@ -661,6 +874,13 @@ function validateGitSources(
         `docs config at "${configPath}": source "${sourceId}" must be built with gitSource({ … }).`
       );
     }
+    warnUnknownKeys(
+      entry,
+      GIT_SOURCE_KEYS,
+      `sources.${sourceId}`,
+      configPath,
+      warnings
+    );
     if (typeof entry.repository !== "string" || entry.repository.length === 0) {
       throw new Error(
         `docs config at "${configPath}": source "${sourceId}" must set "repository" to a non-empty string`
@@ -723,7 +943,12 @@ function validateGitSources(
         },
       ])
     );
-    validateCollections(cascaded, configPath);
+    validateCollections(
+      cascaded,
+      configPath,
+      warnings,
+      `sources.${sourceId}.collections`
+    );
   }
   return value as Record<string, GitSourceSpec>;
 }
@@ -886,7 +1111,17 @@ function validateLintConfig(
 
 export function validateDocsConfig(
   value: unknown,
-  configPath: string
+  configPath: string,
+  /**
+   * Collector for non-fatal findings. Unknown keys warn rather than error so
+   * a config written for a newer leadtype still loads — but they must not
+   * vanish: in an untyped config, `navigatoin:` silently doing nothing is the
+   * opposite of the "explain why" story. Deliberately open surfaces
+   * (`frontmatterSchema` contents, `mounts` entries, `llms` sections, and the
+   * separately validated `organization`/`agents`/`openapi`/`lint` objects)
+   * are not walked.
+   */
+  warnings?: ConfigWarning[]
 ): DocsConfig {
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
@@ -898,8 +1133,15 @@ export function validateDocsConfig(
     );
   }
 
-  const collections = validateCollections(value.collections, configPath);
-  const sources = validateGitSources(value.sources, configPath);
+  warnUnknownKeys(value, TOP_LEVEL_CONFIG_KEYS, "", configPath, warnings);
+  warnUnknownNavKeys(value.navigation, "navigation", configPath, warnings);
+
+  const collections = validateCollections(
+    value.collections,
+    configPath,
+    warnings
+  );
+  const sources = validateGitSources(value.sources, configPath, warnings);
   // A source group is a collections declaration in acquisition-first form, so
   // it participates in the same single-source / multi-source exclusivity.
   const isMultiSource = Boolean(collections || sources);
@@ -999,7 +1241,8 @@ export function validateDocsConfig(
 
 export async function loadDocsConfigFromDir(
   dir: string,
-  filenames: readonly string[]
+  filenames: readonly string[],
+  options: { warn?: ConfigWarningSink } = {}
 ): Promise<LoadedDocsConfig | null> {
   const configPath = filenames
     .map((filename) => path.join(dir, filename))
@@ -1014,14 +1257,21 @@ export async function loadDocsConfigFromDir(
     // Validation checks the authored shape; normalization folds deprecated
     // aliases onto canonical names and derives the resolved project. Every
     // consumer downstream of here reads canonical fields only.
+    const warnings: ConfigWarning[] = [];
     const { config, resolved } = normalizeDocsConfig(
-      validateDocsConfig(imported, configPath),
+      validateDocsConfig(imported, configPath, warnings),
       { configPath, configDir: path.dirname(configPath) }
     );
-    const loaded: LoadedDocsConfig = { config, path: configPath, resolved };
+    const loaded: LoadedDocsConfig = {
+      config,
+      path: configPath,
+      resolved,
+      ...(warnings.length > 0 ? { warnings } : {}),
+    };
     // Warn here rather than at each entry point: this *is* the config load, so
     // generate, sync, lint, and score all get the same one-time message.
-    warnConfigDeprecations(loaded);
+    warnConfigDeprecations(loaded, options.warn);
+    warnConfigUnknownKeys(loaded, options.warn);
     return loaded;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1039,8 +1289,16 @@ const warnedConfigPaths = new Set<string>();
 /**
  * Emit one actionable deprecation warning per config load. Safe to call from
  * every CLI entry point — repeat calls for the same file are dropped.
+ *
+ * The warning goes to `warn` — the caller's injected io when there is one —
+ * never straight to the process streams: doctor and nav run with injected
+ * streams, and a warning bypassing them interleaves with `--json` output and
+ * leaks into test runners.
  */
-export function warnConfigDeprecations(loaded: LoadedDocsConfig | null): void {
+export function warnConfigDeprecations(
+  loaded: LoadedDocsConfig | null,
+  warn: ConfigWarningSink = logger.warn
+): void {
   if (!loaded || warnedConfigPaths.has(loaded.path)) {
     return;
   }
@@ -1049,7 +1307,7 @@ export function warnConfigDeprecations(loaded: LoadedDocsConfig | null): void {
     return;
   }
   warnedConfigPaths.add(loaded.path);
-  logger.warn({
+  warn({
     human: {
       message: `${loaded.path}: ${warning.message}`,
       hint: warning.hint,
@@ -1067,14 +1325,48 @@ export function warnConfigDeprecations(loaded: LoadedDocsConfig | null): void {
   });
 }
 
+// Same once-per-file rule as deprecations, tracked separately so a config
+// with both still reports both.
+const warnedUnknownKeyPaths = new Set<string>();
+
+/** Emit one aggregated unknown-key warning per config load. */
+export function warnConfigUnknownKeys(
+  loaded: LoadedDocsConfig | null,
+  warn: ConfigWarningSink = logger.warn
+): void {
+  const warnings = loaded?.warnings ?? [];
+  if (
+    !loaded ||
+    warnings.length === 0 ||
+    warnedUnknownKeyPaths.has(loaded.path)
+  ) {
+    return;
+  }
+  warnedUnknownKeyPaths.add(loaded.path);
+  const fields = warnings.map((entry) => entry.owner);
+  warn({
+    human: {
+      message: `${loaded.path}: ${warnings.length} unknown config field${warnings.length === 1 ? "" : "s"}: ${fields.join(", ")}`,
+      hint:
+        warnings.find((entry) => entry.fix)?.fix ??
+        "Unknown fields are ignored. Remove them, or check the field names against the DocsConfig reference.",
+    },
+    json: {
+      event: "config.unknown_keys",
+      fields: { configPath: loaded.path, fields },
+    },
+  });
+}
+
 /**
  * Look for `leadtype.config.{ts,js,mjs,cjs}` in the given directory.
  * Used by the sync CLI; for `generate`, prefer {@link loadDocsConfig}.
  */
 export async function loadLeadtypeConfig(
-  cwd: string
+  cwd: string,
+  options: { warn?: ConfigWarningSink } = {}
 ): Promise<LoadedDocsConfig | null> {
-  return loadDocsConfigFromDir(cwd, LEADTYPE_CONFIG_FILENAMES);
+  return loadDocsConfigFromDir(cwd, LEADTYPE_CONFIG_FILENAMES, options);
 }
 
 /**
@@ -1088,18 +1380,25 @@ export async function loadLeadtypeConfig(
 export async function loadDocsConfig(opts: {
   cwd?: string;
   docsDirs: string[];
+  warn?: ConfigWarningSink;
 }): Promise<LoadedDocsConfig | null> {
+  const options = { ...(opts.warn ? { warn: opts.warn } : {}) };
   if (opts.cwd) {
     const projectConfig = await loadDocsConfigFromDir(
       opts.cwd,
-      LEADTYPE_CONFIG_FILENAMES
+      LEADTYPE_CONFIG_FILENAMES,
+      options
     );
     if (projectConfig) {
       return projectConfig;
     }
   }
   for (const docsDir of opts.docsDirs) {
-    const loaded = await loadDocsConfigFromDir(docsDir, DOCS_CONFIG_FILENAMES);
+    const loaded = await loadDocsConfigFromDir(
+      docsDir,
+      DOCS_CONFIG_FILENAMES,
+      options
+    );
     if (loaded) {
       return loaded;
     }

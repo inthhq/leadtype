@@ -68,6 +68,53 @@ describe("discovery", () => {
     expect(project.collections[0]?.contentDir).toBe(path.join(dir, "docs"));
   });
 
+  it("represents an in-memory config honestly — no fabricated path", async () => {
+    const dir = await fixture({ "docs/index.mdx": page("Home") });
+
+    const project = await resolveProject({
+      cwd: dir,
+      config: {
+        product: { name: "Acme", tagline: "Acme docs." },
+        navigation: ["index"],
+      },
+    });
+
+    // The old behavior stamped `<root>/leadtype.config.ts` on a config that
+    // never came from a file, so doctor-style consumers reported a config
+    // path that does not exist.
+    expect(project.configPath).toBeUndefined();
+    expect(project.configOrigin).toBe("caller");
+    expect(project.configDir).toBe(dir);
+  });
+
+  it("keeps a caller-named configPath, still marked caller-supplied", async () => {
+    const dir = await fixture({ "docs/index.mdx": page("Home") });
+    const configPath = path.join(dir, "leadtype.config.ts");
+
+    const project = await resolveProject({
+      config: {
+        product: { name: "Acme", tagline: "Acme docs." },
+        navigation: ["index"],
+      },
+      configPath,
+    });
+
+    expect(project.configPath).toBe(configPath);
+    expect(project.configOrigin).toBe("caller");
+  });
+
+  it("marks a discovered config as file-origin", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default { ${IDENTITY} };`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const project = await resolveProject({ cwd: dir });
+
+    expect(project.configOrigin).toBe("file");
+    expect(project.configPath).toBe(path.join(dir, "docs", "docs.config.ts"));
+  });
+
   it("puts the content root beside a docs.config, and below a leadtype.config", async () => {
     const sourceOwned = await fixture({
       "docs/docs.config.ts": `export default { ${IDENTITY} };`,
@@ -403,6 +450,70 @@ export default {
     expect(project.sources.map((entry) => entry.id)).toEqual(["upstream"]);
     expect(project.collections[0]?.sourceId).toBe("upstream");
     expect(project.collections[0]?.navigationOrigin).toBe("inherited");
+  });
+});
+
+describe("unknown config keys", () => {
+  it("surfaces them as warn diagnostics and through the warn sink", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  navigatoin: ["index"],
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const sunk: string[] = [];
+    const project = await resolveProject({
+      cwd: dir,
+      warn: (call) => sunk.push(call.human.message),
+    });
+
+    const diagnostic = project.diagnostics.find(
+      (entry) => entry.id === "config.unknown-key"
+    );
+    expect(diagnostic?.level).toBe("warn");
+    expect(diagnostic?.owner).toBe("navigatoin");
+    expect(diagnostic?.message).toContain('did you mean "navigation"');
+    // The tree quietly reverted to inferred — which is exactly why silence
+    // here undercuts the provenance story.
+    expect(project.collections[0]?.navigationOrigin).toBe("inferred");
+    expect(sunk.some((message) => message.includes("navigatoin"))).toBe(true);
+  });
+
+  it("names the full path for gitSource and navigation-entry keys", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `import { gitSource } from "LEADTYPE_ENTRY";
+
+export default {
+  ${IDENTITY},
+  sources: {
+    upstream: gitSource({
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      branch: "main",
+      collections: {
+        docs: {
+          dir: "docs",
+          routePrefix: "/docs",
+          navigation: [{ title: "G", base: "g", pages: [{ include: "**", pins: ["x"] }] }],
+        },
+      },
+    }),
+  },
+};`.replace("LEADTYPE_ENTRY", LEADTYPE_ENTRY),
+    });
+
+    const project = await resolveProject({ cwd: dir });
+
+    const owners = project.diagnostics
+      .filter((entry) => entry.id === "config.unknown-key")
+      .map((entry) => entry.owner);
+    expect(owners).toContain("sources.upstream.branch");
+    expect(owners).toContain(
+      "sources.upstream.collections.docs.navigation[0].pages[0].pins"
+    );
   });
 });
 

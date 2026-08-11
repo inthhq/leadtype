@@ -25,6 +25,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { glob as fg } from "tinyglobby";
+import { normalizeDocsPath, normalizeUrlPrefix } from "../internal/docs-url";
 import type { DocsCollection, DocsConfig, DocsNavEntry } from "../llm";
 import {
   formatSparse,
@@ -39,7 +40,11 @@ import {
   mergeInferenceReports,
 } from "./infer";
 import { inheritCollectionSourceConfigs } from "./inherit";
-import { type LoadedDocsConfig, loadDocsConfig } from "./load";
+import {
+  type ConfigWarningSink,
+  type LoadedDocsConfig,
+  loadDocsConfig,
+} from "./load";
 import { normalizeDocsConfig } from "./normalize";
 import type {
   FieldProvenance,
@@ -93,8 +98,17 @@ export type ResolvedProject = {
   rootDir: string;
   /** Directory holding the config file; relative config paths resolve here. */
   configDir: string;
-  /** Absolute path of the discovered config, if there is one. */
+  /**
+   * Absolute path of the config file. Absent when there is no config, and
+   * also when the caller supplied an in-memory config without naming its
+   * file — a path that names nothing on disk would be worse than none.
+   */
   configPath?: string;
+  /**
+   * How the config arrived: discovered as a `file` on disk, or supplied
+   * in-memory by the `caller`. Absent when there is no config at all.
+   */
+  configOrigin?: "file" | "caller";
   /** The authored config: canonical names, inheritance applied. */
   config: LoadedDocsConfig["config"] | null;
   /** The normalized project model, with provenance. */
@@ -139,6 +153,12 @@ export type ResolveProjectOptions = {
    * Default `true`.
    */
   infer?: boolean;
+  /**
+   * Where load-time warnings (deprecations, unknown keys) go. Defaults to the
+   * process-wide logger; commands with injected io pass their own stderr so
+   * warnings never bypass it.
+   */
+  warn?: ConfigWarningSink;
 };
 
 const DEFAULT_DOCS_DIRNAME = "docs";
@@ -153,12 +173,12 @@ const DEFAULT_DOCS_DIRNAME = "docs";
  */
 async function resolveContentDir(
   collection: ResolvedDocsCollection,
-  loaded: LoadedDocsConfig,
+  config: DocsConfig,
   configDir: string,
   fallbackDir: string,
   diagnostics: ProjectDiagnostic[]
 ): Promise<string | undefined> {
-  const authored = loaded.config.collections?.[collection.key];
+  const authored = config.collections?.[collection.key];
   if (!authored) {
     // Single-source: the host supplies the content root.
     if (existsSync(fallbackDir)) {
@@ -346,18 +366,26 @@ export async function resolveProject(
   const diagnostics: ProjectDiagnostic[] = [];
 
   // A caller that already holds the config skips discovery; it still goes
-  // through normalization so the resolved model is identical either way.
-  const loaded: LoadedDocsConfig | null = options.config
-    ? {
-        ...normalizeDocsConfig(options.config, {
-          ...(options.configPath ? { configPath: options.configPath } : {}),
-          configDir: options.configPath
-            ? path.dirname(options.configPath)
-            : rootDir,
-        }),
-        path: options.configPath ?? path.join(rootDir, "leadtype.config.ts"),
-      }
-    : await loadDocsConfig({ cwd: rootDir, docsDirs });
+  // through normalization so the resolved model is identical either way. An
+  // in-memory config without a `configPath` has no file, and gets no path —
+  // fabricating one (the old behavior) made doctor-style consumers report a
+  // config file that does not exist.
+  const loaded: (Omit<LoadedDocsConfig, "path"> & { path?: string }) | null =
+    options.config
+      ? {
+          ...normalizeDocsConfig(options.config, {
+            ...(options.configPath ? { configPath: options.configPath } : {}),
+            configDir: options.configPath
+              ? path.dirname(options.configPath)
+              : rootDir,
+          }),
+          ...(options.configPath ? { path: options.configPath } : {}),
+        }
+      : await loadDocsConfig({
+          cwd: rootDir,
+          docsDirs,
+          ...(options.warn ? { warn: options.warn } : {}),
+        });
   if (!loaded) {
     diagnostics.push({
       id: "config.missing",
@@ -367,8 +395,22 @@ export async function resolveProject(
     });
     return emptyProject(rootDir, diagnostics);
   }
+  const configOrigin: "file" | "caller" = options.config ? "caller" : "file";
 
-  const configDir = path.dirname(loaded.path);
+  // Unknown keys the validator warned about (discovery path only — a
+  // caller-supplied config is typed, so its unknown keys were already
+  // rejected by the compiler or are deliberate).
+  for (const warning of loaded.warnings ?? []) {
+    diagnostics.push({
+      id: warning.id,
+      level: "warn",
+      message: warning.message,
+      owner: warning.owner,
+      ...(warning.fix ? { fix: warning.fix } : {}),
+    });
+  }
+
+  const configDir = loaded.path ? path.dirname(loaded.path) : rootDir;
 
   // Inheritance first: it changes what the collections *are*, so normalizing
   // before it would describe a project that never runs.
@@ -447,7 +489,7 @@ export async function resolveProject(
   // canonical config correctly finds none — and reporting none would tell a
   // user with a legacy config that they have nothing to migrate.
   const renormalized = normalizeDocsConfig(config, {
-    configPath: loaded.path,
+    ...(loaded.path ? { configPath: loaded.path } : {}),
     configDir,
   });
   //
@@ -477,12 +519,6 @@ export async function resolveProject(
       deprecations: loaded.resolved.deprecations,
     },
   };
-  const withInheritance: LoadedDocsConfig = {
-    config: normalized.config,
-    path: loaded.path,
-    resolved: normalized.resolved,
-  };
-
   const fallbackContentDir = path.resolve(
     options.contentDir ??
       docsDirs[0] ??
@@ -495,7 +531,7 @@ export async function resolveProject(
   for (const collection of normalized.resolved.collections) {
     const contentDir = await resolveContentDir(
       collection,
-      withInheritance,
+      normalized.config,
       configDir,
       fallbackContentDir,
       diagnostics
@@ -546,14 +582,98 @@ export async function resolveProject(
     });
   }
 
+  let sources = normalized.resolved.sources;
+
+  // `--docs-dir` is repeatable, and `generate`'s legacy multi-dir path honors
+  // every value: the first directory mounts at the docs root, each further
+  // one under its folder name (`/docs/<basename>`). A single-source project
+  // resolves the same way here, so a report covers everything the build
+  // stages instead of silently reading only the first directory. The mount
+  // collision rule (and its message) matches `generate` too.
+  if (
+    normalized.resolved.mode === "single-source" &&
+    !options.contentDir &&
+    docsDirs.length > 1
+  ) {
+    const primary = collections[0];
+    const usedKeys = new Set(collections.map((entry) => entry.key));
+    const mountPaths = new Set<string>();
+    const extraKeys: string[] = [];
+    for (const [index, dirName] of docsDirNames.entries()) {
+      if (index === 0) {
+        continue;
+      }
+      const absoluteDir = docsDirs[index] ?? path.resolve(rootDir, dirName);
+      const mountPath = normalizeDocsPath(
+        path.basename(dirName || absoluteDir)
+      );
+      const mountKey = mountPath.toLowerCase();
+      if (mountPaths.has(mountKey)) {
+        throw new Error(
+          `Multiple docs sources resolve to the same mount path "${mountPath}". Use distinct source folder names.`
+        );
+      }
+      mountPaths.add(mountKey);
+      // Distinct mount paths can still collide with the primary collection's
+      // key (a second dir literally named "docs"); suffix those.
+      const key = usedKeys.has(mountPath) ? `${mountPath}-${index}` : mountPath;
+      usedKeys.add(key);
+      extraKeys.push(key);
+
+      const exists = existsSync(absoluteDir);
+      if (!exists) {
+        diagnostics.push({
+          id: "source.dir-missing",
+          level: "error",
+          message: `docs directory "${absoluteDir}" does not exist`,
+          collection: key,
+          owner: "--docs-dir",
+        });
+      }
+      let navigation: DocsNavEntry[] | undefined;
+      if (options.infer !== false && exists) {
+        const derived = await inferNavigationFromContent(absoluteDir);
+        navigation = derived.navigation;
+        inference = mergeInferenceReports(inference, derived.report);
+      }
+      collections.push({
+        key,
+        routePrefix: normalizeUrlPrefix(`/docs/${mountPath}`),
+        sourceId: primary?.sourceId ?? "local",
+        provenance: {
+          dir: {
+            origin: "default",
+            inferredFrom: "host content root (--docs-dir)",
+          },
+          routePrefix: {
+            origin: "default",
+            inferredFrom: "docs dir folder name",
+          },
+        },
+        ...(exists ? { contentDir: absoluteDir } : {}),
+        ...(navigation ? { navigation } : {}),
+        navigationOrigin: "inferred",
+      });
+    }
+    sources = sources.map((source) =>
+      source.kind === "local"
+        ? {
+            ...source,
+            collectionKeys: [...source.collectionKeys, ...extraKeys],
+          }
+        : source
+    );
+  }
+
   return {
     rootDir,
     configDir,
-    configPath: loaded.path,
+    ...(loaded.path ? { configPath: loaded.path } : {}),
+    configOrigin,
     config: normalized.config,
     resolved: normalized.resolved,
     collections,
-    sources: normalized.resolved.sources,
+    sources,
     inference,
     diagnostics,
   };
