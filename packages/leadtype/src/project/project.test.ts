@@ -216,6 +216,44 @@ describe("multi-collection project", () => {
     ).toEqual(["/docs", "/legal/terms"]);
   });
 
+  it("resolves site-wide mounts against the merged tree, as generation does", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  mounts: [
+    { pathPrefix: "legal", urlPrefix: "/legal" },
+    { pathPrefix: "guides/archive", urlPrefix: "/archive" },
+  ],
+  collections: {
+    docs: { dir: "content/docs", routePrefix: "/docs" },
+    guides: { dir: "content/guides", routePrefix: "/guides" },
+  },
+};`,
+      "content/docs/index.mdx": page("Docs"),
+      "content/docs/legal/terms.mdx": page("Terms"),
+      "content/guides/index.mdx": page("Guides"),
+      "content/guides/legal/refund.mdx": page("Refund"),
+      "content/guides/archive/old.mdx": page("Old"),
+    });
+
+    const project = await createDocsProject({ configDir: dir });
+
+    // Generation resolves site-wide mounts once, against the merged staged
+    // tree, where guides files sit under `guides/` — so `legal` reaches only
+    // the default collection, while `guides/archive` reaches into the guides
+    // collection. Re-anchoring `legal` per collection would serve
+    // `/legal/refund` here while the sitemap advertises `/guides/legal/refund`.
+    expect(
+      (await project.listPages()).map((entry) => entry.urlPath).sort()
+    ).toEqual([
+      "/archive/old",
+      "/docs",
+      "/guides",
+      "/guides/legal/refund",
+      "/legal/terms",
+    ]);
+  });
+
   it("refuses openapi alongside collections rather than dropping the pages", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `export default {

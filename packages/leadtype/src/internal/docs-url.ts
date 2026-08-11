@@ -51,11 +51,31 @@ function stripIndexSegments(relativePath: string): string {
     .replace(ROOT_INDEX_PATTERN, "");
 }
 
-function normalizeMountPathPrefix(input: string): string {
+export function normalizeMountPathPrefix(input: string): string {
   return stripTrailingSlashes(normalizeDocsPath(input)).replace(
     LEADING_SLASHES_PATTERN,
     ""
   );
+}
+
+const DEFAULT_DOCS_URL_PREFIX = "/docs";
+const NESTED_DOCS_PREFIX = `${DEFAULT_DOCS_URL_PREFIX}/`;
+
+/**
+ * The staging mount path implied by a public URL prefix — where a
+ * collection's files sit in the merged tree `leadtype generate` stages.
+ * The default `/docs` collection stages at the root; everything else stages
+ * under a path mirroring its prefix. Shared between generation and the
+ * runtime so both resolve mounts against the same merged-tree layout.
+ */
+export function pathPrefixForUrlPrefix(urlPrefix: string): string {
+  if (urlPrefix === DEFAULT_DOCS_URL_PREFIX) {
+    return "";
+  }
+  if (urlPrefix.startsWith(NESTED_DOCS_PREFIX)) {
+    return urlPrefix.slice(NESTED_DOCS_PREFIX.length);
+  }
+  return urlPrefix.replace(LEADING_SLASHES_PATTERN, "");
 }
 
 function resolveDocsPathMount(

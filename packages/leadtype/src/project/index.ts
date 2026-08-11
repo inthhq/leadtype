@@ -33,7 +33,8 @@ import type { DocsI18nConfig, LocaleCode } from "../i18n";
 import {
   type DocsPathMount,
   normalizeBaseUrl,
-  normalizeDocsPath,
+  normalizeMountPathPrefix,
+  pathPrefixForUrlPrefix,
   toAbsoluteUrl,
 } from "../internal/docs-url";
 import type { DocsConfig } from "../llm";
@@ -126,19 +127,72 @@ export type CreateDocsProjectConfig<
 
 const LEADING_SLASH = /^\//;
 
+/**
+ * The one flat mount list `generate` resolves URLs against: every collection
+ * contributes its staging mount (plus its own mounts, staged-tree relative),
+ * then site-wide `mounts` follow — the exact order `generate` composes
+ * `effectiveMounts` in, which is what breaks longest-prefix ties identically.
+ */
+function stagedTreeMounts(
+  collections: ResolvedDocsCollection[],
+  siteMounts: DocsPathMount[] | undefined
+): DocsPathMount[] {
+  return [
+    ...collections.flatMap((collection) => {
+      const mountPath = pathPrefixForUrlPrefix(collection.routePrefix);
+      return [
+        { pathPrefix: mountPath, urlPrefix: collection.routePrefix },
+        ...(collection.mounts ?? []).map((mount) => {
+          const local = normalizeMountPathPrefix(mount.pathPrefix);
+          return {
+            pathPrefix:
+              mountPath && local ? `${mountPath}/${local}` : mountPath || local,
+            urlPrefix: mount.urlPrefix,
+          };
+        }),
+      ];
+    }),
+    ...(siteMounts ?? []),
+  ];
+}
+
+/**
+ * One collection's view of the staged-tree mounts. `generate` resolves every
+ * mount against the merged staged tree, where this collection's files sit
+ * under its staging mount path; the runtime resolves against the collection's
+ * own content root. Re-anchoring each staged-tree prefix to that root — and
+ * dropping the ones that can never out-match the collection's base mount — is
+ * what keeps a site-wide mount from claiming `/guides/legal/*` here while the
+ * sitemap and llms.txt advertise it under `/guides`.
+ */
 function collectionMounts(
   routePrefix: string,
-  extra: DocsPathMount[] | undefined
+  stagedMounts: DocsPathMount[]
 ): DocsPathMount[] {
-  // Every page in a collection hangs off its route prefix, so the collection's
-  // own root is the base mount. Collection-declared mounts stay relative to it.
-  return [
-    { pathPrefix: "", urlPrefix: routePrefix },
-    ...(extra ?? []).map((mount) => ({
-      pathPrefix: normalizeDocsPath(mount.pathPrefix),
-      urlPrefix: mount.urlPrefix,
-    })),
-  ];
+  const mountPath = pathPrefixForUrlPrefix(routePrefix);
+  return stagedMounts.flatMap((mount) => {
+    const pathPrefix = normalizeMountPathPrefix(mount.pathPrefix);
+    if (!mountPath) {
+      // The default collection stages at the merged root, so the staged-tree
+      // list already speaks its language.
+      return [{ pathPrefix, urlPrefix: mount.urlPrefix }];
+    }
+    if (pathPrefix === mountPath || pathPrefix.startsWith(`${mountPath}/`)) {
+      return [
+        {
+          pathPrefix: pathPrefix
+            .slice(mountPath.length)
+            .replace(LEADING_SLASH, ""),
+          urlPrefix: mount.urlPrefix,
+        },
+      ];
+    }
+    // Rooted outside this collection's staging subtree. Either it can never
+    // match one of this collection's staged paths, or it is a strict ancestor
+    // the collection's own (longer) base mount always beats — dropping it is
+    // exactly what longest-prefix resolution over the merged tree does.
+    return [];
+  });
 }
 
 /**
@@ -243,6 +297,12 @@ export async function createDocsProject<
       config.transformers) as DocsTransformerOptions<TFrontmatter>["transformers"],
   } satisfies Partial<CreateDocsSourceConfig<TFrontmatter>>;
 
+  // Built once over every collection, mirroring the `effectiveMounts` list
+  // `generate` resolves the merged staged tree against — resolving site-wide
+  // mounts per collection instead re-anchors their prefixes to each content
+  // root, which serves routes the generated sitemap never advertises.
+  const stagedMounts = stagedTreeMounts(project.collections, config.mounts);
+
   const sourcesByCollection = new Map<string, DocsSource<TFrontmatter>>();
   for (const collection of project.collections) {
     const contentDir = collection.contentDir as string;
@@ -263,15 +323,11 @@ export async function createDocsProject<
                 collection.frontmatterSchema as CreateDocsSourceConfig<TFrontmatter>["frontmatterSchema"],
             }
           : {}),
-        // A single-source project mounts at its route prefix like any other;
-        // a multi-collection project gets one mount set per collection, which
-        // is what makes each collection's URLs correct on its own.
-        // Site-wide `mounts` apply to every collection; the collection's own
-        // come first, matching the order generation composes them in.
-        mounts: collectionMounts(collection.routePrefix, [
-          ...(collection.mounts ?? []),
-          ...(config.mounts ?? []),
-        ]),
+        // Each collection sees the whole project's mount list through its own
+        // content root, so its URLs match what generation resolves against
+        // the merged staged tree — per-collection re-anchoring is the drift
+        // this primitive exists to prevent.
+        mounts: collectionMounts(collection.routePrefix, stagedMounts),
         ...(typeTableBasePath ? { typeTableBasePath } : {}),
         ...(config.openapi && resolved.mode === "single-source"
           ? { openapi: config.openapi, openapiCwd: project.configDir }

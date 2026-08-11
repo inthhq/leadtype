@@ -520,6 +520,13 @@ export async function createDocsSource<
           {
             absolute: true,
             cwd: root,
+            // Match the staging glob semantics (`copySourceFiles`) exactly:
+            // dotfiles are pages there, and bare-directory include entries
+            // stay literal instead of fanning out to `dir/**`. Anything looser
+            // here lists pages at runtime the build never staged — or hides
+            // ones it did.
+            dot: true,
+            expandDirectories: false,
             ignore: config.exclude ?? [],
             onlyFiles: true,
           }
@@ -629,6 +636,20 @@ export async function createDocsSource<
       return nav;
     }
     if (config.groups && config.groups.length > 0) {
+      return nav;
+    }
+    // The same two opt-outs `generate` applies before deriving. Include /
+    // exclude filters: derivation walks the raw content tree while
+    // `listMetas` serves the filtered one, so a derived tree would claim
+    // pages this source refuses to list. i18n: derivation keys sections off
+    // the first path segment, which for `docs/en/…` is the locale — while
+    // navigation resolves per locale over locale-stripped paths, so no
+    // derived section could ever match.
+    if (
+      (config.include && config.include.length > 0) ||
+      (config.exclude && config.exclude.length > 0) ||
+      config.i18n !== undefined
+    ) {
       return nav;
     }
     derivedNavPromise ??= inferNavigationFromContent(sourceContentDir).then(

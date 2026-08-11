@@ -269,6 +269,11 @@ async function countCollectionPages(
   const files = await fg(include, {
     absolute: true,
     cwd: collection.contentDir,
+    // The staging glob semantics (`copySourceFiles`): dotfiles count, and a
+    // bare-directory include stays literal rather than fanning out to
+    // `dir/**` — so the page count reported here is the one `generate` stages.
+    dot: true,
+    expandDirectories: false,
     ignore: authored?.exclude ?? [],
     onlyFiles: true,
   });

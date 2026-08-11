@@ -38,6 +38,7 @@ import {
   normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
+  pathPrefixForUrlPrefix,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import {
@@ -904,19 +905,6 @@ function sourceMounts(sources: ResolvedDocsSource[]): DocsPathMount[] {
       urlPrefix: mount.urlPrefix,
     })),
   ]);
-}
-
-const DEFAULT_DOCS_URL_PREFIX = "/docs";
-const NESTED_DOCS_PREFIX = `${DEFAULT_DOCS_URL_PREFIX}/`;
-
-function pathPrefixForUrlPrefix(urlPrefix: string): string {
-  if (urlPrefix === DEFAULT_DOCS_URL_PREFIX) {
-    return "";
-  }
-  if (urlPrefix.startsWith(NESTED_DOCS_PREFIX)) {
-    return urlPrefix.slice(NESTED_DOCS_PREFIX.length);
-  }
-  return urlPrefix.replace(/^\/+/, "");
 }
 
 function resolveDocsSourcesFromCollections(
