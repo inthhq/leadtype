@@ -15,9 +15,15 @@
  * precedence rule a reader would have to look up.
  */
 
+import path from "node:path";
 import { normalizeUrlPrefix } from "../internal/docs-url";
 import type { DocsCollection, DocsConfig, GitSourceSpec } from "../llm/llm";
-import { isShaRef } from "../sync/sync";
+import {
+  defaultCacheDir,
+  formatSparse,
+  isShaRef,
+  sameSparse,
+} from "../sync/sync";
 import {
   type ConfigDeprecation,
   DEFAULT_COLLECTION_KEY,
@@ -195,15 +201,20 @@ function resolveCollectionEntry(
 
 /**
  * Build the acquisition graph. Two collections pointing at the same
- * `(repository, ref)` share one git source — which is what sync already does
- * internally, now visible in the model. Conflicting `cacheDir` values for one
- * source are rejected here rather than at clone time.
+ * `(repository, ref)` share one git source — and this graph is the one sync
+ * clones from (`projectRemoteSources` in sync/sync.ts is a projection of it,
+ * not a second derivation). Because sync acts on exactly what is resolved
+ * here, everything a shared acquisition must agree on — `cacheDir`, the
+ * sparse path set — is validated here, at normalize time, rather than at
+ * clone time.
  */
 function resolveSources(
   collections: Record<string, DocsCollection>,
   configPath: string | undefined,
   /** Collection key → authored source name, for collections under a `gitSource`. */
-  authoredSourceNames: ReadonlyMap<string, string> = new Map()
+  authoredSourceNames: ReadonlyMap<string, string>,
+  /** Directory relative cacheDirs resolve against, for equivalence checks. */
+  configDir: string | undefined
 ): { sources: ResolvedSource[]; sourceIdByCollection: Map<string, string> } {
   const sources: ResolvedSource[] = [];
   const gitByRepoRef = new Map<string, ResolvedGitSource>();
@@ -251,6 +262,44 @@ function resolveSources(
           sourceIdByCollection.set(key, authoredName);
         }
       }
+      // Mixing an explicit cacheDir with the default is a conflict too: the
+      // clone happens at one resolved path, and the collections disagree about
+      // where that is. Comparing resolved paths (not authored strings) keeps
+      // the one benign case working — an explicit cacheDir that spells out the
+      // default location.
+      if (
+        (existing.cacheDir === undefined) !==
+        (collection.cacheDir === undefined)
+      ) {
+        const explicitDir = (existing.cacheDir ??
+          collection.cacheDir) as string;
+        const resolveBase = configDir ?? ".";
+        const defaultDir = defaultCacheDir(collection.repository, ref);
+        if (
+          path.resolve(resolveBase, explicitDir) !==
+          path.resolve(resolveBase, defaultDir)
+        ) {
+          const existingLabel = `[${existing.collectionKeys.join(", ")}]`;
+          const [withDir, withoutDir] =
+            existing.cacheDir === undefined
+              ? [`"${key}"`, existingLabel]
+              : [existingLabel, `"${key}"`];
+          throw new Error(
+            `${configLabel(configPath)}: collections ${withDir} and ${withoutDir} target ${collection.repository}@${ref}, but ${withDir} sets cacheDir "${explicitDir}" while ${withoutDir} uses the default ("${defaultDir}"). One acquisition clones to one directory — set the same cacheDir on every collection sharing it, or remove the explicit cacheDir.`
+          );
+        }
+      }
+      // One checkout can only have one path set. Silently taking the first
+      // would leave the other collection reading a directory that isn't there.
+      const sparse =
+        collection.sparse && collection.sparse.length > 0
+          ? collection.sparse
+          : undefined;
+      if (!sameSparse(existing.sparse, sparse)) {
+        throw new Error(
+          `${configLabel(configPath)}: collections [${existing.collectionKeys.join(", ")}] and "${key}" target ${collection.repository}@${ref} but set different sparse paths (${formatSparse(existing.sparse)} vs ${formatSparse(sparse)}). One checkout has one path set — make them match, or list every path both collections need.`
+        );
+      }
       existing.cacheDir ??= collection.cacheDir;
       existing.collectionKeys.push(key);
       sourceIdByCollection.set(key, existing.id);
@@ -287,7 +336,39 @@ function resolveSources(
     });
   }
 
+  assertUniqueSourceIds(sources, configPath);
+
   return { sources, sourceIdByCollection };
+}
+
+function describeSourceForIdError(source: ResolvedSource): string {
+  return source.kind === "local"
+    ? `the implicit local source (collections [${source.collectionKeys.join(", ")}] have no repository, so they resolve to id "${source.id}")`
+    : `the git source for ${source.repository}@${source.ref} (collections [${source.collectionKeys.join(", ")}])`;
+}
+
+/**
+ * Source ids are the join key between collections and sources in sync output,
+ * doctor, and `generate --json`. Named sources can't collide with each other —
+ * they are object keys — but an authored name can collide with a derived id:
+ * a git source named "local" beside a collection with no repository would put
+ * two sources with `id: "local"` in the graph, and every consumer keyed on id
+ * would silently read the wrong one.
+ */
+function assertUniqueSourceIds(
+  sources: ResolvedSource[],
+  configPath: string | undefined
+): void {
+  const byId = new Map<string, ResolvedSource>();
+  for (const source of sources) {
+    const other = byId.get(source.id);
+    if (other) {
+      throw new Error(
+        `${configLabel(configPath)}: source id "${source.id}" names both ${describeSourceForIdError(other)} and ${describeSourceForIdError(source)}. Ids join collections to sources in sync output, doctor, and JSON — rename the git source.`
+      );
+    }
+    byId.set(source.id, source);
+  }
 }
 
 const TOP_LEVEL_PROVENANCE_FIELDS = [
@@ -466,7 +547,8 @@ export function normalizeDocsConfig(
   const { sources, sourceIdByCollection } = resolveSources(
     canonicalCollections,
     configPath,
-    authoredSourceNames
+    authoredSourceNames,
+    options.configDir
   );
 
   const collections = Object.entries(canonicalCollections).map(

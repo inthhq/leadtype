@@ -2,20 +2,34 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { DocsCollection } from "../llm";
+import { normalizeDocsConfig } from "../config/normalize";
+import { type DocsCollection, type DocsConfig, gitSource } from "../llm/llm";
 import {
   defaultCacheDir,
   type GitRunner,
   type GitRunResult,
   isShaRef,
+  projectRemoteSources,
   repositorySlug,
   resolveAllCollections,
-  resolveRemoteSources,
+  resolveCollection,
   SYNC_MANIFEST_FILE,
-  syncCollections,
+  sameSparse,
+  syncSources,
 } from "./sync";
 
 type RecordedCall = { args: string[]; cwd?: string };
+
+const product = { name: "Example", tagline: "Example docs." };
+
+/**
+ * Derive the resolved source graph the way every real caller does: through the
+ * normalizer. Sync has no derivation of its own to hand a collections map to —
+ * the graph it acts on is the one normalize reports.
+ */
+function sourcesFor(collections: Record<string, DocsCollection>) {
+  return normalizeDocsConfig({ product, collections }).resolved.sources;
+}
 
 async function seedFakeCheckout(
   cacheDir: string,
@@ -119,72 +133,78 @@ describe("resolveAllCollections", () => {
   });
 });
 
-describe("resolveRemoteSources", () => {
+describe("projectRemoteSources", () => {
   const configDir = "/repo";
 
-  it("dedupes two collections sharing the same (repo, ref)", () => {
-    const collections: Record<string, DocsCollection> = {
-      docs: {
-        repository: "https://github.com/c15t/c15t",
-        ref: "main",
-        dir: "docs",
-      },
-      changelog: {
-        repository: "https://github.com/c15t/c15t",
-        ref: "main",
-        dir: "changelog",
-      },
-    };
-    const sources = resolveRemoteSources(collections, configDir);
+  it("projects the resolved graph's git sources with absolute cache dirs", () => {
+    const sources = projectRemoteSources(
+      sourcesFor({
+        docs: {
+          repository: "https://github.com/c15t/c15t",
+          ref: "main",
+          dir: "docs",
+        },
+        changelog: {
+          repository: "https://github.com/c15t/c15t",
+          ref: "main",
+          dir: "changelog",
+        },
+      }),
+      configDir
+    );
     expect(sources).toHaveLength(1);
+    expect(sources[0]).toMatchObject({
+      id: "https://github.com/c15t/c15t#main",
+      repository: "https://github.com/c15t/c15t",
+      ref: "main",
+      refKind: "mutable",
+      cacheDir: path.resolve(configDir, ".leadtype/sources/c15t-c15t@main"),
+    });
     expect(sources[0].collectionKeys.sort()).toEqual(["changelog", "docs"]);
   });
 
   it("keeps separate entries for different refs", () => {
-    const collections: Record<string, DocsCollection> = {
-      stable: {
-        repository: "https://github.com/c15t/c15t",
-        ref: "v1.0.0",
-        dir: "docs",
-      },
-      next: {
-        repository: "https://github.com/c15t/c15t",
-        ref: "main",
-        dir: "docs",
-      },
-    };
-    expect(resolveRemoteSources(collections, configDir)).toHaveLength(2);
-  });
-
-  it("ignores local collections", () => {
-    const collections: Record<string, DocsCollection> = {
-      docs: { dir: "./docs" },
-    };
-    expect(resolveRemoteSources(collections, configDir)).toEqual([]);
-  });
-
-  it("errors on conflicting cacheDir for the same (repo, ref)", () => {
-    const collections: Record<string, DocsCollection> = {
-      docs: {
-        repository: "https://github.com/c15t/c15t",
-        ref: "main",
-        cacheDir: "./cache-a",
-        dir: "docs",
-      },
-      changelog: {
-        repository: "https://github.com/c15t/c15t",
-        ref: "main",
-        cacheDir: "./cache-b",
-        dir: "changelog",
-      },
-    };
-    expect(() => resolveRemoteSources(collections, configDir)).toThrow(
-      /different cacheDir/
+    const sources = projectRemoteSources(
+      sourcesFor({
+        stable: {
+          repository: "https://github.com/c15t/c15t",
+          ref: "v1.0.0",
+          dir: "docs",
+        },
+        next: {
+          repository: "https://github.com/c15t/c15t",
+          ref: "main",
+          dir: "docs",
+        },
+      }),
+      configDir
     );
+    expect(sources).toHaveLength(2);
+  });
+
+  it("drops the local source", () => {
+    expect(
+      projectRemoteSources(sourcesFor({ docs: { dir: "./docs" } }), configDir)
+    ).toEqual([]);
+  });
+
+  it("resolves an explicit cacheDir against the config directory", () => {
+    const sources = projectRemoteSources(
+      sourcesFor({
+        docs: {
+          repository: "https://github.com/c15t/c15t",
+          ref: "main",
+          cacheDir: "./vendor/c15t",
+          dir: "docs",
+        },
+      }),
+      configDir
+    );
+    expect(sources[0].cacheDir).toBe(path.resolve(configDir, "./vendor/c15t"));
   });
 });
 
-describe("syncCollections", () => {
+describe("syncSources", () => {
   let configDir: string;
 
   beforeEach(async () => {
@@ -208,16 +228,16 @@ describe("syncCollections", () => {
       return fail(`unexpected: ${args.join(" ")}`);
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
           dir: "docs",
         },
-      },
+      }),
       runner,
     });
 
@@ -249,17 +269,17 @@ describe("syncCollections", () => {
       return ok();
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
           dir: "docs",
           sparse: ["docs", "packages"],
         },
-      },
+      }),
       runner,
     });
 
@@ -292,17 +312,17 @@ describe("syncCollections", () => {
       return ok();
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
           dir: "docs",
           sparse: ["docs"],
         },
-      },
+      }),
       runner,
     });
 
@@ -348,10 +368,10 @@ describe("syncCollections", () => {
       return ok();
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
@@ -360,7 +380,7 @@ describe("syncCollections", () => {
           // a checkout missing a directory looks identical to a complete one.
           sparse: ["docs", "packages"],
         },
-      },
+      }),
       runner,
     });
 
@@ -368,28 +388,25 @@ describe("syncCollections", () => {
     expect(calls.some((call) => call.args[0] === "clone")).toBe(true);
   });
 
-  it("rejects collections that share an acquisition but disagree on paths", async () => {
-    await expect(
-      syncCollections({
-        mode: "auto",
-        configDir,
-        collections: {
-          docs: {
-            repository: "https://github.com/example/repo",
-            ref: "main",
-            dir: "docs",
-            sparse: ["docs"],
-          },
-          changelog: {
-            repository: "https://github.com/example/repo",
-            ref: "main",
-            dir: "changelog",
-            sparse: ["changelog"],
-          },
+  it("never sees collections that share an acquisition but disagree on paths", () => {
+    // The graph sync consumes is validated when it is resolved: a sparse
+    // disagreement fails at normalize time, before any git process runs.
+    expect(() =>
+      sourcesFor({
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+          sparse: ["docs"],
         },
-        runner: async () => ok(),
+        changelog: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "changelog",
+          sparse: ["changelog"],
+        },
       })
-    ).rejects.toThrow(/different sparse paths.*One checkout has one path set/s);
+    ).toThrow(/different sparse paths.*One checkout has one path set/s);
   });
 
   it("auto leaves an up-to-date cache untouched", async () => {
@@ -421,16 +438,16 @@ describe("syncCollections", () => {
       return ok();
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
           dir: "docs",
         },
-      },
+      }),
       runner,
     });
 
@@ -473,16 +490,16 @@ describe("syncCollections", () => {
       return fail(`unexpected: ${args.join(" ")}`);
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "refresh",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
           dir: "docs",
         },
-      },
+      }),
       runner,
     });
 
@@ -524,16 +541,16 @@ describe("syncCollections", () => {
       return fail(`unexpected: ${args.join(" ")}`);
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "refresh",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
           dir: "docs",
         },
-      },
+      }),
       runner,
     });
 
@@ -542,16 +559,16 @@ describe("syncCollections", () => {
 
   it("offline errors when cache is missing", async () => {
     await expect(
-      syncCollections({
+      syncSources({
         mode: "offline",
         configDir,
-        collections: {
+        sources: sourcesFor({
           docs: {
             repository: "https://github.com/example/repo",
             ref: "main",
             dir: "docs",
           },
-        },
+        }),
         runner: async () => fail("should not be called"),
       })
     ).rejects.toThrow(/--offline.*cache miss/);
@@ -559,16 +576,16 @@ describe("syncCollections", () => {
 
   it("missing mode names the collection in the error", async () => {
     await expect(
-      syncCollections({
+      syncSources({
         mode: "missing",
         configDir,
-        collections: {
+        sources: sourcesFor({
           changelog: {
             repository: "https://github.com/example/repo",
             ref: "main",
             dir: "changelog",
           },
-        },
+        }),
         runner: async () => fail("should not be called"),
       })
     ).rejects.toThrow(/\[changelog\]/);
@@ -589,10 +606,10 @@ describe("syncCollections", () => {
       return fail(`unexpected: ${args.join(" ")}`);
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "main",
@@ -603,7 +620,7 @@ describe("syncCollections", () => {
           ref: "main",
           dir: "changelog",
         },
-      },
+      }),
       runner,
     });
 
@@ -634,16 +651,16 @@ describe("syncCollections", () => {
       return fail(`unexpected: ${args.join(" ")}`);
     };
 
-    await syncCollections({
+    await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         docs: {
           repository: "https://github.com/example/repo",
           ref: "a1b2c3d",
           dir: "docs",
         },
-      },
+      }),
       runner,
     });
 
@@ -657,16 +674,16 @@ describe("syncCollections", () => {
     const runner: GitRunner = async () => fail("fatal: repository not found");
 
     await expect(
-      syncCollections({
+      syncSources({
         mode: "auto",
         configDir,
-        collections: {
+        sources: sourcesFor({
           docs: {
             repository: "https://github.com/example/repo",
             ref: "main",
             dir: "docs",
           },
-        },
+        }),
         runner,
       })
     ).rejects.toThrow(/repository not found/);
@@ -685,10 +702,10 @@ describe("syncCollections", () => {
       return fail(`unexpected: ${args.join(" ")}`);
     };
 
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: {
+      sources: sourcesFor({
         a: {
           repository: "https://github.com/c15t/c15t",
           ref: "main",
@@ -699,7 +716,7 @@ describe("syncCollections", () => {
           ref: "main",
           dir: "docs",
         },
-      },
+      }),
       runner,
       repoFilter: "swift",
     });
@@ -712,10 +729,10 @@ describe("syncCollections", () => {
 
   it("treats local-only collections as no-op for sync", async () => {
     const runner: GitRunner = async () => fail("should not be called");
-    const result = await syncCollections({
+    const result = await syncSources({
       mode: "auto",
       configDir,
-      collections: { docs: { dir: "./docs" } },
+      sources: sourcesFor({ docs: { dir: "./docs" } }),
       runner,
     });
     expect(result.sources).toEqual([]);
@@ -730,16 +747,16 @@ describe("syncCollections", () => {
     };
 
     await expect(
-      syncCollections({
+      syncSources({
         mode: "auto",
         configDir,
-        collections: {
+        sources: sourcesFor({
           docs: {
             repository: "https://github.com/example/repo",
             ref: "main",
             dir: "docs",
           },
-        },
+        }),
         runner,
       })
     ).rejects.toThrow(/`git` is not installed or not on PATH/);
@@ -751,18 +768,238 @@ describe("syncCollections", () => {
     };
 
     await expect(
-      syncCollections({
+      syncSources({
         mode: "auto",
         configDir,
-        collections: {
+        sources: sourcesFor({
           docs: {
             repository: "https://github.com/example/repo",
             ref: "main",
             dir: "docs",
           },
-        },
+        }),
         runner,
       })
     ).rejects.toThrow(/something else broke/);
   });
+});
+
+/**
+ * The class of bug this file previously could not catch: each subsystem tested
+ * only against itself, so sync's private source graph could drift from the one
+ * normalize reports to doctor and `generate --json`. These tests assert, for a
+ * matrix of authoring shapes, that the graph sync acts on IS the resolved
+ * graph — same identities, same cache dirs, same sparse sets — and that the
+ * per-collection projection (`resolveCollection`) reads from those same
+ * checkouts.
+ */
+describe("the graph sync acts on is the graph normalize reports", () => {
+  const matrix: { name: string; config: DocsConfig }[] = [
+    {
+      name: "flat collections sharing one acquisition",
+      config: {
+        product,
+        collections: {
+          docs: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "docs",
+          },
+          changelog: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "changelog",
+          },
+        },
+      },
+    },
+    {
+      name: "a named gitSource group with cacheDir and sparse",
+      config: {
+        product,
+        sources: {
+          acme: gitSource({
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            cacheDir: ".leadtype/acme",
+            sparse: ["docs", "changelog"],
+            collections: {
+              docs: { dir: "docs" },
+              changelog: { dir: "changelog" },
+            },
+          }),
+        },
+      },
+    },
+    {
+      name: "a source group beside a flat collection on the same acquisition",
+      config: {
+        product,
+        collections: {
+          flat: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "extra",
+          },
+        },
+        sources: {
+          acme: gitSource({
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            collections: { docs: { dir: "docs" } },
+          }),
+        },
+      },
+    },
+    {
+      name: "an explicit cacheDir agreed across flat collections",
+      config: {
+        product,
+        collections: {
+          docs: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "v1.2.3",
+            cacheDir: "./vendor/acme",
+            dir: "docs",
+          },
+          changelog: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "v1.2.3",
+            cacheDir: "./vendor/acme",
+            dir: "changelog",
+          },
+        },
+      },
+    },
+    {
+      name: "sparse paths agreed in a different order",
+      config: {
+        product,
+        collections: {
+          docs: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "docs",
+            sparse: ["docs", "packages"],
+          },
+          api: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "packages",
+            sparse: ["packages", "docs"],
+          },
+        },
+      },
+    },
+    {
+      name: "local and remote collections mixed",
+      config: {
+        product,
+        collections: {
+          guides: { dir: "./guides" },
+          docs: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "docs",
+          },
+        },
+      },
+    },
+  ];
+
+  for (const { name, config } of matrix) {
+    it(`${name}: every collection reads from its resolved source's checkout`, () => {
+      const configDir = "/repo";
+      const { config: canonical, resolved } = normalizeDocsConfig(config, {
+        configDir,
+      });
+      const projected = projectRemoteSources(resolved.sources, configDir);
+
+      // Every git source in the resolved graph is exactly one sync target,
+      // under the same id.
+      expect(projected.map((source) => source.id)).toEqual(
+        resolved.sources
+          .filter((source) => source.kind === "git")
+          .map((source) => source.id)
+      );
+
+      const projectedById = new Map(
+        projected.map((source) => [source.id, source])
+      );
+      for (const collection of resolved.collections) {
+        const source = projectedById.get(collection.sourceId);
+        const authored = canonical.collections?.[collection.key];
+        if (!authored) {
+          throw new Error(`missing canonical collection ${collection.key}`);
+        }
+        const perCollection = resolveCollection(
+          collection.key,
+          authored,
+          configDir
+        );
+        if (!source) {
+          // A collection outside the projection must be local on both sides.
+          expect(collection.sourceId).toBe("local");
+          expect(perCollection.remote).toBeUndefined();
+          continue;
+        }
+        expect(perCollection.remote?.repository).toBe(source.repository);
+        expect(perCollection.remote?.ref).toBe(source.ref);
+        expect(perCollection.remote?.cacheDir).toBe(source.cacheDir);
+        expect(sameSparse(perCollection.remote?.sparse, source.sparse)).toBe(
+          true
+        );
+        expect(
+          perCollection.absoluteDir.startsWith(source.cacheDir + path.sep)
+        ).toBe(true);
+      }
+    });
+
+    it(`${name}: sync clones exactly the resolved sources' cache dirs`, async () => {
+      const configDir = await mkdtemp(path.join(tmpdir(), "leadtype-graph-"));
+      try {
+        const { resolved } = normalizeDocsConfig(config, { configDir });
+        const projected = projectRemoteSources(resolved.sources, configDir);
+        const cloneTargets: string[] = [];
+        const runner: GitRunner = async (args) => {
+          if (args[0] === "clone") {
+            const target = args.at(-1) as string;
+            cloneTargets.push(target);
+            await seedFakeCheckout(target, {});
+            return ok();
+          }
+          if (args[0] === "rev-parse") {
+            return ok("abc1234\n");
+          }
+          return ok();
+        };
+
+        const result = await syncSources({
+          mode: "auto",
+          configDir,
+          sources: resolved.sources,
+          runner,
+        });
+
+        expect(cloneTargets.sort()).toEqual(
+          projected.map((source) => source.cacheDir).sort()
+        );
+        expect(
+          result.sources.map(({ source }) => ({
+            id: source.id,
+            cacheDir: source.cacheDir,
+            collectionKeys: source.collectionKeys,
+          }))
+        ).toEqual(
+          projected.map((source) => ({
+            id: source.id,
+            cacheDir: source.cacheDir,
+            collectionKeys: source.collectionKeys,
+          }))
+        );
+      } finally {
+        await rm(configDir, { force: true, recursive: true });
+      }
+    });
+  }
 });

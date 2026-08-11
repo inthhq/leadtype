@@ -107,7 +107,7 @@ import { generateDocsSearchFiles } from "../search/node";
 import {
   resolveAllCollections,
   type SyncMode,
-  syncCollections,
+  syncSources,
 } from "../sync/sync";
 import type { DocsTransformer } from "../transformers";
 import { watchInputs } from "./watch";
@@ -1663,10 +1663,13 @@ async function executeGenerate(
         );
       }
       const configDir = path.dirname(loadedConfig.path);
-      await syncCollections({
+      // Sync acts on the resolved source graph from the first normalization
+      // pass — the only pass that saw authored source names — not on a second
+      // derivation from the collections map.
+      await syncSources({
         mode: args.syncMode,
         configDir,
-        collections: loadedConfig.config.collections,
+        sources: loadedConfig.resolved.sources,
       });
       const collections = await inheritCollectionSourceConfigs(
         loadedConfig.config.collections,

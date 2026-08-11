@@ -252,6 +252,116 @@ describe("source graph", () => {
     ).toThrow(/different cacheDir values/);
   });
 
+  it("rejects collections that share an acquisition but disagree on sparse paths", () => {
+    // Regression: this used to normalize into one source claiming the first
+    // collection's path set — a coherent, wrong graph for a config sync would
+    // then reject at clone time. One checkout has one path set, so the
+    // disagreement fails here, where doctor and `generate --json` read from.
+    expect(() =>
+      normalize({
+        product,
+        collections: {
+          docs: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "docs",
+            routePrefix: "/docs",
+            sparse: ["docs"],
+          },
+          changelog: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "changelog",
+            routePrefix: "/changelog",
+            sparse: ["changelog"],
+          },
+        },
+      })
+    ).toThrow(/different sparse paths.*One checkout has one path set/s);
+  });
+
+  it("merges collections whose sparse paths match in a different order", () => {
+    // Order is irrelevant to git sparse-checkout, so it must not split (or
+    // reject) the acquisition.
+    const { resolved } = normalize({
+      product,
+      collections: {
+        docs: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "docs",
+          routePrefix: "/docs",
+          sparse: ["docs", "packages"],
+        },
+        api: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "packages",
+          routePrefix: "/api",
+          sparse: ["packages", "docs"],
+        },
+      },
+    });
+    expect(resolved.sources).toHaveLength(1);
+  });
+
+  it("rejects an explicit cacheDir beside a collection using the default", () => {
+    // Regression: only one collection setting cacheDir used to be backfilled
+    // into a single resolved source, while sync — comparing resolved paths —
+    // rejected the same config. The disagreement is real (the clone can only
+    // land in one directory), so it fails here instead.
+    expect(() =>
+      normalize({
+        product,
+        collections: {
+          docs: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "docs",
+            routePrefix: "/docs",
+            cacheDir: "./vendor/acme",
+          },
+          changelog: {
+            repository: "https://github.com/acme/acme.git",
+            ref: "main",
+            dir: "changelog",
+            routePrefix: "/changelog",
+          },
+        },
+      })
+    ).toThrow(/sets cacheDir "\.\/vendor\/acme".*uses the default/s);
+  });
+
+  it("accepts an explicit cacheDir that spells out the default location", () => {
+    // The one benign mix: an authored cacheDir naming the exact directory the
+    // default layout would pick anyway. This synced fine before the check
+    // moved here, and must keep doing so.
+    const defaultDir = ".leadtype/sources/acme-acme@main";
+    const { resolved } = normalize({
+      product,
+      collections: {
+        docs: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "docs",
+          routePrefix: "/docs",
+          cacheDir: defaultDir,
+        },
+        changelog: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "changelog",
+          routePrefix: "/changelog",
+        },
+      },
+    });
+    expect(resolved.sources).toHaveLength(1);
+    expect(resolved.sources[0]).toMatchObject({
+      kind: "git",
+      cacheDir: defaultDir,
+    });
+  });
+
   it("groups every local collection under one local source", () => {
     const { resolved } = normalize({
       product,
@@ -477,6 +587,40 @@ describe("git source groups", () => {
         },
       })
     ).toThrow(/both target https:\/\/github.com\/acme\/acme.git@main/);
+  });
+
+  it("rejects a git source named after the implicit local source id", () => {
+    // Regression: this used to resolve into two sources with `id: "local"` —
+    // the implicit one for repository-less collections and the authored one —
+    // and ids are the join key for sync output, doctor, and JSON surfaces.
+    expect(() =>
+      normalize({
+        product,
+        collections: { notes: { dir: "notes", routePrefix: "/notes" } },
+        sources: {
+          local: gitSource({
+            repository: "https://github.com/acme/acme.git",
+            collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+          }),
+        },
+      })
+    ).toThrow(/source id "local" names both.*rename the git source/s);
+  });
+
+  it("allows a git source named local while nothing resolves to the implicit one", () => {
+    // With no repository-less collection there is exactly one source with the
+    // id, so the config stays valid — rejecting it would break configs that
+    // sync fine today.
+    const { resolved } = normalize({
+      product,
+      sources: {
+        local: gitSource({
+          repository: "https://github.com/acme/acme.git",
+          collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+        }),
+      },
+    });
+    expect(resolved.sources.map((source) => source.id)).toEqual(["local"]);
   });
 
   it("rejects a source with no collections", () => {
