@@ -413,6 +413,43 @@ describe("findings", () => {
     expect(finding?.fix).toContain("leadtype doctor");
   });
 
+  it("resolves an authored tree naming a later --docs-dir's page, like generate", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  navigation: ["guides/setup"],
+};`,
+      "docs/index.mdx": page("Home"),
+      "guides/setup.mdx": page("Setup"),
+    });
+
+    // `generate --docs-dir docs --docs-dir guides` stages both directories
+    // into one mirror (the second under `guides/`) and resolves the top-level
+    // navigation over that union, so `guides/setup` serves at
+    // `/docs/guides/setup` and the build exits 0 (verified against the real
+    // command). Resolving the tree against the primary directory alone
+    // reported `nav.unresolvable` — a CI-failing false positive.
+    const { code, report } = await runJson(dir, [
+      "--docs-dir",
+      "docs",
+      "--docs-dir",
+      "guides",
+    ]);
+
+    expect(code).toBe(0);
+    expect(report.ok).toBe(true);
+    expect(
+      report.issues.find((entry) => entry.id === "nav.unresolvable")
+    ).toBeUndefined();
+    expect(report.navigation).toMatchObject({
+      origin: "explicit",
+      routedPages: 2,
+    });
+    // The page the tree never names falls back to the ungrouped root in the
+    // build, so it is drift, not an error.
+    expect(report.navigation?.unrepresentedPages).toEqual(["/docs"]);
+  });
+
   it("reports curated navigation naming an excluded page as a finding", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `export default {

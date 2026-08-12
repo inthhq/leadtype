@@ -193,7 +193,9 @@ function warnUnknownKeys(
   allowed: readonly string[],
   fieldPath: string,
   configPath: string,
-  warnings: ConfigWarning[] | undefined
+  warnings: ConfigWarning[] | undefined,
+  /** What the file is, for the message — a host config or a source config. */
+  context = "docs config"
 ): void {
   if (!warnings) {
     return;
@@ -206,7 +208,7 @@ function warnUnknownKeys(
     const suggestion = closestKnownKey(key, allowed);
     warnings.push({
       id: "config.unknown-key",
-      message: `docs config at "${configPath}": unknown field "${owner}"${suggestion ? ` — did you mean "${suggestion}"?` : ""}`,
+      message: `${context} at "${configPath}": unknown field "${owner}"${suggestion ? ` — did you mean "${suggestion}"?` : ""}`,
       owner,
       ...(suggestion
         ? { fix: `Rename "${key}" to "${suggestion}", or remove it.` }
@@ -226,7 +228,8 @@ function warnUnknownNavKeys(
   entries: unknown,
   fieldPath: string,
   configPath: string,
-  warnings: ConfigWarning[] | undefined
+  warnings: ConfigWarning[] | undefined,
+  context?: string
 ): void {
   if (!(warnings && Array.isArray(entries))) {
     return;
@@ -237,16 +240,31 @@ function warnUnknownNavKeys(
     }
     const entryPath = `${fieldPath}[${index}]`;
     if (typeof entry.include === "string") {
-      warnUnknownKeys(entry, NAV_INCLUDE_KEYS, entryPath, configPath, warnings);
+      warnUnknownKeys(
+        entry,
+        NAV_INCLUDE_KEYS,
+        entryPath,
+        configPath,
+        warnings,
+        context
+      );
       continue;
     }
-    warnUnknownKeys(entry, NAV_NODE_KEYS, entryPath, configPath, warnings);
+    warnUnknownKeys(
+      entry,
+      NAV_NODE_KEYS,
+      entryPath,
+      configPath,
+      warnings,
+      context
+    );
     if (Array.isArray(entry.pages)) {
       warnUnknownNavKeys(
         entry.pages,
         `${entryPath}.pages`,
         configPath,
-        warnings
+        warnings,
+        context
       );
     }
     if (Array.isArray(entry.children)) {
@@ -254,10 +272,50 @@ function warnUnknownNavKeys(
         entry.children,
         `${entryPath}.children`,
         configPath,
-        warnings
+        warnings,
+        context
       );
     }
   }
+}
+
+/**
+ * Unknown-key warnings for a source-owned config loaded through
+ * `inheritConfig` — the same collector the host config goes through, aimed at
+ * the source file. Without it a `navigatoin` typo in the source repo is
+ * silently inert: inheritance supplies no navigation and the collection
+ * quietly falls back to an inferred tree. The allowed set is the full
+ * authored key set, not just the inheritable fields: the default source
+ * config is the source repo's own `docs.config.*`, so `product` and friends
+ * are legitimate there and flagging them would warn on every real source
+ * repo.
+ */
+export function collectSourceConfigUnknownKeys(
+  value: unknown,
+  configPath: string,
+  collectionKey: string
+): ConfigWarning[] {
+  if (!isPlainRecord(value)) {
+    return [];
+  }
+  const warnings: ConfigWarning[] = [];
+  const context = `source config for collection "${collectionKey}"`;
+  warnUnknownKeys(
+    value,
+    TOP_LEVEL_CONFIG_KEYS,
+    "",
+    configPath,
+    warnings,
+    context
+  );
+  warnUnknownNavKeys(
+    value.navigation,
+    "navigation",
+    configPath,
+    warnings,
+    context
+  );
+  return warnings;
 }
 
 function validateOptionalStringField(
@@ -1296,24 +1354,36 @@ export async function loadDocsConfigFromDir(
 // sink per run — a process-global set keyed on path alone meant the second
 // resolve of the same config warned nobody, and for `nav` (whose report
 // carries no diagnostics) the warning vanished entirely.
+//
+// The remembered key is the path *plus the rendered warning content*: watch
+// mode reloads through the same long-lived sink, and a path-only key
+// suppressed every later warning for the file — replace one typo with a
+// different one and nothing prints until the process restarts. Content-keyed,
+// an identical reload stays quiet while a changed warning set re-emits.
 const warnedConfigPathsBySink = new WeakMap<ConfigWarningSink, Set<string>>();
+
+function warnedKey(configPath: string, content: string[]): string {
+  // NUL never appears in a path or a rendered message, so distinct sets
+  // cannot collide into one key.
+  return [configPath, ...content].join("\u0000");
+}
 
 function alreadyWarned(
   bySink: WeakMap<ConfigWarningSink, Set<string>>,
   warn: ConfigWarningSink,
-  configPath: string
+  key: string
 ): boolean {
-  return bySink.get(warn)?.has(configPath) ?? false;
+  return bySink.get(warn)?.has(key) ?? false;
 }
 
 function rememberWarned(
   bySink: WeakMap<ConfigWarningSink, Set<string>>,
   warn: ConfigWarningSink,
-  configPath: string
+  key: string
 ): void {
-  const paths = bySink.get(warn) ?? new Set<string>();
-  bySink.set(warn, paths);
-  paths.add(configPath);
+  const keys = bySink.get(warn) ?? new Set<string>();
+  bySink.set(warn, keys);
+  keys.add(key);
 }
 
 /**
@@ -1330,14 +1400,21 @@ export function warnConfigDeprecations(
   loaded: LoadedDocsConfig | null,
   warn: ConfigWarningSink = logger.warn
 ): void {
-  if (!loaded || alreadyWarned(warnedConfigPathsBySink, warn, loaded.path)) {
+  if (!loaded) {
+    return;
+  }
+  const key = warnedKey(
+    loaded.path,
+    loaded.resolved.deprecations.map((entry) => entry.field)
+  );
+  if (alreadyWarned(warnedConfigPathsBySink, warn, key)) {
     return;
   }
   const warning = formatDeprecationWarning(loaded.resolved.deprecations);
   if (!warning) {
     return;
   }
-  rememberWarned(warnedConfigPathsBySink, warn, loaded.path);
+  rememberWarned(warnedConfigPathsBySink, warn, key);
   warn({
     human: {
       message: `${loaded.path}: ${warning.message}`,
@@ -1368,26 +1445,44 @@ export function warnConfigUnknownKeys(
   loaded: LoadedDocsConfig | null,
   warn: ConfigWarningSink = logger.warn
 ): void {
-  const warnings = loaded?.warnings ?? [];
+  if (!loaded) {
+    return;
+  }
+  emitUnknownKeyWarnings(loaded.path, loaded.warnings ?? [], warn);
+}
+
+/**
+ * The emission behind {@link warnConfigUnknownKeys}, for warnings that belong
+ * to a file other than the loaded config — a source-owned config read through
+ * `inheritConfig`. Same aggregation, same once-per-content-per-sink rule.
+ */
+export function emitUnknownKeyWarnings(
+  configPath: string,
+  warnings: ConfigWarning[],
+  warn: ConfigWarningSink = logger.warn
+): void {
+  const key = warnedKey(
+    configPath,
+    warnings.map((entry) => entry.message)
+  );
   if (
-    !loaded ||
     warnings.length === 0 ||
-    alreadyWarned(warnedUnknownKeyPathsBySink, warn, loaded.path)
+    alreadyWarned(warnedUnknownKeyPathsBySink, warn, key)
   ) {
     return;
   }
-  rememberWarned(warnedUnknownKeyPathsBySink, warn, loaded.path);
+  rememberWarned(warnedUnknownKeyPathsBySink, warn, key);
   const fields = warnings.map((entry) => entry.owner);
   warn({
     human: {
-      message: `${loaded.path}: ${warnings.length} unknown config field${warnings.length === 1 ? "" : "s"}: ${fields.join(", ")}`,
+      message: `${configPath}: ${warnings.length} unknown config field${warnings.length === 1 ? "" : "s"}: ${fields.join(", ")}`,
       hint:
         warnings.find((entry) => entry.fix)?.fix ??
         "Unknown fields are ignored. Remove them, or check the field names against the DocsConfig reference.",
     },
     json: {
       event: "config.unknown_keys",
-      fields: { configPath: loaded.path, fields },
+      fields: { configPath, fields },
     },
   });
 }

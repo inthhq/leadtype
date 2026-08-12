@@ -45,7 +45,10 @@ import {
 } from "./infer";
 import { inheritCollectionSourceConfigs } from "./inherit";
 import {
+  type ConfigWarning,
   type ConfigWarningSink,
+  collectSourceConfigUnknownKeys,
+  emitUnknownKeyWarnings,
   type LoadedDocsConfig,
   loadDocsConfig,
 } from "./load";
@@ -97,6 +100,20 @@ export type ResolvedProjectCollection = ResolvedDocsCollection & {
   /** The navigation tree this collection will actually render. */
   navigation?: DocsNavEntry[];
   navigationOrigin: NavigationOrigin;
+  /**
+   * Extra `--docs-dir` roots that resolve as part of this collection's
+   * navigation view, each mounted under its folder name. Only set on the
+   * primary collection of a single-source multi-dir project whose tree is
+   * authored: `generate` stages every directory into one mirror and resolves
+   * the authored tree over that union, so an entry may name a page in any of
+   * them — resolving against the primary directory alone reports
+   * `nav.unresolvable` for a build that succeeds.
+   */
+  navigationExtraDirs?: {
+    dir: string;
+    pathPrefix: string;
+    urlPrefix: string;
+  }[];
 };
 
 export type ResolvedProject = {
@@ -661,6 +678,11 @@ export async function resolveProject(
       "flatteners",
       "mounts",
     ] as const;
+    // Unknown keys in the source configs themselves. The host config's keys
+    // go through the unknown-key collector during load, but a source-owned
+    // config is read here — and its `navigatoin` is the same silent failure:
+    // inheritance supplies nothing and the tree quietly reverts to inferred.
+    const sourceConfigWarnings = new Map<string, ConfigWarning[]>();
     for (const [key, collection] of Object.entries(declared)) {
       if (!collection.inheritConfig) {
         continue;
@@ -668,7 +690,37 @@ export async function resolveProject(
       try {
         const inherited = await inheritCollectionSourceConfigs(
           { [key]: collection },
-          configDir
+          configDir,
+          {
+            onSourceConfig: (value, sourceConfigPath, collectionKey) => {
+              const found = collectSourceConfigUnknownKeys(
+                value,
+                sourceConfigPath,
+                collectionKey
+              );
+              if (found.length === 0) {
+                return;
+              }
+              const existing = sourceConfigWarnings.get(sourceConfigPath) ?? [];
+              sourceConfigWarnings.set(sourceConfigPath, [
+                ...existing,
+                ...found,
+              ]);
+              for (const warning of found) {
+                diagnostics.push({
+                  id: warning.id,
+                  level: "warn",
+                  message: warning.message,
+                  collection: collectionKey,
+                  // The field lives in the source repo's config, not the
+                  // host's — an owner of bare `navigatoin` sends users
+                  // hunting the wrong file.
+                  owner: `${sourceConfigPath}#${warning.owner}`,
+                  ...(warning.fix ? { fix: warning.fix } : {}),
+                });
+              }
+            },
+          }
         );
         const next = inherited[key];
         if (!next) {
@@ -702,6 +754,11 @@ export async function resolveProject(
       }
     }
     config = { ...loaded.config, collections: merged };
+    // The same sink the host config's unknown keys go through — doctor reads
+    // the diagnostics above, but `nav` only hears what the sink is told.
+    for (const [sourceConfigPath, warnings] of sourceConfigWarnings) {
+      emitUnknownKeyWarnings(sourceConfigPath, warnings, options.warn);
+    }
   }
 
   // Re-normalize so the resolved model reflects the inherited collections.
@@ -833,17 +890,53 @@ export async function resolveProject(
       };
     }
     if (docsDirs.length > 1) {
+      // `generate` derives navigation only when nothing structural was
+      // authored and the project is not localized (`generate.ts` skips
+      // derivation outright for `i18n` and for any authored `navigation` or
+      // `groups`). The synthesized extras follow the same opt-outs, or
+      // doctor/nav report inferred trees the build never produces.
+      const primaryTreeAuthored =
+        collections[0]?.navigationOrigin === "explicit" ||
+        collections[0]?.navigationOrigin === "groups";
       const extras = await synthesizeExtraDirCollections({
         rootDir,
         docsDirInputs,
         docsDirs,
         usedKeys: new Set(collections.map((entry) => entry.key)),
         sourceId: collections[0]?.sourceId ?? DEFAULT_SOURCE_ID,
-        infer: options.infer !== false,
+        infer:
+          options.infer !== false &&
+          normalized.config.i18n === undefined &&
+          !primaryTreeAuthored,
         diagnostics,
       });
       collections.push(...extras.collections);
       inference = mergeInferenceReports(inference, extras.inference);
+      // An authored tree resolves over the union of every staged directory:
+      // `generate` merges all of them into one mirror (extras under their
+      // folder names) and applies the top-level `navigation`/`groups` there,
+      // so an entry like `guides/setup` may live in the second `--docs-dir`.
+      if (primaryTreeAuthored && collections[0]) {
+        const unionDirs = extras.collections.flatMap((entry) =>
+          entry.contentDir
+            ? [
+                {
+                  dir: entry.contentDir,
+                  pathPrefix: normalizeDocsPath(
+                    path.basename(entry.contentDir)
+                  ),
+                  urlPrefix: entry.routePrefix,
+                },
+              ]
+            : []
+        );
+        if (unionDirs.length > 0) {
+          collections[0] = {
+            ...collections[0],
+            navigationExtraDirs: unionDirs,
+          };
+        }
+      }
       sources = sources.map((source) =>
         source.kind === "local"
           ? {

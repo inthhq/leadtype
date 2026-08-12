@@ -331,8 +331,21 @@ function sourceConfigInheritFields(
   return sourceConfig.inherit;
 }
 
+/**
+ * Observes each source config as imported, before validation. `resolveProject`
+ * hooks this to run unknown-key detection over the raw module — the validator
+ * only extracts the source-owned fields, so a typo'd key would otherwise be
+ * silently inert.
+ */
+export type SourceConfigVisitor = (
+  value: unknown,
+  configPath: string,
+  collectionKey: string
+) => void;
+
 async function loadCollectionSourceConfig(
-  entry: ResolvedCollection
+  entry: ResolvedCollection,
+  onSourceConfig?: SourceConfigVisitor
 ): Promise<SourceOwnedConfigFields> {
   const candidates = resolveSourceConfigPaths(entry);
   const configPath = candidates.find((candidate) => existsSync(candidate));
@@ -344,6 +357,7 @@ async function loadCollectionSourceConfig(
 
   try {
     const imported = await importConfigModule(configPath);
+    onSourceConfig?.(imported, configPath, entry.key);
     return validateSourceOwnedConfigFields(imported, configPath, entry.key);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -390,7 +404,8 @@ function mergeInheritedSourceConfig(
 
 export async function inheritCollectionSourceConfigs(
   collections: Record<string, DocsCollection>,
-  configDir: string
+  configDir: string,
+  options: { onSourceConfig?: SourceConfigVisitor } = {}
 ): Promise<Record<string, DocsCollection>> {
   const resolved = resolveAllCollections(collections, configDir);
   const next: Record<string, DocsCollection> = { ...collections };
@@ -398,7 +413,10 @@ export async function inheritCollectionSourceConfigs(
     if (!entry.collection.inheritConfig) {
       continue;
     }
-    const sourceConfig = await loadCollectionSourceConfig(entry);
+    const sourceConfig = await loadCollectionSourceConfig(
+      entry,
+      options.onSourceConfig
+    );
     next[entry.key] = mergeInheritedSourceConfig(
       entry.collection,
       sourceConfig

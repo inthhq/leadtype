@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeSyncManifest } from "../sync/sync";
+import { resolveProjectNavigation } from "./navigation";
 import { resolveProject } from "./project";
 
 // Fixture configs import from source so they exercise the working tree.
@@ -539,6 +540,115 @@ describe("unknown config keys", () => {
     expect(diagnostic?.message).toContain('did you mean "prefix"');
   });
 
+  it("covers inherited source configs, pointing at the source file", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  collections: {
+    docs: {
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      cacheDir: ".leadtype/acme",
+      dir: "docs",
+      routePrefix: "/docs",
+      inheritConfig: true,
+    },
+  },
+};`,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
+      // The typo'd key sits in the *source repo's* config: the host config is
+      // clean, so the load-time collector sees nothing, and inheritance only
+      // extracts the fields it knows — `navigatoin` was silently inert and
+      // the collection quietly fell back to an inferred tree.
+      ".leadtype/acme/docs/docs.config.ts": `export default {
+  ${IDENTITY},
+  navigatoin: [{ title: "Guides", base: "guides", pages: ["auth"] }],
+};`,
+      ".leadtype/acme/docs/guides/auth.mdx": page("Auth"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "abcdef1234567",
+      commit: "abcdef1",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const sunk: string[] = [];
+    const project = await resolveProject({
+      cwd: dir,
+      warn: (call) => sunk.push(call.human.message),
+    });
+
+    const sourceConfigPath = path.join(
+      dir,
+      ".leadtype/acme/docs/docs.config.ts"
+    );
+    const diagnostic = project.diagnostics.find(
+      (entry) => entry.id === "config.unknown-key"
+    );
+    expect(diagnostic?.level).toBe("warn");
+    expect(diagnostic?.collection).toBe("docs");
+    // The owner names the source config file: a bare `navigatoin` would send
+    // users hunting the host config, which does not contain it.
+    expect(diagnostic?.owner).toBe(`${sourceConfigPath}#navigatoin`);
+    expect(diagnostic?.message).toContain(
+      `source config for collection "docs" at "${sourceConfigPath}"`
+    );
+    expect(diagnostic?.message).toContain('did you mean "navigation"');
+    // Nothing was inherited, so the tree fell back to inferred — the failure
+    // the warning explains.
+    expect(project.collections[0]?.navigationOrigin).toBe("inferred");
+    expect(sunk.some((message) => message.includes(sourceConfigPath))).toBe(
+      true
+    );
+  });
+
+  it("re-emits into the same sink when a reload changes the warning set", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  navigatoin: ["index"],
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+    const configPath = path.join(dir, "leadtype.config.ts");
+
+    // One long-lived sink, like `generate --watch` reloading through the
+    // process logger. A path-only dedupe silenced every warning after the
+    // first: replace one typo with a different one and nothing printed until
+    // the process restarted.
+    const sunk: string[] = [];
+    const sink = (call: { human: { message: string } }) =>
+      sunk.push(call.human.message);
+    const unknownKeyMessages = () =>
+      sunk.filter((message) => message.includes("unknown config field"));
+
+    await resolveProject({ cwd: dir, warn: sink });
+    // Identical reload: stays quiet.
+    await resolveProject({ cwd: dir, warn: sink });
+    expect(unknownKeyMessages()).toHaveLength(1);
+    expect(unknownKeyMessages()[0]).toContain("navigatoin");
+
+    // The watched file changes to a different typo: the warning set changed,
+    // so the same sink hears about it again.
+    await writeFile(
+      configPath,
+      `export default {
+  ${IDENTITY},
+  navigaton: ["index"],
+};`,
+      "utf8"
+    );
+    await resolveProject({ cwd: dir, warn: sink });
+    expect(unknownKeyMessages()).toHaveLength(2);
+    expect(unknownKeyMessages()[1]).toContain("navigaton");
+
+    // And the new set, unchanged, is deduplicated like the first.
+    await resolveProject({ cwd: dir, warn: sink });
+    expect(unknownKeyMessages()).toHaveLength(2);
+  });
+
   it("names the full path for gitSource and navigation-entry keys", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `import { gitSource } from "LEADTYPE_ENTRY";
@@ -571,6 +681,91 @@ export default {
     expect(owners).toContain("sources.upstream.branch");
     expect(owners).toContain(
       "sources.upstream.collections.docs.navigation[0].pages[0].pins"
+    );
+  });
+});
+
+describe("repeated --docs-dir with an authored tree", () => {
+  // Pinned to what `generate` actually does with this shape (verified against
+  // the real command): every `--docs-dir` is staged into one mirror — extras
+  // under their folder names — the top-level `navigation` resolves over that
+  // union (`guides/setup` lives in the *second* directory and serves at
+  // `/docs/guides/setup`), pages the tree never names fall back to the
+  // ungrouped root, and no navigation is derived for any directory. The build
+  // exits 0.
+  async function authoredMultiDir(): Promise<string> {
+    return await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  navigation: ["guides/setup"],
+};`,
+      "docs/index.mdx": page("Home"),
+      "guides/setup.mdx": page("Setup"),
+    });
+  }
+
+  it("resolves the authored tree over the union of the staged dirs", async () => {
+    const dir = await authoredMultiDir();
+    const project = await resolveProject({
+      cwd: dir,
+      docsDirs: ["docs", "guides"],
+    });
+
+    // The primary carries the union view; the extra dir stays a collection
+    // (its mount and existence are still worth reporting) but gets no
+    // derived tree — `generate` derives nothing once a tree is authored.
+    expect(project.collections[0]?.navigationExtraDirs).toEqual([
+      {
+        dir: path.join(dir, "guides"),
+        pathPrefix: "guides",
+        urlPrefix: "/docs/guides",
+      },
+    ]);
+    expect(project.collections[1]?.navigation).toBeUndefined();
+    expect(project.inference.values).toEqual([]);
+
+    const navigation = await resolveProjectNavigation(project);
+    // Resolving `guides/setup` against the primary directory alone reported
+    // `nav.unresolvable` — and doctor exit 1 — for a build that succeeds.
+    expect(navigation.diagnostics).toEqual([]);
+    // One manifest, like generate's single staged tree: the extra dir's pages
+    // resolve through the primary, not a second per-directory manifest.
+    expect(navigation.collections).toHaveLength(1);
+    expect(navigation.origin).toBe("explicit");
+    expect(navigation.collections[0]?.routedUrlPaths).toEqual(
+      expect.arrayContaining(["/docs/guides/setup", "/docs"])
+    );
+    expect(navigation.routedPages).toBe(2);
+    // The page the tree never names falls back to the root — drift worth
+    // reporting, exactly as the build renders it.
+    expect(navigation.unplaced).toEqual(["/docs"]);
+  });
+
+  it("derives no trees for extra dirs in a localized project", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  i18n: { defaultLocale: "en", locales: ["en", "fr"] },
+};`,
+      "docs/en/index.mdx": page("Home"),
+      "guides/en/setup.mdx": page("Setup"),
+    });
+
+    const project = await resolveProject({
+      cwd: dir,
+      docsDirs: ["docs", "guides"],
+    });
+
+    // `generate` skips derivation entirely for i18n projects. The primary
+    // already followed that opt-out; the synthesized extras used to derive
+    // anyway, so doctor/nav reported locale-keyed sections for the extra dirs
+    // that the build never produces.
+    expect(project.collections).toHaveLength(2);
+    for (const collection of project.collections) {
+      expect(collection.navigation).toBeUndefined();
+    }
+    expect(project.inference.values.map((entry) => entry.field)).not.toContain(
+      "navigation"
     );
   });
 });

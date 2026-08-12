@@ -1087,6 +1087,15 @@ export type ResolveDocsNavigationConfig = {
    * dir. Intended for generated-page overlays.
    */
   extraDocsDirs?: string[];
+  /**
+   * Additional docs roots mounted into the logical tree at `pathPrefix` — the
+   * layout `generate` stages for each extra `--docs-dir` (the folder's
+   * contents under its folder name). Unlike `extraDocsDirs`, whose pages keep
+   * their own dir-relative paths, a mounted dir's pages get
+   * `<pathPrefix>/<relativePath>` logical paths, so nav entries and `mounts`
+   * address them exactly as in the staged mirror.
+   */
+  mountedDocsDirs?: { dir: string; pathPrefix: string }[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
@@ -1697,10 +1706,20 @@ async function readSourceDocs(
   mounts?: DocsPathMount[],
   docsDirName: string = DOCS_DIRNAME,
   localeOptions: LocaleReadOptions = {},
-  filterFile?: (absoluteFilePath: string) => boolean
+  filterFile?: (absoluteFilePath: string) => boolean,
+  /**
+   * Logical path the directory is mounted under — the staged layout
+   * `generate` produces for an extra `--docs-dir` — so relative, logical, and
+   * URL paths all carry the prefix and `mounts` entries match.
+   */
+  pathPrefix = ""
 ): Promise<Map<string, SourceDocWithContent>> {
   const docsDir = path.join(srcDir, docsDirName);
   const docs = new Map<string, SourceDocWithContent>();
+  const withPrefix = (relativePath: string): string =>
+    pathPrefix
+      ? normalizeDocsPath(`${pathPrefix}/${relativePath}`)
+      : relativePath;
 
   if (!existsSync(docsDir)) {
     return docs;
@@ -1709,7 +1728,7 @@ async function readSourceDocs(
   const collected = await collectFiles(docsDir, [".md", ".mdx"]);
   const files = filterFile ? collected.filter(filterFile) : collected;
   const relativePaths = files.map((filePath) =>
-    normalizeDocsPath(path.relative(docsDir, filePath))
+    withPrefix(normalizeDocsPath(path.relative(docsDir, filePath)))
   );
   const localeRead = resolveLocaleReadOptions(localeOptions);
   const localeCodes = new Set(
@@ -1724,7 +1743,7 @@ async function readSourceDocs(
     );
   }
 
-  const selectedFiles: SelectedDocFile[] =
+  const selected: SelectedDocFile[] =
     localeRead.i18n && localeRead.locale
       ? selectLocalizedFiles(files, docsDir, {
           defaultLocale: localeRead.i18n.defaultLocale,
@@ -1742,11 +1761,18 @@ async function readSourceDocs(
             outputRelativePath: stripDocsExtension(relativePath),
           };
         });
+  const selectedFiles: SelectedDocFile[] = pathPrefix
+    ? selected.map((file) => ({
+        ...file,
+        logicalPath: withPrefix(file.logicalPath),
+        outputRelativePath: withPrefix(file.outputRelativePath),
+      }))
+    : selected;
 
   const entries = await Promise.all(
     selectedFiles.map(async (file) => {
-      const relativePath = normalizeDocsPath(
-        path.relative(docsDir, file.filePath)
+      const relativePath = withPrefix(
+        normalizeDocsPath(path.relative(docsDir, file.filePath))
       );
       const raw = await readFile(file.filePath, "utf-8");
       const parsed = parseFrontmatter(raw);
@@ -3801,6 +3827,27 @@ export async function resolveDocsNavigation(
     localeOptions,
     config.filterFile
   );
+  for (const mounted of config.mountedDocsDirs ?? []) {
+    const resolvedMountedDir = path.resolve(mounted.dir);
+    const mountedDocs = await readSourceDocs(
+      path.dirname(resolvedMountedDir),
+      baseUrl,
+      config.mounts,
+      path.basename(resolvedMountedDir),
+      localeOptions,
+      config.filterFile,
+      mounted.pathPrefix
+    );
+    for (const [urlPath, doc] of mountedDocs) {
+      const existing = sourceDocs.get(urlPath);
+      if (existing) {
+        throw new Error(
+          `Duplicate documentation route "${urlPath}" from mounted docs dir "${resolvedMountedDir}" — existing page "${existing.relativePath}" conflicts with mounted page "${doc.relativePath}". Rename one or remove it.`
+        );
+      }
+      sourceDocs.set(urlPath, doc);
+    }
+  }
   for (const extraDocsDir of config.extraDocsDirs ?? []) {
     const resolvedExtraDocsDir = path.resolve(extraDocsDir);
     const extraDocs = await readSourceDocs(

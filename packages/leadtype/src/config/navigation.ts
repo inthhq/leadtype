@@ -189,8 +189,17 @@ export async function resolveCollectionNavigation(
   const origin = collection.navigationOrigin;
   const diagnostics: ProjectDiagnostic[] = [];
 
+  // The extra `--docs-dir` roots an authored single-source tree resolves
+  // over: `generate` stages them into the mirror under their folder names,
+  // so entries may name their pages and each mount maps to the URL prefix
+  // the build serves.
+  const extraDirs = collection.navigationExtraDirs ?? [];
   const mounts = [
     { pathPrefix: "", urlPrefix: collection.routePrefix },
+    ...extraDirs.map((entry) => ({
+      pathPrefix: entry.pathPrefix,
+      urlPrefix: entry.urlPrefix,
+    })),
     ...(collection.mounts ?? []),
   ];
   const mergedGroups = project.collections.flatMap(
@@ -205,6 +214,14 @@ export async function resolveCollectionNavigation(
     mounts,
     groups: mergedGroups,
     nav: collection.navigation,
+    ...(extraDirs.length > 0
+      ? {
+          mountedDocsDirs: extraDirs.map((entry) => ({
+            dir: entry.dir,
+            pathPrefix: entry.pathPrefix,
+          })),
+        }
+      : {}),
     ...(project.config?.i18n ? { i18n: project.config.i18n } : {}),
     ...(filterFile ? { filterFile } : {}),
   };
@@ -349,8 +366,20 @@ export async function resolveCollectionNavigation(
 export async function resolveProjectNavigation(
   project: ResolvedProject
 ): Promise<ProjectNavigation> {
+  // Directories already resolved inside another collection's navigation view
+  // (the primary's `navigationExtraDirs` union) are not resolved again: the
+  // union manifest places their pages exactly as `generate`'s single staged
+  // tree does, so a second per-directory manifest would double-count every
+  // page and report the shared origin as "mixed".
+  const subsumedDirs = new Set(
+    project.collections.flatMap((entry) =>
+      (entry.navigationExtraDirs ?? []).map((extra) => extra.dir)
+    )
+  );
   const readable = project.collections.filter(
-    (entry): entry is ReadableProjectCollection => Boolean(entry.contentDir)
+    (entry): entry is ReadableProjectCollection =>
+      Boolean(entry.contentDir) &&
+      !(entry.contentDir && subsumedDirs.has(entry.contentDir))
   );
   const collections: CollectionNavigation[] = [];
   for (const collection of readable) {
