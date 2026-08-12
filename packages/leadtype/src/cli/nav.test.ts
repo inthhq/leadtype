@@ -247,6 +247,73 @@ describe("drift", () => {
     expect(report.drift.unplaced).toEqual([]);
   });
 
+  it("counts a dot-directory page in a filtered collection", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"], navigation: ["index"] },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/.well-known/security.mdx": page("Security"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // Staging globs with `dot: true` (`copySourceFiles`), so `generate` ships
+    // the page under `.well-known/`. The admitted-set glob ran on tinyglobby's
+    // default `dot: false`, so any unrelated filter dropped the page from the
+    // count and excused it from drift — a false negative on a shipped page.
+    expect(code).toBe(0);
+    expect(report.pageCount).toBe(2);
+    expect(report.drift.unplaced).toEqual(["/docs/.well-known/security"]);
+  });
+
+  it("keeps a bare-directory include literal, as staging does", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", include: ["guides"] },
+  },
+};`,
+      "docs/guides/intro.mdx": page("Intro"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // `copySourceFiles` disables tinyglobby's directory expansion, so a bare
+    // `guides` matches only a *file* named `guides` and `generate` stages
+    // nothing. Expanding it to `guides/**` here counted pages the build never
+    // ships.
+    expect(code).toBe(0);
+    expect(report.pageCount).toBe(0);
+  });
+
+  it("excludes a bare-directory entry's contents, as staging does", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts"], navigation: ["index"] },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/drafts/intro.mdx": page("Intro"),
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // Unlike includes, a bare-directory `ignore` entry prunes the directory
+    // it names whether or not expansion is on — tinyglobby skips crawling
+    // into an ignored directory. `copySourceFiles` behaves the same way, so
+    // the page is neither staged nor counted here.
+    expect(code).toBe(0);
+    expect(report.pageCount).toBe(1);
+    expect(report.drift.unplaced).toEqual([]);
+  });
+
   it("does not report the root pages of an inferred tree as drift", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default {

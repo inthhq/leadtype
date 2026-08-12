@@ -127,6 +127,12 @@ async function filteredPageSet(
       : ["**/*.{md,mdx}"];
   const files = await fg(include, {
     cwd: collection.contentDir,
+    // Match the staging glob semantics (`copySourceFiles`) exactly: dotfiles
+    // are pages there, and bare-directory include/exclude entries stay
+    // literal instead of fanning out to `dir/**`. Anything looser here counts
+    // pages the build never stages — or drops ones it ships.
+    dot: true,
+    expandDirectories: false,
     ignore: collection.exclude ?? [],
     onlyFiles: true,
   });
