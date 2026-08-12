@@ -24,6 +24,7 @@ import {
 } from "../config/load";
 import {
   BASE_URL_DEFAULT_SOURCE,
+  normalizeAuthoredBaseUrl,
   normalizeDocsConfig,
 } from "../config/normalize";
 import type { ResolvedSource } from "../config/types";
@@ -427,7 +428,15 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg === "--out") {
       args.outDir = readValue(argv, ++i, "--out");
     } else if (arg === "--base-url") {
-      args.baseUrl = readValue(argv, ++i, "--base-url");
+      // Same rules the config loader applies to an authored `baseUrl` — this
+      // value feeds URL joins directly, so a bad one must fail as a usage
+      // error, not corrupt every generated link. The env fallback chain (no
+      // flag, no config field) is not authored input and stays with
+      // `normalizeBaseUrl`.
+      args.baseUrl = normalizeAuthoredBaseUrl(
+        readValue(argv, ++i, "--base-url"),
+        "--base-url"
+      );
     } else if (arg === "--name") {
       args.name = readValue(argv, ++i, "--name");
     } else if (arg === "--summary") {

@@ -94,11 +94,15 @@ const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
 
 /**
  * Validate and normalize an authored base URL: an absolute http(s) origin
- * plus optional path prefix, with trailing slashes stripped so URL joins can
- * never produce `//` — the same normalization `normalizeBaseUrl` applies to
- * the env fallbacks at consumption time. `subject` names the value in errors
- * (`docs config …: baseUrl` when it comes from a config, `--base-url` when a
- * CLI flag authors it) so both spellings share one validator.
+ * plus optional path prefix. The returned value is the parser's own
+ * serialization with trailing slashes stripped, so URL joins can never
+ * produce `//` and authored text WHATWG merely tolerates (`\` for `/` in
+ * special schemes, unencoded spaces) comes back in normalized, encoded form
+ * rather than passing through raw. `subject` names the value in errors
+ * (`docs config …: baseUrl`, `--base-url`, `createDocsProject baseUrl`) so
+ * every place a base URL is authored shares this one validator; the env
+ * fallback chain in `normalizeBaseUrl` is not authored input and stays
+ * outside it.
  */
 export function normalizeAuthoredBaseUrl(
   baseUrl: string,
@@ -127,7 +131,11 @@ export function normalizeAuthoredBaseUrl(
       `${subject} "${baseUrl}" must not carry a query or fragment — it is a prefix every generated URL joins onto.`
     );
   }
-  return normalized;
+  // The serialized form, not the authored text: the parser has already
+  // normalized what it tolerated (`https://acme.dev\api` parses with `\` as
+  // `/`, a space stays raw in the input but is encoded in `href`), and
+  // returning the raw string would carry those into every joined URL.
+  return stripTrailingSlashes(parsed.href);
 }
 
 function normalizeConfigBaseUrl(

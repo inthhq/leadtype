@@ -510,12 +510,28 @@ describe("baseUrl resolution", () => {
     const project = await createDocsProject({
       config,
       configDir: await fixture(files),
-      baseUrl: "https://preview.acme.dev",
+      // Trailing slash on purpose: the argument now runs through the authored
+      // base-URL validator, and values it previously tolerated must keep
+      // working, normalized.
+      baseUrl: "https://preview.acme.dev/",
     });
 
     const { index } = await project.buildSearchIndex();
     const serialized = JSON.stringify(index);
     expect(serialized).toContain("https://preview.acme.dev/guides/auth");
+    expect(serialized).not.toContain("acme.dev//");
     expect(serialized).not.toContain("https://config.acme.dev");
+  });
+
+  it("rejects an invalid explicit argument where it is authored", async () => {
+    await expect(
+      createDocsProject({
+        config,
+        configDir: await fixture(files),
+        baseUrl: "acme.dev",
+      })
+    ).rejects.toThrow(
+      /createDocsProject baseUrl "acme.dev" is not an absolute URL/
+    );
   });
 });

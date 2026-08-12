@@ -675,6 +675,17 @@ describe("baseUrl", () => {
     expect(resolved.mode).toBe("multi-source");
   });
 
+  it("returns the parser's serialization, not the authored text", () => {
+    // WHATWG tolerates `\` for `/` in special schemes and a raw space in the
+    // path — returning the authored string would carry both, unnormalized,
+    // into every joined URL.
+    const backslash = normalize({ product, baseUrl: "https://acme.dev\\api" });
+    expect(backslash.config.baseUrl).toBe("https://acme.dev/api");
+
+    const spaced = normalize({ product, baseUrl: "https://acme.dev/my docs" });
+    expect(spaced.config.baseUrl).toBe("https://acme.dev/my%20docs");
+  });
+
   it("rejects a value that is not an absolute URL", () => {
     expect(() => normalize({ product, baseUrl: "acme.dev" })).toThrow(
       /baseUrl "acme.dev" is not an absolute URL/

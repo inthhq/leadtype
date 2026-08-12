@@ -3360,8 +3360,11 @@ describe("config-owned baseUrl", () => {
         srcDir,
         "--out",
         outDir,
+        // Trailing slash on purpose: the flag now runs through the authored
+        // base-URL validator, and values it previously tolerated must keep
+        // working, normalized.
         "--base-url",
-        "https://preview.acme.dev",
+        "https://preview.acme.dev/",
       ],
       capture.io
     );
@@ -3369,7 +3372,24 @@ describe("config-owned baseUrl", () => {
     expect(code).toBe(0);
     const sitemap = await readFile(path.join(outDir, "sitemap.xml"), "utf8");
     expect(sitemap).toContain("https://preview.acme.dev/docs/quickstart");
+    expect(sitemap).not.toContain("acme.dev//");
     expect(sitemap).not.toContain("https://config.acme.dev");
+  });
+
+  it("rejects an invalid --base-url as a usage error", async () => {
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--base-url", "acme.dev"],
+      capture.io
+    );
+
+    // The flag feeds URL joins directly — same rules as the config field,
+    // failing at parse time before any source is read or file is written.
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain(
+      '--base-url "acme.dev" is not an absolute URL'
+    );
   });
 
   it("satisfies configured feeds without repeating --base-url", async () => {

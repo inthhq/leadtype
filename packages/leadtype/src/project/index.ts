@@ -27,6 +27,7 @@
 
 import path from "node:path";
 import type { PluggableList } from "unified";
+import { normalizeAuthoredBaseUrl } from "../config/normalize";
 import { resolveProject } from "../config/project";
 import type { ResolvedDocsCollection, ResolvedSource } from "../config/types";
 import type { DocsI18nConfig, LocaleCode } from "../i18n";
@@ -313,8 +314,14 @@ export async function createDocsProject<
   // Explicit argument wins; the config's site-owned `baseUrl` is the
   // documented home for the value; absent both, the deployment-URL env
   // fallbacks inside `normalizeBaseUrl` apply — the same order `generate`
-  // resolves `--base-url` in.
-  const resolvedBaseUrl = input.baseUrl ?? config.baseUrl;
+  // resolves `--base-url` in. An explicit argument is authored input feeding
+  // URL joins, so it passes the same validator the config field and the CLI
+  // flags do; the config's own value was already validated on load, and the
+  // env fallbacks are not authored, so neither re-runs it.
+  const resolvedBaseUrl =
+    input.baseUrl === undefined
+      ? config.baseUrl
+      : normalizeAuthoredBaseUrl(input.baseUrl, "createDocsProject baseUrl");
 
   const shared = {
     baseUrl: resolvedBaseUrl,
