@@ -444,25 +444,22 @@ export async function runInitCommand(
 
   // `--base-url` has exactly one destination: docs/docs.config.ts. When that
   // file already exists and `--force` is absent, `writeFiles` would skip it
-  // and the explicit flag would silently do nothing — refuse up front, before
-  // any file is written, instead of dropping it.
+  // and the explicit flag would silently do nothing.
+  let baseUrlConflict: string | undefined;
   if (
     args.baseUrl !== undefined &&
     !args.force &&
     existsSync(path.join(projectRoot, "docs", "docs.config.ts"))
   ) {
-    io.stderr.write(
-      "leadtype init: docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.\n"
-    );
-    return 2;
+    baseUrlConflict =
+      "docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.";
   }
 
-  // The rerun mirror of the refusal above: no --base-url, but the framework
+  // The rerun mirror of the conflict above: no --base-url, but the framework
   // default is not the generic dev URL, and the existing config `writeFiles`
   // would keep sets no baseUrl — so the default the docs promise (`:4321` for
   // Astro, `:5173` for SvelteKit) would land nowhere and every absolute URL
-  // would resolve against http://localhost:3000. Same rule either way:
-  // refuse before any write instead of silently generating wrong URLs.
+  // would resolve against http://localhost:3000.
   if (
     args.baseUrl === undefined &&
     !args.force &&
@@ -471,9 +468,17 @@ export async function runInitCommand(
     (await existingConfigDeclaresBaseUrl(path.join(projectRoot, "docs"))) ===
       false
   ) {
-    io.stderr.write(
-      `leadtype init: docs/docs.config.ts already exists without baseUrl, so the ${framework} default would land nowhere — generated links would fall back to ${GENERIC_DEV_BASE_URL}. Add \`baseUrl: ${JSON.stringify(baseUrl)}\` to that config, or rerun with --force to overwrite it.\n`
-    );
+    baseUrlConflict = `docs/docs.config.ts already exists without baseUrl, so the ${framework} default would land nowhere — generated links would fall back to ${GENERIC_DEV_BASE_URL}. Add \`baseUrl: ${JSON.stringify(baseUrl)}\` to that config, or rerun with --force to overwrite it.`;
+  }
+
+  // In write mode, refuse up front — before any file is written — instead of
+  // silently dropping the flag or generating wrong URLs. `--json` and
+  // `--dry-run` write nothing, so the refusal's rationale does not apply:
+  // they keep their documented plan output and carry the conflict inside it
+  // (a `warnings` field in the JSON plan, a warning line after the dry-run
+  // plan) so the preview is honest about what a real run would refuse.
+  if (baseUrlConflict !== undefined && !(args.json || dryRun)) {
+    io.stderr.write(`leadtype init: ${baseUrlConflict}\n`);
     return 2;
   }
 
@@ -495,6 +500,11 @@ export async function runInitCommand(
           // The bare path stays in `files` for backwards compatibility.
           agentsPointer,
           dryRun,
+          // Additive, and absent when there is nothing to say, so existing
+          // consumers of the plan shape are untouched.
+          ...(baseUrlConflict === undefined
+            ? {}
+            : { warnings: [baseUrlConflict] }),
         },
         null,
         2
@@ -530,6 +540,15 @@ export async function runInitCommand(
   io.stdout.write(
     `  ${agentsMark} AGENTS.md (${agentsPointer.action} leadtype docs pointer)\n`
   );
+
+  // Only reachable under --dry-run: write mode already refused on the
+  // conflict, and --json returned its plan (conflict included) above. The
+  // plan's skip marker alone would hide that a real run exits 2 here.
+  if (baseUrlConflict !== undefined) {
+    io.stderr.write(
+      `leadtype init: warning: ${baseUrlConflict} A run without --dry-run refuses with exit 2.\n`
+    );
+  }
 
   let ranGenerate = false;
   if (args.generate && !dryRun) {

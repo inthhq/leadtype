@@ -119,6 +119,9 @@ describe("runInitCommand", () => {
     expect(plan.framework).toBe("sveltekit");
     expect(plan.outDir).toBe("static");
     expect(plan.files).toContain("src/routes/docs/[...slug].md/+server.ts");
+    // The `warnings` field is additive and conflict-only — a clean plan keeps
+    // its existing shape byte for byte.
+    expect(plan).not.toHaveProperty("warnings");
   });
 
   it("--webmcp adds framework-specific browser registration files", async () => {
@@ -379,6 +382,80 @@ describe("runInitCommand", () => {
     expect(config).toContain('baseUrl: "https://production.example"');
   });
 
+  it("keeps the --json plan on a --base-url conflict, carried as a warning", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      createCapture().io
+    );
+    const before = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+
+    const second = createCapture();
+    const code = await runInitCommand(
+      [
+        "--dir",
+        dir,
+        "--framework",
+        "next",
+        "--base-url",
+        "https://production.example",
+        "--json",
+      ],
+      second.io
+    );
+
+    // --json is documented as "no writes", so the write-path refusal's
+    // rationale does not apply — the plan object survives, honest about the
+    // conflict a real run refuses on.
+    expect(code).toBe(0);
+    expect(second.stderr).toBe("");
+    const plan = JSON.parse(second.stdout) as { warnings?: string[] };
+    expect(plan.warnings).toEqual([
+      expect.stringContaining("docs/docs.config.ts already exists"),
+    ]);
+    expect(await readFile(path.join(dir, "docs/docs.config.ts"), "utf8")).toBe(
+      before
+    );
+  });
+
+  it("keeps the --dry-run plan on a --base-url conflict, warning about the write path", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      createCapture().io
+    );
+    const before = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+
+    const second = createCapture();
+    const code = await runInitCommand(
+      [
+        "--dir",
+        dir,
+        "--framework",
+        "next",
+        "--base-url",
+        "https://production.example",
+        "--dry-run",
+      ],
+      second.io
+    );
+
+    expect(code).toBe(0);
+    expect(second.stdout).toContain("would scaffold next");
+    expect(second.stdout).toContain("(exists, use --force)");
+    expect(second.stderr).toContain("--base-url would be ignored");
+    expect(second.stderr).toContain("exit 2");
+    expect(await readFile(path.join(dir, "docs/docs.config.ts"), "utf8")).toBe(
+      before
+    );
+  });
+
   async function writeExistingConfig(
     dir: string,
     body: string
@@ -415,6 +492,42 @@ describe("runInitCommand", () => {
     expect(capture.stderr).toContain("without baseUrl");
     expect(capture.stderr).toContain('baseUrl: "http://localhost:4321"');
     expect(capture.stderr).toContain("--force");
+    expect(await readFile(configPath, "utf8")).toBe(before);
+    expect(existsSync(path.join(dir, "astro.config.mjs"))).toBe(false);
+  });
+
+  it("previews the stranded-default conflict as a warning in --json and --dry-run", async () => {
+    const dir = await createTempDir();
+    const configPath = await writeExistingConfig(
+      dir,
+      `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};
+`
+    );
+    const before = await readFile(configPath, "utf8");
+
+    const json = createCapture();
+    expect(
+      await runInitCommand(
+        ["--dir", dir, "--framework", "astro", "--json"],
+        json.io
+      )
+    ).toBe(0);
+    const plan = JSON.parse(json.stdout) as { warnings?: string[] };
+    expect(plan.warnings).toEqual([
+      expect.stringContaining('baseUrl: "http://localhost:4321"'),
+    ]);
+
+    const dry = createCapture();
+    expect(
+      await runInitCommand(
+        ["--dir", dir, "--framework", "astro", "--dry-run"],
+        dry.io
+      )
+    ).toBe(0);
+    expect(dry.stderr).toContain("without baseUrl");
+    expect(dry.stderr).toContain("exit 2");
     expect(await readFile(configPath, "utf8")).toBe(before);
     expect(existsSync(path.join(dir, "astro.config.mjs"))).toBe(false);
   });
