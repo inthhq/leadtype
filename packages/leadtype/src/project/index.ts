@@ -521,6 +521,12 @@ export async function createDocsProject<
 
   return {
     contentDir: primary.contentDir,
+    // The primary (first-declared) collection's prefix. For a single-collection
+    // project this is the whole story; for a multi-collection project an
+    // adapter given the whole project fails loudly on out-of-prefix pages,
+    // pointing at `getSource(key)` or an explicit `basePath` — never a silent
+    // misroute under the primary prefix.
+    routePrefix: primary.routePrefix,
     collections: project.collections,
     sources: project.sources,
     getSource,

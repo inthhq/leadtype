@@ -5,6 +5,7 @@ import {
   joinUrlPath,
   type LoadPageConfig,
   listJoinedSlugs,
+  normalizeUrlPath,
   type StaticSlugConfig,
 } from "../internal/framework";
 import type { DocsPage } from "../source";
@@ -35,8 +36,19 @@ export function createPrerenderRoutes(
   config: StaticSlugConfig
 ): () => Promise<string[]> {
   return async () => {
-    const slugs = await listJoinedSlugs(config);
-    const basePath = config.basePath ?? "/docs";
+    // Without an override, each page's mount-aware `urlPath` *is* its route —
+    // this is what makes `createPrerenderRoutes({ source })` correct for a
+    // collection source (whose routePrefix is not `/docs`), for `mounts`, and
+    // for a whole multi-collection project in one call.
+    if (config.basePath === undefined) {
+      const pages = await config.source.listPages();
+      return pages.map((page) => normalizeUrlPath(page.urlPath));
+    }
+    // An explicit basePath re-roots the routes: pages are enumerated relative
+    // to the source's own prefix, then joined onto the override. A page a
+    // mount moved outside the source's prefix cannot be re-rooted and throws.
+    const slugs = await listJoinedSlugs({ source: config.source });
+    const basePath = config.basePath;
     return slugs.map((slug) => joinUrlPath(basePath, slug));
   };
 }

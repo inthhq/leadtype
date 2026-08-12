@@ -11,7 +11,7 @@ import {
   createSitemapMarkdownResponse,
   createSitemapXmlResponse,
 } from "../llm/readability";
-import type { DocsPage, DocsSource } from "../source";
+import type { DocsPage, DocsPageMeta, DocsSource } from "../source";
 
 export type ReadMarkdownFile = (
   target: MarkdownMirrorTarget
@@ -28,14 +28,24 @@ export type AgentArtifactHandlerConfig = {
 
 export type LoadPageConfig = {
   source: DocsSource;
+  /**
+   * Route prefix the consuming catch-all is mounted at. Params are resolved as
+   * `urlPath` segments relative to it, so a page a mount moved elsewhere under
+   * the prefix still loads. Pass `"/"` for a site-root catch-all.
+   *
+   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   */
+  basePath?: string;
 };
 
 export type StaticSlugConfig = {
   source: DocsSource;
   /**
-   * Public route prefix for generated framework routes.
+   * Route prefix the catch-all consuming these params is mounted at. Params
+   * are each page's `urlPath` relative to it. Pass `"/"` for a site-root
+   * catch-all serving every collection.
    *
-   * @defaultValue `"/docs"`
+   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
    */
   basePath?: string;
 };
@@ -68,17 +78,97 @@ export function joinRouteSlug(slug: string[]): string {
   return slug.join("/");
 }
 
+/** The route base params are derived against: explicit `basePath`, else the source's own prefix. */
+export function resolveRouteBase(config: {
+  source: DocsSource;
+  basePath?: string;
+}): string {
+  return normalizeUrlPath(
+    config.basePath ?? config.source.routePrefix ?? "/docs"
+  );
+}
+
+/**
+ * A page's route params under `base`: its mount-aware `urlPath` relative to
+ * the base. `null` when the page's URL lives outside the base — a catch-all
+ * mounted there cannot serve it.
+ */
+function routeSlugFromUrlPath(urlPath: string, base: string): string[] | null {
+  const normalized = normalizeUrlPath(urlPath);
+  if (base === "/") {
+    return normalized.split("/").filter(Boolean);
+  }
+  if (normalized === base) {
+    return [];
+  }
+  if (normalized.startsWith(`${base}/`)) {
+    return normalized
+      .slice(base.length + 1)
+      .split("/")
+      .filter(Boolean);
+  }
+  return null;
+}
+
+/**
+ * Enumerate every page's route params relative to the resolved base.
+ *
+ * Derived from `urlPath`, not the collection-local `slug`, so `mounts` and a
+ * collection's `routePrefix` are honoured: for an unmounted single collection
+ * the two are identical, and where they differ the `slug` was the wrong
+ * answer — it rendered a page at a URL the generated sitemap never advertises.
+ * A page outside the base throws instead of silently misrouting.
+ */
+export async function listRouteSlugs(
+  config: StaticSlugConfig
+): Promise<string[][]> {
+  const base = resolveRouteBase(config);
+  const pages = await config.source.listPages();
+  return pages.map((page) => {
+    const slug = routeSlugFromUrlPath(page.urlPath, base);
+    if (slug === null) {
+      throw new Error(
+        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}" — a catch-all mounted at "${base}" cannot serve it. Mount a catch-all at the prefix that owns the page and hand it that collection's source (\`project.getSource(key)\`), or pass the base your catch-all is actually mounted at via \`basePath\` ("/" for a site-root catch-all).`
+      );
+    }
+    return slug;
+  });
+}
+
 export function createLoadPage(
   config: LoadPageConfig
 ): (slug: string | string[] | undefined) => Promise<DocsPage | null> {
-  return async (slug) => await config.source.loadPage(splitRouteSlug(slug));
+  const base = resolveRouteBase(config);
+  return async (slug) => {
+    const segments = splitRouteSlug(slug);
+    // Params are route segments under the base, so resolve them as the URL
+    // they address. This is what keeps the load side symmetric with
+    // `listRouteSlugs`: a mounted page whose params differ from its
+    // collection-local slug must load, not 404.
+    const routePath = joinUrlPath(base, ...segments);
+    const pages = await config.source.listPages();
+    const match = pages.find(
+      (page: DocsPageMeta) => normalizeUrlPath(page.urlPath) === routePath
+    );
+    if (match) {
+      // A project meta carries its collection; load by route path, which the
+      // project resolves uniquely — a collection-local slug can be ambiguous
+      // across collections. A plain source loads by its exact slug.
+      return await config.source.loadPage(
+        "collection" in match ? routePath : match.slug
+      );
+    }
+    // No page owns that URL under this base. Fall back to the historical
+    // slug-based lookup so callers passing raw collection-local slugs (or
+    // using a base that differs from the source's own prefix) keep resolving.
+    return await config.source.loadPage(segments);
+  };
 }
 
 export async function listJoinedSlugs(
   config: StaticSlugConfig
 ): Promise<string[]> {
-  const pages = await config.source.listPages();
-  return pages.map((page) => joinRouteSlug(page.slug));
+  return (await listRouteSlugs(config)).map(joinRouteSlug);
 }
 
 export function isMissingFileError(error: unknown): boolean {

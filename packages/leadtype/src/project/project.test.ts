@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { DocsConfig } from "../llm";
+import { createGenerateStaticParams, createLoadPageData } from "../next";
 import { writeSyncManifest } from "../sync/sync";
 import { createDocsProject, requireResolvedContentDir } from "./index";
 
@@ -284,6 +285,65 @@ describe("multi-collection project", () => {
     expect(project.sources).toEqual([
       { id: "local", kind: "local", collectionKeys: ["docs", "changelog"] },
     ]);
+  });
+
+  it("exposes each collection's routePrefix through its source", async () => {
+    const project = await createDocsProject({
+      config,
+      configDir: await multiFixture(),
+    });
+
+    // The project's own base is the primary collection's prefix; each
+    // collection source carries its own, which adapters use as the default
+    // route base.
+    expect(project.routePrefix).toBe("/docs");
+    expect(project.getSource("docs").routePrefix).toBe("/docs");
+    expect(project.getSource("changelog").routePrefix).toBe("/changelog");
+  });
+
+  it("feeds adapters per collection with no basePath wiring", async () => {
+    const project = await createDocsProject({
+      config,
+      configDir: await multiFixture(),
+    });
+
+    // One catch-all per routePrefix, each fed its own collection's source —
+    // the changelog page's params stay local because its base is /changelog.
+    await expect(
+      createGenerateStaticParams({ source: project.getSource("changelog") })()
+    ).resolves.toEqual([{ slug: ["1-0"] }]);
+    await expect(
+      createGenerateStaticParams({ source: project.getSource("docs") })()
+    ).resolves.toEqual([{ slug: ["auth"] }, { slug: [] }]);
+  });
+
+  it("refuses whole-project params under the primary prefix, honours a site-root base", async () => {
+    const project = await createDocsProject({
+      config,
+      configDir: await multiFixture(),
+    });
+
+    // A /docs catch-all cannot serve /changelog/1-0 — loud error, not a
+    // silently local-slug'd param that renders /docs/1-0.
+    await expect(
+      createGenerateStaticParams({ source: project })()
+    ).rejects.toThrow(/"\/changelog\/1-0", outside the route base "\/docs"/);
+
+    // A site-root catch-all serves everything with route-prefixed params.
+    await expect(
+      createGenerateStaticParams({ source: project, basePath: "/" })()
+    ).resolves.toEqual([
+      { slug: ["docs", "auth"] },
+      { slug: ["docs"] },
+      { slug: ["changelog", "1-0"] },
+    ]);
+    const loaded = await createLoadPageData({ source: project, basePath: "/" })(
+      ["changelog", "1-0"]
+    );
+    expect(loaded?.title).toBe("1.0");
+    expect((loaded as { collection?: string } | null)?.collection).toBe(
+      "changelog"
+    );
   });
 
   it("hands back one collection's source for a custom integration", async () => {

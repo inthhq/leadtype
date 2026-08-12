@@ -1,8 +1,10 @@
 import {
   type AgentArtifactHandlerConfig,
+  createLoadPage,
   createPublicMarkdownReader,
   createRequiredAgentArtifactHandler,
   joinUrlPath,
+  listRouteSlugs,
   splitRouteSlug,
 } from "../internal/framework";
 import type {
@@ -131,6 +133,16 @@ export type CreateGenerateStaticParamsConfig = {
    * Framework-neutral docs source used to enumerate all known pages.
    */
   source: DocsSource;
+
+  /**
+   * Route prefix the catch-all consuming these params is mounted at (e.g.
+   * `app/docs/[[...slug]]` → `"/docs"`). Params are each page's `urlPath`
+   * relative to it, so `mounts` and collection `routePrefix`es are honoured.
+   * Pass `"/"` for a site-root catch-all serving every collection.
+   *
+   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   */
+  basePath?: string;
 };
 
 /**
@@ -141,6 +153,15 @@ export type CreateLoadPageDataConfig = {
    * Framework-neutral docs source used to resolve route slugs.
    */
   source: DocsSource;
+
+  /**
+   * Route prefix the consuming catch-all is mounted at — match the value
+   * given to {@link createGenerateStaticParams} so emitted params load the
+   * page they address.
+   *
+   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   */
+  basePath?: string;
 };
 
 function pageTitle(
@@ -317,8 +338,8 @@ export function createGenerateStaticParams(
   config: CreateGenerateStaticParamsConfig
 ): () => Promise<Array<{ slug: string[] }>> {
   return async () => {
-    const pages = await config.source.listPages();
-    return pages.map((page) => ({ slug: page.slug }));
+    const slugs = await listRouteSlugs(config);
+    return slugs.map((slug) => ({ slug }));
   };
 }
 
@@ -337,7 +358,8 @@ export function createGenerateStaticParams(
 export function createLoadPageData(
   config: CreateLoadPageDataConfig
 ): (slug: string[] | undefined) => Promise<DocsPage | null> {
-  return async (slug) => await config.source.loadPage(slug ?? []);
+  const loadPage = createLoadPage(config);
+  return async (slug) => await loadPage(slug ?? []);
 }
 
 /**

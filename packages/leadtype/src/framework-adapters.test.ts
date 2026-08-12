@@ -6,7 +6,11 @@ import {
   createMarkdownStaticPaths,
 } from "./astro";
 import type { AgentReadabilityManifest } from "./llm/readability";
-import { createDocsProxy } from "./next";
+import {
+  createDocsProxy,
+  createGenerateStaticParams,
+  createLoadPageData as createNextLoadPageData,
+} from "./next";
 import {
   createLoadPageData as createNuxtLoadPageData,
   createPrerenderRoutes,
@@ -24,11 +28,11 @@ import {
   createDocsServerHandler as createTanStackServerHandler,
 } from "./tanstack-start";
 
-function buildPage(slug: string[]): DocsPage {
+function buildPage(slug: string[], urlPath?: string): DocsPage {
   const relativePath = slug.join("/") || "index";
   return {
     slug,
-    urlPath: `/docs/${relativePath}`.replace("/index", ""),
+    urlPath: urlPath ?? `/docs/${relativePath}`.replace("/index", ""),
     relativePath,
     extension: ".mdx",
     filePath: `/content/${relativePath}.mdx`,
@@ -42,14 +46,13 @@ function buildPage(slug: string[]): DocsPage {
   };
 }
 
-function buildSource(): DocsSource {
-  const pages = [
-    buildPage([]),
-    buildPage(["quickstart"]),
-    buildPage(["guides", "api"]),
-  ];
+function buildSourceFromPages(
+  pages: DocsPage[],
+  routePrefix?: string
+): DocsSource {
   return {
     contentDir: "/content",
+    ...(routePrefix ? { routePrefix } : {}),
     getNavigation: async () => ({ groups: [], ungrouped: [], unknown: [] }),
     listPages: async () => pages,
     loadPage: async (slug) => {
@@ -63,6 +66,59 @@ function buildSource(): DocsSource {
       throw new Error("not used");
     },
     cleanup: async () => undefined,
+  };
+}
+
+function buildSource(): DocsSource {
+  return buildSourceFromPages([
+    buildPage([]),
+    buildPage(["quickstart"]),
+    buildPage(["guides", "api"]),
+  ]);
+}
+
+/**
+ * A single collection whose `mounts` move part of the tree: the file slug and
+ * the advertised URL disagree, which is exactly where slug-derived params
+ * used to misroute.
+ */
+function buildMountedSource(): DocsSource {
+  return buildSourceFromPages([
+    buildPage([]),
+    buildPage(["quickstart"]),
+    // mounts: [{ pathPrefix: "policies", urlPrefix: "/docs/legal" }]
+    buildPage(["policies", "privacy"], "/docs/legal/privacy"),
+  ]);
+}
+
+type ProjectishPage = DocsPage & { collection: string };
+
+/**
+ * The shape `createDocsProject()` hands to adapters: pages tagged with their
+ * collection, URLs carrying each collection's routePrefix, `loadPage`
+ * resolving the full route path first — and the project's own `routePrefix`
+ * set to the primary collection's.
+ */
+function buildProjectSource(): DocsSource {
+  const pages: ProjectishPage[] = [
+    { ...buildPage([]), collection: "docs" },
+    { ...buildPage(["quickstart"]), collection: "docs" },
+    { ...buildPage(["1-0"], "/changelog/1-0"), collection: "changelog" },
+  ];
+  const base = buildSourceFromPages(pages, "/docs");
+  return {
+    ...base,
+    listPages: async () => pages,
+    loadPage: async (slug) => {
+      const wanted = (Array.isArray(slug) ? slug : slug.split("/"))
+        .filter(Boolean)
+        .join("/");
+      return (
+        pages.find((page) => page.urlPath.replace(/^\//, "") === wanted) ??
+        pages.find((page) => page.slug.join("/") === wanted) ??
+        null
+      );
+    },
   };
 }
 
@@ -97,6 +153,11 @@ function buildManifest(): AgentReadabilityManifest {
 describe("framework adapter route helpers", () => {
   it("creates native static route shapes from the source", async () => {
     const source = buildSource();
+    await expect(createGenerateStaticParams({ source })()).resolves.toEqual([
+      { slug: [] },
+      { slug: ["quickstart"] },
+      { slug: ["guides", "api"] },
+    ]);
     await expect(createGetStaticPaths({ source })()).resolves.toEqual([
       { params: { slug: undefined } },
       { params: { slug: "quickstart" } },
@@ -125,6 +186,153 @@ describe("framework adapter route helpers", () => {
     await expect(
       createPrerenderRoutes({ source, basePath: "/guide" })()
     ).resolves.toEqual(["/guide", "/guide/quickstart", "/guide/guides/api"]);
+  });
+
+  it("derives params from the mount-aware urlPath, not the file slug", async () => {
+    const source = buildMountedSource();
+    // The mounted page lives at /docs/legal/privacy; its file slug
+    // (policies/privacy) is the URL the sitemap never advertises.
+    await expect(createGenerateStaticParams({ source })()).resolves.toEqual([
+      { slug: [] },
+      { slug: ["quickstart"] },
+      { slug: ["legal", "privacy"] },
+    ]);
+    await expect(createGetStaticPaths({ source })()).resolves.toEqual([
+      { params: { slug: undefined } },
+      { params: { slug: "quickstart" } },
+      { params: { slug: "legal/privacy" } },
+    ]);
+    await expect(createMarkdownStaticPaths({ source })()).resolves.toEqual([
+      { params: { slug: "index" } },
+      { params: { slug: "quickstart" } },
+      { params: { slug: "legal/privacy" } },
+    ]);
+    await expect(createEntries({ source })()).resolves.toEqual([
+      { slug: "" },
+      { slug: "quickstart" },
+      { slug: "legal/privacy" },
+    ]);
+    await expect(createStaticParams({ source })()).resolves.toEqual([
+      { _splat: "" },
+      { _splat: "quickstart" },
+      { _splat: "legal/privacy" },
+    ]);
+    await expect(createPrerenderRoutes({ source })()).resolves.toEqual([
+      "/docs",
+      "/docs/quickstart",
+      "/docs/legal/privacy",
+    ]);
+  });
+
+  it("loads the page a mount-aware param addresses", async () => {
+    const source = buildMountedSource();
+    // Round-trip: the params emitted above must load the page they address,
+    // even though they differ from the page's file slug.
+    await expect(
+      createNextLoadPageData({ source })(["legal", "privacy"])
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+    await expect(
+      createAstroLoadPageData({ source })("legal/privacy")
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+    await expect(
+      createSvelteKitLoadPageData({ source })({
+        params: { slug: "legal/privacy" },
+      })
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+    await expect(
+      createTanStackLoadPageData({ source })("legal/privacy")
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+    await expect(
+      createNuxtLoadPageData({ source })({ slug: ["legal", "privacy"] })
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+    // Raw file slugs keep resolving — the historical fallback.
+    await expect(
+      createNextLoadPageData({ source })(["policies", "privacy"])
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+  });
+
+  it("uses a collection source's own routePrefix as the route base", async () => {
+    const source = buildSourceFromPages(
+      [buildPage([], "/changelog"), buildPage(["1-0"], "/changelog/1-0")],
+      "/changelog"
+    );
+    // project.getSource("changelog") under app/changelog/[[...slug]]: params
+    // stay collection-local with no basePath handed to any adapter.
+    await expect(createGenerateStaticParams({ source })()).resolves.toEqual([
+      { slug: [] },
+      { slug: ["1-0"] },
+    ]);
+    await expect(createEntries({ source })()).resolves.toEqual([
+      { slug: "" },
+      { slug: "1-0" },
+    ]);
+    // Nuxt prerenders full paths, so the collection's real routes come out —
+    // not `/docs/1-0`.
+    await expect(createPrerenderRoutes({ source })()).resolves.toEqual([
+      "/changelog",
+      "/changelog/1-0",
+    ]);
+    // An explicit basePath still re-roots, for a catch-all mounted elsewhere.
+    await expect(
+      createPrerenderRoutes({ source, basePath: "/releases" })()
+    ).resolves.toEqual(["/releases", "/releases/1-0"]);
+    await expect(
+      createNextLoadPageData({ source })(["1-0"])
+    ).resolves.toMatchObject({ title: "1-0" });
+  });
+
+  it("serves a multi-collection project from one site-root catch-all via basePath", async () => {
+    const source = buildProjectSource();
+    await expect(
+      createGenerateStaticParams({ source, basePath: "/" })()
+    ).resolves.toEqual([
+      { slug: ["docs"] },
+      { slug: ["docs", "quickstart"] },
+      { slug: ["changelog", "1-0"] },
+    ]);
+    await expect(
+      createStaticParams({ source, basePath: "/" })()
+    ).resolves.toEqual([
+      { _splat: "docs" },
+      { _splat: "docs/quickstart" },
+      { _splat: "changelog/1-0" },
+    ]);
+    // The load side resolves those params as route paths, so the changelog
+    // page comes from the changelog collection rather than a local-slug guess.
+    await expect(
+      createNextLoadPageData({ source, basePath: "/" })(["changelog", "1-0"])
+    ).resolves.toMatchObject({ title: "1-0", collection: "changelog" });
+    await expect(
+      createTanStackLoadPageData({ source, basePath: "/" })("docs/quickstart")
+    ).resolves.toMatchObject({ title: "quickstart", collection: "docs" });
+  });
+
+  it("refuses to emit params that would misroute a collection", async () => {
+    const source = buildProjectSource();
+    // The project's own base is its primary collection's prefix (/docs); the
+    // changelog page cannot be served by a /docs catch-all, so enumerating
+    // params for one is an error naming the page and the fixes — not a silent
+    // duplicate or misroute.
+    const outsideBase =
+      /"\/changelog\/1-0", outside the route base "\/docs".*getSource\(key\).*site-root catch-all/s;
+    await expect(createGenerateStaticParams({ source })()).rejects.toThrow(
+      outsideBase
+    );
+    await expect(createGetStaticPaths({ source })()).rejects.toThrow(
+      outsideBase
+    );
+    await expect(createEntries({ source })()).rejects.toThrow(outsideBase);
+    await expect(createStaticParams({ source })()).rejects.toThrow(outsideBase);
+    // Nuxt with an explicit basePath re-roots and hits the same wall…
+    await expect(
+      createPrerenderRoutes({ source, basePath: "/guide" })()
+    ).rejects.toThrow(outsideBase);
+    // …but without one it prerenders every page's real route, prefix and all.
+    await expect(createPrerenderRoutes({ source })()).resolves.toEqual([
+      "/docs",
+      "/docs/quickstart",
+      "/changelog/1-0",
+    ]);
   });
 
   it("loads docs pages from each framework's route params", async () => {
