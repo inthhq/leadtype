@@ -25,6 +25,10 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { glob as fg } from "tinyglobby";
+import {
+  normalizeDocsSourceInput,
+  parseDocsSourceInput,
+} from "../internal/docs-source";
 import { normalizeDocsPath, normalizeUrlPrefix } from "../internal/docs-url";
 import type { DocsCollection, DocsConfig, DocsNavEntry } from "../llm";
 import {
@@ -362,7 +366,21 @@ export async function resolveProject(
     options.docsDirs && options.docsDirs.length > 0
       ? options.docsDirs
       : [DEFAULT_DOCS_DIRNAME];
-  const docsDirs = docsDirNames.map((dir) => path.resolve(rootDir, dir));
+  // Each `--docs-dir` value is `<dir>` or `<dir>=<url-prefix>` — the same
+  // grammar `generate` reads, parsed by the same function, so the directory is
+  // always the part before `=`. A malformed value (`<dir>=`, a prefix
+  // normalizing to `/`) throws generate's error rather than resolving as a
+  // path that cannot exist.
+  const docsDirInputs = docsDirNames.map((value) => {
+    const { docsDir, urlPrefix } = parseDocsSourceInput(value);
+    return {
+      dir: normalizeDocsSourceInput(docsDir),
+      ...(urlPrefix ? { urlPrefix: normalizeUrlPrefix(urlPrefix) } : {}),
+    };
+  });
+  const docsDirs = docsDirInputs.map((entry) =>
+    path.resolve(rootDir, entry.dir)
+  );
   const diagnostics: ProjectDiagnostic[] = [];
 
   // A caller that already holds the config skips discovery; it still goes
@@ -390,7 +408,7 @@ export async function resolveProject(
     diagnostics.push({
       id: "config.missing",
       level: "warn",
-      message: `no leadtype.config.* at "${rootDir}" and no docs.config.* in ${docsDirNames.join(", ")}`,
+      message: `no leadtype.config.* at "${rootDir}" and no docs.config.* in ${docsDirInputs.map((entry) => entry.dir).join(", ")}`,
       fix: "leadtype init",
     });
     return emptyProject(rootDir, diagnostics);
@@ -586,7 +604,8 @@ export async function resolveProject(
 
   // `--docs-dir` is repeatable, and `generate`'s legacy multi-dir path honors
   // every value: the first directory mounts at the docs root, each further
-  // one under its folder name (`/docs/<basename>`). A single-source project
+  // one under its folder name (`/docs/<basename>`) unless the value's
+  // `=<url-prefix>` names a mount explicitly. A single-source project
   // resolves the same way here, so a report covers everything the build
   // stages instead of silently reading only the first directory. The mount
   // collision rule (and its message) matches `generate` too.
@@ -599,13 +618,13 @@ export async function resolveProject(
     const usedKeys = new Set(collections.map((entry) => entry.key));
     const mountPaths = new Set<string>();
     const extraKeys: string[] = [];
-    for (const [index, dirName] of docsDirNames.entries()) {
+    for (const [index, input] of docsDirInputs.entries()) {
       if (index === 0) {
         continue;
       }
-      const absoluteDir = docsDirs[index] ?? path.resolve(rootDir, dirName);
+      const absoluteDir = docsDirs[index] ?? path.resolve(rootDir, input.dir);
       const mountPath = normalizeDocsPath(
-        path.basename(dirName || absoluteDir)
+        path.basename(input.dir || absoluteDir)
       );
       const mountKey = mountPath.toLowerCase();
       if (mountPaths.has(mountKey)) {
@@ -638,17 +657,20 @@ export async function resolveProject(
       }
       collections.push({
         key,
-        routePrefix: normalizeUrlPrefix(`/docs/${mountPath}`),
+        routePrefix:
+          input.urlPrefix ?? normalizeUrlPrefix(`/docs/${mountPath}`),
         sourceId: primary?.sourceId ?? "local",
         provenance: {
           dir: {
             origin: "default",
             inferredFrom: "host content root (--docs-dir)",
           },
-          routePrefix: {
-            origin: "default",
-            inferredFrom: "docs dir folder name",
-          },
+          routePrefix: input.urlPrefix
+            ? { origin: "explicit" }
+            : {
+                origin: "default",
+                inferredFrom: "docs dir folder name",
+              },
         },
         ...(exists ? { contentDir: absoluteDir } : {}),
         ...(navigation ? { navigation } : {}),

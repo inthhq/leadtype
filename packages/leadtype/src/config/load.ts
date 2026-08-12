@@ -168,9 +168,18 @@ function closestKnownKey(
   }
   // Short keys need a tight bound or everything is close to everything.
   const maxDistance = key.length <= 4 ? 1 : 2;
-  return allowed.find((candidate) =>
-    editDistanceWithin(lowered, candidate.toLowerCase(), maxDistance)
-  );
+  // Widen a step at a time: one pass at the full bound returns whichever
+  // candidate is listed first, not the closest one — `prefx` would suggest
+  // "ref" (distance 2, listed early) over "prefix" (distance 1).
+  for (let bound = 1; bound <= maxDistance; bound += 1) {
+    const match = allowed.find((candidate) =>
+      editDistanceWithin(lowered, candidate.toLowerCase(), bound)
+    );
+    if (match) {
+      return match;
+    }
+  }
+  return;
 }
 
 /**
@@ -1281,14 +1290,36 @@ export async function loadDocsConfigFromDir(
   }
 }
 
-// Deprecation warnings are per config *file*, not per command: `generate`
-// loading the same config twice in a watch loop should not stack warnings, and
-// a project whose config is clean should print nothing at all.
-const warnedConfigPaths = new Set<string>();
+// Deprecation warnings are per config *file* per *sink*, not per process:
+// `generate` reloading the same config in a watch loop reuses the process
+// logger and should not stack warnings, but doctor and nav inject a fresh
+// sink per run — a process-global set keyed on path alone meant the second
+// resolve of the same config warned nobody, and for `nav` (whose report
+// carries no diagnostics) the warning vanished entirely.
+const warnedConfigPathsBySink = new WeakMap<ConfigWarningSink, Set<string>>();
+
+function alreadyWarned(
+  bySink: WeakMap<ConfigWarningSink, Set<string>>,
+  warn: ConfigWarningSink,
+  configPath: string
+): boolean {
+  return bySink.get(warn)?.has(configPath) ?? false;
+}
+
+function rememberWarned(
+  bySink: WeakMap<ConfigWarningSink, Set<string>>,
+  warn: ConfigWarningSink,
+  configPath: string
+): void {
+  const paths = bySink.get(warn) ?? new Set<string>();
+  bySink.set(warn, paths);
+  paths.add(configPath);
+}
 
 /**
- * Emit one actionable deprecation warning per config load. Safe to call from
- * every CLI entry point — repeat calls for the same file are dropped.
+ * Emit one actionable deprecation warning per config file and sink. Safe to
+ * call from every CLI entry point — repeat calls for the same file into the
+ * same sink are dropped.
  *
  * The warning goes to `warn` — the caller's injected io when there is one —
  * never straight to the process streams: doctor and nav run with injected
@@ -1299,14 +1330,14 @@ export function warnConfigDeprecations(
   loaded: LoadedDocsConfig | null,
   warn: ConfigWarningSink = logger.warn
 ): void {
-  if (!loaded || warnedConfigPaths.has(loaded.path)) {
+  if (!loaded || alreadyWarned(warnedConfigPathsBySink, warn, loaded.path)) {
     return;
   }
   const warning = formatDeprecationWarning(loaded.resolved.deprecations);
   if (!warning) {
     return;
   }
-  warnedConfigPaths.add(loaded.path);
+  rememberWarned(warnedConfigPathsBySink, warn, loaded.path);
   warn({
     human: {
       message: `${loaded.path}: ${warning.message}`,
@@ -1325,11 +1356,14 @@ export function warnConfigDeprecations(
   });
 }
 
-// Same once-per-file rule as deprecations, tracked separately so a config
-// with both still reports both.
-const warnedUnknownKeyPaths = new Set<string>();
+// Same once-per-file-per-sink rule as deprecations, tracked separately so a
+// config with both still reports both.
+const warnedUnknownKeyPathsBySink = new WeakMap<
+  ConfigWarningSink,
+  Set<string>
+>();
 
-/** Emit one aggregated unknown-key warning per config load. */
+/** Emit one aggregated unknown-key warning per config file and sink. */
 export function warnConfigUnknownKeys(
   loaded: LoadedDocsConfig | null,
   warn: ConfigWarningSink = logger.warn
@@ -1338,11 +1372,11 @@ export function warnConfigUnknownKeys(
   if (
     !loaded ||
     warnings.length === 0 ||
-    warnedUnknownKeyPaths.has(loaded.path)
+    alreadyWarned(warnedUnknownKeyPathsBySink, warn, loaded.path)
   ) {
     return;
   }
-  warnedUnknownKeyPaths.add(loaded.path);
+  rememberWarned(warnedUnknownKeyPathsBySink, warn, loaded.path);
   const fields = warnings.map((entry) => entry.owner);
   warn({
     human: {

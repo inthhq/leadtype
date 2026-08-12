@@ -481,6 +481,25 @@ describe("unknown config keys", () => {
     expect(sunk.some((message) => message.includes("navigatoin"))).toBe(true);
   });
 
+  it("suggests the nearest known key, not the first within the bound", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  collections: { docs: { dir: "docs", prefx: "/docs" } },
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const project = await resolveProject({ cwd: dir });
+
+    // "ref" is also within edit distance 2 of "prefx" and listed earlier;
+    // a single pass at the full bound suggested it over "prefix".
+    const diagnostic = project.diagnostics.find(
+      (entry) => entry.id === "config.unknown-key"
+    );
+    expect(diagnostic?.message).toContain('did you mean "prefix"');
+  });
+
   it("names the full path for gitSource and navigation-entry keys", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `import { gitSource } from "LEADTYPE_ENTRY";
@@ -539,5 +558,39 @@ describe("deprecations", () => {
         message: expect.stringContaining("routePrefix"),
       },
     ]);
+  });
+
+  it("warns every distinct sink, once per sink", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  ${IDENTITY},
+  collections: { docs: { dir: "content", prefix: "/docs" } },
+};`,
+      "content/index.mdx": page("Home"),
+    });
+
+    // The dedupe used to be keyed on the config path but process-global,
+    // while the sink is per-caller: the second resolve of the same config in
+    // one process warned nobody — and `nav`, whose report carries no
+    // diagnostics, lost the warning entirely.
+    const first: string[] = [];
+    const second: string[] = [];
+    const firstSink = (call: { human: { message: string } }) =>
+      first.push(call.human.message);
+    await resolveProject({ cwd: dir, warn: firstSink });
+    await resolveProject({ cwd: dir, warn: firstSink });
+    await resolveProject({
+      cwd: dir,
+      warn: (call) => second.push(call.human.message),
+    });
+
+    // Once per sink: the repeat resolve with the same sink stays quiet, the
+    // fresh sink still hears about it.
+    expect(first.filter((message) => message.includes("prefix"))).toHaveLength(
+      1
+    );
+    expect(second.filter((message) => message.includes("prefix"))).toHaveLength(
+      1
+    );
   });
 });

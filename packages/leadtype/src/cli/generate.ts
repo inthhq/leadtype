@@ -34,6 +34,10 @@ import {
   writeFileAtomic,
 } from "../internal/atomic-fs";
 import {
+  normalizeDocsSourceInput,
+  parseDocsSourceInput,
+} from "../internal/docs-source";
+import {
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
@@ -833,33 +837,6 @@ type ResolvedDocsSource = {
    */
   filters?: GenerateFilters;
 };
-
-function normalizeDocsSourceInput(input: string): string {
-  return path.normalize(input).replace(/[/\\]+$/, "");
-}
-
-function parseDocsSourceInput(input: string): {
-  docsDir: string;
-  urlPrefix?: string;
-} {
-  const separatorIndex = input.indexOf("=");
-  if (separatorIndex === -1) {
-    return { docsDir: input };
-  }
-  const docsDir = input.slice(0, separatorIndex);
-  const urlPrefix = input.slice(separatorIndex + 1);
-  if (!(docsDir.trim() && urlPrefix.trim())) {
-    throw new Error(
-      `Invalid --docs-dir value "${input}". Use <dir> or <dir>=<url-prefix>.`
-    );
-  }
-  if (normalizeUrlPrefix(urlPrefix) === "/") {
-    throw new Error(
-      `Invalid --docs-dir value "${input}". URL prefix must not be the site root.`
-    );
-  }
-  return { docsDir, urlPrefix };
-}
 
 function resolveDocsSources(
   srcDir: string,

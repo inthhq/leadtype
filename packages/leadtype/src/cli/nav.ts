@@ -22,6 +22,7 @@ import {
   resolveCollectionNavigation,
 } from "../config/navigation";
 import { type NavigationOrigin, resolveProject } from "../config/project";
+import { parseDocsSourceInput } from "../internal/docs-source";
 import { resolveDocsNavigation } from "../llm";
 import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
 
@@ -249,13 +250,15 @@ export async function runNavCommand(
   }
 
   const srcDir = path.resolve(args.srcDir);
+  // Raw flag values: the resolver parses the `<dir>[=<url-prefix>]` grammar
+  // itself, exactly as `generate` does. Pre-resolving here would bake the
+  // `=<url-prefix>` suffix into a path.
   const docsDirNames = args.docsDirs.length > 0 ? args.docsDirs : ["docs"];
-  const docsDirs = docsDirNames.map((dir) => path.resolve(srcDir, dir));
 
   try {
     const project = await resolveProject({
       cwd: srcDir,
-      docsDirs,
+      docsDirs: docsDirNames,
       // Load-time warnings go through the injected io — never the process
       // logger, which would bypass `io` and interleave with `--json` stdout.
       warn: (call) => {
@@ -269,8 +272,11 @@ export async function runNavCommand(
     // A project with no config is a supported state — `doctor` reports it as a
     // warning and keeps going — so infer a tree from disk rather than refusing.
     if (project.collections.length === 0) {
+      const primaryDocsDir = docsDirNames[0]
+        ? path.resolve(srcDir, parseDocsSourceInput(docsDirNames[0]).docsDir)
+        : srcDir;
       return await reportInferredTree({
-        contentDir: docsDirs[0] ?? srcDir,
+        contentDir: primaryDocsDir,
         json: args.json,
         io,
       });

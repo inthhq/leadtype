@@ -815,6 +815,54 @@ describe("--docs-dir", () => {
     expect(report.navigation?.routedPages).toBe(2);
   });
 
+  it("parses the documented <dir>=<url-prefix> form as generate does", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+      "changelog/v1.mdx": page("V1"),
+    });
+
+    // Verbatim from docs/reference/cli.mdx — the raw value used to be
+    // resolved whole as a path, so `<root>/changelog=/changelog` reported
+    // `source.dir-missing` and doctor exited 1 on a project generate builds.
+    const { code, report } = await runJson(dir, [
+      "--docs-dir",
+      "docs",
+      "--docs-dir",
+      "changelog=/changelog",
+    ]);
+
+    expect(code).toBe(0);
+    expect(
+      report.collections.map((entry) => [entry.key, entry.routePrefix])
+    ).toEqual([
+      ["docs", "/docs"],
+      ["changelog", "/changelog"],
+    ]);
+  });
+
+  it("rejects a malformed value with generate's message", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    const { code, report } = await runJson(dir, [
+      "--docs-dir",
+      "docs",
+      "--docs-dir",
+      "changelog=",
+    ]);
+
+    expect(code).toBe(1);
+    const issue = report.issues.find((entry) => entry.id === "config.invalid");
+    expect(issue?.message).toContain('Invalid --docs-dir value "changelog="');
+  });
+
   it("rejects values colliding on a mount path, with generate's message", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default {
