@@ -50,11 +50,13 @@ import {
   loadDocsConfig,
 } from "./load";
 import { normalizeDocsConfig } from "./normalize";
-import type {
-  FieldProvenance,
-  ResolvedDocsCollection,
-  ResolvedDocsConfig,
-  ResolvedSource,
+import {
+  DEFAULT_COLLECTION_KEY,
+  DEFAULT_SOURCE_ID,
+  type FieldProvenance,
+  type ResolvedDocsCollection,
+  type ResolvedDocsConfig,
+  type ResolvedSource,
 } from "./types";
 
 /** Where a collection's navigation tree came from. */
@@ -289,6 +291,186 @@ function emptyProject(
   };
 }
 
+/** One parsed `--docs-dir` value: the directory, and its explicit prefix. */
+type DocsDirInput = { dir: string; urlPrefix?: string };
+
+/**
+ * The collections `generate`'s legacy multi-dir path stages for every
+ * `--docs-dir` beyond the first: each mounts under its folder name
+ * (`/docs/<basename>`) unless the value's `=<url-prefix>` names a mount
+ * explicitly. The mount collision rule (and its message) matches `generate`.
+ */
+async function synthesizeExtraDirCollections(input: {
+  rootDir: string;
+  docsDirInputs: DocsDirInput[];
+  docsDirs: string[];
+  usedKeys: Set<string>;
+  sourceId: string;
+  infer: boolean;
+  diagnostics: ProjectDiagnostic[];
+}): Promise<{
+  collections: ResolvedProjectCollection[];
+  keys: string[];
+  inference: InferenceReport;
+}> {
+  const { rootDir, docsDirInputs, docsDirs, usedKeys, sourceId, diagnostics } =
+    input;
+  const collections: ResolvedProjectCollection[] = [];
+  const keys: string[] = [];
+  let inference = emptyInferenceReport();
+  const mountPaths = new Set<string>();
+  for (const [index, entry] of docsDirInputs.entries()) {
+    if (index === 0) {
+      continue;
+    }
+    const absoluteDir = docsDirs[index] ?? path.resolve(rootDir, entry.dir);
+    const mountPath = normalizeDocsPath(
+      path.basename(entry.dir || absoluteDir)
+    );
+    const mountKey = mountPath.toLowerCase();
+    if (mountPaths.has(mountKey)) {
+      throw new Error(
+        `Multiple docs sources resolve to the same mount path "${mountPath}". Use distinct source folder names.`
+      );
+    }
+    mountPaths.add(mountKey);
+    // Distinct mount paths can still collide with the primary collection's
+    // key (a second dir literally named "docs"); suffix those.
+    const key = usedKeys.has(mountPath) ? `${mountPath}-${index}` : mountPath;
+    usedKeys.add(key);
+    keys.push(key);
+
+    const exists = existsSync(absoluteDir);
+    if (!exists) {
+      diagnostics.push({
+        id: "source.dir-missing",
+        level: "error",
+        message: `docs directory "${absoluteDir}" does not exist`,
+        collection: key,
+        owner: "--docs-dir",
+      });
+    }
+    let navigation: DocsNavEntry[] | undefined;
+    if (input.infer && exists) {
+      const derived = await inferNavigationFromContent(absoluteDir);
+      navigation = derived.navigation;
+      inference = mergeInferenceReports(inference, derived.report);
+    }
+    collections.push({
+      key,
+      routePrefix: entry.urlPrefix ?? normalizeUrlPrefix(`/docs/${mountPath}`),
+      sourceId,
+      provenance: {
+        dir: {
+          origin: "default",
+          inferredFrom: "host content root (--docs-dir)",
+        },
+        routePrefix: entry.urlPrefix
+          ? { origin: "explicit" }
+          : {
+              origin: "default",
+              inferredFrom: "docs dir folder name",
+            },
+      },
+      ...(exists ? { contentDir: absoluteDir } : {}),
+      ...(navigation ? { navigation } : {}),
+      navigationOrigin: "inferred",
+    });
+  }
+  return { collections, keys, inference };
+}
+
+/**
+ * The project `generate` builds when no config exists — a supported fallback:
+ * the first `--docs-dir` mounts at the docs root (or its explicit
+ * `=<url-prefix>`), each further one under its folder name. Returning an
+ * empty project here made `doctor` and `nav` report no collections, routes,
+ * or pages for a build that stages all of them — and exit 0, since the
+ * missing config is only a warning.
+ */
+async function resolveConfiglessProject(input: {
+  rootDir: string;
+  docsDirInputs: DocsDirInput[];
+  docsDirs: string[];
+  diagnostics: ProjectDiagnostic[];
+  options: ResolveProjectOptions;
+}): Promise<ResolvedProject> {
+  const { rootDir, docsDirInputs, docsDirs, diagnostics, options } = input;
+  const infer = options.infer !== false;
+  let inference = emptyInferenceReport();
+
+  const primaryDir = path.resolve(
+    options.contentDir ??
+      docsDirs[0] ??
+      path.join(rootDir, DEFAULT_DOCS_DIRNAME)
+  );
+  // `contentDir` overrides `docsDirs` entirely, prefixes included.
+  const primaryPrefix = options.contentDir
+    ? undefined
+    : docsDirInputs[0]?.urlPrefix;
+  const primaryExists = existsSync(primaryDir);
+  if (!primaryExists) {
+    diagnostics.push({
+      id: "source.dir-missing",
+      level: "error",
+      message: `docs directory "${primaryDir}" does not exist`,
+      collection: DEFAULT_COLLECTION_KEY,
+      owner: "--docs-dir",
+    });
+  }
+  let navigation: DocsNavEntry[] | undefined;
+  if (infer && primaryExists) {
+    const derived = await inferNavigationFromContent(primaryDir);
+    navigation = derived.navigation;
+    inference = mergeInferenceReports(inference, derived.report);
+  }
+  const collections: ResolvedProjectCollection[] = [
+    {
+      key: DEFAULT_COLLECTION_KEY,
+      routePrefix: primaryPrefix ?? "/docs",
+      sourceId: DEFAULT_SOURCE_ID,
+      provenance: {
+        dir: {
+          origin: "default",
+          inferredFrom: "host content root (--docs-dir)",
+        },
+        routePrefix: primaryPrefix
+          ? { origin: "explicit" }
+          : { origin: "default", inferredFrom: "single-source default" },
+      },
+      ...(primaryExists ? { contentDir: primaryDir } : {}),
+      ...(navigation ? { navigation } : {}),
+      navigationOrigin: "inferred",
+    },
+  ];
+  const keys = [DEFAULT_COLLECTION_KEY];
+  if (!options.contentDir && docsDirs.length > 1) {
+    const extras = await synthesizeExtraDirCollections({
+      rootDir,
+      docsDirInputs,
+      docsDirs,
+      usedKeys: new Set(keys),
+      sourceId: DEFAULT_SOURCE_ID,
+      infer,
+      diagnostics,
+    });
+    collections.push(...extras.collections);
+    keys.push(...extras.keys);
+    inference = mergeInferenceReports(inference, extras.inference);
+  }
+
+  return {
+    rootDir,
+    configDir: rootDir,
+    config: null,
+    resolved: null,
+    collections,
+    sources: [{ id: DEFAULT_SOURCE_ID, kind: "local", collectionKeys: keys }],
+    inference,
+    diagnostics,
+  };
+}
+
 /**
  * Re-label fields a collection took from its source repository. Normalization
  * cannot tell the difference — by the time it runs, an inherited value is just
@@ -411,7 +593,22 @@ export async function resolveProject(
       message: `no leadtype.config.* at "${rootDir}" and no docs.config.* in ${docsDirInputs.map((entry) => entry.dir).join(", ")}`,
       fix: "leadtype init",
     });
-    return emptyProject(rootDir, diagnostics);
+    // With no config *and* no content anywhere, there is no project to
+    // describe — the warning (and its `leadtype init` fix) is the whole
+    // answer. With content, `generate` builds it, so it must resolve here.
+    const contentRoots = options.contentDir
+      ? [path.resolve(options.contentDir)]
+      : docsDirs;
+    if (!contentRoots.some((dir) => existsSync(dir))) {
+      return emptyProject(rootDir, diagnostics);
+    }
+    return await resolveConfiglessProject({
+      rootDir,
+      docsDirInputs,
+      docsDirs,
+      diagnostics,
+      options,
+    });
   }
   const configOrigin: "file" | "caller" = options.config ? "caller" : "file";
 
@@ -607,84 +804,45 @@ export async function resolveProject(
   // one under its folder name (`/docs/<basename>`) unless the value's
   // `=<url-prefix>` names a mount explicitly. A single-source project
   // resolves the same way here, so a report covers everything the build
-  // stages instead of silently reading only the first directory. The mount
-  // collision rule (and its message) matches `generate` too.
-  if (
-    normalized.resolved.mode === "single-source" &&
-    !options.contentDir &&
-    docsDirs.length > 1
-  ) {
+  // stages instead of silently reading only the first directory.
+  if (normalized.resolved.mode === "single-source" && !options.contentDir) {
+    // `generate` applies an explicit prefix on the *first* value too
+    // (`--docs-dir docs=/manual` serves the primary source at `/manual`), so
+    // the primary collection follows it — leaving it at the normalized
+    // default `/docs` reported URLs the build never renders.
+    const primaryPrefix = docsDirInputs[0]?.urlPrefix;
     const primary = collections[0];
-    const usedKeys = new Set(collections.map((entry) => entry.key));
-    const mountPaths = new Set<string>();
-    const extraKeys: string[] = [];
-    for (const [index, input] of docsDirInputs.entries()) {
-      if (index === 0) {
-        continue;
-      }
-      const absoluteDir = docsDirs[index] ?? path.resolve(rootDir, input.dir);
-      const mountPath = normalizeDocsPath(
-        path.basename(input.dir || absoluteDir)
-      );
-      const mountKey = mountPath.toLowerCase();
-      if (mountPaths.has(mountKey)) {
-        throw new Error(
-          `Multiple docs sources resolve to the same mount path "${mountPath}". Use distinct source folder names.`
-        );
-      }
-      mountPaths.add(mountKey);
-      // Distinct mount paths can still collide with the primary collection's
-      // key (a second dir literally named "docs"); suffix those.
-      const key = usedKeys.has(mountPath) ? `${mountPath}-${index}` : mountPath;
-      usedKeys.add(key);
-      extraKeys.push(key);
-
-      const exists = existsSync(absoluteDir);
-      if (!exists) {
-        diagnostics.push({
-          id: "source.dir-missing",
-          level: "error",
-          message: `docs directory "${absoluteDir}" does not exist`,
-          collection: key,
-          owner: "--docs-dir",
-        });
-      }
-      let navigation: DocsNavEntry[] | undefined;
-      if (options.infer !== false && exists) {
-        const derived = await inferNavigationFromContent(absoluteDir);
-        navigation = derived.navigation;
-        inference = mergeInferenceReports(inference, derived.report);
-      }
-      collections.push({
-        key,
-        routePrefix:
-          input.urlPrefix ?? normalizeUrlPrefix(`/docs/${mountPath}`),
-        sourceId: primary?.sourceId ?? "local",
+    if (primaryPrefix && primary) {
+      collections[0] = {
+        ...primary,
+        routePrefix: primaryPrefix,
         provenance: {
-          dir: {
-            origin: "default",
-            inferredFrom: "host content root (--docs-dir)",
-          },
-          routePrefix: input.urlPrefix
-            ? { origin: "explicit" }
-            : {
-                origin: "default",
-                inferredFrom: "docs dir folder name",
-              },
+          ...primary.provenance,
+          routePrefix: { origin: "explicit" },
         },
-        ...(exists ? { contentDir: absoluteDir } : {}),
-        ...(navigation ? { navigation } : {}),
-        navigationOrigin: "inferred",
-      });
+      };
     }
-    sources = sources.map((source) =>
-      source.kind === "local"
-        ? {
-            ...source,
-            collectionKeys: [...source.collectionKeys, ...extraKeys],
-          }
-        : source
-    );
+    if (docsDirs.length > 1) {
+      const extras = await synthesizeExtraDirCollections({
+        rootDir,
+        docsDirInputs,
+        docsDirs,
+        usedKeys: new Set(collections.map((entry) => entry.key)),
+        sourceId: collections[0]?.sourceId ?? DEFAULT_SOURCE_ID,
+        infer: options.infer !== false,
+        diagnostics,
+      });
+      collections.push(...extras.collections);
+      inference = mergeInferenceReports(inference, extras.inference);
+      sources = sources.map((source) =>
+        source.kind === "local"
+          ? {
+              ...source,
+              collectionKeys: [...source.collectionKeys, ...extras.keys],
+            }
+          : source
+      );
+    }
   }
 
   return {

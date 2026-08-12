@@ -843,6 +843,58 @@ describe("--docs-dir", () => {
     ]);
   });
 
+  it("applies the first value's <dir>=<url-prefix> to the primary collection", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};`,
+      "docs/index.mdx": page("Home"),
+    });
+
+    // `generate` applies an explicit prefix to every parsed value, including
+    // the first; skipping index 0 reported the primary collection at the
+    // normalized default `/docs` while the build serves it at `/manual`.
+    const { code, report } = await runJson(dir, ["--docs-dir", "docs=/manual"]);
+
+    expect(code).toBe(0);
+    expect(
+      report.collections.map((entry) => [entry.key, entry.routePrefix])
+    ).toEqual([["docs", "/manual"]]);
+  });
+
+  it("resolves every value when the project has no config, as generate stages them", async () => {
+    const dir = await fixture({
+      "docs/index.mdx": page("Home"),
+      "changelog/v1.mdx": page("V1"),
+    });
+
+    const { code, report } = await runJson(dir, [
+      "--docs-dir",
+      "docs",
+      "--docs-dir",
+      "changelog",
+    ]);
+
+    // A missing config stays a warning, but the report covers the project
+    // `generate` builds — returning an empty project here reported no
+    // collections, routes, or pages and still exited 0.
+    expect(code).toBe(0);
+    expect(
+      report.issues.find((entry) => entry.id === "config.missing")?.level
+    ).toBe("warn");
+    expect(
+      report.collections.map((entry) => [
+        entry.key,
+        entry.routePrefix,
+        entry.pageCount,
+      ])
+    ).toEqual([
+      ["docs", "/docs", 1],
+      ["changelog", "/docs/changelog", 1],
+    ]);
+    expect(report.navigation?.routedPages).toBe(2);
+  });
+
   it("rejects a malformed value with generate's message", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default {

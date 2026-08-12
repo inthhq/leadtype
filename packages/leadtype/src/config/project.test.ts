@@ -46,6 +46,39 @@ describe("discovery", () => {
     ]);
   });
 
+  it("resolves --docs-dir collections without a config, matching generate", async () => {
+    const dir = await fixture({
+      "docs/index.mdx": page("Home"),
+      "changelog/v1.mdx": page("V1"),
+    });
+
+    const project = await resolveProject({
+      cwd: dir,
+      docsDirs: ["docs=/manual", "changelog"],
+    });
+
+    // No config is a supported `generate` fallback: it stages every
+    // `--docs-dir`, the first at its explicit prefix. Reporting an empty
+    // project here made doctor and nav disagree with the build.
+    expect(project.config).toBeNull();
+    expect(project.diagnostics.map((entry) => entry.id)).toEqual([
+      "config.missing",
+    ]);
+    expect(
+      project.collections.map((entry) => [
+        entry.key,
+        entry.routePrefix,
+        entry.contentDir,
+      ])
+    ).toEqual([
+      ["docs", "/manual", path.join(dir, "docs")],
+      ["changelog", "/docs/changelog", path.join(dir, "changelog")],
+    ]);
+    expect(project.sources).toEqual([
+      { id: "local", kind: "local", collectionKeys: ["docs", "changelog"] },
+    ]);
+  });
+
   it("throws only when the config itself is malformed", async () => {
     const dir = await fixture({
       "leadtype.config.ts": "export default { product: {} };",
