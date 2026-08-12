@@ -393,6 +393,10 @@ describe("drift", () => {
     // directory reported the same project as fine here.
     expect(code).toBe(1);
     expect(capture.stderr).toContain('Nav page "drafts/wip"');
+    // The diagnostic's `fix` must reach nav users too: without it the
+    // include/exclude hint reads as a typo hunt on a page that exists.
+    expect(capture.stderr).toContain("→");
+    expect(capture.stderr).toContain("`include`/`exclude`");
   });
 });
 

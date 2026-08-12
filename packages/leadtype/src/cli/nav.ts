@@ -308,7 +308,7 @@ export async function runNavCommand(
     );
     if (failure || !resolved.manifest) {
       io.stderr.write(
-        `${failure?.message ?? `collection "${collection.key}" navigation did not resolve`}\n`
+        `${failure?.message ?? `collection "${collection.key}" navigation did not resolve`}\n${failure?.fix ? `  → ${failure.fix}\n` : ""}`
       );
       return 1;
     }
