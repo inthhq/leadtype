@@ -77,6 +77,12 @@ describe("discovery", () => {
     expect(project.sources).toEqual([
       { id: "local", kind: "local", collectionKeys: ["docs", "changelog"] },
     ]);
+    // Flag-supplied prefixes are attributed to `--docs-dir`, not reported as
+    // config-authored — there is no config file here to hunt through.
+    expect(project.collections[0]?.provenance.routePrefix).toEqual({
+      origin: "default",
+      inferredFrom: "url prefix (--docs-dir)",
+    });
   });
 
   it("throws only when the config itself is malformed", async () => {

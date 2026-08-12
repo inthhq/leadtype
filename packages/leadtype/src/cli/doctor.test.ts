@@ -841,6 +841,12 @@ describe("--docs-dir", () => {
       ["docs", "/docs"],
       ["changelog", "/changelog"],
     ]);
+    expect(report.collections[1]?.provenance).toMatchObject({
+      routePrefix: {
+        origin: "default",
+        inferredFrom: "url prefix (--docs-dir)",
+      },
+    });
   });
 
   it("applies the first value's <dir>=<url-prefix> to the primary collection", async () => {
@@ -860,6 +866,15 @@ describe("--docs-dir", () => {
     expect(
       report.collections.map((entry) => [entry.key, entry.routePrefix])
     ).toEqual([["docs", "/manual"]]);
+    // The prefix came from a flag, not the config file — `explicit` is
+    // documented as config-authored, so provenance points at `--docs-dir`
+    // the same way the sibling `dir` field does.
+    expect(report.collections[0]?.provenance).toMatchObject({
+      routePrefix: {
+        origin: "default",
+        inferredFrom: "url prefix (--docs-dir)",
+      },
+    });
   });
 
   it("resolves every value when the project has no config, as generate stages them", async () => {

@@ -365,8 +365,15 @@ async function synthesizeExtraDirCollections(input: {
           origin: "default",
           inferredFrom: "host content root (--docs-dir)",
         },
+        // A flag-supplied prefix is not `explicit` — that origin means
+        // "authored in the project's own config file", and reporting it
+        // there sends users hunting a config for a value that isn't in one.
+        // Point at the flag, like `dir` above.
         routePrefix: entry.urlPrefix
-          ? { origin: "explicit" }
+          ? {
+              origin: "default",
+              inferredFrom: "url prefix (--docs-dir)",
+            }
           : {
               origin: "default",
               inferredFrom: "docs dir folder name",
@@ -435,7 +442,7 @@ async function resolveConfiglessProject(input: {
           inferredFrom: "host content root (--docs-dir)",
         },
         routePrefix: primaryPrefix
-          ? { origin: "explicit" }
+          ? { origin: "default", inferredFrom: "url prefix (--docs-dir)" }
           : { origin: "default", inferredFrom: "single-source default" },
       },
       ...(primaryExists ? { contentDir: primaryDir } : {}),
@@ -818,7 +825,10 @@ export async function resolveProject(
         routePrefix: primaryPrefix,
         provenance: {
           ...primary.provenance,
-          routePrefix: { origin: "explicit" },
+          routePrefix: {
+            origin: "default",
+            inferredFrom: "url prefix (--docs-dir)",
+          },
         },
       };
     }
