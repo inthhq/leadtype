@@ -16,6 +16,7 @@
  */
 
 import path from "node:path";
+import { normalizeDocsI18nConfig } from "../i18n";
 import { normalizeDocsPath, toDocsUrlPath } from "../internal/docs-url";
 import { resolveDocsNavigation } from "../llm";
 import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
@@ -167,6 +168,11 @@ function findDuplicates(manifest: DocsNavigation): string[] {
  * - **i18n is forwarded**, because without it each translation resolves as
  *   its own page — and a default locale living under its own directory makes
  *   every literal nav entry miss outright.
+ * - **Every configured locale is validated**, because `generate` resolves
+ *   the tree once per locale and rejects each locale's failures — a
+ *   translation with locale-specific bad nav metadata fails the build while
+ *   the default locale is clean, so checking only the default reported
+ *   nothing for it.
  * - **Resolution reads the admitted file set, not the raw directory**,
  *   because `generate` stages a filtered mirror before resolving — against
  *   the raw view a curated entry naming an excluded page resolves fine here
@@ -193,34 +199,37 @@ export async function resolveCollectionNavigation(
 
   const filterFile = await admittedFileFilter(collection);
 
+  const resolveConfig = {
+    srcDir: path.dirname(contentDir),
+    docsDirName: path.basename(contentDir),
+    mounts,
+    groups: mergedGroups,
+    nav: collection.navigation,
+    ...(project.config?.i18n ? { i18n: project.config.i18n } : {}),
+    ...(filterFile ? { filterFile } : {}),
+  };
+
+  // The field named is the one the origin says produced the tree — an
+  // inherited tree still lives on `navigation`, just authored elsewhere.
+  const field = origin === "groups" ? "groups" : "navigation";
+  const owner = project.config?.collections?.[collection.key]
+    ? `collections.${collection.key}.${field}`
+    : field;
+  // With filters in play the entry may name a page that exists on disk but
+  // that `include`/`exclude` keeps out of the staged mirror — say so, or
+  // the "did not match a documentation page" message reads as a typo hunt.
+  const fix = filterFile
+    ? `Fix the entry \`${owner}\` points at — the page may exist but be removed by the collection's \`include\`/\`exclude\` — then re-run \`leadtype doctor\`.`
+    : `Fix the entry \`${owner}\` points at, then re-run \`leadtype doctor\`.`;
+
   let manifest: DocsNavigation;
   try {
     // Resolving over the admitted set makes a curated reference to a
     // filtered-out page fail here exactly as it fails the build — against
     // the raw directory it resolved fine, so `doctor` said ok and `nav`
     // exited 0 for a project whose `generate` exits 1.
-    manifest = await resolveDocsNavigation({
-      srcDir: path.dirname(contentDir),
-      docsDirName: path.basename(contentDir),
-      mounts,
-      groups: mergedGroups,
-      nav: collection.navigation,
-      ...(project.config?.i18n ? { i18n: project.config.i18n } : {}),
-      ...(filterFile ? { filterFile } : {}),
-    });
+    manifest = await resolveDocsNavigation(resolveConfig);
   } catch (error) {
-    // The field named is the one the origin says produced the tree — an
-    // inherited tree still lives on `navigation`, just authored elsewhere.
-    const field = origin === "groups" ? "groups" : "navigation";
-    const owner = project.config?.collections?.[collection.key]
-      ? `collections.${collection.key}.${field}`
-      : field;
-    // With filters in play the entry may name a page that exists on disk but
-    // that `include`/`exclude` keeps out of the staged mirror — say so, or
-    // the "did not match a documentation page" message reads as a typo hunt.
-    const fix = filterFile
-      ? `Fix the entry \`${owner}\` points at — the page may exist but be removed by the collection's \`include\`/\`exclude\` — then re-run \`leadtype doctor\`.`
-      : `Fix the entry \`${owner}\` points at, then re-run \`leadtype doctor\`.`;
     diagnostics.push({
       id: "nav.unresolvable",
       level: "error",
@@ -238,6 +247,40 @@ export async function resolveCollectionNavigation(
       drift: { unplaced: [], duplicate: [], unknownGroup: [] },
       diagnostics,
     };
+  }
+
+  // `generate` validates every configured locale, not only the default: its
+  // locale loop resolves the tree once per locale and rejects that locale's
+  // unknown groups, so a `zh/` page declaring a group no config declares
+  // fails the build while the default locale is clean. Resolving only the
+  // default here reported no finding for exactly that page. Non-default
+  // locales contribute findings only — the manifest, counts, and placement
+  // drift stay the default locale's, which is the tree the commands present;
+  // a localized finding already names its locale through the urlPath
+  // (`/docs/zh/…`) or the diagnostic message.
+  const localeUnknown: DocsNavigation["unknown"] = [];
+  const i18n = normalizeDocsI18nConfig(project.config?.i18n);
+  const extraLocales =
+    i18n?.locales
+      .map((locale) => locale.code)
+      .filter((code) => code !== i18n.defaultLocale) ?? [];
+  for (const locale of extraLocales) {
+    try {
+      const localized = await resolveDocsNavigation({
+        ...resolveConfig,
+        locale,
+      });
+      localeUnknown.push(...localized.unknown);
+    } catch (error) {
+      diagnostics.push({
+        id: "nav.unresolvable",
+        level: "error",
+        message: `collection "${collection.key}" navigation did not resolve for locale "${locale}": ${error instanceof Error ? error.message : String(error)}`,
+        collection: collection.key,
+        owner,
+        fix,
+      });
+    }
   }
 
   const routed = new Set<string>();
@@ -296,7 +339,7 @@ export async function resolveCollectionNavigation(
     drift: {
       unplaced,
       duplicate: findDuplicates(manifest),
-      unknownGroup: manifest.unknown,
+      unknownGroup: [...manifest.unknown, ...localeUnknown],
     },
     diagnostics,
   };

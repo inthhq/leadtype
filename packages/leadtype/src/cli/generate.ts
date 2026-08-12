@@ -1283,7 +1283,17 @@ async function createSourceMirror(
     path.resolve(sources[0]?.docsDir ?? "") ===
       path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
-  if (isDefaultSingleSource && !hasFilters && !forceStaging) {
+  // A collection's own `include`/`exclude` must stage a filtered mirror too:
+  // serving the directory in place applies no filter, so in exactly this
+  // shape — and only without `openapi`, whose `forceStaging` routed through
+  // `copySourceFiles` and honored them — a single default `docs` collection's
+  // filters were silently ignored and its excluded pages shipped.
+  const hasSourceFilters = sources.some((source) => source.filters);
+
+  if (
+    isDefaultSingleSource &&
+    !(hasFilters || hasSourceFilters || forceStaging)
+  ) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
     return {
       cleanup: async () => {

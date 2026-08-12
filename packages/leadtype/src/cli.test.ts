@@ -2446,6 +2446,40 @@ This page is valid, but the output path is not a directory.
     expect(llmsTxt).toContain("# Collections Product");
   });
 
+  it("applies a single default collection's exclude when generating", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(srcDir, "index.mdx", 'title: "Home"');
+    await writeMdxPage(srcDir, "drafts/wip.mdx", 'title: "WIP"');
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Filtered Product", tagline: "Single collection." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // A single default `docs` collection is the one shape that used to skip
+    // staging and serve the directory in place — which applied no filter, so
+    // this exact config's `exclude` did nothing and the draft shipped. The
+    // collection's filters must stage a filtered mirror here like they do in
+    // every other shape.
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "index.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "drafts", "wip.md"))).toBe(
+      false
+    );
+  });
+
   it("inherits source-owned navigation, groups, and flatteners after sync", async () => {
     const sourceRepo = await createGitDocsSource({
       "docs/docs.config.ts": `import { defineComponentFlattener } from ${JSON.stringify(markdownEntry)};

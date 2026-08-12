@@ -284,9 +284,10 @@ describe("drift", () => {
     const { code, report } = await runJson(dir);
 
     // `copySourceFiles` disables tinyglobby's directory expansion, so a bare
-    // `guides` matches only a *file* named `guides` and `generate` stages
-    // nothing. Expanding it to `guides/**` here counted pages the build never
-    // ships.
+    // `guides` matches only a *file* named `guides` and staging admits
+    // nothing — `generate` stages an empty mirror and exits 1 without
+    // publishing a page. Expanding it to `guides/**` here counted pages the
+    // build never ships.
     expect(code).toBe(0);
     expect(report.pageCount).toBe(0);
   });
@@ -396,7 +397,7 @@ describe("drift", () => {
 });
 
 describe("i18n projects", () => {
-  it("resolves literal nav entries when the default locale lives under its own directory", async () => {
+  it("resolves the default locale but reports the locale a literal entry cannot match", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default {
   product: { name: "Acme", tagline: "Acme docs." },
@@ -407,14 +408,44 @@ describe("i18n projects", () => {
       "docs/zh/index.mdx": page("Home (zh)"),
     });
 
+    const capture = createCapture();
+    const code = await runNavCommand(["--src", dir, "--json"], capture.io);
+
+    // With i18n forwarded, the default locale resolves — "index" matches
+    // "en/index.mdx" — which is why the failure below is scoped to "zh", not
+    // the crash every i18n project used to die on. But `generate` resolves
+    // the tree once per configured locale, and a non-default locale's pages
+    // resolve to locale-prefixed paths ("zh/index") no literal entry ever
+    // matches, so the build exits 1 on this exact project. Resolving only
+    // the default locale here reported ok for a project that cannot build.
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain(
+      'navigation did not resolve for locale "zh"'
+    );
+    expect(capture.stderr).not.toContain('for locale "en"');
+  });
+
+  it("flags a non-default locale's unknown group when the default locale is clean", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+  groups: [{ slug: "guides", title: "Guides" }],
+};`,
+      "docs/index.mdx": `---\ntitle: "Home"\ngroup: guides\n---\n\nBody.\n`,
+      "docs/zh/index.mdx": `---\ntitle: "Home (zh)"\ngroup: mystery\n---\n\nBody.\n`,
+    });
+
     const { code, report } = await runJson(dir);
 
-    // Without i18n forwarded, "index" matches no file — the default locale's
-    // page lives at "en/index" — and every i18n project exited 1 with
-    // 'Nav page "index" under "root" did not match a documentation page'.
+    // `generate` validates every configured locale and exits 1 on
+    // '/docs/zh declares unknown group "mystery"' while the default locale
+    // is clean. Resolving only the default locale reported no drift at all
+    // for that page; the finding's urlPath carries the locale.
     expect(code).toBe(0);
-    expect(report.pageCount).toBe(1);
-    expect(report.drift.unplaced).toEqual([]);
+    expect(report.drift.unknownGroup).toEqual([
+      { urlPath: "/docs/zh", slug: "mystery" },
+    ]);
   });
 });
 

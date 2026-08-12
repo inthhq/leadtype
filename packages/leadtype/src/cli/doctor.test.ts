@@ -442,6 +442,32 @@ describe("findings", () => {
     expect(finding?.fix).toContain("include");
   });
 
+  it("reports a non-default locale's unknown group when the default locale is clean", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+  groups: [{ slug: "guides", title: "Guides" }],
+};`,
+      "docs/index.mdx": `---\ntitle: "Home"\ngroup: guides\n---\n\nBody.\n`,
+      "docs/zh/index.mdx": `---\ntitle: "Home (zh)"\ngroup: mystery\n---\n\nBody.\n`,
+    });
+
+    // `generate` resolves the tree once per configured locale and exits 1 on
+    // '/docs/zh declares unknown group "mystery"'. Resolving only the
+    // default locale missed the translation's finding entirely — doctor said
+    // ok for a build that fails.
+    const { code, report } = await runJson(dir);
+
+    expect(code).toBe(1);
+    expect(report.ok).toBe(false);
+    const finding = report.issues.find(
+      (entry) => entry.id === "nav.unknown-group"
+    );
+    expect(finding?.level).toBe("error");
+    expect(finding?.message).toBe('/docs/zh declares unknown group "mystery"');
+  });
+
   it("keeps excluded pages out of the routed page count", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `export default {
