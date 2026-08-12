@@ -466,10 +466,12 @@ describe("runInitCommand", () => {
     return configPath;
   }
 
-  it("refuses a rerun that would strand the framework default outside the config", async () => {
+  it("proceeds over a config that omits baseUrl, noting both resolutions", async () => {
     const dir = await createTempDir();
-    // An older scaffold (or hand-written config) without the baseUrl field —
-    // the documented Astro default has nowhere to land.
+    // An older scaffold (or hand-written config) without the baseUrl field.
+    // Deliberately leaving it unset is how a site picks its production URL up
+    // from the deployment env vars at generate time, so a rerun must not
+    // refuse — it proceeds and names the two resolutions.
     const configPath = await writeExistingConfig(
       dir,
       `export default {
@@ -485,18 +487,21 @@ describe("runInitCommand", () => {
       capture.io
     );
 
-    // Permitting the run would skip the config and generate every absolute
-    // URL against http://localhost:3000 — refuse before any write, naming the
-    // exact line to add.
-    expect(code).toBe(2);
-    expect(capture.stderr).toContain("without baseUrl");
-    expect(capture.stderr).toContain('baseUrl: "http://localhost:4321"');
-    expect(capture.stderr).toContain("--force");
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("(exists, use --force)");
+    expect(capture.stderr).toContain("note:");
+    expect(capture.stderr).toContain("does not set baseUrl");
+    expect(capture.stderr).toContain("NEXT_PUBLIC_SITE_URL");
+    expect(capture.stderr).toContain("set baseUrl in docs/docs.config.ts");
+    // The note must not read as a refusal, and must not prescribe pinning the
+    // dev URL into the config.
+    expect(capture.stderr).not.toContain("exit 2");
+    expect(capture.stderr).not.toContain('baseUrl: "http://localhost:4321"');
     expect(await readFile(configPath, "utf8")).toBe(before);
-    expect(existsSync(path.join(dir, "astro.config.mjs"))).toBe(false);
+    expect(existsSync(path.join(dir, "astro.config.mjs"))).toBe(true);
   });
 
-  it("previews the stranded-default conflict as a warning in --json and --dry-run", async () => {
+  it("previews the missing-baseUrl note in --json and --dry-run", async () => {
     const dir = await createTempDir();
     const configPath = await writeExistingConfig(
       dir,
@@ -514,9 +519,10 @@ describe("runInitCommand", () => {
         json.io
       )
     ).toBe(0);
+    expect(json.stderr).toBe("");
     const plan = JSON.parse(json.stdout) as { warnings?: string[] };
     expect(plan.warnings).toEqual([
-      expect.stringContaining('baseUrl: "http://localhost:4321"'),
+      expect.stringContaining("does not set baseUrl"),
     ]);
 
     const dry = createCapture();
@@ -526,8 +532,11 @@ describe("runInitCommand", () => {
         dry.io
       )
     ).toBe(0);
-    expect(dry.stderr).toContain("without baseUrl");
-    expect(dry.stderr).toContain("exit 2");
+    expect(dry.stdout).toContain("would scaffold astro");
+    expect(dry.stderr).toContain("does not set baseUrl");
+    // Unlike the --base-url conflict, a real run proceeds — the note must not
+    // claim otherwise.
+    expect(dry.stderr).not.toContain("exit 2");
     expect(await readFile(configPath, "utf8")).toBe(before);
     expect(existsSync(path.join(dir, "astro.config.mjs"))).toBe(false);
   });
@@ -578,17 +587,45 @@ describe("runInitCommand", () => {
     expect(capture.stderr).toBe("");
   });
 
-  it("keeps a full re-scaffold a no-op when the config cannot be loaded", async () => {
+  it("stays silent when the config cannot be loaded — null is not missing baseUrl", async () => {
+    const dir = await createTempDir();
+    // Unloadable on purpose (the package does not exist), and *also* without
+    // baseUrl: if the loader ever resolved this module, the config would load
+    // without the field and the note would fire — so the empty stderr below
+    // holds only via the loader returning null, not by accident.
+    await writeExistingConfig(
+      dir,
+      `import "@leadtype-test/definitely-not-installed";
+
+export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};
+`
+    );
+
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--no-generate"],
+      capture.io
+    );
+
+    // Best-effort by design: an unloadable config fails loudly in generate,
+    // so init must not editorialize over what it cannot inspect.
+    expect(code).toBe(0);
+    expect(capture.stderr).toBe("");
+    expect(capture.stdout).toContain("(exists, use --force)");
+  });
+
+  it("keeps a full re-scaffold of its own output a quiet no-op", async () => {
     const dir = await createTempDir();
     await runInitCommand(
       ["--dir", dir, "--framework", "astro", "--no-generate"],
       createCapture().io
     );
 
-    // The scaffolded config imports "leadtype", which is not installed in the
-    // temp project, so the loader cannot read it. Best-effort by design: an
-    // unloadable config fails loudly in generate, so init must not refuse a
-    // rerun on what it cannot inspect.
+    // Whichever way the load goes — the scaffolded config imports "leadtype",
+    // which may not resolve in the temp project — the rerun is quiet: an
+    // unloadable config is tolerated, and a loadable one declares baseUrl.
     const second = createCapture();
     const code = await runInitCommand(
       ["--dir", dir, "--framework", "astro", "--no-generate"],
@@ -596,7 +633,71 @@ describe("runInitCommand", () => {
     );
 
     expect(code).toBe(0);
+    expect(second.stderr).toBe("");
     expect(second.stdout).toContain("(exists, use --force)");
+  });
+
+  it("refuses --base-url when a root leadtype.config.* wins config discovery", async () => {
+    const dir = await createTempDir();
+    // generate and the runtime read a root config in preference to the
+    // docs/docs.config.ts init writes, so the flag's value would never be
+    // read — with or without --force.
+    const rootPath = path.join(dir, "leadtype.config.ts");
+    await writeFile(
+      rootPath,
+      `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};
+`,
+      "utf8"
+    );
+
+    for (const extra of [[], ["--force"]]) {
+      const capture = createCapture();
+      const code = await runInitCommand(
+        [
+          "--dir",
+          dir,
+          "--framework",
+          "next",
+          "--base-url",
+          "https://production.example",
+          "--no-generate",
+          ...extra,
+        ],
+        capture.io
+      );
+
+      expect(code).toBe(2);
+      expect(capture.stderr).toContain("leadtype.config.ts takes precedence");
+      expect(capture.stderr).toContain("Set baseUrl in leadtype.config.ts");
+      expect(existsSync(path.join(dir, "docs/docs.config.ts"))).toBe(false);
+    }
+  });
+
+  it("notes against the root config when it wins and omits baseUrl", async () => {
+    const dir = await createTempDir();
+    await writeFile(
+      path.join(dir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};
+`,
+      "utf8"
+    );
+
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--no-generate"],
+      capture.io
+    );
+
+    // The message must name the file the loader actually reads — telling the
+    // user to edit docs/docs.config.ts would send the value somewhere
+    // generate never looks.
+    expect(code).toBe(0);
+    expect(capture.stderr).toContain("leadtype.config.ts does not set baseUrl");
+    expect(capture.stderr).toContain("set baseUrl in leadtype.config.ts");
   });
 
   it("errors with exit 2 when no framework is detected", async () => {

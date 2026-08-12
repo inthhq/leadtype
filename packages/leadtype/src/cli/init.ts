@@ -1,9 +1,15 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { DOCS_CONFIG_FILENAMES } from "../config/inherit";
+import {
+  DOCS_CONFIG_FILENAMES,
+  LEADTYPE_CONFIG_FILENAMES,
+} from "../config/inherit";
 import { loadDocsConfigFromDir } from "../config/load";
-import { normalizeAuthoredBaseUrl } from "../config/normalize";
+import {
+  BASE_URL_DEFAULT_SOURCE,
+  normalizeAuthoredBaseUrl,
+} from "../config/normalize";
 import { runGenerateCommand } from "./generate";
 import {
   buildPlan,
@@ -155,19 +161,35 @@ export function parseInitArgs(argv: string[]): InitArgs {
 }
 
 /**
- * Whether the docs config `writeFiles` would keep declares a `baseUrl`.
- * Inspected with the same loader every other command uses — a regex over the
- * authored source would miss a spread or imported value. Best-effort by
- * design: `null` (no config found, or it failed to load) must not refuse the
- * run, because a config that cannot load fails loudly in the post-scaffold
- * generate and every later command — silently wrong URLs only come from a
- * config that loads *successfully* without `baseUrl`.
+ * The root `leadtype.config.*` filename that would win config discovery, or
+ * `null`. `generate` (via `loadLeadtypeConfig`) and the runtime read a root
+ * config in preference to any `docs/docs.config.*`, so while one exists,
+ * whatever init writes into `docs/docs.config.ts` is never read — with or
+ * without `--force`.
+ */
+function findRootConfigFilename(projectRoot: string): string | null {
+  return (
+    LEADTYPE_CONFIG_FILENAMES.find((filename) =>
+      existsSync(path.join(projectRoot, filename))
+    ) ?? null
+  );
+}
+
+/**
+ * Whether the config `generate` would read declares a `baseUrl`. Inspected
+ * with the same loader every other command uses — a regex over the authored
+ * source would miss a spread or imported value. Best-effort by design: `null`
+ * (no config found, or it failed to load) must stay silent, because a config
+ * that cannot load fails loudly in the post-scaffold generate and every later
+ * command — only a config that loads *successfully* without `baseUrl` says
+ * anything about where URLs will resolve.
  */
 async function existingConfigDeclaresBaseUrl(
-  docsDir: string
+  dir: string,
+  filenames: readonly string[]
 ): Promise<boolean | null> {
   try {
-    const loaded = await loadDocsConfigFromDir(docsDir, DOCS_CONFIG_FILENAMES);
+    const loaded = await loadDocsConfigFromDir(dir, filenames);
     return loaded === null ? null : loaded.config.baseUrl !== undefined;
   } catch {
     return null;
@@ -442,41 +464,70 @@ export async function runInitCommand(
   const summary = args.summary ?? DEFAULT_SUMMARY;
   const baseUrl = args.baseUrl ?? defaultBaseUrl(framework);
 
-  // `--base-url` has exactly one destination: docs/docs.config.ts. When that
-  // file already exists and `--force` is absent, `writeFiles` would skip it
-  // and the explicit flag would silently do nothing.
+  // `--base-url` has exactly one destination: docs/docs.config.ts. The flag
+  // is silently dropped when that file would be skipped (`writeFiles` keeps
+  // it without `--force`) — or, `--force` or not, when a root
+  // `leadtype.config.*` outranks it in config discovery, so the file the
+  // value lands in is never the one `generate` reads.
+  const rootConfigFilename = findRootConfigFilename(projectRoot);
+  const docsConfigExists = existsSync(
+    path.join(projectRoot, "docs", "docs.config.ts")
+  );
   let baseUrlConflict: string | undefined;
-  if (
-    args.baseUrl !== undefined &&
-    !args.force &&
-    existsSync(path.join(projectRoot, "docs", "docs.config.ts"))
-  ) {
-    baseUrlConflict =
-      "docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.";
+  if (args.baseUrl !== undefined) {
+    if (rootConfigFilename !== null) {
+      baseUrlConflict = `${rootConfigFilename} takes precedence over docs/docs.config.ts, so --base-url would be ignored — init writes baseUrl only into docs/docs.config.ts, which is never read while the root config exists. Set baseUrl in ${rootConfigFilename} instead.`;
+    } else if (!args.force && docsConfigExists) {
+      baseUrlConflict =
+        "docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.";
+    }
   }
 
-  // The rerun mirror of the conflict above: no --base-url, but the framework
-  // default is not the generic dev URL, and the existing config `writeFiles`
-  // would keep sets no baseUrl — so the default the docs promise (`:4321` for
-  // Astro, `:5173` for SvelteKit) would land nowhere and every absolute URL
-  // would resolve against http://localhost:3000.
-  if (
-    args.baseUrl === undefined &&
-    !args.force &&
-    baseUrl !== GENERIC_DEV_BASE_URL &&
-    existsSync(path.join(projectRoot, "docs", "docs.config.ts")) &&
-    (await existingConfigDeclaresBaseUrl(path.join(projectRoot, "docs"))) ===
-      false
-  ) {
-    baseUrlConflict = `docs/docs.config.ts already exists without baseUrl, so the ${framework} default would land nowhere — generated links would fall back to ${GENERIC_DEV_BASE_URL}. Add \`baseUrl: ${JSON.stringify(baseUrl)}\` to that config, or rerun with --force to overwrite it.`;
+  // Without --base-url, a kept config that omits `baseUrl` is not a mistake
+  // init may refuse: leaving the field unset is exactly how a site picks up
+  // its production URL from the deployment env vars `normalizeBaseUrl` falls
+  // back to at generate time — which init cannot observe. So when the
+  // framework's documented dev default (`:4321` for Astro, `:5173` for
+  // SvelteKit) has nowhere to land, the rerun proceeds and only notes the two
+  // resolutions. The winning config is judged, not blindly init's own
+  // scaffold target: a root `leadtype.config.*` outranks docs/docs.config.ts
+  // even when `--force` rewrites the latter.
+  let baseUrlNote: string | undefined;
+  if (args.baseUrl === undefined && baseUrl !== GENERIC_DEV_BASE_URL) {
+    let winning: {
+      dir: string;
+      filenames: readonly string[];
+      label: string;
+    } | null = null;
+    if (rootConfigFilename !== null) {
+      winning = {
+        dir: projectRoot,
+        filenames: LEADTYPE_CONFIG_FILENAMES,
+        label: rootConfigFilename,
+      };
+    } else if (!args.force && docsConfigExists) {
+      winning = {
+        dir: path.join(projectRoot, "docs"),
+        filenames: DOCS_CONFIG_FILENAMES,
+        label: "docs/docs.config.ts",
+      };
+    }
+    if (
+      winning !== null &&
+      (await existingConfigDeclaresBaseUrl(winning.dir, winning.filenames)) ===
+        false
+    ) {
+      baseUrlNote = `${winning.label} does not set baseUrl, so generated URLs resolve from ${BASE_URL_DEFAULT_SOURCE} at generate time — not the ${framework} dev default ${baseUrl}. That is the right setup when the deployment env supplies the URL; for a fixed URL, set baseUrl in ${winning.label}. \`leadtype doctor\` reports what resolves.`;
+    }
   }
 
-  // In write mode, refuse up front — before any file is written — instead of
-  // silently dropping the flag or generating wrong URLs. `--json` and
-  // `--dry-run` write nothing, so the refusal's rationale does not apply:
-  // they keep their documented plan output and carry the conflict inside it
-  // (a `warnings` field in the JSON plan, a warning line after the dry-run
-  // plan) so the preview is honest about what a real run would refuse.
+  // In write mode, refuse the conflict up front — before any file is written —
+  // instead of silently dropping the flag. `--json` and `--dry-run` write
+  // nothing, so the refusal's rationale does not apply: they keep their
+  // documented plan output and carry the conflict inside it (a `warnings`
+  // field in the JSON plan, a warning line after the dry-run plan) so the
+  // preview is honest about what a real run would refuse. The note is
+  // informational in every mode.
   if (baseUrlConflict !== undefined && !(args.json || dryRun)) {
     io.stderr.write(`leadtype init: ${baseUrlConflict}\n`);
     return 2;
@@ -484,6 +535,9 @@ export async function runInitCommand(
 
   const plan = buildPlan(framework, { webmcp: args.webmcp });
   const allFiles = [...sharedFiles(name, summary, baseUrl), ...plan.files];
+  const baseUrlWarnings = [baseUrlConflict, baseUrlNote].filter(
+    (warning): warning is string => warning !== undefined
+  );
 
   if (args.json) {
     const agentsPointer = await planAgentsPointer(projectRoot);
@@ -502,9 +556,9 @@ export async function runInitCommand(
           dryRun,
           // Additive, and absent when there is nothing to say, so existing
           // consumers of the plan shape are untouched.
-          ...(baseUrlConflict === undefined
+          ...(baseUrlWarnings.length === 0
             ? {}
-            : { warnings: [baseUrlConflict] }),
+            : { warnings: baseUrlWarnings }),
         },
         null,
         2
@@ -548,6 +602,11 @@ export async function runInitCommand(
     io.stderr.write(
       `leadtype init: warning: ${baseUrlConflict} A run without --dry-run refuses with exit 2.\n`
     );
+  }
+  // Informational in write mode and --dry-run alike (--json carried it in
+  // `warnings`): the run proceeds either way.
+  if (baseUrlNote !== undefined) {
+    io.stderr.write(`leadtype init: note: ${baseUrlNote}\n`);
   }
 
   let ranGenerate = false;
