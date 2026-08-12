@@ -284,6 +284,9 @@ export default defineLeadtypeConfig({
       },
     }),
   },
+  // `<AutoTypeTable path="./packages/…">` paths in c15t's MDX are relative to
+  // the repository root — the clone, not this app.
+  typeTableBasePath: "content-fixtures/c15t",
 });
 ```
 

@@ -117,7 +117,7 @@ export const source = await createDocsProject();
 
 Zero arguments is the whole wiring — this is the exact `lib/source.ts` that `init` scaffolds. [`createDocsProject()`](/docs/reference/project) discovers `docs/docs.config.ts` the same way the CLI does and resolves the same project model `leadtype generate` reads — content root, navigation, `baseUrl`, all owned by the config from step 1, none of it restated here. One description of the project means the rendered site and the generated artifacts cannot disagree.
 
-Loading a TypeScript config at runtime needs `jiti` (an optional peer — `init` adds it): `bun add jiti`.
+Loading a TypeScript config at runtime needs `jiti` (an optional peer — `init` reminds you to install it): `bun add jiti`.
 
 The project is framework-neutral and a superset of the `DocsSource` contract. You can now call:
 

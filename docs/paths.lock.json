@@ -79,7 +79,7 @@
     },
     {
       "path": "/docs/pipeline/configure-sources",
-      "hash": "1ef8ac4e4c54b478"
+      "hash": "c41d5b2117f9686e"
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
@@ -95,7 +95,7 @@
     },
     {
       "path": "/docs/pipeline/localize-docs",
-      "hash": "6c235f601c3b2806"
+      "hash": "c57d8df5f2039401"
     },
     {
       "path": "/docs/pipeline/redirects",
@@ -115,7 +115,7 @@
     },
     {
       "path": "/docs/quickstart",
-      "hash": "c42efd09ef57a348"
+      "hash": "9353a80b0075a93f"
     },
     {
       "path": "/docs/reference/cli",
@@ -167,7 +167,7 @@
     },
     {
       "path": "/docs/reference/project",
-      "hash": "830fc33a1314e16b"
+      "hash": "973d5ac7c0c95bae"
     },
     {
       "path": "/docs/reference/search",

@@ -21,6 +21,7 @@ import { defineDocsConfig } from "leadtype";
 // ---cut---
 export default defineDocsConfig({
   product: { name: "My library", tagline: "..." },
+  baseUrl: "https://example.com",
   navigation: ["index"],
   i18n: {
     defaultLocale: "en",
@@ -61,7 +62,7 @@ named for its locale code:
 One `leadtype generate` run produces every locale:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://example.com
+npx leadtype generate --src . --out public
 ```
 
 ```txt

@@ -23,7 +23,7 @@ export const source = await createDocsProject();
 
 With no arguments, the project discovers its config from the current directory and derives everything else — content root, navigation, `baseUrl`, collections, mounts. Nothing your config already says is restated in app code.
 
-Loading a TypeScript config at runtime goes through `jiti`, an optional peer dependency: `bun add jiti`. `init` adds it for you.
+Loading a TypeScript config at runtime goes through `jiti`, an optional peer dependency — `init` reminds you to install it, but does not install it for you: `bun add jiti`.
 
 ## Discovery
 
@@ -98,7 +98,7 @@ The runtime reads the sync cache and never clones.
 
 ## `resolveProject()`
 
-`resolveProject()` is the one pipeline behind `generate`, `doctor`, `nav`, and `createDocsProject`: discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. [The config model](/docs/concepts/config-model#one-pipeline-resolveproject) explains why it exists; this is its API.
+`resolveProject()` is the resolution pipeline behind `doctor`, `nav`, and `createDocsProject`: discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. `generate` runs the same resolution steps, and the sync-consolidation work routes it through this same shared resolver — either way, don't write code that relies on the two diverging. [The config model](/docs/concepts/config-model#one-pipeline-resolveproject) explains why it exists; this is its API.
 
 ```ts
 import { resolveProject } from "leadtype";
