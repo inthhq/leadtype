@@ -9,6 +9,7 @@ import {
   type LocaleCode,
   type LocalizedDocsMetadata,
   logicalPathFromLocaleRelativePath,
+  type NormalizedDocsI18nConfig,
   normalizeDocsI18nConfig,
   outputRelativePathForLocale,
   toLocalizedDocsUrlPath,
@@ -2010,10 +2011,36 @@ function isNavIncludeEntry(
   return typeof entry === "object" && entry !== null;
 }
 
+/**
+ * How nav resolution treats an entry that matches no page in the doc set.
+ *
+ * `"error"` is the authoring contract: a literal ref or pin that matches
+ * nothing is a mistake and fails resolution. `"skip"` exists for the
+ * translated-only artifact views (a non-default locale's llms.txt, llms-full,
+ * readability manifest, AGENTS.md all read with `includeFallback: false`):
+ * there an entry can miss simply because the page has no translation yet, and
+ * the strict per-locale pass in `resolveDocsNavigation` — which resolves over
+ * the fallback-complete set — has already validated the entry itself.
+ */
+type NavMissingPageBehavior = "error" | "skip";
+
+/**
+ * The path a nav entry addresses for a page: the locale-stripped logical path
+ * when locale selection ran, the output relativePath otherwise. Nav entries
+ * are authored once against the default layout (`index`, `guides/setup`),
+ * while a non-default locale's `relativePath` is the locale-prefixed output
+ * path (`zh/index`) — matching on that made every literal entry miss every
+ * non-default locale. For the default locale and non-i18n projects the two
+ * paths are identical, so matching on the logical path changes nothing there.
+ */
+function navDocPath(doc: SourceDoc): string {
+  return doc.logicalPath ?? doc.relativePath;
+}
+
 function createDocsByRelativePath(docs: SourceDoc[]): Map<string, SourceDoc> {
   const byPath = new Map<string, SourceDoc>();
   for (const doc of docs) {
-    const key = normalizeNavPath(doc.relativePath);
+    const key = normalizeNavPath(navDocPath(doc));
     byPath.set(key, doc);
     if (key === "") {
       byPath.set("index", doc);
@@ -2074,13 +2101,13 @@ function compareNavDocs(
         return compared;
       }
     } else {
-      const compared = left.relativePath.localeCompare(right.relativePath);
+      const compared = navDocPath(left).localeCompare(navDocPath(right));
       if (compared !== 0) {
         return compared;
       }
     }
   }
-  return left.relativePath.localeCompare(right.relativePath);
+  return navDocPath(left).localeCompare(navDocPath(right));
 }
 
 function normalizeExcludePatterns(
@@ -2134,14 +2161,15 @@ function pinnedUrlPaths(
 function applyNavPins(
   group: ResolvedGroup,
   entry: DocsNavIncludeEntry,
-  matches: SourceDoc[]
+  matches: SourceDoc[],
+  missingPages: NavMissingPageBehavior
 ): SourceDoc[] | undefined {
   const pins = normalizeNavPins(entry.pin);
   if (pins.length === 0) {
     return;
   }
   const byRelativePath = new Map(
-    matches.map((doc) => [normalizeNavPath(doc.relativePath), doc])
+    matches.map((doc) => [normalizeNavPath(navDocPath(doc)), doc])
   );
   const leading: SourceDoc[] = [];
   const pinnedPaths = new Set<string>();
@@ -2149,6 +2177,9 @@ function applyNavPins(
     const ref = joinNavPath(group.base, pin);
     const doc = byRelativePath.get(ref);
     if (!doc) {
+      if (missingPages === "skip") {
+        continue;
+      }
       const scope = group.segmentPath.join("/") || "root";
       // A pin that matches nothing is doing nothing — usually a rename the
       // config missed. Failing names it; warning would let it rot.
@@ -2165,7 +2196,7 @@ function applyNavPins(
   return [
     ...leading,
     ...matches.filter(
-      (doc) => !pinnedPaths.has(normalizeNavPath(doc.relativePath))
+      (doc) => !pinnedPaths.has(normalizeNavPath(navDocPath(doc)))
     ),
   ];
 }
@@ -2180,12 +2211,16 @@ function resolveNavEntryPages(
   group: ResolvedGroup,
   entry: DocsNavPageEntry,
   docs: SourceDoc[],
-  docsByRelativePath: Map<string, SourceDoc>
+  docsByRelativePath: Map<string, SourceDoc>,
+  missingPages: NavMissingPageBehavior
 ): SourceDoc[] {
   if (!isNavIncludeEntry(entry)) {
     const ref = joinNavPath(group.base, entry);
     const doc = docsByRelativePath.get(ref);
     if (!doc) {
+      if (missingPages === "skip") {
+        return [];
+      }
       const scope = group.segmentPath.join("/") || "root";
       throw new Error(
         `Nav page "${entry}" under "${scope}" did not match a documentation page.`
@@ -2200,7 +2235,7 @@ function resolveNavEntryPages(
   const sort = entry.sort ?? NAV_INCLUDE_SORT_DEFAULT;
   const matches = docs
     .filter((doc) => {
-      const relativePath = normalizeNavPath(doc.relativePath);
+      const relativePath = normalizeNavPath(navDocPath(doc));
       return (
         includePattern.test(relativePath) &&
         !excludePatterns.some((pattern) => pattern.test(relativePath))
@@ -2208,12 +2243,15 @@ function resolveNavEntryPages(
     })
     .sort((left, right) => compareNavDocs(left, right, sort));
 
-  const pinned = applyNavPins(group, entry, matches);
+  const pinned = applyNavPins(group, entry, matches, missingPages);
   if (pinned) {
     return pinned;
   }
 
   if (matches.length === 0) {
+    if (missingPages === "skip") {
+      return matches;
+    }
     const scope = group.segmentPath.join("/") || "root";
     const message = `Nav include "${entry.include}" under "${scope}" matched no documentation pages.`;
     if (entry.required) {
@@ -2580,6 +2618,23 @@ function flattenNavigationPagePaths(navigation: DocsNavigation): string[] {
   return paths;
 }
 
+/**
+ * The missing-page behavior for a translated-only artifact view: non-default
+ * locales read with `includeFallback: false`, so a curated entry may miss
+ * only because its page has no translation — skip it there. The default
+ * locale (and non-i18n projects) read the complete set, so a miss is a real
+ * authoring error and keeps failing.
+ */
+function navMissingPageBehavior(
+  i18n: NormalizedDocsI18nConfig | undefined,
+  locale: string | undefined
+): NavMissingPageBehavior {
+  // An unset locale reads as the default locale, matching readSourceDocs.
+  return i18n && locale !== undefined && locale !== i18n.defaultLocale
+    ? "skip"
+    : "error";
+}
+
 function orderMarkdownDocsByNavigation(
   docs: MarkdownDoc[],
   navigation: DocsNavigation
@@ -2681,7 +2736,8 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
             new Map(),
             locale,
             [],
-            resolvedNav?.rootPageEntries ?? []
+            resolvedNav?.rootPageEntries ?? [],
+            navMissingPageBehavior(i18n, locale)
           ),
           config.mounts
         )
@@ -2748,7 +2804,8 @@ export async function generateLLMFullContextFiles(
       resolvedNav.groups,
       "nav",
       undefined,
-      resolvedNav.rootPageEntries
+      resolvedNav.rootPageEntries,
+      navMissingPageBehavior(i18n, locale)
     );
     orderedMarkdownDocs = orderMarkdownDocsByNavigation(
       markdownDocs,
@@ -2848,7 +2905,8 @@ function buildNavigationFromMarkdownDocs(
   resolved: ResolvedGroup[],
   mode: "groups" | "nav" = "groups",
   groupsForValidation?: DocsGroup[],
-  rootPageEntries: DocsNavPageEntry[] = []
+  rootPageEntries: DocsNavPageEntry[] = [],
+  missingPages: NavMissingPageBehavior = "error"
 ): DocsNavigation {
   const tocByUrlPath = new Map(
     docs.map((doc) => [
@@ -2863,7 +2921,8 @@ function buildNavigationFromMarkdownDocs(
       tocByUrlPath,
       docs[0]?.locale,
       findUnknownGroups(docs, groupsForValidation),
-      rootPageEntries
+      rootPageEntries,
+      missingPages
     );
   }
 
@@ -2873,10 +2932,9 @@ function buildNavigationFromMarkdownDocs(
       buildNavigationGroup(group, membership, tocByUrlPath)
     ),
     ungrouped: membership.ungrouped.map((page) => pageView(page, tocByUrlPath)),
-    unknown: membership.unknown.map(({ page, slug }) => ({
-      urlPath: page.urlPath,
-      slug,
-    })),
+    unknown: membership.unknown.map(({ page, slug }) =>
+      unknownGroupView(page, slug)
+    ),
     locale: docs[0]?.locale,
   };
 }
@@ -2929,7 +2987,8 @@ export async function generateAgentReadabilityArtifacts(
     resolved,
     hasNav ? "nav" : "groups",
     config.groups,
-    resolvedNav?.rootPageEntries ?? []
+    resolvedNav?.rootPageEntries ?? [],
+    navMissingPageBehavior(i18n, locale)
   );
   // Navigation order is the authored reading order; docs arrive sorted by
   // urlPath, so pages outside the navigation keep that deterministic tail.
@@ -3561,7 +3620,11 @@ export async function generateAgentsMd(
       new Map(),
       config.locale,
       [],
-      resolvedNav?.rootPageEntries ?? []
+      resolvedNav?.rootPageEntries ?? [],
+      navMissingPageBehavior(
+        normalizeDocsI18nConfig(config.i18n),
+        config.locale
+      )
     );
     for (const group of navigation.groups) {
       lines.push(
@@ -3680,12 +3743,19 @@ function collectNavEntryPages(
   group: ResolvedGroup,
   docs: SourceDoc[],
   docsByRelativePath: Map<string, SourceDoc>,
-  referencedUrlPaths: Set<string>
+  referencedUrlPaths: Set<string>,
+  missingPages: NavMissingPageBehavior
 ): SourceDoc[] {
   const directPages: SourceDoc[] = [];
   const seenUrlPaths = new Set<string>();
   for (const entry of group.pageEntries) {
-    const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
+    const pages = resolveNavEntryPages(
+      group,
+      entry,
+      docs,
+      docsByRelativePath,
+      missingPages
+    );
     for (const urlPath of pinnedUrlPaths(group, entry, docsByRelativePath)) {
       if (seenUrlPaths.has(urlPath)) {
         const scope = group.segmentPath.join("/") || "root";
@@ -3711,13 +3781,15 @@ function buildNavigationGroupFromNav(
   docs: SourceDoc[],
   docsByRelativePath: Map<string, SourceDoc>,
   tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
-  referencedUrlPaths: Set<string>
+  referencedUrlPaths: Set<string>,
+  missingPages: NavMissingPageBehavior
 ): DocsNavigationGroup {
   const directPages = collectNavEntryPages(
     group,
     docs,
     docsByRelativePath,
-    referencedUrlPaths
+    referencedUrlPaths,
+    missingPages
   );
 
   return {
@@ -3733,7 +3805,8 @@ function buildNavigationGroupFromNav(
         docs,
         docsByRelativePath,
         tocByUrlPath,
-        referencedUrlPaths
+        referencedUrlPaths,
+        missingPages
       )
     ),
   };
@@ -3745,7 +3818,8 @@ function buildNavigationFromNav(
   tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
   locale?: string,
   unknown: DocsNavigation["unknown"] = [],
-  rootPageEntries: DocsNavPageEntry[] = []
+  rootPageEntries: DocsNavPageEntry[] = [],
+  missingPages: NavMissingPageBehavior = "error"
 ): DocsNavigation {
   const referencedUrlPaths = new Set<string>();
   const docsByRelativePath = createDocsByRelativePath(docs);
@@ -3765,7 +3839,8 @@ function buildNavigationFromNav(
       rootGroup,
       docs,
       docsByRelativePath,
-      referencedUrlPaths
+      referencedUrlPaths,
+      missingPages
     );
   }
   const groups = resolved.map((group) =>
@@ -3774,7 +3849,8 @@ function buildNavigationFromNav(
       docs,
       docsByRelativePath,
       tocByUrlPath,
-      referencedUrlPaths
+      referencedUrlPaths,
+      missingPages
     )
   );
   return {
@@ -3797,10 +3873,26 @@ function findUnknownGroups(
   }
   const resolved = resolveGroups(groups);
   const membership = buildGroupMembership(docs, resolved);
-  return membership.unknown.map(({ page, slug }) => ({
+  return membership.unknown.map(({ page, slug }) =>
+    unknownGroupView(page, slug)
+  );
+}
+
+/**
+ * An unknown-group manifest entry. `isFallback` rides along (when locale
+ * selection ran) so per-locale validators can tell a locale's own defective
+ * page from the default locale's file re-selected as a fallback — the latter
+ * is the same source file reporting again under every locale.
+ */
+function unknownGroupView(
+  page: SourceDoc,
+  slug: string
+): DocsNavigation["unknown"][number] {
+  return {
     urlPath: page.urlPath,
     slug,
-  }));
+    ...(page.isFallback === undefined ? {} : { isFallback: page.isFallback }),
+  };
 }
 
 /**
@@ -3900,10 +3992,9 @@ export async function resolveDocsNavigation(
       buildNavigationGroup(group, membership, tocByUrlPath)
     ),
     ungrouped: membership.ungrouped.map((page) => pageView(page, tocByUrlPath)),
-    unknown: membership.unknown.map(({ page, slug }) => ({
-      urlPath: page.urlPath,
-      slug,
-    })),
+    unknown: membership.unknown.map(({ page, slug }) =>
+      unknownGroupView(page, slug)
+    ),
     locale:
       config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
   };

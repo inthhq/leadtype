@@ -1016,6 +1016,78 @@ export default {
     ]);
   });
 
+  it("generates i18n projects whose navigation uses literal entries", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Localized Product",
+    tagline: "Localized product summary.",
+  },
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "zh"],
+  },
+  navigation: [
+    "index",
+    { title: "Guides", base: "guides", pages: [{ include: "*", pin: "setup" }] },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "index.mdx",
+      'title: "Home"\ndescription: "English home."',
+      "English home."
+    );
+    await writeMdxPage(
+      srcDir,
+      "guides/setup.mdx",
+      'title: "Setup"\ndescription: "English setup."',
+      "English setup."
+    );
+    await writeMdxPage(
+      srcDir,
+      "zh/index.mdx",
+      'title: "首页"\ndescription: "中文首页。"',
+      "中文首页。"
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // Literal nav entries name locale-stripped logical paths, so the per-
+    // locale validation pass resolves "index" against "zh/index.mdx" and the
+    // untranslated "guides/setup" against the default locale's page (the
+    // `fallback: "default"` re-selection). Matching on the locale-prefixed
+    // output path instead made every `navigation` + `i18n` project exit 1.
+    expect(code).toBe(0);
+
+    const defaultSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(defaultSummary).toContain("](/docs/index.md)");
+    expect(defaultSummary).toContain("](/docs/guides/setup.md)");
+
+    // The zh docs map lists real translations only — the untranslated guide
+    // is served by fallback, not advertised as Chinese content — and the pin
+    // it names simply has nothing to reorder there.
+    const zhSummary = await readFile(
+      path.join(outDir, "docs", "zh", "llms.txt"),
+      "utf8"
+    );
+    expect(zhSummary).toContain("首页");
+    expect(zhSummary).not.toContain("English setup");
+  });
+
   it("lets --name and --summary override docs config product fields", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();

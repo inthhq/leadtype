@@ -401,7 +401,7 @@ describe("drift", () => {
 });
 
 describe("i18n projects", () => {
-  it("resolves the default locale but reports the locale a literal entry cannot match", async () => {
+  it("resolves literal navigation entries for every locale", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default {
   product: { name: "Acme", tagline: "Acme docs." },
@@ -412,21 +412,22 @@ describe("i18n projects", () => {
       "docs/zh/index.mdx": page("Home (zh)"),
     });
 
-    const capture = createCapture();
-    const code = await runNavCommand(["--src", dir, "--json"], capture.io);
+    const { code, report } = await runJson(dir);
 
-    // With i18n forwarded, the default locale resolves — "index" matches
-    // "en/index.mdx" — which is why the failure below is scoped to "zh", not
-    // the crash every i18n project used to die on. But `generate` resolves
-    // the tree once per configured locale, and a non-default locale's pages
-    // resolve to locale-prefixed paths ("zh/index") no literal entry ever
-    // matches, so the build exits 1 on this exact project. Resolving only
-    // the default locale here reported ok for a project that cannot build.
-    expect(code).toBe(1);
-    expect(capture.stderr).toContain(
-      'navigation did not resolve for locale "zh"'
-    );
-    expect(capture.stderr).not.toContain('for locale "en"');
+    // Nav entries name locale-stripped logical paths, so "index" matches the
+    // default locale's "en/index.mdx" and the translation's "zh/index.mdx"
+    // alike. Matching a non-default locale's pages by their locale-prefixed
+    // output path ("zh/index") instead made every literal entry miss and
+    // failed the zh resolution — reporting exit 1 for a project whose
+    // navigation is fully translated.
+    expect(code).toBe(0);
+    expect(report.ok).toBe(true);
+    expect(report.pageCount).toBe(1);
+    expect(report.drift).toEqual({
+      unplaced: [],
+      duplicate: [],
+      unknownGroup: [],
+    });
   });
 
   it("flags a non-default locale's unknown group when the default locale is clean", async () => {

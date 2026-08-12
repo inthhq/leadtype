@@ -1890,7 +1890,13 @@ async function executeGenerate(
         i18n: metadata.i18n,
         locale,
       });
-      const firstUnknownGroup = navigation.unknown[0];
+      // Fallback entries are the default locale's files re-selected under
+      // this locale (`fallback: "default"`), so their finding belongs to the
+      // default locale's pass — reporting it here would name a locale-prefixed
+      // copy of a file that has exactly one edit site.
+      const firstUnknownGroup = navigation.unknown.find(
+        (entry) => entry.isFallback !== true
+      );
       if (firstUnknownGroup) {
         throw new Error(
           `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`

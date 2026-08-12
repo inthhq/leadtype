@@ -498,11 +498,40 @@ describe("findings", () => {
 
     expect(code).toBe(1);
     expect(report.ok).toBe(false);
-    const finding = report.issues.find(
+    const findings = report.issues.filter(
       (entry) => entry.id === "nav.unknown-group"
     );
-    expect(finding?.level).toBe("error");
-    expect(finding?.message).toBe('/docs/zh declares unknown group "mystery"');
+    expect(findings.map((entry) => entry.message)).toEqual([
+      '/docs/zh declares unknown group "mystery"',
+    ]);
+    expect(findings[0]?.level).toBe("error");
+  });
+
+  it("reports a shared default-locale file's unknown group once, not per locale", async () => {
+    const dir = await fixture({
+      "docs/docs.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  i18n: { defaultLocale: "en", locales: ["en", "zh", "fr"] },
+  groups: [{ slug: "guides", title: "Guides" }],
+};`,
+      "docs/index.mdx": `---\ntitle: "Home"\ngroup: mystery\n---\n\nBody.\n`,
+    });
+
+    const { code, report } = await runJson(dir);
+
+    // `fallback: "default"` re-selects every default-locale page under each
+    // non-default locale, so this one untranslated file used to surface once
+    // per configured locale — three findings for one edit site, where
+    // `generate` exits 1 with exactly one. Fallback re-selections dedupe to
+    // the default locale's finding; only a locale's own pages (previous test)
+    // report under their locale.
+    expect(code).toBe(1);
+    const findings = report.issues.filter(
+      (entry) => entry.id === "nav.unknown-group"
+    );
+    expect(findings.map((entry) => entry.message)).toEqual([
+      '/docs declares unknown group "mystery"',
+    ]);
   });
 
   it("keeps excluded pages out of the routed page count", async () => {

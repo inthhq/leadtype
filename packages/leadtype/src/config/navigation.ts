@@ -274,7 +274,12 @@ export async function resolveCollectionNavigation(
   // locales contribute findings only — the manifest, counts, and placement
   // drift stay the default locale's, which is the tree the commands present;
   // a localized finding already names its locale through the urlPath
-  // (`/docs/zh/…`) or the diagnostic message.
+  // (`/docs/zh/…`) or the diagnostic message. Fallback entries are dropped:
+  // `fallback: "default"` re-selects every default-locale page under each
+  // non-default locale, so a single shared source file with a bad `group:`
+  // surfaced once per configured locale here where `generate` reports it
+  // once — N findings for one edit site. The default-locale manifest already
+  // carries that file's finding; only a locale's own pages report per-locale.
   const localeUnknown: DocsNavigation["unknown"] = [];
   const i18n = normalizeDocsI18nConfig(project.config?.i18n);
   const extraLocales =
@@ -287,7 +292,9 @@ export async function resolveCollectionNavigation(
         ...resolveConfig,
         locale,
       });
-      localeUnknown.push(...localized.unknown);
+      localeUnknown.push(
+        ...localized.unknown.filter((entry) => entry.isFallback !== true)
+      );
     } catch (error) {
       diagnostics.push({
         id: "nav.unresolvable",
@@ -356,7 +363,11 @@ export async function resolveCollectionNavigation(
     drift: {
       unplaced,
       duplicate: findDuplicates(manifest),
-      unknownGroup: [...manifest.unknown, ...localeUnknown],
+      // Report shape stays `{ urlPath, slug }` — `isFallback` is resolver
+      // metadata for the dedupe above, not a finding field.
+      unknownGroup: [...manifest.unknown, ...localeUnknown].map(
+        ({ urlPath, slug }) => ({ urlPath, slug })
+      ),
     },
     diagnostics,
   };
