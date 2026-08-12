@@ -44,8 +44,8 @@ Every field is optional.
 | --- | --- | --- |
 | `config` | `DocsConfig` | Use this config instead of discovering one — for an app that already imports its own config module. |
 | `cwd` | `string` | Where to discover the config from, when `config` is omitted. Defaults to the working directory. |
-| `configPath` | `string` | Path the supplied `config` came from. Preferred over `configDir`: it fixes both where relative paths resolve and where the content root is. |
-| `configDir` | `string` | Directory relative paths resolve against. Defaults to the directory of `configPath`, else the working directory. |
+| `configPath` | `string` | Path the supplied `config` came from. On its own it fixes both where the config's relative paths resolve and where the content root is, using the same basename rule as discovery. |
+| `configDir` | `string` | Project root when the config's file path is unknown. Pass `configPath` *or* `configDir`, not both: when both are set, `configDir` wins as the project root — the default content root becomes `<configDir>/docs` — while relative paths still resolve against `configPath`'s directory. |
 | `contentDir` | `string` | Content root for a single-source project. Defaults to the directory holding a `docs.config.*`, or `<configDir>/docs` otherwise. |
 | `baseUrl` | `string` | Overrides the config's site-owned `baseUrl`. Prefer setting `baseUrl` in the config — pass this only when one config serves several deployments. |
 | `locale`, `i18n` | `LocaleCode`, `DocsI18nConfig` | Locale selection and i18n config; `i18n` falls back to the config's. |
@@ -63,7 +63,17 @@ Explicit wins, in the same order `generate` resolves `--base-url`:
 
 ## What it returns
 
-A `DocsProject` — a **superset of the `DocsSource` contract**, so every framework adapter accepts it unchanged: `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working with no parallel code path.
+A `DocsProject` — a **superset of the `DocsSource` contract**, so every framework adapter accepts it. For a single-collection project, `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working unchanged, with no parallel code path.
+
+For a project with multiple collections under distinct route prefixes, derive static params from `urlPath` instead of relying on `createGenerateStaticParams`: `listPages()` keeps each page's collection-local `slug` — a changelog page at `/changelog/1-0` yields `['1-0']`, and two collection index pages yield duplicate params — so a catch-all route fed by local slugs can omit or misroute collections. One line covers it:
+
+```ts
+// @noErrors - illustrative; `project` comes from createDocsProject above.
+export const generateStaticParams = async () =>
+  (await project.listPages()).map((page) => ({
+    slug: page.urlPath.split("/").filter(Boolean),
+  }));
+```
 
 On top of the `DocsSource` methods (`listPages`, `loadPage`, `getNavigation`, `buildSearchIndex`, `resolveInclude`, `cleanup`), the project adds the resolved graph:
 
@@ -98,7 +108,7 @@ The runtime reads the sync cache and never clones.
 
 ## `resolveProject()`
 
-`resolveProject()` is the resolution pipeline behind `doctor`, `nav`, and `createDocsProject`: discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. `generate` runs the same resolution steps, and the sync-consolidation work routes it through this same shared resolver — either way, don't write code that relies on the two diverging. [The config model](/docs/concepts/config-model#one-pipeline-resolveproject) explains why it exists; this is its API.
+`resolveProject()` is the resolution pipeline behind `doctor`, `nav`, and `createDocsProject`: discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. `generate` performs the same resolution steps — don't write code that relies on the two diverging. [The config model](/docs/concepts/config-model#one-pipeline-resolveproject) explains why it exists; this is its API.
 
 ```ts
 import { resolveProject } from "leadtype";
