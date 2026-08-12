@@ -186,7 +186,8 @@ Keep this ownership split clear:
   source-specific flatteners, and same-tree mounts such as
   `docs/changelog` -> `/changelog`.
 - Docs UI repo: source `repository`/`ref`, product identity as rendered by the
-  site, organization, agent policy, app shell, output paths, and deployment.
+  site, the site's `baseUrl`, organization, agent policy, app shell, output
+  paths, and deployment.
 
 ```ts title="leadtype.config.ts"
 import { defineCollection, defineLeadtypeConfig } from "leadtype";
@@ -202,6 +203,9 @@ export default defineLeadtypeConfig({
     name: "Acme",
     tagline: "Docs for Acme SDKs and platform APIs.",
   },
+  // Site-owned, never inherited from a source repo. Without it, generation
+  // falls back to deployment env vars, then localhost.
+  baseUrl: "https://acme.dev",
   collections: {
     platform: defineCollection({
       dir: "./docs",

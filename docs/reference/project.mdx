@@ -65,15 +65,30 @@ Explicit wins, in the same order `generate` resolves `--base-url`:
 
 A `DocsProject` — a **superset of the `DocsSource` contract**, so every framework adapter accepts it. For a single-collection project, `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working unchanged, with no parallel code path.
 
-For a project with multiple collections under distinct route prefixes, derive static params from `urlPath` instead of relying on `createGenerateStaticParams`: `listPages()` keeps each page's collection-local `slug` — a changelog page at `/changelog/1-0` yields `['1-0']`, and two collection index pages yield duplicate params — so a catch-all route fed by local slugs can omit or misroute collections. One line covers it:
+For a project with multiple collections under distinct route prefixes, no first-party static-params helper can be handed the whole project: Next's `createGenerateStaticParams`, Astro's `createGetStaticPaths`, Nuxt's `createPrerenderRoutes`, SvelteKit's `createEntries`, and TanStack Start's `createStaticParams` all derive params from each page's collection-local `slug`, which drops the `routePrefix` — a changelog page at `/changelog/1-0` yields `['1-0']`, and two collection index pages yield duplicate params — so a single catch-all fed by local slugs omits or misroutes collections. Two layouts work:
+
+**One route per collection.** Mount a catch-all at each collection's `routePrefix` and hand it that collection's own source. A collection source's slugs are local by construction — `['1-0']` under the `/changelog` route renders `/changelog/1-0` — so the stock helper keeps working in every adapter, with no custom code:
 
 ```ts
-// @noErrors - illustrative; `project` comes from createDocsProject above.
+// @noErrors - illustrative; app/changelog/[[...slug]]/page.tsx,
+// mounted at the collection's routePrefix.
+const changelog = project.getSource("changelog");
+export const generateStaticParams = createGenerateStaticParams({
+  source: changelog,
+});
+```
+
+**One merged catch-all at the site root.** Derive params from `urlPath`, which already carries each collection's prefix:
+
+```ts
+// @noErrors - illustrative; app/[[...slug]]/page.tsx at the site root.
 export const generateStaticParams = async () =>
   (await project.listPages()).map((page) => ({
     slug: page.urlPath.split("/").filter(Boolean),
   }));
 ```
+
+These params include the route prefix (`['changelog', '1-0']`), so the snippet only lines up with a catch-all at the site root. Inside a prefixed route — such as the scaffolded `app/docs/[[...slug]]/page.tsx` — the same params would render `/docs/changelog/1-0`, the misrouting described above. A site-root optional catch-all also collides with a static `app/page.tsx`; to keep a hand-built homepage, use a required `[...slug]` segment or the per-collection layout.
 
 On top of the `DocsSource` methods (`listPages`, `loadPage`, `getNavigation`, `buildSearchIndex`, `resolveInclude`, `cleanup`), the project adds the resolved graph:
 
@@ -85,6 +100,8 @@ project.getSource("changelog"); // one collection's DocsSource — throws on an 
 ```
 
 `listPages()` returns every collection's pages tagged with their `collection` key, and fails loudly when two collections resolve the same URL path — give them distinct route prefixes. `loadPage()` accepts either a full route path (`changelog/1-0`) or a collection-local slug (`1-0`); a local slug that exists in more than one collection is an error naming both, never a silent first-wins pick.
+
+`resolveInclude` is the exception to the merged view: the project-level method is bound to the primary (first-declared) collection and resolves specifiers against that collection's content root only. For a partial that lives in another collection, resolve through that collection's own source: `project.getSource("changelog").resolveInclude(...)`.
 
 ## Diagnostics become throws
 

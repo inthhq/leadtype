@@ -79,7 +79,7 @@
     },
     {
       "path": "/docs/pipeline/configure-sources",
-      "hash": "c41d5b2117f9686e"
+      "hash": "daf1a123224f395e"
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
@@ -107,7 +107,7 @@
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
-      "hash": "7ddf3c176d830ccf"
+      "hash": "8fc9a5658080902e"
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
@@ -167,7 +167,7 @@
     },
     {
       "path": "/docs/reference/project",
-      "hash": "2a11470597c1af74"
+      "hash": "0a8abb95220499ea"
     },
     {
       "path": "/docs/reference/search",
