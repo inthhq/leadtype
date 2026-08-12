@@ -113,8 +113,13 @@ export function normalizeAuthoredBaseUrl(
   try {
     parsed = new URL(normalized);
   } catch {
+    // A value the parser rejects can still carry userinfo — an out-of-range
+    // port (`https://user:pass@host:99999`) throws before the credentials
+    // check below ever runs — so redact anything userinfo-shaped before
+    // echoing; the secret must not land in stderr/CI logs.
+    const redacted = normalized.replace(/\/\/[^/@\s]*@/, "//<redacted>@");
     throw new Error(
-      `${subject} "${baseUrl}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
+      `${subject} "${redacted}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
     );
   }
   if (parsed.username !== "" || parsed.password !== "") {
@@ -123,8 +128,8 @@ export function normalizeAuthoredBaseUrl(
     // that it carries a secret, and error text lands in CI logs. `ftp:` is a
     // WHATWG special scheme, so `ftp://user:pass@host` parses with populated
     // userinfo and must hit this message, not the echoing protocol one. (The
-    // parse failure above can echo safely — a value the parser cannot read
-    // yielded no credentials to leak.) The serialized return would otherwise
+    // parse-failure branch above redacts userinfo-shaped text for the same
+    // reason.) The serialized return would otherwise
     // copy the credentials into every public artifact URL joins feed —
     // sitemap, search metadata, feeds, agent files.
     throw new Error(

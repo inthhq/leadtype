@@ -739,6 +739,25 @@ describe("baseUrl", () => {
     expect(ftpMessage).toMatch(/must not embed credentials/);
     expect(ftpMessage).not.toContain("s3cret");
     expect(ftpMessage).not.toContain("buildbot");
+
+    // A credentialed value can also fail to parse at all — an out-of-range
+    // port throws in `new URL` before the credentials check runs — so the
+    // parse-failure echo must redact userinfo-shaped text too.
+    let malformedMessage = "";
+    try {
+      normalize({ product, baseUrl: "https://buildbot:s3cret@acme.dev:99999" });
+    } catch (error) {
+      malformedMessage = String(error);
+    }
+    expect(malformedMessage).toMatch(/is not an absolute URL/);
+    expect(malformedMessage).toContain("<redacted>@acme.dev");
+    expect(malformedMessage).not.toContain("s3cret");
+    expect(malformedMessage).not.toContain("buildbot");
+
+    // A credential-free malformed value still echoes unchanged.
+    expect(() => normalize({ product, baseUrl: "not a url" })).toThrow(
+      /"not a url" is not an absolute URL/
+    );
   });
 
   it("rejects a bare trailing delimiter the URL parser reports as empty", () => {
