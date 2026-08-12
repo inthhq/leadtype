@@ -1,12 +1,15 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { DOCS_CONFIG_FILENAMES } from "../config/inherit";
+import { loadDocsConfigFromDir } from "../config/load";
 import { normalizeAuthoredBaseUrl } from "../config/normalize";
 import { runGenerateCommand } from "./generate";
 import {
   buildPlan,
   defaultBaseUrl,
   type FrameworkPlan,
+  GENERIC_DEV_BASE_URL,
   type InitFile,
   type InitFramework,
   isInitFramework,
@@ -149,6 +152,26 @@ export function parseInitArgs(argv: string[]): InitArgs {
   }
 
   return args;
+}
+
+/**
+ * Whether the docs config `writeFiles` would keep declares a `baseUrl`.
+ * Inspected with the same loader every other command uses — a regex over the
+ * authored source would miss a spread or imported value. Best-effort by
+ * design: `null` (no config found, or it failed to load) must not refuse the
+ * run, because a config that cannot load fails loudly in the post-scaffold
+ * generate and every later command — silently wrong URLs only come from a
+ * config that loads *successfully* without `baseUrl`.
+ */
+async function existingConfigDeclaresBaseUrl(
+  docsDir: string
+): Promise<boolean | null> {
+  try {
+    const loaded = await loadDocsConfigFromDir(docsDir, DOCS_CONFIG_FILENAMES);
+    return loaded === null ? null : loaded.config.baseUrl !== undefined;
+  } catch {
+    return null;
+  }
 }
 
 async function detectFramework(
@@ -430,6 +453,26 @@ export async function runInitCommand(
   ) {
     io.stderr.write(
       "leadtype init: docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.\n"
+    );
+    return 2;
+  }
+
+  // The rerun mirror of the refusal above: no --base-url, but the framework
+  // default is not the generic dev URL, and the existing config `writeFiles`
+  // would keep sets no baseUrl — so the default the docs promise (`:4321` for
+  // Astro, `:5173` for SvelteKit) would land nowhere and every absolute URL
+  // would resolve against http://localhost:3000. Same rule either way:
+  // refuse before any write instead of silently generating wrong URLs.
+  if (
+    args.baseUrl === undefined &&
+    !args.force &&
+    baseUrl !== GENERIC_DEV_BASE_URL &&
+    existsSync(path.join(projectRoot, "docs", "docs.config.ts")) &&
+    (await existingConfigDeclaresBaseUrl(path.join(projectRoot, "docs"))) ===
+      false
+  ) {
+    io.stderr.write(
+      `leadtype init: docs/docs.config.ts already exists without baseUrl, so the ${framework} default would land nowhere — generated links would fall back to ${GENERIC_DEV_BASE_URL}. Add \`baseUrl: ${JSON.stringify(baseUrl)}\` to that config, or rerun with --force to overwrite it.\n`
     );
     return 2;
   }

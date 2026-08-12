@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -377,6 +377,113 @@ describe("runInitCommand", () => {
       "utf8"
     );
     expect(config).toContain('baseUrl: "https://production.example"');
+  });
+
+  async function writeExistingConfig(
+    dir: string,
+    body: string
+  ): Promise<string> {
+    const configPath = path.join(dir, "docs/docs.config.ts");
+    await mkdir(path.dirname(configPath), { recursive: true });
+    await writeFile(configPath, body, "utf8");
+    return configPath;
+  }
+
+  it("refuses a rerun that would strand the framework default outside the config", async () => {
+    const dir = await createTempDir();
+    // An older scaffold (or hand-written config) without the baseUrl field —
+    // the documented Astro default has nowhere to land.
+    const configPath = await writeExistingConfig(
+      dir,
+      `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};
+`
+    );
+    const before = await readFile(configPath, "utf8");
+
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--no-generate"],
+      capture.io
+    );
+
+    // Permitting the run would skip the config and generate every absolute
+    // URL against http://localhost:3000 — refuse before any write, naming the
+    // exact line to add.
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("without baseUrl");
+    expect(capture.stderr).toContain('baseUrl: "http://localhost:4321"');
+    expect(capture.stderr).toContain("--force");
+    expect(await readFile(configPath, "utf8")).toBe(before);
+    expect(existsSync(path.join(dir, "astro.config.mjs"))).toBe(false);
+  });
+
+  it("reruns quietly when the existing config already sets baseUrl", async () => {
+    const dir = await createTempDir();
+    const configPath = await writeExistingConfig(
+      dir,
+      `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  baseUrl: "https://acme.dev",
+};
+`
+    );
+    const before = await readFile(configPath, "utf8");
+
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--no-generate"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stderr).toBe("");
+    expect(capture.stdout).toContain("(exists, use --force)");
+    expect(await readFile(configPath, "utf8")).toBe(before);
+  });
+
+  it("permits a config without baseUrl when the framework default is the generic dev URL", async () => {
+    const dir = await createTempDir();
+    await writeExistingConfig(
+      dir,
+      `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+};
+`
+    );
+
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      capture.io
+    );
+
+    // Next's default is http://localhost:3000 — exactly where a missing
+    // baseUrl falls back to — so skipping the config loses nothing.
+    expect(code).toBe(0);
+    expect(capture.stderr).toBe("");
+  });
+
+  it("keeps a full re-scaffold a no-op when the config cannot be loaded", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--no-generate"],
+      createCapture().io
+    );
+
+    // The scaffolded config imports "leadtype", which is not installed in the
+    // temp project, so the loader cannot read it. Best-effort by design: an
+    // unloadable config fails loudly in generate, so init must not refuse a
+    // rerun on what it cannot inspect.
+    const second = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "astro", "--no-generate"],
+      second.io
+    );
+
+    expect(code).toBe(0);
+    expect(second.stdout).toContain("(exists, use --force)");
   });
 
   it("errors with exit 2 when no framework is detected", async () => {

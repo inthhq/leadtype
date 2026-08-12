@@ -541,6 +541,14 @@ export const HEAD = GET;
   };
 }
 
+/**
+ * The dev URL frameworks without a bespoke port share — also where
+ * `normalizeBaseUrl`'s last-resort fallback lands when no `baseUrl` is
+ * authored and no deployment env var is set. When `defaultBaseUrl` returns
+ * something else, a config without `baseUrl` loses real information.
+ */
+export const GENERIC_DEV_BASE_URL = "http://localhost:3000";
+
 export function defaultBaseUrl(framework: InitFramework): string {
   switch (framework) {
     case "astro":
@@ -548,7 +556,7 @@ export function defaultBaseUrl(framework: InitFramework): string {
     case "sveltekit":
       return "http://localhost:5173";
     default:
-      return "http://localhost:3000";
+      return GENERIC_DEV_BASE_URL;
   }
 }
 
