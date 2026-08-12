@@ -16,19 +16,15 @@
  */
 
 import path from "node:path";
-import { glob as fg } from "tinyglobby";
-import { stripDocsExtension, toDocsUrlPath } from "../internal/docs-url";
+import { normalizeDocsPath, toDocsUrlPath } from "../internal/docs-url";
 import { resolveDocsNavigation } from "../llm";
-import type {
-  DocsNavigation,
-  DocsNavigationGroup,
-  DocsNavigationPage,
-} from "../llm/readability";
-import type {
-  NavigationOrigin,
-  ProjectDiagnostic,
-  ResolvedProject,
-  ResolvedProjectCollection,
+import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
+import {
+  derivationPathFilter,
+  type NavigationOrigin,
+  type ProjectDiagnostic,
+  type ResolvedProject,
+  type ResolvedProjectCollection,
 } from "./project";
 
 /** A collection whose content directory resolved — see the project diagnostics
@@ -55,9 +51,10 @@ export type CollectionNavigation = {
   /** Distinct pages the manifest presents, after include/exclude filtering. */
   pageCount: number;
   /**
-   * urlPaths reachable through the tree or the ungrouped root fallback,
-   * restricted to the pages the collection's include/exclude globs admit —
-   * the file set `generate` stages, not the raw directory.
+   * urlPaths reachable through the tree or the ungrouped root fallback. The
+   * manifest resolves over the pages the collection's include/exclude globs
+   * admit — the file set `generate` stages, not the raw directory — so these
+   * are exactly the routes the build ships.
    */
   routedUrlPaths: string[];
   /** The manifest's top-level sections, one entry per group slug. */
@@ -107,53 +104,27 @@ export function findBlockingDiagnostic(
 }
 
 /**
- * The page set a collection's include/exclude globs admit, as
- * extension-stripped paths relative to the content directory — the mirror
- * `generate` stages. `null` when the collection declares no filter, so the
- * caller can skip membership checks entirely.
+ * The collection's include/exclude selection as the file filter
+ * `resolveDocsNavigation` accepts — the mirror `generate` stages, tested at
+ * the file level before locale selection, exactly like staging. `undefined`
+ * when the collection declares no filter, so the unfiltered path is
+ * untouched. Glob semantics live in `derivationPathFilter`, shared with nav
+ * derivation.
  */
-async function filteredPageSet(
+async function admittedFileFilter(
   collection: ReadableProjectCollection
-): Promise<Set<string> | null> {
-  const filtered =
-    (collection.include?.length ?? 0) > 0 ||
-    (collection.exclude?.length ?? 0) > 0;
-  if (!filtered) {
-    return null;
+): Promise<((absoluteFilePath: string) => boolean) | undefined> {
+  const { filter } = await derivationPathFilter(
+    collection,
+    collection.contentDir
+  );
+  if (!filter) {
+    return;
   }
-  const include =
-    collection.include && collection.include.length > 0
-      ? collection.include
-      : ["**/*.{md,mdx}"];
-  const files = await fg(include, {
-    cwd: collection.contentDir,
-    // Match the staging glob semantics (`copySourceFiles`) exactly: dotfiles
-    // are pages there, and bare-directory include/exclude entries stay
-    // literal instead of fanning out to `dir/**`. Anything looser here counts
-    // pages the build never stages — or drops ones it ships.
-    dot: true,
-    expandDirectories: false,
-    ignore: collection.exclude ?? [],
-    onlyFiles: true,
-  });
-  return new Set(files.map((file) => stripDocsExtension(file)));
-}
-
-/**
- * Whether the collection's include/exclude globs reject a manifest page.
- * The globs match on-disk paths; a localized page's `relativePath` is its
- * output path, so check the logical path and its source-locale-prefixed
- * on-disk variant too.
- */
-function isExcluded(page: DocsNavigationPage, admitted: Set<string>): boolean {
-  const candidates = [page.relativePath];
-  if (page.logicalPath) {
-    candidates.push(page.logicalPath);
-    if (page.sourceLocale) {
-      candidates.push(`${page.sourceLocale}/${page.logicalPath}`);
-    }
-  }
-  return !candidates.some((candidate) => admitted.has(candidate));
+  return (absoluteFilePath) =>
+    filter(
+      normalizeDocsPath(path.relative(collection.contentDir, absoluteFilePath))
+    );
 }
 
 /**
@@ -196,10 +167,11 @@ function findDuplicates(manifest: DocsNavigation): string[] {
  * - **i18n is forwarded**, because without it each translation resolves as
  *   its own page — and a default locale living under its own directory makes
  *   every literal nav entry miss outright.
- * - **Counts and drift respect include/exclude**, because
- *   `resolveDocsNavigation` reads the whole directory while `generate`
- *   stages a filtered mirror first — the raw view counts pages the build
- *   never ships and reports every excluded page as unplaced.
+ * - **Resolution reads the admitted file set, not the raw directory**,
+ *   because `generate` stages a filtered mirror before resolving — against
+ *   the raw view a curated entry naming an excluded page resolves fine here
+ *   while the build fails on it as missing, excluded pages count as shipped,
+ *   and every excluded page reads as unplaced.
  * - **Resolution errors come back as diagnostics** with a stable id, so a
  *   pin typo is a finding a report can carry, not a crash.
  */
@@ -219,8 +191,14 @@ export async function resolveCollectionNavigation(
     (entry) => entry.groups ?? []
   );
 
+  const filterFile = await admittedFileFilter(collection);
+
   let manifest: DocsNavigation;
   try {
+    // Resolving over the admitted set makes a curated reference to a
+    // filtered-out page fail here exactly as it fails the build — against
+    // the raw directory it resolved fine, so `doctor` said ok and `nav`
+    // exited 0 for a project whose `generate` exits 1.
     manifest = await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
@@ -228,6 +206,7 @@ export async function resolveCollectionNavigation(
       groups: mergedGroups,
       nav: collection.navigation,
       ...(project.config?.i18n ? { i18n: project.config.i18n } : {}),
+      ...(filterFile ? { filterFile } : {}),
     });
   } catch (error) {
     // The field named is the one the origin says produced the tree — an
@@ -236,13 +215,19 @@ export async function resolveCollectionNavigation(
     const owner = project.config?.collections?.[collection.key]
       ? `collections.${collection.key}.${field}`
       : field;
+    // With filters in play the entry may name a page that exists on disk but
+    // that `include`/`exclude` keeps out of the staged mirror — say so, or
+    // the "did not match a documentation page" message reads as a typo hunt.
+    const fix = filterFile
+      ? `Fix the entry \`${owner}\` points at — the page may exist but be removed by the collection's \`include\`/\`exclude\` — then re-run \`leadtype doctor\`.`
+      : `Fix the entry \`${owner}\` points at, then re-run \`leadtype doctor\`.`;
     diagnostics.push({
       id: "nav.unresolvable",
       level: "error",
       message: `collection "${collection.key}" navigation did not resolve: ${error instanceof Error ? error.message : String(error)}`,
       collection: collection.key,
       owner,
-      fix: `Fix the entry \`${owner}\` points at, then re-run \`leadtype doctor\`.`,
+      fix,
     });
     return {
       collectionKey: collection.key,
@@ -255,26 +240,18 @@ export async function resolveCollectionNavigation(
     };
   }
 
-  const admitted = await filteredPageSet(collection);
-  const excluded = (page: DocsNavigationPage): boolean =>
-    admitted !== null && isExcluded(page, admitted);
-
   const routed = new Set<string>();
   const walk = (groups: DocsNavigationGroup[]): void => {
     for (const group of groups) {
       for (const page of group.pages) {
-        if (!excluded(page)) {
-          routed.add(page.urlPath);
-        }
+        routed.add(page.urlPath);
       }
       walk(group.children);
     }
   };
   walk(manifest.groups);
   for (const page of manifest.ungrouped) {
-    if (!excluded(page)) {
-      routed.add(page.urlPath);
-    }
+    routed.add(page.urlPath);
   }
 
   // A page the curated tree never mentions still renders — it falls back to
@@ -298,12 +275,10 @@ export async function resolveCollectionNavigation(
         .filter((entry): entry is string => typeof entry === "string")
         .map((entry) => toDocsUrlPath(entry, mounts))
     );
-    // Restricting to the admitted set keeps this check alive for filtered
-    // collections instead of disabling it: an excluded page is not drift —
-    // `generate` never stages it — while an admitted page that renders
-    // unrouted still is.
+    // `ungrouped` already covers only admitted pages — the resolver read the
+    // filtered file set — so an excluded page is never drift (`generate`
+    // never stages it) while an admitted page that renders unrouted still is.
     unplaced = manifest.ungrouped
-      .filter((page) => !excluded(page))
       .map((page) => page.urlPath)
       .filter((urlPath) => !placedAtRoot.has(urlPath));
   }

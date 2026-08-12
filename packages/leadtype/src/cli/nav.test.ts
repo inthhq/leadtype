@@ -371,6 +371,28 @@ describe("drift", () => {
     expect(code).toBe(1);
     expect(capture.stderr).toContain('Nav pin "renamed"');
   });
+
+  it("fails when curated navigation names a page the collection excludes", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"], navigation: ["index", "drafts/wip"] },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/drafts/wip.mdx": page("WIP"),
+    });
+
+    const capture = createCapture();
+    const code = await runNavCommand(["--src", dir], capture.io);
+
+    // `generate` stages the filtered mirror before resolving, so this
+    // reference fails the build as missing — resolving against the raw
+    // directory reported the same project as fine here.
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('Nav page "drafts/wip"');
+  });
 });
 
 describe("i18n projects", () => {

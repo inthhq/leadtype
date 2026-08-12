@@ -299,11 +299,12 @@ function projectRootForConfig(configPath: string): string {
 
 /**
  * The include/exclude selection of a collection, as a docs-relative membership
- * test for `inferNavigationFromContent`. Empty (no filter) when the collection
- * has no path filters. Uses the staging glob semantics (`copySourceFiles`):
- * dotfiles count, bare-directory entries stay literal.
+ * test for `inferNavigationFromContent` and `resolveCollectionNavigation`.
+ * Empty (no filter) when the collection has no path filters. Uses the staging
+ * glob semantics (`copySourceFiles`): dotfiles count, bare-directory entries
+ * stay literal.
  */
-async function derivationPathFilter(
+export async function derivationPathFilter(
   collection: Pick<ResolvedDocsCollection, "include" | "exclude">,
   contentDir: string
 ): Promise<{ filter?: (relativePath: string) => boolean }> {

@@ -413,6 +413,35 @@ describe("findings", () => {
     expect(finding?.fix).toContain("leadtype doctor");
   });
 
+  it("reports curated navigation naming an excluded page as a finding", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default {
+  product: { name: "Acme", tagline: "Acme docs." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"], navigation: ["index", "drafts/wip"] },
+  },
+};`,
+      "docs/index.mdx": page("Home"),
+      "docs/drafts/wip.mdx": page("WIP"),
+    });
+
+    // `generate` stages the filtered mirror before resolving, so this
+    // reference fails the build as missing. Resolving against the raw
+    // directory let it succeed here, and the admitted-page check merely
+    // dropped the page from counts — `ok: true` for a build that exits 1.
+    const { code, report } = await runJson(dir);
+
+    expect(code).toBe(1);
+    expect(report.ok).toBe(false);
+    const finding = report.issues.find(
+      (entry) => entry.id === "nav.unresolvable"
+    );
+    expect(finding?.level).toBe("error");
+    expect(finding?.message).toContain('Nav page "drafts/wip"');
+    expect(finding?.owner).toBe("collections.docs.navigation");
+    expect(finding?.fix).toContain("include");
+  });
+
   it("keeps excluded pages out of the routed page count", async () => {
     const dir = await fixture({
       "leadtype.config.ts": `export default {
