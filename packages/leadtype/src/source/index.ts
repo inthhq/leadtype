@@ -514,8 +514,18 @@ export async function createDocsSource<
     }
     cachedFilesByRoot = await Promise.all(
       contentRoots.map(async (root) => {
+        // Include/exclude patterns are authored against the content tree, so
+        // they only apply to `sourceContentDir`. Generated overlay roots (the
+        // OpenAPI temp dir) stay unfiltered — `generate` writes their pages
+        // into the mirror *after* `copySourceFiles` applies collection
+        // filters, so no filtered build ever drops them. Filtering them here
+        // selected zero overlay files (`include: ["guides/**"]` matches
+        // nothing under the overlay), which hid generated pages from
+        // `listPages` and made the generated nav node's string page refs
+        // throw in navigation resolution.
+        const applyPathFilters = root === sourceContentDir;
         const matches = await fg(
-          config.include && config.include.length > 0
+          applyPathFilters && config.include && config.include.length > 0
             ? config.include
             : ["**/*.{md,mdx}"],
           {
@@ -528,7 +538,7 @@ export async function createDocsSource<
             // ones it did.
             dot: true,
             expandDirectories: false,
-            ignore: config.exclude ?? [],
+            ignore: applyPathFilters ? (config.exclude ?? []) : [],
             onlyFiles: true,
           }
         );

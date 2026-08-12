@@ -481,6 +481,59 @@ describe("createDocsSource", () => {
     }
   });
 
+  it("keeps generated OpenAPI pages live under an include filter, as generate does", async () => {
+    await writeMdx(
+      path.join(contentDir, "guides/setup.mdx"),
+      "---\ntitle: Setup\n---\nBody.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "drafts/wip.mdx"),
+      "---\ntitle: WIP\n---\nBody.\n"
+    );
+    await writeOpenApiSpec(path.join(contentDir, "openapi", "pets.yaml"));
+
+    // `generate` writes OpenAPI pages into the mirror *after* `copySourceFiles`
+    // applies collection filters, so include/exclude never touch generated
+    // pages there. The runtime must match: filtering the overlay root with
+    // content-authored patterns selects zero overlay files, and the generated
+    // nav node's string page refs then make navigation resolution throw.
+    const source = await createDocsSource({
+      contentDir,
+      include: ["guides/**"],
+      openapi: {
+        input: "./openapi/pets.yaml",
+        output: "api",
+        title: "API",
+        groupByTags: false,
+      },
+    });
+
+    try {
+      const pages = await source.listPages();
+      expect(pages.map((page) => page.slug.join("/")).sort()).toEqual([
+        "api",
+        "api/read-pet",
+        "guides/setup",
+      ]);
+
+      const navigation = await source.getNavigation();
+      const generatedGroup = navigation.groups.find(
+        (group) => group.title === "API"
+      );
+      expect(generatedGroup?.pages.map((page) => page.relativePath)).toEqual([
+        "api/index",
+        "api/read-pet",
+      ]);
+      const navPaths = navigation.groups.flatMap((group) =>
+        group.pages.map((page) => page.relativePath)
+      );
+      expect(navPaths).toContain("guides/setup");
+      expect(navPaths).not.toContain("drafts/wip");
+    } finally {
+      await source.cleanup();
+    }
+  });
+
   it("rejects authored pages that collide with generated OpenAPI slugs", async () => {
     await writeMdx(
       path.join(contentDir, "api/index.mdx"),
