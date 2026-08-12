@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { normalizeAuthoredBaseUrl } from "../config/normalize";
 import { runGenerateCommand } from "./generate";
 import {
   buildPlan,
@@ -110,7 +111,11 @@ export function parseInitArgs(argv: string[]): InitArgs {
         args.dir = next();
         break;
       case "--base-url":
-        args.baseUrl = next();
+        // Validated with the same rules the config loader applies to an
+        // authored `baseUrl`, before any file is written — a bad value must
+        // fail here as a usage error, not scaffold a project every later
+        // command rejects.
+        args.baseUrl = normalizeAuthoredBaseUrl(next(), "--base-url");
         break;
       case "--name":
         args.name = next();
@@ -413,6 +418,21 @@ export async function runInitCommand(
   const name = args.name ?? DEFAULT_NAME;
   const summary = args.summary ?? DEFAULT_SUMMARY;
   const baseUrl = args.baseUrl ?? defaultBaseUrl(framework);
+
+  // `--base-url` has exactly one destination: docs/docs.config.ts. When that
+  // file already exists and `--force` is absent, `writeFiles` would skip it
+  // and the explicit flag would silently do nothing — refuse up front, before
+  // any file is written, instead of dropping it.
+  if (
+    args.baseUrl !== undefined &&
+    !args.force &&
+    existsSync(path.join(projectRoot, "docs", "docs.config.ts"))
+  ) {
+    io.stderr.write(
+      "leadtype init: docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.\n"
+    );
+    return 2;
+  }
 
   const plan = buildPlan(framework, { webmcp: args.webmcp });
   const allFiles = [...sharedFiles(name, summary, baseUrl), ...plan.files];

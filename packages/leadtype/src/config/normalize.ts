@@ -86,11 +86,50 @@ export const BASE_URL_DEFAULT_SOURCE =
   "deployment URL env vars (NEXT_PUBLIC_SITE_URL, VERCEL_URL, …) or localhost";
 
 /**
- * Validate and normalize the authored `baseUrl`: an absolute http(s) origin
+ * A `?` or `#` anywhere in the authored value. A bare trailing delimiter
+ * (`https://acme.dev?`) parses with empty `search`/`hash`, so the parsed
+ * components alone would pass it through into every joined URL.
+ */
+const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
+
+/**
+ * Validate and normalize an authored base URL: an absolute http(s) origin
  * plus optional path prefix, with trailing slashes stripped so URL joins can
  * never produce `//` — the same normalization `normalizeBaseUrl` applies to
- * the env fallbacks at consumption time.
+ * the env fallbacks at consumption time. `subject` names the value in errors
+ * (`docs config …: baseUrl` when it comes from a config, `--base-url` when a
+ * CLI flag authors it) so both spellings share one validator.
  */
+export function normalizeAuthoredBaseUrl(
+  baseUrl: string,
+  subject: string
+): string {
+  const normalized = stripTrailingSlashes(baseUrl.trim());
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new Error(
+      `${subject} "${baseUrl}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
+    );
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(
+      `${subject} "${baseUrl}" must be an http or https URL — generated links are joined onto it verbatim.`
+    );
+  }
+  if (
+    parsed.search ||
+    parsed.hash ||
+    QUERY_OR_FRAGMENT_DELIMITER_PATTERN.test(normalized)
+  ) {
+    throw new Error(
+      `${subject} "${baseUrl}" must not carry a query or fragment — it is a prefix every generated URL joins onto.`
+    );
+  }
+  return normalized;
+}
+
 function normalizeConfigBaseUrl(
   baseUrl: string | undefined,
   configPath: string | undefined
@@ -98,26 +137,10 @@ function normalizeConfigBaseUrl(
   if (baseUrl === undefined) {
     return;
   }
-  const normalized = stripTrailingSlashes(baseUrl.trim());
-  let parsed: URL;
-  try {
-    parsed = new URL(normalized);
-  } catch {
-    throw new Error(
-      `${configLabel(configPath)}: baseUrl "${baseUrl}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
-    );
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(
-      `${configLabel(configPath)}: baseUrl "${baseUrl}" must be an http or https URL — generated links are joined onto it verbatim.`
-    );
-  }
-  if (parsed.search || parsed.hash) {
-    throw new Error(
-      `${configLabel(configPath)}: baseUrl "${baseUrl}" must not carry a query or fragment — it is a prefix every generated URL joins onto.`
-    );
-  }
-  return normalized;
+  return normalizeAuthoredBaseUrl(
+    baseUrl,
+    `${configLabel(configPath)}: baseUrl`
+  );
 }
 
 /** Carry the normalized `baseUrl` on the canonical config, when one exists. */

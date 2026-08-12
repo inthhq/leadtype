@@ -695,4 +695,18 @@ describe("baseUrl", () => {
       normalize({ product, baseUrl: "https://acme.dev#docs" })
     ).toThrow(/must not carry a query or fragment/);
   });
+
+  it("rejects a bare trailing delimiter the URL parser reports as empty", () => {
+    // WHATWG URL parses `https://acme.dev?` with an empty `search`, so only
+    // the authored string reveals the delimiter that would corrupt joins.
+    expect(() => normalize({ product, baseUrl: "https://acme.dev?" })).toThrow(
+      /must not carry a query or fragment/
+    );
+    expect(() => normalize({ product, baseUrl: "https://acme.dev#" })).toThrow(
+      /must not carry a query or fragment/
+    );
+    expect(() => normalize({ product, baseUrl: "https://acme.dev/?" })).toThrow(
+      /must not carry a query or fragment/
+    );
+  });
 });

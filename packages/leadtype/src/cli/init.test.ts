@@ -73,6 +73,20 @@ describe("parseInitArgs", () => {
       /unsupported framework/
     );
   });
+
+  it("rejects an invalid --base-url with the config validator's rules", () => {
+    expect(() => parseInitArgs(["--base-url", "acme.dev"])).toThrow(
+      /--base-url "acme.dev" is not an absolute URL/
+    );
+    expect(() => parseInitArgs(["--base-url", "https://acme.dev?"])).toThrow(
+      /must not carry a query or fragment/
+    );
+  });
+
+  it("normalizes --base-url the way the config loader would", () => {
+    const args = parseInitArgs(["--base-url", "https://acme.dev/handbook/"]);
+    expect(args.baseUrl).toBe("https://acme.dev/handbook");
+  });
 });
 
 describe("runInitCommand", () => {
@@ -232,6 +246,43 @@ describe("runInitCommand", () => {
     expect(source).not.toContain("baseUrl:");
   });
 
+  it("fails an invalid --base-url as a usage error, writing nothing", async () => {
+    const dir = await createTempDir();
+    const capture = createCapture();
+    const code = await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--base-url", "acme.dev"],
+      capture.io
+    );
+
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain('"acme.dev" is not an absolute URL');
+    expect(capture.stderr).toContain("Usage:");
+    expect(existsSync(path.join(dir, "docs/docs.config.ts"))).toBe(false);
+    expect(existsSync(path.join(dir, "next.config.mjs"))).toBe(false);
+  });
+
+  it("writes the normalized form of a --base-url with a trailing slash", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      [
+        "--dir",
+        dir,
+        "--framework",
+        "next",
+        "--base-url",
+        "https://acme.dev/",
+        "--no-generate",
+      ],
+      createCapture().io
+    );
+
+    const config = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+    expect(config).toContain('baseUrl: "https://acme.dev"');
+  });
+
   it("defaults baseUrl to the framework dev URL in the config", async () => {
     const dir = await createTempDir();
     await runInitCommand(
@@ -261,6 +312,71 @@ describe("runInitCommand", () => {
       second.io
     );
     expect(second.stdout).toContain("(exists, use --force)");
+  });
+
+  it("refuses --base-url when the existing config would be skipped", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      createCapture().io
+    );
+    const before = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+
+    const second = createCapture();
+    const code = await runInitCommand(
+      [
+        "--dir",
+        dir,
+        "--framework",
+        "next",
+        "--base-url",
+        "https://production.example",
+        "--no-generate",
+      ],
+      second.io
+    );
+
+    // The flag's only destination is the config writeFiles would skip —
+    // refusing beats silently generating against the stale value.
+    expect(code).toBe(2);
+    expect(second.stderr).toContain("docs/docs.config.ts already exists");
+    expect(second.stderr).toContain("--force");
+    expect(await readFile(path.join(dir, "docs/docs.config.ts"), "utf8")).toBe(
+      before
+    );
+  });
+
+  it("applies --base-url to an existing config with --force", async () => {
+    const dir = await createTempDir();
+    await runInitCommand(
+      ["--dir", dir, "--framework", "next", "--no-generate"],
+      createCapture().io
+    );
+
+    const second = createCapture();
+    const code = await runInitCommand(
+      [
+        "--dir",
+        dir,
+        "--framework",
+        "next",
+        "--base-url",
+        "https://production.example",
+        "--no-generate",
+        "--force",
+      ],
+      second.io
+    );
+
+    expect(code).toBe(0);
+    const config = await readFile(
+      path.join(dir, "docs/docs.config.ts"),
+      "utf8"
+    );
+    expect(config).toContain('baseUrl: "https://production.example"');
   });
 
   it("errors with exit 2 when no framework is detected", async () => {

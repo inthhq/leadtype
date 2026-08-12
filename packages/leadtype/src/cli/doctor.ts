@@ -69,10 +69,12 @@ export type DoctorReport = {
     mode: "single-source" | "multi-source" | "none";
     deprecations: { field: string; replacement: string }[];
     /**
-     * The base URL site artifacts will actually use, with where it came from:
-     * `explicit` when the config authors `baseUrl`, `default` when the value
-     * falls through to deployment URL env vars or localhost. Absent only when
-     * no config resolved at all.
+     * What the config resolves `baseUrl` to in doctor's own environment:
+     * `explicit` when the config authors it, `default` when it falls through
+     * to deployment URL env vars or localhost. An explicit `--base-url`
+     * passed to `generate` overrides this at generation time, and a build's
+     * env fallbacks may differ from doctor's. Absent only when no config
+     * resolved at all.
      */
     baseUrl?: { value: string; origin: ConfigValueOrigin };
     /** Per-field origin for top-level config values. */
@@ -543,8 +545,9 @@ export async function runDoctorCommand(
         field: entry.field,
         replacement: entry.replacement,
       })),
-      // The value generation will resolve, through the same fallback chain:
-      // the authored config field, else deployment URL env vars / localhost.
+      // What the config resolves here and now: the authored field, else
+      // deployment URL env vars / localhost in doctor's own process env. A
+      // `generate --base-url` flag or the build's env can override this.
       ...(resolved
         ? {
             baseUrl: {
