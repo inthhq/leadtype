@@ -160,6 +160,10 @@ export type CreateDocsSourceConfig<
    * navigation. Authors use it to keep drafts and internal notes off the site,
    * so honouring it at build time but not at runtime would publish exactly the
    * content it was meant to withhold.
+   *
+   * Generated pages are exempt: `openapi` output lands in an overlay outside
+   * `contentDir`, and `generate` writes it into the staged mirror *after*
+   * these globs run, so `exclude` cannot withhold it on either side.
    */
   exclude?: string[];
   /**
