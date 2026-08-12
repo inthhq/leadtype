@@ -707,6 +707,26 @@ describe("baseUrl", () => {
     ).toThrow(/must not carry a query or fragment/);
   });
 
+  it("rejects embedded credentials without echoing them", () => {
+    // The serialized return feeds URL joins that land in publicly generated
+    // artifacts (sitemap, search metadata, feeds), so userinfo must never
+    // survive — and the error text must not leak the secret either.
+    let message = "";
+    try {
+      normalize({ product, baseUrl: "https://buildbot:s3cret@acme.dev" });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toMatch(/must not embed credentials/);
+    expect(message).not.toContain("s3cret");
+    expect(message).not.toContain("buildbot");
+
+    // A bare username is userinfo the serializer would preserve too.
+    expect(() =>
+      normalize({ product, baseUrl: "https://buildbot@acme.dev" })
+    ).toThrow(/must not embed credentials/);
+  });
+
   it("rejects a bare trailing delimiter the URL parser reports as empty", () => {
     // WHATWG URL parses `https://acme.dev?` with an empty `search`, so only
     // the authored string reveals the delimiter that would corrupt joins.

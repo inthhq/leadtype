@@ -115,13 +115,14 @@ describe("runInitCommand", () => {
       framework: string;
       files: string[];
       outDir: string;
+      warnings: string[];
     };
     expect(plan.framework).toBe("sveltekit");
     expect(plan.outDir).toBe("static");
     expect(plan.files).toContain("src/routes/docs/[...slug].md/+server.ts");
-    // The `warnings` field is additive and conflict-only — a clean plan keeps
-    // its existing shape byte for byte.
-    expect(plan).not.toHaveProperty("warnings");
+    // `warnings` is always present: an empty array says positively that the
+    // plan is clean, instead of the field's absence carrying that meaning.
+    expect(plan.warnings).toEqual([]);
   });
 
   it("--webmcp adds framework-specific browser registration files", async () => {

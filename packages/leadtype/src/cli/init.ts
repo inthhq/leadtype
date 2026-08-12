@@ -554,11 +554,11 @@ export async function runInitCommand(
           // The bare path stays in `files` for backwards compatibility.
           agentsPointer,
           dryRun,
-          // Additive, and absent when there is nothing to say, so existing
-          // consumers of the plan shape are untouched.
-          ...(baseUrlWarnings.length === 0
-            ? {}
-            : { warnings: baseUrlWarnings }),
+          // Always present, so the plan has one shape: an empty array says
+          // positively that the plan is clean, instead of the field's absence
+          // carrying that meaning. Still purely additive for consumers of the
+          // pre-`warnings` plan — the field is new in this release either way.
+          warnings: baseUrlWarnings,
         },
         null,
         2

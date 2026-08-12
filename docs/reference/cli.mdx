@@ -21,14 +21,14 @@ leadtype init [options]
 | --- | --- | --- |
 | `--framework <name>`, `-f` | auto-detect | Target framework: `next`, `astro`, `nuxt`, or `sveltekit`. Inferred from `package.json` dependencies when omitted. |
 | `--dir <dir>` | `.` | Project root to scaffold into. |
-| `--base-url <url>` | per-framework dev URL | Site base URL written once into the scaffolded `docs/docs.config.ts` as `baseUrl` — the CLI and the runtime both read it from there. |
+| `--base-url <url>` | per-framework dev URL | Site base URL written once into the scaffolded `docs/docs.config.ts` as `baseUrl` — the CLI and the runtime both read it from there. Validated like the config field: a malformed value (not absolute http(s), or carrying a query, fragment, or credentials) is a usage error, exit 2. |
 | `--name <name>` | `My docs` | Product name written into `docs/docs.config.ts`. |
 | `--summary <text>` | placeholder | One-line product summary. |
 | `--force` | off | Overwrite files that already exist. Without it, existing files are skipped. |
-| `--dry-run` | off | Print the file plan without writing or generating. |
+| `--dry-run` | off | Print the file plan without writing or generating. When a write-mode run would refuse over a `--base-url` conflict (exit 2), a warning after the plan says so. |
 | `--no-generate` | off | Skip the post-scaffold `leadtype generate` run. |
 | `--webmcp` | deprecated | Compatibility shortcut that adds browser-side WebMCP registration glue. Prefer registering `leadtype/webmcp` from app code; this flag will be removed in the next major version. |
-| `--json` | — | Emit the file plan as JSON and exit (no writes). |
+| `--json` | — | Emit the file plan as JSON and exit (no writes). The plan carries a `warnings` string array: empty when the plan is clean, otherwise the conflict and note lines a write-mode run would print — a conflict entry means that run refuses with exit 2. |
 | `-h`, `--help` | — | Print usage. |
 
 Exit codes: `0` success, `2` CLI usage error or no framework detected. Existing files are never overwritten unless `--force` is passed. TanStack Start and Fumadocs are not scaffolded by `init` (heavier app-specific setup) — follow their recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive).
@@ -96,7 +96,7 @@ leadtype generate [options]
 | `--out <dir>` | `public` | Output root. The pipeline writes to `<out>/llms.txt` and docs-scoped artifacts under `<out>/docs/*` in site mode, or `<out>/AGENTS.md` and `<out>/docs/*.md` in bundle mode. |
 | `--bundle` | off | Bundle mode. Emits `AGENTS.md` and `docs/*.md` for offline agents. Skips URL-anchored site artifacts like `llms.txt`, `llms-full.txt`, sitemap, and robots. |
 | `--mcp` | deprecated | Compatibility shortcut for bundle MCP artifacts. Prefer `agents.mcp.enabled` in `docs.config.ts`; this flag will be removed in the next major version. |
-| `--base-url <url>` | config `baseUrl` | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Overrides the config's `baseUrl` field; absent both, deployment URL env vars apply. Site mode only; ignored in `--bundle`. |
+| `--base-url <url>` | config `baseUrl` | Base URL for canonical artifacts like `sitemap.xml`, `robots.txt`, search metadata, and full-context fallback URLs. Overrides the config's `baseUrl` field; absent both, deployment URL env vars apply. Validated like the config field: a malformed value (not absolute http(s), or carrying a query, fragment, or credentials) is a usage error, exit 2. Site mode only; ignored in `--bundle`. |
 | `--name <name>` | from `docs.config.ts` or `package.json#name` | Product name written into the index file (`llms.txt` or `AGENTS.md`). Overrides config. |
 | `--summary <text>` | from `docs.config.ts` or `package.json#description` | Product summary written into the index file. Overrides config. |
 | `--include <glob>` | none | Docs-root-relative glob to include. Repeatable. Works in both modes. |
