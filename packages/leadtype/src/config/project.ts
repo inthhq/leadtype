@@ -24,6 +24,7 @@
 
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { glob as fg } from "tinyglobby";
 import type { DocsCollection, DocsConfig, DocsNavEntry } from "../llm";
 import {
   formatSparse,
@@ -296,6 +297,33 @@ function projectRootForConfig(configPath: string): string {
     : configDir;
 }
 
+/**
+ * The include/exclude selection of a collection, as a docs-relative membership
+ * test for `inferNavigationFromContent`. Empty (no filter) when the collection
+ * has no path filters. Uses the staging glob semantics (`copySourceFiles`):
+ * dotfiles count, bare-directory entries stay literal.
+ */
+async function derivationPathFilter(
+  collection: Pick<ResolvedDocsCollection, "include" | "exclude">,
+  contentDir: string
+): Promise<{ filter?: (relativePath: string) => boolean }> {
+  const include = collection.include ?? [];
+  const exclude = collection.exclude ?? [];
+  if (include.length === 0 && exclude.length === 0) {
+    return {};
+  }
+  const files = await fg(include.length > 0 ? include : ["**/*.{md,mdx}"], {
+    absolute: false,
+    cwd: contentDir,
+    dot: true,
+    expandDirectories: false,
+    ignore: exclude,
+    onlyFiles: true,
+  });
+  const allowed = new Set(files.map((file) => file.split(path.sep).join("/")));
+  return { filter: (relativePath) => allowed.has(relativePath) };
+}
+
 export async function resolveProject(
   options: ResolveProjectOptions = {}
 ): Promise<ResolvedProject> {
@@ -493,7 +521,14 @@ export async function resolveProject(
       // tree the real build never produces.
       normalized.config.i18n === undefined
     ) {
-      const derived = await inferNavigationFromContent(contentDir);
+      // Derive over the same filtered file set the staging globs select:
+      // `generate` stages a filtered mirror and derives from it, so deriving
+      // over the raw tree here would report sections built from pages the
+      // collection's include/exclude keeps out of every artifact.
+      const derived = await inferNavigationFromContent(
+        contentDir,
+        await derivationPathFilter(collection, contentDir)
+      );
       navigationOrigin = "inferred";
       resolvedNavigation = derived.navigation;
       inference = mergeInferenceReports(inference, derived.report);

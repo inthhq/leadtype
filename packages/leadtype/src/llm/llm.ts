@@ -1093,6 +1093,12 @@ export type ResolveDocsNavigationConfig = {
   includeFallback?: boolean;
   toc?: boolean | DocsTableOfContentsOptions;
   /**
+   * Keep only source files whose absolute path passes. `createDocsSource`
+   * threads its include/exclude file selection through this so the resolved
+   * navigation covers exactly the pages the source lists, loads, and indexes.
+   */
+  filterFile?: (absoluteFilePath: string) => boolean;
+  /**
    * Name of the docs subdirectory under `srcDir`. Defaults to `"docs"` for
    * backward compatibility. Set this when the docs folder isn't named `docs`
    * (e.g. fumadocs sites using `content/docs` — the directory containing the
@@ -1690,7 +1696,8 @@ async function readSourceDocs(
   baseUrl: string,
   mounts?: DocsPathMount[],
   docsDirName: string = DOCS_DIRNAME,
-  localeOptions: LocaleReadOptions = {}
+  localeOptions: LocaleReadOptions = {},
+  filterFile?: (absoluteFilePath: string) => boolean
 ): Promise<Map<string, SourceDocWithContent>> {
   const docsDir = path.join(srcDir, docsDirName);
   const docs = new Map<string, SourceDocWithContent>();
@@ -1699,7 +1706,8 @@ async function readSourceDocs(
     return docs;
   }
 
-  const files = await collectFiles(docsDir, [".md", ".mdx"]);
+  const collected = await collectFiles(docsDir, [".md", ".mdx"]);
+  const files = filterFile ? collected.filter(filterFile) : collected;
   const relativePaths = files.map((filePath) =>
     normalizeDocsPath(path.relative(docsDir, filePath))
   );
@@ -3782,7 +3790,8 @@ export async function resolveDocsNavigation(
     baseUrl,
     config.mounts,
     config.docsDirName,
-    localeOptions
+    localeOptions,
+    config.filterFile
   );
   for (const extraDocsDir of config.extraDocsDirs ?? []) {
     const resolvedExtraDocsDir = path.resolve(extraDocsDir);
@@ -3791,7 +3800,8 @@ export async function resolveDocsNavigation(
       baseUrl,
       config.mounts,
       path.basename(resolvedExtraDocsDir),
-      localeOptions
+      localeOptions,
+      config.filterFile
     );
     for (const [urlPath, doc] of extraDocs) {
       const existing = sourceDocs.get(urlPath);

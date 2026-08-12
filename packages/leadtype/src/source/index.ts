@@ -156,9 +156,10 @@ export type CreateDocsSourceConfig<
    * Glob patterns relative to `contentDir` that are dropped after `include`.
    *
    * This is a page-existence filter, not a display filter: an excluded file is
-   * not listed, not loadable, and not indexed. Authors use it to keep drafts
-   * and internal notes off the site, so honouring it at build time but not at
-   * runtime would publish exactly the content it was meant to withhold.
+   * not listed, not loadable, not indexed, and absent from the resolved
+   * navigation. Authors use it to keep drafts and internal notes off the site,
+   * so honouring it at build time but not at runtime would publish exactly the
+   * content it was meant to withhold.
    */
   exclude?: string[];
   /**
@@ -540,6 +541,29 @@ export async function createDocsSource<
     return cachedFilesByRoot;
   }
 
+  const hasPathFilters =
+    (config.include?.length ?? 0) > 0 || (config.exclude?.length ?? 0) > 0;
+
+  /**
+   * Membership test over the include/exclude selection, for the surfaces that
+   * walk directories themselves (`resolveDocsNavigation`). Undefined when no
+   * filters are configured, so the unfiltered path is untouched.
+   */
+  async function selectedFileFilter(): Promise<
+    ((absoluteFilePath: string) => boolean) | undefined
+  > {
+    if (!hasPathFilters) {
+      return;
+    }
+    const filesByRoot = await listFilesByRoot();
+    const allowed = new Set(
+      filesByRoot.flatMap((entry) =>
+        entry.files.map((file) => path.resolve(file))
+      )
+    );
+    return (absoluteFilePath) => allowed.has(path.resolve(absoluteFilePath));
+  }
+
   async function listFiles(): Promise<string[]> {
     if (!cachedFiles) {
       const filesByRoot = await listFilesByRoot();
@@ -638,23 +662,37 @@ export async function createDocsSource<
     if (config.groups && config.groups.length > 0) {
       return nav;
     }
-    // The same two opt-outs `generate` applies before deriving. Include /
-    // exclude filters: derivation walks the raw content tree while
-    // `listMetas` serves the filtered one, so a derived tree would claim
-    // pages this source refuses to list. i18n: derivation keys sections off
-    // the first path segment, which for `docs/en/…` is the locale — while
-    // navigation resolves per locale over locale-stripped paths, so no
-    // derived section could ever match.
-    if (
-      (config.include && config.include.length > 0) ||
-      (config.exclude && config.exclude.length > 0) ||
-      config.i18n !== undefined
-    ) {
+    // The same opt-out `generate` applies before deriving. i18n: derivation
+    // keys sections off the first path segment, which for `docs/en/…` is the
+    // locale — while navigation resolves per locale over locale-stripped
+    // paths, so no derived section could ever match. Include/exclude filters
+    // are no reason to refuse: `generate` stages a filtered mirror and then
+    // derives from it (its own gate only tests the --include/--exclude CLI
+    // flags), so the runtime derives over the same filtered file set the
+    // staging globs select.
+    if (config.i18n !== undefined) {
       return nav;
     }
-    derivedNavPromise ??= inferNavigationFromContent(sourceContentDir).then(
-      (result) => result.navigation
-    );
+    derivedNavPromise ??= (async () => {
+      let filter: ((relativePath: string) => boolean) | undefined;
+      if (hasPathFilters) {
+        const filesByRoot = await listFilesByRoot();
+        const allowed = new Set(
+          filesByRoot
+            .filter((entry) => entry.contentDir === sourceContentDir)
+            .flatMap((entry) => entry.files)
+            .map((file) =>
+              normalizeDocsPath(path.relative(sourceContentDir, file))
+            )
+        );
+        filter = (relativePath) => allowed.has(relativePath);
+      }
+      const result = await inferNavigationFromContent(
+        sourceContentDir,
+        filter ? { filter } : {}
+      );
+      return result.navigation;
+    })();
     const derived = await derivedNavPromise;
     if (derived.length === 0) {
       return nav;
@@ -665,6 +703,11 @@ export async function createDocsSource<
   }
 
   async function getNavigation(): Promise<DocsNavigation> {
+    // Navigation walks the directories itself rather than reading the file
+    // cache, so it gets the include/exclude selection as a filter — otherwise
+    // excluded pages would land in the nav, linking to URLs `loadPage`
+    // refuses to serve.
+    const filterFile = await selectedFileFilter();
     return await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
@@ -676,6 +719,7 @@ export async function createDocsSource<
       i18n: config.i18n,
       locale: config.locale,
       toc: tocOptions === false ? false : tocOptions,
+      ...(filterFile ? { filterFile } : {}),
     });
   }
 

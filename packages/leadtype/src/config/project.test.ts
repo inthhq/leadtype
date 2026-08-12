@@ -131,6 +131,25 @@ describe("navigation origin", () => {
     );
   });
 
+  it("derives over the collection's filtered file set", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": `export default { ${IDENTITY}, collections: { docs: { dir: "docs", exclude: ["drafts/**"] } } };`,
+      "docs/index.mdx": page("Home"),
+      "docs/guides/auth.mdx": page("Auth"),
+      "docs/drafts/wip.mdx": page("WIP"),
+    });
+    const project = await resolveProject({ cwd: dir });
+
+    // `generate` stages a filtered mirror and derives from it, so the
+    // derived tree must come from the filtered file set — a section built
+    // from excluded drafts would advertise pages no artifact contains.
+    expect(project.collections[0]?.navigationOrigin).toBe("inferred");
+    const titles = (project.collections[0]?.navigation ?? []).map((entry) =>
+      typeof entry === "object" && "title" in entry ? entry.title : entry
+    );
+    expect(titles).toEqual(["index", "Guides"]);
+  });
+
   it("does not derive over a localized tree", async () => {
     const dir = await fixture({
       "docs/docs.config.ts": `export default { ${IDENTITY}, i18n: { defaultLocale: "en", locales: ["en", "fr"] } };`,

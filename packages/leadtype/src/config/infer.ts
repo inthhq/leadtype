@@ -95,13 +95,15 @@ type ContentPage = {
 
 async function readContentPages(
   docsDir: string,
-  skip: ReadonlySet<string>
+  skip: ReadonlySet<string>,
+  filter?: (relativePath: string) => boolean
 ): Promise<ContentPage[]> {
   const files = (
     await fg(DOC_GLOB, { absolute: false, cwd: docsDir, onlyFiles: true })
   )
     .map((file) => file.split(path.sep).join("/"))
     .filter((file) => !skip.has(file.replace(DOC_EXTENSION, "")))
+    .filter((file) => (filter ? filter(file) : true))
     // Sort before reading so batching — and therefore any later tie-break —
     // never depends on the order the filesystem happened to return.
     .sort((left, right) => left.localeCompare(right));
@@ -195,6 +197,13 @@ export async function inferNavigationFromContent(
      * or both trees claim the same slug.
      */
     exclude?: readonly string[];
+    /**
+     * Keep only pages whose docs-relative path (POSIX separators, with
+     * extension) passes. Callers with include/exclude globs derive over the
+     * exact file set those globs selected — re-encoding the semantics as
+     * another glob call here would drift from the staging-glob options.
+     */
+    filter?: (relativePath: string) => boolean;
   } = {}
 ): Promise<InferNavigationResult> {
   const skip = new Set(
@@ -202,7 +211,7 @@ export async function inferNavigationFromContent(
       entry.split(path.sep).join("/").replace(DOC_EXTENSION, "")
     )
   );
-  const pages = await readContentPages(docsDir, skip);
+  const pages = await readContentPages(docsDir, skip, options.filter);
   const report = emptyInferenceReport();
 
   if (pages.length === 0) {

@@ -653,7 +653,7 @@ describe("createDocsSource", () => {
       ]);
     });
 
-    it("does not derive when include/exclude filters are set", async () => {
+    it("keeps excluded pages out of the derived navigation", async () => {
       await writeTree();
       const source = await createDocsSource({
         contentDir,
@@ -662,11 +662,56 @@ describe("createDocsSource", () => {
 
       const navigation = await source.getNavigation();
 
-      // Derivation walks the raw content tree while listPages serves the
-      // filtered one, so a derived tree would claim pages this source refuses
-      // to list. `generate` opts out of derivation for filtered runs; the
-      // runtime must too.
+      // `exclude` is a page-existence filter: an excluded page must not
+      // appear anywhere in the navigation, or the sidebar links to URLs
+      // `loadPage` refuses to serve. Only the filtered pages survive.
       expect(navigation.groups).toEqual([]);
+      expect(navigation.ungrouped.map((page) => page.title)).toEqual(["Home"]);
+    });
+
+    it("derives over the filtered file set, as generate does", async () => {
+      await writeTree();
+      await writeMdx(
+        path.join(contentDir, "drafts/wip.mdx"),
+        "---\ntitle: WIP\n---\nBody.\n"
+      );
+      const source = await createDocsSource({
+        contentDir,
+        exclude: ["drafts/**"],
+      });
+
+      const navigation = await source.getNavigation();
+
+      // `generate` stages a filtered mirror and still derives from it —
+      // collection-level filters only affect staging, they don't opt out of
+      // derivation. The runtime derives over the same filtered set, so the
+      // surviving tree gains its sections and the excluded one contributes
+      // nothing.
+      expect(navigation.groups.map((group) => group.title)).toEqual(["Guides"]);
+      expect(navigation.ungrouped.map((page) => page.title)).toEqual(["Home"]);
+    });
+
+    it("keeps excluded pages out of an authored navigation", async () => {
+      await writeTree();
+      const source = await createDocsSource({
+        contentDir,
+        nav: [{ title: "Everything", pages: [{ include: "**" }] }],
+        exclude: ["guides/**"],
+      });
+
+      const navigation = await source.getNavigation();
+
+      // Authored nav resolves against the filtered file set too: an include
+      // glob must not resurrect pages the exclude filter withheld.
+      expect(navigation.groups.map((group) => group.title)).toEqual([
+        "Everything",
+      ]);
+      expect(
+        navigation.groups.flatMap((group) =>
+          group.pages.map((page) => page.title)
+        )
+      ).toEqual(["Home"]);
+      expect(navigation.ungrouped).toEqual([]);
     });
 
     it("does not derive over a localized tree", async () => {
