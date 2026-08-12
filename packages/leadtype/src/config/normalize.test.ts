@@ -725,6 +725,20 @@ describe("baseUrl", () => {
     expect(() =>
       normalize({ product, baseUrl: "https://buildbot@acme.dev" })
     ).toThrow(/must not embed credentials/);
+
+    // `ftp:` is a WHATWG special scheme, so userinfo parses and populates.
+    // The credentials rejection must fire before the protocol rejection,
+    // which echoes the authored value — otherwise the scheme error would
+    // interpolate the secret into stderr/CI logs.
+    let ftpMessage = "";
+    try {
+      normalize({ product, baseUrl: "ftp://buildbot:s3cret@acme.dev" });
+    } catch (error) {
+      ftpMessage = String(error);
+    }
+    expect(ftpMessage).toMatch(/must not embed credentials/);
+    expect(ftpMessage).not.toContain("s3cret");
+    expect(ftpMessage).not.toContain("buildbot");
   });
 
   it("rejects a bare trailing delimiter the URL parser reports as empty", () => {

@@ -164,8 +164,8 @@ export function parseInitArgs(argv: string[]): InitArgs {
  * The root `leadtype.config.*` filename that would win config discovery, or
  * `null`. `generate` (via `loadLeadtypeConfig`) and the runtime read a root
  * config in preference to any `docs/docs.config.*`, so while one exists,
- * whatever init writes into `docs/docs.config.ts` is never read — with or
- * without `--force`.
+ * whatever init writes into `docs/docs.config.ts` loses default discovery —
+ * with or without `--force`.
  */
 function findRootConfigFilename(projectRoot: string): string | null {
   return (
@@ -468,7 +468,9 @@ export async function runInitCommand(
   // is silently dropped when that file would be skipped (`writeFiles` keeps
   // it without `--force`) — or, `--force` or not, when a root
   // `leadtype.config.*` outranks it in config discovery, so the file the
-  // value lands in is never the one `generate` reads.
+  // value lands in is not the one `generate` reads by default. ("By default",
+  // not "never": `generate --src docs --docs-dir .` calls `loadDocsConfig`
+  // without `cwd`, skipping the root-config lookup, and does read it.)
   const rootConfigFilename = findRootConfigFilename(projectRoot);
   const docsConfigExists = existsSync(
     path.join(projectRoot, "docs", "docs.config.ts")
@@ -476,7 +478,7 @@ export async function runInitCommand(
   let baseUrlConflict: string | undefined;
   if (args.baseUrl !== undefined) {
     if (rootConfigFilename !== null) {
-      baseUrlConflict = `${rootConfigFilename} takes precedence over docs/docs.config.ts, so --base-url would be ignored — init writes baseUrl only into docs/docs.config.ts, which is never read while the root config exists. Set baseUrl in ${rootConfigFilename} instead.`;
+      baseUrlConflict = `${rootConfigFilename} takes precedence over docs/docs.config.ts, so --base-url would be ignored — init writes baseUrl only into docs/docs.config.ts, which loses to the root config in generate's default discovery. Set baseUrl in ${rootConfigFilename} instead.`;
     } else if (!args.force && docsConfigExists) {
       baseUrlConflict =
         "docs/docs.config.ts already exists, so --base-url would be ignored — baseUrl lives only in that config. Set baseUrl there, or rerun with --force to overwrite it.";

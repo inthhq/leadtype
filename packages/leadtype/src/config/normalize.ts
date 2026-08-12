@@ -117,19 +117,23 @@ export function normalizeAuthoredBaseUrl(
       `${subject} "${baseUrl}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
     );
   }
+  if (parsed.username !== "" || parsed.password !== "") {
+    // Ordered above every rejection that echoes the authored value (protocol,
+    // query/fragment): this one does not echo, because the whole point is
+    // that it carries a secret, and error text lands in CI logs. `ftp:` is a
+    // WHATWG special scheme, so `ftp://user:pass@host` parses with populated
+    // userinfo and must hit this message, not the echoing protocol one. (The
+    // parse failure above can echo safely — a value the parser cannot read
+    // yielded no credentials to leak.) The serialized return would otherwise
+    // copy the credentials into every public artifact URL joins feed —
+    // sitemap, search metadata, feeds, agent files.
+    throw new Error(
+      `${subject} must not embed credentials (user:password@host) — the value is copied into publicly generated artifacts (sitemap, search metadata, feeds). Use the bare origin, optionally with a path prefix.`
+    );
+  }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error(
       `${subject} "${baseUrl}" must be an http or https URL — generated links are joined onto it verbatim.`
-    );
-  }
-  if (parsed.username !== "" || parsed.password !== "") {
-    // Unlike the other rejections, this one does not echo the authored value:
-    // the whole point is that it carries a secret, and error text lands in CI
-    // logs. The serialized return would otherwise copy the credentials into
-    // every public artifact URL joins feed — sitemap, search metadata, feeds,
-    // agent files.
-    throw new Error(
-      `${subject} must not embed credentials (user:password@host) — the value is copied into publicly generated artifacts (sitemap, search metadata, feeds). Use the bare origin, optionally with a path prefix.`
     );
   }
   if (
