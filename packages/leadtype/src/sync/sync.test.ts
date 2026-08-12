@@ -984,6 +984,9 @@ describe("the graph sync acts on is the graph normalize reports", () => {
         expect(cloneTargets.sort()).toEqual(
           projected.map((source) => source.cacheDir).sort()
         );
+        // Pin the projection against expectations derived straight from the
+        // resolved graph's git entries — comparing against `projected` again
+        // would put the same `projectRemoteSources` call on both sides.
         expect(
           result.sources.map(({ source }) => ({
             id: source.id,
@@ -991,11 +994,17 @@ describe("the graph sync acts on is the graph normalize reports", () => {
             collectionKeys: source.collectionKeys,
           }))
         ).toEqual(
-          projected.map((source) => ({
-            id: source.id,
-            cacheDir: source.cacheDir,
-            collectionKeys: source.collectionKeys,
-          }))
+          resolved.sources
+            .filter((source) => source.kind === "git")
+            .map((source) => ({
+              id: source.id,
+              cacheDir: path.resolve(
+                configDir,
+                source.cacheDir ??
+                  defaultCacheDir(source.repository, source.ref)
+              ),
+              collectionKeys: source.collectionKeys,
+            }))
         );
       } finally {
         await rm(configDir, { force: true, recursive: true });

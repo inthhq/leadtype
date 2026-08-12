@@ -1,3 +1,4 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { type DocsConfig, gitSource } from "../llm/llm";
 import { formatDeprecationWarning, normalizeDocsConfig } from "./normalize";
@@ -360,6 +361,46 @@ describe("source graph", () => {
       kind: "git",
       cacheDir: defaultDir,
     });
+  });
+
+  it("resolves cacheDir equivalence against the config file's directory when only configPath is given", () => {
+    // Regression: with `configPath` but no `configDir` the check fell back to
+    // process.cwd(), so accept/reject depended on where the process was
+    // invoked from. Relative cache dirs are relative to the config file — an
+    // absolute cacheDir spelling out the config-relative default must be
+    // accepted no matter the cwd, and a genuine mismatch still rejected.
+    const collectionsWith = (cacheDir: string): DocsConfig => ({
+      product,
+      collections: {
+        docs: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "docs",
+          routePrefix: "/docs",
+          cacheDir,
+        },
+        changelog: {
+          repository: "https://github.com/acme/acme.git",
+          ref: "main",
+          dir: "changelog",
+          routePrefix: "/changelog",
+        },
+      },
+    });
+    const absoluteDefault = path.join(
+      path.dirname(CONFIG_PATH),
+      ".leadtype/sources/acme-acme@main"
+    );
+    const { resolved } = normalize(collectionsWith(absoluteDefault));
+    expect(resolved.sources).toHaveLength(1);
+    expect(resolved.sources[0]).toMatchObject({
+      kind: "git",
+      cacheDir: absoluteDefault,
+    });
+
+    expect(() => normalize(collectionsWith("/elsewhere/acme"))).toThrow(
+      /sets cacheDir "\/elsewhere\/acme".*uses the default/s
+    );
   });
 
   it("groups every local collection under one local source", () => {

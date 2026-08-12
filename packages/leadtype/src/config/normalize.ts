@@ -273,7 +273,11 @@ function resolveSources(
       ) {
         const explicitDir = (existing.cacheDir ??
           collection.cacheDir) as string;
-        const resolveBase = configDir ?? ".";
+        // Relative cache dirs are contractually relative to the config file's
+        // directory. When the caller passes only `configPath`, that directory
+        // is still known — cwd is a last resort, never a silent substitute.
+        const resolveBase =
+          configDir ?? (configPath ? path.dirname(configPath) : ".");
         const defaultDir = defaultCacheDir(collection.repository, ref);
         if (
           path.resolve(resolveBase, explicitDir) !==
