@@ -1471,7 +1471,7 @@ export function extractDocsTableOfContents(
     }
 
     const level = marker.length;
-    if (!isTocHeadingLevel(level) || level < minLevel || level > maxLevel) {
+    if (!isTocHeadingLevel(level)) {
       continue;
     }
 
@@ -1480,9 +1480,20 @@ export function extractDocsTableOfContents(
       continue;
     }
 
+    // The rendered page slugs every heading, so duplicate numbering has to be
+    // counted over every heading too — not just the ones inside minLevel..
+    // maxLevel. Counting only the visible subset would hand a TOC entry the
+    // unsuffixed anchor that an out-of-range heading already owns on the page.
     const slug = slugifyDocsHeading(title);
-    const slugCount = slugCounts.get(slug) ?? 0;
-    slugCounts.set(slug, slugCount + 1);
+    const slugCount = slug ? (slugCounts.get(slug) ?? 0) : 0;
+    if (slug) {
+      slugCounts.set(slug, slugCount + 1);
+    }
+
+    if (level < minLevel || level > maxLevel) {
+      continue;
+    }
+
     const id = slugCount === 0 ? slug : `${slug}-${slugCount}`;
     const item: DocsTableOfContentsItem = {
       id,

@@ -2511,6 +2511,31 @@ describe("extractDocsTableOfContents", () => {
     });
   });
 
+  it("counts headings outside the level range when numbering anchors", () => {
+    // The rendered page slugs every heading, so the h1 claims `install` and
+    // the h2 below it renders as `install-1` — even though the default 2..3
+    // range keeps the h1 out of the TOC itself.
+    const toc = extractDocsTableOfContents(
+      ["# Install", "## Install", "#### Setup", "### Setup"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc[0]).toMatchObject({
+      id: "install-1",
+      level: 2,
+      urlWithHash: "/docs/example#install-1",
+      absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-1",
+    });
+    expect(toc[0]?.children[0]).toMatchObject({
+      id: "setup-1",
+      level: 3,
+      urlWithHash: "/docs/example#setup-1",
+    });
+  });
+
   it("respects custom heading level ranges", () => {
     const toc = extractDocsTableOfContents(
       ["# Page", "## Section", "### Child", "#### Detail"].join("\n"),
