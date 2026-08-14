@@ -308,6 +308,8 @@ type MutableChunk = {
 
 type SectionBlock = {
   headingPath: string[];
+  /** Anchor id of this section's own heading, duplicate-suffixed. */
+  anchor: string;
   text: string;
   codeText: string;
 };
@@ -535,7 +537,13 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const headingPath: string[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
+  // Repeated heading text must not produce repeated anchors: the rendered page
+  // (and `extractDocsTableOfContents`, which lint validates against) numbers
+  // the second "Example" `example-1`. Counting every heading — including ones
+  // whose section produces no chunk — keeps those numbers in step.
+  const slugCounts = new Map<string, number>();
   let currentHeadingPath: string[] = [];
+  let currentAnchor = "";
   let inCodeFence = false;
 
   const flush = () => {
@@ -547,12 +555,23 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     if (text || codeText) {
       blocks.push({
         headingPath: currentHeadingPath,
+        anchor: currentAnchor,
         text,
         codeText,
       });
     }
     textLines.length = 0;
     codeLines.length = 0;
+  };
+
+  const nextAnchor = (title: string): string => {
+    const slug = slugifyDocsHeading(title);
+    if (!slug) {
+      return "";
+    }
+    const seen = slugCounts.get(slug) ?? 0;
+    slugCounts.set(slug, seen + 1);
+    return seen === 0 ? slug : `${slug}-${seen}`;
   };
 
   for (const line of stripFrontmatter(content).split("\n")) {
@@ -570,9 +589,11 @@ function collectSectionBlocks(content: string): SectionBlock[] {
         const rawTitle = headingMatch[2];
         if (levelMarker && rawTitle) {
           const level = levelMarker.length;
+          const title = cleanMarkdown(rawTitle);
           headingPath.length = level - 1;
-          headingPath.push(cleanMarkdown(rawTitle));
+          headingPath.push(title);
           currentHeadingPath = [...headingPath];
+          currentAnchor = nextAnchor(title);
         }
         continue;
       }
@@ -926,7 +947,7 @@ export function createDocsSearchIndex(
           urlPath: doc.urlPath,
           absoluteUrl: doc.absoluteUrl,
           relativePath: doc.relativePath,
-          anchor: slugifyDocsHeading(block.headingPath.at(-1) ?? ""),
+          anchor: block.anchor,
           headingPath: block.headingPath,
           text: chunkText,
           codeText,

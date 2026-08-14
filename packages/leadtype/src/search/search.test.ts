@@ -352,6 +352,47 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("suffixes repeated heading slugs like the rendered page and the TOC", () => {
+    const content = [
+      "# API Reference",
+      "",
+      "## createThing",
+      "",
+      "### Example",
+      "",
+      "Use createThing to build a widget alpha.",
+      "",
+      "## createOther",
+      "",
+      "### Example",
+      "",
+      "Use createOther to build a gadget beta.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "api",
+          title: "API Reference",
+          urlPath: "/docs/api",
+          absoluteUrl: "https://leadtype.dev/docs/api",
+          relativePath: "api.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    // Both sections are titled "Example"; the second must not deep-link to
+    // the first. `extractDocsTableOfContents` numbers them example/example-1.
+    expect(searchDocs(index, "alpha")[0]?.urlWithHash).toBe(
+      "/docs/api#example"
+    );
+    expect(searchDocs(index, "beta")[0]?.urlWithHash).toBe(
+      "/docs/api#example-1"
+    );
+  });
+
   it("slugifies headings for hash links", () => {
     expect(slugifyDocsHeading("Café API: Quick Start!")).toBe(
       "cafe-api-quick-start"
