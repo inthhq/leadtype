@@ -445,6 +445,28 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("builds excerpts around whole-string normalized matches", () => {
+    // `ΟΣ`.toLowerCase() is `ος` (final sigma); per-code-point lowercasing
+    // yields `οσ`. Query tokens come from whole-string normalizeText, so the
+    // excerpt window has to search that same string.
+    const lead = "note ".repeat(80);
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "greek",
+          title: "Greek",
+          urlPath: "/docs/greek",
+          absoluteUrl: "https://leadtype.dev/docs/greek",
+          relativePath: "greek.mdx",
+          content: `# Greek\n\n${lead}ΟΣ hydrateWidget after the sigma.\n`,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "ος")[0]?.excerpt).toContain("ΟΣ");
+  });
+
   it("searches metadata-only indexes and uses split content for excerpts", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

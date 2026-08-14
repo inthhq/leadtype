@@ -627,13 +627,17 @@ function addPosting(
  * `normalizeText` is not length-preserving — NFKD expands `…` to `...`, `½` to
  * `1⁄2`, `ﬁ` to `fi`, and the CJK compatibility forms to their parts — so an
  * offset found in the normalized text does not address the same character in
- * the original. Normalize per code point and record, for each unit of the
- * normalized string, where the code point it came from starts in the original.
+ * the original. Map each unit of the *whole-string* normalized text back to
+ * the code point it came from. Per-code-point lowercasing is not always
+ * identical (`ΟΣ` → `ος` as a word, `οσ` per letter), so the match string
+ * stays `normalizeText(input)` and offsets fall back to prefix lengths when
+ * the two diverge.
  */
 function normalizeTextWithOffsets(input: string): {
   normalized: string;
   offsets: number[];
 } {
+  const normalized = normalizeText(input);
   const parts: string[] = [];
   const offsets: number[] = [];
   let originalIndex = 0;
@@ -645,7 +649,34 @@ function normalizeTextWithOffsets(input: string): {
     parts.push(mapped);
     originalIndex += character.length;
   }
-  return { normalized: parts.join(""), offsets };
+  if (parts.join("") === normalized) {
+    return { normalized, offsets };
+  }
+  return {
+    normalized,
+    offsets: offsetsFromNormalizedPrefixes(input, normalized.length),
+  };
+}
+
+function offsetsFromNormalizedPrefixes(
+  input: string,
+  normalizedLength: number
+): number[] {
+  const offsets: number[] = [];
+  let originalIndex = 0;
+  for (const character of input) {
+    const prefixLength = normalizeText(
+      input.slice(0, originalIndex + character.length)
+    ).length;
+    while (offsets.length < prefixLength) {
+      offsets.push(originalIndex);
+    }
+    originalIndex += character.length;
+  }
+  while (offsets.length < normalizedLength) {
+    offsets.push(Math.max(0, originalIndex - 1));
+  }
+  return offsets.slice(0, normalizedLength);
 }
 
 function buildExcerpt(text: string, queryTokens: string[]): string {
