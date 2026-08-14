@@ -2536,6 +2536,15 @@ describe("extractDocsTableOfContents", () => {
     });
   });
 
+  it("still suffixes empty slugs the way the previous counter did", () => {
+    const toc = extractDocsTableOfContents(["## !!!", "## !!!"].join("\n"), {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+  });
+
   it("respects custom heading level ranges", () => {
     const toc = extractDocsTableOfContents(
       ["# Page", "## Section", "### Child", "#### Detail"].join("\n"),
