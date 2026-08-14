@@ -623,8 +623,34 @@ function addPosting(
   indexTerms[term] = [posting];
 }
 
+/**
+ * `normalizeText` is not length-preserving — NFKD expands `…` to `...`, `½` to
+ * `1⁄2`, `ﬁ` to `fi`, and the CJK compatibility forms to their parts — so an
+ * offset found in the normalized text does not address the same character in
+ * the original. Normalize per code point and record, for each unit of the
+ * normalized string, where the code point it came from starts in the original.
+ */
+function normalizeTextWithOffsets(input: string): {
+  normalized: string;
+  offsets: number[];
+} {
+  const parts: string[] = [];
+  const offsets: number[] = [];
+  let originalIndex = 0;
+  for (const character of input) {
+    const mapped = normalizeText(character);
+    for (let unit = 0; unit < mapped.length; unit += 1) {
+      offsets.push(originalIndex);
+    }
+    parts.push(mapped);
+    originalIndex += character.length;
+  }
+  return { normalized: parts.join(""), offsets };
+}
+
 function buildExcerpt(text: string, queryTokens: string[]): string {
-  const normalizedText = normalizeText(text);
+  const { normalized: normalizedText, offsets } =
+    normalizeTextWithOffsets(text);
   let matchIndex = -1;
   for (const token of queryTokens) {
     matchIndex = normalizedText.indexOf(token);
@@ -637,8 +663,9 @@ function buildExcerpt(text: string, queryTokens: string[]): string {
     return text.slice(0, 220).trim();
   }
 
-  const start = Math.max(0, matchIndex - 80);
-  const end = Math.min(text.length, matchIndex + 160);
+  const originalMatchIndex = offsets[matchIndex] ?? matchIndex;
+  const start = Math.max(0, originalMatchIndex - 80);
+  const end = Math.min(text.length, originalMatchIndex + 160);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;

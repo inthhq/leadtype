@@ -421,6 +421,30 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.excerpt).toContain("pnpm");
   });
 
+  it("builds excerpts around the match when the text has expanding characters", () => {
+    // NFKD expands these (… -> ..., ™ -> TM, ½ -> 1⁄2), so an offset found in
+    // the normalized text does not address the same spot in the original.
+    // Kept under one chunk so every expansion accumulates ahead of the match.
+    const lead = "note… ".repeat(180);
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "expanding",
+          title: "Expanding",
+          urlPath: "/docs/expanding",
+          absoluteUrl: "https://leadtype.dev/docs/expanding",
+          relativePath: "expanding.mdx",
+          content: `# Expanding\n\n${lead}Then call hydrateWidget to finish.\n`,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "hydratewidget")[0]?.excerpt).toContain(
+      "hydrateWidget"
+    );
+  });
+
   it("searches metadata-only indexes and uses split content for excerpts", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
