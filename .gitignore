@@ -59,6 +59,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Byproducts of driving the example apps in a browser for smoke checks:
+# screenshots, captured console output, and accessibility-tree snapshots all
+# land at the repo root. None are build inputs or referenced by the docs, so
+# they are ignored here rather than committed. Root-anchored on purpose —
+# images that belong to an app or to the docs live under those directories.
+/*.png
+/*.log
+/*-snapshot.md
+
 # Misc
 .DS_Store
 *.pem
