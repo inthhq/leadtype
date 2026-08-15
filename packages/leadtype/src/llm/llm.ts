@@ -75,6 +75,8 @@ const DEFAULT_TOC_MIN_LEVEL = 2;
 const DEFAULT_TOC_MAX_LEVEL = 3;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
+const SETEXT_H1_PATTERN = /^=+\s*$/;
+const SETEXT_H2_PATTERN = /^-+\s*$/;
 const FENCE_PATTERN = /^(`{3,}|~{3,})/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
@@ -1442,56 +1444,26 @@ export function extractDocsTableOfContents(
   const stack: DocsTableOfContentsItem[] = [];
   const slugger = createDocsHeadingSlugger();
   let activeFence: "`" | "~" | null = null;
+  let pendingLine: string | null = null;
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    const trimmedLine = line.trim();
-    const fenceMatch = trimmedLine.match(FENCE_PATTERN);
-    if (fenceMatch) {
-      const fenceMarker = fenceMatch[1] ?? "";
-      const fenceChar: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
-      if (activeFence === fenceChar) {
-        activeFence = null;
-        continue;
-      }
-      if (activeFence === null) {
-        activeFence = fenceChar;
-        continue;
-      }
-    }
-
-    if (activeFence !== null) {
-      continue;
-    }
-
-    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
-    if (!headingMatch) {
-      continue;
-    }
-
-    const marker = headingMatch[1];
-    const rawTitle = headingMatch[2];
-    if (!(marker && rawTitle)) {
-      continue;
-    }
-
-    const level = marker.length;
+  const consumeHeading = (rawTitle: string, level: number): void => {
     if (!isTocHeadingLevel(level)) {
-      continue;
+      return;
     }
 
     const title = cleanHeadingText(rawTitle);
     if (!title) {
-      continue;
+      return;
     }
 
-    // Number every heading, not just the ones inside minLevel..maxLevel.
+    // Number every heading — ATX and Setext, in or out of minLevel..maxLevel.
     // createDocsHeadingSlugger / github-slugger / rehype-slug all claim an
     // anchor for out-of-range headings too; counting only the visible subset
     // would hand a TOC entry the unsuffixed id those headings already own.
     const id = slugger.slug(title);
 
     if (level < minLevel || level > maxLevel) {
-      continue;
+      return;
     }
 
     const item: DocsTableOfContentsItem = {
@@ -1515,6 +1487,51 @@ export function extractDocsTableOfContents(
       items.push(item);
     }
     stack.push(item);
+  };
+
+  for (const line of stripFrontmatter(content).split("\n")) {
+    const trimmedLine = line.trim();
+    const fenceMatch = trimmedLine.match(FENCE_PATTERN);
+    if (fenceMatch) {
+      const fenceMarker = fenceMatch[1] ?? "";
+      const fenceChar: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
+      if (activeFence === fenceChar) {
+        activeFence = null;
+        pendingLine = null;
+        continue;
+      }
+      if (activeFence === null) {
+        activeFence = fenceChar;
+        pendingLine = null;
+        continue;
+      }
+    }
+
+    if (activeFence !== null) {
+      pendingLine = null;
+      continue;
+    }
+
+    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
+    if (headingMatch) {
+      const marker = headingMatch[1];
+      const rawTitle = headingMatch[2];
+      pendingLine = null;
+      if (marker && rawTitle) {
+        consumeHeading(rawTitle, marker.length);
+      }
+      continue;
+    }
+
+    const isSetextH1 = SETEXT_H1_PATTERN.test(trimmedLine);
+    const isSetextH2 = SETEXT_H2_PATTERN.test(trimmedLine);
+    if (pendingLine !== null && (isSetextH1 || isSetextH2)) {
+      consumeHeading(pendingLine, isSetextH1 ? 1 : 2);
+      pendingLine = null;
+      continue;
+    }
+
+    pendingLine = trimmedLine.length > 0 ? trimmedLine : null;
   }
 
   return items;

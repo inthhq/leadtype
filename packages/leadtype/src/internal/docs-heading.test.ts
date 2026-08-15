@@ -29,4 +29,20 @@ describe("createDocsHeadingSlugger", () => {
       slugifyDocsHeading(title)
     );
   });
+
+  it("advances past an already-emitted suffixed id", () => {
+    const slugger = createDocsHeadingSlugger();
+
+    expect(slugger.slug("Foo")).toBe("foo");
+    expect(slugger.slug("Foo")).toBe("foo-1");
+    expect(slugger.slug("Foo-1")).toBe("foo-1-1");
+  });
+
+  it("skips a later duplicate when the suffixed id was claimed first", () => {
+    const slugger = createDocsHeadingSlugger();
+
+    expect(slugger.slug("Foo-1")).toBe("foo-1");
+    expect(slugger.slug("Foo")).toBe("foo");
+    expect(slugger.slug("Foo")).toBe("foo-2");
+  });
 });

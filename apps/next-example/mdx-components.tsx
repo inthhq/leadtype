@@ -67,9 +67,7 @@ function createHeading(
   return Heading;
 }
 
-export function useMDXComponents(
-  components: MDXComponents = {}
-): MDXComponents {
+function createMdxHeadingComponents(): MDXComponents {
   const slugger = createDocsHeadingSlugger();
   return {
     h1: createHeading(1, slugger),
@@ -78,6 +76,14 @@ export function useMDXComponents(
     h4: createHeading(4, slugger),
     h5: createHeading(5, slugger),
     h6: createHeading(6, slugger),
+  };
+}
+
+export function useMDXComponents(
+  components: MDXComponents = {}
+): MDXComponents {
+  return {
+    ...createMdxHeadingComponents(),
     ...mdxComponents,
     ...components,
   };

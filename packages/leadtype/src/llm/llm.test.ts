@@ -2536,6 +2536,18 @@ describe("extractDocsTableOfContents", () => {
     });
   });
 
+  it("does not collide a later Foo-1 heading with a numbered duplicate", () => {
+    const toc = extractDocsTableOfContents(
+      ["## Foo", "## Foo", "## Foo-1"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.id)).toEqual(["foo", "foo-1", "foo-1-1"]);
+  });
+
   it("still suffixes empty slugs the way the previous counter did", () => {
     const toc = extractDocsTableOfContents(["## !!!", "## !!!"].join("\n"), {
       urlPath: "/docs/example",
@@ -2543,6 +2555,59 @@ describe("extractDocsTableOfContents", () => {
     });
 
     expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+  });
+
+  it("counts Setext headings when numbering anchors", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "=======", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toHaveLength(1);
+    expect(toc[0]).toMatchObject({
+      id: "install-1",
+      title: "Install",
+      level: 2,
+      urlWithHash: "/docs/example#install-1",
+    });
+  });
+
+  it("includes in-range Setext headings and ignores underlined text in fences", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "Setup",
+        "------",
+        "```md",
+        "Hidden",
+        "=======",
+        "```",
+        "## Configure",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "setup", title: "Setup" },
+      { id: "configure", title: "Configure" },
+    ]);
+  });
+
+  it("does not treat a thematic break after a blank line as a Setext heading", () => {
+    const toc = extractDocsTableOfContents(
+      ["A paragraph.", "", "---", "## After"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["After"]);
   });
 
   it("respects custom heading level ranges", () => {
