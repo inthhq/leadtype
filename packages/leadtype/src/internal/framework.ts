@@ -78,14 +78,23 @@ export function joinRouteSlug(slug: string[]): string {
   return slug.join("/");
 }
 
-/** The route base params are derived against: explicit `basePath`, else the source's own prefix. */
+/**
+ * The route base params are derived against: explicit `basePath`, else the
+ * source's own prefix. `null` when neither is set — a hand-rolled source
+ * that never opted into `routePrefix` keeps the historical slug-based
+ * params rather than being forced under `/docs`.
+ */
 export function resolveRouteBase(config: {
   source: DocsSource;
   basePath?: string;
-}): string {
-  return normalizeUrlPath(
-    config.basePath ?? config.source.routePrefix ?? "/docs"
-  );
+}): string | null {
+  if (config.basePath !== undefined) {
+    return normalizeUrlPath(config.basePath);
+  }
+  if (config.source.routePrefix !== undefined) {
+    return normalizeUrlPath(config.source.routePrefix);
+  }
+  return null;
 }
 
 /**
@@ -124,6 +133,9 @@ export async function listRouteSlugs(
 ): Promise<string[][]> {
   const base = resolveRouteBase(config);
   const pages = await config.source.listPages();
+  if (base === null) {
+    return pages.map((page) => page.slug);
+  }
   return pages.map((page) => {
     const slug = routeSlugFromUrlPath(page.urlPath, base);
     if (slug === null) {
@@ -148,9 +160,15 @@ export function createLoadPage(
   config: LoadPageConfig
 ): (slug: string | string[] | undefined) => Promise<DocsPage | null> {
   const base = resolveRouteBase(config);
-  const sourceBase = normalizeUrlPath(config.source.routePrefix ?? "/docs");
+  const sourceBase =
+    config.source.routePrefix === undefined
+      ? null
+      : normalizeUrlPath(config.source.routePrefix);
   return async (slug) => {
     const segments = splitRouteSlug(slug);
+    if (base === null) {
+      return await config.source.loadPage(segments);
+    }
     // Params are route segments under the base, so resolve them as the URL
     // they address. This is what keeps the load side symmetric with
     // `listRouteSlugs`: a mounted page whose params differ from its
@@ -163,7 +181,7 @@ export function createLoadPage(
     // loads instead of 404ing on the re-rooted path.
     const match =
       findPageByUrlPath(pages, routePath) ??
-      (base === sourceBase
+      (sourceBase === null || base === sourceBase
         ? undefined
         : findPageByUrlPath(pages, joinUrlPath(sourceBase, ...segments)));
     if (match) {

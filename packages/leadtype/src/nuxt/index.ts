@@ -49,15 +49,26 @@ export function createPrerenderRoutes(
       const pages = await config.source.listPages();
       return pages.map((page) => normalizeUrlPath(page.urlPath));
     }
-    // An explicit basePath re-roots: slugs are taken relative to the source's
+    const basePath = normalizeUrlPath(config.basePath);
+    // A site-root catch-all is not a re-root: pass `basePath` through so
+    // pages under every collection prefix are enumerated, matching the
+    // other adapters. Re-rooting against the primary prefix would throw
+    // on `/changelog/1-0`.
+    if (basePath === "/") {
+      const slugs = await listJoinedSlugs({
+        source: config.source,
+        basePath: config.basePath,
+      });
+      return slugs.map((slug) => joinUrlPath("/", slug));
+    }
+    // An explicit prefix re-roots: slugs are taken relative to the source's
     // own prefix (so a mount that remaps `policies/privacy` →
     // `/docs/legal/privacy` still contributes `legal/privacy`), then joined
-    // onto the override. `listJoinedSlugs` is not given `basePath` — that
-    // would filter against the new prefix and throw on every page. Pages the
+    // onto the override. `listJoinedSlugs` is not given that prefix — that
+    // would filter against the new base and throw on every page. Pages the
     // source prefix cannot represent still throw. `createLoadPage` with the
     // same basePath maps those slugs back through the source prefix.
     const slugs = await listJoinedSlugs({ source: config.source });
-    const basePath = config.basePath;
     return slugs.map((slug) => joinUrlPath(basePath, slug));
   };
 }

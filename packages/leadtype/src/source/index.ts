@@ -214,7 +214,7 @@ export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
      * mount's `urlPrefix`, `"/docs"` when no mount claims the root. Framework
      * adapters use it as the default route base when deriving static params
      * from `urlPath`. Optional so hand-rolled sources keep satisfying the
-     * contract; adapters fall back to `"/docs"` when it is absent.
+     * contract; adapters keep using collection-local slugs when it is absent.
      */
     routePrefix?: string;
     /** Compute the docs navigation from configured groups + filesystem state. */

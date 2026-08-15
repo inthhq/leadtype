@@ -83,12 +83,15 @@ function buildSource(): DocsSource {
  * used to misroute.
  */
 function buildMountedSource(): DocsSource {
-  return buildSourceFromPages([
-    buildPage([]),
-    buildPage(["quickstart"]),
-    // mounts: [{ pathPrefix: "policies", urlPrefix: "/docs/legal" }]
-    buildPage(["policies", "privacy"], "/docs/legal/privacy"),
-  ]);
+  return buildSourceFromPages(
+    [
+      buildPage([]),
+      buildPage(["quickstart"]),
+      // mounts: [{ pathPrefix: "policies", urlPrefix: "/docs/legal" }]
+      buildPage(["policies", "privacy"], "/docs/legal/privacy"),
+    ],
+    "/docs"
+  );
 }
 
 type ProjectishPage = DocsPage & { collection: string };
@@ -263,12 +266,15 @@ describe("framework adapter route helpers", () => {
   });
 
   it("prefers a mounted route over a colliding raw slug", async () => {
-    const source = buildSourceFromPages([
-      // legacy/index.mdx mounted at /docs/foo
-      buildPage(["legacy"], "/docs/foo"),
-      // policies/index.mdx mounted at /docs/legacy
-      buildPage(["policies"], "/docs/legacy"),
-    ]);
+    const source = buildSourceFromPages(
+      [
+        // legacy/index.mdx mounted at /docs/foo
+        buildPage(["legacy"], "/docs/foo"),
+        // policies/index.mdx mounted at /docs/legacy
+        buildPage(["policies"], "/docs/legacy"),
+      ],
+      "/docs"
+    );
     // Generated params are urlPath-derived, so `legacy` addresses the page
     // advertised at /docs/legacy. The raw slug of the other page still
     // loads via its own route (`foo`).
@@ -334,6 +340,22 @@ describe("framework adapter route helpers", () => {
     await expect(
       createTanStackLoadPageData({ source, basePath: "/" })("docs/quickstart")
     ).resolves.toMatchObject({ title: "quickstart", collection: "docs" });
+    await expect(
+      createPrerenderRoutes({ source, basePath: "/" })()
+    ).resolves.toEqual(["/docs", "/docs/quickstart", "/changelog/1-0"]);
+  });
+
+  it("keeps slug params when a hand-rolled source omits routePrefix", async () => {
+    const source = buildSourceFromPages([buildPage(["setup"], "/guide/setup")]);
+    await expect(createGenerateStaticParams({ source })()).resolves.toEqual([
+      { slug: ["setup"] },
+    ]);
+    await expect(createEntries({ source })()).resolves.toEqual([
+      { slug: "setup" },
+    ]);
+    await expect(
+      createNextLoadPageData({ source })(["setup"])
+    ).resolves.toMatchObject({ title: "setup" });
   });
 
   it("refuses to emit params that would misroute a collection", async () => {
