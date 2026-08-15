@@ -425,7 +425,8 @@ describe("createDocsSearchIndex and searchDocs", () => {
     // NFKD expands these (… -> ..., ™ -> TM, ½ -> 1⁄2), so an offset found in
     // the normalized text does not address the same spot in the original.
     // Kept under one chunk so every expansion accumulates ahead of the match.
-    const lead = "note… ".repeat(180);
+    const ellipsisCountBeforeMatch = 180;
+    const lead = "note… ".repeat(ellipsisCountBeforeMatch);
     const index = createDocsSearchIndex(
       [
         {
@@ -448,7 +449,9 @@ describe("createDocsSearchIndex and searchDocs", () => {
   it("builds excerpts around whole-string normalized matches", () => {
     // `ΟΣ`.toLowerCase() is `ος` (final sigma); per-code-point lowercasing
     // yields `οσ`. Query tokens come from whole-string normalizeText, so the
-    // excerpt window has to search that same string.
+    // excerpt window has to search that same string. Offsets still come from
+    // the per-code-point map: toLowerCase is length-preserving, so the two
+    // strings disagree but the original-index map does not.
     const lead = "note ".repeat(80);
     const index = createDocsSearchIndex(
       [

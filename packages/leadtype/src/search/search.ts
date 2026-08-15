@@ -627,18 +627,20 @@ function addPosting(
  * `normalizeText` is not length-preserving — NFKD expands `…` to `...`, `½` to
  * `1⁄2`, `ﬁ` to `fi`, and the CJK compatibility forms to their parts — so an
  * offset found in the normalized text does not address the same character in
- * the original. Map each unit of the *whole-string* normalized text back to
- * the code point it came from. Per-code-point lowercasing is not always
- * identical (`ΟΣ` → `ος` as a word, `οσ` per letter), so the match string
- * stays `normalizeText(input)` and offsets fall back to prefix lengths when
- * the two diverge.
+ * the original.
+ *
+ * The match string is whole-string `normalizeText(input)` so it agrees with
+ * `tokenize` on context-sensitive lowercasing (`ΟΣ` → `ος`, not `οσ`). Offsets
+ * still come from per-code-point NFKD: decomposition is context-free, the
+ * diacritic strip removes the same marks either way, and `toLowerCase` is
+ * length-preserving, so the cheap map is identical to a prefix-length walk
+ * even when the two strings differ. A prefix fallback would be a no-op.
  */
 function normalizeTextWithOffsets(input: string): {
   normalized: string;
   offsets: number[];
 } {
   const normalized = normalizeText(input);
-  const parts: string[] = [];
   const offsets: number[] = [];
   let originalIndex = 0;
   for (const character of input) {
@@ -646,37 +648,9 @@ function normalizeTextWithOffsets(input: string): {
     for (let unit = 0; unit < mapped.length; unit += 1) {
       offsets.push(originalIndex);
     }
-    parts.push(mapped);
     originalIndex += character.length;
   }
-  if (parts.join("") === normalized) {
-    return { normalized, offsets };
-  }
-  return {
-    normalized,
-    offsets: offsetsFromNormalizedPrefixes(input, normalized.length),
-  };
-}
-
-function offsetsFromNormalizedPrefixes(
-  input: string,
-  normalizedLength: number
-): number[] {
-  const offsets: number[] = [];
-  let originalIndex = 0;
-  for (const character of input) {
-    const prefixLength = normalizeText(
-      input.slice(0, originalIndex + character.length)
-    ).length;
-    while (offsets.length < prefixLength) {
-      offsets.push(originalIndex);
-    }
-    originalIndex += character.length;
-  }
-  while (offsets.length < normalizedLength) {
-    offsets.push(Math.max(0, originalIndex - 1));
-  }
-  return offsets.slice(0, normalizedLength);
+  return { normalized, offsets };
 }
 
 function buildExcerpt(text: string, queryTokens: string[]): string {
