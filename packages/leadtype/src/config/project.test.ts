@@ -1,14 +1,16 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeSyncManifest } from "../sync/sync";
 import { resolveProjectNavigation } from "./navigation";
 import { resolveProject } from "./project";
 
 // Fixture configs import from source so they exercise the working tree.
-const LEADTYPE_ENTRY = fileURLToPath(new URL("../index.ts", import.meta.url));
+// A file URL is a valid ESM specifier; a Windows path is not — `\a` and
+// `\t` in `D:\a\leadtype\...` are escape sequences inside the generated
+// `import` string.
+const LEADTYPE_ENTRY = new URL("../index.ts", import.meta.url).href;
 
 const tempDirs: string[] = [];
 

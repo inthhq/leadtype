@@ -392,7 +392,7 @@ describe("multi-collection project", () => {
         configDir: dir,
       })
     ).rejects.toThrow(
-      /collection "docs" points at .*content\/missing.*does not exist/s
+      /collection "docs" points at .*content[/\\]missing.*does not exist/s
     );
   });
 });
