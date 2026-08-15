@@ -754,6 +754,19 @@ describe("baseUrl", () => {
     expect(malformedMessage).not.toContain("s3cret");
     expect(malformedMessage).not.toContain("buildbot");
 
+    // `@` inside the password is still userinfo. The first `@` is not the
+    // authority delimiter; redacting only through it would echo `ss@host`.
+    let multiAtMessage = "";
+    try {
+      normalize({ product, baseUrl: "https://user:pa@ss@acme.dev:99999" });
+    } catch (error) {
+      multiAtMessage = String(error);
+    }
+    expect(multiAtMessage).toMatch(/is not an absolute URL/);
+    expect(multiAtMessage).toContain("<redacted>@acme.dev");
+    expect(multiAtMessage).not.toContain("pa@ss");
+    expect(multiAtMessage).not.toContain("ss@acme");
+
     // A credential-free malformed value still echoes unchanged.
     expect(() => normalize({ product, baseUrl: "not a url" })).toThrow(
       /"not a url" is not an absolute URL/

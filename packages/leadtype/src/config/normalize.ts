@@ -116,8 +116,10 @@ export function normalizeAuthoredBaseUrl(
     // A value the parser rejects can still carry userinfo — an out-of-range
     // port (`https://user:pass@host:99999`) throws before the credentials
     // check below ever runs — so redact anything userinfo-shaped before
-    // echoing; the secret must not land in stderr/CI logs.
-    const redacted = normalized.replace(/\/\/[^/@\s]*@/, "//<redacted>@");
+    // echoing; the secret must not land in stderr/CI logs. Greedy through
+    // the authority's final `@`: a password that itself contains `@`
+    // (`https://user:pa@ss@host:bad`) must not leak the tail.
+    const redacted = normalized.replace(/\/\/[^/\s]*@/, "//<redacted>@");
     throw new Error(
       `${subject} "${redacted}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
     );
