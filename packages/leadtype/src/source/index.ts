@@ -22,6 +22,7 @@ import path from "node:path";
 import type { Root } from "mdast";
 import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
+import { inferNavigationFromContent } from "../config/infer";
 import { convertMdxFile, resolveMdxFrontmatter } from "../convert/convert";
 import {
   type DocsI18nConfig,
@@ -146,6 +147,25 @@ export type CreateDocsSourceConfig<
   baseUrl?: string;
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */
   mounts?: DocsPathMount[];
+  /**
+   * Glob patterns relative to `contentDir` that select which files are pages.
+   * Defaults to every `.md`/`.mdx` file.
+   */
+  include?: string[];
+  /**
+   * Glob patterns relative to `contentDir` that are dropped after `include`.
+   *
+   * This is a page-existence filter, not a display filter: an excluded file is
+   * not listed, not loadable, not indexed, and absent from the resolved
+   * navigation. Authors use it to keep drafts and internal notes off the site,
+   * so honouring it at build time but not at runtime would publish exactly the
+   * content it was meant to withhold.
+   *
+   * Generated pages are exempt: `openapi` output lands in an overlay outside
+   * `contentDir`, and `generate` writes it into the staged mirror *after*
+   * these globs run, so `exclude` cannot withhold it on either side.
+   */
+  exclude?: string[];
   /**
    * Remark plugins to apply when loading pages. Defaults to Leadtype's source
    * preset (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
@@ -498,11 +518,34 @@ export async function createDocsSource<
     }
     cachedFilesByRoot = await Promise.all(
       contentRoots.map(async (root) => {
-        const matches = await fg("**/*.{md,mdx}", {
-          absolute: true,
-          cwd: root,
-          onlyFiles: true,
-        });
+        // Include/exclude patterns are authored against the content tree, so
+        // they only apply to `sourceContentDir`. Generated overlay roots (the
+        // OpenAPI temp dir) stay unfiltered — `generate` writes their pages
+        // into the mirror *after* `copySourceFiles` applies collection
+        // filters, so no filtered build ever drops them. Filtering them here
+        // selected zero overlay files (`include: ["guides/**"]` matches
+        // nothing under the overlay), which hid generated pages from
+        // `listPages` and made the generated nav node's string page refs
+        // throw in navigation resolution.
+        const applyPathFilters = root === sourceContentDir;
+        const matches = await fg(
+          applyPathFilters && config.include && config.include.length > 0
+            ? config.include
+            : ["**/*.{md,mdx}"],
+          {
+            absolute: true,
+            cwd: root,
+            // Match the staging glob semantics (`copySourceFiles`) exactly:
+            // dotfiles are pages there, and bare-directory include entries
+            // stay literal instead of fanning out to `dir/**`. Anything looser
+            // here lists pages at runtime the build never staged — or hides
+            // ones it did.
+            dot: true,
+            expandDirectories: false,
+            ignore: applyPathFilters ? (config.exclude ?? []) : [],
+            onlyFiles: true,
+          }
+        );
         const files = matches
           .filter(isDocFile)
           .sort((left, right) => left.localeCompare(right));
@@ -510,6 +553,29 @@ export async function createDocsSource<
       })
     );
     return cachedFilesByRoot;
+  }
+
+  const hasPathFilters =
+    (config.include?.length ?? 0) > 0 || (config.exclude?.length ?? 0) > 0;
+
+  /**
+   * Membership test over the include/exclude selection, for the surfaces that
+   * walk directories themselves (`resolveDocsNavigation`). Undefined when no
+   * filters are configured, so the unfiltered path is untouched.
+   */
+  async function selectedFileFilter(): Promise<
+    ((absoluteFilePath: string) => boolean) | undefined
+  > {
+    if (!hasPathFilters) {
+      return;
+    }
+    const filesByRoot = await listFilesByRoot();
+    const allowed = new Set(
+      filesByRoot.flatMap((entry) =>
+        entry.files.map((file) => path.resolve(file))
+      )
+    );
+    return (absoluteFilePath) => allowed.has(path.resolve(absoluteFilePath));
   }
 
   async function listFiles(): Promise<string[]> {
@@ -588,18 +654,86 @@ export async function createDocsSource<
     return cachedMetaBySlug?.get(slug.join("/")) ?? null;
   }
 
+  // Derived navigation is computed on first use, not at construction — the
+  // primitive's contract is no I/O until you ask it something.
+  let derivedNavPromise: Promise<DocsNavEntry[]> | null = null;
+
+  /**
+   * When nothing structural was configured, derive the same tree
+   * `leadtype generate` derives. Without this the rendered sidebar would stay
+   * flat while the generated `llms.txt` and sitemap gained sections — one
+   * content graph is the whole point, so both sides infer or neither does.
+   */
+  async function resolveNav(): Promise<DocsNavEntry[] | undefined> {
+    // Test the *authored* nav, not `nav`: `nav` is reassigned above to include
+    // generated OpenAPI nodes whenever `openapi` is set, so checking it meant
+    // any openapi-configured source skipped derivation entirely while
+    // `generate` derived on the same config — sidebar-versus-artifacts drift,
+    // inside the code meant to prevent it.
+    if (config.nav && config.nav.length > 0) {
+      return nav;
+    }
+    if (config.groups && config.groups.length > 0) {
+      return nav;
+    }
+    // The same opt-out `generate` applies before deriving. i18n: derivation
+    // keys sections off the first path segment, which for `docs/en/…` is the
+    // locale — while navigation resolves per locale over locale-stripped
+    // paths, so no derived section could ever match. Include/exclude filters
+    // are no reason to refuse: `generate` stages a filtered mirror and then
+    // derives from it (its own gate only tests the --include/--exclude CLI
+    // flags), so the runtime derives over the same filtered file set the
+    // staging globs select.
+    if (config.i18n !== undefined) {
+      return nav;
+    }
+    derivedNavPromise ??= (async () => {
+      let filter: ((relativePath: string) => boolean) | undefined;
+      if (hasPathFilters) {
+        const filesByRoot = await listFilesByRoot();
+        const allowed = new Set(
+          filesByRoot
+            .filter((entry) => entry.contentDir === sourceContentDir)
+            .flatMap((entry) => entry.files)
+            .map((file) =>
+              normalizeDocsPath(path.relative(sourceContentDir, file))
+            )
+        );
+        filter = (relativePath) => allowed.has(relativePath);
+      }
+      const result = await inferNavigationFromContent(
+        sourceContentDir,
+        filter ? { filter } : {}
+      );
+      return result.navigation;
+    })();
+    const derived = await derivedNavPromise;
+    if (derived.length === 0) {
+      return nav;
+    }
+    // OpenAPI pages are generated into an overlay outside `contentDir`, so
+    // their nav nodes are appended rather than derived.
+    return [...derived, ...(nav ?? [])];
+  }
+
   async function getNavigation(): Promise<DocsNavigation> {
+    // Navigation walks the directories itself rather than reading the file
+    // cache, so it gets the include/exclude selection as a filter — otherwise
+    // excluded pages would land in the nav, linking to URLs `loadPage`
+    // refuses to serve.
+    const filterFile = await selectedFileFilter();
     return await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
-      nav,
+      nav: await resolveNav(),
       extraDocsDirs: openApiOverlayDir ? [openApiOverlayDir] : undefined,
       mounts: config.mounts,
       i18n: config.i18n,
       locale: config.locale,
       toc: tocOptions === false ? false : tocOptions,
+      ...(filterFile ? { filterFile } : {}),
     });
   }
 

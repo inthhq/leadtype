@@ -1,0 +1,351 @@
+/**
+ * `leadtype nav` — print the resolved navigation tree and report drift.
+ *
+ * Config-owned navigation is the strength: one tree drives the sidebar,
+ * `llms.txt`, `AGENTS.md`, the sitemap, and agent-readability metadata. The
+ * cost is that on a large site you cannot see what you authored — an include
+ * glob expands to pages you never named, a pin reorders a section, and a
+ * template repeats across framework variants, so the tree you get is several
+ * steps removed from the tree you wrote.
+ *
+ * This command closes that gap by showing the resolved tree and naming what
+ * drifted from the content on disk. It is read-only: it never writes config,
+ * moves content, or changes a public route.
+ */
+
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { inferNavigationFromContent } from "../config/infer";
+import {
+  findBlockingDiagnostic,
+  type NavigationDrift,
+  resolveCollectionNavigation,
+} from "../config/navigation";
+import { type NavigationOrigin, resolveProject } from "../config/project";
+import { parseDocsSourceInput } from "../internal/docs-source";
+import { resolveDocsNavigation } from "../llm";
+import type { DocsNavigation, DocsNavigationGroup } from "../llm/readability";
+
+export type NavIo = {
+  stderr: Pick<NodeJS.WriteStream, "write">;
+  stdout: Pick<NodeJS.WriteStream, "write">;
+};
+
+export type NavArgs = {
+  srcDir: string;
+  docsDirs: string[];
+  collection?: string;
+  json: boolean;
+  help: boolean;
+};
+
+export type NavDrift = NavigationDrift;
+
+export type NavTreeNode = {
+  title: string;
+  urlPath?: string;
+  children: NavTreeNode[];
+};
+
+export type NavReport = {
+  ok: boolean;
+  collection: string;
+  /** How the tree was produced. */
+  origin: NavigationOrigin;
+  pageCount: number;
+  tree: NavTreeNode[];
+  drift: NavDrift;
+};
+
+const NAV_USAGE = `leadtype nav — print the resolved navigation tree and report drift
+
+Usage:
+  leadtype nav [options]
+
+Shows the tree your config actually resolves to — include globs expanded, pins
+applied, templates instantiated — and reports pages that drifted from it.
+
+Read-only: never writes config, moves content, or changes a public route.
+
+Options:
+  --src <dir>          Project root (default: .)
+  --docs-dir <dir>     Docs source folder relative to --src (default: docs)
+  --collection <key>   Inspect one collection of a multi-source project
+  --json               Machine-readable tree and drift report
+  -h, --help           Show this help
+
+Exit codes:
+  0  Resolved (drift is reported, not fatal)
+  1  Navigation could not be resolved
+  2  CLI usage error
+`;
+
+export function getNavUsage(): string {
+  return NAV_USAGE;
+}
+
+function readValue(argv: string[], index: number, flag: string): string {
+  const value = argv[index];
+  if (!value || value.startsWith("-")) {
+    throw new Error(`${flag} requires a value`);
+  }
+  return value;
+}
+
+export function parseNavArgs(argv: string[]): NavArgs {
+  const args: NavArgs = {
+    srcDir: ".",
+    docsDirs: [],
+    json: false,
+    help: false,
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "-h" || arg === "--help") {
+      args.help = true;
+    } else if (arg === "--src") {
+      args.srcDir = readValue(argv, ++i, "--src");
+    } else if (arg === "--docs-dir") {
+      args.docsDirs.push(readValue(argv, ++i, "--docs-dir"));
+    } else if (arg === "--collection") {
+      args.collection = readValue(argv, ++i, "--collection");
+    } else if (arg === "--json") {
+      args.json = true;
+    } else if (arg) {
+      throw new Error(`unknown option: ${arg}`);
+    }
+  }
+  return args;
+}
+
+function toTree(groups: DocsNavigationGroup[]): NavTreeNode[] {
+  return groups.map((group) => ({
+    title: group.title,
+    children: [
+      ...group.pages.map((page) => ({
+        title: page.title,
+        urlPath: page.urlPath,
+        children: [],
+      })),
+      ...toTree(group.children),
+    ],
+  }));
+}
+
+function countPages(manifest: DocsNavigation): number {
+  const walk = (groups: DocsNavigationGroup[]): number =>
+    groups.reduce(
+      (total, group) => total + group.pages.length + walk(group.children),
+      0
+    );
+  return walk(manifest.groups) + manifest.ungrouped.length;
+}
+
+function renderTree(nodes: NavTreeNode[], depth = 0): string[] {
+  const lines: string[] = [];
+  for (const node of nodes) {
+    const indent = "  ".repeat(depth + 1);
+    lines.push(
+      node.urlPath
+        ? `${indent}${node.title}  ${node.urlPath}`
+        : `${indent}${node.title}`
+    );
+    lines.push(...renderTree(node.children, depth + 1));
+  }
+  return lines;
+}
+
+function renderHuman(report: NavReport): string {
+  const lines: string[] = [
+    `Navigation (${report.collection}, ${report.origin}, ${report.pageCount} page(s))`,
+    ...renderTree(report.tree),
+  ];
+  if (report.drift.unplaced.length > 0) {
+    lines.push(
+      "",
+      `Unplaced (${report.drift.unplaced.length}) — on disk, but no curated entry places them, so they fall back to the root:`,
+      ...report.drift.unplaced.map((urlPath) => `  ${urlPath}`)
+    );
+  }
+  if (report.drift.duplicate.length > 0) {
+    lines.push(
+      "",
+      `Duplicated (${report.drift.duplicate.length}) — listed by more than one entry, so they appear twice in the sidebar and in llms.txt:`,
+      ...report.drift.duplicate.map((urlPath) => `  ${urlPath}`)
+    );
+  }
+  if (report.drift.unknownGroup.length > 0) {
+    lines.push(
+      "",
+      `Unknown groups (${report.drift.unknownGroup.length}) — frontmatter names a group the config does not declare:`,
+      ...report.drift.unknownGroup.map(
+        (entry) => `  ${entry.urlPath}  group: ${entry.slug}`
+      )
+    );
+  }
+  if (
+    report.drift.unplaced.length === 0 &&
+    report.drift.duplicate.length === 0 &&
+    report.drift.unknownGroup.length === 0
+  ) {
+    lines.push("", "No drift — every page on disk has a place in the tree.");
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Report a tree derived straight from a content directory, for a project that
+ * has no config at all. Nothing is curated, so there is no drift to report.
+ */
+async function reportInferredTree(input: {
+  contentDir: string;
+  json: boolean;
+  io: NavIo;
+}): Promise<number> {
+  const { contentDir, json, io } = input;
+  if (!existsSync(contentDir)) {
+    io.stderr.write(
+      `no docs config found, and no docs directory at "${contentDir}".\n  → Run \`leadtype init\`, or pass --docs-dir.\n`
+    );
+    return 1;
+  }
+
+  const derived = await inferNavigationFromContent(contentDir);
+  const manifest = await resolveDocsNavigation({
+    srcDir: path.dirname(contentDir),
+    docsDirName: path.basename(contentDir),
+    groups: [],
+    nav: derived.navigation,
+  });
+
+  const report: NavReport = {
+    ok: true,
+    collection: "docs",
+    origin: "inferred",
+    pageCount: countPages(manifest),
+    tree: toTree(manifest.groups),
+    drift: { unplaced: [], duplicate: [], unknownGroup: [] },
+  };
+  io.stdout.write(
+    json ? `${JSON.stringify(report, null, 2)}\n` : renderHuman(report)
+  );
+  return 0;
+}
+
+export async function runNavCommand(
+  argv: string[],
+  io: NavIo
+): Promise<number> {
+  let args: NavArgs;
+  try {
+    args = parseNavArgs(argv);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.stderr.write(`${message}\n\n${NAV_USAGE}`);
+    return 2;
+  }
+  if (args.help) {
+    io.stdout.write(NAV_USAGE);
+    return 0;
+  }
+
+  const srcDir = path.resolve(args.srcDir);
+  // Raw flag values: the resolver parses the `<dir>[=<url-prefix>]` grammar
+  // itself, exactly as `generate` does. Pre-resolving here would bake the
+  // `=<url-prefix>` suffix into a path.
+  const docsDirNames = args.docsDirs.length > 0 ? args.docsDirs : ["docs"];
+
+  try {
+    const project = await resolveProject({
+      cwd: srcDir,
+      docsDirs: docsDirNames,
+      // Load-time warnings go through the injected io — never the process
+      // logger, which would bypass `io` and interleave with `--json` stdout.
+      warn: (call) => {
+        io.stderr.write(`Warning: ${call.human.message}\n`);
+        if (call.human.hint) {
+          io.stderr.write(`  → ${call.human.hint}\n`);
+        }
+      },
+    });
+
+    // A project with no config is a supported state — `doctor` reports it as a
+    // warning and keeps going — so infer a tree from disk rather than refusing.
+    if (project.collections.length === 0) {
+      const primaryDocsDir = docsDirNames[0]
+        ? path.resolve(srcDir, parseDocsSourceInput(docsDirNames[0]).docsDir)
+        : srcDir;
+      return await reportInferredTree({
+        contentDir: primaryDocsDir,
+        json: args.json,
+        io,
+      });
+    }
+
+    const collectionKey = args.collection ?? project.collections[0]?.key;
+    const collection = project.collections.find(
+      (entry) => entry.key === collectionKey
+    );
+    if (!collection) {
+      io.stderr.write(
+        `unknown collection "${args.collection ?? ""}". Declared: ${project.collections.map((entry) => entry.key).join(", ")}\n`
+      );
+      return 2;
+    }
+
+    // An error-level diagnostic on the collection blocks the tree outright,
+    // whether or not the content directory resolved — `source.inherit-failed`
+    // fires against a perfectly readable checkout, and whatever origin
+    // resolution fell back to is then precisely the wrong tree, presented as
+    // fine. `doctor` fails on the same diagnostic, so `nav` staying quiet made
+    // the two commands disagree about the same project.
+    const blocking = findBlockingDiagnostic(project, collection.key);
+    if (blocking) {
+      io.stderr.write(
+        `${blocking.message}\n${blocking.fix ? `  → ${blocking.fix}\n` : ""}`
+      );
+      return 1;
+    }
+    const contentDir = collection.contentDir;
+    if (!contentDir) {
+      io.stderr.write(
+        `collection "${collection.key}" has no readable content directory\n`
+      );
+      return 1;
+    }
+
+    // The same manifest + drift computation `doctor` reads — merged groups,
+    // i18n, include/exclude filtering, curated-origin drift.
+    const resolved = await resolveCollectionNavigation(project, {
+      ...collection,
+      contentDir,
+    });
+    const failure = resolved.diagnostics.find(
+      (entry) => entry.level === "error"
+    );
+    if (failure || !resolved.manifest) {
+      io.stderr.write(
+        `${failure?.message ?? `collection "${collection.key}" navigation did not resolve`}\n${failure?.fix ? `  → ${failure.fix}\n` : ""}`
+      );
+      return 1;
+    }
+
+    const report: NavReport = {
+      ok: true,
+      collection: collection.key,
+      origin: resolved.origin,
+      pageCount: resolved.pageCount,
+      tree: toTree(resolved.manifest.groups),
+      drift: resolved.drift,
+    };
+
+    io.stdout.write(
+      args.json ? `${JSON.stringify(report, null, 2)}\n` : renderHuman(report)
+    );
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.stderr.write(`${message}\n`);
+    return 1;
+  }
+}

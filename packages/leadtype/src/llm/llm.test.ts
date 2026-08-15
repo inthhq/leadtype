@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  type DocsNavEntry,
   defineFrameworkNavigation,
   extractDocsTableOfContents,
   generateAgentReadabilityArtifacts,
@@ -2914,6 +2915,99 @@ describe("resolveDocsNavigation", () => {
     });
 
     expect(nav.groups[0]?.pages[0]?.toc).toEqual([]);
+  });
+
+  it("matches literal nav entries in every locale, falling back to the default locale's pages", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "index.mdx",
+        frontmatter: "title: Home\ndescription: Overview.",
+      },
+      {
+        relativePath: "guides/setup.mdx",
+        frontmatter: "title: Setup\ndescription: Setup.",
+      },
+      {
+        relativePath: "zh/index.mdx",
+        frontmatter: "title: 首页\ndescription: 概览。",
+      },
+    ]);
+
+    const config = {
+      srcDir: projectDir,
+      i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+      nav: [
+        "index",
+        { title: "Guides", base: "guides", pages: ["setup"] },
+      ] as DocsNavEntry[],
+    };
+
+    const en = await resolveDocsNavigation({ ...config, locale: "en" });
+    expect(en.ungrouped.map((page) => page.urlPath)).toEqual(["/docs"]);
+    expect(en.groups[0]?.pages.map((page) => page.urlPath)).toEqual([
+      "/docs/guides/setup",
+    ]);
+
+    // A non-default locale's pages carry locale-prefixed output paths
+    // ("zh/index"), but a nav entry names the locale-stripped logical path —
+    // matching on the output path made every literal entry miss every
+    // non-default locale, so every `navigation` + `i18n` project failed to
+    // build. The untranslated guide resolves to the default locale's page
+    // re-selected under `zh` — the fallback `fallback: "default"` promises.
+    const zh = await resolveDocsNavigation({ ...config, locale: "zh" });
+    expect(zh.ungrouped.map((page) => [page.urlPath, page.isFallback])).toEqual(
+      [["/docs/zh", false]]
+    );
+    expect(
+      zh.groups[0]?.pages.map((page) => [page.urlPath, page.isFallback])
+    ).toEqual([["/docs/zh/guides/setup", true]]);
+  });
+
+  it("applies include, exclude, and pin entries against locale-stripped paths", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "guides/setup.mdx",
+        frontmatter: "title: Setup\ndescription: Setup.",
+      },
+      {
+        relativePath: "guides/advanced.mdx",
+        frontmatter: "title: Advanced\ndescription: Advanced.",
+      },
+      {
+        relativePath: "guides/draft.mdx",
+        frontmatter: "title: Draft\ndescription: Draft.",
+      },
+      {
+        relativePath: "zh/guides/advanced.mdx",
+        frontmatter: "title: 进阶\ndescription: 进阶。",
+      },
+    ]);
+
+    const nav = await resolveDocsNavigation({
+      srcDir: projectDir,
+      i18n: { defaultLocale: "en", locales: ["en", "zh"] },
+      locale: "zh",
+      nav: [
+        {
+          title: "Guides",
+          base: "guides",
+          pages: [{ include: "*", exclude: "draft", pin: "setup" }],
+        },
+      ],
+    });
+
+    // The include glob, the exclude, and the pin all name locale-stripped
+    // paths: the pin leads with the fallback setup page, the translated
+    // advanced page follows, and the excluded draft stays out — exactly the
+    // default locale's shape, shifted under /docs/zh.
+    expect(
+      nav.groups[0]?.pages.map((page) => [page.urlPath, page.isFallback])
+    ).toEqual([
+      ["/docs/zh/guides/setup", true],
+      ["/docs/zh/guides/advanced", false],
+    ]);
   });
 });
 

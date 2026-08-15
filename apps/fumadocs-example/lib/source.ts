@@ -1,27 +1,26 @@
 import { resolve } from "node:path";
 import { loader } from "fumadocs-core/source";
+import { createDocsProject } from "leadtype";
 import { fumadocsSource } from "leadtype/fumadocs";
-import docsConfig from "../../../docs/docs.config";
 
 // process.cwd() is the app root when Next runs build/dev.
 const repoRoot = resolve(process.cwd(), "..", "..");
-const contentDir = resolve(repoRoot, "docs");
 
 /**
- * fumadocs source backed by leadtype/fumadocs. It reads the repo-root
- * Leadtype docs, uses the same curated navigation as the other examples, and
- * resolves `<include>` / `<ExtractedTypeTable>` relative to the repo root.
- *
- * Passing `openapi` stages generated API reference pages into a temp copy of
- * the docs and appends their navigation — the authored docs are untouched.
+ * The project resolves the repo-root docs from the config: content root,
+ * curated navigation, mounts, and the OpenAPI overlay all come from
+ * `docs/docs.config.ts` rather than being restated here, so this app and the
+ * generated agent artifacts describe the same docs.
  */
-const fumadocsSourceResult = await fumadocsSource({
-  contentDir,
-  includeMetaJson: false,
-  nav: docsConfig.navigation,
-  mounts: docsConfig.mounts,
-  openapi: docsConfig.openapi,
+const project = await createDocsProject({
+  cwd: repoRoot,
   typeTableBasePath: repoRoot,
+});
+
+// The adapter takes the project directly — a project satisfies `DocsSource`.
+const fumadocsSourceResult = await fumadocsSource({
+  source: project,
+  includeMetaJson: false,
 });
 
 export const source = loader({
@@ -29,5 +28,5 @@ export const source = loader({
   source: fumadocsSourceResult,
 });
 
-/** Underlying leadtype DocsSource — call loadPage/buildSearchIndex/resolveInclude on this. */
+/** Underlying leadtype source — call loadPage/buildSearchIndex/resolveInclude on this. */
 export const leadtypeSource = fumadocsSourceResult.leadtype;

@@ -219,7 +219,8 @@ type AgentsPointerOutcome = {
 function renderAgentsPointerBlock(): string {
   return [
     AGENTS_POINTER_START,
-    "When using leadtype or writing/editing docs, read the bundled docs in",
+    "When using leadtype, or when writing, editing, reviewing, or restructuring",
+    "docs in this project, read the bundled docs in",
     "`node_modules/leadtype/AGENTS.md` first — they're version-matched to the",
     "installed package and stay accurate as it updates.",
     AGENTS_POINTER_END,

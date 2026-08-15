@@ -10,7 +10,7 @@ This page covers the wiring. For everything fumadocs does after that, see fumado
 ## TL;DR
 
 ```sh
-bun add leadtype fumadocs-core fumadocs-ui
+bun add leadtype fumadocs-core fumadocs-ui jiti
 ```
 
 ```ts title="lib/source.ts"
@@ -18,6 +18,19 @@ import { loader } from "fumadocs-core/source";
 import { fumadocsSource } from "leadtype/fumadocs";
 
 const fumaSource = await fumadocsSource({ contentDir: "./content/docs" });
+export const source = loader({ baseUrl: "/docs", source: fumaSource });
+export const leadtypeSource = fumaSource.leadtype;
+```
+
+If your docs are described by a Leadtype config, pass a project instead of a content directory. The adapter accepts any `DocsSource`, and a project is one — so the content root, navigation, mounts, and OpenAPI overlay come from the config rather than being restated here:
+
+```ts title="lib/source.ts"
+import { loader } from "fumadocs-core/source";
+import { createDocsProject } from "leadtype";
+import { fumadocsSource } from "leadtype/fumadocs";
+
+const project = await createDocsProject();
+const fumaSource = await fumadocsSource({ source: project });
 export const source = loader({ baseUrl: "/docs", source: fumaSource });
 export const leadtypeSource = fumaSource.leadtype;
 ```
@@ -41,10 +54,10 @@ That's the minimum. The rest of this page covers `DocsLayout` wiring, page rende
 ## Install
 
 ```sh
-bun add leadtype fumadocs-core fumadocs-ui
+bun add leadtype fumadocs-core fumadocs-ui jiti
 ```
 
-Leadtype declares `fumadocs-core >= 15` as an **optional peer dependency** — install it explicitly when you want the adapter.
+Leadtype declares `fumadocs-core >= 15` as an **optional peer dependency** — install it explicitly when you want the adapter. `jiti` is the TypeScript loader `createDocsProject()` uses to read your `docs.config.ts` / `leadtype.config.ts` at runtime — also an optional peer, and required the moment a config file is discovered.
 
 ## Wire the source
 

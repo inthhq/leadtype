@@ -82,28 +82,26 @@ export default defineDocsConfig({
     name: "My library",
     tagline: "What it does in one sentence.",
   },
-  llms: {
-    // `llms.sections` is the body of llms.txt, in order. Use markdown blocks for
-    // prose/highlights and links blocks for curated entry points.
-    sections: [
-      {
-        type: "links",
-        heading: "Best Starting Points",
-        links: [
-          {
-            urlPath: "/docs",
-            title: "Start here",
-            description: "Overview and first steps for using My library.",
-          },
-        ],
-      },
-    ],
-  },
-  navigation: ["index"],
 });
 ```
 
-`navigation` is the shared source of truth for the sidebar, `llms.txt`, `AGENTS.md`, sitemap markdown, and [Agent Readability](/docs/how-it-works#vocabulary) metadata.
+That is the whole starter config. Identity is the one thing Leadtype cannot guess — everything else is derived until you author it:
+
+- **Navigation** comes from the content tree. Root pages stay at the root; each top-level directory becomes a section titled from its `index` page. Ordering is `index` first, then frontmatter `order`, then path — never filesystem order, so every machine derives the same tree.
+- **The `llms.txt` body** becomes a "Best Starting Points" block built from that same resolved navigation, so an agent's entry points cannot drift from a reader's.
+- **Product name and tagline** fall back to `package.json`'s `name` and `description` when there is no docs config at all. With a config present, `product` is required — it is the one field that has no sensible default.
+
+Run `leadtype generate --explain` at any point to see exactly what was derived and which field takes control of it.
+
+Authoring any of these turns inference off for that field — explicit configuration always wins, and inference never merges with or rewrites what you wrote. Grow into it in this order:
+
+| When | Add | Why |
+| --- | --- | --- |
+| Start | `product` | Identity for `llms.txt`, JSON-LD, and the agent card. |
+| The derived sidebar isn't the story you want | `navigation` | The shared source of truth for the sidebar, `llms.txt`, `AGENTS.md`, sitemap markdown, and [Agent Readability](/docs/how-it-works#vocabulary) metadata. |
+| Agents should start somewhere specific | `llms.sections` | Write the `llms.txt` body yourself — markdown blocks for prose, links blocks for curated entry points. |
+| You host an MCP server, or want a crawler policy | `agents` | [Agent surfaces](/docs/aeo/overview): MCP discovery, robots/Content-Signals, skills, the agent card. |
+| Docs live in more than one repo | `collections` | [Multi-source acquisition](/docs/pipeline/collections), pinned to a reviewed `ref`. |
 
 ## 2. Create the source
 

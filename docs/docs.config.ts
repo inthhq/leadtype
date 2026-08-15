@@ -1,6 +1,8 @@
-import type { DocsConfig } from "leadtype";
+import { defineDocsConfig } from "leadtype";
 
-const config: DocsConfig = {
+// This repo's docs are source-owned content, so `defineDocsConfig` — the same
+// helper the docs tell everyone else to use.
+const config = defineDocsConfig({
   // The documented product — reused across llms.txt, JSON-LD, and the agent card.
   product: {
     name: "Leadtype",
@@ -187,7 +189,7 @@ const config: DocsConfig = {
     {
       title: "Concepts",
       base: "concepts",
-      pages: ["methodology", "architecture", "evals"],
+      pages: ["methodology", "architecture", "config-model", "evals"],
     },
     {
       title: "Docs Pipeline",
@@ -212,6 +214,7 @@ const config: DocsConfig = {
             "generate-rss-atom-feeds",
             "deploy-generated-artifacts",
             "validate-in-ci",
+            "redirects",
             "localize-docs",
           ],
         },
@@ -259,6 +262,7 @@ const config: DocsConfig = {
       base: "reference",
       pages: [
         "cli",
+        "doctor",
         "source",
         "llm",
         "convert",
@@ -335,6 +339,6 @@ const config: DocsConfig = {
       ],
     },
   },
-};
+});
 
 export default config;

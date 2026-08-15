@@ -38,6 +38,23 @@ A `<product>-docs` skill whose instructions are a **pointer to your docs**, adap
 
 It stays a thin pointer, not a third copy of the docs; progressive disclosure means an agent loads the body only when a task matches. It describes *reading your docs* — not driving your product's API. Capability skills are yours to declare.
 
+## When does a skill activate?
+
+A client reads a skill's **name and description** from the discovery manifest — nothing else — and decides from those two fields alone whether to load the body. The name is usually just an identifier, so the description carries the routing weight: it has to name the tasks the skill should win, not just the subject it covers.
+
+The most common miss is documentation *authoring*. A description like "read and search the Acme documentation" reliably loses prompts such as "add a troubleshooting page", "document this new option", or "rewrite the quickstart" — all of which need the docs. The auto docs-skill therefore names reading, searching, **and** maintaining:
+
+> Read, search, and maintain the Acme documentation. Use when working with Acme — its setup, configuration, API, and behavior — and when writing, editing, reviewing, or restructuring its documentation.
+
+When you write your own skill descriptions, two rules carry most of the benefit:
+
+- **Name the verbs, not just the noun.** "Deploy an Acme app" activates; "Acme deployment reference" does not.
+- **Say when repository context is enough.** A prompt does not have to name your product if the project already depends on it. Spelling that out — "use for documentation work whenever the project depends on `acme` or contains `acme.config.ts`, even if the user does not say Acme" — lets a client route on signals it can already see.
+
+Descriptions cap at 1024 characters in the discovery format; `generate` fails rather than emitting an entry a client would drop.
+
+This is about *routing* — getting the right skill selected once it is available. Getting the skill in front of an agent in the first place is distribution: the `/.well-known/agent-skills` surface above, the bundled `SKILL.md`, and the `AGENTS.md` pointer `leadtype init` writes.
+
 ## How do I declare my own skills?
 
 Add `agents.skills.items` in `docs.config.ts`. Each becomes its own `SKILL.md`:

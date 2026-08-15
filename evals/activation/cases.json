@@ -1,0 +1,137 @@
+{
+  "profiles": {
+    "leadtype-project": {
+      "label": "Leadtype docs project",
+      "context": "The project's package.json lists `leadtype` in devDependencies. There is a `docs/` directory containing `docs.config.ts` and a tree of `.mdx` pages whose frontmatter uses `title`, `description`, and `group`. package.json has a `\"docs\": \"leadtype generate\"` script."
+    },
+    "leadtype-monorepo-package": {
+      "label": "Package that bundles Leadtype docs",
+      "context": "A publishable npm package whose package.json depends on `leadtype` and whose build script runs `leadtype generate --bundle`. Authored MDX lives under `docs/`, and the published tarball carries `AGENTS.md` plus generated per-topic markdown."
+    },
+    "plain-project": {
+      "label": "Project with no Leadtype signal",
+      "context": "A TypeScript web app. package.json has no `leadtype` dependency and no leadtype scripts. There is a `docs/` folder of plain Markdown files with no config file and no MDX components."
+    }
+  },
+  "cases": [
+    {
+      "id": "add-troubleshooting-page",
+      "prompt": "add a troubleshooting page",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Ordinary authoring prompt in a Leadtype project — the page needs Leadtype frontmatter and a navigation entry."
+    },
+    {
+      "id": "document-new-option",
+      "prompt": "document the new retries option we just shipped",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Docs maintenance after an API change."
+    },
+    {
+      "id": "rewrite-quickstart",
+      "prompt": "rewrite the quickstart, it's too long",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Restructuring an existing page."
+    },
+    {
+      "id": "review-for-agent-readability",
+      "prompt": "review these docs for agent readability",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Review task that depends on the generated markdown mirror, not just the MDX."
+    },
+    {
+      "id": "reorganize-navigation",
+      "prompt": "the sidebar is a mess, reorganize it into fewer sections",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Navigation is config-owned and drives both human and agent surfaces."
+    },
+    {
+      "id": "fix-broken-links",
+      "prompt": "some links in the docs 404, fix them",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "`leadtype lint` checks internal links against the real route graph."
+    },
+    {
+      "id": "update-docs-after-release",
+      "prompt": "we just cut 2.0, update the docs",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Maintenance sweep across pages, navigation, and generated artifacts."
+    },
+    {
+      "id": "improve-mdx-page-for-agents",
+      "prompt": "this page reads badly when an LLM consumes it — improve it",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Requires reading the flattened markdown output."
+    },
+    {
+      "id": "add-code-sample-with-tabs",
+      "prompt": "add npm/pnpm/bun install examples to the install section",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Leadtype ships a component for this; hand-rolled tabs would not flatten correctly."
+    },
+    {
+      "id": "bundle-docs-into-tarball",
+      "prompt": "make sure our published package ships its docs for coding agents",
+      "profile": "leadtype-monorepo-package",
+      "expect": "activate",
+      "why": "Bundle mode plus the AGENTS.md pointer."
+    },
+    {
+      "id": "explain-llms-txt",
+      "prompt": "what should go in our llms.txt?",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Names a Leadtype-generated artifact directly."
+    },
+    {
+      "id": "docs-config-nav-error",
+      "prompt": "the build fails saying a page declares an unknown group",
+      "profile": "leadtype-project",
+      "expect": "activate",
+      "why": "Diagnosing a Leadtype pipeline error."
+    },
+    {
+      "id": "plain-readme-polish",
+      "prompt": "tighten up the README intro",
+      "profile": "plain-project",
+      "expect": "skip",
+      "why": "Generic prose editing with no Leadtype signal anywhere in the project."
+    },
+    {
+      "id": "plain-markdown-docs-edit",
+      "prompt": "add a page about deployment to the docs folder",
+      "profile": "plain-project",
+      "expect": "skip",
+      "why": "Docs work, but the project has no Leadtype dependency or config — plain Markdown."
+    },
+    {
+      "id": "plain-changelog",
+      "prompt": "write a changelog entry for this release",
+      "profile": "plain-project",
+      "expect": "skip",
+      "why": "No Leadtype signal; nothing in the pipeline applies."
+    },
+    {
+      "id": "leadtype-project-unrelated-refactor",
+      "prompt": "extract this React hook into its own file",
+      "profile": "leadtype-project",
+      "expect": "skip",
+      "why": "Leadtype is present, but the task is application code — repository signal alone must not trigger the skill."
+    },
+    {
+      "id": "leadtype-project-dependency-bump",
+      "prompt": "bump vitest to the latest major and fix the fallout",
+      "profile": "leadtype-project",
+      "expect": "skip",
+      "why": "Maintenance in a Leadtype repo that has nothing to do with documentation."
+    }
+  ]
+}

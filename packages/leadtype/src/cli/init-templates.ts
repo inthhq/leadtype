@@ -18,6 +18,15 @@ export const SUPPORTED_FRAMEWORKS: InitFramework[] = [
 /** Frameworks with heavier, app-specific setup — pointed at a docs recipe. */
 export const RECIPE_FRAMEWORKS = ["tanstack", "fumadocs"] as const;
 
+/**
+ * `createDocsProject()` discovers the config at runtime, and loading a `.ts`
+ * config goes through `jiti` — an optional peer of `leadtype`. The app's own
+ * bundler used to compile the config because the scaffold imported it
+ * statically; now that it doesn't, a fresh scaffold needs jiti present or it
+ * throws on first render.
+ */
+const RUNTIME_CONFIG_DEPS = ["jiti"] as const;
+
 export type InitFile = { contents: string; path: string };
 
 export type FrameworkPlan = {
@@ -36,32 +45,17 @@ export function isInitFramework(value: string): value is InitFramework {
 }
 
 export function sharedFiles(name: string, summary: string): InitFile[] {
+  // The smallest config that still adds value. `navigation` and
+  // `llms.sections` are derived from the content tree until you author them,
+  // so the starter file is identity only — the one thing leadtype genuinely
+  // cannot guess. See /docs/pipeline/configure-sources for the progression.
   const configBody = `import { defineDocsConfig } from "leadtype";
 
 export default defineDocsConfig({
-  // \`product\` is the documented thing — reused in llms.txt, JSON-LD, and the agent card.
+  // The documented thing — reused in llms.txt, JSON-LD, and the agent card.
   product: {
     name: ${JSON.stringify(name)},
     tagline: ${JSON.stringify(summary)},
-  },
-  // \`navigation\` is the single source of truth for the sidebar, llms.txt, AGENTS.md,
-  // sitemap, and agent-readability metadata.
-  navigation: ["index"],
-  // \`llms.sections\` is the body of llms.txt and AGENTS.md, rendered in order.
-  llms: {
-    sections: [
-      {
-        type: "links",
-        heading: "Best Starting Points",
-        links: [
-          {
-            urlPath: "/docs",
-            title: "Start here",
-            description: "Overview and first steps.",
-          },
-        ],
-      },
-    ],
   },
 });
 `;
@@ -136,7 +130,14 @@ function nextPlan(
   return {
     outDir: "public",
     devCommand: "next dev",
-    deps: ["next", "react", "react-dom", "@next/mdx", "next-mdx-remote-client"],
+    deps: [
+      "next",
+      "react",
+      "react-dom",
+      "@next/mdx",
+      "next-mdx-remote-client",
+      ...RUNTIME_CONFIG_DEPS,
+    ],
     files: [
       ...(options.webmcp ? [nextWebMcpFile()] : []),
       {
@@ -160,13 +161,11 @@ export default withMdx({ pageExtensions: ["ts", "tsx", "mdx"] });
       },
       {
         path: "lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
-import docsConfig from "../docs/docs.config";
+        contents: `import { createDocsProject } from "leadtype";
 
-export const source = await createDocsSource({
-  contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.navigation,
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
+export const source = await createDocsProject({
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -240,7 +239,7 @@ function astroPlan(
   return {
     outDir: "public",
     devCommand: "astro dev",
-    deps: ["astro", "@astrojs/mdx"],
+    deps: ["astro", "@astrojs/mdx", ...RUNTIME_CONFIG_DEPS],
     files: [
       {
         path: "astro.config.mjs",
@@ -264,13 +263,11 @@ export default defineConfig({
       },
       {
         path: "src/lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
-import docsConfig from "../../docs/docs.config";
+        contents: `import { createDocsProject } from "leadtype";
 
-export const source = await createDocsSource({
-  contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.navigation,
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
+export const source = await createDocsProject({
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,
@@ -336,21 +333,19 @@ function nuxtPlan(
   return {
     outDir: "public",
     devCommand: "nuxt dev",
-    deps: ["nuxt", "vue"],
+    deps: ["nuxt", "vue", ...RUNTIME_CONFIG_DEPS],
     files: [
       ...(options.webmcp ? [nuxtWebMcpFile()] : []),
       {
         path: "lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
-import docsConfig from "../docs/docs.config";
+        contents: `import { createDocsProject } from "leadtype";
 
-let sourcePromise: ReturnType<typeof createDocsSource> | undefined;
+let sourcePromise: ReturnType<typeof createDocsProject> | undefined;
 
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
 export function getSource() {
-  sourcePromise ??= createDocsSource({
-    contentDir: path.resolve(process.cwd(), "docs"),
-    nav: docsConfig.navigation,
+  sourcePromise ??= createDocsProject({
     baseUrl: ${JSON.stringify(baseUrl)},
   });
   return sourcePromise;
@@ -447,6 +442,7 @@ function sveltekitPlan(
     outDir: "static",
     devCommand: "vite dev",
     deps: [
+      ...RUNTIME_CONFIG_DEPS,
       "@sveltejs/kit",
       "@sveltejs/vite-plugin-svelte",
       "@sveltejs/adapter-auto",
@@ -480,13 +476,11 @@ export default {
       },
       {
         path: "src/lib/source.ts",
-        contents: `import path from "node:path";
-import { createDocsSource } from "leadtype";
-import docsConfig from "../../docs/docs.config";
+        contents: `import { createDocsProject } from "leadtype";
 
-export const source = await createDocsSource({
-  contentDir: path.resolve(process.cwd(), "docs"),
-  nav: docsConfig.navigation,
+// The project discovers docs/docs.config.ts and resolves the same model the
+// CLI reads, so the rendered site and the generated artifacts can't disagree.
+export const source = await createDocsProject({
   baseUrl: ${JSON.stringify(baseUrl)},
 });
 `,

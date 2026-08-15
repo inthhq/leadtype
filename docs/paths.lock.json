@@ -38,6 +38,10 @@
       "hash": "fb82fd07401199b9"
     },
     {
+      "path": "/docs/concepts/config-model",
+      "hash": "a386659da90a3883"
+    },
+    {
       "path": "/docs/concepts/evals",
       "hash": "a2da3f88be4f6dd3"
     },
@@ -55,7 +59,7 @@
     },
     {
       "path": "/docs/integrations/integrate-with-fumadocs",
-      "hash": "d80047caddd99c81"
+      "hash": "bf78593eb2cf4af2"
     },
     {
       "path": "/docs/package-docs/bundle",
@@ -67,15 +71,15 @@
     },
     {
       "path": "/docs/pipeline/build-a-docs-site",
-      "hash": "fa37c5640b647f67"
+      "hash": "80b8e367dfab9d10"
     },
     {
       "path": "/docs/pipeline/collections",
-      "hash": "bfa0c797bdb2aeb8"
+      "hash": "8114273c620aa826"
     },
     {
       "path": "/docs/pipeline/configure-sources",
-      "hash": "8837f15a670b9403"
+      "hash": "1aa07e71cf54b1f3"
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
@@ -99,27 +103,31 @@
     },
     {
       "path": "/docs/pipeline/sync-docs-across-repos",
-      "hash": "8a592c53e647530d"
+      "hash": "31af33cb9bfd1a48"
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
-      "hash": "0749b497916da7c1"
+      "hash": "fdc22ea01f060ef8"
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
-      "hash": "c8fc71db3c1d438e"
+      "hash": "d85e9261d6493e0a"
     },
     {
       "path": "/docs/quickstart",
-      "hash": "f4e179d1071a8fed"
+      "hash": "5c4a71b8a50684f3"
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "98fe8998d4a118c0"
+      "hash": "945fe8c9ae5db187"
     },
     {
       "path": "/docs/reference/convert",
       "hash": "47365b8cfe098cc0"
+    },
+    {
+      "path": "/docs/reference/doctor",
+      "hash": "96a927b2b65e4476"
     },
     {
       "path": "/docs/reference/frontmatter-transformers",
@@ -163,7 +171,7 @@
     },
     {
       "path": "/docs/reference/skills",
-      "hash": "8bb150e1714775e9"
+      "hash": "b0ced16c084e3ecb"
     },
     {
       "path": "/docs/reference/source",
@@ -207,7 +215,7 @@
     },
     {
       "path": "/docs/writing/frontmatter",
-      "hash": "e7043b60227d4bc4"
+      "hash": "82a7b05318fb1fba"
     },
     {
       "path": "/docs/writing/write-for-agents",

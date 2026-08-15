@@ -1,13 +1,13 @@
 ---
 title: "CLI"
-description: "leadtype init, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
+description: "leadtype init, doctor, nav, generate, sync, lint, mcp, and score — flags, exit codes, and JSON output."
 ---
 
 ```bash
 leadtype <command> [options]
 ```
 
-Six commands: `init` scaffolds an integration into an existing app, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
+Eight commands: `init` scaffolds an integration into an existing app, `doctor` explains the resolved project without changing it, `nav` prints the resolved navigation tree and reports drift, `generate` runs the full pipeline, `sync` clones or refreshes the remote sources declared by [collections](/docs/pipeline/configure-sources), `lint` validates content, `mcp` serves the generated docs to an MCP client over stdio, and `score` rates the generated build's agent readiness. Run `leadtype help <command>` for inline usage.
 
 ## init
 
@@ -32,6 +32,54 @@ leadtype init [options]
 | `-h`, `--help` | — | Print usage. |
 
 Exit codes: `0` success, `2` CLI usage error or no framework detected. Existing files are never overwritten unless `--force` is passed. TanStack Start and Fumadocs are not scaffolded by `init` (heavier app-specific setup) — follow their recipes in [Use the source primitive](/docs/pipeline/use-the-source-primitive).
+
+## doctor
+
+Explain the resolved project before doing work: which config was discovered, whether it resolved single-source or multi-source, where each value came from, which collections share a git acquisition, which routes exist, and which artifacts are present or stale.
+
+```bash
+leadtype doctor
+leadtype doctor --json
+```
+
+Read-only by construction — it never clones, refreshes, writes, or generates, so an unsynced remote is a finding naming `leadtype sync` rather than a fetch.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Project root to inspect. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeatable. |
+| `--out <dir>` | `public` | Output root to check artifacts against. |
+| `--json` | — | Machine-readable report with stable issue ids. |
+| `-h`, `--help` | — | Print usage. |
+
+Exit codes: `0` no errors (warnings still print), `1` a required input is missing or invalid, `2` CLI usage error.
+
+Full finding-id table and JSON shape: [`leadtype doctor`](/docs/reference/doctor).
+
+## nav
+
+Print the tree your config actually resolves to — include globs expanded, pins applied — and report pages that drifted from it.
+
+```bash
+leadtype nav
+leadtype nav --collection changelog --json
+```
+
+Read-only: never writes config, moves content, or changes a public route.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Project root. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. |
+| `--collection <key>` | first | Inspect one collection of a multi-source project. |
+| `--json` | — | Machine-readable tree and drift report. |
+| `-h`, `--help` | — | Print usage. |
+
+`origin` says where the tree came from — authored here, **inherited** from a source repository, derived from `groups`, or inferred from the content tree. Remote collections are read from the synced checkout, so run `leadtype sync` first.
+
+Drift covers three things: **unplaced** pages that no curated entry positions (they render at the root of the sidebar by default rather than by decision), **duplicated** pages two entries both claim (they appear twice in the sidebar and in `llms.txt`), and **unknown groups** where frontmatter names a group the config never declares.
+
+Exit codes: `0` resolved — drift is reported, not fatal — `1` navigation could not be resolved, `2` CLI usage error.
 
 ## generate
 
@@ -346,15 +394,15 @@ const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as cons
 export default defineDocsConfig({
   product,
   collections: {
-    docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
-    changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
+    docs:      defineCollection({ ...c15t, dir: "docs",      routePrefix: "/docs" }),
+    changelog: defineCollection({ ...c15t, dir: "changelog", routePrefix: "/changelog" }),
   },
 });
 ```
 
 …runs exactly one `git clone`, with both collections reading from `<cacheDir>/docs` and `<cacheDir>/changelog`.
 
-For a split-repo docs UI, add `sourceConfig: true` to a remote collection. After
+For a split-repo docs UI, add `inheritConfig: true` to a remote collection. After
 sync, generation loads the source repo's `docs.config.{ts,js,mjs,cjs}` from the
 collection `dir` and inherits source-owned `navigation`, legacy `groups`,
 `frontmatterSchema`, `flatteners`, and `mounts`. Keep site-owned fields such as
@@ -437,6 +485,8 @@ Show usage:
 
 ```bash
 leadtype help            # main usage
+leadtype help doctor
+leadtype help nav
 leadtype help generate
 leadtype help lint
 leadtype help mcp

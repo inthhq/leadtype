@@ -168,8 +168,13 @@ export type DocsNavigationGroup = {
 export type DocsNavigation = {
   groups: DocsNavigationGroup[];
   ungrouped: DocsNavigationPage[];
-  /** Pages that named a group slug not present in the config. */
-  unknown: { urlPath: string; slug: string }[];
+  /**
+   * Pages that named a group slug not present in the config. `isFallback`
+   * (present when locale selection ran) marks entries whose page is the
+   * default locale's file re-selected under this locale — the same source
+   * file, not a locale-specific defect.
+   */
+  unknown: { urlPath: string; slug: string; isFallback?: boolean }[];
   locale?: string;
 };
 

@@ -9,6 +9,7 @@ import {
   type LocaleCode,
   type LocalizedDocsMetadata,
   logicalPathFromLocaleRelativePath,
+  type NormalizedDocsI18nConfig,
   normalizeDocsI18nConfig,
   outputRelativePathForLocale,
   toLocalizedDocsUrlPath,
@@ -259,6 +260,18 @@ export type DocsNavIncludeEntry = {
   exclude?: string | string[];
   sort?: DocsNavSortKey[];
   required?: boolean;
+  /**
+   * Paths to place first, in this order, ahead of the sorted remainder.
+   *
+   * A large section usually has two or three pages that must lead and a long
+   * tail whose order barely matters. Without pinning, keeping those first means
+   * listing every page in the section by hand — and re-listing them whenever
+   * one is added. Pins are resolved the same way page refs are: relative to the
+   * nearest `base`, with a leading slash escaping to the collection root. A pin
+   * that matches nothing the include matched is an error, because it is
+   * silently doing nothing.
+   */
+  pin?: string | string[];
 };
 
 export type DocsNavPageEntry = string | DocsNavIncludeEntry;
@@ -352,7 +365,7 @@ export type SourceConfigInheritField =
   | "mounts";
 
 export type SourceConfigInheritance =
-  | true
+  | boolean
   | {
       /**
        * Config file path relative to the collection `dir`. Defaults to
@@ -382,11 +395,30 @@ export type DocsCollection = {
    */
   cacheDir?: string;
   /**
+   * Limit the checkout to these repository-root-relative paths, via git
+   * sparse-checkout over a blobless partial clone.
+   *
+   * Pinning a docs directory out of a large monorepo otherwise downloads the
+   * whole repository to read one folder. List the docs directory plus anything
+   * the docs reach outside it — `<AutoTypeTable path="…">` reads real
+   * TypeScript sources, so those paths belong here too.
+   *
+   * Omit for a full shallow clone. Collections sharing one acquisition must
+   * agree on it.
+   */
+  sparse?: string[];
+  /**
+   * @deprecated Renamed to {@link DocsCollection.inheritConfig} — the field
+   * declares *inheritance*, not a config object. Still accepted and normalized;
+   * setting both is an error.
+   */
+  sourceConfig?: SourceConfigInheritance;
+  /**
    * For remote collections, load source-owned docs config from the synced
    * collection directory after sync and inherit content-owned fields into this
    * collection.
    */
-  sourceConfig?: SourceConfigInheritance;
+  inheritConfig?: SourceConfigInheritance;
   /**
    * Directory containing the MDX. Relative to the repo root for remote
    * collections, or relative to cwd for local-only collections.
@@ -396,15 +428,30 @@ export type DocsCollection = {
   include?: string[];
   /** Optional exclude globs. */
   exclude?: string[];
-  /** URL prefix. Defaults to `"/" + <collection-key>`. */
+  /**
+   * @deprecated Renamed to {@link DocsCollection.routePrefix} — the value is
+   * specifically a public route prefix, not a path or id prefix. Still accepted
+   * and normalized; setting both is an error.
+   */
   prefix?: string;
+  /** Public URL prefix for this collection. Defaults to `"/" + <collection-key>`. */
+  routePrefix?: string;
+  /**
+   * @deprecated Renamed to {@link DocsCollection.frontmatterSchema} to match
+   * the top-level field of the same purpose. Still accepted and normalized;
+   * setting both is an error.
+   */
+  schema?: DocsFrontmatterSchema;
   /**
    * Per-collection frontmatter schema. Defaults to the standard leadtype
    * frontmatter schema. Errors are reported as
    * `[collection:<key>] <relPath>: ...`.
    */
-  schema?: DocsFrontmatterSchema;
-  /** Per-collection navigation tree. */
+  frontmatterSchema?: DocsFrontmatterSchema;
+  /**
+   * Per-collection group taxonomy. Legacy fallback navigation — prefer
+   * {@link DocsCollection.navigation}, which is the canonical IA field.
+   */
   groups?: DocsGroup[];
   /** Per-collection curated docs UI and agent navigation tree. */
   navigation?: DocsNavEntry[];
@@ -472,8 +519,19 @@ export type DocsConfig<
   /**
    * Multi-source content sets, keyed by collection id. Each collection owns
    * its own source acquisition, URL prefix, frontmatter schema, and nav.
+   *
+   * When several collections come from one repository, prefer {@link sources}
+   * with {@link gitSource} — it declares the acquisition once. Both forms
+   * resolve to the same source graph and may be combined.
    */
   collections?: Record<string, DocsCollection>;
+  /**
+   * Acquisition-first content sets, keyed by source id. Each source declares
+   * one git clone and the collections that read from it. Normalized into the
+   * same graph as {@link collections}; a config may use either or both, as
+   * long as collection ids stay unique.
+   */
+  sources?: Record<string, GitSourceSpec>;
   /**
    * OpenAPI specs to generate into the docs source before conversion. Generated
    * pages use native MDX API components and flatten into agent-readable markdown.
@@ -640,12 +698,40 @@ export type DocsAgentsConfig = {
 };
 
 /**
+ * Project/site orchestration config, authored in `leadtype.config.ts` at the
+ * project root. Structurally identical to {@link DocsConfig} — the distinct
+ * name marks *ownership*: this file belongs to the site that publishes the
+ * docs, so it owns sources, routes, feeds, redirects, and agent surfaces.
+ * Source repositories declare their own content-owned config with
+ * {@link defineDocsConfig}.
+ */
+export type LeadtypeConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+> = DocsConfig<TFrontmatter>;
+
+/**
  * Identity helper that gives the config object full IDE autocomplete and
  * type-checks the docs structure at edit time.
+ *
+ * Use this for a source repository's own `docs.config.ts` — the content-owned
+ * config a docs site can inherit from. For a site or multi-repo project config
+ * in `leadtype.config.ts`, prefer {@link defineLeadtypeConfig}.
  */
 export function defineDocsConfig<
   TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
 >(config: DocsConfig<TFrontmatter>): DocsConfig<TFrontmatter> {
+  return config;
+}
+
+/**
+ * Identity helper for a project/site `leadtype.config.ts`. Accepts the same
+ * shape as {@link defineDocsConfig}; the separate name keeps the two roles
+ * legible in a multi-repo setup, where a docs site pins several source repos
+ * that each ship their own `docs.config.ts`.
+ */
+export function defineLeadtypeConfig<
+  TFrontmatter extends Record<string, unknown> = Record<string, unknown>,
+>(config: LeadtypeConfig<TFrontmatter>): LeadtypeConfig<TFrontmatter> {
   return config;
 }
 
@@ -655,6 +741,98 @@ export function defineDocsConfig<
  */
 export function defineCollection(collection: DocsCollection): DocsCollection {
   return collection;
+}
+
+/**
+ * A collection declared beneath a {@link gitSource}. Acquisition fields
+ * (`repository`, `ref`, `cacheDir`) belong to the source, not here — that is
+ * the whole point of the grouping. Everything else is collection-owned.
+ */
+export type GitSourceCollection = Omit<
+  DocsCollection,
+  | "cacheDir"
+  | "prefix"
+  | "ref"
+  | "repository"
+  | "schema"
+  | "sourceConfig"
+  | "sparse"
+>;
+
+/**
+ * One git acquisition and the content collections that read from it.
+ *
+ * The flat `collections` map makes every collection carry `repository`, `ref`,
+ * and `cacheDir` even when several come from the same repository — so a config
+ * repeats acquisition three times for one clone, and a reader has to notice
+ * that matching `(repository, ref)` pairs are deduped. This declares the clone
+ * once and nests the content beneath it, which is the model leadtype already
+ * used internally.
+ */
+export type GitSourceConfig = {
+  /** https or git@ URL. */
+  repository: string;
+  /** Branch, tag, or commit SHA. Defaults to `"main"`. */
+  ref?: string;
+  /**
+   * Override the cache directory for the clone. Defaults to
+   * `.leadtype/sources/<repo-slug>@<ref>` relative to the config dir.
+   */
+  cacheDir?: string;
+  /**
+   * Limit the checkout to these repository-root-relative paths. See
+   * {@link DocsCollection.sparse} — pinning a docs directory out of a large
+   * monorepo otherwise downloads the whole repository to read one folder.
+   */
+  sparse?: string[];
+  /**
+   * Default config-inheritance policy for every collection beneath this
+   * source. A collection can override it, including with `false` to opt out.
+   */
+  inheritConfig?: SourceConfigInheritance;
+  /** Content collections read from this source, keyed by collection id. */
+  collections: Record<string, GitSourceCollection>;
+};
+
+/** Brand marking a value produced by {@link gitSource}. */
+export const GIT_SOURCE_MARKER = "leadtype.gitSource" as const;
+
+export type GitSourceSpec = GitSourceConfig & {
+  readonly kind: typeof GIT_SOURCE_MARKER;
+};
+
+/**
+ * Declare one git acquisition with its content collections beneath it.
+ *
+ * ```ts
+ * sources: {
+ *   c15t: gitSource({
+ *     repository: "https://github.com/c15t/c15t.git",
+ *     ref: "main",
+ *     inheritConfig: true,
+ *     collections: {
+ *       docs: { dir: "docs", routePrefix: "/docs" },
+ *       changelog: { dir: "changelog", routePrefix: "/changelog", inheritConfig: false },
+ *     },
+ *   }),
+ * }
+ * ```
+ *
+ * Equivalent to the flat form: the same source graph, one clone either way.
+ * The one visible difference is the resolved source id — a named source keeps
+ * its name, the flat form is identified by `repository#ref` — and that id is
+ * what sync output, `doctor`, and `generate --json` report.
+ */
+export function gitSource(config: GitSourceConfig): GitSourceSpec {
+  return { ...config, kind: GIT_SOURCE_MARKER };
+}
+
+export function isGitSourceSpec(value: unknown): value is GitSourceSpec {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === GIT_SOURCE_MARKER
+  );
 }
 
 function compactDocsNavNode(node: DocsNavNode): DocsNavNode {
@@ -910,11 +1088,26 @@ export type ResolveDocsNavigationConfig = {
    * dir. Intended for generated-page overlays.
    */
   extraDocsDirs?: string[];
+  /**
+   * Additional docs roots mounted into the logical tree at `pathPrefix` — the
+   * layout `generate` stages for each extra `--docs-dir` (the folder's
+   * contents under its folder name). Unlike `extraDocsDirs`, whose pages keep
+   * their own dir-relative paths, a mounted dir's pages get
+   * `<pathPrefix>/<relativePath>` logical paths, so nav entries and `mounts`
+   * address them exactly as in the staged mirror.
+   */
+  mountedDocsDirs?: { dir: string; pathPrefix: string }[];
   mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   includeFallback?: boolean;
   toc?: boolean | DocsTableOfContentsOptions;
+  /**
+   * Keep only source files whose absolute path passes. `createDocsSource`
+   * threads its include/exclude file selection through this so the resolved
+   * navigation covers exactly the pages the source lists, loads, and indexes.
+   */
+  filterFile?: (absoluteFilePath: string) => boolean;
   /**
    * Name of the docs subdirectory under `srcDir`. Defaults to `"docs"` for
    * backward compatibility. Set this when the docs folder isn't named `docs`
@@ -1513,18 +1706,30 @@ async function readSourceDocs(
   baseUrl: string,
   mounts?: DocsPathMount[],
   docsDirName: string = DOCS_DIRNAME,
-  localeOptions: LocaleReadOptions = {}
+  localeOptions: LocaleReadOptions = {},
+  filterFile?: (absoluteFilePath: string) => boolean,
+  /**
+   * Logical path the directory is mounted under — the staged layout
+   * `generate` produces for an extra `--docs-dir` — so relative, logical, and
+   * URL paths all carry the prefix and `mounts` entries match.
+   */
+  pathPrefix = ""
 ): Promise<Map<string, SourceDocWithContent>> {
   const docsDir = path.join(srcDir, docsDirName);
   const docs = new Map<string, SourceDocWithContent>();
+  const withPrefix = (relativePath: string): string =>
+    pathPrefix
+      ? normalizeDocsPath(`${pathPrefix}/${relativePath}`)
+      : relativePath;
 
   if (!existsSync(docsDir)) {
     return docs;
   }
 
-  const files = await collectFiles(docsDir, [".md", ".mdx"]);
+  const collected = await collectFiles(docsDir, [".md", ".mdx"]);
+  const files = filterFile ? collected.filter(filterFile) : collected;
   const relativePaths = files.map((filePath) =>
-    normalizeDocsPath(path.relative(docsDir, filePath))
+    withPrefix(normalizeDocsPath(path.relative(docsDir, filePath)))
   );
   const localeRead = resolveLocaleReadOptions(localeOptions);
   const localeCodes = new Set(
@@ -1539,7 +1744,7 @@ async function readSourceDocs(
     );
   }
 
-  const selectedFiles: SelectedDocFile[] =
+  const selected: SelectedDocFile[] =
     localeRead.i18n && localeRead.locale
       ? selectLocalizedFiles(files, docsDir, {
           defaultLocale: localeRead.i18n.defaultLocale,
@@ -1557,11 +1762,18 @@ async function readSourceDocs(
             outputRelativePath: stripDocsExtension(relativePath),
           };
         });
+  const selectedFiles: SelectedDocFile[] = pathPrefix
+    ? selected.map((file) => ({
+        ...file,
+        logicalPath: withPrefix(file.logicalPath),
+        outputRelativePath: withPrefix(file.outputRelativePath),
+      }))
+    : selected;
 
   const entries = await Promise.all(
     selectedFiles.map(async (file) => {
-      const relativePath = normalizeDocsPath(
-        path.relative(docsDir, file.filePath)
+      const relativePath = withPrefix(
+        normalizeDocsPath(path.relative(docsDir, file.filePath))
       );
       const raw = await readFile(file.filePath, "utf-8");
       const parsed = parseFrontmatter(raw);
@@ -1799,10 +2011,36 @@ function isNavIncludeEntry(
   return typeof entry === "object" && entry !== null;
 }
 
+/**
+ * How nav resolution treats an entry that matches no page in the doc set.
+ *
+ * `"error"` is the authoring contract: a literal ref or pin that matches
+ * nothing is a mistake and fails resolution. `"skip"` exists for the
+ * translated-only artifact views (a non-default locale's llms.txt, llms-full,
+ * readability manifest, AGENTS.md all read with `includeFallback: false`):
+ * there an entry can miss simply because the page has no translation yet, and
+ * the strict per-locale pass in `resolveDocsNavigation` — which resolves over
+ * the fallback-complete set — has already validated the entry itself.
+ */
+type NavMissingPageBehavior = "error" | "skip";
+
+/**
+ * The path a nav entry addresses for a page: the locale-stripped logical path
+ * when locale selection ran, the output relativePath otherwise. Nav entries
+ * are authored once against the default layout (`index`, `guides/setup`),
+ * while a non-default locale's `relativePath` is the locale-prefixed output
+ * path (`zh/index`) — matching on that made every literal entry miss every
+ * non-default locale. For the default locale and non-i18n projects the two
+ * paths are identical, so matching on the logical path changes nothing there.
+ */
+function navDocPath(doc: SourceDoc): string {
+  return doc.logicalPath ?? doc.relativePath;
+}
+
 function createDocsByRelativePath(docs: SourceDoc[]): Map<string, SourceDoc> {
   const byPath = new Map<string, SourceDoc>();
   for (const doc of docs) {
-    const key = normalizeNavPath(doc.relativePath);
+    const key = normalizeNavPath(navDocPath(doc));
     byPath.set(key, doc);
     if (key === "") {
       byPath.set("index", doc);
@@ -1863,13 +2101,13 @@ function compareNavDocs(
         return compared;
       }
     } else {
-      const compared = left.relativePath.localeCompare(right.relativePath);
+      const compared = navDocPath(left).localeCompare(navDocPath(right));
       if (compared !== 0) {
         return compared;
       }
     }
   }
-  return left.relativePath.localeCompare(right.relativePath);
+  return navDocPath(left).localeCompare(navDocPath(right));
 }
 
 function normalizeExcludePatterns(
@@ -1886,6 +2124,84 @@ function normalizeExcludePatterns(
 }
 
 /**
+ * A single pin is the common case, so accept a bare string the way `exclude`
+ * does. Without this, `pin: "setup"` iterates character by character and fails
+ * with `Nav pin "s" did not match` — an error nothing about which suggests the
+ * shape was wrong.
+ */
+function normalizeNavPins(pin: string | string[] | undefined): string[] {
+  if (pin === undefined) {
+    return [];
+  }
+  return typeof pin === "string" ? [pin] : pin;
+}
+
+/** The urlPaths an include entry pins, for conflict detection during assembly. */
+function pinnedUrlPaths(
+  group: ResolvedGroup,
+  entry: DocsNavPageEntry,
+  docsByRelativePath: Map<string, SourceDoc>
+): string[] {
+  if (!isNavIncludeEntry(entry)) {
+    return [];
+  }
+  return normalizeNavPins(entry.pin)
+    .map((pin) => docsByRelativePath.get(joinNavPath(group.base, pin))?.urlPath)
+    .filter((urlPath): urlPath is string => urlPath !== undefined);
+}
+
+/**
+ * Reorder an include expansion so pinned pages lead, in the order they were
+ * pinned. Everything else keeps its sorted position behind them, so adding a
+ * page to the directory never displaces a deliberate choice.
+ *
+ * Returns `undefined` when the entry declares no pins, so the caller keeps the
+ * unmodified sorted array rather than paying for a rebuild.
+ */
+function applyNavPins(
+  group: ResolvedGroup,
+  entry: DocsNavIncludeEntry,
+  matches: SourceDoc[],
+  missingPages: NavMissingPageBehavior
+): SourceDoc[] | undefined {
+  const pins = normalizeNavPins(entry.pin);
+  if (pins.length === 0) {
+    return;
+  }
+  const byRelativePath = new Map(
+    matches.map((doc) => [normalizeNavPath(navDocPath(doc)), doc])
+  );
+  const leading: SourceDoc[] = [];
+  const pinnedPaths = new Set<string>();
+  for (const pin of pins) {
+    const ref = joinNavPath(group.base, pin);
+    const doc = byRelativePath.get(ref);
+    if (!doc) {
+      if (missingPages === "skip") {
+        continue;
+      }
+      const scope = group.segmentPath.join("/") || "root";
+      // A pin that matches nothing is doing nothing — usually a rename the
+      // config missed. Failing names it; warning would let it rot.
+      throw new Error(
+        `Nav pin "${pin}" under "${scope}" did not match any page included by "${entry.include}". Fix the path or remove the pin.`
+      );
+    }
+    if (pinnedPaths.has(ref)) {
+      continue;
+    }
+    pinnedPaths.add(ref);
+    leading.push(doc);
+  }
+  return [
+    ...leading,
+    ...matches.filter(
+      (doc) => !pinnedPaths.has(normalizeNavPath(navDocPath(doc)))
+    ),
+  ];
+}
+
+/**
  * resolveNavEntryPages is intentionally asymmetric: entries that fail
  * isNavIncludeEntry are string refs and throw when docsByRelativePath has no
  * matching page, while entry.include globs only warn unless entry.required is
@@ -1895,12 +2211,16 @@ function resolveNavEntryPages(
   group: ResolvedGroup,
   entry: DocsNavPageEntry,
   docs: SourceDoc[],
-  docsByRelativePath: Map<string, SourceDoc>
+  docsByRelativePath: Map<string, SourceDoc>,
+  missingPages: NavMissingPageBehavior
 ): SourceDoc[] {
   if (!isNavIncludeEntry(entry)) {
     const ref = joinNavPath(group.base, entry);
     const doc = docsByRelativePath.get(ref);
     if (!doc) {
+      if (missingPages === "skip") {
+        return [];
+      }
       const scope = group.segmentPath.join("/") || "root";
       throw new Error(
         `Nav page "${entry}" under "${scope}" did not match a documentation page.`
@@ -1915,7 +2235,7 @@ function resolveNavEntryPages(
   const sort = entry.sort ?? NAV_INCLUDE_SORT_DEFAULT;
   const matches = docs
     .filter((doc) => {
-      const relativePath = normalizeNavPath(doc.relativePath);
+      const relativePath = normalizeNavPath(navDocPath(doc));
       return (
         includePattern.test(relativePath) &&
         !excludePatterns.some((pattern) => pattern.test(relativePath))
@@ -1923,7 +2243,15 @@ function resolveNavEntryPages(
     })
     .sort((left, right) => compareNavDocs(left, right, sort));
 
+  const pinned = applyNavPins(group, entry, matches, missingPages);
+  if (pinned) {
+    return pinned;
+  }
+
   if (matches.length === 0) {
+    if (missingPages === "skip") {
+      return matches;
+    }
     const scope = group.segmentPath.join("/") || "root";
     const message = `Nav include "${entry.include}" under "${scope}" matched no documentation pages.`;
     if (entry.required) {
@@ -2290,6 +2618,23 @@ function flattenNavigationPagePaths(navigation: DocsNavigation): string[] {
   return paths;
 }
 
+/**
+ * The missing-page behavior for a translated-only artifact view: non-default
+ * locales read with `includeFallback: false`, so a curated entry may miss
+ * only because its page has no translation — skip it there. The default
+ * locale (and non-i18n projects) read the complete set, so a miss is a real
+ * authoring error and keeps failing.
+ */
+function navMissingPageBehavior(
+  i18n: NormalizedDocsI18nConfig | undefined,
+  locale: string | undefined
+): NavMissingPageBehavior {
+  // An unset locale reads as the default locale, matching readSourceDocs.
+  return i18n && locale !== undefined && locale !== i18n.defaultLocale
+    ? "skip"
+    : "error";
+}
+
 function orderMarkdownDocsByNavigation(
   docs: MarkdownDoc[],
   navigation: DocsNavigation
@@ -2391,7 +2736,8 @@ export async function generateLlmsTxt(config: LlmsTxtConfig): Promise<void> {
             new Map(),
             locale,
             [],
-            resolvedNav?.rootPageEntries ?? []
+            resolvedNav?.rootPageEntries ?? [],
+            navMissingPageBehavior(i18n, locale)
           ),
           config.mounts
         )
@@ -2458,7 +2804,8 @@ export async function generateLLMFullContextFiles(
       resolvedNav.groups,
       "nav",
       undefined,
-      resolvedNav.rootPageEntries
+      resolvedNav.rootPageEntries,
+      navMissingPageBehavior(i18n, locale)
     );
     orderedMarkdownDocs = orderMarkdownDocsByNavigation(
       markdownDocs,
@@ -2558,7 +2905,8 @@ function buildNavigationFromMarkdownDocs(
   resolved: ResolvedGroup[],
   mode: "groups" | "nav" = "groups",
   groupsForValidation?: DocsGroup[],
-  rootPageEntries: DocsNavPageEntry[] = []
+  rootPageEntries: DocsNavPageEntry[] = [],
+  missingPages: NavMissingPageBehavior = "error"
 ): DocsNavigation {
   const tocByUrlPath = new Map(
     docs.map((doc) => [
@@ -2573,7 +2921,8 @@ function buildNavigationFromMarkdownDocs(
       tocByUrlPath,
       docs[0]?.locale,
       findUnknownGroups(docs, groupsForValidation),
-      rootPageEntries
+      rootPageEntries,
+      missingPages
     );
   }
 
@@ -2583,10 +2932,9 @@ function buildNavigationFromMarkdownDocs(
       buildNavigationGroup(group, membership, tocByUrlPath)
     ),
     ungrouped: membership.ungrouped.map((page) => pageView(page, tocByUrlPath)),
-    unknown: membership.unknown.map(({ page, slug }) => ({
-      urlPath: page.urlPath,
-      slug,
-    })),
+    unknown: membership.unknown.map(({ page, slug }) =>
+      unknownGroupView(page, slug)
+    ),
     locale: docs[0]?.locale,
   };
 }
@@ -2639,7 +2987,8 @@ export async function generateAgentReadabilityArtifacts(
     resolved,
     hasNav ? "nav" : "groups",
     config.groups,
-    resolvedNav?.rootPageEntries ?? []
+    resolvedNav?.rootPageEntries ?? [],
+    navMissingPageBehavior(i18n, locale)
   );
   // Navigation order is the authored reading order; docs arrive sorted by
   // urlPath, so pages outside the navigation keep that deterministic tail.
@@ -3271,7 +3620,11 @@ export async function generateAgentsMd(
       new Map(),
       config.locale,
       [],
-      resolvedNav?.rootPageEntries ?? []
+      resolvedNav?.rootPageEntries ?? [],
+      navMissingPageBehavior(
+        normalizeDocsI18nConfig(config.i18n),
+        config.locale
+      )
     );
     for (const group of navigation.groups) {
       lines.push(
@@ -3378,26 +3731,66 @@ function buildNavigationGroup(
   };
 }
 
+/**
+ * Resolve a group's entries into its direct pages, first-entry-wins by
+ * urlPath. Because assembly is first-entry-wins, a page an earlier entry
+ * already placed silently swallows a later entry's pin — the pin resolves,
+ * reorders within its own expansion, and then never reaches the tree. A pin
+ * that cannot take effect is an authoring mistake worth naming, at the root
+ * of `nav: [...]` exactly as inside a titled section.
+ */
+function collectNavEntryPages(
+  group: ResolvedGroup,
+  docs: SourceDoc[],
+  docsByRelativePath: Map<string, SourceDoc>,
+  referencedUrlPaths: Set<string>,
+  missingPages: NavMissingPageBehavior
+): SourceDoc[] {
+  const directPages: SourceDoc[] = [];
+  const seenUrlPaths = new Set<string>();
+  for (const entry of group.pageEntries) {
+    const pages = resolveNavEntryPages(
+      group,
+      entry,
+      docs,
+      docsByRelativePath,
+      missingPages
+    );
+    for (const urlPath of pinnedUrlPaths(group, entry, docsByRelativePath)) {
+      if (seenUrlPaths.has(urlPath)) {
+        const scope = group.segmentPath.join("/") || "root";
+        throw new Error(
+          `Nav pin for "${urlPath}" under "${scope}" cannot take effect: an earlier entry in the same section already places that page. Remove the earlier entry, or move the pin onto it.`
+        );
+      }
+    }
+    for (const page of pages) {
+      if (seenUrlPaths.has(page.urlPath)) {
+        continue;
+      }
+      seenUrlPaths.add(page.urlPath);
+      referencedUrlPaths.add(page.urlPath);
+      directPages.push(page);
+    }
+  }
+  return directPages;
+}
+
 function buildNavigationGroupFromNav(
   group: ResolvedGroup,
   docs: SourceDoc[],
   docsByRelativePath: Map<string, SourceDoc>,
   tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
-  referencedUrlPaths: Set<string>
+  referencedUrlPaths: Set<string>,
+  missingPages: NavMissingPageBehavior
 ): DocsNavigationGroup {
-  const directPages: SourceDoc[] = [];
-  const groupSeenUrlPaths = new Set<string>();
-  for (const entry of group.pageEntries) {
-    const pages = resolveNavEntryPages(group, entry, docs, docsByRelativePath);
-    for (const page of pages) {
-      if (groupSeenUrlPaths.has(page.urlPath)) {
-        continue;
-      }
-      groupSeenUrlPaths.add(page.urlPath);
-      referencedUrlPaths.add(page.urlPath);
-      directPages.push(page);
-    }
-  }
+  const directPages = collectNavEntryPages(
+    group,
+    docs,
+    docsByRelativePath,
+    referencedUrlPaths,
+    missingPages
+  );
 
   return {
     slug: group.slug,
@@ -3412,7 +3805,8 @@ function buildNavigationGroupFromNav(
         docs,
         docsByRelativePath,
         tocByUrlPath,
-        referencedUrlPaths
+        referencedUrlPaths,
+        missingPages
       )
     ),
   };
@@ -3424,11 +3818,12 @@ function buildNavigationFromNav(
   tocByUrlPath: Map<string, DocsTableOfContentsItem[]>,
   locale?: string,
   unknown: DocsNavigation["unknown"] = [],
-  rootPageEntries: DocsNavPageEntry[] = []
+  rootPageEntries: DocsNavPageEntry[] = [],
+  missingPages: NavMissingPageBehavior = "error"
 ): DocsNavigation {
   const referencedUrlPaths = new Set<string>();
   const docsByRelativePath = createDocsByRelativePath(docs);
-  const rootPages: SourceDoc[] = [];
+  let rootPages: SourceDoc[] = [];
   if (rootPageEntries.length > 0) {
     const rootGroup: ResolvedGroup = {
       slug: "root",
@@ -3440,23 +3835,13 @@ function buildNavigationFromNav(
       base: "",
       pageEntries: rootPageEntries,
     };
-    const rootSeenUrlPaths = new Set<string>();
-    for (const entry of rootPageEntries) {
-      const pages = resolveNavEntryPages(
-        rootGroup,
-        entry,
-        docs,
-        docsByRelativePath
-      );
-      for (const page of pages) {
-        if (rootSeenUrlPaths.has(page.urlPath)) {
-          continue;
-        }
-        rootSeenUrlPaths.add(page.urlPath);
-        referencedUrlPaths.add(page.urlPath);
-        rootPages.push(page);
-      }
-    }
+    rootPages = collectNavEntryPages(
+      rootGroup,
+      docs,
+      docsByRelativePath,
+      referencedUrlPaths,
+      missingPages
+    );
   }
   const groups = resolved.map((group) =>
     buildNavigationGroupFromNav(
@@ -3464,7 +3849,8 @@ function buildNavigationFromNav(
       docs,
       docsByRelativePath,
       tocByUrlPath,
-      referencedUrlPaths
+      referencedUrlPaths,
+      missingPages
     )
   );
   return {
@@ -3487,10 +3873,26 @@ function findUnknownGroups(
   }
   const resolved = resolveGroups(groups);
   const membership = buildGroupMembership(docs, resolved);
-  return membership.unknown.map(({ page, slug }) => ({
+  return membership.unknown.map(({ page, slug }) =>
+    unknownGroupView(page, slug)
+  );
+}
+
+/**
+ * An unknown-group manifest entry. `isFallback` rides along (when locale
+ * selection ran) so per-locale validators can tell a locale's own defective
+ * page from the default locale's file re-selected as a fallback — the latter
+ * is the same source file reporting again under every locale.
+ */
+function unknownGroupView(
+  page: SourceDoc,
+  slug: string
+): DocsNavigation["unknown"][number] {
+  return {
     urlPath: page.urlPath,
     slug,
-  }));
+    ...(page.isFallback === undefined ? {} : { isFallback: page.isFallback }),
+  };
 }
 
 /**
@@ -3514,8 +3916,30 @@ export async function resolveDocsNavigation(
     baseUrl,
     config.mounts,
     config.docsDirName,
-    localeOptions
+    localeOptions,
+    config.filterFile
   );
+  for (const mounted of config.mountedDocsDirs ?? []) {
+    const resolvedMountedDir = path.resolve(mounted.dir);
+    const mountedDocs = await readSourceDocs(
+      path.dirname(resolvedMountedDir),
+      baseUrl,
+      config.mounts,
+      path.basename(resolvedMountedDir),
+      localeOptions,
+      config.filterFile,
+      mounted.pathPrefix
+    );
+    for (const [urlPath, doc] of mountedDocs) {
+      const existing = sourceDocs.get(urlPath);
+      if (existing) {
+        throw new Error(
+          `Duplicate documentation route "${urlPath}" from mounted docs dir "${resolvedMountedDir}" — existing page "${existing.relativePath}" conflicts with mounted page "${doc.relativePath}". Rename one or remove it.`
+        );
+      }
+      sourceDocs.set(urlPath, doc);
+    }
+  }
   for (const extraDocsDir of config.extraDocsDirs ?? []) {
     const resolvedExtraDocsDir = path.resolve(extraDocsDir);
     const extraDocs = await readSourceDocs(
@@ -3523,7 +3947,8 @@ export async function resolveDocsNavigation(
       baseUrl,
       config.mounts,
       path.basename(resolvedExtraDocsDir),
-      localeOptions
+      localeOptions,
+      config.filterFile
     );
     for (const [urlPath, doc] of extraDocs) {
       const existing = sourceDocs.get(urlPath);
@@ -3567,10 +3992,9 @@ export async function resolveDocsNavigation(
       buildNavigationGroup(group, membership, tocByUrlPath)
     ),
     ungrouped: membership.ungrouped.map((page) => pageView(page, tocByUrlPath)),
-    unknown: membership.unknown.map(({ page, slug }) => ({
-      urlPath: page.urlPath,
-      slug,
-    })),
+    unknown: membership.unknown.map(({ page, slug }) =>
+      unknownGroupView(page, slug)
+    ),
     locale:
       config.locale ?? normalizeDocsI18nConfig(config.i18n)?.defaultLocale,
   };

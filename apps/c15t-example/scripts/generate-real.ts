@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 /**
- * Runs the same source-config driven generate path a downstream docs repo uses
- * against a real c15t checkout. Use C15T_REF=<branch|sha> before setup to test
- * a c15t PR branch locally.
+ * Runs the pinned-source docs-UI path against a real c15t checkout: this app's
+ * `leadtype.config.ts` declares the source, and `generate` reads the synced
+ * cache while inheriting c15t's content-owned config. Use C15T_REF=<branch|sha>
+ * before setup to test a c15t PR branch locally.
  */
 
 import { existsSync } from "node:fs";
@@ -22,15 +23,16 @@ if (!existsSync(join(FIXTURE_DIR, "docs", "docs.config.ts"))) {
 
 await rm(OUT_DIR, { recursive: true, force: true });
 
+// `--offline`: acquisition belongs to `setup:real`. A generate run that quietly
+// cloned would hide a missing setup step and make the build network-dependent.
 const code = await runGenerateCommand([
   "--src",
-  FIXTURE_DIR,
-  "--docs-dir",
-  "docs",
+  process.cwd(),
   "--out",
   OUT_DIR,
   "--base-url",
   "https://c15t.com",
+  "--offline",
 ]);
 
 process.exit(code);

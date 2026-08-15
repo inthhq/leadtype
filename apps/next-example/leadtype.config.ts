@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(appDir, "../..");
@@ -33,7 +33,7 @@ function resolveExampleSourceRef(): string {
   }
 }
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: {
     name: "Leadtype",
     tagline:
@@ -53,8 +53,8 @@ export default defineDocsConfig({
       cacheDir: ".leadtype",
       dir: "docs",
       mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
-      prefix: "/docs",
-      sourceConfig: true,
+      routePrefix: "/docs",
+      inheritConfig: true,
     }),
   },
   feeds: [

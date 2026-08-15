@@ -16,7 +16,7 @@ source-owned docs config.
 | One docs folder | Docs live beside the app or package that publishes them. | `docs/docs.config.ts` + `leadtype generate --src .` |
 | One docs folder with mounted subtrees | One source tree owns all content, but a subtree needs a top-level URL such as `/changelog`. | `docs/docs.config.ts` `mounts` |
 | Multiple local folders | Related content lives in sibling folders, such as `docs/` and `changelog/`. | Repeated `--docs-dir` flags |
-| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners/mounts. | Docs UI `leadtype.config.ts` with `sourceConfig: true` |
+| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners/mounts. | Docs UI `leadtype.config.ts` with `inheritConfig: true` |
 | Collections | Sources need separate prefixes, filters, schemas, or local/remote acquisition. | Project-level `leadtype.config.ts` |
 
 Use one docs folder when ownership is simple. Use pinned remote collections when
@@ -172,12 +172,12 @@ export default defineDocsConfig({
   collections: {
     docs: defineCollection({
       dir: "./docs",
-      prefix: "/docs",
+      routePrefix: "/docs",
       navigation: ["index", "quickstart"],
     }),
     changelog: defineCollection({
       dir: "./changelog",
-      prefix: "/changelog",
+      routePrefix: "/changelog",
       include: ["*.mdx"],
     }),
   },
@@ -196,7 +196,7 @@ When `leadtype.config.ts` defines `collections`, the collection map fully descri
 
 Set `repository` to make a collection remote. Pin `ref` to the version you want: a branch for moving docs, a tag for release docs, or a commit SHA for fully reproducible output.
 
-For the split-repo docs UI shape, add `sourceConfig: true`. After sync,
+For the split-repo docs UI shape, add `inheritConfig: true`. After sync,
 Leadtype loads `docs.config.{ts,js,mjs,cjs}` from the remote collection `dir`
 and inherits MDX-owned fields (`navigation`, `groups`, `frontmatterSchema`,
 `flatteners`, and `mounts`) into the collection.
@@ -226,13 +226,13 @@ export default defineDocsConfig({
   collections: {
     platform: defineCollection({
       dir: "./docs",
-      prefix: "/docs",
+      routePrefix: "/docs",
     }),
     sdk: defineCollection({
       ...sdkDocs,
       dir: "docs",
-      prefix: "/docs/sdk",
-      sourceConfig: true,
+      routePrefix: "/docs/sdk",
+      inheritConfig: true,
       include: ["quickstart.mdx", "guides/**", "reference/**"],
       exclude: ["**/internal/**"],
     }),
@@ -242,7 +242,7 @@ export default defineDocsConfig({
 
 If the source repo's `docs/docs.config.ts` declares
 `mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }]`, the docs UI
-repo inherits that mapping through `sourceConfig: true`. A remote page at
+repo inherits that mapping through `inheritConfig: true`. A remote page at
 `docs/changelog/v1.mdx` is generated with canonical URLs `/changelog/v1` and
 `/changelog/v1.md`, not `/docs/changelog/v1`.
 
@@ -254,8 +254,8 @@ source-owned mount:
 docs: defineCollection({
   ...sdkDocs,
   dir: "docs",
-  prefix: "/docs",
-  sourceConfig: true,
+  routePrefix: "/docs",
+  inheritConfig: true,
   mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
 });
 ```

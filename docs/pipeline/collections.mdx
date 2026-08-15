@@ -35,7 +35,7 @@ import { defineCollection, defineDocsConfig } from "leadtype";
 export default defineDocsConfig({
   product: { name: "My Product", tagline: "..." },
   collections: {
-    docs: defineCollection({ dir: "./docs", prefix: "/docs" }),
+    docs: defineCollection({ dir: "./docs", routePrefix: "/docs" }),
   },
 });
 ```
@@ -47,14 +47,15 @@ Place this file at the project root (the cwd from which you run `leadtype`). Lea
 | Field | Type | Default | What it does |
 | --- | --- | --- | --- |
 | `dir` | `string` | required | Directory containing the MDX. For local collections, resolved from the config dir. For remote collections, resolved from the cloned repo root. |
-| `prefix` | `string` | `"/" + <key>` | URL prefix where this collection appears in generated artifacts. |
+| `routePrefix` | `string` | `"/" + <key>` | URL prefix where this collection appears in generated artifacts. |
 | `repository` | `string` | — | `https://` or `git@` URL. Set this to make the collection remote — leadtype clones it on `leadtype sync`. Omit for local collections. |
 | `ref` | `string` | `"main"` | Branch, tag, or commit SHA to check out. SHAs are detected by pattern (7–40 hex chars) and use a full clone + `checkout`; everything else uses `clone --depth 1 --branch`. |
 | `cacheDir` | `string` | `.leadtype/sources/<repo-slug>@<ref>` | Where the clone lives on disk, relative to the config dir. Override this when you want a stable on-disk path for other tooling (e.g. type-table extraction). |
-| `sourceConfig` | `true \| object` | — | Remote collections only. After sync, load source-owned docs config from the collection `dir` and inherit MDX-owned fields into this collection. |
+| `sparse` | `string[]` | — | Limit the checkout to these repository-root-relative paths, via git sparse-checkout over a blobless partial clone. See [Pinning one directory out of a monorepo](#pinning-one-directory-out-of-a-monorepo). |
+| `inheritConfig` | `true \| object` | — | Remote collections only. After sync, load source-owned docs config from the collection `dir` and inherit MDX-owned fields into this collection. |
 | `include` | `string[]` | all `.mdx` files | Glob patterns relative to `dir`. When set, narrows which files the collection contributes. |
 | `exclude` | `string[]` | — | Glob patterns relative to `dir`. Files matching are dropped after `include`. |
-| `schema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
+| `frontmatterSchema` | Valibot `ObjectSchema` | `defaultFrontmatterSchema` | Per-collection frontmatter schema. Lint errors are reported as `[collection:<key>] <relPath>: …`. |
 | `navigation` | `DocsNavEntry[]` | — | Per-collection curated navigation tree. Top-level strings become root pages; objects with `title` become groups. |
 | `groups` | `DocsGroup[]` | — | Legacy/fallback taxonomy (not a second navigation tree) — used when a collection hasn't adopted `navigation`. Slugs must be globally unique across all collections. |
 | `mounts` | `DocsPathMount[]` | — | Optional path-to-URL mounts inside this collection. Use when a subdirectory such as `changelog` should be canonical at `/changelog` while staying in the same source tree. |
@@ -65,8 +66,8 @@ A collection without `repository` is purely local — `dir` is resolved from the
 
 ```ts
 collections: {
-  docs: defineCollection({ dir: "./docs", prefix: "/docs" }),
-  changelog: defineCollection({ dir: "./changelog", prefix: "/changelog" }),
+  docs: defineCollection({ dir: "./docs", routePrefix: "/docs" }),
+  changelog: defineCollection({ dir: "./changelog", routePrefix: "/changelog" }),
 }
 ```
 
@@ -85,8 +86,8 @@ const c15t = { repository: "https://github.com/c15t/c15t", ref: "main" } as cons
 export default defineDocsConfig({
   product: { name: "c15t", tagline: "..." },
   collections: {
-    docs:      defineCollection({ ...c15t, dir: "docs",      prefix: "/docs" }),
-    changelog: defineCollection({ ...c15t, dir: "changelog", prefix: "/changelog" }),
+    docs:      defineCollection({ ...c15t, dir: "docs",      routePrefix: "/docs" }),
+    changelog: defineCollection({ ...c15t, dir: "changelog", routePrefix: "/changelog" }),
   },
 });
 ```
@@ -94,10 +95,112 @@ export default defineDocsConfig({
 This shape is useful when a docs UI repo needs to render and package content
 from one or more product repos.
 
+## Source groups
+
+The config above works, but it puts acquisition and content mapping in the same
+object: a shared spread reduces the repetition without making the relationship
+visible, and a reader still has to know that matching `(repository, ref)` pairs
+are deduped into one clone.
+
+`gitSource()` declares the acquisition once and nests the content beneath it:
+
+```ts
+import { defineLeadtypeConfig, gitSource } from "leadtype";
+
+export default defineLeadtypeConfig({
+  product: { name: "c15t", tagline: "..." },
+  sources: {
+    c15t: gitSource({
+      repository: "https://github.com/c15t/c15t.git",
+      ref: "main",
+      cacheDir: ".leadtype/c15t",
+      inheritConfig: true,
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog", inheritConfig: false },
+      },
+    }),
+  },
+});
+```
+
+The split follows ownership:
+
+| The source owns | Each collection owns |
+| --- | --- |
+| `repository`, `ref`, `cacheDir`, `sparse` | `dir`, `include`/`exclude` |
+| One clone lifecycle for all its children | `routePrefix` and `mounts` |
+| The default `inheritConfig` policy | `navigation`, `frontmatterSchema`, `flatteners` |
+| | Its own `inheritConfig` exception, including `false` to opt out |
+
+Both forms resolve to the same source graph and the same acquisition. The one
+visible difference is the source's **id**: a named `gitSource` keeps its
+authored name (`c15t`), while the flat form is identified by what it is
+(`https://github.com/c15t/c15t.git#main`). That id is what `leadtype sync`
+prints, what `doctor` reports, and what `generate --json` emits — which is the
+argument for naming them.
+
+`sources` and `collections` may be used together — a local collection beside a
+remote group is fine.
+
+Collection ids are **global**, not scoped to their source: they name staging
+mounts, error messages, and JSON output, so a silently namespaced id would show
+up in all three. Two sources declaring a `docs` collection is an error naming
+both, not an auto-rename.
+
+Two named sources with the same `(repository, ref)` is also an error — that is
+one acquisition declared twice, and merging their collections into a single
+source is what you meant.
+
+### Pinning one directory out of a monorepo
+
+A docs directory usually lives inside a much larger repository. Cloning all of it to read one folder is slow and, in CI, repeatedly slow. `sparse` limits the checkout:
+
+```ts
+gitSource({
+  repository: "https://github.com/c15t/c15t.git",
+  ref: "2b89e689458497bc985862db21f6b4b03a918e46",
+  sparse: ["docs", "packages"],
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", inheritConfig: true },
+  },
+});
+```
+
+Leadtype clones blobless (`--filter=blob:none --sparse`) and then selects those paths, so git only fetches the blobs behind them.
+
+List the docs directory **plus anything the docs reach outside it**. `packages` is there because c15t's MDX uses `<AutoTypeTable path="./packages/…">` to render prop tables from real TypeScript sources — drop it and every type table silently degrades to nothing rather than failing.
+
+Two guarantees make this safe to change later:
+
+- Collections sharing one acquisition must agree on `sparse`. One checkout has one path set, so taking the first silently would leave the other collection reading a directory that isn't there.
+- The path set is recorded in the sync manifest. Adding a path re-clones rather than reusing the cache, because a checkout missing a directory looks identical to a complete one until something fails to resolve.
+
+### Pinning a revision
+
+`ref` accepts a branch, a tag, or a commit SHA. `leadtype sync` reports which
+sources track a mutable ref:
+
+```text
+cloned  c15t  https://github.com/c15t/c15t.git@main  a1b2c3d  → .leadtype/c15t
+        collections: docs, changelog
+
+Warning: 1 source tracks a mutable ref: c15t (main)
+  → Pin `ref` to a commit SHA or an immutable tag for reproducible published builds.
+```
+
+A branch is fine while you iterate. For a published build it means today's
+deploy and tomorrow's deploy render different content from the same config.
+
+Before a clone is attempted, a missing or stale cache names every collection
+that depends on it, so one unsynced source does not read as one collection's
+problem. A clone that fails partway reports the git error against
+`repository@ref` — git does not know about collections.
+
 ### Inherit source-owned docs config
 
 When a package/source repo owns both the MDX files and their information
-architecture, set `sourceConfig: true` on the remote collection. This is the
+architecture, set `inheritConfig: true` on the remote collection. This is the
 flagship split-repo docs UI shape: the source repo owns content semantics, and
 the docs UI repo owns deployment.
 
@@ -123,8 +226,8 @@ export default defineDocsConfig({
       ref: "f4e3c2d1",
       cacheDir: ".docs-src/sdk",
       dir: "docs",
-      prefix: "/docs",
-      sourceConfig: true,
+      routePrefix: "/docs",
+      inheritConfig: true,
     }),
   },
 });
@@ -148,8 +251,8 @@ defineCollection({
   ref: "v1.2.3",
   cacheDir: ".docs-src/sdk",
   dir: "docs",
-  prefix: "/docs",
-  sourceConfig: {
+  routePrefix: "/docs",
+  inheritConfig: {
     path: "config/docs.config.ts",
     inherit: [
       "navigation",
@@ -162,7 +265,7 @@ defineCollection({
 });
 ```
 
-If `sourceConfig` is enabled and no config file is found, generation fails with
+If `inheritConfig` is enabled and no config file is found, generation fails with
 the collection key and expected path(s). `leadtype generate --offline` works
 with inherited source config as long as the pinned cache is already present.
 
@@ -190,8 +293,8 @@ collections: {
     ref: "f4e3c2d1",
     cacheDir: ".docs-src/sdk",
     dir: "docs",
-    prefix: "/docs",
-    sourceConfig: true,
+    routePrefix: "/docs",
+    inheritConfig: true,
   }),
 }
 ```
@@ -219,10 +322,10 @@ const kotlin = { repository: "https://github.com/c15t/kotlin", ref: "main" } as 
 export default defineDocsConfig({
   product,
   collections: {
-    docs:      defineCollection({ ...c15t,   dir: "docs",      prefix: "/docs" }),
-    changelog: defineCollection({ ...c15t,   dir: "changelog", prefix: "/changelog" }),
-    swift:     defineCollection({ ...swift,  dir: "docs",      prefix: "/docs/swift" }),
-    kotlin:    defineCollection({ ...kotlin, dir: "docs",      prefix: "/docs/kotlin" }),
+    docs:      defineCollection({ ...c15t,   dir: "docs",      routePrefix: "/docs" }),
+    changelog: defineCollection({ ...c15t,   dir: "changelog", routePrefix: "/changelog" }),
+    swift:     defineCollection({ ...swift,  dir: "docs",      routePrefix: "/docs/swift" }),
+    kotlin:    defineCollection({ ...kotlin, dir: "docs",      routePrefix: "/docs/kotlin" }),
   },
 });
 ```
@@ -252,8 +355,8 @@ export default defineDocsConfig({
   collections: {
     changelog: defineCollection({
       dir: "./changelog",
-      prefix: "/changelog",
-      schema: changelogFrontmatter,
+      routePrefix: "/changelog",
+      frontmatterSchema: changelogFrontmatter,
     }),
   },
 });
@@ -269,7 +372,7 @@ Each collection may declare its own curated `navigation` tree. Use this when a s
 collections: {
   docs: defineCollection({
     dir: "./docs",
-    prefix: "/docs",
+    routePrefix: "/docs",
     navigation: [
       "index",
       "quickstart",
@@ -285,7 +388,7 @@ Legacy `groups` are still supported as fallback taxonomy. Slugs must be globally
 collections: {
   docs: defineCollection({
     dir: "./docs",
-    prefix: "/docs",
+    routePrefix: "/docs",
     groups: [
       { slug: "tutorials", title: "Tutorials" },
       { slug: "reference",  title: "Reference" },
@@ -304,7 +407,7 @@ If a collection omits both `navigation` and `groups`, leadtype falls back to dis
 collections: {
   docs: defineCollection({
     dir: "./docs",
-    prefix: "/docs",
+    routePrefix: "/docs",
     exclude: ["drafts/**", "_internal/**"],
   }),
 }

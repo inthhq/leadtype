@@ -1,13 +1,12 @@
 import path from "node:path";
-import { createDocsSource } from "leadtype";
-import docsConfig from "../../../../docs/docs.config";
+import { createDocsProject } from "leadtype";
 
 const repoRoot = path.resolve(process.cwd(), "../..");
 
-export const source = await createDocsSource({
-  contentDir: path.join(repoRoot, "docs"),
-  nav: docsConfig.navigation,
-  mounts: docsConfig.mounts,
+// No config import: the project discovers `docs/docs.config.ts` from the repo
+// root and reads the same resolved model `generate`, `doctor`, and `nav` read.
+export const source = await createDocsProject({
+  cwd: repoRoot,
   baseUrl: "http://localhost:4321",
   typeTableBasePath: repoRoot,
 });

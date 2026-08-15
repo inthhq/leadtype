@@ -1,9 +1,11 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getDoctorUsage, runDoctorCommand } from "./cli/doctor";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
 import { getInitUsage, runInitCommand } from "./cli/init";
 import { getMcpUsage, runMcpCommand } from "./cli/mcp";
+import { getNavUsage, runNavCommand } from "./cli/nav";
 import { getScoreUsage, runScoreCommand } from "./cli/score";
 import { getSyncUsage, runSyncCommand } from "./cli/sync";
 import { logger, setLogStreams } from "./internal/logger";
@@ -21,7 +23,9 @@ Usage:
 
 Commands:
   init       Scaffold an agent-ready docs integration for your framework
+  doctor     Explain the resolved project — config, sources, routes, artifacts
   generate   Convert MDX, generate LLM files, and build search artifacts
+  nav        Print the resolved navigation tree and report drift
   sync       Clone or refresh remote sources declared by collections
   lint       Validate MDX frontmatter, meta.json, and docs links
   mcp        Serve the generated docs to an MCP client over stdio
@@ -34,6 +38,12 @@ Run leadtype <command> --help for command-specific options.
 function commandUsage(command: string | undefined): string {
   if (command === "init") {
     return getInitUsage();
+  }
+  if (command === "doctor") {
+    return getDoctorUsage();
+  }
+  if (command === "nav") {
+    return getNavUsage();
   }
   if (command === "generate") {
     return getGenerateUsage();
@@ -72,6 +82,14 @@ export async function runCli(
 
   if (command === "init") {
     return await runInitCommand(rest, io);
+  }
+
+  if (command === "doctor") {
+    return await runDoctorCommand(rest, io);
+  }
+
+  if (command === "nav") {
+    return await runNavCommand(rest, io);
   }
 
   if (command === "generate") {

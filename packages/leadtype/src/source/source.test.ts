@@ -481,6 +481,59 @@ describe("createDocsSource", () => {
     }
   });
 
+  it("keeps generated OpenAPI pages live under an include filter, as generate does", async () => {
+    await writeMdx(
+      path.join(contentDir, "guides/setup.mdx"),
+      "---\ntitle: Setup\n---\nBody.\n"
+    );
+    await writeMdx(
+      path.join(contentDir, "drafts/wip.mdx"),
+      "---\ntitle: WIP\n---\nBody.\n"
+    );
+    await writeOpenApiSpec(path.join(contentDir, "openapi", "pets.yaml"));
+
+    // `generate` writes OpenAPI pages into the mirror *after* `copySourceFiles`
+    // applies collection filters, so include/exclude never touch generated
+    // pages there. The runtime must match: filtering the overlay root with
+    // content-authored patterns selects zero overlay files, and the generated
+    // nav node's string page refs then make navigation resolution throw.
+    const source = await createDocsSource({
+      contentDir,
+      include: ["guides/**"],
+      openapi: {
+        input: "./openapi/pets.yaml",
+        output: "api",
+        title: "API",
+        groupByTags: false,
+      },
+    });
+
+    try {
+      const pages = await source.listPages();
+      expect(pages.map((page) => page.slug.join("/")).sort()).toEqual([
+        "api",
+        "api/read-pet",
+        "guides/setup",
+      ]);
+
+      const navigation = await source.getNavigation();
+      const generatedGroup = navigation.groups.find(
+        (group) => group.title === "API"
+      );
+      expect(generatedGroup?.pages.map((page) => page.relativePath)).toEqual([
+        "api/index",
+        "api/read-pet",
+      ]);
+      const navPaths = navigation.groups.flatMap((group) =>
+        group.pages.map((page) => page.relativePath)
+      );
+      expect(navPaths).toContain("guides/setup");
+      expect(navPaths).not.toContain("drafts/wip");
+    } finally {
+      await source.cleanup();
+    }
+  });
+
   it("rejects authored pages that collide with generated OpenAPI slugs", async () => {
     await writeMdx(
       path.join(contentDir, "api/index.mdx"),
@@ -569,9 +622,199 @@ describe("createDocsSource", () => {
     }
   });
 
+  it("keeps a bare-directory include literal, as staging does", async () => {
+    await writeMdx(
+      path.join(contentDir, "guides/intro.mdx"),
+      "---\ntitle: Intro\n---\nBody.\n"
+    );
+
+    // `copySourceFiles` disables tinyglobby's directory expansion, so a bare
+    // `guides` matches only a *file* named `guides` and stages nothing.
+    // Expanding it to `guides/**` here would serve pages at runtime that no
+    // generated artifact knows about.
+    const bare = await createDocsSource({ contentDir, include: ["guides"] });
+    expect(await bare.listPages()).toEqual([]);
+
+    const globbed = await createDocsSource({
+      contentDir,
+      include: ["guides/**"],
+    });
+    expect(
+      (await globbed.listPages()).map((page) => page.slug.join("/"))
+    ).toEqual(["guides/intro"]);
+  });
+
+  it("lists pages under dot-directories, which staging copies", async () => {
+    await writeMdx(
+      path.join(contentDir, ".internal/note.mdx"),
+      "---\ntitle: Note\n---\nBody.\n"
+    );
+
+    // Staging globs with `dot: true`, so a page under `.internal/` is built —
+    // hiding it here would build routes the runtime refuses to list.
+    const source = await createDocsSource({ contentDir });
+    expect(
+      (await source.listPages()).map((page) => page.slug.join("/"))
+    ).toEqual([".internal/note"]);
+  });
+
   it("throws if contentDir does not exist", async () => {
     await expect(
       createDocsSource({ contentDir: path.join(contentDir, "does-not-exist") })
     ).rejects.toThrow(/does not exist/);
+  });
+
+  describe("derived navigation", () => {
+    async function writeTree(): Promise<void> {
+      await writeMdx(
+        path.join(contentDir, "index.mdx"),
+        "---\ntitle: Home\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "guides/index.mdx"),
+        "---\ntitle: Guides\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "guides/auth.mdx"),
+        "---\ntitle: Auth\n---\nBody.\n"
+      );
+    }
+
+    it("derives sections from the content tree when nothing was configured", async () => {
+      await writeTree();
+      const source = await createDocsSource({ contentDir });
+
+      const navigation = await source.getNavigation();
+
+      // Without derivation every page lands in `ungrouped` and the rendered
+      // sidebar goes flat while generated artifacts gain sections.
+      expect(navigation.groups.map((group) => group.title)).toEqual(["Guides"]);
+      expect(navigation.ungrouped.map((page) => page.title)).toEqual(["Home"]);
+    });
+
+    it("leaves an authored nav alone", async () => {
+      await writeTree();
+      const source = await createDocsSource({
+        contentDir,
+        nav: [{ title: "Everything", pages: ["index", "guides/auth"] }],
+      });
+
+      const navigation = await source.getNavigation();
+
+      expect(navigation.groups.map((group) => group.title)).toEqual([
+        "Everything",
+      ]);
+    });
+
+    it("keeps excluded pages out of the derived navigation", async () => {
+      await writeTree();
+      const source = await createDocsSource({
+        contentDir,
+        exclude: ["guides/**"],
+      });
+
+      const navigation = await source.getNavigation();
+
+      // `exclude` is a page-existence filter: an excluded page must not
+      // appear anywhere in the navigation, or the sidebar links to URLs
+      // `loadPage` refuses to serve. Only the filtered pages survive.
+      expect(navigation.groups).toEqual([]);
+      expect(navigation.ungrouped.map((page) => page.title)).toEqual(["Home"]);
+    });
+
+    it("derives over the filtered file set, as generate does", async () => {
+      await writeTree();
+      await writeMdx(
+        path.join(contentDir, "drafts/wip.mdx"),
+        "---\ntitle: WIP\n---\nBody.\n"
+      );
+      const source = await createDocsSource({
+        contentDir,
+        exclude: ["drafts/**"],
+      });
+
+      const navigation = await source.getNavigation();
+
+      // `generate` stages a filtered mirror and still derives from it —
+      // collection-level filters only affect staging, they don't opt out of
+      // derivation. The runtime derives over the same filtered set, so the
+      // surviving tree gains its sections and the excluded one contributes
+      // nothing.
+      expect(navigation.groups.map((group) => group.title)).toEqual(["Guides"]);
+      expect(navigation.ungrouped.map((page) => page.title)).toEqual(["Home"]);
+    });
+
+    it("keeps excluded pages out of an authored navigation", async () => {
+      await writeTree();
+      const source = await createDocsSource({
+        contentDir,
+        nav: [{ title: "Everything", pages: [{ include: "**" }] }],
+        exclude: ["guides/**"],
+      });
+
+      const navigation = await source.getNavigation();
+
+      // Authored nav resolves against the filtered file set too: an include
+      // glob must not resurrect pages the exclude filter withheld.
+      expect(navigation.groups.map((group) => group.title)).toEqual([
+        "Everything",
+      ]);
+      expect(
+        navigation.groups.flatMap((group) =>
+          group.pages.map((page) => page.title)
+        )
+      ).toEqual(["Home"]);
+      expect(navigation.ungrouped).toEqual([]);
+    });
+
+    it("does not derive over a localized tree", async () => {
+      await writeMdx(
+        path.join(contentDir, "en/index.mdx"),
+        "---\ntitle: Home\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "en/guides/auth.mdx"),
+        "---\ntitle: Auth\n---\nBody.\n"
+      );
+
+      const source = await createDocsSource({
+        contentDir,
+        i18n: { defaultLocale: "en", locales: ["en", "fr"] },
+      });
+
+      const navigation = await source.getNavigation();
+
+      // Derivation keys sections off the first path segment — the locale, for
+      // a localized tree — while navigation resolves per locale over
+      // locale-stripped paths, so no derived section could ever match its
+      // pages. `generate` skips derivation for i18n projects; match it.
+      expect(navigation.groups).toEqual([]);
+      expect(navigation.ungrouped.map((page) => page.title).sort()).toEqual([
+        "Auth",
+        "Home",
+      ]);
+    });
+
+    it("leaves authored groups alone", async () => {
+      await writeMdx(
+        path.join(contentDir, "index.mdx"),
+        "---\ntitle: Home\ngroup: start\n---\nBody.\n"
+      );
+      await writeMdx(
+        path.join(contentDir, "guides/auth.mdx"),
+        "---\ntitle: Auth\ngroup: start\n---\nBody.\n"
+      );
+
+      const source = await createDocsSource({
+        contentDir,
+        groups: [{ slug: "start", title: "Getting Started" }],
+      });
+
+      const navigation = await source.getNavigation();
+
+      expect(navigation.groups.map((group) => group.title)).toEqual([
+        "Getting Started",
+      ]);
+    });
   });
 });

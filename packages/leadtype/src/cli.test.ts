@@ -29,6 +29,12 @@ const markdownEntry = path.join(
   "index.ts"
 );
 const valibotEntry = fileURLToPath(import.meta.resolve("valibot"));
+// Fixture configs import `gitSource` from source rather than `"leadtype"` so
+// they exercise the working tree, not whatever dist happens to be built.
+const leadtypeEntry = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "index.ts"
+);
 const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_COMMON_DIR",
@@ -731,7 +737,9 @@ describe("leadtype CLI", () => {
       groups: Array<{ slug: string; title: string }>;
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "Configured Product",
       summary: "Configured product summary.",
     });
@@ -1008,6 +1016,78 @@ export default {
     ]);
   });
 
+  it("generates i18n projects whose navigation uses literal entries", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Localized Product",
+    tagline: "Localized product summary.",
+  },
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "zh"],
+  },
+  navigation: [
+    "index",
+    { title: "Guides", base: "guides", pages: [{ include: "*", pin: "setup" }] },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "index.mdx",
+      'title: "Home"\ndescription: "English home."',
+      "English home."
+    );
+    await writeMdxPage(
+      srcDir,
+      "guides/setup.mdx",
+      'title: "Setup"\ndescription: "English setup."',
+      "English setup."
+    );
+    await writeMdxPage(
+      srcDir,
+      "zh/index.mdx",
+      'title: "首页"\ndescription: "中文首页。"',
+      "中文首页。"
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // Literal nav entries name locale-stripped logical paths, so the per-
+    // locale validation pass resolves "index" against "zh/index.mdx" and the
+    // untranslated "guides/setup" against the default locale's page (the
+    // `fallback: "default"` re-selection). Matching on the locale-prefixed
+    // output path instead made every `navigation` + `i18n` project exit 1.
+    expect(code).toBe(0);
+
+    const defaultSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(defaultSummary).toContain("](/docs/index.md)");
+    expect(defaultSummary).toContain("](/docs/guides/setup.md)");
+
+    // The zh docs map lists real translations only — the untranslated guide
+    // is served by fallback, not advertised as Chinese content — and the pin
+    // it names simply has nothing to reorder there.
+    const zhSummary = await readFile(
+      path.join(outDir, "docs", "zh", "llms.txt"),
+      "utf8"
+    );
+    expect(zhSummary).toContain("首页");
+    expect(zhSummary).not.toContain("English setup");
+  });
+
   it("lets --name and --summary override docs config product fields", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
@@ -1051,7 +1131,9 @@ export default {
     const result = JSON.parse(capture.stdout) as {
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "CLI Product",
       summary: "CLI summary.",
     });
@@ -1085,7 +1167,9 @@ export default {
       groups: Array<{ slug: string; title: string }>;
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "fallback-docs",
       summary: "Fallback docs summary.",
     });
@@ -1867,17 +1951,25 @@ paths:
     );
   });
 
-  it("still rejects product-only docs config without openapi or nav", async () => {
+  it("accepts the identity-only config `leadtype init` scaffolds", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
     const capture = createCapture();
 
-    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await mkdir(path.join(srcDir, "docs", "guides"), { recursive: true });
     await writeFile(
       path.join(srcDir, "docs", "docs.config.ts"),
       `export default {
         product: { name: "Acme", tagline: "Acme docs." },
       };`
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "index.mdx"),
+      '---\ntitle: "Home"\ndescription: "Start here."\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "guides", "setup.mdx"),
+      '---\ntitle: "Setup"\ndescription: "Install it."\n---\n\nBody.\n'
     );
 
     const code = await runCli(
@@ -1885,9 +1977,11 @@ paths:
       capture.io
     );
 
-    expect(code).toBe(1);
-    const error = JSON.parse(capture.stderr) as { error: string };
-    expect(error.error).toContain("must export groups or navigation");
+    // Navigation and the llms.txt body are derived, so identity is enough.
+    expect(code).toBe(0);
+    const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llms).toContain("Best Starting Points");
+    expect(llms).toContain("/docs/guides/setup.md");
   });
 
   it("rejects unsupported organization contactPoint fields", async () => {
@@ -2195,13 +2289,24 @@ This page is valid, but the output path is not a directory.
     );
     await writeFile(outDir, "not a directory");
 
-    const beforeTempDirs = new Set(
-      await fg("leadtype-generate-*", {
+    // Source-mirror staging dirs only. `leadtype-generate-*` also matches the
+    // cross-process lock protocol's dirs (`…<hash>.lock` and its
+    // `.lock.reclaim-*` trash), which any concurrent generate run — or the
+    // generate-lock tests in a parallel vitest worker — creates and removes in
+    // the shared tmpdir. Snapshotting those makes this assertion flake on
+    // whatever happens to be in flight; they have their own lifecycle
+    // (release, dead-pid reclaim, stale sweep) and are not what this test is
+    // about.
+    const listMirrorDirs = async (): Promise<string[]> => {
+      const dirs = await fg("leadtype-generate-*", {
         absolute: true,
         cwd: tmpdir(),
         onlyDirectories: true,
-      })
-    );
+      });
+      return dirs.filter((dir) => !path.basename(dir).includes(".lock"));
+    };
+
+    const beforeTempDirs = new Set(await listMirrorDirs());
 
     const code = await runCli(
       [
@@ -2218,14 +2323,8 @@ This page is valid, but the output path is not a directory.
       capture.io
     );
 
-    const afterTempDirs = new Set(
-      await fg("leadtype-generate-*", {
-        absolute: true,
-        cwd: tmpdir(),
-        onlyDirectories: true,
-      })
-    );
-    const leakedTempDirs = [...afterTempDirs].filter(
+    const afterTempDirs = await listMirrorDirs();
+    const leakedTempDirs = afterTempDirs.filter(
       (dir) => !beforeTempDirs.has(dir)
     );
 
@@ -2419,6 +2518,40 @@ This page is valid, but the output path is not a directory.
     expect(llmsTxt).toContain("# Collections Product");
   });
 
+  it("applies a single default collection's exclude when generating", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(srcDir, "index.mdx", 'title: "Home"');
+    await writeMdxPage(srcDir, "drafts/wip.mdx", 'title: "WIP"');
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Filtered Product", tagline: "Single collection." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // A single default `docs` collection is the one shape that used to skip
+    // staging and serve the directory in place — which applied no filter, so
+    // this exact config's `exclude` did nothing and the draft shipped. The
+    // collection's filters must stage a filtered mirror here like they do in
+    // every other shape.
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "index.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "drafts", "wip.md"))).toBe(
+      false
+    );
+  });
+
   it("inherits source-owned navigation, groups, and flatteners after sync", async () => {
     const sourceRepo = await createGitDocsSource({
       "docs/docs.config.ts": `import { defineComponentFlattener } from ${JSON.stringify(markdownEntry)};
@@ -2573,7 +2706,7 @@ export default {
     expect(manifest).not.toContain("Source Navigation");
   });
 
-  it("fails clearly when sourceConfig is enabled and no source config exists", async () => {
+  it("fails clearly when inheritConfig is enabled and no source config exists", async () => {
     const sourceRepo = await createGitDocsSource({
       "docs/index.mdx": '---\ntitle: "Missing Config"\n---\n\nBody.\n',
     });
@@ -2603,8 +2736,136 @@ export default {
       capture.io
     );
     expect(code).toBe(1);
-    expect(capture.stderr).toContain('collection "docs" sourceConfig enabled');
+    // Authored with the legacy names, so the run still works — but diagnostics
+    // speak the canonical vocabulary, and the load warns once about the rename.
+    expect(capture.stderr).toContain(
+      'collection "docs" inheritConfig is enabled'
+    );
     expect(capture.stderr).toContain("docs.config.ts");
+    expect(capture.stderr).toContain(
+      "collections.docs.sourceConfig → collections.docs.inheritConfig"
+    );
+    expect(capture.stderr).toContain(
+      "collections.docs.prefix → collections.docs.routePrefix"
+    );
+  });
+
+  it("clones once for a gitSource group and mounts every child collection", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Docs"\n---\n\nDocs body.\n',
+      "changelog/1-0.mdx": '---\ntitle: "1.0"\n---\n\nRelease body.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import { gitSource } from ${JSON.stringify(leadtypeEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  sources: {
+    upstream: gitSource({
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/upstream",
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog" },
+      },
+    }),
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    // Acquisition is declared once; both collections stage from the one clone.
+    expect(existsSync(path.join(srcDir, ".leadtype", "upstream", ".git"))).toBe(
+      true
+    );
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Docs body.");
+    expect(
+      await readFile(path.join(outDir, "docs", "changelog", "1-0.md"), "utf8")
+    ).toContain("Release body.");
+  });
+
+  it("names the dependent collections when a source cannot be acquired", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import { gitSource } from ${JSON.stringify(leadtypeEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  sources: {
+    upstream: gitSource({
+      repository: "https://example.invalid/missing.git",
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog" },
+      },
+    }),
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    // One failed clone must name everything that depended on it, not just the
+    // collection that happened to be resolved first.
+    expect(capture.stderr).toContain("docs");
+    expect(capture.stderr).toContain("changelog");
+  });
+
+  it("runs a collections config authored entirely in canonical field names", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Canonical"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      routePrefix: "/docs",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    // A clean config prints no migration noise at all.
+    expect(capture.stderr).not.toContain("deprecated");
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Canonical");
   });
 
   it("uses inherited frontmatterSchema as the collection schema", async () => {

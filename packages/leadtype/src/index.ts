@@ -13,6 +13,33 @@
 //   - `leadtype/transformers` — frontmatter schemas + lifecycle hook types
 
 export {
+  formatDeprecationWarning,
+  type NormalizeDocsConfigOptions,
+  type NormalizedDocsConfig,
+  normalizeDocsConfig,
+} from "./config/normalize";
+export {
+  type NavigationOrigin,
+  type ProjectDiagnostic,
+  type ResolvedProject,
+  type ResolvedProjectCollection,
+  type ResolveProjectOptions,
+  resolveProject,
+} from "./config/project";
+export {
+  type ConfigDeprecation,
+  type ConfigValueOrigin,
+  type FieldProvenance,
+  type ResolvedDocsCollection,
+  type ResolvedDocsConfig,
+  type ResolvedGitSource,
+  type ResolvedLocalSource,
+  type ResolvedProjectMode,
+  type ResolvedSource,
+  type SerializableResolvedConfig,
+  serializeResolvedConfig,
+} from "./config/types";
+export {
   type DocsFeedConfig,
   type FeedEntry,
   type FeedFormat,
@@ -59,9 +86,15 @@ export {
   defineCollection,
   defineDocsConfig,
   defineFrameworkNavigation,
+  defineLeadtypeConfig,
   type FrameworkNavigationConfig,
   type FrameworkNavigationTemplate,
   type FrameworkNavigationVariant,
+  type GitSourceCollection,
+  type GitSourceConfig,
+  type GitSourceSpec,
+  gitSource,
+  type LeadtypeConfig,
   type LlmsBlock,
   normalizeAgentReadabilityManifest,
   type OrganizationInfo,
@@ -95,6 +128,13 @@ export type {
   StagedOpenApiDocs,
   StageOpenApiDocsConfig,
 } from "./openapi";
+export {
+  type CreateDocsProjectConfig,
+  createDocsProject,
+  type DocsProject,
+  type DocsProjectPage,
+  type DocsProjectPageMeta,
+} from "./project";
 export {
   type CreateDocsSourceConfig,
   createDocsSource,

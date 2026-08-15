@@ -4,9 +4,26 @@ import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
+import {
+  emptyInferenceReport,
+  formatInferenceReport,
+  inferLlmsBlocks,
+  inferNavigationFromContent,
+  mergeInferenceReports,
+} from "../config/infer";
+import {
+  inheritCollectionSourceConfigs,
+  LEADTYPE_CONFIG_FILENAMES,
+} from "../config/inherit";
+import {
+  type LoadedDocsConfig,
+  loadDocsConfig,
+  loadLeadtypeConfig,
+} from "../config/load";
+import { normalizeDocsConfig } from "../config/normalize";
+import type { ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";
 import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
@@ -17,10 +34,15 @@ import {
   writeFileAtomic,
 } from "../internal/atomic-fs";
 import {
+  normalizeDocsSourceInput,
+  parseDocsSourceInput,
+} from "../internal/docs-source";
+import {
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
+  pathPrefixForUrlPrefix,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import {
@@ -38,16 +60,13 @@ import type {
   DocsConfig,
   DocsFrontmatterSchema,
   DocsGroup,
-  DocsLlmsConfig,
   DocsNavEntry,
-  DocsNavIncludeEntry,
+  DocsNavigation,
   DocsNavNode,
   DocsNavPageEntry,
   LlmsProductInfo,
-  OrganizationInfo,
   ProductInfo,
   RenderSiteJsonLdOptions,
-  SourceConfigInheritField,
 } from "../llm";
 import {
   generateAgentReadabilityArtifacts,
@@ -68,7 +87,7 @@ import {
   MCP_SERVER_CARD_PATH,
   resolveMcpEndpoint,
 } from "../mcp/card";
-import { DEFAULT_DOCS_TOOLS, DOCS_TOOL_NAMES } from "../mcp/tools";
+import { DEFAULT_DOCS_TOOLS } from "../mcp/tools";
 import {
   DEFAULT_NLWEB_ASK_PATH,
   generateNlwebArtifacts,
@@ -77,7 +96,6 @@ import {
 import {
   type DocsOpenApiConfig,
   normalizeOpenApiConfig,
-  validateDocsOpenApiConfig,
   writeOpenApiPages,
 } from "../openapi";
 import {
@@ -87,7 +105,6 @@ import {
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
 import {
-  type ResolvedCollection,
   resolveAllCollections,
   type SyncMode,
   syncCollections,
@@ -97,37 +114,10 @@ import { watchInputs } from "./watch";
 
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
-const DOCS_CONFIG_FILENAMES = [
-  "docs.config.ts",
-  "docs.config.js",
-  "docs.config.mjs",
-  "docs.config.cjs",
-] as const;
-const SOURCE_CONFIG_INHERIT_FIELDS = new Set<SourceConfigInheritField>([
-  "navigation",
-  "groups",
-  "frontmatterSchema",
-  "flatteners",
-]);
-const DEFAULT_SOURCE_CONFIG_INHERIT: SourceConfigInheritField[] = [
-  "navigation",
-  "groups",
-  "frontmatterSchema",
-  "flatteners",
-  "mounts",
-];
-const LEADTYPE_CONFIG_FILENAMES = [
-  "leadtype.config.ts",
-  "leadtype.config.js",
-  "leadtype.config.mjs",
-  "leadtype.config.cjs",
-] as const;
 const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
 const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
-const NAV_SORT_VALUES = new Set(["order", "path", "title"]);
-const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
 const MCP_FLAG_DEPRECATION_MESSAGE =
   "--mcp is deprecated as a generate shortcut and will be removed in the next major version";
 const MCP_FLAG_DEPRECATION_HINT =
@@ -163,6 +153,8 @@ function resolveFeedBaseUrl(baseUrl?: string): string {
 }
 
 type GenerateFormat = "json" | "text";
+
+export type { LoadedDocsConfig } from "../config/load";
 
 export type GenerateArgs = {
   baseUrl?: string;
@@ -203,6 +195,8 @@ export type GenerateArgs = {
   watch: boolean;
   /** Ignore the incremental cache and reconvert every file. */
   force: boolean;
+  /** Print which values were derived rather than authored, and how to author them. */
+  explain: boolean;
 };
 
 export type GenerateIo = {
@@ -260,6 +254,12 @@ type GenerateResult = {
   product: LlmsProductInfo;
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
+  /**
+   * The resolved acquisition graph, present for multi-source projects. Source
+   * and collection ids here are the same ones human output and error messages
+   * use, so automation and a reader can talk about the same thing.
+   */
+  sources?: ResolvedSource[];
 };
 
 function createGenerateMarkdownTransforms({
@@ -297,11 +297,6 @@ function createGenerateMarkdownTransforms({
   return plugins;
 }
 
-export type LoadedDocsConfig = {
-  config: DocsConfig;
-  path: string;
-};
-
 type ResolvedGenerateMetadata = {
   configPath?: string;
   collectionFrontmatterSchemas?: CollectionFrontmatterSchema[];
@@ -332,14 +327,6 @@ type CollectionFrontmatterSchema = {
   filePaths?: string[];
   pathPrefix: string;
   schema: DocsFrontmatterSchema;
-};
-
-type SourceOwnedConfigFields = {
-  flatteners?: PluggableList;
-  frontmatterSchema?: DocsFrontmatterSchema;
-  groups?: DocsGroup[];
-  mounts?: DocsPathMount[];
-  navigation?: DocsNavEntry[];
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -379,6 +366,8 @@ Options:
                      other modules need a restart (or --force) to pick up edits
                      to those modules.
   --force            Ignore the incremental cache and reconvert every file
+  --explain          Report which values were derived rather than authored, and
+                     which config field makes each one explicit
   --format <fmt>     text | json (default: text)
   --json             Alias for --format json
   -v, --verbose      Print per-file progress events to stderr
@@ -418,6 +407,7 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     verbose: false,
     watch: false,
     force: false,
+    explain: false,
   };
   const syncFlags: string[] = [];
 
@@ -469,6 +459,8 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.watch = true;
     } else if (arg === "--force") {
       args.force = true;
+    } else if (arg === "--explain") {
+      args.explain = true;
     } else if (arg === "--verbose" || arg === "-v") {
       args.verbose = true;
     } else if (arg) {
@@ -548,1214 +540,6 @@ async function inferGroups(docsDir: string): Promise<DocsGroup[]> {
       slug,
       title: titleizeGroup(slug),
     }));
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validateOptionalStringField(
-  value: Record<string, unknown>,
-  field: string,
-  configPath: string
-): void {
-  if (value[field] !== undefined && typeof value[field] !== "string") {
-    throw new Error(
-      `docs config at "${configPath}": organization.${field} must be a string`
-    );
-  }
-}
-
-function validateOptionalStringArrayField(
-  value: Record<string, unknown>,
-  field: string,
-  configPath: string
-): void {
-  const fieldValue = value[field];
-  if (
-    fieldValue !== undefined &&
-    !(
-      Array.isArray(fieldValue) &&
-      fieldValue.every((item) => typeof item === "string")
-    )
-  ) {
-    throw new Error(
-      `docs config at "${configPath}": organization.${field} must be an array of strings`
-    );
-  }
-}
-
-// Reject keys outside `allowed` — these objects are spread verbatim into the
-// JSON-LD output, so a typo would silently become an invalid Schema.org property.
-function validateKnownKeys(
-  value: Record<string, unknown>,
-  allowed: readonly string[],
-  fieldPath: string,
-  configPath: string
-): void {
-  for (const key of Object.keys(value)) {
-    if (!allowed.includes(key)) {
-      throw new Error(
-        `docs config at "${configPath}": ${fieldPath}.${key} is not a supported field ` +
-          `(expected one of: ${allowed.join(", ")})`
-      );
-    }
-  }
-}
-
-const POSTAL_ADDRESS_FIELDS = [
-  "streetAddress",
-  "addressLocality",
-  "addressRegion",
-  "postalCode",
-  "addressCountry",
-] as const;
-
-function validatePostalAddress(value: unknown, configPath: string): void {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(
-      `docs config at "${configPath}": organization.address must be an object`
-    );
-  }
-  validateKnownKeys(
-    value,
-    POSTAL_ADDRESS_FIELDS,
-    "organization.address",
-    configPath
-  );
-  for (const field of POSTAL_ADDRESS_FIELDS) {
-    if (value[field] !== undefined && typeof value[field] !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": organization.address.${field} must be a string`
-      );
-    }
-  }
-  if (POSTAL_ADDRESS_FIELDS.every((field) => value[field] === undefined)) {
-    throw new Error(
-      `docs config at "${configPath}": organization.address must include at least one field ` +
-        `(${POSTAL_ADDRESS_FIELDS.join(", ")})`
-    );
-  }
-}
-
-function validateStringOrStringArray(
-  value: unknown,
-  fieldPath: string,
-  configPath: string
-): void {
-  if (
-    value !== undefined &&
-    typeof value !== "string" &&
-    !(Array.isArray(value) && value.every((item) => typeof item === "string"))
-  ) {
-    throw new Error(
-      `docs config at "${configPath}": ${fieldPath} must be a string or array of strings`
-    );
-  }
-}
-
-const CONTACT_POINT_FIELDS = [
-  "contactType",
-  "email",
-  "telephone",
-  "url",
-  "areaServed",
-  "availableLanguage",
-] as const;
-
-function validateContactPoint(
-  value: unknown,
-  configPath: string,
-  index?: number
-): void {
-  const fieldPath =
-    index === undefined
-      ? "organization.contactPoint"
-      : `organization.contactPoint[${index}]`;
-  if (!isPlainRecord(value)) {
-    throw new Error(
-      `docs config at "${configPath}": ${fieldPath} must be an object`
-    );
-  }
-  validateKnownKeys(value, CONTACT_POINT_FIELDS, fieldPath, configPath);
-  if (typeof value.contactType !== "string") {
-    throw new Error(
-      `docs config at "${configPath}": ${fieldPath}.contactType must be a string`
-    );
-  }
-  if (value.email === undefined && value.telephone === undefined) {
-    throw new Error(
-      `docs config at "${configPath}": ${fieldPath} must include email or telephone`
-    );
-  }
-  for (const field of ["email", "telephone", "url"]) {
-    if (value[field] !== undefined && typeof value[field] !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": ${fieldPath}.${field} must be a string`
-      );
-    }
-  }
-  validateStringOrStringArray(
-    value.areaServed,
-    `${fieldPath}.areaServed`,
-    configPath
-  );
-  validateStringOrStringArray(
-    value.availableLanguage,
-    `${fieldPath}.availableLanguage`,
-    configPath
-  );
-}
-
-function validateContactPoints(value: unknown, configPath: string): void {
-  if (value === undefined) {
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const [index, contactPoint] of value.entries()) {
-      validateContactPoint(contactPoint, configPath, index);
-    }
-    return;
-  }
-  validateContactPoint(value, configPath);
-}
-
-function validateProductInfo(value: unknown): ProductInfo | undefined {
-  if (!isPlainRecord(value)) {
-    return;
-  }
-  if (typeof value.name !== "string" || typeof value.tagline !== "string") {
-    return;
-  }
-  return value as ProductInfo;
-}
-
-function validateOrganization(
-  value: unknown,
-  configPath: string
-): OrganizationInfo | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value) || typeof value.name !== "string") {
-    throw new Error(
-      `docs config at "${configPath}": organization must be an object with a string name`
-    );
-  }
-  if (value.url !== undefined && typeof value.url !== "string") {
-    throw new Error(
-      `docs config at "${configPath}": organization.url must be a string`
-    );
-  }
-  validateOptionalStringField(value, "email", configPath);
-  validateOptionalStringField(value, "logo", configPath);
-  validateOptionalStringArrayField(value, "sameAs", configPath);
-  validateContactPoints(value.contactPoint, configPath);
-  validatePostalAddress(value.address, configPath);
-  return value as OrganizationInfo;
-}
-
-function validateLlmsConfig(
-  value: unknown,
-  configPath: string
-): DocsLlmsConfig | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(`docs config at "${configPath}": llms must be an object`);
-  }
-  if (value.sections !== undefined && !Array.isArray(value.sections)) {
-    throw new Error(
-      `docs config at "${configPath}": llms.sections must be an array`
-    );
-  }
-  return value as DocsLlmsConfig;
-}
-
-function validateAgentEndpoint(
-  value: unknown,
-  field: string,
-  configPath: string
-): void {
-  if (value !== undefined && typeof value !== "string") {
-    throw new Error(
-      `docs config at "${configPath}": ${field} must be a string`
-    );
-  }
-}
-
-function validateAgentsConfig(
-  value: unknown,
-  configPath: string
-): DocsConfig["agents"] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(`docs config at "${configPath}": agents must be an object`);
-  }
-  // The mcp/nlweb endpoints reach resolveMcpEndpoint() and the tool names feed
-  // the server card, so malformed values must fail here, not at generate time.
-  const mcp = value.mcp;
-  if (mcp !== undefined) {
-    if (!isPlainRecord(mcp)) {
-      throw new Error(
-        `docs config at "${configPath}": agents.mcp must be an object`
-      );
-    }
-    validateAgentEndpoint(mcp.endpoint, "agents.mcp.endpoint", configPath);
-    if (mcp.icon !== undefined && typeof mcp.icon !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": agents.mcp.icon must be a string`
-      );
-    }
-    if (mcp.logo !== undefined && typeof mcp.logo !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": agents.mcp.logo must be a string`
-      );
-    }
-    if (mcp.serverInfo !== undefined) {
-      if (!isPlainRecord(mcp.serverInfo)) {
-        throw new Error(
-          `docs config at "${configPath}": agents.mcp.serverInfo must be an object`
-        );
-      }
-      for (const field of [
-        "name",
-        "version",
-        "description",
-        "instructions",
-      ] as const) {
-        if (
-          mcp.serverInfo[field] !== undefined &&
-          typeof mcp.serverInfo[field] !== "string"
-        ) {
-          throw new Error(
-            `docs config at "${configPath}": agents.mcp.serverInfo.${field} must be a string`
-          );
-        }
-      }
-    }
-    if (mcp.tools !== undefined) {
-      const allowed = new Set<string>(DOCS_TOOL_NAMES);
-      if (
-        !Array.isArray(mcp.tools) ||
-        mcp.tools.some((tool) => typeof tool !== "string" || !allowed.has(tool))
-      ) {
-        throw new Error(
-          `docs config at "${configPath}": agents.mcp.tools must be an array of ${DOCS_TOOL_NAMES.join(", ")}`
-        );
-      }
-    }
-  }
-  const nlweb = value.nlweb;
-  if (nlweb !== undefined) {
-    if (!isPlainRecord(nlweb)) {
-      throw new Error(
-        `docs config at "${configPath}": agents.nlweb must be an object`
-      );
-    }
-    validateAgentEndpoint(nlweb.endpoint, "agents.nlweb.endpoint", configPath);
-  }
-  return value as DocsConfig["agents"];
-}
-
-function validateDocsMounts(
-  value: unknown,
-  configPath: string
-): DocsPathMount[] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!Array.isArray(value)) {
-    throw new Error(`docs config at "${configPath}": mounts must be an array`);
-  }
-  for (const mount of value) {
-    if (
-      !isPlainRecord(mount) ||
-      typeof mount.pathPrefix !== "string" ||
-      typeof mount.urlPrefix !== "string"
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": mounts entries must be { pathPrefix, urlPrefix } objects`
-      );
-    }
-  }
-  return value as DocsPathMount[];
-}
-
-function validateDocsFeeds(
-  value: unknown,
-  configPath: string
-): DocsFeedConfig[] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!Array.isArray(value)) {
-    throw new Error(`docs config at "${configPath}": feeds must be an array`);
-  }
-  const seen = new Set<string>();
-  const seenOutputs = new Set<string>();
-  for (const feed of value) {
-    if (!isPlainRecord(feed)) {
-      throw new Error(
-        `docs config at "${configPath}": feed entries must be objects`
-      );
-    }
-    if (typeof feed.id !== "string" || feed.id.length === 0) {
-      throw new Error(
-        `docs config at "${configPath}": feed entries must set a non-empty id`
-      );
-    }
-    if (seen.has(feed.id)) {
-      throw new Error(
-        `docs config at "${configPath}": duplicate feed id "${feed.id}"`
-      );
-    }
-    seen.add(feed.id);
-    if (typeof feed.title !== "string" || feed.title.length === 0) {
-      throw new Error(
-        `docs config at "${configPath}": feed "${feed.id}" must set a non-empty title`
-      );
-    }
-    if (
-      feed.description !== undefined &&
-      typeof feed.description !== "string"
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": feed "${feed.id}" description must be a string`
-      );
-    }
-    if (
-      !isPlainRecord(feed.source) ||
-      typeof feed.source.urlPrefix !== "string" ||
-      !feed.source.urlPrefix.startsWith("/")
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": feed "${feed.id}" source.urlPrefix must start with "/"`
-      );
-    }
-    if (!Array.isArray(feed.formats) || feed.formats.length === 0) {
-      throw new Error(
-        `docs config at "${configPath}": feed "${feed.id}" formats must be a non-empty array`
-      );
-    }
-    for (const format of feed.formats) {
-      if (typeof format !== "string" || !FEED_FORMAT_VALUES.has(format)) {
-        throw new Error(
-          `docs config at "${configPath}": feed "${feed.id}" formats must contain only "rss" or "atom"`
-        );
-      }
-    }
-    if (!isPlainRecord(feed.output)) {
-      throw new Error(
-        `docs config at "${configPath}": feed "${feed.id}" output must be an object`
-      );
-    }
-    for (const format of feed.formats) {
-      const output = feed.output[format];
-      if (typeof output !== "string" || !output.startsWith("/")) {
-        throw new Error(
-          `docs config at "${configPath}": feed "${feed.id}" output.${format} must start with "/"`
-        );
-      }
-      if (!output.endsWith(".xml")) {
-        throw new Error(
-          `docs config at "${configPath}": feed "${feed.id}" output.${format} must end with ".xml" so feeds cannot overwrite other generated artifacts`
-        );
-      }
-      if (seenOutputs.has(output)) {
-        throw new Error(
-          `docs config at "${configPath}": feed "${feed.id}" output.${format} "${output}" is already used by another feed output; output paths must be unique`
-        );
-      }
-      seenOutputs.add(output);
-    }
-    if (
-      feed.limit !== undefined &&
-      (typeof feed.limit !== "number" ||
-        !Number.isInteger(feed.limit) ||
-        feed.limit <= 0)
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": feed "${feed.id}" limit must be a positive integer`
-      );
-    }
-  }
-  return value as DocsFeedConfig[];
-}
-
-function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
-  if (!Array.isArray(value)) {
-    return;
-  }
-  for (const group of value) {
-    if (!isPlainRecord(group)) {
-      return;
-    }
-    if (typeof group.slug !== "string" || typeof group.title !== "string") {
-      return;
-    }
-    if (
-      group.children !== undefined &&
-      validateDocsGroups(group.children) === undefined
-    ) {
-      return;
-    }
-  }
-  return value as DocsGroup[];
-}
-
-function validateDocsNavPageEntry(
-  value: unknown
-): DocsNavPageEntry | undefined {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (!isPlainRecord(value) || typeof value.include !== "string") {
-    return;
-  }
-  if (
-    value.exclude !== undefined &&
-    !(typeof value.exclude === "string" || isStringArray(value.exclude))
-  ) {
-    return;
-  }
-  if (
-    value.sort !== undefined &&
-    !(
-      isStringArray(value.sort) &&
-      value.sort.every((sortKey) => NAV_SORT_VALUES.has(sortKey))
-    )
-  ) {
-    return;
-  }
-  if (value.required !== undefined && typeof value.required !== "boolean") {
-    return;
-  }
-  return value as DocsNavIncludeEntry;
-}
-
-function validateDocsNavNode(value: unknown): DocsNavNode | undefined {
-  if (!isPlainRecord(value) || typeof value.title !== "string") {
-    return;
-  }
-  if (value.slug !== undefined && typeof value.slug !== "string") {
-    return;
-  }
-  if (
-    value.description !== undefined &&
-    typeof value.description !== "string"
-  ) {
-    return;
-  }
-  if (value.base !== undefined && typeof value.base !== "string") {
-    return;
-  }
-  if (value.pages !== undefined && !Array.isArray(value.pages)) {
-    return;
-  }
-  if (Array.isArray(value.pages)) {
-    for (const page of value.pages) {
-      if (validateDocsNavPageEntry(page) === undefined) {
-        return;
-      }
-    }
-  }
-  if (
-    value.children !== undefined &&
-    validateDocsNavNodes(value.children) === undefined
-  ) {
-    return;
-  }
-  return value as DocsNavNode;
-}
-
-function validateDocsNavNodes(value: unknown): DocsNavNode[] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!Array.isArray(value)) {
-    return;
-  }
-  for (const node of value) {
-    if (validateDocsNavNode(node) === undefined) {
-      return;
-    }
-  }
-  return value as DocsNavNode[];
-}
-
-function validateDocsNav(value: unknown): DocsNavEntry[] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!Array.isArray(value)) {
-    return;
-  }
-  for (const entry of value) {
-    if (
-      validateDocsNavNode(entry) === undefined &&
-      validateDocsNavPageEntry(entry) === undefined
-    ) {
-      return;
-    }
-  }
-  return value as DocsNavEntry[];
-}
-
-function validateSourceConfigInheritance(
-  value: unknown,
-  configPath: string,
-  collectionKey: string
-): void {
-  if (value === undefined || value === true) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(
-      `docs config at "${configPath}": collection "${collectionKey}" sourceConfig must be true or an object`
-    );
-  }
-  if (
-    value.path !== undefined &&
-    (typeof value.path !== "string" || value.path.length === 0)
-  ) {
-    throw new Error(
-      `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.path must be a non-empty string`
-    );
-  }
-  if (value.inherit !== undefined) {
-    if (!isStringArray(value.inherit)) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.inherit must be an array of supported field names`
-      );
-    }
-    for (const field of value.inherit) {
-      if (
-        !SOURCE_CONFIG_INHERIT_FIELDS.has(field as SourceConfigInheritField)
-      ) {
-        throw new Error(
-          `docs config at "${configPath}": collection "${collectionKey}" sourceConfig.inherit contains unsupported field "${field}"`
-        );
-      }
-    }
-  }
-}
-
-function validateCollections(
-  value: unknown,
-  configPath: string
-): Record<string, DocsCollection> | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(
-      `docs config at "${configPath}" must export "collections" as an object map`
-    );
-  }
-  const out: Record<string, DocsCollection> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (!isPlainRecord(entry)) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" must be an object`
-      );
-    }
-    if (typeof entry.dir !== "string" || entry.dir.length === 0) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" must set "dir" to a non-empty string`
-      );
-    }
-    if (
-      entry.repository !== undefined &&
-      typeof entry.repository !== "string"
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" repository must be a string`
-      );
-    }
-    // Guard against args that would be parsed as git options when spawned
-    // (e.g. a `repository` like `--upload-pack=…` injecting flags).
-    if (
-      typeof entry.repository === "string" &&
-      entry.repository.startsWith("-")
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" repository must not begin with "-"`
-      );
-    }
-    if (entry.ref !== undefined && typeof entry.ref !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" ref must be a string`
-      );
-    }
-    if (typeof entry.ref === "string" && entry.ref.startsWith("-")) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" ref must not begin with "-"`
-      );
-    }
-    if (entry.prefix !== undefined && typeof entry.prefix !== "string") {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" prefix must be a string`
-      );
-    }
-    if (entry.sourceConfig !== undefined && entry.repository === undefined) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" sourceConfig is only supported for remote collections`
-      );
-    }
-    validateSourceConfigInheritance(entry.sourceConfig, configPath, key);
-    if (
-      entry.groups !== undefined &&
-      validateDocsGroups(entry.groups) === undefined
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" groups must be an array of { slug, title } entries`
-      );
-    }
-    if (
-      entry.navigation !== undefined &&
-      validateDocsNav(entry.navigation) === undefined
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" navigation must be an array of page entries or navigation nodes`
-      );
-    }
-    if (entry.mounts !== undefined) {
-      validateDocsMounts(entry.mounts, configPath);
-    }
-    if (entry.include !== undefined && !isStringArray(entry.include)) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" include must be an array of glob strings`
-      );
-    }
-    if (entry.exclude !== undefined && !isStringArray(entry.exclude)) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" exclude must be an array of glob strings`
-      );
-    }
-    if (entry.flatteners !== undefined && !Array.isArray(entry.flatteners)) {
-      throw new Error(
-        `docs config at "${configPath}": collection "${key}" flatteners must be an array of remark plugins`
-      );
-    }
-    out[key] = entry as DocsCollection;
-  }
-  return out;
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((v) => typeof v === "string");
-}
-
-function validateGitConfig(
-  value: unknown,
-  configPath: string
-): DocsConfig["git"] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(`docs config at "${configPath}": git must be an object`);
-  }
-  if (
-    value.ignoredAuthors !== undefined &&
-    !isStringArray(value.ignoredAuthors)
-  ) {
-    throw new Error(
-      `docs config at "${configPath}": git.ignoredAuthors must be an array of strings`
-    );
-  }
-  return {
-    ...(value.ignoredAuthors === undefined
-      ? {}
-      : { ignoredAuthors: value.ignoredAuthors }),
-  };
-}
-
-function validateRedirectsConfig(
-  value: unknown,
-  configPath: string
-): DocsConfig["redirects"] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(
-      `docs config at "${configPath}": redirects must be an object`
-    );
-  }
-  if (value.lockfile !== undefined && typeof value.lockfile !== "string") {
-    throw new Error(
-      `docs config at "${configPath}": redirects.lockfile must be a string`
-    );
-  }
-  if (value.removed !== undefined && !isStringArray(value.removed)) {
-    throw new Error(
-      `docs config at "${configPath}": redirects.removed must be an array of strings`
-    );
-  }
-  return {
-    ...(value.lockfile === undefined ? {} : { lockfile: value.lockfile }),
-    ...(value.removed === undefined ? {} : { removed: value.removed }),
-  };
-}
-
-const LINT_SEVERITY_VALUES = new Set(["off", "warn", "error"]);
-
-function validateLintConfig(
-  value: unknown,
-  configPath: string
-): DocsConfig["lint"] | undefined {
-  if (value === undefined) {
-    return;
-  }
-  if (!isPlainRecord(value)) {
-    throw new Error(`docs config at "${configPath}": lint must be an object`);
-  }
-  if (value.ignore !== undefined && !isStringArray(value.ignore)) {
-    throw new Error(
-      `docs config at "${configPath}": lint.ignore must be an array of strings`
-    );
-  }
-  if (
-    value.unknownFieldSeverity !== undefined &&
-    value.unknownFieldSeverity !== "warn" &&
-    value.unknownFieldSeverity !== "error"
-  ) {
-    throw new Error(
-      `docs config at "${configPath}": lint.unknownFieldSeverity must be "warn" or "error"`
-    );
-  }
-  let rules: Record<string, "off" | "warn" | "error"> | undefined;
-  if (value.rules !== undefined) {
-    if (!isPlainRecord(value.rules)) {
-      throw new Error(
-        `docs config at "${configPath}": lint.rules must be an object`
-      );
-    }
-    for (const [rule, severity] of Object.entries(value.rules)) {
-      if (typeof severity !== "string" || !LINT_SEVERITY_VALUES.has(severity)) {
-        throw new Error(
-          `docs config at "${configPath}": lint.rules.${rule} must be "off", "warn", or "error"`
-        );
-      }
-    }
-    rules = value.rules as Record<string, "off" | "warn" | "error">;
-  }
-  let externalLinks: { ignore?: string[]; ttlHours?: number } | undefined;
-  if (value.externalLinks !== undefined) {
-    if (!isPlainRecord(value.externalLinks)) {
-      throw new Error(
-        `docs config at "${configPath}": lint.externalLinks must be an object`
-      );
-    }
-    if (
-      value.externalLinks.ignore !== undefined &&
-      !isStringArray(value.externalLinks.ignore)
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": lint.externalLinks.ignore must be an array of strings`
-      );
-    }
-    const ttlHours = value.externalLinks.ttlHours;
-    if (
-      ttlHours !== undefined &&
-      (typeof ttlHours !== "number" ||
-        !Number.isFinite(ttlHours) ||
-        ttlHours < 0)
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": lint.externalLinks.ttlHours must be a non-negative finite number`
-      );
-    }
-    externalLinks = value.externalLinks as {
-      ignore?: string[];
-      ttlHours?: number;
-    };
-  }
-  let snippets: { typecheck?: boolean } | undefined;
-  if (value.snippets !== undefined) {
-    if (!isPlainRecord(value.snippets)) {
-      throw new Error(
-        `docs config at "${configPath}": lint.snippets must be an object`
-      );
-    }
-    if (
-      value.snippets.typecheck !== undefined &&
-      typeof value.snippets.typecheck !== "boolean"
-    ) {
-      throw new Error(
-        `docs config at "${configPath}": lint.snippets.typecheck must be a boolean`
-      );
-    }
-    snippets = value.snippets as { typecheck?: boolean };
-  }
-  return {
-    ...(value.ignore === undefined ? {} : { ignore: value.ignore }),
-    ...(value.unknownFieldSeverity === undefined
-      ? {}
-      : {
-          unknownFieldSeverity: value.unknownFieldSeverity as "warn" | "error",
-        }),
-    ...(rules ? { rules } : {}),
-    ...(externalLinks ? { externalLinks } : {}),
-    ...(snippets ? { snippets } : {}),
-  };
-}
-
-function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
-  if (!isPlainRecord(value)) {
-    throw new Error(`docs config at "${configPath}" must export an object`);
-  }
-  const product = validateProductInfo(value.product);
-  if (!product) {
-    throw new Error(
-      `docs config at "${configPath}" must export product.name and product.tagline`
-    );
-  }
-
-  const collections = validateCollections(value.collections, configPath);
-  const openapi = validateDocsOpenApiConfig(
-    value.openapi,
-    `docs config at "${configPath}"`
-  );
-  const hasGroups = value.groups !== undefined;
-  const hasNav = value.navigation !== undefined;
-
-  if (collections && hasGroups) {
-    throw new Error(
-      `docs config at "${configPath}" sets both "groups" and "collections". Move groups into the relevant collection(s) — top-level groups is for the single-collection shape only.`
-    );
-  }
-  if (collections && hasNav) {
-    throw new Error(
-      `docs config at "${configPath}" sets both "navigation" and "collections". Move navigation into the relevant collection(s) — top-level navigation is for the single-collection shape only.`
-    );
-  }
-
-  let groups: DocsGroup[] | undefined;
-  let nav: DocsNavEntry[] | undefined;
-  if (collections === undefined) {
-    groups = validateDocsGroups(value.groups);
-    nav = validateDocsNav(value.navigation);
-    if (!(groups || nav || openapi)) {
-      throw new Error(
-        `docs config at "${configPath}" must export groups or navigation as an array (or define collections)`
-      );
-    }
-    if (hasGroups && !groups) {
-      throw new Error(
-        `docs config at "${configPath}" must export groups as an array of { slug, title } entries`
-      );
-    }
-    if (hasNav && !nav) {
-      throw new Error(
-        `docs config at "${configPath}" must export navigation as an array of page entries or navigation nodes`
-      );
-    }
-  }
-
-  const organization = validateOrganization(value.organization, configPath);
-  const llms = validateLlmsConfig(value.llms, configPath);
-  const agents = validateAgentsConfig(value.agents, configPath);
-  const mounts = validateDocsMounts(value.mounts, configPath);
-  const feeds = validateDocsFeeds(value.feeds, configPath);
-  const git = validateGitConfig(value.git, configPath);
-  const redirects = validateRedirectsConfig(value.redirects, configPath);
-  const lint = validateLintConfig(value.lint, configPath);
-
-  if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
-    throw new Error(
-      `docs config at "${configPath}" must export flatteners as an array of remark plugins`
-    );
-  }
-
-  return {
-    ...(collections ? { collections } : {}),
-    ...(groups ? { groups } : {}),
-    ...(nav ? { navigation: nav } : {}),
-    ...(organization ? { organization } : {}),
-    ...(llms ? { llms } : {}),
-    ...(agents ? { agents } : {}),
-    ...(mounts ? { mounts } : {}),
-    ...(feeds ? { feeds } : {}),
-    ...(git ? { git } : {}),
-    ...(redirects ? { redirects } : {}),
-    ...(lint ? { lint } : {}),
-    ...(openapi ? { openapi } : {}),
-    ...(value.frontmatterSchema === undefined
-      ? {}
-      : {
-          frontmatterSchema: value.frontmatterSchema as DocsFrontmatterSchema,
-        }),
-    ...(value.transformers === undefined
-      ? {}
-      : { transformers: value.transformers as DocsTransformer[] }),
-    ...(value.flatteners === undefined
-      ? {}
-      : { flatteners: value.flatteners as DocsConfig["flatteners"] }),
-    ...(value.i18n === undefined
-      ? {}
-      : { i18n: value.i18n as DocsConfig["i18n"] }),
-    product,
-    typeTableBasePath:
-      typeof value.typeTableBasePath === "string"
-        ? value.typeTableBasePath
-        : undefined,
-    typeTableStrict:
-      typeof value.typeTableStrict === "boolean"
-        ? value.typeTableStrict
-        : undefined,
-  };
-}
-
-async function importConfigModule(configPath: string): Promise<unknown> {
-  if (configPath.endsWith(".ts")) {
-    let createJiti: typeof import("jiti").createJiti;
-    try {
-      ({ createJiti } = await import("jiti"));
-    } catch {
-      throw new Error(
-        `loading TypeScript docs config at "${configPath}" requires the optional peer dependency \`jiti\`. Install it (\`bun add -D jiti\`) or use a .js/.mjs/.cjs config.`
-      );
-    }
-    const jiti = createJiti(import.meta.url, { moduleCache: false });
-    return jiti.import(configPath, { default: true });
-  }
-
-  const mod = (await import(pathToFileURL(configPath).href)) as {
-    default?: unknown;
-  };
-  return mod.default ?? mod;
-}
-
-function validateSourceOwnedConfigFields(
-  value: unknown,
-  configPath: string,
-  collectionKey: string
-): SourceOwnedConfigFields {
-  if (!isPlainRecord(value)) {
-    throw new Error(`source config at "${configPath}" must export an object`);
-  }
-
-  const groups = validateDocsGroups(value.groups);
-  const navigation = validateDocsNav(value.navigation);
-  const mounts = validateDocsMounts(value.mounts, configPath);
-  if (value.groups !== undefined && !groups) {
-    throw new Error(
-      `source config at "${configPath}" for collection "${collectionKey}" must export groups as an array of { slug, title } entries`
-    );
-  }
-  if (value.navigation !== undefined && !navigation) {
-    throw new Error(
-      `source config at "${configPath}" for collection "${collectionKey}" must export navigation as an array of page entries or navigation nodes`
-    );
-  }
-  if (value.flatteners !== undefined && !Array.isArray(value.flatteners)) {
-    throw new Error(
-      `source config at "${configPath}" for collection "${collectionKey}" must export flatteners as an array of remark plugins`
-    );
-  }
-
-  return {
-    ...(groups ? { groups } : {}),
-    ...(navigation ? { navigation } : {}),
-    ...(mounts ? { mounts } : {}),
-    ...(value.frontmatterSchema === undefined
-      ? {}
-      : {
-          frontmatterSchema: value.frontmatterSchema as DocsFrontmatterSchema,
-        }),
-    ...(value.flatteners === undefined
-      ? {}
-      : { flatteners: value.flatteners as PluggableList }),
-  };
-}
-
-function resolveSourceConfigPaths(entry: ResolvedCollection): string[] {
-  const sourceConfig = entry.collection.sourceConfig;
-  if (!sourceConfig) {
-    return [];
-  }
-  const baseDir = entry.absoluteDir;
-  if (sourceConfig !== true && sourceConfig.path) {
-    if (path.isAbsolute(sourceConfig.path)) {
-      throw new Error(
-        `collection "${entry.key}" sourceConfig.path must be relative to the collection dir`
-      );
-    }
-    const configPath = path.resolve(baseDir, sourceConfig.path);
-    const relativePath = path.relative(baseDir, configPath);
-    if (
-      !relativePath ||
-      relativePath.startsWith("..") ||
-      path.isAbsolute(relativePath)
-    ) {
-      throw new Error(
-        `collection "${entry.key}" sourceConfig.path must stay inside the collection dir`
-      );
-    }
-    return [configPath];
-  }
-  return DOCS_CONFIG_FILENAMES.map((filename) => path.join(baseDir, filename));
-}
-
-function sourceConfigInheritFields(
-  collection: DocsCollection
-): SourceConfigInheritField[] {
-  const sourceConfig = collection.sourceConfig;
-  if (!sourceConfig || sourceConfig === true || !sourceConfig.inherit) {
-    return DEFAULT_SOURCE_CONFIG_INHERIT;
-  }
-  return sourceConfig.inherit;
-}
-
-async function loadCollectionSourceConfig(
-  entry: ResolvedCollection
-): Promise<SourceOwnedConfigFields> {
-  const candidates = resolveSourceConfigPaths(entry);
-  const configPath = candidates.find((candidate) => existsSync(candidate));
-  if (!configPath) {
-    throw new Error(
-      `collection "${entry.key}" sourceConfig enabled but no source config was found. Expected ${candidates.map((candidate) => `"${candidate}"`).join(", ")}.`
-    );
-  }
-
-  try {
-    const imported = await importConfigModule(configPath);
-    return validateSourceOwnedConfigFields(imported, configPath, entry.key);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `failed to load source config for collection "${entry.key}" at "${configPath}": ${message}`
-    );
-  }
-}
-
-function mergeInheritedSourceConfig(
-  collection: DocsCollection,
-  sourceConfig: SourceOwnedConfigFields
-): DocsCollection {
-  const inherit = new Set(sourceConfigInheritFields(collection));
-  return {
-    ...collection,
-    ...(inherit.has("navigation") &&
-    collection.navigation === undefined &&
-    sourceConfig.navigation !== undefined
-      ? { navigation: sourceConfig.navigation }
-      : {}),
-    ...(inherit.has("groups") &&
-    collection.groups === undefined &&
-    sourceConfig.groups !== undefined
-      ? { groups: sourceConfig.groups }
-      : {}),
-    ...(inherit.has("frontmatterSchema") &&
-    collection.schema === undefined &&
-    sourceConfig.frontmatterSchema !== undefined
-      ? { schema: sourceConfig.frontmatterSchema }
-      : {}),
-    ...(inherit.has("flatteners") &&
-    collection.flatteners === undefined &&
-    sourceConfig.flatteners !== undefined
-      ? { flatteners: sourceConfig.flatteners }
-      : {}),
-    ...(inherit.has("mounts") &&
-    collection.mounts === undefined &&
-    sourceConfig.mounts !== undefined
-      ? { mounts: sourceConfig.mounts }
-      : {}),
-  };
-}
-
-async function inheritCollectionSourceConfigs(
-  collections: Record<string, DocsCollection>,
-  configDir: string
-): Promise<Record<string, DocsCollection>> {
-  const resolved = resolveAllCollections(collections, configDir);
-  const next: Record<string, DocsCollection> = { ...collections };
-  for (const entry of resolved) {
-    if (!entry.collection.sourceConfig) {
-      continue;
-    }
-    const sourceConfig = await loadCollectionSourceConfig(entry);
-    next[entry.key] = mergeInheritedSourceConfig(
-      entry.collection,
-      sourceConfig
-    );
-  }
-  return next;
-}
-
-async function loadDocsConfigFromDir(
-  dir: string,
-  filenames: readonly string[]
-): Promise<LoadedDocsConfig | null> {
-  const configPath = filenames
-    .map((filename) => path.join(dir, filename))
-    .find((candidate) => existsSync(candidate));
-
-  if (!configPath) {
-    return null;
-  }
-
-  try {
-    const imported = await importConfigModule(configPath);
-    return {
-      config: validateDocsConfig(imported, configPath),
-      path: configPath,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `failed to load docs config at "${configPath}": ${message}`
-    );
-  }
-}
-
-/**
- * Look for `leadtype.config.{ts,js,mjs,cjs}` in the given directory.
- * Used by the sync CLI; for `generate`, prefer {@link loadDocsConfig}.
- */
-export async function loadLeadtypeConfig(
-  cwd: string
-): Promise<LoadedDocsConfig | null> {
-  return loadDocsConfigFromDir(cwd, LEADTYPE_CONFIG_FILENAMES);
-}
-
-/**
- * Locate and load the docs config. Lookup order:
- *   1. `leadtype.config.{ts,js,mjs,cjs}` at `cwd` (project root).
- *   2. `docs.config.{ts,js,mjs,cjs}` in each `docsDir` (legacy).
- *
- * The new `leadtype.config.*` filename is opt-in to project-level config;
- * the per-docs-dir `docs.config.*` lookup stays the same as before.
- */
-export async function loadDocsConfig(opts: {
-  cwd?: string;
-  docsDirs: string[];
-}): Promise<LoadedDocsConfig | null> {
-  if (opts.cwd) {
-    const projectConfig = await loadDocsConfigFromDir(
-      opts.cwd,
-      LEADTYPE_CONFIG_FILENAMES
-    );
-    if (projectConfig) {
-      return projectConfig;
-    }
-  }
-  for (const docsDir of opts.docsDirs) {
-    const loaded = await loadDocsConfigFromDir(docsDir, DOCS_CONFIG_FILENAMES);
-    if (loaded) {
-      return loaded;
-    }
-  }
-  return null;
 }
 
 async function readPackageProduct(
@@ -1961,14 +745,14 @@ async function resolveCollectionFrontmatterSchemas(
   const schemas: CollectionFrontmatterSchema[] = [];
   const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
   for (const [key, collection] of Object.entries(collections)) {
-    if (!collection.schema) {
+    if (!collection.frontmatterSchema) {
       continue;
     }
     const source = sourcesByKey.get(key);
     schemas.push({
       filePaths: source ? await sourceStagedMdxPaths(source) : undefined,
       pathPrefix: source?.mountPath ?? "",
-      schema: collection.schema,
+      schema: collection.frontmatterSchema,
     });
   }
   return schemas;
@@ -2054,33 +838,6 @@ type ResolvedDocsSource = {
   filters?: GenerateFilters;
 };
 
-function normalizeDocsSourceInput(input: string): string {
-  return path.normalize(input).replace(/[/\\]+$/, "");
-}
-
-function parseDocsSourceInput(input: string): {
-  docsDir: string;
-  urlPrefix?: string;
-} {
-  const separatorIndex = input.indexOf("=");
-  if (separatorIndex === -1) {
-    return { docsDir: input };
-  }
-  const docsDir = input.slice(0, separatorIndex);
-  const urlPrefix = input.slice(separatorIndex + 1);
-  if (!(docsDir.trim() && urlPrefix.trim())) {
-    throw new Error(
-      `Invalid --docs-dir value "${input}". Use <dir> or <dir>=<url-prefix>.`
-    );
-  }
-  if (normalizeUrlPrefix(urlPrefix) === "/") {
-    throw new Error(
-      `Invalid --docs-dir value "${input}". URL prefix must not be the site root.`
-    );
-  }
-  return { docsDir, urlPrefix };
-}
-
 function resolveDocsSources(
   srcDir: string,
   docsDirs: string[]
@@ -2125,19 +882,6 @@ function sourceMounts(sources: ResolvedDocsSource[]): DocsPathMount[] {
       urlPrefix: mount.urlPrefix,
     })),
   ]);
-}
-
-const DEFAULT_DOCS_URL_PREFIX = "/docs";
-const NESTED_DOCS_PREFIX = `${DEFAULT_DOCS_URL_PREFIX}/`;
-
-function pathPrefixForUrlPrefix(urlPrefix: string): string {
-  if (urlPrefix === DEFAULT_DOCS_URL_PREFIX) {
-    return "";
-  }
-  if (urlPrefix.startsWith(NESTED_DOCS_PREFIX)) {
-    return urlPrefix.slice(NESTED_DOCS_PREFIX.length);
-  }
-  return urlPrefix.replace(/^\/+/, "");
 }
 
 function resolveDocsSourcesFromCollections(
@@ -2516,7 +1260,17 @@ async function createSourceMirror(
     path.resolve(sources[0]?.docsDir ?? "") ===
       path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
-  if (isDefaultSingleSource && !hasFilters && !forceStaging) {
+  // A collection's own `include`/`exclude` must stage a filtered mirror too:
+  // serving the directory in place applies no filter, so in exactly this
+  // shape — and only without `openapi`, whose `forceStaging` routed through
+  // `copySourceFiles` and honored them — a single default `docs` collection's
+  // filters were silently ignored and its excluded pages shipped.
+  const hasSourceFilters = sources.some((source) => source.filters);
+
+  if (
+    isDefaultSingleSource &&
+    !(hasFilters || hasSourceFilters || forceStaging)
+  ) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
     return {
       cleanup: async () => {
@@ -2918,11 +1672,24 @@ async function executeGenerate(
         loadedConfig.config.collections,
         configDir
       );
+      // Re-normalize, don't just swap the collections in: `resolved` was
+      // derived from the pre-inheritance config, so carrying it through
+      // unchanged leaves every inherited navigation, schema, groups, and
+      // mounts missing from the resolved model — for the exact
+      // `inheritConfig: true` shape the docs recommend. Deprecations and the
+      // acquisition graph stay from the first pass, which is the only one that
+      // saw the authored aliases and source names.
+      const renormalized = normalizeDocsConfig(
+        { ...loadedConfig.config, collections },
+        { configPath: loadedConfig.path, configDir }
+      );
       loadedConfig = {
-        ...loadedConfig,
-        config: {
-          ...loadedConfig.config,
-          collections,
+        config: renormalized.config,
+        path: loadedConfig.path,
+        resolved: {
+          ...renormalized.resolved,
+          sources: loadedConfig.resolved.sources,
+          deprecations: loadedConfig.resolved.deprecations,
         },
       };
       docsSources = resolveDocsSourcesFromCollections(collections, configDir);
@@ -3072,9 +1839,39 @@ async function executeGenerate(
           }
         : metadata;
     const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
+
+    // Derived navigation: only when nothing structural was authored. Any
+    // `navigation` tree or `group:` frontmatter means the author has an
+    // information architecture in mind, and inference must not merge with it.
+    // Path filters disable curated nav entirely, so they opt out too.
+    let inference = emptyInferenceReport();
+    let derivedNav: DocsNavEntry[] | undefined;
+    // Not for localized projects: derivation keys sections off the first path
+    // segment, which for `docs/en/…` is the locale — while navigation resolves
+    // per locale over locale-stripped paths, so no derived section can ever
+    // match and generate fails outright.
+    if (
+      !hasExplicitPathFilters &&
+      metadata.i18n === undefined &&
+      (nav === undefined || nav.length === 0) &&
+      groups.length === 0
+    ) {
+      const inferred = await inferNavigationFromContent(sourceMirror.docsDir, {
+        // Generated OpenAPI pages already contribute their own nav node.
+        exclude: [
+          ...generatedOpenApi.pages.map((page) => page.relativePath),
+          ...generatedOpenApi.indexPages.map((page) => page.relativePath),
+        ],
+      });
+      if (inferred.navigation.length > 0) {
+        derivedNav = inferred.navigation;
+        inference = mergeInferenceReports(inference, inferred.report);
+      }
+    }
+
     const effectiveNav = hasExplicitPathFilters
       ? undefined
-      : [...(nav ?? []), ...generatedOpenApi.nav];
+      : [...(derivedNav ?? nav ?? []), ...generatedOpenApi.nav];
     const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
@@ -3083,6 +1880,7 @@ async function executeGenerate(
     const localesToValidate = i18n
       ? i18n.locales.map((locale) => locale.code)
       : [undefined];
+    let defaultLocaleNavigation: DocsNavigation | undefined;
     for (const locale of localesToValidate) {
       const navigation = await resolveDocsNavigation({
         srcDir: sourceMirror.srcDir,
@@ -3092,12 +1890,49 @@ async function executeGenerate(
         i18n: metadata.i18n,
         locale,
       });
-      const firstUnknownGroup = navigation.unknown[0];
+      // Fallback entries are the default locale's files re-selected under
+      // this locale (`fallback: "default"`), so their finding belongs to the
+      // default locale's pass — reporting it here would name a locale-prefixed
+      // copy of a file that has exactly one edit site.
+      const firstUnknownGroup = navigation.unknown.find(
+        (entry) => entry.isFallback !== true
+      );
       if (firstUnknownGroup) {
         throw new Error(
           `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`
         );
       }
+      defaultLocaleNavigation ??= navigation;
+    }
+
+    // Derived llms.txt body, from the same resolved navigation the sidebar and
+    // sitemap come from — so an agent's starting points can't drift from the
+    // human entry points. Skipped entirely when `llms.sections` was authored.
+    let effectiveProduct = product;
+    if (product.blocks === undefined && defaultLocaleNavigation) {
+      const derived = inferLlmsBlocks({
+        navigation: defaultLocaleNavigation,
+      });
+      if (derived.blocks.length > 0) {
+        effectiveProduct = { ...product, blocks: derived.blocks };
+        inference = mergeInferenceReports(inference, derived.report);
+      }
+    }
+
+    for (const warning of inference.warnings) {
+      logger.warn({
+        human: { message: warning.message, hint: warning.hint },
+        json: {
+          event: "generate.inference_ambiguous",
+          fields: { field: warning.field, message: warning.message },
+        },
+      });
+    }
+    // Text mode only: JSON output is a machine record on stdout, and a prose
+    // report written before it makes the whole stream unparseable. In JSON
+    // mode the same information rides on the result object instead.
+    if (args.explain && args.format !== "json") {
+      io.stdout.write(formatInferenceReport(inference));
     }
 
     const convertCache = await resolveConvertCache({
@@ -3141,7 +1976,7 @@ async function executeGenerate(
       const agents = await generateAgentsMd({
         srcDir: sourceMirror.srcDir,
         outDir,
-        product,
+        product: effectiveProduct,
         groups,
         nav: effectiveNav,
         i18n: metadata.i18n,
@@ -3166,7 +2001,7 @@ async function executeGenerate(
         const agentReadability = await generateAgentReadabilityArtifacts({
           outDir,
           baseUrl: args.baseUrl,
-          product,
+          product: effectiveProduct,
           groups,
           nav: effectiveNav,
           mounts: effectiveMounts,
@@ -3188,7 +2023,7 @@ async function executeGenerate(
         // Skill `bodyPath` resolves against the real source root (`--src`), not
         // the temp conversion mirror (which only holds the docs tree).
         srcDir,
-        product,
+        product: effectiveProduct,
         skills: metadata.agents?.skills,
         mode: "bundle",
         mcpEnabled: bundleMcpEnabled,
@@ -3206,7 +2041,7 @@ async function executeGenerate(
         mounts: effectiveMounts,
         mode: "bundle",
         outDir,
-        product,
+        product: effectiveProduct,
         srcDir,
       };
     } else {
@@ -3236,7 +2071,7 @@ async function executeGenerate(
         srcDir: sourceMirror.srcDir,
         outDir,
         baseUrl: args.baseUrl,
-        product,
+        product: effectiveProduct,
         groups,
         nav: effectiveNav,
         mounts: effectiveMounts,
@@ -3283,7 +2118,7 @@ async function executeGenerate(
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
         baseUrl: args.baseUrl,
-        product,
+        product: effectiveProduct,
         groups,
         nav: effectiveNav,
         mounts: effectiveMounts,
@@ -3303,7 +2138,7 @@ async function executeGenerate(
         ? await generateNlwebArtifacts({
             outDir,
             baseUrl: args.baseUrl,
-            product,
+            product: effectiveProduct,
             pages: agentReadability.manifest.pages,
           })
         : undefined;
@@ -3316,7 +2151,7 @@ async function executeGenerate(
         // the temp conversion mirror (which only holds the docs tree).
         srcDir,
         baseUrl: args.baseUrl,
-        product,
+        product: effectiveProduct,
         skills: {
           ...metadata.agents?.skills,
           agentCard: metadata.agents?.agentCard?.enabled,
@@ -3343,7 +2178,7 @@ async function executeGenerate(
         mcpServerCard = await generateMcpServerCard({
           outDir,
           baseUrl: args.baseUrl,
-          product,
+          product: effectiveProduct,
           config: {
             endpoint: mcpConfig.endpoint,
             icon: mcpConfig.icon,
@@ -3364,7 +2199,7 @@ async function executeGenerate(
             srcDir: sourceMirror.srcDir,
             outDir,
             baseUrl: args.baseUrl,
-            product,
+            product: effectiveProduct,
             groups,
             nav: effectiveNav,
             mounts: effectiveMounts,
@@ -3394,7 +2229,7 @@ async function executeGenerate(
           await generateAgentReadabilityArtifacts({
             outDir,
             baseUrl: args.baseUrl,
-            product,
+            product: effectiveProduct,
             groups,
             nav: effectiveNav,
             mounts: effectiveMounts,
@@ -3497,10 +2332,17 @@ async function executeGenerate(
         mounts: effectiveMounts,
         mode: "site",
         outDir,
-        product,
+        product: effectiveProduct,
         search,
         srcDir,
       };
+    }
+
+    // Multi-source projects report the acquisition graph so `--json` names the
+    // same source and collection ids as the human output and error messages.
+    const resolvedSources = loadedConfig?.resolved.sources;
+    if (resolvedSources?.some((source) => source.kind === "git")) {
+      result.sources = resolvedSources;
     }
 
     if (args.format === "json") {
