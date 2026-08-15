@@ -97,7 +97,7 @@ If your docs app compiles MDX through a bundler, start from your config: `create
 - `resolveInclude()` for programmatic partial loading
 - `collections`, `sources`, and `getSource(key)` for multi-collection projects
 
-It returns a superset of the `DocsSource` contract, so every framework adapter (`leadtype/next`, `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`, `leadtype/fumadocs`) accepts it unchanged. Reach for the lower-level `createDocsSource()` only when no config describes the content you're wiring.
+It returns a superset of the `DocsSource` contract, so the five static-params adapters (`leadtype/next`, `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`) accept the project as their `source`. `leadtype/fumadocs` also accepts a `DocsSource`, but `fumadocsSource()` maps each page to its collection-local `slug` and `relativePath` and reads `meta.json` only from the primary `contentDir` — a merged multi-collection project is not a usable Fumadocs source. Pass `project.getSource(key)` into one `fumadocsSource()` / `loader()` per collection, or use it with a single-collection project. Reach for the lower-level `createDocsSource()` only when no config describes the content you're wiring.
 
 → [`createDocsProject` reference](/docs/reference/project) — discovery, diagnostics, and the project API
 → [Use the source primitive](/docs/pipeline/use-the-source-primitive) — per-framework wiring, and when the escape hatch is right

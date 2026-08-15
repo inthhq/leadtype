@@ -22,7 +22,7 @@ export const source = loader({ baseUrl: "/docs", source: fumaSource });
 export const leadtypeSource = fumaSource.leadtype;
 ```
 
-If your docs are described by a Leadtype config, pass a project instead of a content directory. The adapter accepts any `DocsSource`, and a project is one — so the content root, navigation, mounts, and OpenAPI overlay come from the config rather than being restated here:
+If your docs are described by a Leadtype config, pass a `DocsSource` instead of a content directory. A single-collection project is one — so the content root, navigation, mounts, and OpenAPI overlay come from the config rather than being restated here:
 
 ```ts title="lib/source.ts"
 import { loader } from "fumadocs-core/source";
@@ -33,6 +33,22 @@ const project = await createDocsProject();
 const fumaSource = await fumadocsSource({ source: project });
 export const source = loader({ baseUrl: "/docs", source: fumaSource });
 export const leadtypeSource = fumaSource.leadtype;
+```
+
+`fumadocsSource()` maps each page to its collection-local `slug` and `relativePath`, and reads `meta.json` only from that source's `contentDir`. A merged multi-collection project therefore drops every `routePrefix` and collides on identical local pages. Give each collection its own loader via `project.getSource(key)`:
+
+```ts title="lib/changelog-source.ts"
+// @noErrors
+import { loader } from "fumadocs-core/source";
+import { createDocsProject } from "leadtype";
+import { fumadocsSource } from "leadtype/fumadocs";
+
+const project = await createDocsProject();
+const changelog = project.getSource("changelog");
+export const changelogSource = loader({
+  baseUrl: "/changelog",
+  source: await fumadocsSource({ source: changelog }),
+});
 ```
 
 ```ts title="next.config.mjs"
