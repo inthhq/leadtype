@@ -84,6 +84,7 @@ export type LoadedDocsConfig = {
  */
 const TOP_LEVEL_CONFIG_KEYS = [
   "product",
+  "baseUrl",
   "organization",
   "llms",
   "frontmatterSchema",

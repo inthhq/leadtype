@@ -1061,6 +1061,9 @@ describe("baseUrl reporting", () => {
     expect(report.config.provenance.baseUrl).toMatchObject({
       origin: "explicit",
     });
+    expect(
+      report.issues.filter((entry) => entry.id === "config.unknown-key")
+    ).toEqual([]);
   });
 
   it("reports the env/localhost fallback as the default origin", async () => {
