@@ -14,7 +14,11 @@ import {
 } from "../internal/docs-url";
 import { type DocsRedirect, resolveRedirect } from "../redirects/redirects";
 
-export { slugifyDocsHeading } from "../internal/docs-heading";
+export {
+  createDocsHeadingSlugger,
+  type DocsHeadingSlugger,
+  slugifyDocsHeading,
+} from "../internal/docs-heading";
 
 const DOCS_DIRNAME = "docs";
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;

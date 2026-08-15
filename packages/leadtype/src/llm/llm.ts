@@ -15,7 +15,7 @@ import {
   toLocalizedDocsUrlPath,
 } from "../i18n";
 import { writeFileAtomic } from "../internal/atomic-fs";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import { createDocsHeadingSlugger } from "../internal/docs-heading";
 import {
   type DocsPathMount,
   GENERIC_DOC_TITLES,
@@ -56,7 +56,11 @@ import {
   type SeoMeta,
 } from "./readability";
 
-export { slugifyDocsHeading } from "../internal/docs-heading";
+export {
+  createDocsHeadingSlugger,
+  type DocsHeadingSlugger,
+  slugifyDocsHeading,
+} from "../internal/docs-heading";
 export type { DocsPathMount } from "../internal/docs-url";
 
 const DOCS_DIRNAME = "docs";
@@ -1436,7 +1440,7 @@ export function extractDocsTableOfContents(
   const { minLevel, maxLevel } = resolveTocOptions(options);
   const items: DocsTableOfContentsItem[] = [];
   const stack: DocsTableOfContentsItem[] = [];
-  const slugCounts = new Map<string, number>();
+  const slugger = createDocsHeadingSlugger();
   let activeFence: "`" | "~" | null = null;
 
   for (const line of stripFrontmatter(content).split("\n")) {
@@ -1480,21 +1484,16 @@ export function extractDocsTableOfContents(
       continue;
     }
 
-    // github-slugger / rehype-slug number every heading on the page, so
-    // duplicate numbering has to count every heading too — not just the ones
-    // inside minLevel..maxLevel. Counting only the visible subset would hand
-    // a TOC entry the unsuffixed anchor that an out-of-range heading already
-    // owns. Empty slugs (punctuation-only titles) stay in the map so the
-    // second `## !!!` is still `-1`, matching the previous counter.
-    const slug = slugifyDocsHeading(title);
-    const slugCount = slugCounts.get(slug) ?? 0;
-    slugCounts.set(slug, slugCount + 1);
+    // Number every heading, not just the ones inside minLevel..maxLevel.
+    // createDocsHeadingSlugger / github-slugger / rehype-slug all claim an
+    // anchor for out-of-range headings too; counting only the visible subset
+    // would hand a TOC entry the unsuffixed id those headings already own.
+    const id = slugger.slug(title);
 
     if (level < minLevel || level > maxLevel) {
       continue;
     }
 
-    const id = slugCount === 0 ? slug : `${slug}-${slugCount}`;
     const item: DocsTableOfContentsItem = {
       id,
       title,

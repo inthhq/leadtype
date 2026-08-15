@@ -703,7 +703,7 @@ const pages = await resolveDocsTableOfContents({
 });
 ```
 
-For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX string plus page URL metadata and returns plain JSON. It ignores frontmatter and fenced code blocks, and it uses the same `slugifyDocsHeading` helper that rendered headings must use to keep `id` attributes in sync.
+For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX string plus page URL metadata and returns plain JSON. It ignores frontmatter and fenced code blocks, and it numbers duplicate anchors with `createDocsHeadingSlugger` — the same helper rendered headings must use to keep `id` attributes in sync.
 
 ## Group design
 

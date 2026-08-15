@@ -349,10 +349,10 @@ Each `page` carries a `toc` field (`DocsTableOfContentsItem[]`) you can render a
 
 ## Match heading slugs
 
-`source.loadPage().toc` uses `slugifyDocsHeading` to derive anchor IDs. Your rendered heading components need matching `id` attributes:
+`source.loadPage().toc` uses `createDocsHeadingSlugger` to derive anchor IDs. Your rendered heading components need matching `id` attributes — create **one slugger per page** so duplicate titles get the same `#slug-N` suffixes as the TOC. A fresh `slugifyDocsHeading` call per heading skips that counter and will disagree with the TOC as soon as two headings share a title.
 
 ```tsx
-import { slugifyDocsHeading } from "leadtype/llm/readability";
+import { createDocsHeadingSlugger } from "leadtype/llm/readability";
 
 function textFromChildren(children: unknown): string {
   if (typeof children === "string" || typeof children === "number") {
@@ -363,13 +363,15 @@ function textFromChildren(children: unknown): string {
   return "";
 }
 
+const slugger = createDocsHeadingSlugger();
+
 const Heading2 = ({ children, id, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
-  const headingId = id ?? slugifyDocsHeading(textFromChildren(children));
+  const headingId = id ?? slugger.slug(textFromChildren(children));
   return <h2 id={headingId || undefined} {...props}>{children}</h2>;
 };
 ```
 
-Wire `Heading2` (and `h3`, etc.) into your `mdxComponents` map. Authors can still pin an explicit `id` on a heading.
+Wire `Heading2` (and `h3`, etc.) into your `mdxComponents` map. Share the same `slugger` across `h1`–`h6` on that page. Authors can still pin an explicit `id` on a heading.
 
 ## Build a search index
 
@@ -389,7 +391,7 @@ For provider-specific search (Vercel AI, TanStack, Cloudflare), feed the bundle 
 
 - **`<include>` tags survive into the rendered output.** You forgot to add `createMdxSourcePlugins()` to your MDX compiler's remark plugin list.
 - **`<ExtractedTypeTable>` renders unresolved.** The source preset converts these to `<TypeTable>` only when `extractTypeFromFile` succeeds. Make sure `typescript` is installed in the docs app and `typeTableBasePath` resolves to the project that contains the type.
-- **TOC links don't scroll.** Rendered heading IDs don't match. Wire `slugifyDocsHeading` into your heading components.
+- **TOC links don't scroll.** Rendered heading IDs don't match. Wire a page-scoped `createDocsHeadingSlugger()` into your heading components — not a fresh `slugifyDocsHeading` call per heading.
 - **Sidebar order doesn't match `llms.txt`.** Your app and the CLI are loading different `docs.config.ts` files. Centralize the config and import it in both.
 
 ## Reference

@@ -1,4 +1,7 @@
-import { slugifyDocsHeading } from "leadtype/llm/readability";
+import {
+  createDocsHeadingSlugger,
+  type DocsHeadingSlugger,
+} from "leadtype/llm/readability";
 import type { MDXComponents } from "mdx/types";
 import { type ComponentPropsWithoutRef, isValidElement } from "react";
 import { mdxComponents } from "@/components/docs-mdx";
@@ -20,11 +23,14 @@ function textFromChildren(children: unknown): string {
   return "";
 }
 
-function createHeading(level: 1 | 2 | 3 | 4 | 5 | 6) {
+function createHeading(
+  level: 1 | 2 | 3 | 4 | 5 | 6,
+  slugger: DocsHeadingSlugger
+) {
   const Heading = ({ children, className, id, ...props }: HeadingProps) => {
     const Component = `h${level}` as const;
     const headingText = textFromChildren(children);
-    const headingId = id ?? slugifyDocsHeading(headingText);
+    const headingId = id ?? slugger.slug(headingText);
     const hash = headingId ? `#${headingId}` : undefined;
 
     return (
@@ -64,13 +70,14 @@ function createHeading(level: 1 | 2 | 3 | 4 | 5 | 6) {
 export function useMDXComponents(
   components: MDXComponents = {}
 ): MDXComponents {
+  const slugger = createDocsHeadingSlugger();
   return {
-    h1: createHeading(1),
-    h2: createHeading(2),
-    h3: createHeading(3),
-    h4: createHeading(4),
-    h5: createHeading(5),
-    h6: createHeading(6),
+    h1: createHeading(1, slugger),
+    h2: createHeading(2, slugger),
+    h3: createHeading(3, slugger),
+    h4: createHeading(4, slugger),
+    h5: createHeading(5, slugger),
+    h6: createHeading(6, slugger),
     ...mdxComponents,
     ...components,
   };
