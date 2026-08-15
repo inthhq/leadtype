@@ -128,17 +128,27 @@ export async function listRouteSlugs(
     const slug = routeSlugFromUrlPath(page.urlPath, base);
     if (slug === null) {
       throw new Error(
-        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}" — a catch-all mounted at "${base}" cannot serve it. Mount a catch-all at the prefix that owns the page and hand it that collection's source (\`project.getSource(key)\`), or pass the base your catch-all is actually mounted at via \`basePath\` ("/" for a site-root catch-all).`
+        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}" — a catch-all mounted at "${base}" cannot serve it. Mount a catch-all at the prefix that owns the page and pass that prefix as \`basePath\`; hand a multi-collection project that collection's source (\`project.getSource(key)\`); or pass \`basePath: "/"\` for a site-root catch-all. A same-tree \`mounts\` entry is not its own source — give the mount an empty pathPrefix so \`routePrefix\` is the catch-all, or split that subtree into its own collection.`
       );
     }
     return slug;
   });
 }
 
+function findPageByUrlPath(
+  pages: DocsPageMeta[],
+  urlPath: string
+): DocsPageMeta | undefined {
+  return pages.find(
+    (page: DocsPageMeta) => normalizeUrlPath(page.urlPath) === urlPath
+  );
+}
+
 export function createLoadPage(
   config: LoadPageConfig
 ): (slug: string | string[] | undefined) => Promise<DocsPage | null> {
   const base = resolveRouteBase(config);
+  const sourceBase = normalizeUrlPath(config.source.routePrefix ?? "/docs");
   return async (slug) => {
     const segments = splitRouteSlug(slug);
     // Params are route segments under the base, so resolve them as the URL
@@ -147,20 +157,27 @@ export function createLoadPage(
     // collection-local slug must load, not 404.
     const routePath = joinUrlPath(base, ...segments);
     const pages = await config.source.listPages();
-    const match = pages.find(
-      (page: DocsPageMeta) => normalizeUrlPath(page.urlPath) === routePath
-    );
+    // An explicit `basePath` re-roots (Nuxt prerender): slugs were taken
+    // relative to the source prefix and joined onto the override. Reconstruct
+    // the canonical urlPath so a mount that remapped the file slug still
+    // loads instead of 404ing on the re-rooted path.
+    const match =
+      findPageByUrlPath(pages, routePath) ??
+      (base === sourceBase
+        ? undefined
+        : findPageByUrlPath(pages, joinUrlPath(sourceBase, ...segments)));
     if (match) {
-      // A project meta carries its collection; load by route path, which the
-      // project resolves uniquely — a collection-local slug can be ambiguous
-      // across collections. A plain source loads by its exact slug.
+      // Route path wins over a colliding raw slug: generated params are
+      // urlPath-derived, so `/docs/legacy` serves the page advertised there.
+      // A project meta carries its collection; load by the canonical route,
+      // which the project resolves uniquely. A plain source loads by slug.
       return await config.source.loadPage(
-        "collection" in match ? routePath : match.slug
+        "collection" in match ? normalizeUrlPath(match.urlPath) : match.slug
       );
     }
     // No page owns that URL under this base. Fall back to the historical
-    // slug-based lookup so callers passing raw collection-local slugs (or
-    // using a base that differs from the source's own prefix) keep resolving.
+    // slug-based lookup so callers passing raw collection-local slugs keep
+    // resolving when they do not collide with a mounted route.
     return await config.source.loadPage(segments);
   };
 }

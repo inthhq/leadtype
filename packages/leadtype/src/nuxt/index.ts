@@ -40,13 +40,22 @@ export function createPrerenderRoutes(
     // this is what makes `createPrerenderRoutes({ source })` correct for a
     // collection source (whose routePrefix is not `/docs`), for `mounts`, and
     // for a whole multi-collection project in one call.
+    //
+    // Nuxt prerender entries are absolute paths, not params under a catch-all,
+    // so pages that leave the source prefix are emitted rather than thrown:
+    // the string *is* the request path. The other adapters throw because
+    // their params would be served under the catch-all's own prefix.
     if (config.basePath === undefined) {
       const pages = await config.source.listPages();
       return pages.map((page) => normalizeUrlPath(page.urlPath));
     }
-    // An explicit basePath re-roots the routes: pages are enumerated relative
-    // to the source's own prefix, then joined onto the override. A page a
-    // mount moved outside the source's prefix cannot be re-rooted and throws.
+    // An explicit basePath re-roots: slugs are taken relative to the source's
+    // own prefix (so a mount that remaps `policies/privacy` →
+    // `/docs/legal/privacy` still contributes `legal/privacy`), then joined
+    // onto the override. `listJoinedSlugs` is not given `basePath` — that
+    // would filter against the new prefix and throw on every page. Pages the
+    // source prefix cannot represent still throw. `createLoadPage` with the
+    // same basePath maps those slugs back through the source prefix.
     const slugs = await listJoinedSlugs({ source: config.source });
     const basePath = config.basePath;
     return slugs.map((slug) => joinUrlPath(basePath, slug));

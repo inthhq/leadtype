@@ -222,6 +222,10 @@ describe("framework adapter route helpers", () => {
       "/docs/quickstart",
       "/docs/legal/privacy",
     ]);
+    // Explicit basePath re-roots the mount-aware slug, not the file slug.
+    await expect(
+      createPrerenderRoutes({ source, basePath: "/guide" })()
+    ).resolves.toEqual(["/guide", "/guide/quickstart", "/guide/legal/privacy"]);
   });
 
   it("loads the page a mount-aware param addresses", async () => {
@@ -249,6 +253,31 @@ describe("framework adapter route helpers", () => {
     await expect(
       createNextLoadPageData({ source })(["policies", "privacy"])
     ).resolves.toMatchObject({ title: "policies/privacy" });
+    // Re-rooted Nuxt routes must load the mounted page, not 404 on the
+    // file slug `legal/privacy` or the re-rooted path `/guide/legal/privacy`.
+    await expect(
+      createNuxtLoadPageData({ source, basePath: "/guide" })({
+        slug: ["legal", "privacy"],
+      })
+    ).resolves.toMatchObject({ title: "policies/privacy" });
+  });
+
+  it("prefers a mounted route over a colliding raw slug", async () => {
+    const source = buildSourceFromPages([
+      // legacy/index.mdx mounted at /docs/foo
+      buildPage(["legacy"], "/docs/foo"),
+      // policies/index.mdx mounted at /docs/legacy
+      buildPage(["policies"], "/docs/legacy"),
+    ]);
+    // Generated params are urlPath-derived, so `legacy` addresses the page
+    // advertised at /docs/legacy. The raw slug of the other page still
+    // loads via its own route (`foo`).
+    await expect(
+      createNextLoadPageData({ source })(["legacy"])
+    ).resolves.toMatchObject({ title: "policies" });
+    await expect(
+      createNextLoadPageData({ source })(["foo"])
+    ).resolves.toMatchObject({ title: "legacy" });
   });
 
   it("uses a collection source's own routePrefix as the route base", async () => {
