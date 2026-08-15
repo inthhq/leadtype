@@ -767,6 +767,22 @@ describe("baseUrl", () => {
     expect(multiAtMessage).not.toContain("pa@ss");
     expect(multiAtMessage).not.toContain("ss@acme");
 
+    // A single slash after the scheme is still userinfo. Requiring `://`
+    // would miss it and echo the password.
+    let singleSlashMessage = "";
+    try {
+      normalize({
+        product,
+        baseUrl: "https:/buildbot:s3cret@acme.dev:bad",
+      });
+    } catch (error) {
+      singleSlashMessage = String(error);
+    }
+    expect(singleSlashMessage).toMatch(/is not an absolute URL/);
+    expect(singleSlashMessage).toContain("<redacted>@acme.dev");
+    expect(singleSlashMessage).not.toContain("s3cret");
+    expect(singleSlashMessage).not.toContain("buildbot");
+
     // A credential-free malformed value still echoes unchanged.
     expect(() => normalize({ product, baseUrl: "not a url" })).toThrow(
       /"not a url" is not an absolute URL/

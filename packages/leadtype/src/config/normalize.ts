@@ -93,6 +93,19 @@ export const BASE_URL_DEFAULT_SOURCE =
 const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
 
 /**
+ * Strip userinfo-shaped text from a value we are about to echo. The
+ * parser has already rejected it, so the string may not have a well-formed
+ * `://` — take an optional scheme and up to two slashes, then everything
+ * through the last `@` that isn't in a path.
+ */
+function redactUserinfo(value: string): string {
+  return value.replace(
+    /^((?:[a-zA-Z][a-zA-Z+\-.]*:)?\/{0,2})([^/\s]*@)/,
+    "$1<redacted>@"
+  );
+}
+
+/**
  * Validate and normalize an authored base URL: an absolute http(s) origin
  * plus optional path prefix. The returned value is the parser's own
  * serialization with trailing slashes stripped, so URL joins can never
@@ -116,10 +129,10 @@ export function normalizeAuthoredBaseUrl(
     // A value the parser rejects can still carry userinfo — an out-of-range
     // port (`https://user:pass@host:99999`) throws before the credentials
     // check below ever runs — so redact anything userinfo-shaped before
-    // echoing; the secret must not land in stderr/CI logs. Greedy through
-    // the authority's final `@`: a password that itself contains `@`
-    // (`https://user:pa@ss@host:bad`) must not leak the tail.
-    const redacted = normalized.replace(/\/\/[^/\s]*@/, "//<redacted>@");
+    // echoing; the secret must not land in stderr/CI logs. Do not require
+    // `://`: `https:/user:pass@host` still has a secret, and a password that
+    // itself contains `@` must not leak the tail.
+    const redacted = redactUserinfo(normalized);
     throw new Error(
       `${subject} "${redacted}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
     );
