@@ -10,12 +10,15 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
-    // `^build` so turbo builds leadtype's dist once, ahead of every dependent.
-    // Seven app `check-types` scripts used to run `--filter leadtype build`
-    // themselves, and those in parallel rm -rf the same dist — failing a
-    // different app every run. Other scripts (`build`, `dev`, `mcp`,
-    // `test:e2e`) still carry the prefix; they are not run concurrently by
-    // turbo, so the race is fixed for `check-types`, not repo-wide.
+    // `^build` so turbo builds leadtype's dist once, ahead of every
+    // `check-types` dependent. Seven app `check-types` scripts used to run
+    // `--filter leadtype build` themselves, and those in parallel rm -rf the
+    // same dist — failing a different app every run.
+    //
+    // Other scripts (`build`, `dev`, `mcp`, `test:e2e`) still carry the
+    // prefix. `turbo run build` then runs the seven app builds as siblings
+    // after `packages/leadtype#build`, so those nested rebuilds can still
+    // race. The race is fixed for `check-types`, not repo-wide.
     "check-types": {
       "dependsOn": ["^build", "^check-types"]
     },
