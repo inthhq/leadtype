@@ -633,8 +633,10 @@ function addPosting(
  * `tokenize` on context-sensitive lowercasing (`ΟΣ` → `ος`, not `οσ`). Offsets
  * still come from per-code-point NFKD: decomposition is context-free, the
  * diacritic strip removes the same marks either way, and `toLowerCase` is
- * length-preserving, so the cheap map is identical to a prefix-length walk
- * even when the two strings differ. A prefix fallback would be a no-op.
+ * length-preserving on whatever survives that strip (`İ` alone expands, but
+ * NFKD has already reduced it to `i`), so the cheap map is identical to a
+ * prefix-length walk even when the two strings differ. A prefix fallback
+ * would be a no-op.
  */
 function normalizeTextWithOffsets(input: string): {
   normalized: string;
