@@ -13,6 +13,7 @@ import { syncSources, writeSyncManifest } from "../sync/sync";
 import { runGenerateCommand } from "./generate";
 
 // Fixture configs import from source so they exercise the working tree.
+// JSON.stringify the path so Windows `D:\a\...` is a string, not `\a` escapes.
 const LEADTYPE_ENTRY = fileURLToPath(new URL("../index.ts", import.meta.url));
 
 const tempDirs: string[] = [];
@@ -77,7 +78,7 @@ const IDENTITY = 'product: { name: "Acme", tagline: "Acme docs." }';
  */
 async function sharedFixture(): Promise<string> {
   const dir = await fixture({
-    "leadtype.config.ts": `import { gitSource } from "LEADTYPE_ENTRY";
+    "leadtype.config.ts": `import { gitSource } from ${JSON.stringify(LEADTYPE_ENTRY)};
 
 export default {
   ${IDENTITY},
@@ -94,7 +95,7 @@ export default {
   collections: {
     changelog: { dir: "changelog", prefix: "/changelog" },
   },
-};`.replace("LEADTYPE_ENTRY", LEADTYPE_ENTRY),
+};`,
     ".leadtype/acme/.git/HEAD": "ref: refs/heads/main\n",
     ".leadtype/acme/docs/docs.config.ts": `export default { navigation: ["index"] };`,
     ".leadtype/acme/docs/index.mdx": page("Guides"),

@@ -1514,7 +1514,7 @@ describe("runLintCommand source-owned inheritance", () => {
   // The source repo's docs.config.ts, as it sits in the sync cache. Its
   // frontmatter schema requires an `owner` field the default schema knows
   // nothing about.
-  const SOURCE_CONFIG = `import * as v from "VALIBOT_ENTRY";
+  const SOURCE_CONFIG = `import * as v from ${JSON.stringify(fileURLToPath(import.meta.resolve("valibot")))};
 
 export default {
   navigation: ["index"],
@@ -1523,7 +1523,7 @@ export default {
     owner: v.string(),
   }),
 };
-`.replace("VALIBOT_ENTRY", fileURLToPath(import.meta.resolve("valibot")));
+`;
 
   async function syncedProject(): Promise<string> {
     const projectDir = await createTempProject();
