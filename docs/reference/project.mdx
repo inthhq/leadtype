@@ -34,7 +34,7 @@ Zero-arg discovery follows the same rule every CLI command uses:
 
 The config file's location fixes the project root: a `docs.config.*` sits *inside* the docs directory, so the root is its parent; a `leadtype.config.*` sits at the root already. An explicit `configPath` follows the same basename rule.
 
-If neither file exists, `createDocsProject` throws with the paths it searched; `resolveProject` reports a `config.missing` diagnostic whose fix is `leadtype init`.
+If neither file exists, `createDocsProject` throws naming `project.rootDir` and the two filename globs (`leadtype.config.*` / `docs.config.*`); `resolveProject` reports a `config.missing` diagnostic whose fix is `leadtype init`.
 
 ## `createDocsProject(config?)`
 
