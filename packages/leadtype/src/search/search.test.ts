@@ -393,6 +393,48 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("does not collide a generated suffix with a later literal slug", () => {
+    const content = [
+      "# Reference",
+      "",
+      "## API",
+      "",
+      "The first API section covers widgets.",
+      "",
+      "## API",
+      "",
+      "The second API section covers gadgets.",
+      "",
+      "## API-1",
+      "",
+      "The literal API-1 section covers sprockets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "reference",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/reference#api"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/reference#api-1"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/reference#api-1-1"
+    );
+  });
+
   it("slugifies headings for hash links", () => {
     expect(slugifyDocsHeading("Café API: Quick Start!")).toBe(
       "cafe-api-quick-start"

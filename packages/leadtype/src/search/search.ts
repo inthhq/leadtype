@@ -537,11 +537,12 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const headingPath: string[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
-  // Repeated heading text must not produce repeated anchors: the rendered page
-  // (and `extractDocsTableOfContents`, which lint validates against) numbers
-  // the second "Example" `example-1`. Counting every heading — including ones
-  // whose section produces no chunk — keeps those numbers in step.
-  const slugCounts = new Map<string, number>();
+  // Repeated heading slugs must not collide. github-slugger (what rehype-slug
+  // uses) tracks allocated IDs and bumps the suffix until the candidate is
+  // free, so `## API` / `## API` / `## API-1` is `api`, `api-1`, `api-1-1`
+  // rather than two chunks sharing `api-1`. Counting every heading — including
+  // ones whose section produces no chunk — keeps later IDs in step.
+  const allocatedAnchors = new Set<string>();
   let currentHeadingPath: string[] = [];
   let currentAnchor = "";
   let inCodeFence = false;
@@ -569,9 +570,14 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     if (!slug) {
       return "";
     }
-    const seen = slugCounts.get(slug) ?? 0;
-    slugCounts.set(slug, seen + 1);
-    return seen === 0 ? slug : `${slug}-${seen}`;
+    let candidate = slug;
+    let suffix = 0;
+    while (allocatedAnchors.has(candidate)) {
+      suffix += 1;
+      candidate = `${slug}-${suffix}`;
+    }
+    allocatedAnchors.add(candidate);
+    return candidate;
   };
 
   for (const line of stripFrontmatter(content).split("\n")) {
