@@ -22,7 +22,7 @@ export default defineDocsConfig({
 
 On the next `leadtype generate`, two things appear:
 
-- **`<docs source dir>/paths.lock.json`** — a lockfile recording every published path with a hash of the **authored source body**. **Commit this file.** It is the record of previously published paths that future runs diff against. Hashes ignore frontmatter and do not fingerprint generated markdown, so ExtractedTypeTable rows, expanded includes, git enrichment, and converter formatting cannot rewrite the lockfile on an unrelated generate.
+- **`<docs source dir>/paths.lock.json`** — a lockfile recording every published path with a hash of the **authored source body**. **Commit this file.** It is the record of previously published paths that future runs diff against. Hashes ignore frontmatter and do not fingerprint generated markdown, so ExtractedTypeTable rows, expanded includes, git enrichment, and converter formatting cannot rewrite the lockfile on an unrelated generate. `redirectFrom` is still read from the generated mirror, so `afterFrontmatter` transformers that add it keep working. The first generate after switching to source hashing rewrites every hash once — do not rename a page in that same generate, because old and new hashes cannot match.
 - **`<out>/docs/redirects.json`** — the artifact your app serves redirects from: `{ redirects: [{ from, to, status }] }`.
 
 Enabling `redirects` also turns on output pruning (see [convertAllMdx `prune`](/docs/reference/convert)) — rename detection diffs the emitted page set, so stale mirrors from renamed sources must be garbage-collected or the old path never disappears.

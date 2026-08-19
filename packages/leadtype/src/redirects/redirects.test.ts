@@ -77,6 +77,46 @@ describe("resolveRedirectPageFile", () => {
       path.join(outDir, "docs", "guide.md")
     );
   });
+
+  it("finds default-locale sources under docs/<locale>/ using sourceLocale", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    await mkdir(path.join(sourceDir, "en"), { recursive: true });
+    await writeFile(path.join(sourceDir, "en", "guide.mdx"), "# en source\n");
+    await seedMirror(outDir, "guide.md", "# mirror\n");
+
+    expect(
+      resolveRedirectPageFile(
+        {
+          relativePath: "guide",
+          logicalPath: "guide",
+          sourceLocale: "en",
+        },
+        { outDir, sourceDir }
+      )
+    ).toBe(path.join(sourceDir, "en", "guide.mdx"));
+  });
+
+  it("finds includeFallback sources under the source locale, not the requested one", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    await mkdir(path.join(sourceDir, "en"), { recursive: true });
+    await writeFile(path.join(sourceDir, "en", "guide.mdx"), "# en source\n");
+    await seedMirror(outDir, "fr/guide.md", "# fr mirror\n");
+
+    expect(
+      resolveRedirectPageFile(
+        {
+          relativePath: "fr/guide",
+          logicalPath: "guide",
+          sourceLocale: "en",
+        },
+        { outDir, sourceDir }
+      )
+    ).toBe(path.join(sourceDir, "en", "guide.mdx"));
+  });
 });
 
 describe("computeDocsRedirects", () => {
@@ -366,7 +406,7 @@ describe("updateDocsRedirects", () => {
     ]);
   });
 
-  it("reproduces the old bug: hashing generated mirrors rewrites the lockfile on type-table churn", async () => {
+  it("falls back to hashing the mirror when sourceDir is absent", async () => {
     const dir = await createTempDir();
     const outDir = path.join(dir, "public");
     const lockfilePath = path.join(dir, "paths.lock.json");
@@ -498,7 +538,7 @@ describe("updateDocsRedirects", () => {
     ]);
   });
 
-  it("reads redirectFrom from authored source when sourceDir is set", async () => {
+  it("reads redirectFrom from the generated mirror so afterFrontmatter still applies", async () => {
     const dir = await createTempDir();
     const outDir = path.join(dir, "public");
     const sourceDir = path.join(dir, "docs-src");
@@ -520,12 +560,12 @@ describe("updateDocsRedirects", () => {
     await rm(path.join(outDir, "docs", "old.md"));
     await writeFile(
       path.join(sourceDir, "new.mdx"),
-      '---\ntitle: New\nredirectFrom:\n  - "/docs/old"\n---\n# Rewritten body.\n'
+      "---\ntitle: New\n---\n# Rewritten body.\n"
     );
     await seedMirror(
       outDir,
       "new.md",
-      "---\ntitle: New\n---\n# Rewritten body with extracted types.\n"
+      '---\ntitle: New\nredirectFrom:\n  - "/docs/old"\n---\n# Rewritten body with extracted types.\n'
     );
     const result = await updateDocsRedirects({
       lockfilePath,
@@ -536,5 +576,39 @@ describe("updateDocsRedirects", () => {
     expect(result.redirects).toEqual([
       { from: "/docs/old", to: "/docs/new", status: REDIRECT_STATUS_MOVED },
     ]);
+  });
+
+  it("hashes default-locale-in-subfolder sources instead of the generated mirror", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    await mkdir(path.join(sourceDir, "en"), { recursive: true });
+    await writeFile(
+      path.join(sourceDir, "en", "guide.mdx"),
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n"
+    );
+    await seedMirror(
+      outDir,
+      "guide.md",
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|string|\n"
+    );
+
+    const result = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [
+        {
+          urlPath: "/docs/guide",
+          relativePath: "guide",
+          logicalPath: "guide",
+          sourceLocale: "en",
+        },
+      ],
+    });
+    expect(result.lockfile.pages[0]?.hash).toBe(
+      hashRedirectContent("---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n")
+    );
   });
 });
