@@ -70,6 +70,11 @@ function firstExistingSource(
 }
 
 function generatedMirrorPath(outDir: string, relativePath: string): string {
+  if (!isSafeRelative(relativePath)) {
+    throw new Error(
+      `redirect page relativePath "${relativePath}" is not a safe path`
+    );
+  }
   return path.join(outDir, "docs", ...`${relativePath}.md`.split("/"));
 }
 

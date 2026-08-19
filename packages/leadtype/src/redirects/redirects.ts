@@ -9,10 +9,10 @@
  * `redirectFrom` frontmatter to the successor page or lists the path under
  * `redirects.removed` in the docs config to serve 410 Gone.
  *
- * Hashes must not come from generated markdown. Mirrors embed extracted type
- * tables, expanded includes, and converter formatting, so fingerprinting
- * them rewrites the lockfile when unrelated source or pipeline output
- * changes.
+ * Hashes come from the authored source when one exists. Generated-only
+ * pages (OpenAPI overlays) fall back to the mirror. Fingerprinting
+ * generated markdown for authored pages rewrites the lockfile when
+ * unrelated type tables, includes, or converter output change.
  *
  * This module is runtime-agnostic (no filesystem access) so `resolveRedirect`
  * can run inside edge/server handlers. Lockfile and artifact IO lives in
@@ -35,8 +35,9 @@ export type DocsPathsLockfilePage = {
   /** Public URL path of the page, e.g. `/docs/guides/script-loader`. */
   path: string;
   /**
-   * Content hash of the authored source body (frontmatter excluded). Not the
-   * generated markdown mirror — that output is too derived to lock.
+   * Content hash of the authored source body (frontmatter excluded). Falls
+   * back to the generated markdown mirror only when no authored source
+   * exists (OpenAPI-generated pages).
    */
   hash: string;
 };

@@ -55,8 +55,13 @@ async function rmTempDir(dir: string): Promise<void> {
       await rm(dir, { force: true, recursive: true });
       return;
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (!(code === "EPERM" || code === "EACCES" || code === "EBUSY")) {
+      const retryable =
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "EPERM" ||
+          error.code === "EACCES" ||
+          error.code === "EBUSY");
+      if (!retryable) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, delayMs));

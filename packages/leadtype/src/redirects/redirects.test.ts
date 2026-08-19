@@ -78,6 +78,13 @@ describe("resolveRedirectPageFile", () => {
     );
   });
 
+  it("rejects a relativePath that would escape the output docs dir", () => {
+    const outDir = path.join(tmpdir(), "leadtype-redirects-escape");
+    expect(() =>
+      resolveRedirectPageFile({ relativePath: "../secret" }, { outDir })
+    ).toThrow("not a safe path");
+  });
+
   it("finds default-locale sources under docs/<locale>/ using sourceLocale", async () => {
     const dir = await createTempDir();
     const outDir = path.join(dir, "public");
