@@ -2264,9 +2264,12 @@ async function executeGenerate(
             metadata.redirects.lockfile ?? "paths.lock.json"
           ),
           outDir,
+          sourceDir: sourceMirror.docsDir,
           pages: agentReadability.manifest.pages.map((page) => ({
             urlPath: page.urlPath,
             relativePath: page.relativePath,
+            ...(page.logicalPath ? { logicalPath: page.logicalPath } : {}),
+            ...(page.sourceLocale ? { sourceLocale: page.sourceLocale } : {}),
           })),
           removed: metadata.redirects.removed,
         });

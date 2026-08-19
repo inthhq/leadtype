@@ -552,8 +552,8 @@ export type DocsConfig<
   /**
    * Opt-in redirect tracking for renamed/deleted pages. When present,
    * generate maintains a committed paths lockfile, auto-detects pure moves by
-   * content hash, emits `docs/redirects.json`, and fails loudly when a page
-   * disappears without a successor.
+   * authored-source hash, emits `docs/redirects.json`, and fails loudly when a
+   * page disappears without a successor.
    */
   redirects?: DocsRedirectsConfig;
   /** Options for `leadtype lint` — ignore globs and per-rule severities. */
@@ -602,6 +602,7 @@ export type DocsRedirectsConfig = {
    * Lockfile location, resolved relative to the docs source directory.
    * Defaults to `paths.lock.json` inside it. Commit this file — it is the
    * record of previously published paths that rename detection diffs against.
+   * Page hashes are of the authored source body, not generated mirrors.
    */
   lockfile?: string;
   /**
