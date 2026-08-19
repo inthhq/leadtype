@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { writeFileAtomic } from "../internal/atomic-fs";
@@ -11,6 +12,7 @@ import {
 } from "./redirects";
 
 const HASH_LENGTH = 16;
+const SOURCE_EXTENSIONS = [".mdx", ".md"] as const;
 
 /**
  * Hash a page's body for rename detection. Frontmatter is excluded so
@@ -24,6 +26,42 @@ export function hashRedirectContent(markdown: string): string {
     .update(content.trim())
     .digest("hex")
     .slice(0, HASH_LENGTH);
+}
+
+export type RedirectPageFile = {
+  relativePath: string;
+  sourcePath?: string;
+};
+
+/**
+ * Prefer the authored source (`.mdx` then `.md`) over the generated `.md`
+ * mirror. Generated output embeds ExtractedTypeTable rows, expanded includes,
+ * and converter formatting — hashing it rewrites the committed lockfile on
+ * unrelated type or pipeline changes.
+ */
+export function resolveRedirectPageFile(
+  page: RedirectPageFile,
+  options: { outDir: string; sourceDir?: string }
+): string {
+  if (page.sourcePath) {
+    return page.sourcePath;
+  }
+  if (options.sourceDir) {
+    for (const extension of SOURCE_EXTENSIONS) {
+      const candidate = path.join(
+        options.sourceDir,
+        `${page.relativePath}${extension}`
+      );
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return path.join(
+    options.outDir,
+    "docs",
+    ...`${page.relativePath}.md`.split("/")
+  );
 }
 
 export async function readPathsLockfile(
@@ -79,12 +117,19 @@ export type UpdateDocsRedirectsConfig = {
   /** Generate output root; `docs/redirects.json` is written beneath it. */
   outDir: string;
   /**
+   * Authored docs root (convert input). When set, each page is hashed from
+   * its source `.mdx`/`.md` rather than the generated mirror, so type-table,
+   * include, and converter churn cannot dirty the committed lockfile.
+   */
+  sourceDir?: string;
+  /**
    * Live pages from the readability manifest. `relativePath` locates the
-   * emitted mirror file (`<outDir>/docs/<relativePath>.md`) — the manifest's
+   * authored source (`<sourceDir>/<relativePath>.mdx`) and the emitted
+   * mirror (`<outDir>/docs/<relativePath>.md`). The manifest's
    * `markdownUrlPath` is the *served* URL, which diverges from the file
    * location for index routes (`/docs/rest-api.md` vs `rest-api/index.md`).
    */
-  pages: { urlPath: string; relativePath: string }[];
+  pages: { urlPath: string; relativePath: string; sourcePath?: string }[];
   /** Paths acknowledged as intentionally deleted → 410 Gone. */
   removed?: string[];
 };
@@ -106,12 +151,13 @@ export async function updateDocsRedirects(
 
   const pages: RedirectPageInput[] = await Promise.all(
     config.pages.map(async (page) => {
-      const mirrorPath = path.join(
-        config.outDir,
-        "docs",
-        ...`${page.relativePath}.md`.split("/")
-      );
-      const markdown = await readFile(mirrorPath, "utf8");
+      const filePath = resolveRedirectPageFile(page, {
+        outDir: config.outDir,
+        ...(config.sourceDir === undefined
+          ? {}
+          : { sourceDir: config.sourceDir }),
+      });
+      const markdown = await readFile(filePath, "utf8");
       const { data } = parseFrontmatter(markdown);
       const redirectFrom = normalizeRedirectFrom(data.redirectFrom);
       return {
