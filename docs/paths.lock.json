@@ -31,7 +31,7 @@
     },
     {
       "path": "/docs/aeo/serve-agent-responses",
-      "hash": "ae08933873888eaa"
+      "hash": "19bcd421caf50f67"
     },
     {
       "path": "/docs/concepts/architecture",
@@ -55,7 +55,7 @@
     },
     {
       "path": "/docs/integrations/framework-matrix",
-      "hash": "df0632827bb16d76"
+      "hash": "6303c251729508fc"
     },
     {
       "path": "/docs/integrations/integrate-with-fumadocs",
@@ -95,7 +95,7 @@
     },
     {
       "path": "/docs/pipeline/localize-docs",
-      "hash": "9a33365691b5d992"
+      "hash": "d58aa740e0398cda"
     },
     {
       "path": "/docs/pipeline/redirects",
@@ -135,7 +135,7 @@
     },
     {
       "path": "/docs/reference/i18n",
-      "hash": "b1a36a61db4dea4a"
+      "hash": "ba639a53f6821e5a"
     },
     {
       "path": "/docs/reference/lint",
@@ -143,7 +143,7 @@
     },
     {
       "path": "/docs/reference/llm",
-      "hash": "6ce254c226d3dbeb"
+      "hash": "c8b85354b8dc06db"
     },
     {
       "path": "/docs/reference/markdown",

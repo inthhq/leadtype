@@ -277,34 +277,206 @@ describe("framework adapter route helpers", () => {
 
   it("serves markdown through the Next proxy helper", async () => {
     const manifest = buildManifest();
+    manifest.pages[0] = {
+      ...manifest.pages[0],
+      markdownFilePath: "docs/100%-coverage.md",
+    };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () =>
-      new Response("# Quickstart\n\nHello.")) as typeof fetch;
+    let fetchedUrl = "";
+    globalThis.fetch = (async (input) => {
+      fetchedUrl = input.toString();
+      return new Response("# Quickstart\n\nHello.");
+    }) as typeof fetch;
     try {
       await expect(
-        createDocsProxy({ manifest })(
+        createDocsProxy({ manifest, publicPathPrefix: "/_leadtype" })(
           new Request("https://example.com/docs/quickstart.md")
         ).then((response) => response.text())
       ).resolves.toContain("Hello.");
+      expect(fetchedUrl).toBe(
+        "https://example.com/_leadtype/docs/100%25-coverage.md"
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  it("treats Next proxy markdown fetch failures as missing markdown", async () => {
+  it("retries a legacy BYOP root mirror after a Next HTML fallback", async () => {
     const manifest = buildManifest();
+    manifest.pages[0] = {
+      ...manifest.pages[0],
+      urlPath: "/benchmarks/chrome",
+      absoluteUrl: "https://example.com/benchmarks/chrome",
+      markdownUrlPath: "/benchmarks/chrome.md",
+      markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+      relativePath: "benchmarks/chrome",
+    };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () => {
-      throw new TypeError("network failure");
+    const fetchedUrls: string[] = [];
+    const reportedErrors: unknown[] = [];
+    globalThis.fetch = (async (input) => {
+      const url = input.toString();
+      fetchedUrls.push(url);
+      if (url.endsWith("/docs/benchmarks/chrome.md")) {
+        return new Response("<html><body>Fallback</body></html>", {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
+      return new Response(
+        `---
+canonical_url: "https://example.com/benchmarks/chrome"
+last_updated: "2026-05-15T00:00:00.000Z"
+---
+# Chrome benchmarks
+`,
+        {
+          headers: { "content-type": "text/markdown; charset=utf-8" },
+        }
+      );
     }) as typeof fetch;
     try {
-      await expect(
-        createDocsProxy({ manifest })(
-          new Request("https://example.com/docs/quickstart.md")
-        )
-      ).resolves.toMatchObject({ status: 200 });
+      const response = await createDocsProxy({
+        manifest,
+        onReadError: (_target, cause) => {
+          reportedErrors.push(cause);
+        },
+      })(new Request("https://example.com/benchmarks/chrome.md"));
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("# Chrome benchmarks");
+      expect(fetchedUrls).toEqual([
+        "https://example.com/docs/benchmarks/chrome.md",
+        "https://example.com/benchmarks/chrome.md",
+      ]);
+      expect(reportedErrors).toEqual([]);
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("never fetches an encoded traversal target through the Next proxy", async () => {
+    const manifest = buildManifest();
+    manifest.pages[0] = {
+      ...manifest.pages[0],
+      markdownFilePath: "%2e%2e/secret.md",
+    };
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      return new Response("# Secret");
+    }) as typeof fetch;
+    try {
+      const response = await createDocsProxy({
+        manifest,
+        publicPathPrefix: "/_leadtype",
+      })(new Request("https://example.com/docs/quickstart.md"));
+      expect(response.status).toBe(500);
+      expect(fetchCalls).toBe(0);
+      expect(await response.text()).toContain(
+        "# Markdown temporarily unavailable"
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("reports a Next proxy markdown fetch failure as a server error", async () => {
+    // `/docs/quickstart` is in the manifest, so an unreachable mirror is a
+    // broken deployment — not a page that stopped existing.
+    const manifest = buildManifest();
+    const originalFetch = globalThis.fetch;
+    const fetchError = new TypeError("network failure");
+    let reportedError: unknown;
+    globalThis.fetch = (async () => {
+      throw fetchError;
+    }) as typeof fetch;
+    try {
+      const response = await createDocsProxy({
+        manifest,
+        onReadError: (_target, cause) => {
+          reportedError = cause;
+        },
+      })(new Request("https://example.com/docs/quickstart.md"));
+      expect(response.status).toBe(500);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(response.headers.get("Content-Type")).toContain("text/markdown");
+      expect(reportedError).toBe(fetchError);
+      const body = await response.text();
+      expect(body).toContain("# Markdown temporarily unavailable");
+      expect(body).not.toContain("# Page not found");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("rejects successful HTML fallbacks when fetching a markdown mirror", async () => {
+    const manifest = buildManifest();
+    const originalFetch = globalThis.fetch;
+    let reportedError: unknown;
+    globalThis.fetch = (async () =>
+      new Response("<html><body>Fallback</body></html>", {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      })) as typeof fetch;
+    try {
+      const response = await createDocsProxy({
+        manifest,
+        onReadError: (_target, cause) => {
+          reportedError = cause;
+        },
+      })(new Request("https://example.com/docs/quickstart.md"));
+      expect(response.status).toBe(500);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(reportedError).toBeInstanceOf(Error);
+      expect((reportedError as Error).message).toContain(
+        "unexpected content type"
+      );
+      const body = await response.text();
+      expect(body).toContain("# Markdown temporarily unavailable");
+      expect(body).not.toContain("Fallback");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("reports markdown reader failures through framework handlers", async () => {
+    const manifest = buildManifest();
+    const readError = new Error("asset unavailable");
+    let reportedError: unknown;
+    let reportedFilePath: string | undefined;
+    const response = await createTanStackServerHandler({
+      manifest,
+      readMarkdownFile: () => Promise.reject(readError),
+      onReadError: (target, cause) => {
+        reportedError = cause;
+        reportedFilePath = target.filePath;
+      },
+    })(new Request("https://example.com/docs/quickstart.md"));
+
+    expect(response.status).toBe(500);
+    expect(reportedError).toBe(readError);
+    expect(reportedFilePath).toBe("docs/quickstart.md");
+  });
+
+  it("keeps unknown adapter routes on the recovery body, or 404s on request", async () => {
+    const manifest = buildManifest();
+    const unknown = new Request("https://example.com/docs/nope.md");
+
+    // Documented Vercel-compatible default: the agent gets the recovery body.
+    const soft = await createTanStackServerHandler({
+      manifest,
+      readMarkdownFile: () => null,
+    })(unknown);
+    expect(soft.status).toBe(200);
+    expect(await soft.text()).toContain("# Page not found");
+
+    // Sites that want dead-link detection opt in through the adapter config.
+    const hard = await createRequiredNitroDocsHandler({
+      manifest,
+      readMarkdownFile: () => null,
+      missingStatus: 404,
+    })({ request: unknown });
+    expect(hard.status).toBe(404);
+    expect(await hard.text()).toContain("# Page not found");
   });
 });

@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createAgentArtifactHandler } from "../internal/framework";
 import {
   type AgentPageInput,
   type GenerateAgentArtifactsResult,
@@ -188,15 +189,32 @@ describe("generateAgentArtifacts", () => {
       (page) => page.urlPath === "/benchmarks/chrome"
     );
     expect(chrome?.markdownUrlPath).toBe("/benchmarks/chrome.md");
+    expect(chrome?.markdownFilePath).toBe("benchmarks/chrome.md");
     expect(chrome?.markdownAbsoluteUrl).toBe(
       `${BASE_URL}/benchmarks/chrome.md`
     );
     const root = manifest.pages.find((page) => page.urlPath === "/");
     expect(root?.markdownUrlPath).toBe("/index.md");
+    expect(root?.markdownFilePath).toBe("index.md");
     expect(manifest.jsonLd?.organization?.name).toBe("Consent.io");
     expect(manifest.seo?.ogImage).toBe(`${BASE_URL}/og.png`);
     expect(manifest.navigation.groups.map((group) => group.slug)).toContain(
       "benchmarks"
+    );
+
+    const handler = createAgentArtifactHandler({ manifest, publicDir: outDir });
+    const chromeResponse = await handler(
+      new Request(`${BASE_URL}/benchmarks/chrome.md`)
+    );
+    expect(chromeResponse?.status).toBe(200);
+    await expect(chromeResponse?.text()).resolves.toContain("Chrome numbers.");
+
+    const rootResponse = await handler(
+      new Request(`${BASE_URL}/`, { headers: { accept: "text/markdown" } })
+    );
+    expect(rootResponse?.status).toBe(200);
+    await expect(rootResponse?.text()).resolves.toContain(
+      "Welcome to the benchmark."
     );
 
     const robots = await readFile(result.files.robotsTxt ?? "", "utf-8");

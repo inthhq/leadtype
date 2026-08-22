@@ -299,9 +299,10 @@ The middleware above uses `createAgentMarkdownResponse`. It returns a Web `Respo
 
 - `Accept: text/markdown` and `Accept: text/plain` content negotiation (q-values respected).
 - Known AI user-agent headers (GPTBot, ClaudeBot, Bingbot, AmazonBot/Amazonbot, MetaExternalAgent, PerplexityBot, MistralBot, AppleBot, ByteSpider/Bytespider, Applebot-Extended, YouBot, …).
-- Direct `.md` URLs such as `/docs/quickstart.md`.
+- Direct `.md` URLs such as `/docs/quickstart.md`, including plain requests with no agent headers. Site-wide middleware claims these paths, so mount it after static routes if the app serves its own `.md` URLs.
 - `canonical_url` and `last_updated` frontmatter aliases injected automatically.
-- 200 markdown responses for missing docs pages, so agents do not discard the body.
+- 200 markdown responses for routes with no page behind them, so agents do not discard the recovery body along with the status — switch to `missingStatus: 404` when dead-link detection matters more.
+- 500 with `Cache-Control: no-store` when the active manifest or a supplied locale manifest lists a page but its markdown mirror cannot be read, because that is a broken deployment rather than a missing page. See [Missing pages vs. unreadable mirrors](/docs/reference/llm#missing-pages-vs-unreadable-mirrors).
 - `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept[, User-Agent]`, `Link: <…>; rel="canonical", </llms.txt>; rel="llms-txt"`, `X-Llms-Txt: /llms.txt`, `Content-Signal: ai-train=no, search=yes, ai-input=yes`, `Cache-Control: public, max-age=300, must-revalidate`.
 
 The `Link: rel="llms-txt"` and `X-Llms-Txt` headers let an agent that fetched any page **discover the site index** without guessing — point them at a different path with `llmsTxtPath: "/docs/llms.txt"`, or drop them with `llmsTxtPath: null`. `leadtype generate` also writes a discovery copy at `/.well-known/llms.txt` (served statically from `public/`), so crawlers that probe the well-known location find it too.
@@ -309,6 +310,10 @@ The `Link: rel="llms-txt"` and `X-Llms-Txt` headers let an agent that fetched an
 The `Content-Signal` header carries the same [Cloudflare Content-Signals](https://contentsignals.org) vocabulary as `robots.txt` (`search` / `ai-input` / `ai-train`). It defaults to the `balanced` policy (crawlable and retrievable, but "don't train on this"); pass a `contentSignal` of `{ search, aiInput, aiTrain }` or a string to change it, or `contentSignal: null` to omit it. `renderRobotsTxt` / `createRobotsTxtResponse` emit the matching `Content-Signal:` line in `robots.txt` from the same `policy` (`balanced` · `open` · `block-training` · `block-ai`), so one stance drives both surfaces.
 
 `readMarkdownFile` may be sync or async. In Node/Bun, read from disk. In Cloudflare, fetch from KV/R2 or an asset binding. In Vercel Edge, fetch from the deployment's static asset URL.
+
+If each locale has its own Agent Readability manifest, load those manifests with the middleware and pass them as `localizedManifests: { zh: zhManifest, ... }`. Cross-locale requests then resolve only pages and storage paths recorded by that locale's manifest; without it, Leadtype returns the missing-page response and does not probe a guessed file path. This matters for pages whose public mirror is `/docs/zh/guides.md` but whose generated file is `docs/zh/guides/index.md`.
+
+Pass `onReadError(target, cause?)` to report an unreadable mirror to your logger or error tracker. `cause` is present when the reader rejected or the manifest target failed validation, and absent when the reader returned nothing. `target.filePath` is absent for an invalid manifest target. The callback may be async; Leadtype waits for it and still returns the same safe 500 response if reporting itself fails. Framework adapters accept both `localizedManifests` and `onReadError` in their handler configs.
 
 Put that logic wherever your framework can intercept docs requests before its HTML route:
 

@@ -28,6 +28,7 @@ const QUOTED_STRING_ESCAPE_PATTERN = /["\\]/g;
 const ASCII_CONTROL_MAX_CODE_POINT = 0x1f;
 const ASCII_DELETE_CODE_POINT = 0x7f;
 const INVALID_PERCENT_ESCAPE_PATTERN = /%(?![0-9a-f]{2})/i;
+const VALID_PERCENT_ESCAPE_PATTERN = /%([0-9a-f]{2})/gi;
 const ROOTLESS_AUTHORITY_URL_PATTERN = /^(?:https?|wss?|ftp):(?!\/\/)/i;
 const ROOTLESS_FILE_URL_PATTERN = /^file:(?!\/)/i;
 const RFC3986_ILLEGAL_COMPONENT_ASCII_PATTERN = /[ "<>[\]^`{|}]/g;
@@ -38,7 +39,7 @@ const ROOT_AGENT_ARTIFACT_PATTERN =
 const DOCS_AGENT_ARTIFACT_PATTERN =
   /^\/docs\/(?:agent-readability\.json|llms\.txt|robots\.txt|search-(?:content|index)\.json|sitemap\.(?:md|xml))$/;
 const WELL_KNOWN_AGENT_ARTIFACT_PATTERN =
-  /^\/\.well-known\/(?:api-catalog|llms(?:-full)?\.txt|mcp(?:\.json|\/server-card\.json)?)$/;
+  /^\/\.well-known\/(?:agent-card\.json|agent-skills(?:\/.*)?|api-catalog|llms(?:-full)?\.txt|mcp(?:\.json|\/server-card\.json)?)$/;
 const AI_USER_AGENT_PATTERN =
   /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-searchbot|claude-user|claude-web|claudebot|deepseekbot|gemini-deep-research|google-extended|gptbot|meta-externalagent|meta-externalfetcher|metaexternalagent|mistralbot|oai-searchbot|perplexity-user|perplexitybot|youbot)\b/i;
 
@@ -115,6 +116,8 @@ const TRAINING_AI_CRAWLERS = [
 const URI_SCHEME_PATTERN = /^[a-z][a-z0-9+\-.]*:/i;
 const DISCOVERY_BASE_SCHEME = "leadtype:";
 const DISCOVERY_BASE_URL = `${DISCOVERY_BASE_SCHEME}//local`;
+const ABSOLUTE_FILE_PATH_PATTERN = /^(?:\/|[a-z]:\/)/i;
+const ENCODED_PATH_SEPARATOR_PATTERN = /%(?:2f|5c)/i;
 const API_CATALOG_URL_PATH = "/.well-known/api-catalog";
 /** RFC 9727 profile parameter that marks a linkset as an API catalog. */
 const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
@@ -178,6 +181,8 @@ export type AgentReadabilityPage = LocalizedDocsMetadata & {
   absoluteUrl: string;
   markdownUrlPath: string;
   markdownAbsoluteUrl: string;
+  /** Path to the generated mirror relative to the artifact output directory. */
+  markdownFilePath?: string;
   relativePath: string;
   groups: string[];
   lastModified: string;
@@ -285,6 +290,46 @@ export type MarkdownMirrorTarget = {
   relativePath: string;
 };
 
+function normalizeSafeRelativeFilePath(input: string): string | null {
+  const filePath = normalizeDocsPath(input);
+  if (
+    !filePath ||
+    ABSOLUTE_FILE_PATH_PATTERN.test(filePath) ||
+    QUERY_OR_HASH_PATTERN.test(filePath) ||
+    ENCODED_PATH_SEPARATOR_PATTERN.test(filePath) ||
+    hasAsciiControlCharacter(filePath) ||
+    hasUnpairedUtf16Surrogate(filePath)
+  ) {
+    return null;
+  }
+  const decodedPath = normalizeDocsPath(
+    filePath.replace(VALID_PERCENT_ESCAPE_PATTERN, (_escape, hex: string) =>
+      String.fromCharCode(Number.parseInt(hex, 16))
+    )
+  );
+  if (
+    ABSOLUTE_FILE_PATH_PATTERN.test(decodedPath) ||
+    hasAsciiControlCharacter(decodedPath) ||
+    hasUnpairedUtf16Surrogate(decodedPath)
+  ) {
+    return null;
+  }
+  const hasUnsafeSegment = (value: string): boolean =>
+    value
+      .split("/")
+      .some(
+        (segment) => segment.length === 0 || segment === "." || segment === ".."
+      );
+  return hasUnsafeSegment(filePath) || hasUnsafeSegment(decodedPath)
+    ? null
+    : filePath;
+}
+
+export type MarkdownReadErrorTarget = Omit<MarkdownMirrorTarget, "filePath"> & {
+  /** Absent when the manifest's authored mirror target failed validation. */
+  filePath?: string;
+};
+
 export type AgentRequestHeaders = Record<string, string | string[] | undefined>;
 
 export type MarkdownResponseHeadersConfig = {
@@ -326,6 +371,28 @@ export type RenderMissingMarkdownConfig = {
   lastUpdated?: string | Date;
 };
 
+export type RenderUnreadableMarkdownConfig = RenderMissingMarkdownConfig & {
+  /** Mirror path that could not be read, e.g. `/docs/quickstart.md`. */
+  markdownUrlPath: string;
+};
+
+/**
+ * Status for a route that resolves to no known page. `200` (the default) keeps
+ * the Vercel Agent Readability behaviour: agents get a readable recovery body
+ * instead of discarding it with the response. `404` suits sites that would
+ * rather have dead-link detection and monitoring see a real miss.
+ */
+export type MissingMarkdownStatus = 200 | 404;
+
+export type MarkdownReadErrorHandler = (
+  target: MarkdownReadErrorTarget,
+  cause?: unknown
+) => void | Promise<void>;
+
+export type LocalizedAgentReadabilityManifests = Readonly<
+  Record<string, AgentReadabilityManifest>
+>;
+
 export type CreateAgentMarkdownResponseConfig = {
   urlPath: string;
   method?: string;
@@ -334,12 +401,32 @@ export type CreateAgentMarkdownResponseConfig = {
   readMarkdownFile: (
     target: MarkdownMirrorTarget
   ) => string | null | undefined | Promise<string | null | undefined>;
+  /**
+   * Additional generated locale manifests, keyed by locale code. Cross-locale
+   * reads require the matching manifest so index mirrors and removed pages are
+   * resolved from generated metadata rather than guessed file paths.
+   */
+  localizedManifests?: LocalizedAgentReadabilityManifests;
+  /** Report an unreadable mirror before leadtype returns its safe 500 response. */
+  onReadError?: MarkdownReadErrorHandler;
   requestOrigin?: string;
   now?: Date;
   /** Override the default AI user-agent regex. */
   userAgentPattern?: RegExp;
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
+  /**
+   * Status for a route with no page behind it — an unknown `.md` path or an
+   * agent-shaped request for a URL the manifest never listed. Defaults to
+   * `200`, which is what the Vercel Agent Readability behaviour expects: the
+   * recovery body reaches the agent instead of being discarded with the
+   * status. Set `404` when dead-link detection and monitoring matter more.
+   *
+   * This never applies to a page the manifest *does* list whose markdown
+   * mirror cannot be read — that is a server-side integrity failure, answered
+   * with 500 and `Cache-Control: no-store`.
+   */
+  missingStatus?: MissingMarkdownStatus;
   /**
    * Redirect entries from the generated `docs/redirects.json`. Agent-shaped
    * requests for a renamed page (including its `.md` mirror) get a 308 to the
@@ -780,13 +867,40 @@ export function acceptsMarkdownHeader(accept: string | undefined): boolean {
   return markdown > html;
 }
 
-export function isAgentReadabilityArtifactPath(urlPath: string): boolean {
+export function isAgentReadabilityArtifactPath(
+  urlPath: string,
+  manifest?: AgentReadabilityManifest
+): boolean {
   const pathname = normalizeUrlPath(urlPath);
-  return (
+  if (
     ROOT_AGENT_ARTIFACT_PATTERN.test(pathname) ||
     DOCS_AGENT_ARTIFACT_PATTERN.test(pathname) ||
     WELL_KNOWN_AGENT_ARTIFACT_PATTERN.test(pathname)
-  );
+  ) {
+    return true;
+  }
+  for (const artifact of manifest?.i18n?.artifacts ?? []) {
+    const artifactPaths = [
+      artifact.llmsTxt,
+      artifact.llmsFullTxt,
+      artifact.searchIndex,
+      artifact.searchContent,
+      artifact.agentReadabilityManifest,
+      artifact.robotsTxt,
+      artifact.sitemapMd,
+      artifact.sitemapXml,
+    ];
+    if (
+      artifactPaths.some(
+        (artifactPath) =>
+          artifactPath !== undefined &&
+          normalizeUrlPath(artifactPath) === pathname
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -980,48 +1094,113 @@ export function resolveMarkdownMirrorTarget(
   }
 
   const withoutExtension = pathname.replace(MD_ONLY_EXTENSION_PATTERN, "");
-  const relativePath = withoutExtension.slice("/docs/".length);
-  if (!(relativePath && !relativePath.split("/").includes(".."))) {
+  const relativePath = normalizeSafeRelativeFilePath(
+    withoutExtension.slice("/docs/".length)
+  );
+  if (!relativePath) {
+    return null;
+  }
+  const filePath = normalizeSafeRelativeFilePath(
+    `${DOCS_DIRNAME}/${relativePath}.md`
+  );
+  if (!filePath) {
     return null;
   }
 
   return {
     urlPath: withoutExtension,
     markdownUrlPath: `${withoutExtension}.md`,
-    filePath: `${DOCS_DIRNAME}/${relativePath}.md`,
+    filePath,
     relativePath,
   };
 }
 
 /**
  * Resolve a page's Markdown mirror from the manifest entry (not the raw public
- * route), so pages mounted outside `/docs` (e.g. a changelog at `/changelog`)
- * still resolve to their `docs/<relativePath>.md` mirror.
+ * route), using the per-page path recorded by the generator. Manifests created
+ * before `markdownFilePath` existed fall back to the docs-tree layout,
+ * `docs/<relativePath>.md`.
  */
 export function resolveManifestMarkdownMirrorTarget(
   urlPath: string,
   manifest: AgentReadabilityManifest
 ): MarkdownMirrorTarget | null {
-  const pathname = normalizeUrlPath(urlPath).replace(
-    TRAILING_SLASH_PATTERN,
-    ""
-  );
-  const page = manifest.pages.find(
-    (entry) => entry.urlPath === pathname || entry.markdownUrlPath === pathname
-  );
+  const page = findManifestMarkdownPage(urlPath, manifest);
   if (!page) {
     return null;
   }
-  const relativePath = normalizeDocsPath(page.relativePath);
-  if (!(relativePath && !relativePath.split("/").includes(".."))) {
+  const relativePath = normalizeSafeRelativeFilePath(page.relativePath);
+  if (!relativePath) {
+    return null;
+  }
+  const filePath = normalizeSafeRelativeFilePath(
+    page.markdownFilePath ?? `${DOCS_DIRNAME}/${relativePath}.md`
+  );
+  if (!filePath) {
     return null;
   }
   return {
     urlPath: page.urlPath,
     markdownUrlPath: page.markdownUrlPath,
-    filePath: `${DOCS_DIRNAME}/${relativePath}.md`,
+    filePath,
     relativePath,
   };
+}
+
+function resolveLegacyRootMarkdownMirrorTarget(
+  page: AgentReadabilityPage,
+  primaryTarget: MarkdownMirrorTarget
+): MarkdownMirrorTarget | null {
+  if (page.markdownFilePath !== undefined) {
+    return null;
+  }
+  const markdownUrlPath = normalizeDocsPath(page.markdownUrlPath);
+  if (!markdownUrlPath.startsWith("/")) {
+    return null;
+  }
+  const filePath = normalizeSafeRelativeFilePath(markdownUrlPath.slice(1));
+  if (!filePath || filePath === primaryTarget.filePath) {
+    return null;
+  }
+  return { ...primaryTarget, filePath };
+}
+
+function isLegacyByopMarkdownMirror(
+  markdown: string,
+  page: AgentReadabilityPage
+): boolean {
+  // Both legacy generators omitted markdownFilePath. Only BYOP wrote root
+  // mirrors with these manifest-derived fields, so require both before
+  // accepting a root retry from an otherwise ambiguous manifest.
+  const frontmatter = markdown.match(FRONTMATTER_BLOCK_PATTERN)?.[1];
+  if (!frontmatter) {
+    return false;
+  }
+  const canonicalUrl = readFrontmatterField(frontmatter, ["canonical_url"]);
+  const lastUpdated = normalizeDate(
+    readFrontmatterField(frontmatter, ["last_updated"])
+  );
+  const pageLastModified = normalizeDate(page.lastModified);
+  return (
+    canonicalUrl === page.absoluteUrl &&
+    lastUpdated !== undefined &&
+    pageLastModified !== undefined &&
+    lastUpdated === pageLastModified
+  );
+}
+
+function findManifestMarkdownPage(
+  urlPath: string,
+  manifest: AgentReadabilityManifest
+): AgentReadabilityPage | undefined {
+  const normalizedPathname = normalizeUrlPath(urlPath);
+  const pathname =
+    normalizedPathname === "/"
+      ? normalizedPathname
+      : normalizedPathname.replace(TRAILING_SLASH_PATTERN, "");
+  return manifest.pages.find(
+    (entry) => entry.urlPath === pathname || entry.markdownUrlPath === pathname
+  );
 }
 
 /* ----------------------- markdown response builders -------------------- */
@@ -1115,6 +1294,31 @@ last_updated: ${toYamlScalar(lastUpdated)}
 No documentation page exists at \`${config.urlPath}\`.
 
 Use [/llms.txt](/llms.txt) or [/sitemap.md](/sitemap.md) to find available pages.
+`;
+}
+
+/**
+ * Body for a page the manifest lists whose markdown mirror could not be read.
+ * Deliberately not the "page not found" body: the page exists, the mirror is
+ * missing or unreachable, and telling an agent otherwise teaches it that a
+ * real URL is dead. Served with 500 so retries and monitoring see the failure.
+ */
+export function renderUnreadableMarkdown(
+  config: RenderUnreadableMarkdownConfig
+): string {
+  const lastUpdated =
+    normalizeDate(config.lastUpdated) ?? new Date().toISOString();
+  return `---
+title: "Markdown temporarily unavailable"
+description: ${toYamlScalar(`The markdown mirror for ${config.urlPath} could not be read.`)}
+canonical_url: ${toYamlScalar(config.canonicalUrl)}
+last_updated: ${toYamlScalar(lastUpdated)}
+---
+# Markdown temporarily unavailable
+
+This page exists at \`${config.urlPath}\`, but its markdown mirror at \`${config.markdownUrlPath}\` could not be read. This is a server-side error, not a missing page — do not treat the URL as dead.
+
+Retry the request, or read the page at [${config.canonicalUrl}](${config.canonicalUrl}).
 `;
 }
 
@@ -1548,6 +1752,140 @@ export function createDocsJsonLd(
 
 /* ----------------------- markdown content negotiation ------------------ */
 
+/**
+ * Recovery response for a route with no page behind it. The body is the same
+ * agent-readable "page not found" markdown at either status; only the status
+ * line differs, so a site can pick discoverability (200) or dead-link
+ * detection (404) without losing the recovery links.
+ */
+function missingMarkdownResponse(args: {
+  urlPath: string;
+  canonicalUrl: string;
+  config: CreateAgentMarkdownResponseConfig;
+  isHead: boolean;
+  includeUserAgentVary: boolean;
+}): Response {
+  const { urlPath, canonicalUrl, config, isHead } = args;
+  return new Response(
+    isHead
+      ? null
+      : renderMissingMarkdown({
+          urlPath,
+          canonicalUrl,
+          lastUpdated: config.now,
+        }),
+    {
+      status: config.missingStatus ?? 200,
+      headers: createMarkdownResponseHeaders({
+        canonicalUrl,
+        includeUserAgentVary: args.includeUserAgentVary,
+        cacheControl: config.cacheControl,
+      }),
+    }
+  );
+}
+
+function unreadableMarkdownResponse(args: {
+  target: Pick<MarkdownMirrorTarget, "urlPath" | "markdownUrlPath">;
+  canonicalUrl: string;
+  config: CreateAgentMarkdownResponseConfig;
+  isHead: boolean;
+  includeUserAgentVary: boolean;
+}): Response {
+  const { target, canonicalUrl, config, isHead } = args;
+  return new Response(
+    isHead
+      ? null
+      : renderUnreadableMarkdown({
+          urlPath: target.urlPath,
+          markdownUrlPath: target.markdownUrlPath,
+          canonicalUrl,
+          lastUpdated: config.now,
+        }),
+    {
+      status: 500,
+      headers: createMarkdownResponseHeaders({
+        canonicalUrl,
+        includeUserAgentVary: args.includeUserAgentVary,
+        cacheControl: "no-store",
+      }),
+    }
+  );
+}
+
+async function reportMarkdownReadError(
+  config: CreateAgentMarkdownResponseConfig,
+  target: MarkdownReadErrorTarget,
+  cause?: unknown
+): Promise<void> {
+  try {
+    await config.onReadError?.(target, cause);
+  } catch {
+    // Reporting must not replace the stable, agent-readable response.
+  }
+}
+
+function findOtherGeneratedLocaleArtifact(
+  urlPath: string,
+  manifest: AgentReadabilityManifest
+): DocsI18nManifest["artifacts"][number] | undefined {
+  const currentLocale = manifest.locale ?? manifest.i18n?.defaultLocale;
+  let matchedArtifact: DocsI18nManifest["artifacts"][number] | undefined;
+  let matchedPrefixLength = -1;
+  for (const artifact of manifest.i18n?.artifacts ?? []) {
+    const prefix = stripTrailingSlashes(artifact.urlPrefix) || "/";
+    const matchesPrefix =
+      prefix === "/"
+        ? urlPath.startsWith("/")
+        : urlPath === prefix || urlPath.startsWith(`${prefix}/`);
+    if (matchesPrefix && prefix.length > matchedPrefixLength) {
+      matchedArtifact = artifact;
+      matchedPrefixLength = prefix.length;
+    }
+  }
+  if (
+    matchedArtifact?.locale === currentLocale ||
+    matchedArtifact?.agentReadabilityManifest === undefined
+  ) {
+    return;
+  }
+  return matchedArtifact;
+}
+
+function findRedirectTargetPage(
+  urlPath: string,
+  manifest: AgentReadabilityManifest,
+  localizedManifests: LocalizedAgentReadabilityManifests | undefined
+): AgentReadabilityPage | undefined {
+  const defaultPage = findManifestMarkdownPage(urlPath, manifest);
+  if (defaultPage) {
+    return defaultPage;
+  }
+  const currentLocale = manifest.locale ?? manifest.i18n?.defaultLocale;
+  for (const [locale, localizedManifest] of Object.entries(
+    localizedManifests ?? {}
+  )) {
+    if (locale === currentLocale) {
+      continue;
+    }
+    const localizedPage = findManifestMarkdownPage(urlPath, localizedManifest);
+    if (
+      !localizedPage ||
+      (localizedPage.locale !== undefined && localizedPage.locale !== locale)
+    ) {
+      continue;
+    }
+    assertManifestVersion(localizedManifest);
+    if (localizedManifest.locale !== locale) {
+      throw new Error(
+        `leadtype: localized manifest for "${locale}" reports locale "${localizedManifest.locale ?? "undefined"}".`
+      );
+    }
+    return localizedPage;
+  }
+  return;
+}
+
 export async function createAgentMarkdownResponse(
   config: CreateAgentMarkdownResponseConfig
 ): Promise<Response | null> {
@@ -1557,14 +1895,14 @@ export async function createAgentMarkdownResponse(
   if (!readableMethod(config.method)) {
     return null;
   }
+  if (isAgentReadabilityArtifactPath(pathname, config.manifest)) {
+    return null;
+  }
 
   const accept = getHeaderValue(config.headers, "accept");
   const userAgent = getHeaderValue(config.headers, "user-agent");
   const matchesAgentUa = isAgentUserAgent(userAgent, config.userAgentPattern);
   const wantsMarkdown = acceptsMarkdownHeader(accept) || matchesAgentUa;
-  const target =
-    resolveManifestMarkdownMirrorTarget(pathname, config.manifest) ??
-    resolveMarkdownMirrorTarget(pathname);
   const isHead = config.method === "HEAD";
 
   // Renamed/removed pages: answer agent-shaped requests before the
@@ -1589,8 +1927,10 @@ export async function createAgentMarkdownResponse(
           redirect.to
             .replace(MD_ONLY_EXTENSION_PATTERN, "")
             .replace(TRAILING_SLASH_PATTERN, "") || "/";
-        const targetPage = config.manifest.pages.find(
-          (entry) => entry.urlPath === targetUrlPath
+        const targetPage = findRedirectTargetPage(
+          targetUrlPath,
+          config.manifest,
+          config.localizedManifests
         );
         if (targetPage) {
           toPath = targetPage.markdownUrlPath;
@@ -1609,62 +1949,214 @@ export async function createAgentMarkdownResponse(
     }
   }
 
-  if (target && (wantsMarkdown || pathname.endsWith(".md"))) {
-    const page = config.manifest.pages.find(
-      (entry) => entry.urlPath === target.urlPath
+  let resolvedManifest = config.manifest;
+  let page = findManifestMarkdownPage(pathname, resolvedManifest);
+  let target = resolveManifestMarkdownMirrorTarget(pathname, resolvedManifest);
+  if (!page) {
+    const localeArtifact = findOtherGeneratedLocaleArtifact(
+      pathname,
+      config.manifest
     );
-    const canonicalUrl =
-      page?.absoluteUrl ??
-      toAbsoluteUrl(target.urlPath, config.manifest.baseUrl);
-    const markdown = await config.readMarkdownFile(target);
-    const body = markdown
-      ? enrichMarkdownFrontmatter(markdown, {
-          canonicalUrl,
-          // `now` stays a last-resort fallback inside the enricher so a
-          // mirror's own authored frontmatter date always wins over the
-          // request/generation time.
-          lastUpdated: page?.lastModified,
-          now: config.now,
-        })
-      : renderMissingMarkdown({
-          urlPath: target.urlPath,
-          canonicalUrl,
-          lastUpdated: config.now,
-        });
-    return new Response(isHead ? null : body, {
-      status: 200,
-      headers: createMarkdownResponseHeaders({
-        canonicalUrl,
+    const localizedManifest = localeArtifact
+      ? config.localizedManifests?.[localeArtifact.locale]
+      : undefined;
+    if (localeArtifact && localizedManifest) {
+      assertManifestVersion(localizedManifest);
+      if (localizedManifest.locale !== localeArtifact.locale) {
+        throw new Error(
+          `leadtype: localized manifest for "${localeArtifact.locale}" reports locale "${localizedManifest.locale ?? "undefined"}".`
+        );
+      }
+      const localizedPage = findManifestMarkdownPage(
+        pathname,
+        localizedManifest
+      );
+      if (localizedPage) {
+        resolvedManifest = localizedManifest;
+        page = localizedPage;
+        target = resolveManifestMarkdownMirrorTarget(
+          pathname,
+          localizedManifest
+        );
+      }
+    }
+    if (!page) {
+      const currentLocale =
+        config.manifest.locale ?? config.manifest.i18n?.defaultLocale;
+      for (const [locale, candidateManifest] of Object.entries(
+        config.localizedManifests ?? {}
+      )) {
+        if (
+          locale === currentLocale ||
+          candidateManifest === localizedManifest
+        ) {
+          continue;
+        }
+        const localizedPage = findManifestMarkdownPage(
+          pathname,
+          candidateManifest
+        );
+        if (
+          !localizedPage ||
+          (localizedPage.locale !== undefined &&
+            localizedPage.locale !== locale)
+        ) {
+          continue;
+        }
+        assertManifestVersion(candidateManifest);
+        if (candidateManifest.locale !== locale) {
+          throw new Error(
+            `leadtype: localized manifest for "${locale}" reports locale "${candidateManifest.locale ?? "undefined"}".`
+          );
+        }
+        resolvedManifest = candidateManifest;
+        page = localizedPage;
+        target = resolveManifestMarkdownMirrorTarget(
+          pathname,
+          candidateManifest
+        );
+        break;
+      }
+    }
+  }
+  if (!page) {
+    const fallbackTarget = resolveMarkdownMirrorTarget(pathname);
+    const fallbackPage = fallbackTarget
+      ? findManifestMarkdownPage(fallbackTarget.urlPath, resolvedManifest)
+      : undefined;
+    if (fallbackPage) {
+      page = fallbackPage;
+      target = resolveManifestMarkdownMirrorTarget(
+        fallbackPage.markdownUrlPath,
+        resolvedManifest
+      );
+    } else {
+      target ??= fallbackTarget;
+    }
+  }
+
+  if ((target || page) && (wantsMarkdown || pathname.endsWith(".md"))) {
+    if (!page) {
+      return missingMarkdownResponse({
+        urlPath: target?.urlPath ?? pathname,
+        canonicalUrl: toAbsoluteUrl(
+          target?.urlPath ?? pathname,
+          resolvedManifest.baseUrl
+        ),
+        config,
+        isHead,
         includeUserAgentVary: matchesAgentUa,
-        cacheControl: config.cacheControl,
-      }),
+      });
+    }
+    const canonicalUrl =
+      page.absoluteUrl ?? toAbsoluteUrl(page.urlPath, resolvedManifest.baseUrl);
+    if (!target) {
+      const invalidTargetCause = new Error(
+        `leadtype: agent-readability manifest page ${JSON.stringify(page.urlPath)} has an invalid markdown mirror target (relativePath ${JSON.stringify(page.relativePath)}, markdownFilePath ${JSON.stringify(page.markdownFilePath)}). Regenerate the manifest with valid generated paths.`
+      );
+      await reportMarkdownReadError(
+        config,
+        {
+          urlPath: page.urlPath,
+          markdownUrlPath: page.markdownUrlPath,
+          relativePath: page.relativePath,
+        },
+        invalidTargetCause
+      );
+      return unreadableMarkdownResponse({
+        target: page,
+        canonicalUrl,
+        config,
+        isHead,
+        includeUserAgentVary: matchesAgentUa,
+      });
+    }
+    let markdown: string | null | undefined;
+    let deferredReadError:
+      | { target: MarkdownMirrorTarget; cause: unknown }
+      | undefined;
+    try {
+      markdown = await config.readMarkdownFile(target);
+    } catch (error) {
+      deferredReadError = { target, cause: error };
+    }
+    const legacyRootTarget = resolveLegacyRootMarkdownMirrorTarget(
+      page,
+      target
+    );
+    if (markdown == null && legacyRootTarget) {
+      target = legacyRootTarget;
+      try {
+        markdown = await config.readMarkdownFile(target);
+        if (markdown && !isLegacyByopMarkdownMirror(markdown, page)) {
+          markdown = null;
+        }
+      } catch (error) {
+        const readError = deferredReadError ?? { target, cause: error };
+        await reportMarkdownReadError(
+          config,
+          readError.target,
+          readError.cause
+        );
+        return unreadableMarkdownResponse({
+          target,
+          canonicalUrl,
+          config,
+          isHead,
+          includeUserAgentVary: matchesAgentUa,
+        });
+      }
+    }
+    if (markdown) {
+      return new Response(
+        isHead
+          ? null
+          : enrichMarkdownFrontmatter(markdown, {
+              canonicalUrl,
+              // `now` stays a last-resort fallback inside the enricher so a
+              // mirror's own authored frontmatter date always wins over the
+              // request/generation time.
+              lastUpdated: page.lastModified,
+              now: config.now,
+            }),
+        {
+          status: 200,
+          headers: createMarkdownResponseHeaders({
+            canonicalUrl,
+            includeUserAgentVary: matchesAgentUa,
+            cacheControl: config.cacheControl,
+          }),
+        }
+      );
+    }
+    const readError = deferredReadError ?? { target, cause: undefined };
+    await reportMarkdownReadError(config, readError.target, readError.cause);
+    // The manifest lists this page, so the mirror was supposed to be there.
+    // A missing read is a broken deployment — a stale build output, an
+    // unreachable asset host — not a missing page. Answering 200 "page not
+    // found" would tell agents a live URL is dead and cache that lie.
+    return unreadableMarkdownResponse({
+      target,
+      canonicalUrl,
+      config,
+      isHead,
+      includeUserAgentVary: matchesAgentUa,
     });
   }
 
-  if (wantsMarkdown && !isAgentReadabilityArtifactPath(pathname)) {
-    const canonicalUrl = toAbsoluteUrl(
-      pathname,
-      config.requestOrigin
-        ? stripTrailingSlashes(config.requestOrigin)
-        : config.manifest.baseUrl
-    );
-    return new Response(
-      isHead
-        ? null
-        : renderMissingMarkdown({
-            urlPath: pathname,
-            canonicalUrl,
-            lastUpdated: config.now,
-          }),
-      {
-        status: 200,
-        headers: createMarkdownResponseHeaders({
-          canonicalUrl,
-          includeUserAgentVary: matchesAgentUa,
-          cacheControl: config.cacheControl,
-        }),
-      }
-    );
+  if (wantsMarkdown || pathname.endsWith(".md")) {
+    return missingMarkdownResponse({
+      urlPath: pathname,
+      canonicalUrl: toAbsoluteUrl(
+        pathname,
+        config.requestOrigin
+          ? stripTrailingSlashes(config.requestOrigin)
+          : config.manifest.baseUrl
+      ),
+      config,
+      isHead,
+      includeUserAgentVary: matchesAgentUa,
+    });
   }
 
   return null;

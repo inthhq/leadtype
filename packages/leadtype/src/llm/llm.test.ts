@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createAgentArtifactHandler } from "../internal/framework";
 import {
   type DocsNavEntry,
   defineFrameworkNavigation,
@@ -29,6 +30,8 @@ import {
   enrichMarkdownFrontmatter,
   isAgentReadabilityArtifactPath,
   isAgentUserAgent,
+  type MarkdownMirrorTarget,
+  type MarkdownReadErrorTarget,
   renderApiCatalog,
   renderJsonLd,
   renderJsonLdScript,
@@ -36,6 +39,7 @@ import {
   renderRobotsTxt,
   renderSiteJsonLd,
   renderSitemapXml,
+  resolveManifestMarkdownMirrorTarget,
   resolveMarkdownMirrorTarget,
   stringifyJsonLd,
   validateJsonLd,
@@ -931,6 +935,59 @@ describe("generateLLMFullContextFiles", () => {
 });
 
 describe("generateAgentReadabilityArtifacts", () => {
+  it("records storage paths independently from mounted markdown URLs", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "changelog/v1.md",
+        frontmatter: "title: Version one\ndescription: Changelog.",
+        body: "# Version one\n",
+      },
+      {
+        relativePath: "rest-api/index.md",
+        frontmatter: "title: REST API\ndescription: API reference.",
+        body: "# REST API\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      mounts: [
+        { pathPrefix: "changelog", urlPrefix: "/changelog" },
+        { pathPrefix: "", urlPrefix: "/docs" },
+      ],
+    });
+    expect(result.manifest.pages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          markdownUrlPath: "/changelog/v1.md",
+          markdownFilePath: "docs/changelog/v1.md",
+        }),
+        expect.objectContaining({
+          markdownUrlPath: "/docs/rest-api.md",
+          markdownFilePath: "docs/rest-api/index.md",
+        }),
+      ])
+    );
+
+    const handler = createAgentArtifactHandler({
+      manifest: result.manifest,
+      publicDir: projectDir,
+    });
+    for (const [urlPath, heading] of [
+      ["/changelog/v1.md", "# Version one"],
+      ["/docs/rest-api.md", "# REST API"],
+    ] as const) {
+      const response = await handler(
+        new Request(`https://leadtype.dev${urlPath}`)
+      );
+      expect(response?.status).toBe(200);
+      await expect(response?.text()).resolves.toContain(heading);
+    }
+  });
+
   it("emits root sitemap, robots, and docs-scoped manifest files", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
@@ -1845,6 +1902,66 @@ describe("agent readability helpers", () => {
       })
     );
     expect(resolveMarkdownMirrorTarget("/docs/../secret")).toBeNull();
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "mirrors/quickstart.md",
+          },
+        ],
+      })
+    ).toEqual(expect.objectContaining({ filePath: "mirrors/quickstart.md" }));
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "docs/100%-coverage.md",
+          },
+        ],
+      })
+    ).toEqual(expect.objectContaining({ filePath: "docs/100%-coverage.md" }));
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [{ ...manifest.pages[0], markdownFilePath: "../secret.md" }],
+      })
+    ).toBeNull();
+    for (const markdownFilePath of [
+      "%2e%2e/secret.md",
+      "%2E./secret.md",
+      "docs%5c..%5csecret.md",
+    ]) {
+      expect(
+        resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+          ...manifest,
+          pages: [{ ...manifest.pages[0], markdownFilePath }],
+        })
+      ).toBeNull();
+    }
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "docs/quickstart%ZZ.md",
+          },
+        ],
+      })
+    ).toEqual(expect.objectContaining({ filePath: "docs/quickstart%ZZ.md" }));
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [{ ...manifest.pages[0], relativePath: "%2e%2e/secret" }],
+      })
+    ).toBeNull();
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", manifest)
+    ).toEqual(expect.objectContaining({ filePath: "docs/quickstart.md" }));
     expect(isAgentReadabilityArtifactPath("/llms.txt")).toBe(true);
     expect(isAgentReadabilityArtifactPath("/docs/search-index.json")).toBe(
       true
@@ -2466,6 +2583,22 @@ lastModified: 2026-05-01T12:00:00.000Z
     expect(docsBody).toContain("# Quickstart");
     expect(docsBody).toContain("canonical_url:");
 
+    let indexTarget: string | undefined;
+    const indexAliasResponse = await createAgentMarkdownResponse({
+      urlPath: "/docs.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: (target) => {
+        indexTarget = target.filePath;
+        return "# Docs\n";
+      },
+    });
+    expect(indexAliasResponse?.status).toBe(200);
+    expect(indexTarget).toBe("docs/index.md");
+    expect(indexAliasResponse?.headers.get("Link")).toContain(
+      '<https://example.com/docs>; rel="canonical"'
+    );
+
     const missingResponse = await createAgentMarkdownResponse({
       urlPath: "/missing-page",
       headers: { accept: "text/markdown" },
@@ -2542,6 +2675,663 @@ lastModified: 2026-05-01T12:00:00.000Z
         Promise.resolve("---\ntitle: Quickstart\n---\n# Quickstart from KV\n"),
     });
     expect(await response?.text()).toContain("# Quickstart from KV");
+  });
+
+  it("serves generated mirror filenames containing literal percent signs", async () => {
+    let mirrorTarget = "";
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "docs/100%-coverage.md",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        mirrorTarget = target.filePath;
+        return "# Percent coverage\n";
+      },
+    });
+
+    expect(response?.status).toBe(200);
+    expect(mirrorTarget).toBe("docs/100%-coverage.md");
+    expect(await response?.text()).toContain("# Percent coverage");
+  });
+
+  it("reads root-relative mirrors from legacy BYOP manifests", async () => {
+    const legacyByopManifest = {
+      ...manifest,
+      pages: [
+        {
+          ...manifest.pages[0],
+          urlPath: "/benchmarks/chrome",
+          absoluteUrl: "https://example.com/benchmarks/chrome",
+          markdownUrlPath: "/benchmarks/chrome.md",
+          markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+          relativePath: "benchmarks/chrome",
+        },
+        {
+          ...manifest.pages[0],
+          urlPath: "/",
+          absoluteUrl: "https://example.com/",
+          markdownUrlPath: "/index.md",
+          markdownAbsoluteUrl: "https://example.com/index.md",
+          relativePath: "index",
+        },
+      ],
+    };
+    const reads: string[] = [];
+    const readMarkdownFile = (target: MarkdownMirrorTarget): string | null => {
+      reads.push(target.filePath);
+      if (target.filePath.startsWith("docs/")) {
+        return null;
+      }
+      const page = legacyByopManifest.pages.find(
+        (candidate) => candidate.relativePath === target.relativePath
+      );
+      if (!page) {
+        return null;
+      }
+      return `---
+canonical_url: "${page.absoluteUrl}"
+last_updated: "${page.lastModified}"
+---
+# ${target.relativePath}`;
+    };
+
+    const leafResponse = await createAgentMarkdownResponse({
+      urlPath: "/benchmarks/chrome.md",
+      headers: {},
+      manifest: legacyByopManifest,
+      readMarkdownFile,
+    });
+    const rootResponse = await createAgentMarkdownResponse({
+      urlPath: "/index.md",
+      headers: {},
+      manifest: legacyByopManifest,
+      readMarkdownFile,
+    });
+
+    expect(leafResponse?.status).toBe(200);
+    expect(rootResponse?.status).toBe(200);
+    expect(reads).toEqual([
+      "docs/benchmarks/chrome.md",
+      "benchmarks/chrome.md",
+      "docs/index.md",
+      "index.md",
+    ]);
+  });
+
+  it("retries legacy BYOP root mirrors after a guessed-path read error", async () => {
+    const primaryReadError = new Error("unexpected HTML fallback");
+    const reads: string[] = [];
+    const reportedErrors: unknown[] = [];
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/benchmarks/chrome.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            urlPath: "/benchmarks/chrome",
+            absoluteUrl: "https://example.com/benchmarks/chrome",
+            markdownUrlPath: "/benchmarks/chrome.md",
+            markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+            relativePath: "benchmarks/chrome",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        reads.push(target.filePath);
+        if (target.filePath.startsWith("docs/")) {
+          throw primaryReadError;
+        }
+        return `---
+canonical_url: "https://example.com/benchmarks/chrome"
+last_updated: "2026-05-01T12:00:00.000Z"
+---
+# Chrome benchmarks
+`;
+      },
+      onReadError: (_target, cause) => {
+        reportedErrors.push(cause);
+      },
+    });
+
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toContain("# Chrome benchmarks");
+    expect(reads).toEqual([
+      "docs/benchmarks/chrome.md",
+      "benchmarks/chrome.md",
+    ]);
+    expect(reportedErrors).toEqual([]);
+  });
+
+  it("refuses stale root files from legacy mounted docs-tree manifests", async () => {
+    const reads: string[] = [];
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/changelog/v1.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            title: "Version 1",
+            urlPath: "/changelog/v1",
+            absoluteUrl: "https://example.com/changelog/v1",
+            markdownUrlPath: "/changelog/v1.md",
+            markdownAbsoluteUrl: "https://example.com/changelog/v1.md",
+            relativePath: "changelog/v1",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        reads.push(target.filePath);
+        if (target.filePath.startsWith("docs/")) {
+          return null;
+        }
+        return `---
+canonical_url: "https://example.com/changelog/v1"
+last_updated: "2026-04-01T12:00:00.000Z"
+---
+# Stale root copy
+`;
+      },
+    });
+
+    expect(response?.status).toBe(500);
+    expect(await response?.text()).not.toContain("# Stale root copy");
+    expect(reads).toEqual(["docs/changelog/v1.md", "changelog/v1.md"]);
+  });
+
+  it("reports a guessed-path read error when its legacy retry also fails", async () => {
+    const primaryReadError = new Error("unexpected HTML fallback");
+    const reported: Array<{
+      target: MarkdownReadErrorTarget;
+      cause: unknown;
+    }> = [];
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/benchmarks/chrome.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            urlPath: "/benchmarks/chrome",
+            absoluteUrl: "https://example.com/benchmarks/chrome",
+            markdownUrlPath: "/benchmarks/chrome.md",
+            markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+            relativePath: "benchmarks/chrome",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        if (target.filePath.startsWith("docs/")) {
+          throw primaryReadError;
+        }
+        return null;
+      },
+      onReadError: (target, cause) => {
+        reported.push({ target, cause });
+      },
+    });
+
+    expect(response?.status).toBe(500);
+    expect(reported).toEqual([
+      {
+        target: {
+          urlPath: "/benchmarks/chrome",
+          markdownUrlPath: "/benchmarks/chrome.md",
+          filePath: "docs/benchmarks/chrome.md",
+          relativePath: "benchmarks/chrome",
+        },
+        cause: primaryReadError,
+      },
+    ]);
+  });
+
+  it("answers 500 when a manifest-known page's mirror cannot be read", async () => {
+    // The manifest promised /docs/quickstart. An unreadable mirror is a broken
+    // build, so the response must not claim the page is missing.
+    for (const urlPath of ["/docs/quickstart", "/docs/quickstart.md"]) {
+      const response = await createAgentMarkdownResponse({
+        urlPath,
+        headers: { accept: "text/markdown" },
+        manifest,
+        requestOrigin: "http://localhost:3000",
+        now: new Date("2026-05-02T00:00:00.000Z"),
+        readMarkdownFile: () => null,
+      });
+
+      expect(response?.status).toBe(500);
+      expect(response?.headers.get("Cache-Control")).toBe("no-store");
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/markdown; charset=utf-8"
+      );
+      expect(response?.headers.get("Link")).toBe(
+        '<https://example.com/docs/quickstart>; rel="canonical", </llms.txt>; rel="llms-txt"'
+      );
+      expect(response?.headers.get("X-Llms-Txt")).toBe("/llms.txt");
+      const body = await response?.text();
+      expect(body).toContain("# Markdown temporarily unavailable");
+      expect(body).toContain("/docs/quickstart.md");
+      expect(body).toContain(
+        'canonical_url: "https://example.com/docs/quickstart"'
+      );
+      expect(body).not.toContain("# Page not found");
+    }
+
+    const readError = new Error("EACCES");
+    let reportedError: unknown;
+    let reportedTargetFilePath: string | undefined;
+    let reportingFinished = false;
+    const rejected = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => Promise.reject(readError),
+      onReadError: async (target, cause) => {
+        await Promise.resolve();
+        reportedError = cause;
+        reportedTargetFilePath = target.filePath;
+        reportingFinished = true;
+      },
+    });
+    expect(rejected?.status).toBe(500);
+    expect(rejected?.headers.get("Cache-Control")).toBe("no-store");
+    expect(await rejected?.text()).toContain(
+      "# Markdown temporarily unavailable"
+    );
+    expect(reportedError).toBe(readError);
+    expect(reportedTargetFilePath).toBe("docs/quickstart.md");
+    expect(reportingFinished).toBe(true);
+
+    const failedReporter = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => Promise.reject(new Error("EIO")),
+      onReadError: () => Promise.reject(new Error("reporter unavailable")),
+    });
+    expect(failedReporter?.status).toBe(500);
+    expect(await failedReporter?.text()).toContain(
+      "# Markdown temporarily unavailable"
+    );
+
+    // A caller's Cache-Control never applies to the failure — an integrity
+    // error must not be cached.
+    const cached = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      cacheControl: "public, max-age=86400",
+      readMarkdownFile: () => null,
+    });
+    expect(cached?.headers.get("Cache-Control")).toBe("no-store");
+
+    // HEAD keeps the status and headers, drops the body.
+    const head = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      method: "HEAD",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => null,
+    });
+    expect(head?.status).toBe(500);
+    expect(head?.headers.get("Cache-Control")).toBe("no-store");
+    expect(await head?.text()).toBe("");
+
+    let missingReadCause: unknown = "not-called";
+    const missingRead = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => null,
+      onReadError: (_target, cause) => {
+        missingReadCause = cause;
+      },
+    });
+    expect(missingRead?.status).toBe(500);
+    expect(missingReadCause).toBeUndefined();
+
+    let unsafeMirrorReads = 0;
+    let invalidReportedTarget: MarkdownReadErrorTarget | undefined;
+    let invalidTargetCause: unknown;
+    const invalidExplicitTarget = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [{ ...manifest.pages[0], markdownFilePath: "../secret.md" }],
+      },
+      readMarkdownFile: () => {
+        unsafeMirrorReads += 1;
+        return "# Stale guessed mirror";
+      },
+      onReadError: (target, cause) => {
+        invalidReportedTarget = target;
+        invalidTargetCause = cause;
+      },
+    });
+    expect(invalidExplicitTarget?.status).toBe(500);
+    expect(invalidExplicitTarget?.headers.get("Cache-Control")).toBe(
+      "no-store"
+    );
+    expect(await invalidExplicitTarget?.text()).toContain(
+      "# Markdown temporarily unavailable"
+    );
+    expect(unsafeMirrorReads).toBe(0);
+    expect(invalidReportedTarget).toEqual({
+      urlPath: "/docs/quickstart",
+      markdownUrlPath: "/docs/quickstart.md",
+      relativePath: "quickstart",
+    });
+    expect(invalidReportedTarget?.filePath).toBeUndefined();
+    expect(invalidTargetCause).toBeInstanceOf(Error);
+    expect((invalidTargetCause as Error).message).toContain(
+      "invalid markdown mirror target"
+    );
+    expect((invalidTargetCause as Error).message).toContain("../secret.md");
+
+    // A readable mirror is untouched by any of this.
+    const ok = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+    expect(ok?.status).toBe(200);
+    expect(ok?.headers.get("Cache-Control")).toBe(
+      "public, max-age=300, must-revalidate"
+    );
+  });
+
+  it("resolves cross-locale mirrors only through supplied locale manifests", async () => {
+    const defaultLocaleManifest = {
+      ...manifest,
+      locale: "en",
+      i18n: {
+        version: 1 as const,
+        defaultLocale: "en",
+        locales: [{ code: "en" }, { code: "zh" }],
+        artifacts: [
+          {
+            locale: "en",
+            urlPrefix: "/docs",
+            agentReadabilityManifest: "/docs/agent-readability.json",
+          },
+          {
+            locale: "zh",
+            urlPrefix: "/docs/zh",
+            agentReadabilityManifest: "/docs/zh/agent-readability.json",
+          },
+        ],
+      },
+    };
+    const zhManifest = {
+      ...manifest,
+      locale: "zh",
+      pages: [
+        {
+          ...manifest.pages[0],
+          title: "指南",
+          urlPath: "/docs/zh/guides",
+          absoluteUrl: "https://example.com/docs/zh/guides",
+          markdownUrlPath: "/docs/zh/guides.md",
+          markdownAbsoluteUrl: "https://example.com/docs/zh/guides.md",
+          markdownFilePath: "docs/zh/guides/index.md",
+          relativePath: "zh/guides/index",
+          locale: "zh",
+        },
+      ],
+    };
+
+    let localizedMirrorTarget = "";
+    const localized = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/guides.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      localizedManifests: { zh: zhManifest },
+      missingStatus: 404,
+      readMarkdownFile: (target) => {
+        localizedMirrorTarget = target.filePath;
+        return "---\ntitle: 快速开始\n---\n# 快速开始";
+      },
+    });
+    expect(localized?.status).toBe(200);
+    expect(await localized?.text()).toContain("# 快速开始");
+    expect(localizedMirrorTarget).toBe("docs/zh/guides/index.md");
+
+    const mountedZhManifest = {
+      ...zhManifest,
+      pages: [
+        {
+          ...zhManifest.pages[0],
+          title: "更新日志",
+          urlPath: "/changelog/zh/v1",
+          absoluteUrl: "https://example.com/changelog/zh/v1",
+          markdownUrlPath: "/changelog/zh/v1.md",
+          markdownAbsoluteUrl: "https://example.com/changelog/zh/v1.md",
+          markdownFilePath: "docs/changelog/zh/v1.md",
+          relativePath: "changelog/zh/v1",
+        },
+      ],
+    };
+    const mounted = await createAgentMarkdownResponse({
+      urlPath: "/changelog/zh/v1.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      localizedManifests: { zh: mountedZhManifest },
+      missingStatus: 404,
+      readMarkdownFile: (target) => {
+        localizedMirrorTarget = target.filePath;
+        return "# 更新日志";
+      },
+    });
+    expect(mounted?.status).toBe(200);
+    expect(await mounted?.text()).toContain("# 更新日志");
+    expect(localizedMirrorTarget).toBe("docs/changelog/zh/v1.md");
+
+    let staleMirrorReads = 0;
+    const absentPage = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/deleted.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      localizedManifests: { zh: zhManifest },
+      missingStatus: 404,
+      readMarkdownFile: () => {
+        staleMirrorReads += 1;
+        return "# Stale localized mirror";
+      },
+    });
+    expect(absentPage?.status).toBe(404);
+    expect(await absentPage?.text()).toContain("# Page not found");
+    expect(staleMirrorReads).toBe(0);
+
+    const absentManifest = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/guides.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      missingStatus: 404,
+      readMarkdownFile: () => {
+        staleMirrorReads += 1;
+        return "# Unverified localized mirror";
+      },
+    });
+    expect(absentManifest?.status).toBe(404);
+    expect(await absentManifest?.text()).toContain("# Page not found");
+    expect(staleMirrorReads).toBe(0);
+
+    const currentZhManifest = {
+      ...defaultLocaleManifest,
+      locale: "zh",
+      pages: [],
+    };
+    const staleDefaultManifest = {
+      ...zhManifest,
+      locale: "en",
+    };
+    const currentLocaleMissing = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/guides.md",
+      headers: {},
+      manifest: currentZhManifest,
+      localizedManifests: { en: staleDefaultManifest },
+      missingStatus: 404,
+      readMarkdownFile: () => {
+        staleMirrorReads += 1;
+        return "# Stale default-locale mirror";
+      },
+    });
+    expect(currentLocaleMissing?.status).toBe(404);
+    expect(await currentLocaleMissing?.text()).toContain("# Page not found");
+    expect(staleMirrorReads).toBe(0);
+
+    await expect(
+      createAgentMarkdownResponse({
+        urlPath: "/docs/zh/guides.md",
+        headers: {},
+        manifest: defaultLocaleManifest,
+        localizedManifests: {
+          zh: { ...zhManifest, version: 2 } as unknown as typeof zhManifest,
+        },
+        readMarkdownFile: () => "# Must not be read",
+      })
+    ).rejects.toThrow(/manifest version 2 is not supported/);
+
+    await expect(
+      createAgentMarkdownResponse({
+        urlPath: "/docs/zh/guides.md",
+        headers: {},
+        manifest: defaultLocaleManifest,
+        localizedManifests: { zh: { ...zhManifest, locale: "fr" } },
+        readMarkdownFile: () => "# Must not be read",
+      })
+    ).rejects.toThrow('localized manifest for "zh" reports locale "fr"');
+  });
+
+  it("keeps unknown routes at 200 by default and honors missingStatus: 404", async () => {
+    let staleMirrorReads = 0;
+    for (const request of [
+      { urlPath: "/docs/deleted.md", headers: {} },
+      { urlPath: "/docs/deleted", headers: { accept: "text/markdown" } },
+    ]) {
+      const deleted = await createAgentMarkdownResponse({
+        ...request,
+        manifest,
+        missingStatus: 404,
+        readMarkdownFile: () => {
+          staleMirrorReads += 1;
+          return "# Deleted but still on disk";
+        },
+      });
+      expect(deleted?.status).toBe(404);
+      const body = await deleted?.text();
+      expect(body).toContain("# Page not found");
+      expect(body).not.toContain("still on disk");
+    }
+    expect(staleMirrorReads).toBe(0);
+
+    // Three shapes of "genuinely unknown": an explicit .md path, Accept
+    // negotiation, and a bare AI user-agent.
+    const unknownRequests = [
+      { urlPath: "/docs/nope.md", headers: {} },
+      { urlPath: "/changelog/nope.md", headers: {} },
+      { urlPath: "/nope", headers: { accept: "text/markdown" } },
+      { urlPath: "/nope", headers: { "user-agent": "ClaudeBot/1.0" } },
+    ];
+
+    for (const request of unknownRequests) {
+      const soft = await createAgentMarkdownResponse({
+        ...request,
+        manifest,
+        readMarkdownFile: () => null,
+      });
+      expect(soft?.status).toBe(200);
+      expect(await soft?.text()).toContain("# Page not found");
+
+      const hard = await createAgentMarkdownResponse({
+        ...request,
+        manifest,
+        missingStatus: 404,
+        readMarkdownFile: () => null,
+      });
+      expect(hard?.status).toBe(404);
+      // The recovery body survives the harder status.
+      const body = await hard?.text();
+      expect(body).toContain("# Page not found");
+      expect(body).toContain("/llms.txt");
+      expect(hard?.headers.get("Content-Type")).toBe(
+        "text/markdown; charset=utf-8"
+      );
+      expect(hard?.headers.get("X-Llms-Txt")).toBe("/llms.txt");
+    }
+
+    // HEAD carries the chosen status with no body.
+    const head = await createAgentMarkdownResponse({
+      urlPath: "/docs/nope.md",
+      method: "HEAD",
+      headers: {},
+      manifest,
+      missingStatus: 404,
+      readMarkdownFile: () => null,
+    });
+    expect(head?.status).toBe(404);
+    expect(await head?.text()).toBe("");
+
+    // An existing page is unaffected by the option.
+    const existing = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      missingStatus: 404,
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+    expect(existing?.status).toBe(200);
+
+    // Non-agent requests still fall through to the host app's routing.
+    expect(
+      await createAgentMarkdownResponse({
+        urlPath: "/nope",
+        headers: { accept: "text/html" },
+        manifest,
+        missingStatus: 404,
+        readMarkdownFile: () => null,
+      })
+    ).toBeNull();
+  });
+
+  it("keeps 308 and 410 ahead of missingStatus", async () => {
+    const redirects = [
+      { from: "/docs/old-quickstart", to: "/docs/quickstart", status: 308 },
+      { from: "/docs/legacy", status: 410 },
+    ];
+
+    const moved = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      missingStatus: 404,
+      readMarkdownFile: () => null,
+    });
+    expect(moved?.status).toBe(308);
+
+    const gone = await createAgentMarkdownResponse({
+      urlPath: "/docs/legacy",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      missingStatus: 404,
+      readMarkdownFile: () => null,
+    });
+    expect(gone?.status).toBe(410);
   });
 
   it("redirects agent requests for renamed pages, including .md mirrors", async () => {
@@ -2625,6 +3415,100 @@ lastModified: 2026-05-01T12:00:00.000Z
     );
   });
 
+  it("resolves localized redirect targets from locale manifests", async () => {
+    const localizedPage = {
+      ...manifest.pages[0],
+      title: "指南",
+      urlPath: "/docs/zh/guides",
+      absoluteUrl: "https://example.com/docs/zh/guides",
+      markdownUrlPath: "/docs/zh/guides/index.md",
+      markdownAbsoluteUrl: "https://example.com/docs/zh/guides/index.md",
+      markdownFilePath: "docs/zh/guides/index.md",
+      relativePath: "zh/guides/index",
+      locale: "zh",
+    };
+    const localizedManifest = {
+      ...manifest,
+      locale: "zh",
+      pages: [localizedPage],
+    };
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/old-guides.md",
+      headers: {},
+      manifest,
+      localizedManifests: { zh: localizedManifest },
+      redirects: [
+        {
+          from: "/docs/zh/old-guides",
+          to: "/docs/zh/guides",
+          status: 308,
+        },
+      ],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/zh/guides/index.md"
+    );
+
+    const location = response?.headers.get("location");
+    expect(location).not.toBeNull();
+    let localizedMirrorTarget = "";
+    const destinationResponse = await createAgentMarkdownResponse({
+      urlPath: new URL(location ?? "https://example.com").pathname,
+      headers: {},
+      manifest,
+      localizedManifests: { zh: localizedManifest },
+      readMarkdownFile: (target) => {
+        localizedMirrorTarget = target.filePath;
+        return target.filePath === "docs/zh/guides/index.md"
+          ? "# Localized guides\n"
+          : null;
+      },
+    });
+
+    expect(destinationResponse?.status).toBe(200);
+    expect(localizedMirrorTarget).toBe("docs/zh/guides/index.md");
+    expect(await destinationResponse?.text()).toContain("# Localized guides");
+  });
+
+  it("ignores stale current-locale manifests when resolving redirects", async () => {
+    const stalePage = {
+      ...manifest.pages[0],
+      title: "Stale guide",
+      urlPath: "/docs/guides",
+      absoluteUrl: "https://example.com/docs/guides",
+      markdownUrlPath: "/docs/guides/index.md",
+      markdownAbsoluteUrl: "https://example.com/docs/guides/index.md",
+      markdownFilePath: "docs/guides/index.md",
+      relativePath: "guides/index",
+      locale: undefined,
+    };
+    const currentLocaleManifest = {
+      ...manifest,
+      locale: "fr",
+      pages: [stalePage],
+    };
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-guides.md",
+      headers: {},
+      manifest: { ...manifest, locale: "en" },
+      localizedManifests: { en: currentLocaleManifest },
+      redirects: [
+        { from: "/docs/old-guides", to: "/docs/guides", status: 308 },
+      ],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/guides.md"
+    );
+  });
+
   it("HEAD method returns headers with empty body", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
@@ -2665,12 +3549,75 @@ lastModified: 2026-05-01T12:00:00.000Z
     ).rejects.toThrow(/manifest version 2/);
   });
 
-  it("recognizes /llms-full.txt as an artifact (not a missing markdown page)", () => {
+  it("recognizes generated artifacts instead of treating them as missing pages", async () => {
     expect(isAgentReadabilityArtifactPath("/llms-full.txt")).toBe(true);
+    expect(isAgentReadabilityArtifactPath("/.well-known/agent-card.json")).toBe(
+      true
+    );
+    expect(
+      isAgentReadabilityArtifactPath("/.well-known/agent-skills/index.json")
+    ).toBe(true);
+    expect(
+      isAgentReadabilityArtifactPath(
+        "/.well-known/agent-skills/leadtype-docs/SKILL.md"
+      )
+    ).toBe(true);
     expect(isAgentReadabilityArtifactPath("/docs/llms-full.txt")).toBe(false);
     expect(
       isAgentReadabilityArtifactPath("/docs/llms-full/get-started.txt")
     ).toBe(false);
+
+    const localizedArtifactManifest = {
+      ...manifest,
+      i18n: {
+        version: 1 as const,
+        defaultLocale: "en",
+        locales: [{ code: "en" }, { code: "zh" }],
+        artifacts: [
+          {
+            locale: "zh",
+            urlPrefix: "/docs/zh",
+            sitemapMd: "/docs/zh/sitemap.md",
+            sitemapXml: "/docs/zh/sitemap.xml",
+          },
+        ],
+      },
+    };
+    expect(isAgentReadabilityArtifactPath("/docs/zh/sitemap.md")).toBe(false);
+    expect(
+      isAgentReadabilityArtifactPath(
+        "/docs/zh/sitemap.md",
+        localizedArtifactManifest
+      )
+    ).toBe(true);
+
+    for (const urlPath of [
+      "/.well-known/agent-card.json",
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/leadtype-docs/SKILL.md",
+    ]) {
+      const response = await createAgentMarkdownResponse({
+        urlPath,
+        headers: { accept: "text/markdown" },
+        manifest,
+        readMarkdownFile: () => {
+          throw new Error("generated artifacts must fall through");
+        },
+      });
+      expect(response).toBeNull();
+    }
+
+    for (const urlPath of ["/docs/zh/sitemap.md", "/docs/zh/sitemap.xml"]) {
+      const response = await createAgentMarkdownResponse({
+        urlPath,
+        headers: { accept: "text/markdown" },
+        manifest: localizedArtifactManifest,
+        readMarkdownFile: () => {
+          throw new Error("localized artifacts must fall through");
+        },
+      });
+      expect(response).toBeNull();
+    }
   });
 
   it("enrichMarkdownFrontmatter tolerates CRLF line endings", () => {

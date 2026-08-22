@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   AgentReadabilityManifest,
+  LocalizedAgentReadabilityManifests,
   MarkdownMirrorTarget,
+  MarkdownReadErrorHandler,
+  MissingMarkdownStatus,
 } from "../llm/readability";
 import {
   createAgentMarkdownResponse,
@@ -23,7 +26,17 @@ export type AgentArtifactHandlerConfig = {
   artifactBasePath?: string;
   publicDir?: string;
   readMarkdownFile?: ReadMarkdownFile;
+  /** Generated locale manifests, keyed by locale code, for exact cross-locale reads. */
+  localizedManifests?: LocalizedAgentReadabilityManifests;
+  /** Observe reader failures before the handler returns its stable 500 response. */
+  onReadError?: MarkdownReadErrorHandler;
   cacheControl?: string | null;
+  /**
+   * Status for a route with no page behind it. Defaults to `200`; pass `404`
+   * to have unknown routes read as misses. A manifest-known page whose mirror
+   * cannot be read still answers 500 either way.
+   */
+  missingStatus?: MissingMarkdownStatus;
 };
 
 export type LoadPageConfig = {
@@ -191,6 +204,11 @@ export function createAgentArtifactHandler(
       readMarkdownFile,
       requestOrigin: url.origin,
       cacheControl: config.cacheControl,
+      ...(config.localizedManifests
+        ? { localizedManifests: config.localizedManifests }
+        : {}),
+      ...(config.onReadError ? { onReadError: config.onReadError } : {}),
+      ...(config.missingStatus ? { missingStatus: config.missingStatus } : {}),
     });
   };
 }

@@ -2908,7 +2908,8 @@ export async function generateLLMFullContextFiles(
 function toAgentReadabilityPage(
   doc: MarkdownDoc,
   baseUrl: string,
-  mounts?: DocsPathMount[]
+  mounts: DocsPathMount[] | undefined,
+  markdownFilePath: string
 ): AgentReadabilityPage {
   const markdownUrlPath = toMountedMarkdownUrlPath(
     `${doc.relativePath}.md`,
@@ -2921,6 +2922,7 @@ function toAgentReadabilityPage(
     absoluteUrl: doc.absoluteUrl,
     markdownUrlPath,
     markdownAbsoluteUrl: toAbsoluteUrl(markdownUrlPath, baseUrl),
+    markdownFilePath,
     relativePath: doc.relativePath,
     groups: [...doc.groups],
     lastModified: doc.lastModified,
@@ -3025,7 +3027,12 @@ export async function generateAgentReadabilityArtifacts(
   // urlPath, so pages outside the navigation keep that deterministic tail.
   const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
   const pages = orderedDocs.map((doc) =>
-    toAgentReadabilityPage(doc, baseUrl, config.mounts)
+    toAgentReadabilityPage(
+      doc,
+      baseUrl,
+      config.mounts,
+      `${DOCS_DIRNAME}/${doc.relativePath}.md`
+    )
   );
   // No configured APIs means no catalog: an empty RFC 9727 linkset advertises
   // a catalog that lists nothing, so the artifact and its manifest entry are
@@ -3367,17 +3374,25 @@ export async function generateAgentArtifacts(
     config.groups
   );
   const pages = docs.map((doc) =>
-    toAgentReadabilityPage(doc, baseUrl, ROOT_PAGE_MOUNTS)
+    toAgentReadabilityPage(
+      doc,
+      baseUrl,
+      ROOT_PAGE_MOUNTS,
+      toMountedMarkdownUrlPath(
+        `${doc.relativePath}.md`,
+        ROOT_PAGE_MOUNTS
+      ).slice(1)
+    )
   );
 
   const markdownFiles = await Promise.all(
     docs.map(async (doc, index) => {
+      const page = pages[index];
       const markdownUrlPath =
-        pages[index]?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
-      const filePath = path.join(
-        outDir,
-        ...markdownUrlPath.slice(1).split("/")
-      );
+        page?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
+      const markdownFilePath =
+        page?.markdownFilePath ?? markdownUrlPath.slice(1);
+      const filePath = path.join(outDir, ...markdownFilePath.split("/"));
       await mkdir(path.dirname(filePath), { recursive: true });
       await writeFileAtomic(filePath, renderAgentPageMirror(doc));
       return filePath;
