@@ -31,6 +31,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { NlwebOpenApiConfig } from "../nlweb/openapi";
 import type { DocsOpenApiConfig } from "../openapi";
 import {
   type DocsFrontmatterSchema,
@@ -671,6 +672,20 @@ export type DocsAgentsConfig = {
     enabled?: boolean;
     /** The `/ask` endpoint path or absolute URL. Defaults to `/ask`. */
     endpoint?: string;
+    /**
+     * The generated OpenAPI 3.1 description of the `/ask` endpoint, emitted at
+     * `/openapi.json` and referenced as the API's `service-desc` in the RFC
+     * 9727 catalog. Set `enabled: false` to skip it.
+     *
+     * @example
+     * ```ts
+     * nlweb: {
+     *   enabled: true,
+     *   openapi: { url: "/api/openapi.json" },
+     * }
+     * ```
+     */
+    openapi?: NlwebOpenApiConfig;
   };
   /**
    * APIs this site publishes, listed in the RFC 9727 catalog at

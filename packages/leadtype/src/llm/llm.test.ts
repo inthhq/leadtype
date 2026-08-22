@@ -2536,6 +2536,85 @@ describe("agent readability helpers", () => {
     ]);
   });
 
+  it("deduplicates catalog hrefs after applying the request origin", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest: { ...manifest, baseUrl: "http://localhost:3000" },
+        requestOrigin: "https://acme.dev",
+        apis: [
+          { href: "https://acme.dev/ask", title: "Authored API" },
+          {
+            href: "/ask",
+            serviceDesc: { href: "/openapi.json" },
+          },
+        ],
+      })
+    );
+    expect(catalog.linkset[0].item).toEqual([
+      { href: "https://acme.dev/ask", title: "Authored API" },
+    ]);
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://acme.dev/ask",
+      "service-desc": [{ href: "https://acme.dev/openapi.json" }],
+    });
+  });
+
+  it("merges and deduplicates relations from equivalent catalog entries", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest,
+        apis: [
+          {
+            href: "/ask",
+            title: "Authored API",
+            serviceDesc: [
+              {
+                href: "/openapi.json",
+                title: "Authored description",
+              },
+              { href: "/asyncapi.json" },
+            ],
+          },
+          {
+            href: "https://example.com/ask",
+            title: "Generated API",
+            type: "application/json",
+            version: "1.0",
+            serviceDesc: [
+              {
+                href: "https://example.com/openapi.json",
+                title: "Duplicate description",
+                type: "application/vnd.oai.openapi+json;version=3.1",
+              },
+              { href: "/schema.json" },
+            ],
+          },
+        ],
+      })
+    );
+
+    expect(catalog.linkset[0].item).toEqual([
+      {
+        href: "https://example.com/ask",
+        title: "Authored API",
+        type: "application/json",
+        version: ["1.0"],
+      },
+    ]);
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://example.com/ask",
+      "service-desc": [
+        {
+          href: "https://example.com/openapi.json",
+          title: "Authored description",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+        { href: "https://example.com/asyncapi.json" },
+        { href: "https://example.com/schema.json" },
+      ],
+    });
+  });
+
   it("adds agent-readable frontmatter aliases to markdown", () => {
     const markdown = `---
 title: Quickstart

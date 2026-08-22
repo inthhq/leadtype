@@ -226,6 +226,12 @@ Leave `agents.apis` unset and no catalog is generated, no `files.apiCatalog`
 lands in the manifest, and the runtime route 404s. A catalog that lists nothing
 is worse than no catalog: it tells an agent APIs are available, then lists none.
 
+One API lists itself: with [`agents.nlweb.enabled`](/docs/reference/nlweb), the
+`/ask` endpoint joins the catalog with its generated OpenAPI document as the
+`service-desc`, so an NLWeb site publishes a catalog without declaring anything
+here. Declare `/ask` yourself and your entry is used as authored — leadtype only
+fills in a `service-desc` you left out.
+
 The catalog is served as
 `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`,
 and a `HEAD` request answers with a `Link: …; rel="api-catalog"` header and no

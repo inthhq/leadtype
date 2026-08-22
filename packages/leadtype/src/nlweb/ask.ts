@@ -13,6 +13,10 @@ import {
   DOCS_SEARCH_INDEX_VERSION,
   tokenizeDocsSearchText,
 } from "../search/search.js";
+import {
+  NLWEB_ALLOWED_METHODS,
+  NLWEB_ALLOWED_REQUEST_HEADERS,
+} from "./paths.js";
 
 /** The NLWeb protocol revision the handler's `_meta.version` reports. */
 export const NLWEB_PROTOCOL_VERSION = "0.55";
@@ -23,7 +27,6 @@ const HTTP_BAD_REQUEST = 400;
 const HTTP_CONTENT_TOO_LARGE = 413;
 const HTTP_METHOD_NOT_ALLOWED = 405;
 const HTTP_INTERNAL_ERROR = 500;
-const ALLOWED_METHODS = "GET, POST, OPTIONS";
 
 /**
  * Stable `error.code` values on `/ask` failure responses. Codes are part of the
@@ -154,7 +157,7 @@ export const NLWEB_FAILURES: Record<NlwebErrorCode, NlwebAskError> = {
   [NLWEB_ERROR_CODES.methodNotAllowed]: {
     code: NLWEB_ERROR_CODES.methodNotAllowed,
     message: "Method not allowed.",
-    resolution: `Use one of: ${ALLOWED_METHODS}.`,
+    resolution: `Use one of: ${NLWEB_ALLOWED_METHODS}.`,
   },
   [NLWEB_ERROR_CODES.artifactsUnavailable]: {
     code: NLWEB_ERROR_CODES.artifactsUnavailable,
@@ -752,6 +755,7 @@ function streamResponse(
  * import { createAskHandler } from "leadtype/nlweb";
  * const handler = createAskHandler({ artifacts: "./public" });
  * export const GET = handler;
+ * export const OPTIONS = handler;
  * export const POST = handler;
  * ```
  *
@@ -789,8 +793,8 @@ export function createAskHandler(
         status: 204,
         headers: {
           "access-control-allow-origin": "*",
-          "access-control-allow-methods": ALLOWED_METHODS,
-          "access-control-allow-headers": "content-type, accept",
+          "access-control-allow-methods": NLWEB_ALLOWED_METHODS,
+          "access-control-allow-headers": NLWEB_ALLOWED_REQUEST_HEADERS,
         },
       });
     }
@@ -801,7 +805,7 @@ export function createAskHandler(
       return failureResponse(
         NLWEB_FAILURES[NLWEB_ERROR_CODES.methodNotAllowed],
         HTTP_METHOD_NOT_ALLOWED,
-        { headers: { allow: ALLOWED_METHODS }, queryId }
+        { headers: { allow: NLWEB_ALLOWED_METHODS }, queryId }
       );
     }
 

@@ -13,6 +13,7 @@
 
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { normalizeDocsPath } from "../internal/docs-url";
 import { editDistanceWithin } from "../internal/edit-distance";
 import { type LogCall, logger } from "../internal/logger";
 import { isAsciiMediaType } from "../internal/media-type";
@@ -32,6 +33,11 @@ import type {
 } from "../llm";
 import { isGitSourceSpec } from "../llm";
 import { DOCS_TOOL_NAMES } from "../mcp/tools";
+import {
+  assertSafeNlwebAskEndpoint,
+  type NlwebOpenApiConfig,
+  resolveNlwebOpenApiConfig,
+} from "../nlweb/openapi";
 import { validateDocsOpenApiConfig } from "../openapi";
 import type { DocsTransformer } from "../transformers";
 import {
@@ -49,6 +55,7 @@ import { formatDeprecationWarning, normalizeDocsConfig } from "./normalize";
 import type { ResolvedDocsConfig } from "./types";
 
 const FEED_FORMAT_VALUES = new Set(["rss", "atom"]);
+const URI_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
 
 /**
  * A non-fatal problem found while validating a config. Errors throw; warnings
@@ -489,12 +496,23 @@ function validateContactPoints(value: unknown, configPath: string): void {
   validateContactPoint(value, configPath);
 }
 
-function validateProductInfo(value: unknown): ProductInfo | undefined {
+function validateProductInfo(
+  value: unknown,
+  configPath: string
+): ProductInfo | undefined {
   if (!isPlainRecord(value)) {
     return;
   }
   if (typeof value.name !== "string" || typeof value.tagline !== "string") {
     return;
+  }
+  if (value.docs !== undefined) {
+    if (typeof value.docs !== "string" || !value.docs.trim()) {
+      throw new Error(
+        `docs config at "${configPath}": product.docs must be a non-empty string`
+      );
+    }
+    validateApiCatalogHref(value.docs, "product.docs", configPath);
   }
   return value as ProductInfo;
 }
@@ -545,11 +563,67 @@ function validateLlmsConfig(
 function validateAgentEndpoint(
   value: unknown,
   field: string,
-  configPath: string
+  configPath: string,
+  options: {
+    allowEmptyDefault?: boolean;
+  } = {}
 ): void {
-  if (value !== undefined && typeof value !== "string") {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "string") {
     throw new Error(
       `docs config at "${configPath}": ${field} must be a string`
+    );
+  }
+  if (hasAsciiControlCharacter(value)) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain ASCII control characters`
+    );
+  }
+  if (value.includes("\\")) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain backslashes`
+    );
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    if (options.allowEmptyDefault && value === "") {
+      return;
+    }
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not be empty`
+    );
+  }
+  if (trimmed.startsWith("//")) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not be protocol-relative`
+    );
+  }
+  const isHttpUrl = /^https?:\/\//i.test(trimmed);
+  if (URI_SCHEME_PATTERN.test(trimmed) && !isHttpUrl) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must be an HTTP(S) URL or path`
+    );
+  }
+  if (isHttpUrl) {
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      throw new Error(
+        `docs config at "${configPath}": ${field} must be a valid absolute URL`
+      );
+    }
+    if (parsed.username || parsed.password) {
+      throw new Error(
+        `docs config at "${configPath}": ${field} must not include a username or password`
+      );
+    }
+  }
+  if (INVALID_PERCENT_ESCAPE_PATTERN.test(value)) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain a malformed percent escape`
     );
   }
 }
@@ -708,6 +782,40 @@ function validateApisConfig(value: unknown, configPath: string): void {
   }
 }
 
+/**
+ * The generated OpenAPI document overwrites whatever sits at its output path,
+ * so an unsafe path has to fail at config load — a build that discovers it has
+ * already clobbered a live artifact.
+ */
+function validateNlwebOpenApiConfig(value: unknown, configPath: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    throw new Error(
+      `docs config at "${configPath}": agents.nlweb.openapi must be an object`
+    );
+  }
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") {
+    throw new Error(
+      `docs config at "${configPath}": agents.nlweb.openapi.enabled must be a boolean`
+    );
+  }
+  for (const field of ["url", "output"] as const) {
+    if (value[field] !== undefined && typeof value[field] !== "string") {
+      throw new Error(
+        `docs config at "${configPath}": agents.nlweb.openapi.${field} must be a string`
+      );
+    }
+  }
+  try {
+    resolveNlwebOpenApiConfig(value as NlwebOpenApiConfig);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`docs config at "${configPath}": ${message}`);
+  }
+}
+
 function validateAgentsConfig(
   value: unknown,
   configPath: string
@@ -727,7 +835,9 @@ function validateAgentsConfig(
         `docs config at "${configPath}": agents.mcp must be an object`
       );
     }
-    validateAgentEndpoint(mcp.endpoint, "agents.mcp.endpoint", configPath);
+    validateAgentEndpoint(mcp.endpoint, "agents.mcp.endpoint", configPath, {
+      allowEmptyDefault: true,
+    });
     if (mcp.icon !== undefined && typeof mcp.icon !== "string") {
       throw new Error(
         `docs config at "${configPath}": agents.mcp.icon must be a string`
@@ -779,7 +889,20 @@ function validateAgentsConfig(
         `docs config at "${configPath}": agents.nlweb must be an object`
       );
     }
-    validateAgentEndpoint(nlweb.endpoint, "agents.nlweb.endpoint", configPath);
+    if (nlweb.endpoint !== undefined) {
+      if (typeof nlweb.endpoint !== "string") {
+        throw new Error(
+          `docs config at "${configPath}": agents.nlweb.endpoint must be a string`
+        );
+      }
+      try {
+        assertSafeNlwebAskEndpoint(nlweb.endpoint, "agents.nlweb.endpoint");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`docs config at "${configPath}": ${message}`);
+      }
+    }
+    validateNlwebOpenApiConfig(nlweb.openapi, configPath);
   }
   validateApisConfig(value.apis, configPath);
   return value as DocsConfig["agents"];
@@ -884,6 +1007,41 @@ function validateDocsFeeds(
     }
   }
   return value as DocsFeedConfig[];
+}
+
+function validateNlwebOpenApiFeedOutputs(
+  agents: DocsConfig["agents"] | undefined,
+  feeds: DocsFeedConfig[] | undefined,
+  configPath: string
+): void {
+  if (agents?.nlweb?.enabled !== true || !feeds?.length) {
+    return;
+  }
+  const openapi = resolveNlwebOpenApiConfig(agents.nlweb.openapi);
+  if (!openapi) {
+    return;
+  }
+  const openapiOutput = openapi.output.toLowerCase();
+  for (const feed of feeds) {
+    for (const format of feed.formats) {
+      const authoredFeedOutput = feed.output[format];
+      if (!authoredFeedOutput) {
+        continue;
+      }
+      const feedOutput = path.posix
+        .normalize(normalizeDocsPath(authoredFeedOutput).replace(/^\/+/, ""))
+        .toLowerCase();
+      const pathsConflict =
+        openapiOutput === feedOutput ||
+        openapiOutput.startsWith(`${feedOutput}/`) ||
+        feedOutput.startsWith(`${openapiOutput}/`);
+      if (pathsConflict) {
+        throw new Error(
+          `docs config at "${configPath}": agents.nlweb.openapi.output "${openapi.output}" conflicts with feed "${feed.id}" output.${format} "${authoredFeedOutput}"; generated output paths must not be equal, ancestors, or descendants`
+        );
+      }
+    }
+  }
 }
 
 function validateSourceConfigInheritance(
@@ -1350,7 +1508,7 @@ export function validateDocsConfig(
   if (!isPlainRecord(value)) {
     throw new Error(`docs config at "${configPath}" must export an object`);
   }
-  const product = validateProductInfo(value.product);
+  const product = validateProductInfo(value.product, configPath);
   if (!product) {
     throw new Error(
       `docs config at "${configPath}" must export product.name and product.tagline`
@@ -1413,6 +1571,7 @@ export function validateDocsConfig(
   const agents = validateAgentsConfig(value.agents, configPath);
   const mounts = validateDocsMounts(value.mounts, configPath);
   const feeds = validateDocsFeeds(value.feeds, configPath);
+  validateNlwebOpenApiFeedOutputs(agents, feeds, configPath);
   const git = validateGitConfig(value.git, configPath);
   const redirects = validateRedirectsConfig(value.redirects, configPath);
   const lint = validateLintConfig(value.lint, configPath);

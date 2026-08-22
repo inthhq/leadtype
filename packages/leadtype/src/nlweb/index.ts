@@ -1,10 +1,7 @@
 export {
-  DEFAULT_NLWEB_ASK_PATH,
   type GenerateNlwebArtifactsConfig,
   type GenerateNlwebArtifactsResult,
   generateNlwebArtifacts,
-  NLWEB_SCHEMA_FEED_PATH,
-  NLWEB_SCHEMA_MAP_PATH,
 } from "./artifacts.js";
 export {
   type CreateAskHandlerConfig,
@@ -18,3 +15,27 @@ export {
   type NlwebErrorCode,
   type NlwebResult,
 } from "./ask.js";
+export {
+  type AskEndpointLocation,
+  type AskOpenApiDocument,
+  assertSafeNlwebOpenApiOutput,
+  type BuildAskOpenApiDocumentConfig,
+  buildAskOpenApiDocument,
+  DEFAULT_NLWEB_OPENAPI_OUTPUT_PATH,
+  DEFAULT_NLWEB_OPENAPI_URL_PATH,
+  NLWEB_API_CATALOG_TITLE,
+  NLWEB_OPENAPI_MEDIA_TYPE,
+  NLWEB_OPENAPI_VERSION,
+  type NlwebOpenApiConfig,
+  nlwebApiCatalogEntry,
+  type ResolvedNlwebOpenApi,
+  resolveAskEndpointLocation,
+  resolveNlwebOpenApiConfig,
+  withNlwebApiCatalogEntry,
+  writeAskOpenApiDocument,
+} from "./openapi.js";
+export {
+  DEFAULT_NLWEB_ASK_PATH,
+  NLWEB_SCHEMA_FEED_PATH,
+  NLWEB_SCHEMA_MAP_PATH,
+} from "./paths.js";

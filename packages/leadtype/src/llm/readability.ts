@@ -2416,10 +2416,32 @@ function resolveCatalogUrl(href: string, base: string): string {
   }
 }
 
+type ResolvedCatalogLink = {
+  href: string;
+  type?: string;
+  title?: string;
+};
+
+function mergeCatalogLinks(
+  existing: ResolvedCatalogLink[] | undefined,
+  incoming: ResolvedCatalogLink[] | undefined
+): ResolvedCatalogLink[] | undefined {
+  const merged = new Map<string, ResolvedCatalogLink>();
+  for (const link of [...(existing ?? []), ...(incoming ?? [])]) {
+    const previous = merged.get(link.href);
+    if (previous) {
+      merged.set(link.href, { ...link, ...previous });
+    } else {
+      merged.set(link.href, { ...link });
+    }
+  }
+  return merged.size > 0 ? [...merged.values()] : undefined;
+}
+
 function toCatalogLinks(
   input: ApiCatalogLinkInput | undefined,
   base: string
-): Record<string, string>[] | undefined {
+): ResolvedCatalogLink[] | undefined {
   if (!input) {
     return;
   }
@@ -2430,7 +2452,7 @@ function toCatalogLinks(
       : { type: assertMediaType(link.type, "API catalog link type") }),
     ...(link.title ? { title: link.title } : {}),
   }));
-  return links.length > 0 ? links : undefined;
+  return mergeCatalogLinks(undefined, links);
 }
 
 /**
@@ -2466,19 +2488,24 @@ export function renderApiCatalog(config: RenderApiCatalogConfig): string {
     base
   );
 
-  const items: Record<string, string | string[]>[] = [];
-  const anchored: Record<string, unknown>[] = [];
+  const resolved = new Map<
+    string,
+    {
+      item: Record<string, string | string[]>;
+      relations: Record<string, ResolvedCatalogLink[]>;
+    }
+  >();
   for (const api of apis) {
     const href = resolveCatalogUrl(api.href, base);
-    items.push({
+    const item = {
       href,
       ...(api.type === undefined
         ? {}
         : { type: assertMediaType(api.type, "API catalog item type") }),
       ...(api.title ? { title: api.title } : {}),
       ...(api.version ? { version: [api.version] } : {}),
-    });
-    const relations: Record<string, unknown> = {};
+    };
+    const relations: Record<string, ResolvedCatalogLink[]> = {};
     const serviceDesc = toCatalogLinks(api.serviceDesc, base);
     const serviceDoc = toCatalogLinks(api.serviceDoc, base);
     const serviceMeta = toCatalogLinks(api.serviceMeta, base);
@@ -2495,11 +2522,29 @@ export function renderApiCatalog(config: RenderApiCatalogConfig): string {
     if (status) {
       relations.status = status;
     }
-    if (Object.keys(relations).length > 0) {
-      anchored.push({ anchor: href, ...relations });
+    const existing = resolved.get(href);
+    if (existing) {
+      for (const property of ["title", "type", "version"] as const) {
+        if (
+          existing.item[property] === undefined &&
+          item[property] !== undefined
+        ) {
+          existing.item[property] = item[property];
+        }
+      }
+      for (const [relation, links] of Object.entries(relations)) {
+        existing.relations[relation] =
+          mergeCatalogLinks(existing.relations[relation], links) ?? [];
+      }
+    } else {
+      resolved.set(href, { item, relations });
     }
   }
 
+  const items = [...resolved.values()].map((entry) => entry.item);
+  const anchored = [...resolved.entries()]
+    .filter(([, entry]) => Object.keys(entry.relations).length > 0)
+    .map(([anchor, entry]) => ({ anchor, ...entry.relations }));
   const linkset = [{ anchor: catalogUrl, item: items }, ...anchored];
   return `${JSON.stringify({ linkset }, null, 2)}\n`;
 }

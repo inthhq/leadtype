@@ -20,7 +20,11 @@ import {
   type DocsSearchIndex,
 } from "../search/index";
 import { type DocsArtifacts, loadDocsArtifacts } from "./artifacts";
-import { createMcpServerCard, resolveMcpServerInfo } from "./card";
+import {
+  createMcpServerCard,
+  resolveMcpEndpoint,
+  resolveMcpServerInfo,
+} from "./card";
 import { createMcpHandler } from "./http";
 import { createDocsMcpServer } from "./server";
 import { defineDocsTools } from "./tools";
@@ -373,6 +377,13 @@ describe("loadDocsArtifacts (from disk)", () => {
 });
 
 describe("createMcpServerCard", () => {
+  it("treats an empty configured endpoint as the default MCP path", () => {
+    expect(resolveMcpEndpoint(undefined, "")).toBe("/mcp");
+    expect(resolveMcpEndpoint("https://leadtype.dev/docs/", "")).toBe(
+      "https://leadtype.dev/docs/mcp"
+    );
+  });
+
   it("resolves the same default serverInfo the runtime uses", () => {
     expect(
       resolveMcpServerInfo({
