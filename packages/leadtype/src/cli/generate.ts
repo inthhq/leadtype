@@ -1993,14 +1993,6 @@ async function executeGenerate(
       // or explicitly enabled with --mcp. They are URL-independent: MCP keys on
       // urlPath and reads the .md mirror, so they work without a --base-url.
       if (bundleMcpEnabled) {
-        const search = await generateDocsSearchFiles({
-          outDir,
-          baseUrl: args.baseUrl,
-          mounts: effectiveMounts,
-          i18n: metadata.i18n,
-          locale: i18n?.defaultLocale,
-          transformers: metadata.transformers,
-        });
         const agentReadability = await generateAgentReadabilityArtifacts({
           outDir,
           baseUrl: args.baseUrl,
@@ -2012,6 +2004,17 @@ async function executeGenerate(
           locale: i18n?.defaultLocale,
           i18nManifest,
           emitRootCrawlerFiles: false,
+          transformers: metadata.transformers,
+        });
+        const search = await generateDocsSearchFiles({
+          outDir,
+          baseUrl: args.baseUrl,
+          mounts: effectiveMounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          indexOptions: {
+            generatedAt: agentReadability.manifest.generatedAt,
+          },
           transformers: metadata.transformers,
         });
         bundleFiles.searchIndex = search.outputPath;
@@ -2111,14 +2114,6 @@ async function executeGenerate(
         transformers: metadata.transformers,
       });
 
-      const search = await generateDocsSearchFiles({
-        outDir,
-        baseUrl: args.baseUrl,
-        mounts: effectiveMounts,
-        i18n: metadata.i18n,
-        locale: i18n?.defaultLocale,
-        transformers: metadata.transformers,
-      });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
         baseUrl: args.baseUrl,
@@ -2138,6 +2133,17 @@ async function executeGenerate(
         apis: metadata.agents?.apis,
         jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
+      });
+      const search = await generateDocsSearchFiles({
+        outDir,
+        baseUrl: args.baseUrl,
+        mounts: effectiveMounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
+        indexOptions: {
+          generatedAt: agentReadability.manifest.generatedAt,
+        },
+        transformers: metadata.transformers,
       });
       const nlwebArtifacts = nlwebEnabled
         ? await generateNlwebArtifacts({
@@ -2223,15 +2229,7 @@ async function executeGenerate(
             locale: locale.code,
             transformers: metadata.transformers,
           });
-          await generateDocsSearchFiles({
-            outDir,
-            baseUrl: args.baseUrl,
-            mounts: effectiveMounts,
-            i18n: metadata.i18n,
-            locale: locale.code,
-            transformers: metadata.transformers,
-          });
-          await generateAgentReadabilityArtifacts({
+          const agentReadability = await generateAgentReadabilityArtifacts({
             outDir,
             baseUrl: args.baseUrl,
             product: effectiveProduct,
@@ -2247,6 +2245,17 @@ async function executeGenerate(
             apis: metadata.agents?.apis,
             jsonLd: metadata.jsonLd,
             seo: metadata.agents?.seo,
+          });
+          await generateDocsSearchFiles({
+            outDir,
+            baseUrl: args.baseUrl,
+            mounts: effectiveMounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+            indexOptions: {
+              generatedAt: agentReadability.manifest.generatedAt,
+            },
+            transformers: metadata.transformers,
           });
         }
       }

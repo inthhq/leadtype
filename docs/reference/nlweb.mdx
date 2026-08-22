@@ -33,9 +33,14 @@ export const GET = handler;
 export const POST = handler;
 ```
 
+Pass `onError` to send server-side failures to your host logger or error
+tracker. The callback receives the original error before the HTTP response is
+sanitized. A promise it returns is awaited before the response is sent, so an
+async flush completes first and a slow reporter delays the response.
+
 The handler accepts the NLWeb request shapes — `?query=` params, a flat JSON
-body, or the `{ query: { text }, prefer: { streaming } }` document — and
-answers with:
+body, or the `{ query: { text }, prefer: { streaming } }` document. JSON request
+bodies are limited to 16 KiB. The handler answers with:
 
 ```json
 {
@@ -62,6 +67,55 @@ expect.)
 
 `mode=summarize` / `mode=generate` need an LLM and are not implemented —
 queries always answer in list mode.
+
+## Failure responses
+
+Every non-2xx `/ask` response is JSON — an NLWeb-shaped envelope with a
+leadtype-defined `error` extension — except the bodyless `204` answer to an
+`OPTIONS` preflight. Failures stay JSON even when the request asked for
+streaming.
+
+```json
+{
+  "query_id": "…",
+  "_meta": { "response_type": "failure", "version": "0.55" },
+  "error": {
+    "code": "missing_query",
+    "message": "Missing query.",
+    "resolution": "Pass query in the URL or JSON request body."
+  },
+  "results": []
+}
+```
+
+`error`, `error.code`, and `error.resolution` are leadtype extensions to the
+NLWeb response shape. The code is stable — branch on it rather than on the
+message. Codes are exported as `NLWEB_ERROR_CODES` (typed as
+`NlwebErrorCode`), and the response body is typed as `NlwebAskResponse`, a
+union of `NlwebAskAnswer` and `NlwebAskFailure`. Narrow it with
+`"error" in body`.
+
+| Code | Status | Returned when |
+| --- | --- | --- |
+| `invalid_json` | 400 | The request body is non-empty and is not parseable JSON. |
+| `invalid_request` | 400 | The body parses but is not an `/ask` document — not a JSON object, or `query`/`query_id` of the wrong type. |
+| `request_too_large` | 413 | The JSON request body exceeds the 16 KiB limit. |
+| `missing_query` | 400 | No query in the URL or the body. |
+| `method_not_allowed` | 405 | A method other than `GET`, `POST`, or `OPTIONS`. The response keeps its `Allow` header. |
+| `artifacts_unavailable` | 500 | The generated docs artifacts are missing, unreadable, or invalid — usually `leadtype generate` has not run where the handler is deployed, or its output is stale or incomplete. |
+| `internal_error` | 500 | Anything else. |
+
+`resolution` is a short recovery hint for the caller. Server-side detail —
+stack traces, filesystem paths, the directory the handler looked in — never
+reaches the response body, so `artifacts_unavailable` and `internal_error`
+carry generic guidance. Pass `onError` to route the original error to your
+server logs or error tracker.
+
+An empty `POST` body is not an error: a `POST` may carry the whole request in
+URL params. A URL `query_id` is echoed on answers and every failure. For
+`POST`, a body `query_id` is also accepted and takes precedence. Unsupported
+methods are rejected without reading their bodies, so their `405` response can
+only use the URL value. When no ID is supplied, the handler mints one.
 
 ## Emit the schema feeds
 

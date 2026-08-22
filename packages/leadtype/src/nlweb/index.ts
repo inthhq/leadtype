@@ -9,7 +9,12 @@ export {
 export {
   type CreateAskHandlerConfig,
   createAskHandler,
+  NLWEB_ERROR_CODES,
   NLWEB_PROTOCOL_VERSION,
+  type NlwebAskAnswer,
+  type NlwebAskError,
+  type NlwebAskFailure,
   type NlwebAskResponse,
+  type NlwebErrorCode,
   type NlwebResult,
 } from "./ask.js";

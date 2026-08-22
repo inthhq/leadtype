@@ -496,6 +496,7 @@ export async function createDocsProject<
         version: index.version,
         generatedAt: index.generatedAt,
         chunks: [],
+        codeChunks: [],
       },
     };
   }

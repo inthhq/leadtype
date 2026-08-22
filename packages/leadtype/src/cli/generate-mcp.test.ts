@@ -115,6 +115,12 @@ describe("generate --bundle --mcp", () => {
     expect(await exists(join(outDir, "docs", "agent-readability.json"))).toBe(
       true
     );
+    const [searchIndex, manifest] = await Promise.all(
+      ["search-index.json", "agent-readability.json"].map(async (fileName) =>
+        JSON.parse(await readFile(join(outDir, "docs", fileName), "utf8"))
+      )
+    );
+    expect(searchIndex.generatedAt).toBe(manifest.generatedAt);
     // Bundle stays website-artifact-free even with --mcp.
     expect(await exists(join(outDir, "llms.txt"))).toBe(false);
     expect(await exists(join(outDir, "sitemap.xml"))).toBe(false);
