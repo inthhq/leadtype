@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import type { ResolvedGitSource, ResolvedSource } from "../config/types";
 import { writeFileAtomic } from "../internal/atomic-fs";
 import { normalizeUrlPrefix } from "../internal/docs-url";
 import type { DocsCollection } from "../llm";
@@ -192,41 +193,44 @@ export function formatSparse(paths: string[] | undefined): string {
 }
 
 /**
- * Walk collections, derive a deduped list of unique remote sources by
- * `(repository, ref)`. Two collections targeting the same repo/ref share one
- * entry whose `collectionKeys` lists both keys. Errors if two collections
- * specify different `cacheDir` values for the same `(repository, ref)` pair.
+ * A remote source as sync acts on it: a git source from the resolved config
+ * with its cache directory resolved to an absolute path.
  */
-export function resolveRemoteSources(
-  collections: Record<string, DocsCollection>,
+export type SyncSource = ResolvedRemoteSource & {
+  /** Stable source id from the resolved config — the join key everywhere. */
+  id: string;
+  refKind: "commit" | "mutable";
+};
+
+/**
+ * Project the resolved source graph onto what sync needs: the git sources,
+ * with `cacheDir` resolved against the config directory (falling back to the
+ * default cache layout). Deliberately a projection, not a derivation — source
+ * identity, sparse sets, and cache dirs are decided once, by `resolveSources`
+ * in config/normalize.ts, and sync acts on exactly that graph. Agreement
+ * between collections sharing an acquisition is validated there, at
+ * normalize time.
+ */
+export function projectRemoteSources(
+  sources: readonly ResolvedSource[],
   configDir: string
-): ResolvedRemoteSource[] {
-  const byRepoRef = new Map<string, ResolvedRemoteSource>();
-  for (const resolved of resolveAllCollections(collections, configDir)) {
-    if (!resolved.remote) {
-      continue;
-    }
-    const repoRefKey = `${resolved.remote.repository}#${resolved.remote.ref}`;
-    const existing = byRepoRef.get(repoRefKey);
-    if (existing) {
-      if (existing.cacheDir !== resolved.remote.cacheDir) {
-        throw new Error(
-          `Collections [${existing.collectionKeys.join(", ")}] and "${resolved.key}" target ${resolved.remote.repository}@${resolved.remote.ref} but specify different cacheDir values ("${existing.cacheDir}" vs "${resolved.remote.cacheDir}"). Make them match or remove the explicit cacheDir.`
-        );
-      }
-      // One checkout can only have one path set. Silently taking the first
-      // would leave the other collection reading a directory that isn't there.
-      if (!sameSparse(existing.sparse, resolved.remote.sparse)) {
-        throw new Error(
-          `Collections [${existing.collectionKeys.join(", ")}] and "${resolved.key}" target ${resolved.remote.repository}@${resolved.remote.ref} but specify different sparse paths (${formatSparse(existing.sparse)} vs ${formatSparse(resolved.remote.sparse)}). One checkout has one path set — make them match, or list every path both collections need.`
-        );
-      }
-      existing.collectionKeys.push(resolved.key);
-      continue;
-    }
-    byRepoRef.set(repoRefKey, { ...resolved.remote });
-  }
-  return [...byRepoRef.values()];
+): SyncSource[] {
+  return sources
+    .filter((source): source is ResolvedGitSource => source.kind === "git")
+    .map((source) => ({
+      id: source.id,
+      repository: source.repository,
+      ref: source.ref,
+      refKind: source.refKind,
+      cacheDir: path.resolve(
+        configDir,
+        source.cacheDir ?? defaultCacheDir(source.repository, source.ref)
+      ),
+      ...(source.sparse && source.sparse.length > 0
+        ? { sparse: source.sparse }
+        : {}),
+      collectionKeys: [...source.collectionKeys],
+    }));
 }
 
 export async function readSyncManifest(
@@ -476,7 +480,7 @@ async function fastForwardExisting(
 export type SyncStatus = "fresh" | "cached" | "refreshed";
 
 export type SyncSourceResult = {
-  source: ResolvedRemoteSource;
+  source: SyncSource;
   status: SyncStatus;
   commit: string;
 };
@@ -484,23 +488,24 @@ export type SyncSourceResult = {
 export type SyncResult = {
   sources: SyncSourceResult[];
   /** Sources excluded by `repoFilter`. */
-  skipped: ResolvedRemoteSource[];
+  skipped: SyncSource[];
 };
 
-export type SyncCollectionsOptions = {
+export type SyncSourcesOptions = {
   mode: SyncMode;
   configDir: string;
-  collections: Record<string, DocsCollection>;
+  /** The resolved source graph from the normalized config. */
+  sources: readonly ResolvedSource[];
   runner?: GitRunner;
   /** Substring filter on repository URL. */
   repoFilter?: string;
 };
 
-export async function syncCollections(
-  opts: SyncCollectionsOptions
+export async function syncSources(
+  opts: SyncSourcesOptions
 ): Promise<SyncResult> {
   const runner = opts.runner ?? defaultGitRunner;
-  const allSources = resolveRemoteSources(opts.collections, opts.configDir);
+  const allSources = projectRemoteSources(opts.sources, opts.configDir);
   const filter = opts.repoFilter;
   const sources = filter
     ? allSources.filter((s) => s.repository.includes(filter))
@@ -517,7 +522,7 @@ export async function syncCollections(
 }
 
 async function syncOne(
-  source: ResolvedRemoteSource,
+  source: SyncSource,
   mode: SyncMode,
   runner: GitRunner
 ): Promise<SyncSourceResult> {
