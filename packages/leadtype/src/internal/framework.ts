@@ -116,31 +116,56 @@ function getArtifactResponse(
 ): Response | null {
   const url = new URL(request.url);
   const requestOrigin = url.origin;
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    return null;
+  }
+  const withoutHeadBody = (response: Response | null): Response | null => {
+    if (!(response && method === "HEAD")) {
+      return response;
+    }
+    return new Response(null, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  };
   switch (url.pathname) {
     case "/sitemap.xml":
-      return createSitemapXmlResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createSitemapXmlResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          cacheControl: config.cacheControl,
+        })
+      );
     case "/sitemap.md":
-      return createSitemapMarkdownResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createSitemapMarkdownResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          cacheControl: config.cacheControl,
+        })
+      );
     case "/robots.txt":
-      return createRobotsTxtResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createRobotsTxtResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          cacheControl: config.cacheControl,
+        })
+      );
+    // Returns null when the site publishes no APIs, so the well-known path
+    // 404s instead of serving an empty catalog.
     case "/.well-known/api-catalog":
-      return createApiCatalogResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createApiCatalogResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          method,
+          cacheControl: config.cacheControl,
+        })
+      );
     default:
       return null;
   }

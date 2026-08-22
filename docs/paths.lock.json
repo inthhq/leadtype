@@ -19,19 +19,19 @@
     },
     {
       "path": "/docs/aeo/generate-artifacts-without-docs",
-      "hash": "f48d52f4ff4a15c9"
+      "hash": "365ff5994946edc5"
     },
     {
       "path": "/docs/aeo/optimize-docs-for-agents",
-      "hash": "75a4f182a2f5b059"
+      "hash": "306b58b01e0b0a55"
     },
     {
       "path": "/docs/aeo/overview",
-      "hash": "45fcb5b1e61b75de"
+      "hash": "92ae2dada3ae01e6"
     },
     {
       "path": "/docs/aeo/serve-agent-responses",
-      "hash": "21ce323b01a5d30d"
+      "hash": "ae08933873888eaa"
     },
     {
       "path": "/docs/concepts/architecture",
@@ -71,7 +71,7 @@
     },
     {
       "path": "/docs/pipeline/build-a-docs-site",
-      "hash": "a8f8939d9b2d4589"
+      "hash": "e2ec8067a4abb752"
     },
     {
       "path": "/docs/pipeline/collections",
@@ -91,7 +91,7 @@
     },
     {
       "path": "/docs/pipeline/generate-static-artifacts",
-      "hash": "13be10c25e1f2313"
+      "hash": "c1019789d33b7f7b"
     },
     {
       "path": "/docs/pipeline/localize-docs",
@@ -99,7 +99,7 @@
     },
     {
       "path": "/docs/pipeline/redirects",
-      "hash": "af1b2b7cea83174f"
+      "hash": "1bcb354c0db7ba5c"
     },
     {
       "path": "/docs/pipeline/sync-docs-across-repos",
@@ -119,7 +119,7 @@
     },
     {
       "path": "/docs/reference/cli",
-      "hash": "245b25ecfe2f7681"
+      "hash": "8d8474e756903167"
     },
     {
       "path": "/docs/reference/convert",

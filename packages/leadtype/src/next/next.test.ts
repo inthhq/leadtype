@@ -112,9 +112,16 @@ describe("createDocsRouteHandler", () => {
     expect(body).toContain("Page not found");
   });
 
-  it("serves the API catalog well-known route", async () => {
+  it("serves the API catalog well-known route for a manifest with APIs", async () => {
     const handler = createDocsRouteHandler({
-      manifest: buildManifest(),
+      manifest: {
+        ...buildManifest(),
+        files: {
+          ...buildManifest().files,
+          apiCatalog: "/.well-known/api-catalog",
+        },
+        apis: [{ href: "/ask", title: "Documentation query API" }],
+      },
       publicDir,
     });
     const response = await handler(
@@ -122,12 +129,31 @@ describe("createDocsRouteHandler", () => {
     );
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe(
-      "application/linkset+json; charset=utf-8"
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
     );
+    expect(response.headers.get("Link")).toContain('rel="api-catalog"');
     const body = await response.json();
-    expect(body.linkset[0]["api-catalog"][0].href).toBe(
-      "https://example.com/.well-known/api-catalog"
+    expect(body.linkset[0].item[0].href).toBe("https://example.com/ask");
+
+    const head = await handler(
+      new Request("https://example.com/.well-known/api-catalog", {
+        method: "HEAD",
+      })
     );
+    expect(head.status).toBe(200);
+    expect(head.headers.get("Link")).toContain('rel="api-catalog"');
+    expect(await head.text()).toBe("");
+  });
+
+  it("404s the API catalog route when no APIs are configured", async () => {
+    const handler = createDocsRouteHandler({
+      manifest: buildManifest(),
+      publicDir,
+    });
+    const response = await handler(
+      new Request("https://example.com/.well-known/api-catalog")
+    );
+    expect(response.status).toBe(404);
   });
 
   it("routes through a custom readMarkdownFile when provided", async () => {

@@ -12,6 +12,8 @@ import {
   stripTrailingSlashes,
   toAbsoluteUrl,
 } from "../internal/docs-url";
+import { isAsciiMediaType } from "../internal/media-type";
+import { hasUnpairedUtf16Surrogate } from "../internal/unicode";
 import { type DocsRedirect, resolveRedirect } from "../redirects/redirects";
 
 export { slugifyDocsHeading } from "../internal/docs-heading";
@@ -22,7 +24,13 @@ const TRAILING_SLASH_PATTERN = /\/$/;
 const MARKDOWN_ACCEPT_PATTERN = /text\/(markdown|plain)/i;
 const HTML_ACCEPT_PATTERN = /text\/html/i;
 const FRONTMATTER_BLOCK_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
-const YAML_QUOTE_PATTERN = /["\\]/g;
+const QUOTED_STRING_ESCAPE_PATTERN = /["\\]/g;
+const ASCII_CONTROL_MAX_CODE_POINT = 0x1f;
+const ASCII_DELETE_CODE_POINT = 0x7f;
+const INVALID_PERCENT_ESCAPE_PATTERN = /%(?![0-9a-f]{2})/i;
+const ROOTLESS_AUTHORITY_URL_PATTERN = /^(?:https?|wss?|ftp):(?!\/\/)/i;
+const ROOTLESS_FILE_URL_PATTERN = /^file:(?!\/)/i;
+const RFC3986_ILLEGAL_COMPONENT_ASCII_PATTERN = /[ "<>[\]^`{|}]/g;
 const SCRIPT_JSON_ESCAPE_PATTERN = /[<>&\u2028\u2029]/g;
 const QUERY_OR_HASH_PATTERN = /[?#]/;
 const ROOT_AGENT_ARTIFACT_PATTERN =
@@ -33,6 +41,45 @@ const WELL_KNOWN_AGENT_ARTIFACT_PATTERN =
   /^\/\.well-known\/(?:api-catalog|llms(?:-full)?\.txt|mcp(?:\.json|\/server-card\.json)?)$/;
 const AI_USER_AGENT_PATTERN =
   /\b(amazonbot|anthropic-ai|applebot|bingbot|bytespider|ccbot|chatgpt-user|claude-searchbot|claude-user|claude-web|claudebot|deepseekbot|gemini-deep-research|google-extended|gptbot|meta-externalagent|meta-externalfetcher|metaexternalagent|mistralbot|oai-searchbot|perplexity-user|perplexitybot|youbot)\b/i;
+
+function hasAsciiControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (
+      codePoint <= ASCII_CONTROL_MAX_CODE_POINT ||
+      codePoint === ASCII_DELETE_CODE_POINT
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasNonAsciiCharacter(value: string): boolean {
+  for (const character of value) {
+    if ((character.codePointAt(0) ?? 0) > ASCII_DELETE_CODE_POINT) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function encodeRfc3986IllegalAscii(value: string): string {
+  return value.replace(
+    RFC3986_ILLEGAL_COMPONENT_ASCII_PATTERN,
+    (character) => `%${character.codePointAt(0)?.toString(16).toUpperCase()}`
+  );
+}
+
+function serializeRfc3986Url(resolved: URL): string {
+  if (!(resolved.host || resolved.pathname.startsWith("/"))) {
+    return encodeRfc3986IllegalAscii(resolved.toString());
+  }
+  resolved.pathname = encodeRfc3986IllegalAscii(resolved.pathname);
+  resolved.search = encodeRfc3986IllegalAscii(resolved.search);
+  resolved.hash = encodeRfc3986IllegalAscii(resolved.hash);
+  return resolved.toString();
+}
 // Crawlers split by intent (2026 train-vs-retrieve distinction). Retrieval bots
 // fetch a page to answer a live query; training bots gather corpora for model
 // training. Policies treat the two groups differently.
@@ -65,6 +112,13 @@ const TRAINING_AI_CRAWLERS = [
   "MetaExternalAgent",
   "Applebot-Extended",
 ] as const;
+const URI_SCHEME_PATTERN = /^[a-z][a-z0-9+\-.]*:/i;
+const DISCOVERY_BASE_SCHEME = "leadtype:";
+const DISCOVERY_BASE_URL = `${DISCOVERY_BASE_SCHEME}//local`;
+const API_CATALOG_URL_PATH = "/.well-known/api-catalog";
+/** RFC 9727 profile parameter that marks a linkset as an API catalog. */
+const API_CATALOG_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
+const API_CATALOG_CONTENT_TYPE = `application/linkset+json; profile="${API_CATALOG_PROFILE}"`;
 const DEFAULT_CACHE_CONTROL = "public, max-age=300, must-revalidate";
 const SUPPORTED_MANIFEST_VERSION = 1;
 const XML_ESCAPE_PATTERN = /[<>&'"]/g;
@@ -191,9 +245,17 @@ export type AgentReadabilityManifest = {
     robotsTxt: string;
     sitemapMd: string;
     sitemapXml: string;
-    /** API catalog linkset advertised from homepage `Link` headers. */
+    /**
+     * API catalog linkset advertised from homepage `Link` headers. Absent
+     * when the site configures no APIs — there is no catalog to serve then.
+     */
     apiCatalog?: string;
   };
+  /**
+   * APIs this site publishes (from site-owned `agents.apis`), baked in so the
+   * runtime catalog response matches the statically generated one.
+   */
+  apis?: ApiCatalogEntry[];
   /** Site-level JSON-LD options (from `agents.jsonLd`), so `renderSiteJsonLd` is config-driven. */
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults (from `agents.seo`), emitted by `createDocsHead`. */
@@ -298,21 +360,91 @@ export type AgentArtifactResponseConfig = {
   cacheControl?: string | null;
 };
 
+/**
+ * Paths advertised in the site-wide discovery `Link` header — the header
+ * surface, i.e. which artifacts a homepage or markdown response points at.
+ * The API catalog's own membership is configured separately with
+ * {@link ApiCatalogEntry}, because a catalog member is an API, not a docs
+ * artifact.
+ */
 export type AgentDiscoveryLinksConfig = {
-  /** API catalog path. Defaults to `/.well-known/api-catalog`. */
+  /**
+   * The generated manifest, used to decide whether an API catalog exists at
+   * all: without one, the `api-catalog` link is dropped rather than pointed at
+   * a 404. Pass it whenever you have it.
+   */
+  manifest?: AgentReadabilityManifest;
+  /**
+   * API catalog path. Defaults to the manifest's `files.apiCatalog`, or is
+   * omitted when no manifest is given. Pass a path to opt in explicitly.
+   */
   apiCatalogPath?: string | null;
   /** Human/agent-facing service documentation path. Defaults to `/docs/llms.txt`. */
   serviceDocPath?: string | null;
-  /** Machine-readable service description path. Defaults to `/docs/agent-readability.json`. */
+  /**
+   * Machine-readable API description (OpenAPI, AsyncAPI, …). No default: docs
+   * artifacts describe documentation, not an API contract, so leadtype only
+   * advertises `service-desc` when a site names a real one.
+   */
   serviceDescPath?: string | null;
+  /** Printable-ASCII media type for `serviceDescPath`. Defaults to `application/json`. */
+  serviceDescType?: string;
   /** Sitemap or equivalent descriptor path. Defaults to `/sitemap.xml`. */
   describedbyPath?: string | null;
 };
 
-export type RenderApiCatalogConfig = AgentDiscoveryLinksConfig & {
+/**
+ * One link target inside an API catalog entry — an OpenAPI description, a
+ * documentation page, a status page. `href` may be root-relative
+ * (`/openapi.json`), document-relative (`openapi.json`), or absolute
+ * (`https://api.example.com/openapi.json`). Relative hrefs resolve against
+ * the publishing origin; absolute hrefs keep their own origin.
+ */
+export type ApiCatalogLink = {
+  href: string;
+  /** Media type of the target, e.g. `application/vnd.oai.openapi+json;version=3.1`. */
+  type?: string;
+  /** Human-readable label for the target. */
+  title?: string;
+};
+
+export type ApiCatalogLinkInput = ApiCatalogLink | ApiCatalogLink[];
+
+/**
+ * One API published by this site, listed as an RFC 9727 catalog member. The
+ * catalog root links to `href` with `item`; the per-API metadata below is
+ * emitted as a second linkset object anchored at the API itself.
+ */
+export type ApiCatalogEntry = {
+  /**
+   * The API endpoint. Root-relative, document-relative, or absolute — an
+   * absolute `href` publishes a cross-origin API from this catalog.
+   */
+  href: string;
+  /** Human-readable API name, e.g. "Documentation query API". */
+  title?: string;
+  /** Media type the endpoint itself serves, e.g. `application/json`. */
+  type?: string;
+  /** API version, emitted as a `version` target attribute on the item link. */
+  version?: string;
+  /** Machine-readable API description(s) — OpenAPI, AsyncAPI, WSDL. */
+  serviceDesc?: ApiCatalogLinkInput;
+  /** Human-readable API documentation. */
+  serviceDoc?: ApiCatalogLinkInput;
+  /** Metadata about the API that is neither description nor documentation. */
+  serviceMeta?: ApiCatalogLinkInput;
+  /** Operational status resource for the API. */
+  status?: ApiCatalogLinkInput;
+};
+
+export type RenderApiCatalogConfig = {
   manifest: AgentReadabilityManifest;
   /** Live request origin, e.g. "http://localhost:5173". Falls back to manifest.baseUrl. */
   requestOrigin?: string;
+  /** APIs to list. Defaults to the manifest's `apis`. */
+  apis?: ApiCatalogEntry[];
+  /** Catalog path, used as the catalog-root anchor. Defaults to `/.well-known/api-catalog`. */
+  apiCatalogPath?: string;
 };
 
 export type CreateSitemapMarkdownResponseConfig =
@@ -346,6 +478,8 @@ export type CreateRobotsTxtResponseConfig = {
 export type CreateApiCatalogResponseConfig = RenderApiCatalogConfig & {
   /** Override Cache-Control. Pass `null` to omit. */
   cacheControl?: string | null;
+  /** Request method. Only GET and HEAD return a response; HEAD has no body. */
+  method?: string;
 };
 
 export type DocsHeadEntry = Record<string, unknown>;
@@ -482,7 +616,7 @@ function normalizeUrlPath(input: string): string {
 }
 
 function toYamlScalar(value: string): string {
-  return `"${value.replace(YAML_QUOTE_PATTERN, "\\$&")}"`;
+  return `"${value.replace(QUOTED_STRING_ESCAPE_PATTERN, "\\$&")}"`;
 }
 
 function frontmatterHasField(frontmatter: string, names: string[]): boolean {
@@ -655,15 +789,102 @@ export function isAgentReadabilityArtifactPath(urlPath: string): boolean {
   );
 }
 
+/**
+ * Which catalog path the discovery header should advertise. A manifest is
+ * authoritative: `leadtype generate` only records `files.apiCatalog` when the
+ * site declares APIs, so its absence means there is no catalog to point at.
+ * Without a manifest, fail closed: callers can opt in with `apiCatalogPath`,
+ * but should not advertise a catalog that may not exist.
+ */
+function resolveAdvertisedApiCatalogPath(
+  manifest: AgentReadabilityManifest | undefined
+): string | null {
+  if (!manifest) {
+    return null;
+  }
+  return manifest.apis?.length ? (manifest.files.apiCatalog ?? null) : null;
+}
+
 function normalizeDiscoveryPath(pathname: string): string {
-  return normalizeUrlPath(pathname || "/");
+  const trimmed = pathname.trim();
+  if (!trimmed) {
+    throw new Error("leadtype: discovery URL must not be empty.");
+  }
+  if (hasAsciiControlCharacter(pathname)) {
+    throw new Error(
+      "leadtype: discovery URL must not contain ASCII control characters."
+    );
+  }
+  if (hasUnpairedUtf16Surrogate(pathname)) {
+    throw new Error(
+      "leadtype: discovery URL must not contain unpaired UTF-16 surrogates."
+    );
+  }
+  if (pathname.includes("\\")) {
+    throw new Error("leadtype: discovery URL must not contain backslashes.");
+  }
+  if (INVALID_PERCENT_ESCAPE_PATTERN.test(trimmed)) {
+    throw new Error(
+      "leadtype: discovery URL must not contain a malformed percent escape."
+    );
+  }
+  if (
+    ROOTLESS_AUTHORITY_URL_PATTERN.test(trimmed) ||
+    ROOTLESS_FILE_URL_PATTERN.test(trimmed)
+  ) {
+    throw new Error(
+      "leadtype: discovery URL must use the required slashes after its URL scheme."
+    );
+  }
+  const hasScheme = URI_SCHEME_PATTERN.test(trimmed);
+  try {
+    if (hasScheme) {
+      const resolved = new URL(trimmed);
+      return serializeRfc3986Url(resolved);
+    }
+    const resolved = new URL(trimmed, DISCOVERY_BASE_URL);
+    const serialized = serializeRfc3986Url(resolved);
+    if (trimmed.startsWith("//")) {
+      return serialized.slice(DISCOVERY_BASE_SCHEME.length);
+    }
+    const resolvedPathname = resolved.pathname.startsWith("//")
+      ? `/.${resolved.pathname}`
+      : resolved.pathname;
+    return `${resolvedPathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    const description = hasScheme ? "absolute URL" : "URI-reference";
+    throw new Error(
+      `leadtype: discovery URL is not a valid ${description} (${JSON.stringify(pathname)}).`
+    );
+  }
 }
 
 function quotedLink(pathname: string, params: Record<string, string>): string {
   const serializedParams = Object.entries(params)
-    .map(([key, value]) => `${key}="${value}"`)
+    .map(([key, value]) => {
+      if (hasAsciiControlCharacter(value)) {
+        throw new Error(
+          "leadtype: discovery Link parameters must not contain ASCII control characters."
+        );
+      }
+      if (hasNonAsciiCharacter(value)) {
+        throw new Error(
+          "leadtype: discovery Link parameters must contain only printable ASCII characters."
+        );
+      }
+      return `${key}="${value.replace(QUOTED_STRING_ESCAPE_PATTERN, "\\$&")}"`;
+    })
     .join("; ");
   return `<${pathname}>; ${serializedParams}`;
+}
+
+function assertMediaType(value: string, field: string): string {
+  if (!isAsciiMediaType(value)) {
+    throw new Error(
+      `leadtype: ${field} must be a valid ASCII media type (${JSON.stringify(value)}).`
+    );
+  }
+  return value;
 }
 
 export function createAgentDiscoveryLinkHeader(
@@ -672,16 +893,13 @@ export function createAgentDiscoveryLinkHeader(
   const links: string[] = [];
   const apiCatalogPath =
     config.apiCatalogPath === undefined
-      ? "/.well-known/api-catalog"
+      ? resolveAdvertisedApiCatalogPath(config.manifest)
       : config.apiCatalogPath;
   const serviceDocPath =
     config.serviceDocPath === undefined
       ? "/docs/llms.txt"
       : config.serviceDocPath;
-  const serviceDescPath =
-    config.serviceDescPath === undefined
-      ? "/docs/agent-readability.json"
-      : config.serviceDescPath;
+  const serviceDescPath = config.serviceDescPath ?? null;
   const describedbyPath =
     config.describedbyPath === undefined
       ? "/sitemap.xml"
@@ -707,7 +925,10 @@ export function createAgentDiscoveryLinkHeader(
     links.push(
       quotedLink(normalizeDiscoveryPath(serviceDescPath), {
         rel: "service-desc",
-        type: "application/json",
+        type: assertMediaType(
+          config.serviceDescType ?? "application/json",
+          "serviceDescType"
+        ),
       })
     );
   }
@@ -1642,62 +1863,189 @@ function resolveEffectiveBase(
   manifest: AgentReadabilityManifest,
   requestOrigin: string | undefined
 ): string {
-  return requestOrigin
-    ? stripTrailingSlashes(requestOrigin)
-    : stripTrailingSlashes(manifest.baseUrl);
+  if (!requestOrigin) {
+    return stripTrailingSlashes(manifest.baseUrl);
+  }
+  const requestBase = new URL(requestOrigin);
+  try {
+    requestBase.pathname = new URL(manifest.baseUrl).pathname;
+  } catch {
+    requestBase.pathname = "/";
+  }
+  requestBase.search = "";
+  requestBase.hash = "";
+  return stripTrailingSlashes(requestBase.toString());
 }
 
+/**
+ * Resolve an API-catalog `href` against the publishing origin. Absolute hrefs
+ * keep their own origin (a catalog may list cross-origin APIs) but are still
+ * normalized by `URL`. Relative hrefs resolve against the origin root, so both
+ * `/ask` and `ask` land on `${base}/ask`.
+ */
+function resolveCatalogUrl(href: string, base: string): string {
+  const trimmed = href.trim();
+  if (!trimmed) {
+    throw new Error("leadtype: API catalog href must not be empty.");
+  }
+  if (hasAsciiControlCharacter(href)) {
+    throw new Error(
+      "leadtype: API catalog href must not contain ASCII control characters."
+    );
+  }
+  if (hasUnpairedUtf16Surrogate(href)) {
+    throw new Error(
+      "leadtype: API catalog href must not contain unpaired UTF-16 surrogates."
+    );
+  }
+  if (href.includes("\\")) {
+    throw new Error("leadtype: API catalog href must not contain backslashes.");
+  }
+  if (INVALID_PERCENT_ESCAPE_PATTERN.test(trimmed)) {
+    throw new Error(
+      `leadtype: API catalog href contains a malformed percent escape ("${href}").`
+    );
+  }
+  if (
+    ROOTLESS_AUTHORITY_URL_PATTERN.test(trimmed) ||
+    ROOTLESS_FILE_URL_PATTERN.test(trimmed)
+  ) {
+    throw new Error(
+      `leadtype: API catalog href must use the required slashes after its URL scheme (${JSON.stringify(href)}).`
+    );
+  }
+  try {
+    const resolved = new URL(trimmed, `${stripTrailingSlashes(base)}/`);
+    return serializeRfc3986Url(resolved);
+  } catch {
+    throw new Error(
+      `leadtype: API catalog href is not a valid URL (${JSON.stringify(href)}).`
+    );
+  }
+}
+
+function toCatalogLinks(
+  input: ApiCatalogLinkInput | undefined,
+  base: string
+): Record<string, string>[] | undefined {
+  if (!input) {
+    return;
+  }
+  const links = (Array.isArray(input) ? input : [input]).map((link) => ({
+    href: resolveCatalogUrl(link.href, base),
+    ...(link.type === undefined
+      ? {}
+      : { type: assertMediaType(link.type, "API catalog link type") }),
+    ...(link.title ? { title: link.title } : {}),
+  }));
+  return links.length > 0 ? links : undefined;
+}
+
+/**
+ * The APIs a catalog lists: explicit `apis` when given, otherwise the ones
+ * baked into the manifest by `leadtype generate`.
+ */
+export function resolveApiCatalogEntries(
+  config: RenderApiCatalogConfig
+): ApiCatalogEntry[] {
+  return config.apis ?? config.manifest.apis ?? [];
+}
+
+/**
+ * Render the RFC 9727 API catalog linkset. The first linkset object is
+ * anchored at the catalog itself and lists every API with `item`; each API
+ * that carries metadata gets a second object anchored at the API, holding its
+ * `service-desc`, `service-doc`, `service-meta`, and `status` links.
+ *
+ * Throws when no APIs are configured — a catalog with no members is not a
+ * catalog, and callers are expected to skip publishing one entirely.
+ */
 export function renderApiCatalog(config: RenderApiCatalogConfig): string {
   assertManifestVersion(config.manifest);
+  const apis = resolveApiCatalogEntries(config);
+  if (apis.length === 0) {
+    throw new Error(
+      "leadtype: renderApiCatalog needs at least one API entry. Declare your APIs in `agents.apis`, or skip the catalog when the site publishes none."
+    );
+  }
   const base = resolveEffectiveBase(config.manifest, config.requestOrigin);
-  const apiCatalogPath =
-    config.apiCatalogPath === undefined
-      ? "/.well-known/api-catalog"
-      : config.apiCatalogPath;
-  const serviceDocPath =
-    config.serviceDocPath === undefined
-      ? "/docs/llms.txt"
-      : config.serviceDocPath;
-  const serviceDescPath =
-    config.serviceDescPath === undefined
-      ? "/docs/agent-readability.json"
-      : config.serviceDescPath;
-  const describedbyPath =
-    config.describedbyPath === undefined
-      ? "/sitemap.xml"
-      : config.describedbyPath;
-  const relation = (href: string, type: string) => ({
-    href: toAbsoluteUrl(normalizeDiscoveryPath(href), base),
-    type,
-  });
-  const linkset: Record<string, unknown> = {
-    anchor: `${base}/`,
-  };
-  if (apiCatalogPath !== null) {
-    linkset["api-catalog"] = [
-      relation(apiCatalogPath, "application/linkset+json"),
-    ];
+  const catalogUrl = resolveCatalogUrl(
+    config.apiCatalogPath ?? API_CATALOG_URL_PATH,
+    base
+  );
+
+  const items: Record<string, string | string[]>[] = [];
+  const anchored: Record<string, unknown>[] = [];
+  for (const api of apis) {
+    const href = resolveCatalogUrl(api.href, base);
+    items.push({
+      href,
+      ...(api.type === undefined
+        ? {}
+        : { type: assertMediaType(api.type, "API catalog item type") }),
+      ...(api.title ? { title: api.title } : {}),
+      ...(api.version ? { version: [api.version] } : {}),
+    });
+    const relations: Record<string, unknown> = {};
+    const serviceDesc = toCatalogLinks(api.serviceDesc, base);
+    const serviceDoc = toCatalogLinks(api.serviceDoc, base);
+    const serviceMeta = toCatalogLinks(api.serviceMeta, base);
+    const status = toCatalogLinks(api.status, base);
+    if (serviceDesc) {
+      relations["service-desc"] = serviceDesc;
+    }
+    if (serviceDoc) {
+      relations["service-doc"] = serviceDoc;
+    }
+    if (serviceMeta) {
+      relations["service-meta"] = serviceMeta;
+    }
+    if (status) {
+      relations.status = status;
+    }
+    if (Object.keys(relations).length > 0) {
+      anchored.push({ anchor: href, ...relations });
+    }
   }
-  if (serviceDocPath !== null) {
-    linkset["service-doc"] = [relation(serviceDocPath, "text/plain")];
-  }
-  if (serviceDescPath !== null) {
-    linkset["service-desc"] = [relation(serviceDescPath, "application/json")];
-  }
-  if (describedbyPath !== null) {
-    linkset.describedby = [relation(describedbyPath, "application/xml")];
-  }
-  return `${JSON.stringify({ linkset: [linkset] }, null, 2)}\n`;
+
+  const linkset = [{ anchor: catalogUrl, item: items }, ...anchored];
+  return `${JSON.stringify({ linkset }, null, 2)}\n`;
 }
 
+/**
+ * Serve the API catalog. Returns `null` when the site publishes no APIs or the
+ * method is not GET/HEAD. HEAD returns the same headers with no body. Required
+ * framework route handlers turn `null` into a 404; nullable middleware and
+ * direct callers can use it to fall through.
+ */
 export function createApiCatalogResponse(
   config: CreateApiCatalogResponseConfig
-): Response {
-  return new Response(renderApiCatalog(config), {
+): Response | null {
+  const method = config.method?.toUpperCase();
+  if (!readableMethod(method)) {
+    return null;
+  }
+  if (resolveApiCatalogEntries(config).length === 0) {
+    return null;
+  }
+  const body = renderApiCatalog(config);
+  const base = resolveEffectiveBase(config.manifest, config.requestOrigin);
+  const catalogUrl = resolveCatalogUrl(
+    config.apiCatalogPath ?? API_CATALOG_URL_PATH,
+    base
+  );
+  const isHead = method === "HEAD";
+  return new Response(isHead ? null : body, {
     status: 200,
     headers: attachCacheControl(
       {
-        "Content-Type": "application/linkset+json; charset=utf-8",
+        "Content-Type": API_CATALOG_CONTENT_TYPE,
+        // RFC 9727 §2: a catalog advertises itself, so a HEAD probe alone
+        // tells an agent it found one.
+        Link: quotedLink(catalogUrl, {
+          rel: "api-catalog",
+          type: "application/linkset+json",
+        }),
       },
       config.cacheControl
     ),
@@ -1756,10 +2104,10 @@ export function createRobotsTxtResponse(
     assertManifestVersion(config.manifest);
   }
   let baseUrl = "";
-  if (config.manifest) {
-    baseUrl = resolveEffectiveBase(config.manifest, config.requestOrigin);
-  } else if (config.requestOrigin) {
-    baseUrl = stripTrailingSlashes(config.requestOrigin);
+  if (config.requestOrigin) {
+    baseUrl = new URL(config.requestOrigin).origin;
+  } else if (config.manifest) {
+    baseUrl = stripTrailingSlashes(config.manifest.baseUrl);
   }
   return new Response(
     renderRobotsTxt({

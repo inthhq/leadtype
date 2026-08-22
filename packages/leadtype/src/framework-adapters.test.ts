@@ -190,6 +190,91 @@ describe("framework adapter route helpers", () => {
     ).resolves.toContain("/sitemap.xml");
   });
 
+  it("serves the API catalog from every adapter, or 404s without APIs", async () => {
+    const manifest = buildManifest();
+    const withApis: AgentReadabilityManifest = {
+      ...manifest,
+      files: { ...manifest.files, apiCatalog: "/.well-known/api-catalog" },
+      apis: [
+        {
+          href: "/ask",
+          title: "Documentation query API",
+          serviceDoc: { href: "/docs/quickstart", type: "text/html" },
+        },
+      ],
+    };
+    const catalogRequest = new Request(
+      "https://example.com/.well-known/api-catalog"
+    );
+
+    const svelteKit = await createSvelteKitServerHandler({
+      manifest: withApis,
+    })({ request: catalogRequest });
+    expect(svelteKit.headers.get("Content-Type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
+    );
+    const body = await svelteKit.json();
+    expect(body.linkset[0].item[0].href).toBe("https://example.com/ask");
+
+    const tanStack = await createTanStackServerHandler({ manifest: withApis })(
+      catalogRequest
+    );
+    expect(tanStack.headers.get("Link")).toContain('rel="api-catalog"');
+
+    const head = await createRequiredNitroDocsHandler({ manifest: withApis })({
+      request: new Request("https://example.com/.well-known/api-catalog", {
+        method: "HEAD",
+      }),
+    });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("Link")).toContain('rel="api-catalog"');
+    expect(await head.text()).toBe("");
+
+    const post = await createRequiredNitroDocsHandler({ manifest: withApis })({
+      request: new Request("https://example.com/.well-known/api-catalog", {
+        method: "POST",
+      }),
+    });
+    expect(post.status).toBe(404);
+
+    // The base manifest declares no APIs, so there is no catalog to serve.
+    const missing = await createRequiredNitroDocsHandler({ manifest })({
+      request: catalogRequest,
+    });
+    expect(missing.status).toBe(404);
+  });
+
+  it("serves artifact routes only for GET and HEAD", async () => {
+    const manifest = buildManifest();
+    const withApis: AgentReadabilityManifest = {
+      ...manifest,
+      files: { ...manifest.files, apiCatalog: "/.well-known/api-catalog" },
+      apis: [{ href: "/ask" }],
+    };
+    const handler = createRequiredNitroDocsHandler({ manifest: withApis });
+    for (const pathname of [
+      "/sitemap.xml",
+      "/sitemap.md",
+      "/robots.txt",
+      "/.well-known/api-catalog",
+    ]) {
+      const url = `https://example.com${pathname}`;
+      expect((await handler({ request: new Request(url) })).status).toBe(200);
+      const head = await handler({
+        request: new Request(url, { method: "HEAD" }),
+      });
+      expect(head.status).toBe(200);
+      expect(await head.text()).toBe("");
+      for (const method of ["POST", "OPTIONS"]) {
+        const response = await handler({
+          request: new Request(url, { method }),
+        });
+        expect(response.status).toBe(404);
+        expect(await response.text()).toBe("");
+      }
+    }
+  });
+
   it("serves markdown through the Next proxy helper", async () => {
     const manifest = buildManifest();
     const originalFetch = globalThis.fetch;

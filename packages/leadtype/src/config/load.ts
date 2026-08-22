@@ -15,6 +15,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { editDistanceWithin } from "../internal/edit-distance";
 import { type LogCall, logger } from "../internal/logger";
+import { isAsciiMediaType } from "../internal/media-type";
+import { hasUnpairedUtf16Surrogate } from "../internal/unicode";
 import type {
   DocsCollection,
   DocsConfig,
@@ -552,6 +554,160 @@ function validateAgentEndpoint(
   }
 }
 
+const API_CATALOG_LINK_FIELDS = [
+  "serviceDesc",
+  "serviceDoc",
+  "serviceMeta",
+  "status",
+] as const;
+const ASCII_CONTROL_MAX_CODE_POINT = 0x1f;
+const ASCII_DELETE_CODE_POINT = 0x7f;
+const INVALID_PERCENT_ESCAPE_PATTERN = /%(?![0-9a-f]{2})/i;
+const ROOTLESS_AUTHORITY_URL_PATTERN = /^(?:https?|wss?|ftp):(?!\/\/)/i;
+const ROOTLESS_FILE_URL_PATTERN = /^file:(?!\/)/i;
+
+function hasAsciiControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (
+      codePoint <= ASCII_CONTROL_MAX_CODE_POINT ||
+      codePoint === ASCII_DELETE_CODE_POINT
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function validateApiCatalogHref(
+  href: string,
+  field: string,
+  configPath: string
+): void {
+  if (hasAsciiControlCharacter(href)) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain ASCII control characters`
+    );
+  }
+  if (hasUnpairedUtf16Surrogate(href)) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain unpaired UTF-16 surrogates`
+    );
+  }
+  if (href.includes("\\")) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain backslashes`
+    );
+  }
+  if (INVALID_PERCENT_ESCAPE_PATTERN.test(href)) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must not contain a malformed percent escape`
+    );
+  }
+  if (
+    ROOTLESS_AUTHORITY_URL_PATTERN.test(href.trim()) ||
+    ROOTLESS_FILE_URL_PATTERN.test(href.trim())
+  ) {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must use the required slashes after its URL scheme`
+    );
+  }
+  try {
+    new URL(href.trim(), "https://leadtype.invalid/");
+  } catch {
+    throw new Error(
+      `docs config at "${configPath}": ${field} must have a valid href`
+    );
+  }
+}
+
+function validateApiCatalogLink(
+  value: unknown,
+  field: string,
+  configPath: string
+): void {
+  const isList = Array.isArray(value);
+  const links = isList ? value : [value];
+  for (const [index, link] of links.entries()) {
+    const linkField = isList ? `${field}[${index}]` : field;
+    if (
+      !isPlainRecord(link) ||
+      typeof link.href !== "string" ||
+      link.href.trim().length === 0
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": ${linkField} must be a link (or array of links) with a non-empty href`
+      );
+    }
+    validateApiCatalogHref(link.href, linkField, configPath);
+    for (const attribute of ["type", "title"] as const) {
+      if (
+        link[attribute] !== undefined &&
+        typeof link[attribute] !== "string"
+      ) {
+        throw new Error(
+          `docs config at "${configPath}": ${linkField}.${attribute} must be a string`
+        );
+      }
+    }
+    if (typeof link.type === "string" && !isAsciiMediaType(link.type)) {
+      throw new Error(
+        `docs config at "${configPath}": ${linkField}.type must be a valid ASCII media type`
+      );
+    }
+  }
+}
+
+/**
+ * `agents.apis` reaches the generated RFC 9727 catalog verbatim, so a
+ * malformed entry must fail at config load rather than emit a catalog that
+ * lists a broken API.
+ */
+function validateApisConfig(value: unknown, configPath: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `docs config at "${configPath}": agents.apis must be an array`
+    );
+  }
+  for (const [index, api] of value.entries()) {
+    const field = `agents.apis[${index}]`;
+    if (
+      !isPlainRecord(api) ||
+      typeof api.href !== "string" ||
+      api.href.trim().length === 0
+    ) {
+      throw new Error(
+        `docs config at "${configPath}": ${field} must be an object with a non-empty href`
+      );
+    }
+    validateApiCatalogHref(api.href, field, configPath);
+    for (const attribute of ["title", "type", "version"] as const) {
+      if (api[attribute] !== undefined && typeof api[attribute] !== "string") {
+        throw new Error(
+          `docs config at "${configPath}": ${field}.${attribute} must be a string`
+        );
+      }
+    }
+    if (typeof api.type === "string" && !isAsciiMediaType(api.type)) {
+      throw new Error(
+        `docs config at "${configPath}": ${field}.type must be a valid ASCII media type`
+      );
+    }
+    for (const relation of API_CATALOG_LINK_FIELDS) {
+      if (api[relation] !== undefined) {
+        validateApiCatalogLink(
+          api[relation],
+          `${field}.${relation}`,
+          configPath
+        );
+      }
+    }
+  }
+}
+
 function validateAgentsConfig(
   value: unknown,
   configPath: string
@@ -625,6 +781,7 @@ function validateAgentsConfig(
     }
     validateAgentEndpoint(nlweb.endpoint, "agents.nlweb.endpoint", configPath);
   }
+  validateApisConfig(value.apis, configPath);
   return value as DocsConfig["agents"];
 }
 

@@ -41,6 +41,7 @@ import {
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
+  type ApiCatalogEntry,
   type ContentSignals,
   type DocsNavigation,
   type DocsNavigationGroup,
@@ -671,6 +672,30 @@ export type DocsAgentsConfig = {
     /** The `/ask` endpoint path or absolute URL. Defaults to `/ask`. */
     endpoint?: string;
   };
+  /**
+   * APIs this site publishes, listed in the RFC 9727 catalog at
+   * `/.well-known/api-catalog`. Site-owned: a docs source repo describes
+   * content, but only the site that serves the APIs knows where they live.
+   * Leave it unset and no catalog is generated or advertised.
+   *
+   * @example
+   * ```ts
+   * apis: [
+   *   {
+   *     href: "/ask",
+   *     title: "Documentation query API",
+   *     type: "application/json",
+   *     version: "1.0",
+   *     serviceDesc: {
+   *       href: "/openapi.json",
+   *       type: "application/vnd.oai.openapi+json;version=3.1",
+   *     },
+   *     serviceDoc: { href: "/docs/reference/nlweb", type: "text/html" },
+   *   },
+   * ]
+   * ```
+   */
+  apis?: ApiCatalogEntry[];
   robots?: {
     /** Crawler-access stance. Defaults to `balanced`. */
     policy?: RobotsPolicy;
@@ -1052,6 +1077,11 @@ export type AgentReadabilityConfig = {
   contentSignals?: Partial<ContentSignals>;
   /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a robots.txt `Schemamap:` directive. */
   schemamapUrlPath?: string;
+  /**
+   * APIs this site publishes, listed in the RFC 9727 catalog at
+   * `/.well-known/api-catalog`. No APIs means no catalog is written.
+   */
+  apis?: ApiCatalogEntry[];
   /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
@@ -2997,6 +3027,11 @@ export async function generateAgentReadabilityArtifacts(
   const pages = orderedDocs.map((doc) =>
     toAgentReadabilityPage(doc, baseUrl, config.mounts)
   );
+  // No configured APIs means no catalog: an empty RFC 9727 linkset advertises
+  // a catalog that lists nothing, so the artifact and its manifest entry are
+  // both omitted.
+  const apis = config.apis ?? [];
+  const hasApis = apis.length > 0;
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: generatedAt.toISOString(),
@@ -3007,11 +3042,12 @@ export async function generateAgentReadabilityArtifacts(
     pages,
     navigation,
     files: {
-      apiCatalog: API_CATALOG_URL_PATH,
+      ...(hasApis ? { apiCatalog: API_CATALOG_URL_PATH } : {}),
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(hasApis ? { apis } : {}),
     ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
     ...(config.seo ? { seo: config.seo } : {}),
   };
@@ -3026,6 +3062,7 @@ export async function generateAgentReadabilityArtifacts(
   const shouldEmitRootCrawlerFiles =
     config.emitRootCrawlerFiles ??
     !(i18n && locale && locale !== i18n.defaultLocale);
+  const shouldEmitApiCatalog = shouldEmitRootCrawlerFiles && hasApis;
 
   const sitemapXml = renderSitemapXml(pages);
   const sitemapMd = renderSitemapMarkdown({
@@ -3035,8 +3072,12 @@ export async function generateAgentReadabilityArtifacts(
   });
   if (shouldEmitRootCrawlerFiles) {
     await mkdir(outDir, { recursive: true });
-    await mkdir(path.dirname(files.apiCatalog), { recursive: true });
-    await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    if (shouldEmitApiCatalog) {
+      await mkdir(path.dirname(files.apiCatalog), { recursive: true });
+      await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    } else {
+      await rm(files.apiCatalog, { force: true });
+    }
     await writeFileAtomic(files.sitemapXml, sitemapXml);
     await writeFileAtomic(files.sitemapMd, sitemapMd);
     await writeFileAtomic(
@@ -3058,9 +3099,9 @@ export async function generateAgentReadabilityArtifacts(
   return {
     files: {
       manifest: files.manifest,
+      ...(shouldEmitApiCatalog ? { apiCatalog: files.apiCatalog } : {}),
       ...(shouldEmitRootCrawlerFiles
         ? {
-            apiCatalog: files.apiCatalog,
             robotsTxt: files.robotsTxt,
             sitemapMd: files.sitemapMd,
             sitemapXml: files.sitemapXml,
@@ -3108,7 +3149,7 @@ export type GenerateAgentArtifactsConfig = {
   llms?: DocsLlmsConfig;
   /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
   groups?: DocsGroup[];
-  agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  agents?: Pick<DocsAgentsConfig, "apis" | "robots" | "seo">;
   /**
    * Pin manifest `generatedAt` and per-page `lastModified` fallbacks so
    * repeated runs can produce reproducible output. Accepts a date string or a
@@ -3351,6 +3392,8 @@ export async function generateAgentArtifacts(
   await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
   await writeFileAtomic(wellKnownLlmsTxtPath, llmsTxt);
 
+  const apis = config.agents?.apis ?? [];
+  const hasApis = apis.length > 0;
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: generatedAt.toISOString(),
@@ -3359,11 +3402,12 @@ export async function generateAgentArtifacts(
     pages,
     navigation,
     files: {
-      apiCatalog: API_CATALOG_URL_PATH,
+      ...(hasApis ? { apiCatalog: API_CATALOG_URL_PATH } : {}),
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(hasApis ? { apis } : {}),
     ...(inputs.jsonLd ? { jsonLd: inputs.jsonLd } : {}),
     ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
   };
@@ -3386,8 +3430,13 @@ export async function generateAgentArtifacts(
   const sitemapMdPath = path.join(outDir, SITEMAP_MARKDOWN_FILE);
   const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
   const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
-  await mkdir(path.dirname(apiCatalogPath), { recursive: true });
-  await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  // Only sites that declare APIs get a catalog — see the docs-source path.
+  if (hasApis) {
+    await mkdir(path.dirname(apiCatalogPath), { recursive: true });
+    await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  } else {
+    await rm(apiCatalogPath, { force: true });
+  }
   await writeFileAtomic(sitemapXmlPath, renderSitemapXml(pages));
   await writeFileAtomic(
     sitemapMdPath,
@@ -3414,7 +3463,7 @@ export async function generateAgentArtifacts(
       wellKnownLlmsTxt: wellKnownLlmsTxtPath,
       manifest: manifestPath,
       markdown: markdownFiles,
-      apiCatalog: apiCatalogPath,
+      ...(hasApis ? { apiCatalog: apiCatalogPath } : {}),
       robotsTxt: robotsTxtPath,
       sitemapMd: sitemapMdPath,
       sitemapXml: sitemapXmlPath,

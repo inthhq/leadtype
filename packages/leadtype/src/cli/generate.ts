@@ -2011,6 +2011,7 @@ async function executeGenerate(
           i18n: metadata.i18n,
           locale: i18n?.defaultLocale,
           i18nManifest,
+          emitRootCrawlerFiles: false,
           transformers: metadata.transformers,
         });
         bundleFiles.searchIndex = search.outputPath;
@@ -2134,6 +2135,7 @@ async function executeGenerate(
         ...(nlwebEnabled
           ? { schemamapUrlPath: `/${NLWEB_SCHEMA_MAP_PATH}` }
           : {}),
+        apis: metadata.agents?.apis,
         jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
       });
@@ -2242,6 +2244,7 @@ async function executeGenerate(
             transformers: metadata.transformers,
             robotsPolicy: metadata.agents?.robots?.policy,
             contentSignals: metadata.agents?.robots?.signals,
+            apis: metadata.agents?.apis,
             jsonLd: metadata.jsonLd,
             seo: metadata.agents?.seo,
           });

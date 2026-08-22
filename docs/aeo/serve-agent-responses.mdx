@@ -80,8 +80,14 @@ export async function handleDocsRequest(
   const requestOrigin = url.origin;
 
   switch (url.pathname) {
+    // Returns null when the site declares no APIs — 404 rather than serve an
+    // empty catalog. `method` keeps HEAD bodyless with the same headers.
     case "/.well-known/api-catalog":
-      return createApiCatalogResponse({ manifest, requestOrigin });
+      return createApiCatalogResponse({
+        manifest,
+        requestOrigin,
+        method: request.method,
+      });
     case "/sitemap.xml":
       return createSitemapXmlResponse({ manifest, requestOrigin });
     case "/sitemap.md":
@@ -111,7 +117,17 @@ return createSitemapXmlResponse({
 });
 ```
 
-The other generated artifacts — `/llms.txt`, `/.well-known/api-catalog`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
+The other generated artifacts — `/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`, `/docs/agent-readability.json` — use root-relative links and serve fine as static files straight from `public/`.
+
+<Callout title="Set the content type for the extensionless catalog file" variant="warning">
+`public/.well-known/api-catalog` has no file extension, so most static hosts
+serve it as `application/octet-stream` or `text/plain` and RFC 9727 clients
+skip it. Configure the route to send
+`application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`,
+or serve it through `createApiCatalogResponse()`, which sets that content type
+for you. See [Generate static artifacts](/docs/pipeline/generate-static-artifacts) for
+per-host header configuration.
+</Callout>
 
 ## 2. Add homepage discovery Link headers
 
@@ -119,18 +135,37 @@ Agents that start at your homepage should not have to guess where the API catalo
 
 ```ts
 import { createAgentDiscoveryHeaders } from "leadtype/llm/readability";
+import type { AgentReadabilityManifest } from "leadtype/llm/readability";
 
 declare const html: BodyInit;
+declare const manifest: AgentReadabilityManifest;
 
 const response = new Response(html, {
-  headers: createAgentDiscoveryHeaders(),
+  headers: createAgentDiscoveryHeaders({ manifest }),
 });
 ```
+
+Pass the manifest so the header advertises `rel="api-catalog"` only when a
+catalog was actually generated. Without it, the helper omits that relation;
+pass `apiCatalogPath` explicitly when a manifest is unavailable but a catalog
+is known to exist.
 
 The default header advertises:
 
 ```http
-Link: </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", </docs/llms.txt>; rel="service-doc"; type="text/plain", </docs/agent-readability.json>; rel="service-desc"; type="application/json", </sitemap.xml>; rel="describedby"; type="application/xml"
+Link: </docs/llms.txt>; rel="service-doc"; type="text/plain", </sitemap.xml>; rel="describedby"; type="application/xml"
+```
+
+There is no default `service-desc`: that relation means "machine-readable API
+description", and a docs artifact is not one. Point it at your OpenAPI document
+when you have one, and drop `api-catalog` when the site publishes no APIs:
+
+```ts
+createAgentDiscoveryHeaders({
+  manifest,
+  serviceDescPath: "/openapi.json",
+  serviceDescType: "application/vnd.oai.openapi+json;version=3.1",
+});
 ```
 
 ## 3. Add JSON-LD to docs pages
@@ -293,9 +328,9 @@ Do not rewrite `llms.txt`, `/.well-known/api-catalog`, `sitemap.xml`, `sitemap.m
 
 ### Why the sitemap and robots responses are regenerated, not static
 
-`sitemap.xml`'s `<loc>` requires absolute URLs, and `robots.txt`'s `Sitemap:` directive is conventionally absolute too. So those two files cannot be plain static assets if you want previews and staging to advertise the right origin. The middleware in step 1 already calls `createSitemapXmlResponse`, `createSitemapMarkdownResponse`, and `createRobotsTxtResponse` — each rebuilds from the manifest using the live `requestOrigin`, so preview, staging, and prod all advertise the right URLs without per-environment config.
+`sitemap.xml`'s `<loc>` requires absolute URLs, `robots.txt`'s `Sitemap:` directive is conventionally absolute too, and the RFC 9727 catalog anchors and links every API by absolute URI. So those files cannot be plain static assets if you want previews and staging to advertise the right origin. The middleware in step 1 already calls `createSitemapXmlResponse`, `createSitemapMarkdownResponse`, `createRobotsTxtResponse`, and `createApiCatalogResponse` — each rebuilds from the manifest using the live `requestOrigin`, so preview, staging, and prod all advertise the right URLs without per-environment config.
 
-The other generated files (`/llms.txt`, `/.well-known/api-catalog`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
+The other generated files (`/llms.txt`, `/docs/llms.txt`, `/llms-full.txt`) use root-relative links, so they can be served as plain static assets — no per-request rewriting needed.
 
 ### Cache-Control and CDN
 

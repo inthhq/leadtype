@@ -113,13 +113,9 @@ describe("generateAgentArtifacts", () => {
     expect(robots).toContain(`Sitemap: ${BASE_URL}/sitemap.xml`);
     expect(robots).toContain("Allow: /llms.txt");
 
-    expect(result.files.apiCatalog).toBeDefined();
-    const apiCatalog = JSON.parse(
-      await readFile(result.files.apiCatalog ?? "", "utf-8")
-    );
-    expect(apiCatalog.linkset[0]["api-catalog"][0].href).toBe(
-      `${BASE_URL}/.well-known/api-catalog`
-    );
+    // No `agents.apis` in the base config, so no catalog is published.
+    expect(result.files.apiCatalog).toBeUndefined();
+    expect(result.manifest.files.apiCatalog).toBeUndefined();
 
     const sitemapXml = await readFile(result.files.sitemapXml ?? "", "utf-8");
     expect(sitemapXml).toContain(`<loc>${BASE_URL}/benchmarks/chrome</loc>`);
@@ -268,6 +264,50 @@ Body text.`,
     const llmsTxt = await readFile(result.files.llmsTxt, "utf-8");
     expect(llmsTxt).toContain("## Pages");
     expect(llmsTxt).toContain("(/blog/launch-post.md)");
+  });
+
+  it("publishes an RFC 9727 catalog from agents.apis", async () => {
+    const outDir = await createTempOutDir();
+    const result = await generateAgentArtifacts({
+      ...baseConfig(outDir),
+      agents: {
+        apis: [
+          {
+            href: "/ask",
+            title: "Consent query API",
+            type: "application/json",
+            serviceDesc: {
+              href: "https://api.cookiebench.com/openapi.json",
+              type: "application/vnd.oai.openapi+json;version=3.1",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.files.apiCatalog).toBeDefined();
+    expect(result.manifest.files.apiCatalog).toBe("/.well-known/api-catalog");
+    const catalog = JSON.parse(
+      await readFile(result.files.apiCatalog ?? "", "utf-8")
+    );
+    expect(catalog.linkset[0]).toEqual({
+      anchor: `${BASE_URL}/.well-known/api-catalog`,
+      item: [
+        {
+          href: `${BASE_URL}/ask`,
+          type: "application/json",
+          title: "Consent query API",
+        },
+      ],
+    });
+    expect(catalog.linkset[1]["service-desc"][0].href).toBe(
+      "https://api.cookiebench.com/openapi.json"
+    );
+
+    await generateAgentArtifacts(baseConfig(outDir));
+    await expect(
+      readFile(path.join(outDir, ".well-known", "api-catalog"), "utf-8")
+    ).rejects.toThrow();
   });
 
   it("skips root crawler files when emitRootCrawlerFiles is false", async () => {

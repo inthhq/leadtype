@@ -29,6 +29,7 @@ import {
   enrichMarkdownFrontmatter,
   isAgentReadabilityArtifactPath,
   isAgentUserAgent,
+  renderApiCatalog,
   renderJsonLd,
   renderJsonLdScript,
   renderMissingMarkdown,
@@ -976,9 +977,12 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect(existsSync(path.join(projectDir, "sitemap.xml"))).toBe(true);
     expect(existsSync(path.join(projectDir, "sitemap.md"))).toBe(true);
     expect(existsSync(path.join(projectDir, "robots.txt"))).toBe(true);
+    // No `apis` configured, so no API catalog is generated or advertised.
     expect(
       existsSync(path.join(projectDir, ".well-known", "api-catalog"))
-    ).toBe(true);
+    ).toBe(false);
+    expect(result.files.apiCatalog).toBeUndefined();
+    expect(result.manifest.files.apiCatalog).toBeUndefined();
     expect(
       existsSync(path.join(projectDir, "docs", "agent-readability.json"))
     ).toBe(true);
@@ -986,14 +990,10 @@ describe("generateAgentReadabilityArtifacts", () => {
     const sitemapXmlPath = result.files.sitemapXml;
     const sitemapMdPath = result.files.sitemapMd;
     const robotsTxtPath = result.files.robotsTxt;
-    const apiCatalogPath = result.files.apiCatalog;
     expect(sitemapXmlPath).toBe(path.join(projectDir, "sitemap.xml"));
     expect(sitemapMdPath).toBe(path.join(projectDir, "sitemap.md"));
     expect(robotsTxtPath).toBe(path.join(projectDir, "robots.txt"));
-    expect(apiCatalogPath).toBe(
-      path.join(projectDir, ".well-known", "api-catalog")
-    );
-    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath && apiCatalogPath)) {
+    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath)) {
       throw new Error("Expected root crawler artifacts to be emitted.");
     }
 
@@ -1019,20 +1019,100 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect(robotsTxt).toContain("Allow: /llms.txt");
     expect(robotsTxt).not.toContain("Disallow: /llms.txt");
 
-    const apiCatalog = JSON.parse(await readFile(apiCatalogPath, "utf8"));
-    expect(apiCatalog.linkset[0]["api-catalog"][0].href).toBe(
-      "https://leadtype.dev/.well-known/api-catalog"
-    );
-    expect(apiCatalog.linkset[0]["service-doc"][0].href).toBe(
-      "https://leadtype.dev/docs/llms.txt"
-    );
-
     expect(result.manifest.pages).toContainEqual(
       expect.objectContaining({
         markdownUrlPath: "/docs/quickstart.md",
         urlPath: "/docs/quickstart",
       })
     );
+  });
+
+  it("emits an RFC 9727 catalog listing the configured APIs", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      apis: [
+        {
+          href: "/ask",
+          title: "Documentation query API",
+          type: "application/json",
+          version: "1.0",
+          serviceDesc: {
+            href: "/openapi.json",
+            type: "application/vnd.oai.openapi+json;version=3.1",
+          },
+          serviceDoc: { href: "/docs/reference/nlweb", type: "text/html" },
+          serviceMeta: { href: "/docs/agent-readability.json" },
+          status: { href: "https://status.leadtype.dev" },
+        },
+        { href: "https://api.leadtype.dev/v1/search", title: "Search API" },
+      ],
+    });
+
+    const apiCatalogPath = result.files.apiCatalog;
+    expect(apiCatalogPath).toBe(
+      path.join(projectDir, ".well-known", "api-catalog")
+    );
+    expect(result.manifest.files.apiCatalog).toBe("/.well-known/api-catalog");
+    expect(result.manifest.apis).toHaveLength(2);
+    if (!apiCatalogPath) {
+      throw new Error("Expected an API catalog to be emitted.");
+    }
+
+    const catalog = JSON.parse(await readFile(apiCatalogPath, "utf8"));
+    expect(catalog.linkset[0]).toEqual({
+      anchor: "https://leadtype.dev/.well-known/api-catalog",
+      item: [
+        {
+          href: "https://leadtype.dev/ask",
+          type: "application/json",
+          title: "Documentation query API",
+          version: ["1.0"],
+        },
+        {
+          href: "https://api.leadtype.dev/v1/search",
+          title: "Search API",
+        },
+      ],
+    });
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://leadtype.dev/ask",
+      "service-desc": [
+        {
+          href: "https://leadtype.dev/openapi.json",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+      ],
+      "service-doc": [
+        {
+          href: "https://leadtype.dev/docs/reference/nlweb",
+          type: "text/html",
+        },
+      ],
+      "service-meta": [
+        { href: "https://leadtype.dev/docs/agent-readability.json" },
+      ],
+      status: [{ href: "https://status.leadtype.dev/" }],
+    });
+    // The metadata-free cross-origin API contributes an item, not an anchor.
+    expect(catalog.linkset).toHaveLength(2);
+
+    await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+    });
+    expect(existsSync(apiCatalogPath)).toBe(false);
   });
 
   it("uses Date generatedAt for deterministic docs-scoped manifests", async () => {
@@ -1843,28 +1923,500 @@ describe("agent readability helpers", () => {
     expect(customDiscovery.Link).toContain('</docs/llms.txt>; rel="llms-txt"');
   });
 
-  it("builds agent discovery Link headers and API catalog responses", async () => {
+  it("builds agent discovery Link headers without a docs service-desc", () => {
+    // `agent-readability.json` describes documentation, not an API contract,
+    // so it is no longer the default `service-desc`.
     expect(createAgentDiscoveryLinkHeader()).toBe(
-      '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", </docs/llms.txt>; rel="service-doc"; type="text/plain", </docs/agent-readability.json>; rel="service-desc"; type="application/json", </sitemap.xml>; rel="describedby"; type="application/xml"'
+      '</docs/llms.txt>; rel="service-doc"; type="text/plain", </sitemap.xml>; rel="describedby"; type="application/xml"'
     );
     expect(createAgentDiscoveryHeaders()).toEqual({
       Link: createAgentDiscoveryLinkHeader(),
     });
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: "/.well-known/api-catalog",
+      })
+    ).toContain('rel="api-catalog"');
 
+    // With a manifest in hand, the header follows what generate actually
+    // wrote: no catalog file, no `api-catalog` link to a 404.
+    expect(createAgentDiscoveryLinkHeader({ manifest })).toBe(
+      '</docs/llms.txt>; rel="service-doc"; type="text/plain", </sitemap.xml>; rel="describedby"; type="application/xml"'
+    );
+    const staleCatalogManifest = {
+      ...manifest,
+      files: { ...manifest.files, apiCatalog: "/.well-known/api-catalog" },
+    };
+    expect(
+      createAgentDiscoveryLinkHeader({ manifest: staleCatalogManifest })
+    ).not.toContain('rel="api-catalog"');
+    expect(
+      createAgentDiscoveryLinkHeader({
+        manifest: {
+          ...staleCatalogManifest,
+          apis: [{ href: "/ask" }],
+        },
+      })
+    ).toContain('rel="api-catalog"');
+
+    // A site that has a real API description opts in, media type included.
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://api.example.com/openapi.json",
+        serviceDescType: "application/vnd.oai.openapi+json;version=3.1",
+      })
+    ).toBe(
+      '<https://api.example.com/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.1"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://api.example.com/open api>v1",
+      })
+    ).toBe(
+      '<https://api.example.com/open%20api%3Ev1>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://api.example.com/open|api",
+      })
+    ).toBe(
+      '<https://api.example.com/open%7Capi>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: 'urn:ietf:rfc:9727 api>|"',
+      })
+    ).toBe(
+      '<urn:ietf:rfc:9727%20api%3E%7C%22>; rel="service-desc"; type="application/json"'
+    );
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://",
+      })
+    ).toThrow(/leadtype: discovery URL is not a valid absolute URL/);
+    for (const serviceDescPath of [
+      "https:evil.example/x",
+      "https:/single-slash/x",
+      "ws:evil.example/x",
+      "wss:/single-slash/x",
+      "ftp:evil.example/x",
+      "file:relative/path",
+    ]) {
+      expect(() =>
+        createAgentDiscoveryLinkHeader({
+          apiCatalogPath: null,
+          serviceDocPath: null,
+          describedbyPath: null,
+          serviceDescPath,
+        })
+      ).toThrow(/must use the required slashes after its URL scheme/);
+    }
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "file:/absolute/path",
+      })
+    ).not.toThrow();
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/openapi.json?version=3.1#schema",
+      })
+    ).toBe(
+      '</openapi.json?version=3.1#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/api|v1/catalog?q=[1]#f|g",
+      })
+    ).toBe(
+      '</api%7Cv1/catalog?q=%5B1%5D#f%7Cg>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath:
+          "https://api.example.com/openapi.json?version=3.1#schema",
+      })
+    ).toBe(
+      '<https://api.example.com/openapi.json?version=3.1#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath:
+          "//api.example.com:8443/open api>v1?format=json#schema",
+      })
+    ).toBe(
+      '<//api.example.com:8443/open%20api%3Ev1?format=json#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath:
+          "/docs/..//api.example.com/openapi.json?version=3.1#schema",
+      })
+    ).toBe(
+      '</.//api.example.com/openapi.json?version=3.1#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "urn:ietf:rfc:9727",
+      })
+    ).toBe('<urn:ietf:rfc:9727>; rel="service-desc"; type="application/json"');
+    for (const [serviceDescPath, expectedTarget] of [
+      [
+        " https://api.example.com/openapi.json?x=1#schema ",
+        "https://api.example.com/openapi.json?x=1#schema",
+      ],
+      [" urn:ietf:rfc:9727 ", "urn:ietf:rfc:9727"],
+      [" //api.example.com/openapi.json ", "//api.example.com/openapi.json"],
+      [" /openapi.json ", "/openapi.json"],
+    ] as const) {
+      expect(
+        createAgentDiscoveryLinkHeader({
+          apiCatalogPath: null,
+          serviceDocPath: null,
+          describedbyPath: null,
+          serviceDescPath,
+        })
+      ).toBe(
+        `<${expectedTarget}>; rel="service-desc"; type="application/json"`
+      );
+    }
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: " ws:evil.example/x ",
+      })
+    ).toThrow(/must use the required slashes after its URL scheme/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "//[bad/openapi.json",
+      })
+    ).toThrow(/leadtype: discovery URL is not a valid URI-reference/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "   ",
+      })
+    ).toThrow(/discovery URL must not be empty/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "/openapi%ZZ",
+      })
+    ).toThrow(/malformed percent escape/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "https://api.example.com/open\napi",
+      })
+    ).toThrow(/ASCII control characters/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "/api\uD800v1",
+      })
+    ).toThrow(/unpaired UTF-16 surrogates/);
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/api/😀",
+      })
+    ).toContain("</api/%F0%9F%98%80>");
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "/openapi.json",
+        serviceDescType: "application/json\r\nX-Injected: yes",
+      })
+    ).toThrow(/serviceDescType must be a valid ASCII media type/);
+    for (const serviceDescType of [
+      "application/☃",
+      "application/é",
+      "application",
+      "application/",
+      'application/json; profile="unterminated',
+    ]) {
+      expect(() =>
+        createAgentDiscoveryLinkHeader({
+          serviceDescPath: "/openapi.json",
+          serviceDescType,
+        })
+      ).toThrow(/serviceDescType must be a valid ASCII media type/);
+    }
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/openapi.json",
+        serviceDescType:
+          'application/json; profile="https://example.com/schema"',
+      })
+    ).toBe(
+      '</openapi.json>; rel="service-desc"; type="application/json; profile=\\"https://example.com/schema\\""'
+    );
+  });
+
+  it("serves an RFC 9727 catalog response and 404s when no APIs exist", async () => {
+    // No configured APIs: nothing to catalog, so the caller can 404 the route.
+    expect(
+      createApiCatalogResponse({
+        manifest,
+        requestOrigin: "http://localhost:5173",
+      })
+    ).toBeNull();
+    expect(() => renderApiCatalog({ manifest })).toThrow(
+      /at least one API entry/
+    );
+
+    const apis = [
+      {
+        href: "/ask",
+        title: "Documentation query API",
+        serviceDesc: {
+          href: "/openapi.json",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+      },
+    ];
     const response = createApiCatalogResponse({
       manifest,
+      apis,
       requestOrigin: "http://localhost:5173",
     });
-    expect(response.headers.get("Content-Type")).toBe(
-      "application/linkset+json; charset=utf-8"
+    expect(response?.headers.get("Content-Type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
     );
-    const body = await response.json();
-    expect(body.linkset[0]["api-catalog"][0].href).toBe(
+    expect(response?.headers.get("Link")).toBe(
+      '<http://localhost:5173/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"'
+    );
+    const body = await response?.json();
+    expect(body.linkset[0].anchor).toBe(
       "http://localhost:5173/.well-known/api-catalog"
     );
-    expect(body.linkset[0]["service-desc"][0].href).toBe(
-      "http://localhost:5173/docs/agent-readability.json"
+    expect(body.linkset[0].item).toEqual([
+      {
+        href: "http://localhost:5173/ask",
+        title: "Documentation query API",
+      },
+    ]);
+    expect(body.linkset[1]["service-desc"][0].href).toBe(
+      "http://localhost:5173/openapi.json"
     );
+
+    // HEAD keeps every header — including the self-referential api-catalog
+    // Link RFC 9727 §2 requires — but carries no body.
+    const head = createApiCatalogResponse({
+      manifest,
+      apis,
+      method: "head",
+      requestOrigin: "http://localhost:5173",
+    });
+    expect(head?.headers.get("Link")).toBe(response?.headers.get("Link"));
+    expect(head?.headers.get("Content-Type")).toBe(
+      response?.headers.get("Content-Type")
+    );
+    expect(head?.body).toBeNull();
+    expect(await head?.text()).toBe("");
+    for (const method of ["POST", "PUT", "DELETE"]) {
+      expect(
+        createApiCatalogResponse({
+          manifest,
+          apis,
+          method,
+          requestOrigin: "http://localhost:5173",
+        })
+      ).toBeNull();
+    }
+  });
+
+  it("resolves catalog hrefs relative to the serving origin", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest,
+        // Root-relative, document-relative, and cross-origin all resolve.
+        apis: [
+          { href: "/ask" },
+          { href: "v2/ask" },
+          { href: "https://api.example.com/open api" },
+          {
+            href: "https://api.partner.example/graphql",
+            serviceDoc: { href: "https://partner.example/docs" },
+          },
+        ],
+      })
+    );
+    expect(
+      catalog.linkset[0].item.map((item: { href: string }) => item.href)
+    ).toEqual([
+      "https://example.com/ask",
+      "https://example.com/v2/ask",
+      "https://api.example.com/open%20api",
+      "https://api.partner.example/graphql",
+    ]);
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://api.partner.example/graphql",
+      "service-doc": [{ href: "https://partner.example/docs" }],
+    });
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api%ZZ" }] })
+    ).toThrow(/malformed percent escape/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "https://" }] })
+    ).toThrow(/leadtype: API catalog href is not a valid URL/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api\\v1" }] })
+    ).toThrow(/must not contain backslashes/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "   " }] })
+    ).toThrow(/must not be empty/);
+    expect(() =>
+      renderApiCatalog({
+        manifest,
+        apis: [{ href: "/ask", serviceDoc: { href: "   " } }],
+      })
+    ).toThrow(/must not be empty/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api\nx" }] })
+    ).toThrow(/ASCII control character/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api\uD800v1" }] })
+    ).toThrow(/unpaired UTF-16 surrogates/);
+    expect(() =>
+      renderApiCatalog({
+        manifest,
+        apis: [{ href: "/ask", serviceDesc: { href: "/openapi\tx" } }],
+      })
+    ).toThrow(/ASCII control character/);
+    expect(() =>
+      renderApiCatalog({
+        manifest,
+        apis: [{ href: "/ask", serviceDesc: { href: "/open\uDC00api" } }],
+      })
+    ).toThrow(/unpaired UTF-16 surrogates/);
+    expect(
+      renderApiCatalog({ manifest, apis: [{ href: "/api/😀" }] })
+    ).toContain("https://example.com/api/%F0%9F%98%80");
+  });
+
+  it("percent-encodes RFC 3986-illegal ASCII in catalog URL components", () => {
+    const catalog = renderApiCatalog({
+      manifest: {
+        ...manifest,
+        apis: [
+          {
+            href: "/api|v1?q=^`{|}[]#schema|v1",
+            serviceDesc: {
+              href: "https://[2001:db8::1]/openapi|v1.json",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(catalog).toContain(
+      "https://example.com/api%7Cv1?q=%5E%60%7B%7C%7D%5B%5D#schema%7Cv1"
+    );
+    expect(catalog).toContain("https://[2001:db8::1]/openapi%7Cv1.json");
+  });
+
+  it("percent-encodes RFC 3986-illegal ASCII in opaque catalog URLs", () => {
+    const catalog = renderApiCatalog({
+      manifest,
+      apis: [{ href: 'urn:ietf:rfc:9727 api>|"' }, { href: "mailto:a|b" }],
+    });
+
+    expect(catalog).toContain("urn:ietf:rfc:9727%20api%3E%7C%22");
+    expect(catalog).toContain("mailto:a%7Cb");
+  });
+
+  it("rejects special-scheme catalog URLs with missing slashes", () => {
+    for (const href of [
+      "https:api.example/v1",
+      "ws:api.example/socket",
+      "wss:/api.example/socket",
+      "ftp:api.example/file",
+      "file:relative/path",
+    ]) {
+      expect(() => renderApiCatalog({ manifest, apis: [{ href }] })).toThrow(
+        /must use the required slashes after its URL scheme/
+      );
+    }
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "file:/absolute/path" }] })
+    ).not.toThrow();
+  });
+
+  it("rejects malformed API catalog media types", () => {
+    for (const type of [
+      "",
+      "not a media type",
+      "application/☃",
+      'application/json; profile="unterminated',
+    ]) {
+      expect(() =>
+        renderApiCatalog({ manifest, apis: [{ href: "/ask", type }] })
+      ).toThrow(/API catalog item type must be a valid ASCII media type/);
+      expect(() =>
+        renderApiCatalog({
+          manifest,
+          apis: [{ href: "/ask", serviceDesc: { href: "/openapi", type } }],
+        })
+      ).toThrow(/API catalog link type must be a valid ASCII media type/);
+    }
+  });
+
+  it("preserves the manifest base path when rebasing the request origin", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest: {
+          ...manifest,
+          baseUrl: "https://preview.example/product/",
+          apis: [{ href: "ask" }],
+        },
+        requestOrigin: "https://docs.example",
+      })
+    );
+
+    expect(catalog.linkset[0].item).toEqual([
+      { href: "https://docs.example/product/ask" },
+    ]);
   });
 
   it("adds agent-readable frontmatter aliases to markdown", () => {
@@ -2254,6 +2806,82 @@ describe("agent artifact response helpers", () => {
     expect(body).toContain("User-agent: Bytespider");
     expect(body).toContain("User-agent: Applebot-Extended");
     expect(body).toContain("User-agent: Bingbot");
+  });
+
+  it("keeps root crawler artifacts at the request origin", async () => {
+    const fromBase = "https://preview.example/product";
+    const prefixedManifest = {
+      ...manifest,
+      baseUrl: `${fromBase}/`,
+      pages: manifest.pages.map((page) => ({
+        ...page,
+        absoluteUrl: page.absoluteUrl.replace("https://leadtype.dev", fromBase),
+        markdownAbsoluteUrl: page.markdownAbsoluteUrl.replace(
+          "https://leadtype.dev",
+          fromBase
+        ),
+      })),
+    };
+    const requestOrigin = "https://docs.example";
+    const robots = await createRobotsTxtResponse({
+      manifest: prefixedManifest,
+      requestOrigin,
+      schemamapUrlPath: "/schema-map.xml",
+    }).text();
+    expect(robots).toContain("Sitemap: https://docs.example/sitemap.xml");
+    expect(robots).toContain("Schemamap: https://docs.example/schema-map.xml");
+    expect(robots).not.toContain("https://docs.example/product/");
+
+    const sitemap = await createSitemapXmlResponse({
+      manifest: prefixedManifest,
+      requestOrigin,
+    }).text();
+    expect(sitemap).toContain(
+      "<loc>https://docs.example/product/docs/quickstart</loc>"
+    );
+  });
+
+  it("uses the request origin when the manifest base URL is not absolute", async () => {
+    const invalidBaseManifest = {
+      ...manifest,
+      baseUrl: "acme.dev",
+      files: {
+        ...manifest.files,
+        apiCatalog: "/.well-known/api-catalog",
+      },
+      apis: [{ href: "/ask" }],
+      pages: manifest.pages.map((page) => ({
+        ...page,
+        absoluteUrl: `acme.dev${page.urlPath}`,
+        markdownAbsoluteUrl: `acme.dev${page.markdownUrlPath}`,
+      })),
+    };
+    const requestOrigin = "https://staging.acme.dev";
+
+    const sitemapXml = await createSitemapXmlResponse({
+      manifest: invalidBaseManifest,
+      requestOrigin,
+    }).text();
+    expect(sitemapXml).toContain(
+      "<loc>https://staging.acme.dev/docs/quickstart</loc>"
+    );
+    expect(
+      createSitemapMarkdownResponse({
+        manifest: invalidBaseManifest,
+        requestOrigin,
+      }).status
+    ).toBe(200);
+    const robots = await createRobotsTxtResponse({
+      manifest: invalidBaseManifest,
+      requestOrigin,
+    }).text();
+    expect(robots).toContain("Sitemap: https://staging.acme.dev/sitemap.xml");
+    const catalog = createApiCatalogResponse({
+      manifest: invalidBaseManifest,
+      requestOrigin,
+    });
+    expect(catalog).not.toBeNull();
+    expect(await catalog?.text()).toContain("https://staging.acme.dev/ask");
   });
 
   it("Cache-Control: null strips the header on artifact responses", () => {

@@ -18,7 +18,8 @@ export async function proxy(request: Request): Promise<Response> {
     const next = NextResponse.next();
     if (new URL(request.url).pathname === "/") {
       for (const [key, value] of Object.entries(
-        createAgentDiscoveryHeaders()
+        // The manifest decides whether an API catalog is advertised at all.
+        createAgentDiscoveryHeaders({ manifest })
       )) {
         next.headers.set(key, value);
       }
