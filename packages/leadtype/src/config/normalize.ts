@@ -90,10 +90,10 @@ const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
 
 /** Remove userinfo-shaped text before including a rejected URL in an error. */
 function redactUserinfo(value: string): string {
-  return value.replace(
-    /^((?:[a-zA-Z][a-zA-Z0-9+\-.]*:)?\/*)([^/\s]*@)/,
-    "$1<redacted>@"
-  );
+  const delimiterIndex = value.lastIndexOf("@");
+  return delimiterIndex === -1
+    ? value
+    : `<redacted>@${value.slice(delimiterIndex + 1)}`;
 }
 
 /** Validate and serialize an authored base URL used as an artifact prefix. */
