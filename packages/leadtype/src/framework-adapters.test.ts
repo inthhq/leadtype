@@ -389,6 +389,18 @@ describe("framework adapter route helpers", () => {
     ]);
   });
 
+  it("names the routePrefix fix when an explicit base disagrees", async () => {
+    const source = buildSourceFromPages(
+      [buildPage([]), buildPage(["quickstart"])],
+      "/docs"
+    );
+    await expect(
+      createGenerateStaticParams({ source, basePath: "/guide" })()
+    ).rejects.toThrow(
+      /catch-all prefix and the collection's `routePrefix` agree.*`basePath`/
+    );
+  });
+
   it("loads docs pages from each framework's route params", async () => {
     const source = buildSource();
     await expect(

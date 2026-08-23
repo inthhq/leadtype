@@ -150,7 +150,8 @@ export type CreateGenerateStaticParamsConfig = {
    * relative to it, so `mounts` and collection `routePrefix`es are honoured.
    * Pass `"/"` for a site-root catch-all serving every collection.
    *
-   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   * @defaultValue the source's own `routePrefix`; when absent, param helpers
+   * keep collection-local slugs
    */
   basePath?: string;
 };
@@ -169,7 +170,8 @@ export type CreateLoadPageDataConfig = {
    * given to {@link createGenerateStaticParams} so emitted params load the
    * page they address.
    *
-   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   * @defaultValue the source's own `routePrefix`; when absent, loading keeps
+   * collection-local slug behavior
    */
   basePath?: string;
 };

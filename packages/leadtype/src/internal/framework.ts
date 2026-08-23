@@ -155,7 +155,7 @@ export async function listRouteSlugs(
     const slug = routeSlugFromUrlPath(page.urlPath, base);
     if (slug === null) {
       throw new Error(
-        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}". A catch-all mounted at "${base}" cannot serve it. Pass \`basePath: "/"\` for a site-root catch-all, or split pages outside the base into their own collection and pass that collection's source (\`project.getSource(key)\`) to a catch-all at its route prefix.`
+        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}". A catch-all mounted at "${base}" cannot serve it. Make the catch-all prefix and the collection's \`routePrefix\` agree and pass that prefix as \`basePath\`, pass \`basePath: "/"\` for a site-root catch-all, or split pages outside the base into their own collection and pass that collection's source (\`project.getSource(key)\`) to a catch-all at its route prefix.`
       );
     }
     return slug;
