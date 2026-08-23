@@ -1,0 +1,187 @@
+---
+title: "createDocsProject"
+description: "The config-first runtime entry point — discovery, the resolved project as a DocsSource, diagnostics vs. throws, and the resolveProject pipeline underneath."
+related:
+  - title: "The config model"
+    href: "/docs/concepts/config-model"
+    description: "The resolved project model and provenance this API exposes."
+  - title: "createDocsSource"
+    href: "/docs/reference/source"
+    description: "The lower-level one-directory primitive the project is built on."
+  - title: "Collections"
+    href: "/docs/pipeline/collections"
+    description: "The multi-source config shape the project resolves."
+---
+
+`createDocsProject()` is the runtime entry point most apps should start from — it is what `leadtype init` scaffolds. It reads the same resolved config the CLI reads and exposes it through the `DocsSource` contract, so the rendered site and the generated agent artifacts describe one project.
+
+```ts title="lib/source.ts"
+import { createDocsProject } from "leadtype";
+
+export const source = await createDocsProject();
+```
+
+With no arguments, the project discovers its config from the current directory and derives everything else — content root, navigation, `baseUrl`, collections, mounts. Nothing your config already says is restated in app code.
+
+Loading a TypeScript config at runtime goes through `jiti`, an optional peer dependency — `init` reminds you to install it, but does not install it for you: `bun add jiti`.
+
+## Discovery
+
+Zero-arg discovery follows the same rule every CLI command uses:
+
+1. `leadtype.config.{ts,js,mjs,cjs}` at the project root (the `cwd`).
+2. Otherwise, `docs.config.{ts,js,mjs,cjs}` inside the docs directory (`docs/` by default).
+
+The config file's location fixes the project root: a `docs.config.*` sits *inside* the docs directory, so the root is its parent; a `leadtype.config.*` sits at the root already. An explicit `configPath` follows the same basename rule.
+
+If neither file exists, `createDocsProject` throws naming the project root it searched from and the two filename globs (`leadtype.config.*` / `docs.config.*`); `resolveProject` reports a `config.missing` diagnostic whose fix is `leadtype init`.
+
+## `createDocsProject(config?)`
+
+Every field is optional.
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `config` | `DocsConfig` | Use this config instead of discovering one — for an app that already imports its own config module. |
+| `cwd` | `string` | Where to discover the config from, when `config` is omitted. Defaults to the working directory. |
+| `configPath` | `string` | Path the supplied `config` came from. It fixes where relative config paths resolve and derives the project root using the same basename rule as discovery. A `docs.config.*` outside the standard `docs/` directory does not make its directory the content root; pass `contentDir` too. |
+| `configDir` | `string` | Project root when the config's file path is unknown. Pass `configPath` *or* `configDir`, not both: when both are set, `configDir` wins as the project root — the default content root becomes `<configDir>/docs` — while relative paths still resolve against `configPath`'s directory. |
+| `contentDir` | `string` | Content root for a single-source project. Defaults to `<projectRoot>/docs`; pass it explicitly when a nonstandard `docs.config.*` sits beside the content. |
+| `baseUrl` | `string` | Overrides the config's site-owned `baseUrl`. Prefer setting `baseUrl` in the config — pass this only when one config serves several deployments. |
+| `locale`, `i18n` | `LocaleCode`, `DocsI18nConfig` | Locale selection and i18n config; `i18n` falls back to the config's. |
+| `remarkPlugins` | `PluggableList` | Same as [`createDocsSource`](/docs/reference/source#configuration). |
+| `typeTableBasePath`, `typeTableStrict` | `string`, `boolean` | Overrides for type-table extraction; both fall back to the config. |
+| `toc`, `searchIndex`, `transformers` | — | Passed through to each collection's underlying source; `transformers` falls back to the config's. |
+
+### `baseUrl` precedence
+
+Explicit wins, in the same order `generate` resolves `--base-url`:
+
+1. The `baseUrl` argument.
+2. The config's site-owned `baseUrl` field — the documented home for the value.
+3. The deployment-URL env fallbacks (`NEXT_PUBLIC_SITE_URL`, the Vercel URL variables, then `http://localhost:<PORT>`).
+
+## What it returns
+
+A `DocsProject` — a **superset of the `DocsSource` contract**, so every framework adapter accepts it. For a single-collection project, `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working unchanged, with no parallel code path.
+
+For a project with multiple collections under distinct route prefixes, no first-party static-params helper can be handed the whole project: Next's `createGenerateStaticParams`, Astro's `createGetStaticPaths`, Nuxt's `createPrerenderRoutes`, SvelteKit's `createEntries`, and TanStack Start's `createStaticParams` all derive params from each page's collection-local `slug`, which drops the `routePrefix` — a changelog page at `/changelog/1-0` yields `['1-0']`, and two collection index pages yield duplicate params — so a single catch-all fed by local slugs omits or misroutes collections. Two layouts work:
+
+**One route per collection.** Mount a catch-all at each collection's `routePrefix` and hand it that collection's own source. A collection source's slugs are local by construction — `['1-0']` under the `/changelog` route renders `/changelog/1-0` — so the stock params helper works without extra options in Next, Astro, SvelteKit, and TanStack Start:
+
+```ts
+// @noErrors - illustrative; app/changelog/[[...slug]]/page.tsx,
+// mounted at the collection's routePrefix.
+const changelog = project.getSource("changelog");
+export const generateStaticParams = createGenerateStaticParams({
+  source: changelog,
+});
+```
+
+Nuxt's `createPrerenderRoutes` emits absolute paths and defaults their prefix to `/docs`. Pass the collection prefix explicitly:
+
+```ts
+const createChangelogRoutes = createPrerenderRoutes({
+  source: changelog,
+  basePath: "/changelog",
+});
+```
+
+**One merged catch-all at the site root.** Derive params from `urlPath`, which already carries each collection's prefix:
+
+```ts
+// @noErrors - illustrative; app/[[...slug]]/page.tsx at the site root.
+export const generateStaticParams = async () =>
+  (await project.listPages()).map((page) => ({
+    slug: page.urlPath.split("/").filter(Boolean),
+  }));
+```
+
+These params include the route prefix (`['changelog', '1-0']`), so the snippet only lines up with a catch-all at the site root. Inside a prefixed route — such as the scaffolded `app/docs/[[...slug]]/page.tsx` — the same params would render `/docs/changelog/1-0`, the misrouting described above. A site-root optional catch-all also collides with a static `app/page.tsx`; to keep a hand-built homepage, use a required `[...slug]` segment or the per-collection layout.
+
+On top of the `DocsSource` methods (`listPages`, `loadPage`, `getNavigation`, `buildSearchIndex`, `resolveInclude`, `cleanup`), the project adds the resolved graph:
+
+```ts
+// @noErrors - illustrative; `project` comes from createDocsProject above.
+project.collections; // resolved collections, in config order
+project.sources; // the deduped acquisition graph
+project.getSource("changelog"); // one collection's DocsSource — throws on an unknown key
+```
+
+`listPages()` returns every collection's pages tagged with their `collection` key, and fails loudly when two collections resolve the same URL path — give them distinct route prefixes. `loadPage()` accepts either a full route path (`changelog/1-0`) or a collection-local slug (`1-0`); a local slug that exists in more than one collection is an error naming both, never a silent first-wins pick.
+
+`resolveInclude` is the exception to the merged view: the project-level method is bound to the primary (first-declared) collection and resolves specifiers against that collection's content root only. For a partial that lives in another collection, resolve through that collection's own source: `project.getSource("changelog").resolveInclude(...)`.
+
+## Diagnostics become throws
+
+Underneath, `createDocsProject` runs [`resolveProject()`](#resolveproject) — which reports environmental problems as diagnostics instead of throwing. The two callers split on purpose:
+
+- **`resolveProject` reports.** A read-only caller like `leadtype doctor` must describe an unsynced source and keep going.
+- **`createDocsProject` throws** on the first `level: "error"` diagnostic. There is nothing useful to hand a renderer that asked for a working source, so the blocking diagnostic's message and fix become the error.
+
+Two additional cases are fatal in `createDocsProject`: no config found anywhere (pass `config`, or add a config file), and a top-level `openapi` block alongside `collections` — generation would emit API reference pages the multi-source project cannot route, so it fails loudly instead of serving fewer routes than its own sitemap advertises.
+
+### Remote collections are cache-only
+
+A request handler must never clone a repository. A collection whose cache is missing, unverifiable, checked out too narrowly, or holding a different revision than the config asks for fails with a diagnostic naming `leadtype sync` — it does not quietly fetch:
+
+```text
+createDocsProject: the cache for collection "docs" holds
+https://github.com/acme/acme.git@v0.9, but the config asks for
+https://github.com/acme/acme.git@main. Run `leadtype sync --refresh`.
+The runtime reads the sync cache and never clones.
+```
+
+## `resolveProject()`
+
+`resolveProject()` is the resolution pipeline behind `doctor`, `nav`, and `createDocsProject`: discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. `generate` performs the same resolution steps — don't write code that relies on the two diverging. [The config model](/docs/concepts/config-model#one-pipeline-resolveproject) explains why it exists; this is its API.
+
+```ts
+import { resolveProject } from "leadtype";
+
+const project = await resolveProject({ cwd: "." });
+
+project.configPath; // what was discovered
+project.collections[0]?.contentDir; // resolved through the sync cache
+project.collections[0]?.navigationOrigin; // "explicit" | "inherited" | "groups" | "inferred"
+project.sources; // the acquisition graph
+project.inference; // what was derived rather than authored
+project.diagnostics; // what stopped a step, and the fix
+```
+
+### Options
+
+| Option | Type | Notes |
+| --- | --- | --- |
+| `cwd` | `string` | Project root. Defaults to the current directory. |
+| `config`, `configPath` | `DocsConfig`, `string` | Skip discovery with a config you already hold; `configPath` fixes where its relative paths resolve. Use `contentDir` or `docsDirs` when content is not under the derived project root's `docs/` directory. |
+| `docsDirs` | `string[]` | Docs directories relative to `cwd` for a single-source project. Defaults to `["docs"]`. |
+| `contentDir` | `string` | Content root for a single-source project, overriding `docsDirs`. |
+| `inherit` | `boolean` | Apply source-owned config inheritance. Default `true`. |
+| `infer` | `boolean` | Derive navigation from the content tree when nothing was authored. Default `true`. |
+
+### Diagnostics, not exceptions
+
+`resolveProject` throws only for a genuinely malformed config — there is no project to describe. Everything environmental lands on `project.diagnostics` as a `ProjectDiagnostic`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | `string` | Stable id, shared with `leadtype doctor` findings — e.g. `config.missing`, `source.not-synced`, `source.cache-stale`, `source.cache-narrow`, `source.cache-unverifiable`, `source.dir-missing`, `source.inherit-failed`. |
+| `level` | `"error" \| "warn"` | Errors block a build (`createDocsProject` throws on them); warnings do not. |
+| `message` | `string` | What stopped a step from completing. |
+| `collection` | `string?` | The collection this concerns, when it concerns one. |
+| `owner` | `string?` | Canonical config field or file that owns the problem, e.g. `collections.docs.ref`. |
+| `fix` | `string?` | A concrete next command, e.g. `leadtype sync --refresh`. |
+
+### `navigationOrigin`
+
+Each resolved collection records where its navigation tree came from:
+
+| Value | Means |
+| --- | --- |
+| `explicit` | Authored on this collection. |
+| `inherited` | Inherited from the source repository's own docs config via `inheritConfig`. |
+| `groups` | Derived from `group:` frontmatter via the legacy taxonomy. |
+| `inferred` | Derived from the content tree because nothing was authored. |
+
+Inference is skipped for localized projects — derivation keys sections off the first path segment, which for `docs/en/…` would be the locale, so a locale-keyed tree the real build never produces is never reported.

@@ -21,6 +21,7 @@ import { defineDocsConfig } from "leadtype";
 // ---cut---
 export default defineDocsConfig({
   product: { name: "My library", tagline: "..." },
+  baseUrl: "https://example.com",
   navigation: ["index"],
   i18n: {
     defaultLocale: "en",
@@ -61,7 +62,7 @@ named for its locale code:
 One `leadtype generate` run produces every locale:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://example.com
+npx leadtype generate --src . --out public
 ```
 
 ```txt
@@ -85,33 +86,18 @@ locale.
 
 ## 4. Render locale-prefixed routes
 
-Build one source per locale by passing `i18n` and the active `locale` to
-[`createDocsSource`](/docs/reference/source). The locale selects which pages
+Build one source per locale by passing the active `locale` to
+[`createDocsProject`](/docs/reference/project) — `i18n`, navigation, and
+`baseUrl` come from the discovered config. The locale selects which pages
 load (with default-locale fallback); the rest of the wiring is the same docs
 route you already have, parameterized by locale.
 
 ```ts title="lib/source.ts"
-// @filename: docs.config.ts
-import { defineDocsConfig } from "leadtype";
+import { createDocsProject } from "leadtype";
+import type { LocaleCode } from "leadtype/i18n";
 
-export default defineDocsConfig({
-  product: { name: "My library", tagline: "..." },
-  navigation: ["index"],
-});
-
-// @filename: main.ts
-// ---cut---
-import { createDocsSource } from "leadtype";
-import docsConfig from "./docs.config";
-
-export function getSource(locale: string) {
-  return createDocsSource({
-    contentDir: "./docs",
-    nav: docsConfig.navigation,
-    baseUrl: "https://example.com",
-    i18n: docsConfig.i18n,
-    locale,
-  });
+export function getSource(locale: LocaleCode) {
+  return createDocsProject({ locale });
 }
 ```
 

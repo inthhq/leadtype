@@ -82,10 +82,14 @@ export default defineDocsConfig({
     name: "My library",
     tagline: "What it does in one sentence.",
   },
+  // Where this site publishes — absolute links in sitemap.xml, llms.txt, and
+  // search metadata join onto it. The CLI and the runtime both read it from
+  // here, so no other file repeats it.
+  baseUrl: "https://example.com",
 });
 ```
 
-That is the whole starter config. Identity is the one thing Leadtype cannot guess — everything else is derived until you author it:
+That is the whole starter config — the same two fields `init` writes. Identity and the public URL are the two things Leadtype genuinely cannot guess — everything else is derived until you author it:
 
 - **Navigation** comes from the content tree. Root pages stay at the root; each top-level directory becomes a section titled from its `index` page. Ordering is `index` first, then frontmatter `order`, then path — never filesystem order, so every machine derives the same tree.
 - **The `llms.txt` body** becomes a "Best Starting Points" block built from that same resolved navigation, so an agent's entry points cannot drift from a reader's.
@@ -106,15 +110,16 @@ Authoring any of these turns inference off for that field — explicit configura
 ## 2. Create the source
 
 ```ts title="lib/source.ts"
-import { createDocsSource } from "leadtype";
+import { createDocsProject } from "leadtype";
 
-export const source = await createDocsSource({
-  contentDir: "./docs",
-  baseUrl: "https://example.com",
-});
+export const source = await createDocsProject();
 ```
 
-That's the framework-neutral primitive. You can now call:
+Zero arguments is the whole wiring — this is the exact `lib/source.ts` that `init` scaffolds. [`createDocsProject()`](/docs/reference/project) discovers `docs/docs.config.ts` the same way the CLI does and resolves the same project model `leadtype generate` reads — content root, navigation, `baseUrl`, all owned by the config from step 1, none of it restated here. One description of the project means the rendered site and the generated artifacts cannot disagree.
+
+Loading a TypeScript config at runtime needs `jiti` (an optional peer — `init` reminds you to install it): `bun add jiti`.
+
+The project is framework-neutral and a superset of the `DocsSource` contract. You can now call:
 
 - `source.loadPage(slug)` — resolved markdown + AST + frontmatter + TOC
 - `source.listPages()` — every page's slug, urlPath, and metadata
@@ -122,27 +127,31 @@ That's the framework-neutral primitive. You can now call:
 - `source.buildSearchIndex()` — static search bundle
 - `source.resolveInclude(specifier)` — standalone include resolver
 
+Wiring a single content directory that no config describes? The lower-level [`createDocsSource()`](/docs/reference/source) primitive takes explicit `contentDir`/`baseUrl` arguments — see [Use the source primitive](/docs/pipeline/use-the-source-primitive).
+
 ## 3. Render the docs route
 
-Step 3 is the only step that varies by framework — here's what it looks like in Next App Router. The same `createDocsSource()` from step 2 powers every framework; pick yours below the code block to see the equivalent wiring.
+Step 3 is the only step that varies by framework — here's what it looks like in Next App Router, using the `leadtype/next` adapter helpers `init` wires up. The same project from step 2 powers every framework; pick yours below the code block to see the equivalent wiring.
 
 ```tsx title="app/docs/[[...slug]]/page.tsx"
+import {
+  createGenerateStaticParams,
+  createLoadPageData,
+} from "leadtype/next";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote-client/rsc";
 import { source } from "@/lib/source";
 import { mdxComponents } from "@/lib/mdx-components";
 
-export async function generateStaticParams() {
-  const pages = await source.listPages();
-  return pages.map((page: { slug: string[] }) => ({ slug: page.slug }));
-}
+const loadPageData = createLoadPageData({ source });
+export const generateStaticParams = createGenerateStaticParams({ source });
 
 export default async function DocsPage({
   params,
 }: {
   params: Promise<{ slug?: string[] }>;
 }) {
-  const page = await source.loadPage((await params).slug ?? []);
+  const page = await loadPageData((await params).slug);
   if (!page) {
     return notFound();
   }
@@ -156,6 +165,8 @@ export default async function DocsPage({
   );
 }
 ```
+
+The scaffolded version of this file also exports `generateMetadata` and injects JSON-LD from the `agent-readability.json` manifest that step 4 generates — see [Serve agent responses](/docs/aeo/serve-agent-responses) for those pieces.
 
 The UI is yours. Leadtype provides page loading, navigation, markdown output, table of contents data, include resolution, and search input data.
 
@@ -199,13 +210,10 @@ The UI is yours. Leadtype provides page loading, navigation, markdown output, ta
 Run the site-mode CLI before your app build:
 
 ```bash
-npx leadtype generate \
-  --src . \
-  --out public \
-  --base-url https://example.com
+npx leadtype generate --src . --out public
 ```
 
-That writes the hosted files agents need:
+The base URL comes from the config's `baseUrl` field — the CLI reads the same `docs/docs.config.ts` the runtime does, so nothing is repeated on the command line. That writes the hosted files agents need:
 
 <FileTree root="public">
   <File name="llms.txt" />
@@ -229,7 +237,7 @@ Keep this command in your build script so browser docs, markdown mirrors, search
 Before publishing, check the files that prove the pipeline worked:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://example.com --json
+npx leadtype generate --src . --out public --json
 test -s public/llms.txt
 test -s public/docs/index.md
 test -s public/docs/search-index.json

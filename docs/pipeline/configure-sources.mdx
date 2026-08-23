@@ -15,8 +15,8 @@ source-owned docs config.
 | --- | --- | --- |
 | One docs folder | Docs live beside the app or package that publishes them. | `docs/docs.config.ts` + `leadtype generate --src .` |
 | One docs folder with mounted subtrees | One source tree owns all content, but a subtree needs a top-level URL such as `/changelog`. | `docs/docs.config.ts` `mounts` |
-| Multiple local folders | Related content lives in sibling folders, such as `docs/` and `changelog/`. | Repeated `--docs-dir` flags |
-| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners/mounts. | Docs UI `leadtype.config.ts` with `inheritConfig: true` |
+| Multiple local folders | Related content lives in sibling folders, such as `docs/` and `changelog/`. | Local `collections` in `leadtype.config.ts` |
+| Pinned remote collection | Recommended hosted-site shape. A docs UI repo renders a reviewed package/source `ref` and inherits source-owned navigation/schema/flatteners/mounts. | Docs UI `leadtype.config.ts` with `gitSource()` / `inheritConfig: true` |
 | Collections | Sources need separate prefixes, filters, schemas, or local/remote acquisition. | Project-level `leadtype.config.ts` |
 
 Use one docs folder when ownership is simple. Use pinned remote collections when
@@ -36,6 +36,8 @@ export default defineDocsConfig({
     name: "My product",
     tagline: "Developer tools for modern apps.",
   },
+  // Where this site publishes — the CLI and the runtime both read it here.
+  baseUrl: "https://example.com",
   llms: {
     sections: [
       {
@@ -68,10 +70,10 @@ export default defineDocsConfig({
 Then generate:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://example.com
+npx leadtype generate --src . --out public
 ```
 
-This reads `./docs`, writes website artifacts to `public`, and exposes pages under `/docs`. Top-level string entries become root pages instead of groups. Use `index` for `docs/index.mdx`; Leadtype strips `index` from generated URLs so that page still resolves to `/docs`.
+This reads `./docs`, writes website artifacts to `public` using the config's `baseUrl` for canonical links, and exposes pages under `/docs`. Top-level string entries become root pages instead of groups. Use `index` for `docs/index.mdx`; Leadtype strips `index` from generated URLs so that page still resolves to `/docs`.
 
 ### Mount a subtree at a top-level URL
 
@@ -131,44 +133,17 @@ filters, schema, ownership, or remote acquisition.
 
 ## Multiple local folders
 
-Repeat `--docs-dir` when a single source repo keeps agent-readable content outside the main docs folder:
-
-```bash
-npx leadtype generate \
-  --src . \
-  --docs-dir docs \
-  --docs-dir changelog \
-  --out public \
-  --base-url https://example.com
-```
-
-The first folder becomes the generated docs root. Additional folders are nested under their folder name, so `changelog/v1.mdx` becomes `public/docs/changelog/v1.md` and `/docs/changelog/v1`.
-
-Mount a folder at its own public URL prefix when it should not appear under `/docs`:
-
-```bash
-npx leadtype generate \
-  --src . \
-  --docs-dir docs \
-  --docs-dir changelog=/changelog \
-  --out public \
-  --base-url https://example.com
-```
-
-Leadtype still keeps an internal generated copy for search and agent helpers, but canonical links, sitemap entries, and agent metadata point to `/changelog/v1`.
-
-## Collections
-
-Use collections when each source needs explicit ownership. Collections live in a project-level `leadtype.config.ts` at the directory passed to `--src`.
+Declare one local collection per folder in a project-level `leadtype.config.ts`. The config fully describes the sources, so the CLI and the runtime read the same map:
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: {
     name: "My product",
     tagline: "Developer tools for modern apps.",
   },
+  baseUrl: "https://example.com",
   collections: {
     docs: defineCollection({
       dir: "./docs",
@@ -187,10 +162,14 @@ export default defineDocsConfig({
 Run the same site-mode generate command:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://example.com
+npx leadtype generate --src . --out public
 ```
 
 When `leadtype.config.ts` defines `collections`, the collection map fully describes the sources. Do not combine collections with `--docs-dir`.
+
+<Callout title="Legacy: repeated --docs-dir flags" variant="info">
+  Before collections, the multi-folder shape was flags: `leadtype generate --docs-dir docs --docs-dir changelog=/changelog`. The flags keep working — the first folder becomes the generated docs root, additional folders nest under their folder name, and `folder=/url` mounts one at its own prefix — but they describe the project only to that one command invocation. Collections in the config describe it to every command and to the runtime, so new setups should declare collections.
+</Callout>
 
 ## Remote git sources
 
@@ -207,10 +186,11 @@ Keep this ownership split clear:
   source-specific flatteners, and same-tree mounts such as
   `docs/changelog` -> `/changelog`.
 - Docs UI repo: source `repository`/`ref`, product identity as rendered by the
-  site, organization, agent policy, app shell, output paths, and deployment.
+  site, the site's `baseUrl`, organization, agent policy, app shell, output
+  paths, and deployment.
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
 const sdkDocs = {
   repository: "https://github.com/acme/sdk",
@@ -218,11 +198,14 @@ const sdkDocs = {
   cacheDir: ".docs-src/sdk",
 } as const;
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: {
     name: "Acme",
     tagline: "Docs for Acme SDKs and platform APIs.",
   },
+  // Site-owned, never inherited from a source repo. Without it, generation
+  // falls back to deployment env vars, then localhost.
+  baseUrl: "https://acme.dev",
   collections: {
     platform: defineCollection({
       dir: "./docs",
@@ -264,14 +247,54 @@ Sync the remote source before generating:
 
 ```bash
 npx leadtype sync --src .
-npx leadtype generate --src . --out public --base-url https://example.com
+npx leadtype generate --src . --out public
 ```
 
 Or clone missing caches and generate in one command:
 
 ```bash
-npx leadtype generate --src . --out public --base-url https://example.com --sync
+npx leadtype generate --src . --out public --sync
 ```
+
+## Multi-repo: declare the acquisition once with `gitSource()`
+
+When several collections read from one repository — or you want acquisition (repository, ref, cache, sparse paths) visibly separated from content mapping — declare a named source and nest its collections beneath it. This is the shape this repo's own [c15t example app](https://github.com/inthhq/leadtype/blob/main/apps/c15t-example/leadtype.config.ts) runs in production:
+
+```ts title="leadtype.config.ts"
+import { defineLeadtypeConfig, gitSource } from "leadtype";
+
+export default defineLeadtypeConfig({
+  product: {
+    name: "c15t",
+    tagline: "Developer-first consent management.",
+  },
+  baseUrl: "https://c15t.com",
+  sources: {
+    c15t: gitSource({
+      repository: "https://github.com/c15t/c15t.git",
+      // Pin a commit or tag for reproducible published builds; doctor flags
+      // mutable refs.
+      ref: "2b89e689458497bc985862db21f6b4b03a918e46",
+      cacheDir: "content-fixtures/c15t",
+      // One docs directory out of a monorepo — plus `packages`, because the
+      // docs render type tables from real source files there.
+      sparse: ["docs", "packages"],
+      collections: {
+        docs: {
+          dir: "docs",
+          routePrefix: "/docs",
+          inheritConfig: true,
+        },
+      },
+    }),
+  },
+  // `<AutoTypeTable path="./packages/…">` paths in c15t's MDX are relative to
+  // the repository root — the clone, not this app.
+  typeTableBasePath: "content-fixtures/c15t",
+});
+```
+
+The source owns `repository`, `ref`, `cacheDir`, and `sparse` — one clone lifecycle for all its collections. Each collection owns `dir`, `routePrefix`, filters, and its own `inheritConfig` exception. `sources` and `collections` can be used together, and a named source keeps its authored id (`c15t`) in `sync`, `doctor`, and `generate --json` output. See [Collections → Source groups](/docs/pipeline/collections#source-groups) for the full field split and the sparse-checkout guarantees.
 
 ## Pinning strategy
 

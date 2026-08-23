@@ -15,7 +15,7 @@
     },
     {
       "path": "/docs",
-      "hash": "e44c8cdcd6678e82"
+      "hash": "ce4cc0a383e361e9"
     },
     {
       "path": "/docs/aeo/generate-artifacts-without-docs",
@@ -35,7 +35,7 @@
     },
     {
       "path": "/docs/concepts/architecture",
-      "hash": "e0bb2bfc7b4516af"
+      "hash": "0fbb99bc0f6e1522"
     },
     {
       "path": "/docs/concepts/config-model",
@@ -51,7 +51,7 @@
     },
     {
       "path": "/docs/how-it-works",
-      "hash": "3b8cd40d0bc4b2c9"
+      "hash": "ee8c9fa7f41a5695"
     },
     {
       "path": "/docs/integrations/framework-matrix",
@@ -59,7 +59,7 @@
     },
     {
       "path": "/docs/integrations/integrate-with-fumadocs",
-      "hash": "6b869994c228dd23"
+      "hash": "17a4a664dffb54f0"
     },
     {
       "path": "/docs/package-docs/bundle",
@@ -67,19 +67,19 @@
     },
     {
       "path": "/docs/pipeline/agent-setup-prompts",
-      "hash": "2e9448a456f30177"
+      "hash": "d0a5d5bb651ab702"
     },
     {
       "path": "/docs/pipeline/build-a-docs-site",
-      "hash": "e2ec8067a4abb752"
+      "hash": "8610145efb6b6f45"
     },
     {
       "path": "/docs/pipeline/collections",
-      "hash": "c61312e3d233fe93"
+      "hash": "c7d72699cb60b859"
     },
     {
       "path": "/docs/pipeline/configure-sources",
-      "hash": "4e56da2d6666a2d5"
+      "hash": "1125e8fdf542b56b"
     },
     {
       "path": "/docs/pipeline/deploy-generated-artifacts",
@@ -95,7 +95,7 @@
     },
     {
       "path": "/docs/pipeline/localize-docs",
-      "hash": "d58aa740e0398cda"
+      "hash": "c259f2651852804b"
     },
     {
       "path": "/docs/pipeline/redirects",
@@ -103,11 +103,11 @@
     },
     {
       "path": "/docs/pipeline/sync-docs-across-repos",
-      "hash": "26a454896a654de4"
+      "hash": "932a8d5ff3882b42"
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
-      "hash": "64458e68b888ab19"
+      "hash": "a90d89585580a2be"
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
@@ -115,7 +115,7 @@
     },
     {
       "path": "/docs/quickstart",
-      "hash": "1b7787469173c052"
+      "hash": "6ed80be4ecedc753"
     },
     {
       "path": "/docs/reference/cli",
@@ -147,7 +147,7 @@
     },
     {
       "path": "/docs/reference/markdown",
-      "hash": "fbd3ff8d5c16826e"
+      "hash": "8c58ed85c9297bec"
     },
     {
       "path": "/docs/reference/mcp",
@@ -166,6 +166,10 @@
       "hash": "2bfd4f0da4ea9627"
     },
     {
+      "path": "/docs/reference/project",
+      "hash": "420459d076988348"
+    },
+    {
       "path": "/docs/reference/search",
       "hash": "ac421228fd5f0a29"
     },
@@ -175,7 +179,7 @@
     },
     {
       "path": "/docs/reference/source",
-      "hash": "80153f7b47eb9f73"
+      "hash": "40d96008815597ab"
     },
     {
       "path": "/docs/reference/troubleshooting",

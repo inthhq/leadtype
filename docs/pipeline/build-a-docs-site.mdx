@@ -3,7 +3,7 @@ title: "Build an agent-ready docs site"
 description: "Pick the right Leadtype integration shape for a hosted docs site with rendered pages, markdown mirrors, llms.txt, search, and agent metadata."
 ---
 
-Leadtype offers two integration shapes for hosted docs. Most sites use both: the [source primitive](/docs/how-it-works#vocabulary) renders human-facing pages, and the CLI writes the agent-facing files during the build.
+Leadtype offers two integration shapes for hosted docs. Most sites use both: [`createDocsProject()`](/docs/reference/project) reads your docs config and renders human-facing pages through a framework adapter, and the CLI reads the same config to write the agent-facing files during the build.
 
 For production docs where the source package and rendered site live in different
 repos, start with the pinned remote collection path. This is Leadtype's flagship
@@ -17,21 +17,32 @@ deployment shape:
 ## Pick your path
 
 <Mermaid chart={`flowchart LR
-  src["source MDX<br/>docs/*.mdx + meta.json"]
-  primitive["createDocsSource()<br/>(leadtype/mdx + leadtype/fumadocs)"]
+  config["docs config<br/>docs.config.ts / leadtype.config.ts"]
+  src["source MDX<br/>docs/*.mdx"]
+  project["createDocsProject()<br/>(+ leadtype/next, leadtype/astro, …)"]
   cli["leadtype generate<br/>(CLI)"]
   app["docs app<br/>(Next, TanStack Start, Nuxt, Astro, SvelteKit)"]
   artifacts["public/<br/>llms.txt · docs/*.md<br/>search-index · sitemap"]
-  src --> primitive --> app
+  config --> project
+  config --> cli
+  src --> project --> app
   src --> cli --> artifacts --> app`} />
 
 | Path | When to choose | What you wire |
 | --- | --- | --- |
+| **Project runtime** | Most cases. You have a docs config (every scaffolded project does) and a Next, TanStack Start, Nuxt, Astro, or SvelteKit app that compiles MDX with your bundler. | `createDocsProject()` + a framework adapter (`leadtype/next`, `leadtype/nuxt`, …) + `createMdxSourcePlugins()` |
 | **Pinned source docs UI** | Recommended for hosted product docs split across a source/package repo and a docs UI repo. Production needs reproducible deploys and reviewed source promotion. | Docs UI `leadtype.config.ts` remote collection with `inheritConfig: true` + `leadtype generate --sync` |
-| **Source primitive** | Most cases. You're building a Next, TanStack Start, Nuxt, Astro, or SvelteKit app and compile MDX with your bundler. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
+| **Source primitive** | Escape hatch. You're wiring one content directory that no Leadtype config describes, or constructing a source from paths computed at runtime. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
 | **Static artifacts** | Your runtime needs flat files on disk (CDN-only deploy, static export, agent-only consumption, multi-app sharing). | `leadtype generate` CLI in your build script |
 
-Use the source primitive for your UI and still run `leadtype generate` for `llms.txt`, markdown mirrors, search JSON, sitemap, robots, and Agent Readability metadata.
+Use the project runtime for your UI and still run `leadtype generate` for `llms.txt`, markdown mirrors, search JSON, sitemap, robots, and Agent Readability metadata. Both read the same resolved config for content, routes, navigation, and site metadata.
+
+`typeTableBasePath` is path-sensitive: a relative config value resolves from the
+discovered config directory in `createDocsProject()`, but from the `--src`
+project root during `leadtype generate`. When both pipelines must resolve the
+same `<ExtractedTypeTable>` files, author an absolute `typeTableBasePath` in the
+config and reuse that value in `createMdxSourcePlugins()` instead of relying on
+a relative path.
 
 ## Pinned source docs UI: the production path
 
@@ -40,13 +51,15 @@ architecture, but a separate app owns the rendered docs site, deployment,
 branding, analytics, consent, and headers/footers.
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: {
     name: "Acme",
     tagline: "Docs for Acme SDKs.",
   },
+  // Site-owned: where this docs UI publishes. Never inherited from the source.
+  baseUrl: "https://docs.example.com",
   collections: {
     docs: defineCollection({
       repository: "https://github.com/acme/sdk",
@@ -72,7 +85,7 @@ or import source-owned sidebar/schema code by hand.
 ```json title="package.json"
 {
   "scripts": {
-    "docs:generate": "leadtype generate --src . --out public --base-url https://docs.example.com --sync",
+    "docs:generate": "leadtype generate --src . --out public --sync",
     "build": "bun run docs:generate && next build"
   }
 }
@@ -81,16 +94,20 @@ or import source-owned sidebar/schema code by hand.
 → [Sync docs across repositories](/docs/pipeline/sync-docs-across-repos) — pinned
 source promotion flow
 
-## Source primitive: the common path
+## Project runtime: the common path
 
-If your docs app compiles MDX through a bundler, use the source primitive. It gives your runtime:
+If your docs app compiles MDX through a bundler, start from your config: `createDocsProject()` discovers `docs.config.*` or `leadtype.config.*` the same way the CLI does — `leadtype init` scaffolds exactly this wiring — and gives your runtime:
 
 - `loadPage(slug)` returning frontmatter + AST + serialized markdown + TOC
 - `getNavigation()` returning the resolved group tree
 - `buildSearchIndex()` returning a static search index
 - `resolveInclude()` for programmatic partial loading
+- `collections`, `sources`, and `getSource(key)` for multi-collection projects
 
-→ [Use the source primitive](/docs/pipeline/use-the-source-primitive) — generic recipe
+It returns a superset of the `DocsSource` contract, so the five static-params adapters (`leadtype/next`, `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`) accept the project as their `source`. `leadtype/fumadocs` also accepts a `DocsSource`, but `fumadocsSource()` maps each page to its collection-local `slug` and `relativePath` and reads `meta.json` only from the primary `contentDir`. Pass `project.getSource(key)` into one `fumadocsSource()` / `loader()` per collection. You may pass a single-collection project directly only when every page's `urlPath` matches the loader's `baseUrl` plus that local slug. A mount that moves a subtree outside that base needs separate route wiring because the Fumadocs adapter does not preserve mounts. Reach for the lower-level `createDocsSource()` only when no config describes the content you're wiring.
+
+→ [`createDocsProject` reference](/docs/reference/project) — discovery, diagnostics, and the project API
+→ [Use the source primitive](/docs/pipeline/use-the-source-primitive) — per-framework wiring, and when the escape hatch is right
 → [Integrate with Fumadocs](/docs/integrations/integrate-with-fumadocs) — first-party adapter
 
 ## Static artifacts: the CLI path

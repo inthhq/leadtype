@@ -50,9 +50,10 @@ This keeps production docs as an explicit promotion step. It is provider-neutral
 Keep the source repo and commit SHA in `leadtype.config.ts`:
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
+  baseUrl: "https://docs.example.com",
   product: {
     name: "Acme",
     tagline: "Docs for Acme SDKs and platform APIs.",
@@ -83,7 +84,7 @@ Then sync and generate before the framework build:
 ```json title="package.json"
 {
   "scripts": {
-    "docs:generate": "leadtype generate --src . --out public --base-url https://docs.example.com --sync",
+    "docs:generate": "leadtype generate --src . --out public --sync",
     "build": "bun run docs:generate && next build"
   }
 }
@@ -110,9 +111,10 @@ reuse the source-owned navigation. With `inheritConfig: true`, the app can move
 that source ownership into first-class Leadtype config:
 
 ```ts title="leadtype.config.ts"
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
+  baseUrl: "https://leadtype.dev",
   product: {
     name: "Leadtype",
     tagline:

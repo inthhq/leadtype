@@ -11,7 +11,7 @@ Leadtype is split into a **framework-neutral core** and a small set of **thin ad
 
 | Subpath | Purpose |
 | --- | --- |
-| `leadtype` | `createDocsSource`, `defineDocsConfig`, agent-readability types. |
+| `leadtype` | `createDocsProject` / `resolveProject` (the primary runtime entry), `createDocsSource`, `defineDocsConfig` / `defineLeadtypeConfig`, agent-readability types. |
 | `leadtype/mdx` | Tag types (`CalloutProps`, `TabsProps`, …) and `createMdxSourcePlugins()`. |
 | `leadtype/markdown` | Native markdown transforms for include expansion, type-table extraction, and agent flattening. |
 | `leadtype/transformers` | Frontmatter schema and lifecycle hook types. |

@@ -263,6 +263,7 @@ const config = defineDocsConfig({
       pages: [
         "cli",
         "doctor",
+        "project",
         "source",
         "llm",
         "convert",

@@ -123,10 +123,15 @@ A few terms you will see throughout the docs.
       description:
         "`leadtype generate --bundle`. Writes `AGENTS.md` plus relative `docs/*.md` into a package directory so coding agents read version-matched docs from `node_modules/<pkg>/AGENTS.md` after install. Skips URL-anchored site files; includes package-local MCP retrieval files when `agents.mcp.enabled` is set.",
     },
+    project: {
+      type: "noun",
+      description:
+        "The resolved project as a runtime source — `createDocsProject()` discovers your docs config the same way the CLI does and returns a superset of the source contract. The primary runtime entry point; what `leadtype init` scaffolds.",
+    },
     "source primitive": {
       type: "noun",
       description:
-        "Shorthand for `createDocsSource()` — the framework-neutral function leadtype exposes for page loading, navigation, search input data, include resolution, and TOC data. Use it when your docs app compiles MDX through a bundler (Next, TanStack Start, Nuxt, Astro, SvelteKit).",
+        "Shorthand for `createDocsSource()` — the lower-level framework-neutral function the project is built on: page loading, navigation, search input data, include resolution, and TOC data over one explicit content directory. Use it when no config describes the content you're wiring.",
     },
     "Agent Readability": {
       type: "noun",

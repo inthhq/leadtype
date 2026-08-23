@@ -26,13 +26,13 @@ docs config for that.
 
 ## defineCollection
 
-A collection is declared inside `defineDocsConfig` and identified by its map key:
+A collection is declared inside the config and identified by its map key:
 
 ```ts
 // leadtype.config.ts
-import { defineCollection, defineDocsConfig } from "leadtype";
+import { defineCollection, defineLeadtypeConfig } from "leadtype";
 
-export default defineDocsConfig({
+export default defineLeadtypeConfig({
   product: { name: "My Product", tagline: "..." },
   collections: {
     docs: defineCollection({ dir: "./docs", routePrefix: "/docs" }),

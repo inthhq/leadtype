@@ -4,7 +4,7 @@ Use leadtype to turn an existing MDX/Markdown docs source into a site that AI ag
 
 ## Steps
 
-1. **Install.** `npm i leadtype` (or `bun add leadtype`). The MCP server needs `@modelcontextprotocol/sdk` — add it only if you serve MCP.
+1. **Install.** `npm i leadtype` (or `bun add leadtype`). The MCP server needs `@modelcontextprotocol/sdk` — add it only if you serve MCP. In a Next, Astro, Nuxt, or SvelteKit app, `npx leadtype init` scaffolds steps 2–4 (config, source wiring, docs route, generate script) in one command — run it first and treat the steps below as the manual/customization path.
 
 2. **Write `docs.config.ts`.** One source of truth for the site and every agent artifact:
 
@@ -14,6 +14,8 @@ Use leadtype to turn an existing MDX/Markdown docs source into a site that AI ag
    export default defineDocsConfig({
      // Identity — reused across llms.txt, JSON-LD, and the agent card.
      product: { name: "Acme", tagline: "One sentence about the product." },
+     // Where the site publishes — the CLI and runtime both read it here.
+     baseUrl: "https://acme.dev",
      // Who publishes it → JSON-LD Organization + agent-card provider.
      organization: { name: "Acme Inc", url: "https://acme.com" },
      navigation: [{ title: "Start", pages: ["quickstart"] }], // docs-root-relative, no /docs prefix
@@ -30,15 +32,16 @@ Use leadtype to turn an existing MDX/Markdown docs source into a site that AI ag
 3. **Generate.** Run before your app build:
 
    ```bash
-   npx leadtype generate --src . --out public \
-     --base-url https://acme.dev --name "Acme" --summary "…"
+   npx leadtype generate --src . --out public
    ```
+
+   Identity and the base URL come from the config; flags like `--base-url` exist only to override it per deployment.
 
    This writes `public/llms.txt`, `public/llms-full.txt`, `public/docs/*.md` mirrors, sitemaps, `robots.txt`, `agent-readability.json`, and the `/.well-known/agent-skills` + `agent-card.json` surface.
 
 4. **Serve at runtime.** Load `agent-readability.json` once and pass it to leadtype's runtime helpers to negotiate Markdown responses for agent requests, inject JSON-LD into HTML heads, and serve sitemap/robots from the live origin. The helpers are framework-neutral (they take a Web `Request`/`Response`).
 
-5. **Verify.** `npx leadtype score` (0–100 against the ora rubric), `npx leadtype lint docs` (GEO + JSON-LD checks), and `npx leadtype mcp --check` if MCP is enabled. Spot-check the URLs agents use:
+5. **Verify.** `npx leadtype doctor` (read-only: which config was found, where each value came from, what to fix), `npx leadtype score` (0–100 against the ora rubric), `npx leadtype lint docs` (GEO + JSON-LD checks), and `npx leadtype mcp --check` if MCP is enabled. Spot-check the URLs agents use:
 
    ```bash
    curl https://acme.dev/llms.txt
