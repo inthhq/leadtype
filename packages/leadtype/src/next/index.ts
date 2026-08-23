@@ -8,15 +8,25 @@ import {
 import type {
   AgentReadabilityManifest,
   AgentReadabilityPage,
+  LocalizedAgentReadabilityManifests,
   MarkdownMirrorTarget,
+  MarkdownReadErrorHandler,
+  MissingMarkdownStatus,
 } from "../llm/readability";
 import type { DocsPage, DocsSource } from "../source";
 
 const SUPPORTED_MANIFEST_VERSION = 1;
+const MARKDOWN_MEDIA_TYPES = new Set([
+  "application/octet-stream",
+  "text/markdown",
+  "text/plain",
+  "text/x-markdown",
+]);
 
 export type {
   AgentReadabilityManifest,
   MarkdownMirrorTarget,
+  MissingMarkdownStatus,
 } from "../llm/readability";
 export type { DocsPage, DocsSource } from "../source";
 
@@ -293,6 +303,18 @@ export type CreateDocsRouteHandlerConfig = {
   cacheControl?: string | null;
 
   /**
+   * Status for a route with no page behind it.
+   *
+   * @remarks
+   * Defaults to `200`, so an agent that asked for markdown keeps the recovery
+   * body. Pass `404` when dead-link detection matters more. A manifest-known
+   * page whose mirror cannot be read answers 500 either way.
+   *
+   * @defaultValue `200`
+   */
+  missingStatus?: MissingMarkdownStatus;
+
+  /**
    * Custom markdown reader for a resolved generated markdown target.
    *
    * @remarks
@@ -303,6 +325,10 @@ export type CreateDocsRouteHandlerConfig = {
   readMarkdownFile?: (
     target: MarkdownMirrorTarget
   ) => string | null | undefined | Promise<string | null | undefined>;
+  /** Generated locale manifests, keyed by locale code, for exact cross-locale reads. */
+  localizedManifests?: LocalizedAgentReadabilityManifests;
+  /** Observe reader failures before the handler returns its stable 500 response. */
+  onReadError?: MarkdownReadErrorHandler;
 };
 
 /**
@@ -473,16 +499,27 @@ export function createDocsRouteHandler(
     publicDir,
     readMarkdownFile,
     cacheControl: config.cacheControl,
+    ...(config.localizedManifests
+      ? { localizedManifests: config.localizedManifests }
+      : {}),
+    ...(config.onReadError ? { onReadError: config.onReadError } : {}),
+    ...(config.missingStatus ? { missingStatus: config.missingStatus } : {}),
   });
 }
 
 export type CreateDocsProxyConfig = Pick<
   AgentArtifactHandlerConfig,
-  "artifactBasePath" | "cacheControl" | "manifest"
+  | "artifactBasePath"
+  | "cacheControl"
+  | "localizedManifests"
+  | "manifest"
+  | "missingStatus"
+  | "onReadError"
 > & {
   /**
-   * Public URL prefix used to fetch generated markdown files from Next's static
-   * asset serving inside Proxy.
+   * URL prefix used to fetch generated markdown through an asset route that is
+   * outside the Proxy matcher. Use a dedicated route when the matcher includes
+   * canonical `.md` URLs, so the internal fetch cannot recurse.
    *
    * @defaultValue `"/"`
    */
@@ -508,23 +545,54 @@ export function createDocsProxy(
   return async (request) => {
     const url = new URL(request.url);
     const readMarkdownFile = async (target: MarkdownMirrorTarget) => {
-      try {
-        const response = await fetch(
-          new URL(
-            joinUrlPath(config.publicPathPrefix ?? "/", target.filePath),
-            url
-          )
+      const publicPathPrefix = joinUrlPath(config.publicPathPrefix ?? "/");
+      const encodedFilePath = target.filePath
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      const expectedAssetPath = joinUrlPath(publicPathPrefix, encodedFilePath);
+      const assetUrl = new URL(expectedAssetPath, url);
+      const resolvedAssetPath = decodeURIComponent(assetUrl.pathname);
+      const decodedExpectedAssetPath = decodeURIComponent(expectedAssetPath);
+      const decodedPublicPathPrefix = decodeURIComponent(publicPathPrefix);
+      const isUnderPublicPathPrefix =
+        decodedPublicPathPrefix === "/" ||
+        resolvedAssetPath === decodedPublicPathPrefix ||
+        resolvedAssetPath.startsWith(`${decodedPublicPathPrefix}/`);
+      if (
+        resolvedAssetPath !== decodedExpectedAssetPath ||
+        !isUnderPublicPathPrefix
+      ) {
+        throw new Error(
+          `leadtype: markdown mirror "${target.markdownUrlPath}" resolves outside the configured public path prefix.`
         );
-        return response.ok ? await response.text() : null;
-      } catch {
+      }
+      const response = await fetch(assetUrl);
+      if (!response.ok) {
         return null;
       }
+      const mediaType = response.headers
+        .get("content-type")
+        ?.split(";", 1)[0]
+        ?.trim()
+        .toLowerCase();
+      if (mediaType && !MARKDOWN_MEDIA_TYPES.has(mediaType)) {
+        throw new Error(
+          `leadtype: markdown mirror "${target.markdownUrlPath}" returned unexpected content type "${mediaType}".`
+        );
+      }
+      return await response.text();
     };
     const handler = createRequiredAgentArtifactHandler({
       manifest: config.manifest,
       artifactBasePath: config.artifactBasePath,
       readMarkdownFile,
       cacheControl: config.cacheControl,
+      ...(config.localizedManifests
+        ? { localizedManifests: config.localizedManifests }
+        : {}),
+      ...(config.onReadError ? { onReadError: config.onReadError } : {}),
+      ...(config.missingStatus ? { missingStatus: config.missingStatus } : {}),
     });
     return await handler(request);
   };

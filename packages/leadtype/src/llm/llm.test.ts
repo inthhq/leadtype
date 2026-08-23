@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createAgentArtifactHandler } from "../internal/framework";
 import {
   type DocsNavEntry,
   defineFrameworkNavigation,
@@ -29,12 +30,16 @@ import {
   enrichMarkdownFrontmatter,
   isAgentReadabilityArtifactPath,
   isAgentUserAgent,
+  type MarkdownMirrorTarget,
+  type MarkdownReadErrorTarget,
+  renderApiCatalog,
   renderJsonLd,
   renderJsonLdScript,
   renderMissingMarkdown,
   renderRobotsTxt,
   renderSiteJsonLd,
   renderSitemapXml,
+  resolveManifestMarkdownMirrorTarget,
   resolveMarkdownMirrorTarget,
   stringifyJsonLd,
   validateJsonLd,
@@ -930,6 +935,59 @@ describe("generateLLMFullContextFiles", () => {
 });
 
 describe("generateAgentReadabilityArtifacts", () => {
+  it("records storage paths independently from mounted markdown URLs", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "changelog/v1.md",
+        frontmatter: "title: Version one\ndescription: Changelog.",
+        body: "# Version one\n",
+      },
+      {
+        relativePath: "rest-api/index.md",
+        frontmatter: "title: REST API\ndescription: API reference.",
+        body: "# REST API\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      mounts: [
+        { pathPrefix: "changelog", urlPrefix: "/changelog" },
+        { pathPrefix: "", urlPrefix: "/docs" },
+      ],
+    });
+    expect(result.manifest.pages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          markdownUrlPath: "/changelog/v1.md",
+          markdownFilePath: "docs/changelog/v1.md",
+        }),
+        expect.objectContaining({
+          markdownUrlPath: "/docs/rest-api.md",
+          markdownFilePath: "docs/rest-api/index.md",
+        }),
+      ])
+    );
+
+    const handler = createAgentArtifactHandler({
+      manifest: result.manifest,
+      publicDir: projectDir,
+    });
+    for (const [urlPath, heading] of [
+      ["/changelog/v1.md", "# Version one"],
+      ["/docs/rest-api.md", "# REST API"],
+    ] as const) {
+      const response = await handler(
+        new Request(`https://leadtype.dev${urlPath}`)
+      );
+      expect(response?.status).toBe(200);
+      await expect(response?.text()).resolves.toContain(heading);
+    }
+  });
+
   it("emits root sitemap, robots, and docs-scoped manifest files", async () => {
     const projectDir = await createTempProject();
     await seedDocs(projectDir, [
@@ -976,9 +1034,12 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect(existsSync(path.join(projectDir, "sitemap.xml"))).toBe(true);
     expect(existsSync(path.join(projectDir, "sitemap.md"))).toBe(true);
     expect(existsSync(path.join(projectDir, "robots.txt"))).toBe(true);
+    // No `apis` configured, so no API catalog is generated or advertised.
     expect(
       existsSync(path.join(projectDir, ".well-known", "api-catalog"))
-    ).toBe(true);
+    ).toBe(false);
+    expect(result.files.apiCatalog).toBeUndefined();
+    expect(result.manifest.files.apiCatalog).toBeUndefined();
     expect(
       existsSync(path.join(projectDir, "docs", "agent-readability.json"))
     ).toBe(true);
@@ -986,14 +1047,10 @@ describe("generateAgentReadabilityArtifacts", () => {
     const sitemapXmlPath = result.files.sitemapXml;
     const sitemapMdPath = result.files.sitemapMd;
     const robotsTxtPath = result.files.robotsTxt;
-    const apiCatalogPath = result.files.apiCatalog;
     expect(sitemapXmlPath).toBe(path.join(projectDir, "sitemap.xml"));
     expect(sitemapMdPath).toBe(path.join(projectDir, "sitemap.md"));
     expect(robotsTxtPath).toBe(path.join(projectDir, "robots.txt"));
-    expect(apiCatalogPath).toBe(
-      path.join(projectDir, ".well-known", "api-catalog")
-    );
-    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath && apiCatalogPath)) {
+    if (!(sitemapXmlPath && sitemapMdPath && robotsTxtPath)) {
       throw new Error("Expected root crawler artifacts to be emitted.");
     }
 
@@ -1019,20 +1076,100 @@ describe("generateAgentReadabilityArtifacts", () => {
     expect(robotsTxt).toContain("Allow: /llms.txt");
     expect(robotsTxt).not.toContain("Disallow: /llms.txt");
 
-    const apiCatalog = JSON.parse(await readFile(apiCatalogPath, "utf8"));
-    expect(apiCatalog.linkset[0]["api-catalog"][0].href).toBe(
-      "https://leadtype.dev/.well-known/api-catalog"
-    );
-    expect(apiCatalog.linkset[0]["service-doc"][0].href).toBe(
-      "https://leadtype.dev/docs/llms.txt"
-    );
-
     expect(result.manifest.pages).toContainEqual(
       expect.objectContaining({
         markdownUrlPath: "/docs/quickstart.md",
         urlPath: "/docs/quickstart",
       })
     );
+  });
+
+  it("emits an RFC 9727 catalog listing the configured APIs", async () => {
+    const projectDir = await createTempProject();
+    await seedDocs(projectDir, [
+      {
+        relativePath: "quickstart.md",
+        frontmatter: "title: Quickstart\ndescription: Install.",
+        body: "# Quickstart\n",
+      },
+    ]);
+
+    const result = await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+      apis: [
+        {
+          href: "/ask",
+          title: "Documentation query API",
+          type: "application/json",
+          version: "1.0",
+          serviceDesc: {
+            href: "/openapi.json",
+            type: "application/vnd.oai.openapi+json;version=3.1",
+          },
+          serviceDoc: { href: "/docs/reference/nlweb", type: "text/html" },
+          serviceMeta: { href: "/docs/agent-readability.json" },
+          status: { href: "https://status.leadtype.dev" },
+        },
+        { href: "https://api.leadtype.dev/v1/search", title: "Search API" },
+      ],
+    });
+
+    const apiCatalogPath = result.files.apiCatalog;
+    expect(apiCatalogPath).toBe(
+      path.join(projectDir, ".well-known", "api-catalog")
+    );
+    expect(result.manifest.files.apiCatalog).toBe("/.well-known/api-catalog");
+    expect(result.manifest.apis).toHaveLength(2);
+    if (!apiCatalogPath) {
+      throw new Error("Expected an API catalog to be emitted.");
+    }
+
+    const catalog = JSON.parse(await readFile(apiCatalogPath, "utf8"));
+    expect(catalog.linkset[0]).toEqual({
+      anchor: "https://leadtype.dev/.well-known/api-catalog",
+      item: [
+        {
+          href: "https://leadtype.dev/ask",
+          type: "application/json",
+          title: "Documentation query API",
+          version: ["1.0"],
+        },
+        {
+          href: "https://api.leadtype.dev/v1/search",
+          title: "Search API",
+        },
+      ],
+    });
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://leadtype.dev/ask",
+      "service-desc": [
+        {
+          href: "https://leadtype.dev/openapi.json",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+      ],
+      "service-doc": [
+        {
+          href: "https://leadtype.dev/docs/reference/nlweb",
+          type: "text/html",
+        },
+      ],
+      "service-meta": [
+        { href: "https://leadtype.dev/docs/agent-readability.json" },
+      ],
+      status: [{ href: "https://status.leadtype.dev/" }],
+    });
+    // The metadata-free cross-origin API contributes an item, not an anchor.
+    expect(catalog.linkset).toHaveLength(2);
+
+    await generateAgentReadabilityArtifacts({
+      outDir: projectDir,
+      baseUrl: "https://leadtype.dev",
+      product: { name: "Leadtype", summary: "Docs pipeline." },
+    });
+    expect(existsSync(apiCatalogPath)).toBe(false);
   });
 
   it("uses Date generatedAt for deterministic docs-scoped manifests", async () => {
@@ -1765,6 +1902,66 @@ describe("agent readability helpers", () => {
       })
     );
     expect(resolveMarkdownMirrorTarget("/docs/../secret")).toBeNull();
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "mirrors/quickstart.md",
+          },
+        ],
+      })
+    ).toEqual(expect.objectContaining({ filePath: "mirrors/quickstart.md" }));
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "docs/100%-coverage.md",
+          },
+        ],
+      })
+    ).toEqual(expect.objectContaining({ filePath: "docs/100%-coverage.md" }));
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [{ ...manifest.pages[0], markdownFilePath: "../secret.md" }],
+      })
+    ).toBeNull();
+    for (const markdownFilePath of [
+      "%2e%2e/secret.md",
+      "%2E./secret.md",
+      "docs%5c..%5csecret.md",
+    ]) {
+      expect(
+        resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+          ...manifest,
+          pages: [{ ...manifest.pages[0], markdownFilePath }],
+        })
+      ).toBeNull();
+    }
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "docs/quickstart%ZZ.md",
+          },
+        ],
+      })
+    ).toEqual(expect.objectContaining({ filePath: "docs/quickstart%ZZ.md" }));
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", {
+        ...manifest,
+        pages: [{ ...manifest.pages[0], relativePath: "%2e%2e/secret" }],
+      })
+    ).toBeNull();
+    expect(
+      resolveManifestMarkdownMirrorTarget("/docs/quickstart", manifest)
+    ).toEqual(expect.objectContaining({ filePath: "docs/quickstart.md" }));
     expect(isAgentReadabilityArtifactPath("/llms.txt")).toBe(true);
     expect(isAgentReadabilityArtifactPath("/docs/search-index.json")).toBe(
       true
@@ -1843,28 +2040,579 @@ describe("agent readability helpers", () => {
     expect(customDiscovery.Link).toContain('</docs/llms.txt>; rel="llms-txt"');
   });
 
-  it("builds agent discovery Link headers and API catalog responses", async () => {
+  it("builds agent discovery Link headers without a docs service-desc", () => {
+    // `agent-readability.json` describes documentation, not an API contract,
+    // so it is no longer the default `service-desc`.
     expect(createAgentDiscoveryLinkHeader()).toBe(
-      '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", </docs/llms.txt>; rel="service-doc"; type="text/plain", </docs/agent-readability.json>; rel="service-desc"; type="application/json", </sitemap.xml>; rel="describedby"; type="application/xml"'
+      '</docs/llms.txt>; rel="service-doc"; type="text/plain", </sitemap.xml>; rel="describedby"; type="application/xml"'
     );
     expect(createAgentDiscoveryHeaders()).toEqual({
       Link: createAgentDiscoveryLinkHeader(),
     });
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: "/.well-known/api-catalog",
+      })
+    ).toContain('rel="api-catalog"');
 
+    // With a manifest in hand, the header follows what generate actually
+    // wrote: no catalog file, no `api-catalog` link to a 404.
+    expect(createAgentDiscoveryLinkHeader({ manifest })).toBe(
+      '</docs/llms.txt>; rel="service-doc"; type="text/plain", </sitemap.xml>; rel="describedby"; type="application/xml"'
+    );
+    const staleCatalogManifest = {
+      ...manifest,
+      files: { ...manifest.files, apiCatalog: "/.well-known/api-catalog" },
+    };
+    expect(
+      createAgentDiscoveryLinkHeader({ manifest: staleCatalogManifest })
+    ).not.toContain('rel="api-catalog"');
+    expect(
+      createAgentDiscoveryLinkHeader({
+        manifest: {
+          ...staleCatalogManifest,
+          apis: [{ href: "/ask" }],
+        },
+      })
+    ).toContain('rel="api-catalog"');
+
+    // A site that has a real API description opts in, media type included.
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://api.example.com/openapi.json",
+        serviceDescType: "application/vnd.oai.openapi+json;version=3.1",
+      })
+    ).toBe(
+      '<https://api.example.com/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.1"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://api.example.com/open api>v1",
+      })
+    ).toBe(
+      '<https://api.example.com/open%20api%3Ev1>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://api.example.com/open|api",
+      })
+    ).toBe(
+      '<https://api.example.com/open%7Capi>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: 'urn:ietf:rfc:9727 api>|"',
+      })
+    ).toBe(
+      '<urn:ietf:rfc:9727%20api%3E%7C%22>; rel="service-desc"; type="application/json"'
+    );
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "https://",
+      })
+    ).toThrow(/leadtype: discovery URL is not a valid absolute URL/);
+    for (const serviceDescPath of [
+      "https:evil.example/x",
+      "https:/single-slash/x",
+      "ws:evil.example/x",
+      "wss:/single-slash/x",
+      "ftp:evil.example/x",
+      "file:relative/path",
+    ]) {
+      expect(() =>
+        createAgentDiscoveryLinkHeader({
+          apiCatalogPath: null,
+          serviceDocPath: null,
+          describedbyPath: null,
+          serviceDescPath,
+        })
+      ).toThrow(/must use the required slashes after its URL scheme/);
+    }
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "file:/absolute/path",
+      })
+    ).not.toThrow();
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/openapi.json?version=3.1#schema",
+      })
+    ).toBe(
+      '</openapi.json?version=3.1#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/api|v1/catalog?q=[1]#f|g",
+      })
+    ).toBe(
+      '</api%7Cv1/catalog?q=%5B1%5D#f%7Cg>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath:
+          "https://api.example.com/openapi.json?version=3.1#schema",
+      })
+    ).toBe(
+      '<https://api.example.com/openapi.json?version=3.1#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath:
+          "//api.example.com:8443/open api>v1?format=json#schema",
+      })
+    ).toBe(
+      '<//api.example.com:8443/open%20api%3Ev1?format=json#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath:
+          "/docs/..//api.example.com/openapi.json?version=3.1#schema",
+      })
+    ).toBe(
+      '</.//api.example.com/openapi.json?version=3.1#schema>; rel="service-desc"; type="application/json"'
+    );
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "urn:ietf:rfc:9727",
+      })
+    ).toBe('<urn:ietf:rfc:9727>; rel="service-desc"; type="application/json"');
+    for (const [serviceDescPath, expectedTarget] of [
+      [
+        " https://api.example.com/openapi.json?x=1#schema ",
+        "https://api.example.com/openapi.json?x=1#schema",
+      ],
+      [" urn:ietf:rfc:9727 ", "urn:ietf:rfc:9727"],
+      [" //api.example.com/openapi.json ", "//api.example.com/openapi.json"],
+      [" /openapi.json ", "/openapi.json"],
+    ] as const) {
+      expect(
+        createAgentDiscoveryLinkHeader({
+          apiCatalogPath: null,
+          serviceDocPath: null,
+          describedbyPath: null,
+          serviceDescPath,
+        })
+      ).toBe(
+        `<${expectedTarget}>; rel="service-desc"; type="application/json"`
+      );
+    }
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: " ws:evil.example/x ",
+      })
+    ).toThrow(/must use the required slashes after its URL scheme/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "//[bad/openapi.json",
+      })
+    ).toThrow(/leadtype: discovery URL is not a valid URI-reference/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "   ",
+      })
+    ).toThrow(/discovery URL must not be empty/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "/openapi%ZZ",
+      })
+    ).toThrow(/malformed percent escape/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "https://api.example.com/open\napi",
+      })
+    ).toThrow(/ASCII control characters/);
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "/api\uD800v1",
+      })
+    ).toThrow(/unpaired UTF-16 surrogates/);
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/api/😀",
+      })
+    ).toContain("</api/%F0%9F%98%80>");
+    expect(() =>
+      createAgentDiscoveryLinkHeader({
+        serviceDescPath: "/openapi.json",
+        serviceDescType: "application/json\r\nX-Injected: yes",
+      })
+    ).toThrow(/serviceDescType must be a valid ASCII media type/);
+    for (const serviceDescType of [
+      "application/☃",
+      "application/é",
+      "application",
+      "application/",
+      'application/json; profile="unterminated',
+    ]) {
+      expect(() =>
+        createAgentDiscoveryLinkHeader({
+          serviceDescPath: "/openapi.json",
+          serviceDescType,
+        })
+      ).toThrow(/serviceDescType must be a valid ASCII media type/);
+    }
+    expect(
+      createAgentDiscoveryLinkHeader({
+        apiCatalogPath: null,
+        serviceDocPath: null,
+        describedbyPath: null,
+        serviceDescPath: "/openapi.json",
+        serviceDescType:
+          'application/json; profile="https://example.com/schema"',
+      })
+    ).toBe(
+      '</openapi.json>; rel="service-desc"; type="application/json; profile=\\"https://example.com/schema\\""'
+    );
+  });
+
+  it("serves an RFC 9727 catalog response and 404s when no APIs exist", async () => {
+    // No configured APIs: nothing to catalog, so the caller can 404 the route.
+    expect(
+      createApiCatalogResponse({
+        manifest,
+        requestOrigin: "http://localhost:5173",
+      })
+    ).toBeNull();
+    expect(() => renderApiCatalog({ manifest })).toThrow(
+      /at least one API entry/
+    );
+
+    const apis = [
+      {
+        href: "/ask",
+        title: "Documentation query API",
+        serviceDesc: {
+          href: "/openapi.json",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+      },
+    ];
     const response = createApiCatalogResponse({
       manifest,
+      apis,
       requestOrigin: "http://localhost:5173",
     });
-    expect(response.headers.get("Content-Type")).toBe(
-      "application/linkset+json; charset=utf-8"
+    expect(response?.headers.get("Content-Type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
     );
-    const body = await response.json();
-    expect(body.linkset[0]["api-catalog"][0].href).toBe(
+    expect(response?.headers.get("Link")).toBe(
+      '<http://localhost:5173/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"'
+    );
+    const body = await response?.json();
+    expect(body.linkset[0].anchor).toBe(
       "http://localhost:5173/.well-known/api-catalog"
     );
-    expect(body.linkset[0]["service-desc"][0].href).toBe(
-      "http://localhost:5173/docs/agent-readability.json"
+    expect(body.linkset[0].item).toEqual([
+      {
+        href: "http://localhost:5173/ask",
+        title: "Documentation query API",
+      },
+    ]);
+    expect(body.linkset[1]["service-desc"][0].href).toBe(
+      "http://localhost:5173/openapi.json"
     );
+
+    // HEAD keeps every header — including the self-referential api-catalog
+    // Link RFC 9727 §2 requires — but carries no body.
+    const head = createApiCatalogResponse({
+      manifest,
+      apis,
+      method: "head",
+      requestOrigin: "http://localhost:5173",
+    });
+    expect(head?.headers.get("Link")).toBe(response?.headers.get("Link"));
+    expect(head?.headers.get("Content-Type")).toBe(
+      response?.headers.get("Content-Type")
+    );
+    expect(head?.body).toBeNull();
+    expect(await head?.text()).toBe("");
+    for (const method of ["POST", "PUT", "DELETE"]) {
+      expect(
+        createApiCatalogResponse({
+          manifest,
+          apis,
+          method,
+          requestOrigin: "http://localhost:5173",
+        })
+      ).toBeNull();
+    }
+  });
+
+  it("resolves catalog hrefs relative to the serving origin", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest,
+        // Root-relative, document-relative, and cross-origin all resolve.
+        apis: [
+          { href: "/ask" },
+          { href: "v2/ask" },
+          { href: "https://api.example.com/open api" },
+          {
+            href: "https://api.partner.example/graphql",
+            serviceDoc: { href: "https://partner.example/docs" },
+          },
+        ],
+      })
+    );
+    expect(
+      catalog.linkset[0].item.map((item: { href: string }) => item.href)
+    ).toEqual([
+      "https://example.com/ask",
+      "https://example.com/v2/ask",
+      "https://api.example.com/open%20api",
+      "https://api.partner.example/graphql",
+    ]);
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://api.partner.example/graphql",
+      "service-doc": [{ href: "https://partner.example/docs" }],
+    });
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api%ZZ" }] })
+    ).toThrow(/malformed percent escape/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "https://" }] })
+    ).toThrow(/leadtype: API catalog href is not a valid URL/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api\\v1" }] })
+    ).toThrow(/must not contain backslashes/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "   " }] })
+    ).toThrow(/must not be empty/);
+    expect(() =>
+      renderApiCatalog({
+        manifest,
+        apis: [{ href: "/ask", serviceDoc: { href: "   " } }],
+      })
+    ).toThrow(/must not be empty/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api\nx" }] })
+    ).toThrow(/ASCII control character/);
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "/api\uD800v1" }] })
+    ).toThrow(/unpaired UTF-16 surrogates/);
+    expect(() =>
+      renderApiCatalog({
+        manifest,
+        apis: [{ href: "/ask", serviceDesc: { href: "/openapi\tx" } }],
+      })
+    ).toThrow(/ASCII control character/);
+    expect(() =>
+      renderApiCatalog({
+        manifest,
+        apis: [{ href: "/ask", serviceDesc: { href: "/open\uDC00api" } }],
+      })
+    ).toThrow(/unpaired UTF-16 surrogates/);
+    expect(
+      renderApiCatalog({ manifest, apis: [{ href: "/api/😀" }] })
+    ).toContain("https://example.com/api/%F0%9F%98%80");
+  });
+
+  it("percent-encodes RFC 3986-illegal ASCII in catalog URL components", () => {
+    const catalog = renderApiCatalog({
+      manifest: {
+        ...manifest,
+        apis: [
+          {
+            href: "/api|v1?q=^`{|}[]#schema|v1",
+            serviceDesc: {
+              href: "https://[2001:db8::1]/openapi|v1.json",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(catalog).toContain(
+      "https://example.com/api%7Cv1?q=%5E%60%7B%7C%7D%5B%5D#schema%7Cv1"
+    );
+    expect(catalog).toContain("https://[2001:db8::1]/openapi%7Cv1.json");
+  });
+
+  it("percent-encodes RFC 3986-illegal ASCII in opaque catalog URLs", () => {
+    const catalog = renderApiCatalog({
+      manifest,
+      apis: [{ href: 'urn:ietf:rfc:9727 api>|"' }, { href: "mailto:a|b" }],
+    });
+
+    expect(catalog).toContain("urn:ietf:rfc:9727%20api%3E%7C%22");
+    expect(catalog).toContain("mailto:a%7Cb");
+  });
+
+  it("rejects special-scheme catalog URLs with missing slashes", () => {
+    for (const href of [
+      "https:api.example/v1",
+      "ws:api.example/socket",
+      "wss:/api.example/socket",
+      "ftp:api.example/file",
+      "file:relative/path",
+    ]) {
+      expect(() => renderApiCatalog({ manifest, apis: [{ href }] })).toThrow(
+        /must use the required slashes after its URL scheme/
+      );
+    }
+    expect(() =>
+      renderApiCatalog({ manifest, apis: [{ href: "file:/absolute/path" }] })
+    ).not.toThrow();
+  });
+
+  it("rejects malformed API catalog media types", () => {
+    for (const type of [
+      "",
+      "not a media type",
+      "application/☃",
+      'application/json; profile="unterminated',
+    ]) {
+      expect(() =>
+        renderApiCatalog({ manifest, apis: [{ href: "/ask", type }] })
+      ).toThrow(/API catalog item type must be a valid ASCII media type/);
+      expect(() =>
+        renderApiCatalog({
+          manifest,
+          apis: [{ href: "/ask", serviceDesc: { href: "/openapi", type } }],
+        })
+      ).toThrow(/API catalog link type must be a valid ASCII media type/);
+    }
+  });
+
+  it("preserves the manifest base path when rebasing the request origin", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest: {
+          ...manifest,
+          baseUrl: "https://preview.example/product/",
+          apis: [{ href: "ask" }],
+        },
+        requestOrigin: "https://docs.example",
+      })
+    );
+
+    expect(catalog.linkset[0].item).toEqual([
+      { href: "https://docs.example/product/ask" },
+    ]);
+  });
+
+  it("deduplicates catalog hrefs after applying the request origin", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest: { ...manifest, baseUrl: "http://localhost:3000" },
+        requestOrigin: "https://acme.dev",
+        apis: [
+          { href: "https://acme.dev/ask", title: "Authored API" },
+          {
+            href: "/ask",
+            serviceDesc: { href: "/openapi.json" },
+          },
+        ],
+      })
+    );
+    expect(catalog.linkset[0].item).toEqual([
+      { href: "https://acme.dev/ask", title: "Authored API" },
+    ]);
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://acme.dev/ask",
+      "service-desc": [{ href: "https://acme.dev/openapi.json" }],
+    });
+  });
+
+  it("merges and deduplicates relations from equivalent catalog entries", () => {
+    const catalog = JSON.parse(
+      renderApiCatalog({
+        manifest,
+        apis: [
+          {
+            href: "/ask",
+            title: "Authored API",
+            serviceDesc: [
+              {
+                href: "/openapi.json",
+                title: "Authored description",
+              },
+              { href: "/asyncapi.json" },
+            ],
+          },
+          {
+            href: "https://example.com/ask",
+            title: "Generated API",
+            type: "application/json",
+            version: "1.0",
+            serviceDesc: [
+              {
+                href: "https://example.com/openapi.json",
+                title: "Duplicate description",
+                type: "application/vnd.oai.openapi+json;version=3.1",
+              },
+              { href: "/schema.json" },
+            ],
+          },
+        ],
+      })
+    );
+
+    expect(catalog.linkset[0].item).toEqual([
+      {
+        href: "https://example.com/ask",
+        title: "Authored API",
+        type: "application/json",
+        version: ["1.0"],
+      },
+    ]);
+    expect(catalog.linkset[1]).toEqual({
+      anchor: "https://example.com/ask",
+      "service-desc": [
+        {
+          href: "https://example.com/openapi.json",
+          title: "Authored description",
+          type: "application/vnd.oai.openapi+json;version=3.1",
+        },
+        { href: "https://example.com/asyncapi.json" },
+        { href: "https://example.com/schema.json" },
+      ],
+    });
   });
 
   it("adds agent-readable frontmatter aliases to markdown", () => {
@@ -1913,6 +2661,22 @@ lastModified: 2026-05-01T12:00:00.000Z
     const docsBody = await docsResponse?.text();
     expect(docsBody).toContain("# Quickstart");
     expect(docsBody).toContain("canonical_url:");
+
+    let indexTarget: string | undefined;
+    const indexAliasResponse = await createAgentMarkdownResponse({
+      urlPath: "/docs.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: (target) => {
+        indexTarget = target.filePath;
+        return "# Docs\n";
+      },
+    });
+    expect(indexAliasResponse?.status).toBe(200);
+    expect(indexTarget).toBe("docs/index.md");
+    expect(indexAliasResponse?.headers.get("Link")).toContain(
+      '<https://example.com/docs>; rel="canonical"'
+    );
 
     const missingResponse = await createAgentMarkdownResponse({
       urlPath: "/missing-page",
@@ -1990,6 +2754,663 @@ lastModified: 2026-05-01T12:00:00.000Z
         Promise.resolve("---\ntitle: Quickstart\n---\n# Quickstart from KV\n"),
     });
     expect(await response?.text()).toContain("# Quickstart from KV");
+  });
+
+  it("serves generated mirror filenames containing literal percent signs", async () => {
+    let mirrorTarget = "";
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            markdownFilePath: "docs/100%-coverage.md",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        mirrorTarget = target.filePath;
+        return "# Percent coverage\n";
+      },
+    });
+
+    expect(response?.status).toBe(200);
+    expect(mirrorTarget).toBe("docs/100%-coverage.md");
+    expect(await response?.text()).toContain("# Percent coverage");
+  });
+
+  it("reads root-relative mirrors from legacy BYOP manifests", async () => {
+    const legacyByopManifest = {
+      ...manifest,
+      pages: [
+        {
+          ...manifest.pages[0],
+          urlPath: "/benchmarks/chrome",
+          absoluteUrl: "https://example.com/benchmarks/chrome",
+          markdownUrlPath: "/benchmarks/chrome.md",
+          markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+          relativePath: "benchmarks/chrome",
+        },
+        {
+          ...manifest.pages[0],
+          urlPath: "/",
+          absoluteUrl: "https://example.com/",
+          markdownUrlPath: "/index.md",
+          markdownAbsoluteUrl: "https://example.com/index.md",
+          relativePath: "index",
+        },
+      ],
+    };
+    const reads: string[] = [];
+    const readMarkdownFile = (target: MarkdownMirrorTarget): string | null => {
+      reads.push(target.filePath);
+      if (target.filePath.startsWith("docs/")) {
+        return null;
+      }
+      const page = legacyByopManifest.pages.find(
+        (candidate) => candidate.relativePath === target.relativePath
+      );
+      if (!page) {
+        return null;
+      }
+      return `---
+canonical_url: "${page.absoluteUrl}"
+last_updated: "${page.lastModified}"
+---
+# ${target.relativePath}`;
+    };
+
+    const leafResponse = await createAgentMarkdownResponse({
+      urlPath: "/benchmarks/chrome.md",
+      headers: {},
+      manifest: legacyByopManifest,
+      readMarkdownFile,
+    });
+    const rootResponse = await createAgentMarkdownResponse({
+      urlPath: "/index.md",
+      headers: {},
+      manifest: legacyByopManifest,
+      readMarkdownFile,
+    });
+
+    expect(leafResponse?.status).toBe(200);
+    expect(rootResponse?.status).toBe(200);
+    expect(reads).toEqual([
+      "docs/benchmarks/chrome.md",
+      "benchmarks/chrome.md",
+      "docs/index.md",
+      "index.md",
+    ]);
+  });
+
+  it("retries legacy BYOP root mirrors after a guessed-path read error", async () => {
+    const primaryReadError = new Error("unexpected HTML fallback");
+    const reads: string[] = [];
+    const reportedErrors: unknown[] = [];
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/benchmarks/chrome.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            urlPath: "/benchmarks/chrome",
+            absoluteUrl: "https://example.com/benchmarks/chrome",
+            markdownUrlPath: "/benchmarks/chrome.md",
+            markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+            relativePath: "benchmarks/chrome",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        reads.push(target.filePath);
+        if (target.filePath.startsWith("docs/")) {
+          throw primaryReadError;
+        }
+        return `---
+canonical_url: "https://example.com/benchmarks/chrome"
+last_updated: "2026-05-01T12:00:00.000Z"
+---
+# Chrome benchmarks
+`;
+      },
+      onReadError: (_target, cause) => {
+        reportedErrors.push(cause);
+      },
+    });
+
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toContain("# Chrome benchmarks");
+    expect(reads).toEqual([
+      "docs/benchmarks/chrome.md",
+      "benchmarks/chrome.md",
+    ]);
+    expect(reportedErrors).toEqual([]);
+  });
+
+  it("refuses stale root files from legacy mounted docs-tree manifests", async () => {
+    const reads: string[] = [];
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/changelog/v1.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            title: "Version 1",
+            urlPath: "/changelog/v1",
+            absoluteUrl: "https://example.com/changelog/v1",
+            markdownUrlPath: "/changelog/v1.md",
+            markdownAbsoluteUrl: "https://example.com/changelog/v1.md",
+            relativePath: "changelog/v1",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        reads.push(target.filePath);
+        if (target.filePath.startsWith("docs/")) {
+          return null;
+        }
+        return `---
+canonical_url: "https://example.com/changelog/v1"
+last_updated: "2026-04-01T12:00:00.000Z"
+---
+# Stale root copy
+`;
+      },
+    });
+
+    expect(response?.status).toBe(500);
+    expect(await response?.text()).not.toContain("# Stale root copy");
+    expect(reads).toEqual(["docs/changelog/v1.md", "changelog/v1.md"]);
+  });
+
+  it("reports a guessed-path read error when its legacy retry also fails", async () => {
+    const primaryReadError = new Error("unexpected HTML fallback");
+    const reported: Array<{
+      target: MarkdownReadErrorTarget;
+      cause: unknown;
+    }> = [];
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/benchmarks/chrome.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [
+          {
+            ...manifest.pages[0],
+            urlPath: "/benchmarks/chrome",
+            absoluteUrl: "https://example.com/benchmarks/chrome",
+            markdownUrlPath: "/benchmarks/chrome.md",
+            markdownAbsoluteUrl: "https://example.com/benchmarks/chrome.md",
+            relativePath: "benchmarks/chrome",
+          },
+        ],
+      },
+      readMarkdownFile: (target) => {
+        if (target.filePath.startsWith("docs/")) {
+          throw primaryReadError;
+        }
+        return null;
+      },
+      onReadError: (target, cause) => {
+        reported.push({ target, cause });
+      },
+    });
+
+    expect(response?.status).toBe(500);
+    expect(reported).toEqual([
+      {
+        target: {
+          urlPath: "/benchmarks/chrome",
+          markdownUrlPath: "/benchmarks/chrome.md",
+          filePath: "docs/benchmarks/chrome.md",
+          relativePath: "benchmarks/chrome",
+        },
+        cause: primaryReadError,
+      },
+    ]);
+  });
+
+  it("answers 500 when a manifest-known page's mirror cannot be read", async () => {
+    // The manifest promised /docs/quickstart. An unreadable mirror is a broken
+    // build, so the response must not claim the page is missing.
+    for (const urlPath of ["/docs/quickstart", "/docs/quickstart.md"]) {
+      const response = await createAgentMarkdownResponse({
+        urlPath,
+        headers: { accept: "text/markdown" },
+        manifest,
+        requestOrigin: "http://localhost:3000",
+        now: new Date("2026-05-02T00:00:00.000Z"),
+        readMarkdownFile: () => null,
+      });
+
+      expect(response?.status).toBe(500);
+      expect(response?.headers.get("Cache-Control")).toBe("no-store");
+      expect(response?.headers.get("Content-Type")).toBe(
+        "text/markdown; charset=utf-8"
+      );
+      expect(response?.headers.get("Link")).toBe(
+        '<https://example.com/docs/quickstart>; rel="canonical", </llms.txt>; rel="llms-txt"'
+      );
+      expect(response?.headers.get("X-Llms-Txt")).toBe("/llms.txt");
+      const body = await response?.text();
+      expect(body).toContain("# Markdown temporarily unavailable");
+      expect(body).toContain("/docs/quickstart.md");
+      expect(body).toContain(
+        'canonical_url: "https://example.com/docs/quickstart"'
+      );
+      expect(body).not.toContain("# Page not found");
+    }
+
+    const readError = new Error("EACCES");
+    let reportedError: unknown;
+    let reportedTargetFilePath: string | undefined;
+    let reportingFinished = false;
+    const rejected = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => Promise.reject(readError),
+      onReadError: async (target, cause) => {
+        await Promise.resolve();
+        reportedError = cause;
+        reportedTargetFilePath = target.filePath;
+        reportingFinished = true;
+      },
+    });
+    expect(rejected?.status).toBe(500);
+    expect(rejected?.headers.get("Cache-Control")).toBe("no-store");
+    expect(await rejected?.text()).toContain(
+      "# Markdown temporarily unavailable"
+    );
+    expect(reportedError).toBe(readError);
+    expect(reportedTargetFilePath).toBe("docs/quickstart.md");
+    expect(reportingFinished).toBe(true);
+
+    const failedReporter = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => Promise.reject(new Error("EIO")),
+      onReadError: () => Promise.reject(new Error("reporter unavailable")),
+    });
+    expect(failedReporter?.status).toBe(500);
+    expect(await failedReporter?.text()).toContain(
+      "# Markdown temporarily unavailable"
+    );
+
+    // A caller's Cache-Control never applies to the failure — an integrity
+    // error must not be cached.
+    const cached = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      cacheControl: "public, max-age=86400",
+      readMarkdownFile: () => null,
+    });
+    expect(cached?.headers.get("Cache-Control")).toBe("no-store");
+
+    // HEAD keeps the status and headers, drops the body.
+    const head = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      method: "HEAD",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => null,
+    });
+    expect(head?.status).toBe(500);
+    expect(head?.headers.get("Cache-Control")).toBe("no-store");
+    expect(await head?.text()).toBe("");
+
+    let missingReadCause: unknown = "not-called";
+    const missingRead = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => null,
+      onReadError: (_target, cause) => {
+        missingReadCause = cause;
+      },
+    });
+    expect(missingRead?.status).toBe(500);
+    expect(missingReadCause).toBeUndefined();
+
+    let unsafeMirrorReads = 0;
+    let invalidReportedTarget: MarkdownReadErrorTarget | undefined;
+    let invalidTargetCause: unknown;
+    const invalidExplicitTarget = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest: {
+        ...manifest,
+        pages: [{ ...manifest.pages[0], markdownFilePath: "../secret.md" }],
+      },
+      readMarkdownFile: () => {
+        unsafeMirrorReads += 1;
+        return "# Stale guessed mirror";
+      },
+      onReadError: (target, cause) => {
+        invalidReportedTarget = target;
+        invalidTargetCause = cause;
+      },
+    });
+    expect(invalidExplicitTarget?.status).toBe(500);
+    expect(invalidExplicitTarget?.headers.get("Cache-Control")).toBe(
+      "no-store"
+    );
+    expect(await invalidExplicitTarget?.text()).toContain(
+      "# Markdown temporarily unavailable"
+    );
+    expect(unsafeMirrorReads).toBe(0);
+    expect(invalidReportedTarget).toEqual({
+      urlPath: "/docs/quickstart",
+      markdownUrlPath: "/docs/quickstart.md",
+      relativePath: "quickstart",
+    });
+    expect(invalidReportedTarget?.filePath).toBeUndefined();
+    expect(invalidTargetCause).toBeInstanceOf(Error);
+    expect((invalidTargetCause as Error).message).toContain(
+      "invalid markdown mirror target"
+    );
+    expect((invalidTargetCause as Error).message).toContain("../secret.md");
+
+    // A readable mirror is untouched by any of this.
+    const ok = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+    expect(ok?.status).toBe(200);
+    expect(ok?.headers.get("Cache-Control")).toBe(
+      "public, max-age=300, must-revalidate"
+    );
+  });
+
+  it("resolves cross-locale mirrors only through supplied locale manifests", async () => {
+    const defaultLocaleManifest = {
+      ...manifest,
+      locale: "en",
+      i18n: {
+        version: 1 as const,
+        defaultLocale: "en",
+        locales: [{ code: "en" }, { code: "zh" }],
+        artifacts: [
+          {
+            locale: "en",
+            urlPrefix: "/docs",
+            agentReadabilityManifest: "/docs/agent-readability.json",
+          },
+          {
+            locale: "zh",
+            urlPrefix: "/docs/zh",
+            agentReadabilityManifest: "/docs/zh/agent-readability.json",
+          },
+        ],
+      },
+    };
+    const zhManifest = {
+      ...manifest,
+      locale: "zh",
+      pages: [
+        {
+          ...manifest.pages[0],
+          title: "指南",
+          urlPath: "/docs/zh/guides",
+          absoluteUrl: "https://example.com/docs/zh/guides",
+          markdownUrlPath: "/docs/zh/guides.md",
+          markdownAbsoluteUrl: "https://example.com/docs/zh/guides.md",
+          markdownFilePath: "docs/zh/guides/index.md",
+          relativePath: "zh/guides/index",
+          locale: "zh",
+        },
+      ],
+    };
+
+    let localizedMirrorTarget = "";
+    const localized = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/guides.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      localizedManifests: { zh: zhManifest },
+      missingStatus: 404,
+      readMarkdownFile: (target) => {
+        localizedMirrorTarget = target.filePath;
+        return "---\ntitle: 快速开始\n---\n# 快速开始";
+      },
+    });
+    expect(localized?.status).toBe(200);
+    expect(await localized?.text()).toContain("# 快速开始");
+    expect(localizedMirrorTarget).toBe("docs/zh/guides/index.md");
+
+    const mountedZhManifest = {
+      ...zhManifest,
+      pages: [
+        {
+          ...zhManifest.pages[0],
+          title: "更新日志",
+          urlPath: "/changelog/zh/v1",
+          absoluteUrl: "https://example.com/changelog/zh/v1",
+          markdownUrlPath: "/changelog/zh/v1.md",
+          markdownAbsoluteUrl: "https://example.com/changelog/zh/v1.md",
+          markdownFilePath: "docs/changelog/zh/v1.md",
+          relativePath: "changelog/zh/v1",
+        },
+      ],
+    };
+    const mounted = await createAgentMarkdownResponse({
+      urlPath: "/changelog/zh/v1.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      localizedManifests: { zh: mountedZhManifest },
+      missingStatus: 404,
+      readMarkdownFile: (target) => {
+        localizedMirrorTarget = target.filePath;
+        return "# 更新日志";
+      },
+    });
+    expect(mounted?.status).toBe(200);
+    expect(await mounted?.text()).toContain("# 更新日志");
+    expect(localizedMirrorTarget).toBe("docs/changelog/zh/v1.md");
+
+    let staleMirrorReads = 0;
+    const absentPage = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/deleted.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      localizedManifests: { zh: zhManifest },
+      missingStatus: 404,
+      readMarkdownFile: () => {
+        staleMirrorReads += 1;
+        return "# Stale localized mirror";
+      },
+    });
+    expect(absentPage?.status).toBe(404);
+    expect(await absentPage?.text()).toContain("# Page not found");
+    expect(staleMirrorReads).toBe(0);
+
+    const absentManifest = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/guides.md",
+      headers: {},
+      manifest: defaultLocaleManifest,
+      missingStatus: 404,
+      readMarkdownFile: () => {
+        staleMirrorReads += 1;
+        return "# Unverified localized mirror";
+      },
+    });
+    expect(absentManifest?.status).toBe(404);
+    expect(await absentManifest?.text()).toContain("# Page not found");
+    expect(staleMirrorReads).toBe(0);
+
+    const currentZhManifest = {
+      ...defaultLocaleManifest,
+      locale: "zh",
+      pages: [],
+    };
+    const staleDefaultManifest = {
+      ...zhManifest,
+      locale: "en",
+    };
+    const currentLocaleMissing = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/guides.md",
+      headers: {},
+      manifest: currentZhManifest,
+      localizedManifests: { en: staleDefaultManifest },
+      missingStatus: 404,
+      readMarkdownFile: () => {
+        staleMirrorReads += 1;
+        return "# Stale default-locale mirror";
+      },
+    });
+    expect(currentLocaleMissing?.status).toBe(404);
+    expect(await currentLocaleMissing?.text()).toContain("# Page not found");
+    expect(staleMirrorReads).toBe(0);
+
+    await expect(
+      createAgentMarkdownResponse({
+        urlPath: "/docs/zh/guides.md",
+        headers: {},
+        manifest: defaultLocaleManifest,
+        localizedManifests: {
+          zh: { ...zhManifest, version: 2 } as unknown as typeof zhManifest,
+        },
+        readMarkdownFile: () => "# Must not be read",
+      })
+    ).rejects.toThrow(/manifest version 2 is not supported/);
+
+    await expect(
+      createAgentMarkdownResponse({
+        urlPath: "/docs/zh/guides.md",
+        headers: {},
+        manifest: defaultLocaleManifest,
+        localizedManifests: { zh: { ...zhManifest, locale: "fr" } },
+        readMarkdownFile: () => "# Must not be read",
+      })
+    ).rejects.toThrow('localized manifest for "zh" reports locale "fr"');
+  });
+
+  it("keeps unknown routes at 200 by default and honors missingStatus: 404", async () => {
+    let staleMirrorReads = 0;
+    for (const request of [
+      { urlPath: "/docs/deleted.md", headers: {} },
+      { urlPath: "/docs/deleted", headers: { accept: "text/markdown" } },
+    ]) {
+      const deleted = await createAgentMarkdownResponse({
+        ...request,
+        manifest,
+        missingStatus: 404,
+        readMarkdownFile: () => {
+          staleMirrorReads += 1;
+          return "# Deleted but still on disk";
+        },
+      });
+      expect(deleted?.status).toBe(404);
+      const body = await deleted?.text();
+      expect(body).toContain("# Page not found");
+      expect(body).not.toContain("still on disk");
+    }
+    expect(staleMirrorReads).toBe(0);
+
+    // Three shapes of "genuinely unknown": an explicit .md path, Accept
+    // negotiation, and a bare AI user-agent.
+    const unknownRequests = [
+      { urlPath: "/docs/nope.md", headers: {} },
+      { urlPath: "/changelog/nope.md", headers: {} },
+      { urlPath: "/nope", headers: { accept: "text/markdown" } },
+      { urlPath: "/nope", headers: { "user-agent": "ClaudeBot/1.0" } },
+    ];
+
+    for (const request of unknownRequests) {
+      const soft = await createAgentMarkdownResponse({
+        ...request,
+        manifest,
+        readMarkdownFile: () => null,
+      });
+      expect(soft?.status).toBe(200);
+      expect(await soft?.text()).toContain("# Page not found");
+
+      const hard = await createAgentMarkdownResponse({
+        ...request,
+        manifest,
+        missingStatus: 404,
+        readMarkdownFile: () => null,
+      });
+      expect(hard?.status).toBe(404);
+      // The recovery body survives the harder status.
+      const body = await hard?.text();
+      expect(body).toContain("# Page not found");
+      expect(body).toContain("/llms.txt");
+      expect(hard?.headers.get("Content-Type")).toBe(
+        "text/markdown; charset=utf-8"
+      );
+      expect(hard?.headers.get("X-Llms-Txt")).toBe("/llms.txt");
+    }
+
+    // HEAD carries the chosen status with no body.
+    const head = await createAgentMarkdownResponse({
+      urlPath: "/docs/nope.md",
+      method: "HEAD",
+      headers: {},
+      manifest,
+      missingStatus: 404,
+      readMarkdownFile: () => null,
+    });
+    expect(head?.status).toBe(404);
+    expect(await head?.text()).toBe("");
+
+    // An existing page is unaffected by the option.
+    const existing = await createAgentMarkdownResponse({
+      urlPath: "/docs/quickstart.md",
+      headers: {},
+      manifest,
+      missingStatus: 404,
+      readMarkdownFile: () => "---\ntitle: Quickstart\n---\n# Quickstart\n",
+    });
+    expect(existing?.status).toBe(200);
+
+    // Non-agent requests still fall through to the host app's routing.
+    expect(
+      await createAgentMarkdownResponse({
+        urlPath: "/nope",
+        headers: { accept: "text/html" },
+        manifest,
+        missingStatus: 404,
+        readMarkdownFile: () => null,
+      })
+    ).toBeNull();
+  });
+
+  it("keeps 308 and 410 ahead of missingStatus", async () => {
+    const redirects = [
+      { from: "/docs/old-quickstart", to: "/docs/quickstart", status: 308 },
+      { from: "/docs/legacy", status: 410 },
+    ];
+
+    const moved = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-quickstart",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      missingStatus: 404,
+      readMarkdownFile: () => null,
+    });
+    expect(moved?.status).toBe(308);
+
+    const gone = await createAgentMarkdownResponse({
+      urlPath: "/docs/legacy",
+      headers: { accept: "text/markdown" },
+      manifest,
+      redirects,
+      missingStatus: 404,
+      readMarkdownFile: () => null,
+    });
+    expect(gone?.status).toBe(410);
   });
 
   it("redirects agent requests for renamed pages, including .md mirrors", async () => {
@@ -2073,6 +3494,100 @@ lastModified: 2026-05-01T12:00:00.000Z
     );
   });
 
+  it("resolves localized redirect targets from locale manifests", async () => {
+    const localizedPage = {
+      ...manifest.pages[0],
+      title: "指南",
+      urlPath: "/docs/zh/guides",
+      absoluteUrl: "https://example.com/docs/zh/guides",
+      markdownUrlPath: "/docs/zh/guides/index.md",
+      markdownAbsoluteUrl: "https://example.com/docs/zh/guides/index.md",
+      markdownFilePath: "docs/zh/guides/index.md",
+      relativePath: "zh/guides/index",
+      locale: "zh",
+    };
+    const localizedManifest = {
+      ...manifest,
+      locale: "zh",
+      pages: [localizedPage],
+    };
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/zh/old-guides.md",
+      headers: {},
+      manifest,
+      localizedManifests: { zh: localizedManifest },
+      redirects: [
+        {
+          from: "/docs/zh/old-guides",
+          to: "/docs/zh/guides",
+          status: 308,
+        },
+      ],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/zh/guides/index.md"
+    );
+
+    const location = response?.headers.get("location");
+    expect(location).not.toBeNull();
+    let localizedMirrorTarget = "";
+    const destinationResponse = await createAgentMarkdownResponse({
+      urlPath: new URL(location ?? "https://example.com").pathname,
+      headers: {},
+      manifest,
+      localizedManifests: { zh: localizedManifest },
+      readMarkdownFile: (target) => {
+        localizedMirrorTarget = target.filePath;
+        return target.filePath === "docs/zh/guides/index.md"
+          ? "# Localized guides\n"
+          : null;
+      },
+    });
+
+    expect(destinationResponse?.status).toBe(200);
+    expect(localizedMirrorTarget).toBe("docs/zh/guides/index.md");
+    expect(await destinationResponse?.text()).toContain("# Localized guides");
+  });
+
+  it("ignores stale current-locale manifests when resolving redirects", async () => {
+    const stalePage = {
+      ...manifest.pages[0],
+      title: "Stale guide",
+      urlPath: "/docs/guides",
+      absoluteUrl: "https://example.com/docs/guides",
+      markdownUrlPath: "/docs/guides/index.md",
+      markdownAbsoluteUrl: "https://example.com/docs/guides/index.md",
+      markdownFilePath: "docs/guides/index.md",
+      relativePath: "guides/index",
+      locale: undefined,
+    };
+    const currentLocaleManifest = {
+      ...manifest,
+      locale: "fr",
+      pages: [stalePage],
+    };
+
+    const response = await createAgentMarkdownResponse({
+      urlPath: "/docs/old-guides.md",
+      headers: {},
+      manifest: { ...manifest, locale: "en" },
+      localizedManifests: { en: currentLocaleManifest },
+      redirects: [
+        { from: "/docs/old-guides", to: "/docs/guides", status: 308 },
+      ],
+      readMarkdownFile: () => null,
+    });
+
+    expect(response?.status).toBe(308);
+    expect(response?.headers.get("location")).toBe(
+      "https://example.com/docs/guides.md"
+    );
+  });
+
   it("HEAD method returns headers with empty body", async () => {
     const response = await createAgentMarkdownResponse({
       urlPath: "/docs/quickstart",
@@ -2113,12 +3628,75 @@ lastModified: 2026-05-01T12:00:00.000Z
     ).rejects.toThrow(/manifest version 2/);
   });
 
-  it("recognizes /llms-full.txt as an artifact (not a missing markdown page)", () => {
+  it("recognizes generated artifacts instead of treating them as missing pages", async () => {
     expect(isAgentReadabilityArtifactPath("/llms-full.txt")).toBe(true);
+    expect(isAgentReadabilityArtifactPath("/.well-known/agent-card.json")).toBe(
+      true
+    );
+    expect(
+      isAgentReadabilityArtifactPath("/.well-known/agent-skills/index.json")
+    ).toBe(true);
+    expect(
+      isAgentReadabilityArtifactPath(
+        "/.well-known/agent-skills/leadtype-docs/SKILL.md"
+      )
+    ).toBe(true);
     expect(isAgentReadabilityArtifactPath("/docs/llms-full.txt")).toBe(false);
     expect(
       isAgentReadabilityArtifactPath("/docs/llms-full/get-started.txt")
     ).toBe(false);
+
+    const localizedArtifactManifest = {
+      ...manifest,
+      i18n: {
+        version: 1 as const,
+        defaultLocale: "en",
+        locales: [{ code: "en" }, { code: "zh" }],
+        artifacts: [
+          {
+            locale: "zh",
+            urlPrefix: "/docs/zh",
+            sitemapMd: "/docs/zh/sitemap.md",
+            sitemapXml: "/docs/zh/sitemap.xml",
+          },
+        ],
+      },
+    };
+    expect(isAgentReadabilityArtifactPath("/docs/zh/sitemap.md")).toBe(false);
+    expect(
+      isAgentReadabilityArtifactPath(
+        "/docs/zh/sitemap.md",
+        localizedArtifactManifest
+      )
+    ).toBe(true);
+
+    for (const urlPath of [
+      "/.well-known/agent-card.json",
+      "/.well-known/agent-skills/index.json",
+      "/.well-known/agent-skills/leadtype-docs/SKILL.md",
+    ]) {
+      const response = await createAgentMarkdownResponse({
+        urlPath,
+        headers: { accept: "text/markdown" },
+        manifest,
+        readMarkdownFile: () => {
+          throw new Error("generated artifacts must fall through");
+        },
+      });
+      expect(response).toBeNull();
+    }
+
+    for (const urlPath of ["/docs/zh/sitemap.md", "/docs/zh/sitemap.xml"]) {
+      const response = await createAgentMarkdownResponse({
+        urlPath,
+        headers: { accept: "text/markdown" },
+        manifest: localizedArtifactManifest,
+        readMarkdownFile: () => {
+          throw new Error("localized artifacts must fall through");
+        },
+      });
+      expect(response).toBeNull();
+    }
   });
 
   it("enrichMarkdownFrontmatter tolerates CRLF line endings", () => {
@@ -2254,6 +3832,82 @@ describe("agent artifact response helpers", () => {
     expect(body).toContain("User-agent: Bytespider");
     expect(body).toContain("User-agent: Applebot-Extended");
     expect(body).toContain("User-agent: Bingbot");
+  });
+
+  it("keeps root crawler artifacts at the request origin", async () => {
+    const fromBase = "https://preview.example/product";
+    const prefixedManifest = {
+      ...manifest,
+      baseUrl: `${fromBase}/`,
+      pages: manifest.pages.map((page) => ({
+        ...page,
+        absoluteUrl: page.absoluteUrl.replace("https://leadtype.dev", fromBase),
+        markdownAbsoluteUrl: page.markdownAbsoluteUrl.replace(
+          "https://leadtype.dev",
+          fromBase
+        ),
+      })),
+    };
+    const requestOrigin = "https://docs.example";
+    const robots = await createRobotsTxtResponse({
+      manifest: prefixedManifest,
+      requestOrigin,
+      schemamapUrlPath: "/schema-map.xml",
+    }).text();
+    expect(robots).toContain("Sitemap: https://docs.example/sitemap.xml");
+    expect(robots).toContain("Schemamap: https://docs.example/schema-map.xml");
+    expect(robots).not.toContain("https://docs.example/product/");
+
+    const sitemap = await createSitemapXmlResponse({
+      manifest: prefixedManifest,
+      requestOrigin,
+    }).text();
+    expect(sitemap).toContain(
+      "<loc>https://docs.example/product/docs/quickstart</loc>"
+    );
+  });
+
+  it("uses the request origin when the manifest base URL is not absolute", async () => {
+    const invalidBaseManifest = {
+      ...manifest,
+      baseUrl: "acme.dev",
+      files: {
+        ...manifest.files,
+        apiCatalog: "/.well-known/api-catalog",
+      },
+      apis: [{ href: "/ask" }],
+      pages: manifest.pages.map((page) => ({
+        ...page,
+        absoluteUrl: `acme.dev${page.urlPath}`,
+        markdownAbsoluteUrl: `acme.dev${page.markdownUrlPath}`,
+      })),
+    };
+    const requestOrigin = "https://staging.acme.dev";
+
+    const sitemapXml = await createSitemapXmlResponse({
+      manifest: invalidBaseManifest,
+      requestOrigin,
+    }).text();
+    expect(sitemapXml).toContain(
+      "<loc>https://staging.acme.dev/docs/quickstart</loc>"
+    );
+    expect(
+      createSitemapMarkdownResponse({
+        manifest: invalidBaseManifest,
+        requestOrigin,
+      }).status
+    ).toBe(200);
+    const robots = await createRobotsTxtResponse({
+      manifest: invalidBaseManifest,
+      requestOrigin,
+    }).text();
+    expect(robots).toContain("Sitemap: https://staging.acme.dev/sitemap.xml");
+    const catalog = createApiCatalogResponse({
+      manifest: invalidBaseManifest,
+      requestOrigin,
+    });
+    expect(catalog).not.toBeNull();
+    expect(await catalog?.text()).toContain("https://staging.acme.dev/ask");
   });
 
   it("Cache-Control: null strips the header on artifact responses", () => {
@@ -2485,6 +4139,25 @@ describe("extractDocsTableOfContents", () => {
     expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
   });
 
+  it("does not close a code fence with a shorter matching marker", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## Before",
+        "````md",
+        "```",
+        "## Still hidden",
+        "````",
+        "## After",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
+  });
+
   it("deduplicates repeated heading anchors per page", () => {
     const toc = extractDocsTableOfContents(
       ["## Install", "### Install", "## Install"].join("\n"),
@@ -2509,6 +4182,163 @@ describe("extractDocsTableOfContents", () => {
       urlWithHash: "/docs/example#install-2",
       absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-2",
     });
+  });
+
+  it("counts headings outside the level range when numbering anchors", () => {
+    // The rendered page slugs every heading, so the h1 claims `install` and
+    // the h2 below it renders as `install-1` — even though the default 2..3
+    // range keeps the h1 out of the TOC itself.
+    const toc = extractDocsTableOfContents(
+      ["# Install", "## Install", "#### Setup", "### Setup"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc[0]).toMatchObject({
+      id: "install-1",
+      level: 2,
+      urlWithHash: "/docs/example#install-1",
+      absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-1",
+    });
+    expect(toc[0]?.children[0]).toMatchObject({
+      id: "setup-1",
+      level: 3,
+      urlWithHash: "/docs/example#setup-1",
+    });
+  });
+
+  it("does not collide a later Foo-1 heading with a numbered duplicate", () => {
+    const toc = extractDocsTableOfContents(
+      ["## Foo", "## Foo", "## Foo-1"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.id)).toEqual(["foo", "foo-1", "foo-1-1"]);
+  });
+
+  it("still suffixes empty slugs the way the previous counter did", () => {
+    const toc = extractDocsTableOfContents(["## !!!", "## !!!"].join("\n"), {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+  });
+
+  it("counts empty ATX headings when numbering later empty slugs", () => {
+    const toc = extractDocsTableOfContents(["##", "## !!!"].join("\n"), {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => item.id)).toEqual(["-1"]);
+  });
+
+  it("counts Setext headings when numbering anchors", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "=======", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toHaveLength(1);
+    expect(toc[0]).toMatchObject({
+      id: "install-1",
+      title: "Install",
+      level: 2,
+      urlWithHash: "/docs/example#install-1",
+    });
+  });
+
+  it("includes in-range Setext headings and ignores underlined text in fences", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "Setup",
+        "------",
+        "```md",
+        "Hidden",
+        "=======",
+        "```",
+        "## Configure",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "setup", title: "Setup" },
+      { id: "configure", title: "Configure" },
+    ]);
+  });
+
+  it("includes every paragraph line in a Setext heading", () => {
+    const toc = extractDocsTableOfContents(
+      ["First line", "second line", "---"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toEqual([
+      {
+        id: "first-line-second-line",
+        title: "First line second line",
+        level: 2,
+        urlPath: "/docs/example",
+        urlWithHash: "/docs/example#first-line-second-line",
+        absoluteUrlWithHash:
+          "https://leadtype.dev/docs/example#first-line-second-line",
+        children: [],
+      },
+    ]);
+  });
+
+  it("does not treat a thematic break after a blank line as a Setext heading", () => {
+    const toc = extractDocsTableOfContents(
+      ["A paragraph.", "", "---", "## After"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["After"]);
+  });
+
+  it("does not treat block constructs before a thematic break as Setext headings", () => {
+    const blockConstructs = [
+      "> Note",
+      "- Note",
+      "    Note",
+      "<aside>Note</aside>",
+      "<Callout>Note</Callout>",
+      "{note}",
+      "[note]: /docs/note",
+      "* * *",
+      "---",
+    ];
+
+    for (const blockConstruct of blockConstructs) {
+      const toc = extractDocsTableOfContents(
+        [blockConstruct, "---", "## Note"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => item.id)).toEqual(["note"]);
+    }
   });
 
   it("respects custom heading level ranges", () => {

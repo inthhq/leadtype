@@ -158,9 +158,12 @@ try {
   const redirectsUpdate = await updateDocsRedirects({
     lockfilePath: join(repoRoot, "docs", "paths.lock.json"),
     outDir,
+    sourceDir: staged?.contentDir ?? join(repoRoot, "docs"),
     pages: agentReadability.manifest.pages.map((page) => ({
       urlPath: page.urlPath,
       relativePath: page.relativePath,
+      ...(page.logicalPath ? { logicalPath: page.logicalPath } : {}),
+      ...(page.sourceLocale ? { sourceLocale: page.sourceLocale } : {}),
     })),
     removed: docsConfig.redirects?.removed,
   });

@@ -4,6 +4,7 @@ import {
   createAnswerContext,
   createDocsSearchIndex,
   createMemoryRateLimiter,
+  type DocsSearchContentStore,
   type DocsSearchDocument,
   DocsSearchRequestError,
   getClientIdentifier,
@@ -85,7 +86,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(index.version).toBe(2);
+    expect(index.version).toBe(3);
     expect(index.documents[0]).toEqual([
       "quickstart",
       "Quickstart",
@@ -96,8 +97,15 @@ describe("createDocsSearchIndex and searchDocs", () => {
     ]);
     expect(index.chunks[0]).toHaveLength(6);
     expect(index.chunks[0]).not.toHaveProperty("text");
-    expect(index.content?.version).toBe(2);
+    expect(index.content?.version).toBe(3);
     expect(index.content?.chunks[0]).toContain("Install the package");
+    expect(index.content?.codeChunks).toHaveLength(index.chunks.length);
+    expect(
+      index.content?.codeChunks.some((chunk) => chunk.includes("cafe"))
+    ).toBe(true);
+    expect(readDocsContentFile(index, "code")?.chunks[0]?.codeText).toContain(
+      'const cafe = "café";'
+    );
   });
 
   it("normalizes case, punctuation, and diacritics", () => {
@@ -525,6 +533,30 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("ignores legacy split content stores missing code chunks", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const { content, ...metadataOnlyIndex } = index;
+    if (!content) {
+      throw new Error("Expected createDocsSearchIndex to embed content.");
+    }
+    const legacyContent = JSON.parse(
+      JSON.stringify({
+        version: 2,
+        generatedAt: index.generatedAt,
+        chunks: content.chunks,
+      })
+    ) as DocsSearchContentStore;
+
+    const result = searchDocs(metadataOnlyIndex, "pnpm", {
+      content: legacyContent,
+    })[0];
+
+    expect(result?.title).toBe("Quickstart");
+    expect(result?.excerpt).not.toContain("pnpm");
+  });
+
   it("reads docs content as files and precise chunks", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
@@ -622,6 +654,27 @@ describe("request guards", () => {
     await expect(readJsonWithLimit(oversized, { maxBytes: 8 })).rejects.toThrow(
       DocsSearchRequestError
     );
+
+    const bodyless = new Request("https://example.com/api", {
+      method: "POST",
+    });
+    await expect(
+      readJsonWithLimit(bodyless, { allowEmpty: true })
+    ).resolves.toBeUndefined();
+
+    await expect(
+      readJsonWithLimit(
+        new Request("https://example.com/api", { method: "POST" })
+      )
+    ).rejects.toThrow(DocsSearchRequestError);
+
+    const whitespace = new Request("https://example.com/api", {
+      method: "POST",
+      body: "  \n\t",
+    });
+    await expect(
+      readJsonWithLimit(whitespace, { allowEmpty: true })
+    ).resolves.toBeUndefined();
   });
 
   it("derives client identifiers from forwarding headers", () => {

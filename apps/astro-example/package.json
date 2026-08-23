@@ -8,7 +8,7 @@
     "dev": "bun run --filter leadtype build && bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run astro dev",
     "build": "bun run --filter leadtype build && bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 astro build",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run astro preview",
-    "check-types": "bun run --filter leadtype build && bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 astro check"
+    "check-types": "bun run docs:generate && ASTRO_TELEMETRY_DISABLED=1 astro check"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
@@ -20,6 +20,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "satteri": "^0.9.3",
     "typescript": "6.0.3",
     "unified": "^11.0.5"
   }

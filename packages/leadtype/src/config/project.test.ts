@@ -453,6 +453,36 @@ describe("pinned remote sources", () => {
         ?.level
     ).toBe("error");
   });
+
+  it("does not import inherited config from a stale cache", async () => {
+    const dir = await fixture({
+      "leadtype.config.ts": config,
+      ".leadtype/acme/.git/HEAD": "ref: refs/heads/other\n",
+      ".leadtype/acme/docs/docs.config.ts": `export default {
+  ${IDENTITY},
+  navigation: [{ title: "Guides", base: "guides", pages: ["auth"] }],
+};`,
+      ".leadtype/acme/docs/guides/auth.mdx": page("Auth"),
+    });
+    await writeSyncManifest(path.join(dir, ".leadtype/acme"), {
+      version: 1,
+      repository: "https://github.com/acme/acme.git",
+      ref: "v0.9",
+      commit: "abc1234",
+      syncedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const project = await resolveProject({ cwd: dir });
+
+    // Inheritance imports the checkout's docs.config.*; a mismatched
+    // revision must be rejected before that module runs.
+    expect(
+      project.diagnostics.find((entry) => entry.id === "source.cache-stale")
+        ?.level
+    ).toBe("error");
+    expect(project.collections[0]?.navigationOrigin).not.toBe("inherited");
+    expect(project.collections[0]?.navigation).toBeUndefined();
+  });
 });
 
 describe("the acquisition graph", () => {

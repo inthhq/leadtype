@@ -187,6 +187,95 @@ export type ResolveProjectOptions = {
 const DEFAULT_DOCS_DIRNAME = "docs";
 
 /**
+ * Verify a remote collection's checkout before anything reads it.
+ *
+ * Inheritance imports and executes the checkout's `docs.config.*`, so this
+ * must run first: a stale or unverifiable cache would otherwise evaluate
+ * module side effects the later content-dir check is supposed to reject.
+ * Returns the diagnostic to report, or `undefined` when the cache matches
+ * (or the collection is local).
+ */
+async function remoteCacheDiagnostic(
+  collectionKey: string,
+  authored: DocsCollection,
+  configDir: string
+): Promise<ProjectDiagnostic | undefined> {
+  const resolvedCollection = resolveCollection(
+    collectionKey,
+    authored,
+    configDir
+  );
+  if (!resolvedCollection.remote) {
+    return;
+  }
+  const { repository, ref, cacheDir } = resolvedCollection.remote;
+  if (!existsSync(path.join(cacheDir, ".git"))) {
+    return {
+      id: "source.not-synced",
+      level: "error",
+      message: `collection "${collectionKey}" reads ${repository}@${ref}, which has no checkout at "${cacheDir}"`,
+      collection: collectionKey,
+      owner: `collections.${collectionKey}.repository`,
+      fix: "leadtype sync",
+    };
+  }
+  const manifest = await readSyncManifest(cacheDir);
+  if (!manifest) {
+    return {
+      id: "source.cache-unverifiable",
+      level: "error",
+      message: `the cache for collection "${collectionKey}" at "${cacheDir}" has no sync manifest, so its revision can't be verified`,
+      collection: collectionKey,
+      owner: `collections.${collectionKey}.cacheDir`,
+      fix: "leadtype sync --refresh",
+    };
+  }
+  // A manifest without `sparse` records a full clone — a superset of any
+  // sparse path set, so every configured path is present and there is
+  // nothing "narrow" to reject. Only a checkout that was itself sparse can
+  // be missing paths the config asks for.
+  if (
+    manifest.sparse !== undefined &&
+    !sameSparse(manifest.sparse, resolvedCollection.remote.sparse)
+  ) {
+    return {
+      id: "source.cache-narrow",
+      level: "error",
+      message: `the cache for collection "${collectionKey}" was checked out with ${formatSparse(manifest.sparse)}, but the config asks for ${formatSparse(resolvedCollection.remote.sparse)}`,
+      collection: collectionKey,
+      owner: `collections.${collectionKey}.sparse`,
+      fix: "leadtype sync --refresh",
+    };
+  }
+  if (manifest.repository !== repository || manifest.ref !== ref) {
+    return {
+      id: "source.cache-stale",
+      level: "error",
+      message: `the cache for collection "${collectionKey}" holds ${manifest.repository}@${manifest.ref}, but the config asks for ${repository}@${ref}`,
+      collection: collectionKey,
+      owner: `collections.${collectionKey}.ref`,
+      fix: "leadtype sync --refresh",
+    };
+  }
+  return;
+}
+
+function pushUniqueDiagnostic(
+  diagnostics: ProjectDiagnostic[],
+  diagnostic: ProjectDiagnostic
+): void {
+  if (
+    diagnostics.some(
+      (entry) =>
+        entry.id === diagnostic.id && entry.collection === diagnostic.collection
+    )
+  ) {
+    return;
+  }
+  diagnostics.push(diagnostic);
+}
+
+/**
  * Resolve one collection's content directory without touching the network.
  *
  * A remote collection's `dir` is relative to its **checkout**, not the config
@@ -217,67 +306,21 @@ async function resolveContentDir(
     return;
   }
 
+  const cacheIssue = await remoteCacheDiagnostic(
+    collection.key,
+    authored,
+    configDir
+  );
+  if (cacheIssue) {
+    pushUniqueDiagnostic(diagnostics, cacheIssue);
+    return;
+  }
+
   const resolvedCollection = resolveCollection(
     collection.key,
     authored,
     configDir
   );
-
-  if (resolvedCollection.remote) {
-    const { repository, ref, cacheDir } = resolvedCollection.remote;
-    if (!existsSync(path.join(cacheDir, ".git"))) {
-      diagnostics.push({
-        id: "source.not-synced",
-        level: "error",
-        message: `collection "${collection.key}" reads ${repository}@${ref}, which has no checkout at "${cacheDir}"`,
-        collection: collection.key,
-        owner: `collections.${collection.key}.repository`,
-        fix: "leadtype sync",
-      });
-      return;
-    }
-    const manifest = await readSyncManifest(cacheDir);
-    if (!manifest) {
-      diagnostics.push({
-        id: "source.cache-unverifiable",
-        level: "error",
-        message: `the cache for collection "${collection.key}" at "${cacheDir}" has no sync manifest, so its revision can't be verified`,
-        collection: collection.key,
-        owner: `collections.${collection.key}.cacheDir`,
-        fix: "leadtype sync --refresh",
-      });
-      return;
-    }
-    // A manifest without `sparse` records a full clone — a superset of any
-    // sparse path set, so every configured path is present and there is
-    // nothing "narrow" to reject. Only a checkout that was itself sparse can
-    // be missing paths the config asks for.
-    if (
-      manifest.sparse !== undefined &&
-      !sameSparse(manifest.sparse, resolvedCollection.remote.sparse)
-    ) {
-      diagnostics.push({
-        id: "source.cache-narrow",
-        level: "error",
-        message: `the cache for collection "${collection.key}" was checked out with ${formatSparse(manifest.sparse)}, but the config asks for ${formatSparse(resolvedCollection.remote.sparse)}`,
-        collection: collection.key,
-        owner: `collections.${collection.key}.sparse`,
-        fix: "leadtype sync --refresh",
-      });
-      return;
-    }
-    if (manifest.repository !== repository || manifest.ref !== ref) {
-      diagnostics.push({
-        id: "source.cache-stale",
-        level: "error",
-        message: `the cache for collection "${collection.key}" holds ${manifest.repository}@${manifest.ref}, but the config asks for ${repository}@${ref}`,
-        collection: collection.key,
-        owner: `collections.${collection.key}.ref`,
-        fix: "leadtype sync --refresh",
-      });
-      return;
-    }
-  }
 
   if (!existsSync(resolvedCollection.absoluteDir)) {
     diagnostics.push({
@@ -555,6 +598,42 @@ export async function derivationPathFilter(
   return { filter: (relativePath) => allowed.has(relativePath) };
 }
 
+export type ResolveLoadedProjectOptions = {
+  /** Project root — what `--src` names, and what relative output paths mean. */
+  rootDir: string;
+  /**
+   * Content root for a single-source project whose config does not state one.
+   * Absolute, or relative to the process working directory. Defaults to
+   * `<rootDir>/docs`.
+   */
+  fallbackContentDir?: string;
+  /**
+   * Apply source-owned config inheritance. Default `true`. Turning it off is
+   * for callers that deliberately want the project as authored here.
+   */
+  inherit?: boolean;
+  /**
+   * Derive navigation from the content tree when nothing was authored.
+   * Default `true`.
+   */
+  infer?: boolean;
+  /**
+   * Where load-time warnings (deprecations, unknown keys) go. Defaults to the
+   * process-wide logger; commands with injected io pass their own stderr so
+   * warnings never bypass it.
+   */
+  warn?: ConfigWarningSink;
+};
+
+/** A resolved project whose config is known to have loaded. */
+export type ResolvedLoadedProject = ResolvedProject & {
+  config: NonNullable<ResolvedProject["config"]>;
+  resolved: NonNullable<ResolvedProject["resolved"]>;
+};
+
+/** A loaded config that may omit `path` when the caller supplied it in-memory. */
+type LoadedProjectInput = Omit<LoadedDocsConfig, "path"> & { path?: string };
+
 export async function resolveProject(
   options: ResolveProjectOptions = {}
 ): Promise<ResolvedProject> {
@@ -649,6 +728,139 @@ export async function resolveProject(
     });
   }
 
+  const project = await resolveProjectFromLoaded(loaded, {
+    rootDir,
+    fallbackContentDir:
+      options.contentDir ??
+      docsDirs[0] ??
+      path.join(rootDir, DEFAULT_DOCS_DIRNAME),
+    ...(options.inherit === undefined ? {} : { inherit: options.inherit }),
+    ...(options.infer === undefined ? {} : { infer: options.infer }),
+    ...(options.warn ? { warn: options.warn } : {}),
+  });
+
+  const collections = [...project.collections];
+  let sources = project.sources;
+  let inference = project.inference;
+  diagnostics.push(...project.diagnostics);
+
+  // `--docs-dir` is repeatable, and `generate`'s legacy multi-dir path honors
+  // every value: the first directory mounts at the docs root, each further
+  // one under its folder name (`/docs/<basename>`) unless the value's
+  // `=<url-prefix>` names a mount explicitly. A single-source project
+  // resolves the same way here, so a report covers everything the build
+  // stages instead of silently reading only the first directory.
+  if (project.resolved.mode === "single-source" && !options.contentDir) {
+    // `generate` applies an explicit prefix on the *first* value too
+    // (`--docs-dir docs=/manual` serves the primary source at `/manual`), so
+    // the primary collection follows it — leaving it at the normalized
+    // default `/docs` reported URLs the build never renders.
+    const primaryPrefix = docsDirInputs[0]?.urlPrefix;
+    const primary = collections[0];
+    if (primaryPrefix && primary) {
+      collections[0] = {
+        ...primary,
+        routePrefix: primaryPrefix,
+        provenance: {
+          ...primary.provenance,
+          routePrefix: {
+            origin: "default",
+            inferredFrom: "url prefix (--docs-dir)",
+          },
+        },
+      };
+    }
+    if (docsDirs.length > 1) {
+      // `generate` derives navigation only when nothing structural was
+      // authored and the project is not localized (`generate.ts` skips
+      // derivation outright for `i18n` and for any authored `navigation` or
+      // `groups`). The synthesized extras follow the same opt-outs, or
+      // doctor/nav report inferred trees the build never produces.
+      const primaryTreeAuthored =
+        collections[0]?.navigationOrigin === "explicit" ||
+        collections[0]?.navigationOrigin === "groups";
+      const extras = await synthesizeExtraDirCollections({
+        rootDir,
+        docsDirInputs,
+        docsDirs,
+        usedKeys: new Set(collections.map((entry) => entry.key)),
+        sourceId: collections[0]?.sourceId ?? DEFAULT_SOURCE_ID,
+        infer:
+          options.infer !== false &&
+          project.config.i18n === undefined &&
+          !primaryTreeAuthored,
+        diagnostics,
+      });
+      collections.push(...extras.collections);
+      inference = mergeInferenceReports(inference, extras.inference);
+      // An authored tree resolves over the union of every staged directory:
+      // `generate` merges all of them into one mirror (extras under their
+      // folder names) and applies the top-level `navigation`/`groups` there,
+      // so an entry like `guides/setup` may live in the second `--docs-dir`.
+      if (primaryTreeAuthored && collections[0]) {
+        const unionDirs = extras.collections.flatMap((entry) =>
+          entry.contentDir
+            ? [
+                {
+                  dir: entry.contentDir,
+                  pathPrefix: normalizeDocsPath(
+                    path.basename(entry.contentDir)
+                  ),
+                  urlPrefix: entry.routePrefix,
+                },
+              ]
+            : []
+        );
+        if (unionDirs.length > 0) {
+          collections[0] = {
+            ...collections[0],
+            navigationExtraDirs: unionDirs,
+          };
+        }
+      }
+      sources = sources.map((source) =>
+        source.kind === "local"
+          ? {
+              ...source,
+              collectionKeys: [...source.collectionKeys, ...extras.keys],
+            }
+          : source
+      );
+    }
+  }
+
+  return {
+    ...project,
+    configOrigin,
+    collections,
+    sources,
+    inference,
+    diagnostics,
+  };
+}
+
+/**
+ * Everything `resolveProject` does after config load: source-owned
+ * inheritance, the re-normalization that keeps the first pass's `sources` and
+ * `deprecations`, and per-collection content-dir resolution through the sync
+ * cache.
+ *
+ * This is deliberately the only implementation of those steps. `resolveProject`
+ * calls it after discovery, never touching the network; `leadtype generate`
+ * calls it after running its own `syncSources`, then converts blocking
+ * diagnostics into hard failures. The subtlest invariant in the pipeline lives
+ * here exactly once: normalization expands `sources` into `collections` and
+ * folds deprecated aliases onto canonical names, so only the first pass — done
+ * at load — ever sees authored source names or aliases, and the second pass
+ * after inheritance must carry the first pass's graph and deprecations through
+ * unchanged.
+ */
+export async function resolveProjectFromLoaded(
+  loaded: LoadedProjectInput,
+  options: ResolveLoadedProjectOptions
+): Promise<ResolvedLoadedProject> {
+  const rootDir = options.rootDir;
+  const diagnostics: ProjectDiagnostic[] = [];
   const configDir = loaded.path ? path.dirname(loaded.path) : rootDir;
 
   // Inheritance first: it changes what the collections *are*, so normalizing
@@ -685,6 +897,17 @@ export async function resolveProject(
     const sourceConfigWarnings = new Map<string, ConfigWarning[]>();
     for (const [key, collection] of Object.entries(declared)) {
       if (!collection.inheritConfig) {
+        continue;
+      }
+      // Cache first: inheritance imports the checkout's docs.config.*, and a
+      // stale or missing revision must not execute that module.
+      const cacheIssue = await remoteCacheDiagnostic(
+        key,
+        collection,
+        configDir
+      );
+      if (cacheIssue) {
+        diagnostics.push(cacheIssue);
         continue;
       }
       try {
@@ -799,9 +1022,7 @@ export async function resolveProject(
     },
   };
   const fallbackContentDir = path.resolve(
-    options.contentDir ??
-      docsDirs[0] ??
-      path.join(rootDir, DEFAULT_DOCS_DIRNAME)
+    options.fallbackContentDir ?? path.join(rootDir, DEFAULT_DOCS_DIRNAME)
   );
 
   let inference = emptyInferenceReport();
@@ -861,102 +1082,14 @@ export async function resolveProject(
     });
   }
 
-  let sources = normalized.resolved.sources;
-
-  // `--docs-dir` is repeatable, and `generate`'s legacy multi-dir path honors
-  // every value: the first directory mounts at the docs root, each further
-  // one under its folder name (`/docs/<basename>`) unless the value's
-  // `=<url-prefix>` names a mount explicitly. A single-source project
-  // resolves the same way here, so a report covers everything the build
-  // stages instead of silently reading only the first directory.
-  if (normalized.resolved.mode === "single-source" && !options.contentDir) {
-    // `generate` applies an explicit prefix on the *first* value too
-    // (`--docs-dir docs=/manual` serves the primary source at `/manual`), so
-    // the primary collection follows it — leaving it at the normalized
-    // default `/docs` reported URLs the build never renders.
-    const primaryPrefix = docsDirInputs[0]?.urlPrefix;
-    const primary = collections[0];
-    if (primaryPrefix && primary) {
-      collections[0] = {
-        ...primary,
-        routePrefix: primaryPrefix,
-        provenance: {
-          ...primary.provenance,
-          routePrefix: {
-            origin: "default",
-            inferredFrom: "url prefix (--docs-dir)",
-          },
-        },
-      };
-    }
-    if (docsDirs.length > 1) {
-      // `generate` derives navigation only when nothing structural was
-      // authored and the project is not localized (`generate.ts` skips
-      // derivation outright for `i18n` and for any authored `navigation` or
-      // `groups`). The synthesized extras follow the same opt-outs, or
-      // doctor/nav report inferred trees the build never produces.
-      const primaryTreeAuthored =
-        collections[0]?.navigationOrigin === "explicit" ||
-        collections[0]?.navigationOrigin === "groups";
-      const extras = await synthesizeExtraDirCollections({
-        rootDir,
-        docsDirInputs,
-        docsDirs,
-        usedKeys: new Set(collections.map((entry) => entry.key)),
-        sourceId: collections[0]?.sourceId ?? DEFAULT_SOURCE_ID,
-        infer:
-          options.infer !== false &&
-          normalized.config.i18n === undefined &&
-          !primaryTreeAuthored,
-        diagnostics,
-      });
-      collections.push(...extras.collections);
-      inference = mergeInferenceReports(inference, extras.inference);
-      // An authored tree resolves over the union of every staged directory:
-      // `generate` merges all of them into one mirror (extras under their
-      // folder names) and applies the top-level `navigation`/`groups` there,
-      // so an entry like `guides/setup` may live in the second `--docs-dir`.
-      if (primaryTreeAuthored && collections[0]) {
-        const unionDirs = extras.collections.flatMap((entry) =>
-          entry.contentDir
-            ? [
-                {
-                  dir: entry.contentDir,
-                  pathPrefix: normalizeDocsPath(
-                    path.basename(entry.contentDir)
-                  ),
-                  urlPrefix: entry.routePrefix,
-                },
-              ]
-            : []
-        );
-        if (unionDirs.length > 0) {
-          collections[0] = {
-            ...collections[0],
-            navigationExtraDirs: unionDirs,
-          };
-        }
-      }
-      sources = sources.map((source) =>
-        source.kind === "local"
-          ? {
-              ...source,
-              collectionKeys: [...source.collectionKeys, ...extras.keys],
-            }
-          : source
-      );
-    }
-  }
-
   return {
     rootDir,
     configDir,
     ...(loaded.path ? { configPath: loaded.path } : {}),
-    configOrigin,
     config: normalized.config,
     resolved: normalized.resolved,
     collections,
-    sources,
+    sources: normalized.resolved.sources,
     inference,
     diagnostics,
   };

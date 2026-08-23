@@ -4,7 +4,11 @@ import type {
   DocsSearchIndex,
   DocsSearchResult,
 } from "./search";
-import { listDocsSearchDocuments, searchDocs } from "./search";
+import {
+  isDocsSearchContentStoreCompatible,
+  listDocsSearchDocuments,
+  searchDocs,
+} from "./search";
 
 export type { DocsSearchDocumentRecord, DocsSearchResult } from "./search";
 
@@ -88,6 +92,7 @@ async function loadArtifacts(
   if (cached) {
     return await cached;
   }
+  let contentMismatch = false;
   const promise = (async () => {
     const [index, content] = await Promise.all([
       fetchJson<DocsSearchIndex>(indexUrl, fetchImpl),
@@ -95,11 +100,23 @@ async function loadArtifacts(
         () => undefined
       ),
     ]);
-    return { index, content };
+    const compatibleContent = isDocsSearchContentStoreCompatible(
+      index,
+      content
+    );
+    contentMismatch = content !== undefined && !compatibleContent;
+    return {
+      index,
+      content: compatibleContent ? content : undefined,
+    };
   })();
   artifactCache.set(key, promise);
   try {
-    return await promise;
+    const artifacts = await promise;
+    if (contentMismatch && artifactCache.get(key) === promise) {
+      artifactCache.delete(key);
+    }
+    return artifacts;
   } catch (error) {
     artifactCache.delete(key);
     throw error;

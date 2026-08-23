@@ -115,5 +115,19 @@ type DocsI18nManifest = {
 };
 ```
 
+At runtime, preload each locale's `agentReadabilityManifest` and pass the
+parsed manifests to your core or framework handler:
+
+```ts
+const handler = createAgentArtifactHandler({
+  manifest: enManifest,
+  localizedManifests: { zh: zhManifest },
+});
+```
+
+A request under a configured locale prefix fails closed when its localized
+manifest is not supplied: Leadtype returns the missing-page response and never
+guesses a mirror file path.
+
 See [Localize docs](/docs/pipeline/localize-docs) for the authoring layout and the
 end-to-end build.
