@@ -35,7 +35,14 @@ deployment shape:
 | **Source primitive** | Escape hatch. You're wiring one content directory that no Leadtype config describes, or constructing a source from paths computed at runtime. | `createDocsSource()` (or `leadtype/fumadocs`) + `createMdxSourcePlugins()` |
 | **Static artifacts** | Your runtime needs flat files on disk (CDN-only deploy, static export, agent-only consumption, multi-app sharing). | `leadtype generate` CLI in your build script |
 
-Use the project runtime for your UI and still run `leadtype generate` for `llms.txt`, markdown mirrors, search JSON, sitemap, robots, and Agent Readability metadata. Both read the same resolved config, so they cannot disagree about what the project is.
+Use the project runtime for your UI and still run `leadtype generate` for `llms.txt`, markdown mirrors, search JSON, sitemap, robots, and Agent Readability metadata. Both read the same resolved config for content, routes, navigation, and site metadata.
+
+`typeTableBasePath` is path-sensitive: a relative config value resolves from the
+discovered config directory in `createDocsProject()`, but from the `--src`
+project root during `leadtype generate`. When both pipelines must resolve the
+same `<ExtractedTypeTable>` files, author an absolute `typeTableBasePath` in the
+config and reuse that value in `createMdxSourcePlugins()` instead of relying on
+a relative path.
 
 ## Pinned source docs UI: the production path
 
