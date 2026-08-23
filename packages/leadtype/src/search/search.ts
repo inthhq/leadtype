@@ -1,5 +1,8 @@
 import type { LocalizedDocsMetadata } from "../i18n";
-import { createDocsHeadingSlugger } from "../internal/docs-heading";
+import {
+  createDocsHeadingSlugger,
+  scanDocsMarkdown,
+} from "../internal/docs-heading";
 import { editDistanceWithin } from "../internal/edit-distance";
 import {
   type DocsFrontmatter,
@@ -33,18 +36,6 @@ const PROXIMITY_MATCH_BOOST = 0.8;
 const MAX_PREFIX_EXPANSIONS = 24;
 const MAX_TYPO_EXPANSIONS = 16;
 const PROXIMITY_WINDOW = 8;
-const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
-const SETEXT_H1_PATTERN = /^=+\s*$/;
-const SETEXT_H2_PATTERN = /^-+\s*$/;
-const FENCE_PATTERN = /^(`{3,}|~{3,})/;
-const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
-const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
-const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
-const HTML_OR_MDX_BLOCK_PATTERN = /^ {0,3}[<{]/;
-const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
-const THEMATIC_BREAK_PATTERN =
-  /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
@@ -484,10 +475,6 @@ export function countDocsSearchTerms(input: string): Map<string, number> {
   return counts;
 }
 
-function stripFrontmatter(input: string): string {
-  return input.replace(FRONTMATTER_PATTERN, "");
-}
-
 function hasUnsupportedControlCharacter(input: string): boolean {
   for (const character of input) {
     const codePoint = character.codePointAt(0);
@@ -511,31 +498,6 @@ function cleanMarkdown(input: string): string {
     .replace(MARKDOWN_INLINE_PATTERN, " ")
     .replace(WHITESPACE_PATTERN, " ")
     .trim();
-}
-
-function cleanHeadingText(input: string): string {
-  return input
-    .replace(/\s+#+\s*$/, "")
-    .replace(MARKDOWN_LINK_PATTERN, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(MARKDOWN_INLINE_PATTERN, " ")
-    .replace(WHITESPACE_PATTERN, " ")
-    .trim();
-}
-
-function isSetextHeadingText(line: string): boolean {
-  if (line.trim().length === 0) {
-    return false;
-  }
-
-  return !(
-    INDENTED_CODE_PATTERN.test(line) ||
-    BLOCKQUOTE_PATTERN.test(line) ||
-    LIST_ITEM_PATTERN.test(line) ||
-    HTML_OR_MDX_BLOCK_PATTERN.test(line) ||
-    LINK_DEFINITION_PATTERN.test(line) ||
-    THEMATIC_BREAK_PATTERN.test(line)
-  );
 }
 
 function splitWithOverlap(
@@ -587,10 +549,6 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const slugger = createDocsHeadingSlugger();
   let currentHeadingPath: string[] = [];
   let currentAnchor = "";
-  let activeFenceCharacter: "`" | "~" | null = null;
-  let activeFenceLength = 0;
-  let pendingSetextLineCount = 0;
-  let pendingSetextTitle: string | null = null;
 
   const flush = () => {
     const text = cleanMarkdown(textLines.join("\n"));
@@ -610,85 +568,24 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     codeLines.length = 0;
   };
 
-  const resetPendingSetext = (): void => {
-    pendingSetextLineCount = 0;
-    pendingSetextTitle = null;
-  };
-
-  const consumeHeading = (rawTitle: string, level: number): void => {
-    const title = cleanHeadingText(rawTitle);
+  const consumeHeading = (title: string, level: number): void => {
     headingPath.length = level - 1;
     headingPath.push(title);
     currentHeadingPath = [...headingPath];
     currentAnchor = slugger.slug(title);
   };
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    const trimmedLine = line.trim();
-    const fenceMatch = FENCE_PATTERN.exec(trimmedLine);
-    if (fenceMatch) {
-      const fenceMarker = fenceMatch[1] ?? "";
-      const fenceCharacter: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
-      const fenceRemainder = trimmedLine.slice(fenceMarker.length);
-      const closesActiveFence =
-        activeFenceCharacter === fenceCharacter &&
-        fenceMarker.length >= activeFenceLength &&
-        fenceRemainder.trim().length === 0;
-      codeLines.push(line);
-      resetPendingSetext();
-      if (closesActiveFence) {
-        activeFenceCharacter = null;
-        activeFenceLength = 0;
-        continue;
-      }
-      if (activeFenceCharacter === null) {
-        activeFenceCharacter = fenceCharacter;
-        activeFenceLength = fenceMarker.length;
-      }
-      continue;
-    }
-
-    if (activeFenceCharacter !== null) {
-      codeLines.push(line);
-      resetPendingSetext();
-      continue;
-    }
-
-    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
-    if (headingMatch) {
+  for (const token of scanDocsMarkdown(content)) {
+    if (token.kind === "heading") {
       flush();
-      resetPendingSetext();
-      const levelMarker = headingMatch[1];
-      if (levelMarker) {
-        consumeHeading(headingMatch[2] ?? "", levelMarker.length);
-      }
+      consumeHeading(token.title, token.level);
       continue;
     }
-
-    const isSetextH1 = SETEXT_H1_PATTERN.test(trimmedLine);
-    const isSetextH2 = SETEXT_H2_PATTERN.test(trimmedLine);
-    if (pendingSetextTitle !== null && (isSetextH1 || isSetextH2)) {
-      textLines.splice(-pendingSetextLineCount, pendingSetextLineCount);
-      flush();
-      consumeHeading(pendingSetextTitle, isSetextH1 ? 1 : 2);
-      resetPendingSetext();
+    if (token.kind === "code") {
+      codeLines.push(token.value);
       continue;
     }
-
-    if (isSetextH1 || isSetextH2) {
-      resetPendingSetext();
-      continue;
-    }
-
-    textLines.push(line);
-    if (isSetextHeadingText(line)) {
-      pendingSetextTitle = pendingSetextTitle
-        ? `${pendingSetextTitle} ${trimmedLine}`
-        : trimmedLine;
-      pendingSetextLineCount += 1;
-    } else {
-      resetPendingSetext();
-    }
+    textLines.push(token.value);
   }
 
   flush();

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { extractDocsTableOfContents } from "../llm/llm";
 import {
   attachDocsSearchContent,
   createAnswerContext,
@@ -16,6 +17,16 @@ import {
   slugifyDocsHeading,
   validateDocsQuery,
 } from "./index";
+
+const flattenTocIds = (
+  items: ReturnType<typeof extractDocsTableOfContents>
+): string[] => {
+  const ids: string[] = [];
+  for (const item of items) {
+    ids.push(item.id, ...flattenTocIds(item.children));
+  }
+  return ids;
+};
 
 const docs: DocsSearchDocument[] = [
   {
@@ -537,6 +548,73 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
       "/docs/reference#example"
     );
+  });
+
+  it("keeps search anchors in the same order as TOC ids", () => {
+    const fixtures = [
+      [
+        "# Reference",
+        "## API",
+        "### Details",
+        "Nested details cover widgets.",
+        "## API",
+        "The second API covers gadgets.",
+        "## API-1",
+        "The literal suffix covers sprockets.",
+      ].join("\n"),
+      [
+        "Install",
+        "=======",
+        "Setext body covers widgets.",
+        "## Install",
+        "ATX body covers sprockets.",
+      ].join("\n"),
+      [
+        "# Reference",
+        "~~~md",
+        "## Example",
+        "~~~",
+        "## Example",
+        "The real example covers widgets.",
+      ].join("\n"),
+    ];
+
+    for (const content of fixtures) {
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(
+          content,
+          {
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+          },
+          { minLevel: 1, maxLevel: 6 }
+        )
+      );
+      const searchAnchors = index.chunks
+        .map((chunk) => chunk[2])
+        .filter(Boolean);
+      const tocPositions = searchAnchors.map((anchor) =>
+        tocIds.indexOf(anchor)
+      );
+
+      expect(tocPositions.every((position) => position >= 0)).toBe(true);
+      expect(tocPositions).toEqual(
+        [...tocPositions].sort((left, right) => left - right)
+      );
+    }
   });
 
   it("slugifies headings for hash links", () => {
