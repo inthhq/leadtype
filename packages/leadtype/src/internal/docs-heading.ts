@@ -9,6 +9,8 @@ const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
 const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
 const HTML_BLOCK_START_PATTERN =
   /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
+const HTML_DECLARATION_START_PATTERN = /^<![A-Za-z]/;
+const HTML_TAG_START_PATTERN = /^<\/?[A-Za-z][A-Za-z0-9-]*(?=[\t\n\f\r />])/;
 export const docsHtmlBlockTagNames = [
   "address",
   "article",
@@ -78,14 +80,14 @@ const HTML_BLOCK_TAG_PATTERN = new RegExp(
   "i"
 );
 const STANDALONE_HTML_TAG_PATTERN =
-  /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"]*"|'[^']*')*)?\/?>[ \t]*$/;
+  /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"]*"|'[^']*')*)?\/?>[ \t\r]*$/;
 const MDX_BLOCK_START_PATTERN =
   /^ {0,3}(?:\{|<\/?[A-Z][A-Za-z0-9_.:-]*(?:[ \t/>]|$))/;
 const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
 const THEMATIC_BREAK_PATTERN =
   /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
-const HEADING_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
+const HEADING_INLINE_PATTERN = /[`*_~[\](){}|]/g;
 const HEADING_CLOSING_SEQUENCE_PATTERN = /\s+#+\s*$/;
 const WHITESPACE_PATTERN = /\s+/g;
 
@@ -93,29 +95,44 @@ function normalizeHeadingText(input: string): string {
   return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
 }
 
-function stripHtmlTags(input: string): string {
-  const output: string[] = [];
-  let tagBuffer = "";
+type HtmlConstruct =
+  | { closingSequence: "-->" | "?>" | "]]>"; tracksQuotes: false }
+  | { closingSequence: ">"; tracksQuotes: boolean };
+
+function getHtmlConstruct(input: string): HtmlConstruct | null {
+  if (input.startsWith("<!--")) {
+    return { closingSequence: "-->", tracksQuotes: false };
+  }
+  if (input.startsWith("<?")) {
+    return { closingSequence: "?>", tracksQuotes: false };
+  }
+  if (input.startsWith("<![CDATA[")) {
+    return { closingSequence: "]]>", tracksQuotes: false };
+  }
+  if (HTML_DECLARATION_START_PATTERN.test(input)) {
+    return { closingSequence: ">", tracksQuotes: false };
+  }
+  if (HTML_TAG_START_PATTERN.test(input)) {
+    return { closingSequence: ">", tracksQuotes: true };
+  }
+  return null;
+}
+
+function findHtmlConstructEnd(
+  input: string,
+  start: number,
+  construct: HtmlConstruct
+): number {
+  if (!construct.tracksQuotes) {
+    const closingIndex = input.indexOf(construct.closingSequence, start);
+    return closingIndex < 0
+      ? -1
+      : closingIndex + construct.closingSequence.length;
+  }
+
   let quote: '"' | "'" | null = null;
-
-  for (const character of input) {
-    if (!tagBuffer) {
-      if (character === "<") {
-        tagBuffer = character;
-      } else {
-        output.push(character);
-      }
-      continue;
-    }
-
-    tagBuffer += character;
-    if (tagBuffer.startsWith("<!--")) {
-      if (tagBuffer.endsWith("-->")) {
-        output.push(" ");
-        tagBuffer = "";
-      }
-      continue;
-    }
+  for (let index = start; index < input.length; index += 1) {
+    const character = input[index];
     if (quote !== null) {
       if (character === quote) {
         quote = null;
@@ -127,14 +144,38 @@ function stripHtmlTags(input: string): string {
       continue;
     }
     if (character === ">") {
-      output.push(" ");
-      tagBuffer = "";
+      return index + 1;
     }
   }
+  return -1;
+}
 
-  if (tagBuffer) {
-    output.push(tagBuffer);
+function stripHtmlTags(input: string): string {
+  const output: string[] = [];
+  let cursor = 0;
+
+  while (cursor < input.length) {
+    const tagStart = input.indexOf("<", cursor);
+    if (tagStart < 0) {
+      output.push(input.slice(cursor));
+      break;
+    }
+    output.push(input.slice(cursor, tagStart));
+    const construct = getHtmlConstruct(input.slice(tagStart));
+    if (!construct) {
+      output.push("<");
+      cursor = tagStart + 1;
+      continue;
+    }
+    const constructEnd = findHtmlConstructEnd(input, tagStart, construct);
+    if (constructEnd < 0) {
+      output.push(input.slice(tagStart));
+      break;
+    }
+    output.push(" ");
+    cursor = constructEnd;
   }
+
   return output.join("");
 }
 

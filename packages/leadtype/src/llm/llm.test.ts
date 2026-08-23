@@ -4409,18 +4409,42 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
-  it("recognizes standalone HTML tags with quoted delimiters", () => {
+  it("recognizes standalone HTML tags with quoted delimiters for LF and CRLF", () => {
+    for (const lineEnding of ["\n", "\r\n"]) {
+      const toc = extractDocsTableOfContents(
+        ['<span title="1 < 2 > 0">', "---", "</span>", "## !!!", "## !!!"].join(
+          lineEnding
+        ),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+    }
+  });
+
+  it("preserves comparisons and strips declarations from heading text", () => {
     const toc = extractDocsTableOfContents(
-      ['<span title="1 < 2 > 0">', "---", "</span>", "## !!!", "## !!!"].join(
-        "\n"
-      ),
+      [
+        "## 1 < 2 > 0",
+        "## Install <?don't?>",
+        "## Install <!THING don't>",
+        "## Install",
+      ].join("\n"),
       {
         urlPath: "/docs/example",
         absoluteUrl: "https://leadtype.dev/docs/example",
       }
     );
 
-    expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "1-2-0", title: "1 < 2 > 0" },
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+      { id: "install-2", title: "Install" },
+    ]);
   });
 
   it("respects custom heading level ranges", () => {

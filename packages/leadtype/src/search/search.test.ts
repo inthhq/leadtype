@@ -713,15 +713,53 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.urlWithHash).toBe("/docs/anchors#anchors-and");
   });
 
-  it("keeps standalone HTML tags from shifting empty heading anchors", () => {
+  it("keeps standalone HTML tags from shifting LF or CRLF heading anchors", () => {
+    for (const lineEnding of ["\n", "\r\n"]) {
+      const content = [
+        '<span title="1 < 2 > 0">',
+        "---",
+        "</span>",
+        "## !!!",
+        "First punctuation section covers widgets.",
+        "## !!!",
+        "Second punctuation section covers sprockets.",
+      ].join(lineEnding);
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["", "-1"]);
+      expect(searchAnchors).toEqual(["", ...tocIds]);
+    }
+  });
+
+  it("keeps comparison and declaration heading labels aligned with anchors", () => {
     const content = [
-      '<span title="1 < 2 > 0">',
-      "---",
-      "</span>",
-      "## !!!",
-      "First punctuation section covers widgets.",
-      "## !!!",
-      "Second punctuation section covers sprockets.",
+      "## 1 < 2 > 0",
+      "Comparison section covers widgets.",
+      "## Install <?don't?>",
+      "Processing section covers sprockets.",
+      "## Install <!THING don't>",
+      "Declaration section covers gadgets.",
     ].join("\n");
     const index = createDocsSearchIndex(
       [
@@ -736,6 +774,10 @@ describe("createDocsSearchIndex and searchDocs", () => {
       ],
       { generatedAt: "2026-01-01T00:00:00.000Z" }
     );
+
+    const comparison = searchDocs(index, "widgets")[0];
+    const processing = searchDocs(index, "sprockets")[0];
+    const declaration = searchDocs(index, "gadgets")[0];
     const tocIds = flattenTocIds(
       extractDocsTableOfContents(content, {
         urlPath: "/docs/fixture",
@@ -746,8 +788,13 @@ describe("createDocsSearchIndex and searchDocs", () => {
       (chunk) => chunk[CHUNK_ANCHOR_INDEX]
     );
 
-    expect(tocIds).toEqual(["", "-1"]);
-    expect(searchAnchors).toEqual(["", ...tocIds]);
+    expect(searchAnchors).toEqual(tocIds);
+    expect(comparison?.headingPath.at(-1)).toBe("1 < 2 > 0");
+    expect(comparison?.urlWithHash).toBe("/docs/fixture#1-2-0");
+    expect(processing?.headingPath.at(-1)).toBe("Install");
+    expect(processing?.urlWithHash).toBe("/docs/fixture#install");
+    expect(declaration?.headingPath.at(-1)).toBe("Install");
+    expect(declaration?.urlWithHash).toBe("/docs/fixture#install-1");
   });
 
   it("slugifies headings for hash links", () => {
