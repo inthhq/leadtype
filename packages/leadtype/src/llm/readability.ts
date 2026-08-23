@@ -16,7 +16,11 @@ import { isAsciiMediaType } from "../internal/media-type";
 import { hasUnpairedUtf16Surrogate } from "../internal/unicode";
 import { type DocsRedirect, resolveRedirect } from "../redirects/redirects";
 
-export { slugifyDocsHeading } from "../internal/docs-heading";
+export {
+  createDocsHeadingSlugger,
+  type DocsHeadingSlugger,
+  slugifyDocsHeading,
+} from "../internal/docs-heading";
 
 const DOCS_DIRNAME = "docs";
 const MD_ONLY_EXTENSION_PATTERN = /\.md$/;
