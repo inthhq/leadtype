@@ -8,7 +8,7 @@
     "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next dev --webpack",
     "build": "bun run --filter leadtype build && bun run docs:generate && next build --webpack",
     "start": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless fumadocs -- next start",
-    "check-types": "bun run --filter leadtype build && bun run docs:generate && tsgo --noEmit"
+    "check-types": "bun run docs:generate && tsgo --noEmit"
   },
   "dependencies": {
     "@next/mdx": "^16.2.6",
