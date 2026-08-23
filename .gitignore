@@ -36,6 +36,11 @@ dist
 
 # Generated example docs
 apps/*/.leadtype/
+/.leadtype/
+# Two output roots because the frameworks differ: Next/Astro/Nuxt generate into
+# `public/`, SvelteKit into `static/`. Keep the two lists identical. They
+# drifted once already, which left generated feeds, OpenAPI, robots.txt, and
+# mcp.json untracked-but-not-ignored in the SvelteKit example.
 apps/*/public/docs/
 apps/*/public/changelog/
 apps/*/public/llms-full.txt
@@ -43,15 +48,23 @@ apps/*/public/llms.txt
 apps/*/public/.well-known/
 apps/*/public/feeds/
 apps/*/public/mcp.json
+apps/*/public/openapi.json
 apps/*/public/robots.txt
 apps/*/public/schema-map.xml
 apps/*/public/sitemap.md
 apps/*/public/sitemap.xml
-apps/sveltekit-example/static/docs/
-apps/sveltekit-example/static/changelog/
-apps/sveltekit-example/static/llms-full.txt
-apps/sveltekit-example/static/llms.txt
-apps/sveltekit-example/static/.well-known/
+apps/*/static/docs/
+apps/*/static/changelog/
+apps/*/static/llms-full.txt
+apps/*/static/llms.txt
+apps/*/static/.well-known/
+apps/*/static/feeds/
+apps/*/static/mcp.json
+apps/*/static/openapi.json
+apps/*/static/robots.txt
+apps/*/static/schema-map.xml
+apps/*/static/sitemap.md
+apps/*/static/sitemap.xml
 
 
 # Debug

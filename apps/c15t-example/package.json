@@ -8,7 +8,7 @@
     "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite dev",
     "build": "bun run --filter leadtype build && bun run docs:generate && vite build",
     "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run vite preview",
-    "check-types": "bun run --filter leadtype build && tsgo --noEmit",
+    "check-types": "tsgo --noEmit",
     "setup:real": "bun run pipeline:setup-real",
     "generate:real": "bun run pipeline:generate-real",
     "test:real": "bun run pipeline:test-real",
