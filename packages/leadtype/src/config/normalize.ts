@@ -129,8 +129,9 @@ export function normalizeAuthoredBaseUrl(
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    const redacted = redactUserinfo(baseUrl);
     throw new Error(
-      `${subject} "${baseUrl}" must be an http or https URL. Generated links are joined onto it verbatim.`
+      `${subject} "${redacted}" must be an http or https URL. Generated links are joined onto it verbatim.`
     );
   }
 
