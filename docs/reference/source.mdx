@@ -51,7 +51,7 @@ For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/integrations
 Besides its methods, the returned source carries `contentDir` (the resolved absolute docs directory) and `routePrefix` — the URL prefix its unprefixed files resolve under: the catch-all mount's `urlPrefix`, or `"/docs"` when no mount claims the root. Framework adapters use `routePrefix` as the default route base when deriving static params from each page's `urlPath` and when resolving those params back to pages.
 
 <Callout title="Legacy: groups-driven navigation" variant="info">
-  `groups` is the older taxonomy shape: pages declare membership in frontmatter (`group: guides`) and the source resolves a tree from those slugs. It keeps working — see the [config model](/docs/concepts/config-model#canonical-field-names) for the rename policy — but `nav` is the canonical field, and what `leadtype init`, the docs, and every diagnostic use.
+  `groups` is the older taxonomy shape: pages declare membership in frontmatter (`group: guides`) and the source resolves a tree from those slugs. It keeps working — see the [config model](/docs/concepts/config-model#canonical-field-names) for the rename policy. Use `nav` with this lower-level `createDocsSource()` API; the canonical docs-config field is `navigation`, which `leadtype init` and config diagnostics use.
 
   ```ts
   import { createDocsSource } from "leadtype";
