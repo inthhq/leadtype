@@ -9,7 +9,7 @@
     "dev": "bun run --filter leadtype build && bun run docs:prepare && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run next dev --turbopack",
     "build": "bun run --filter leadtype build && bun run docs:prepare && next build --webpack",
     "start": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run next start",
-    "check-types": "bun run --filter leadtype build && bun run docs:prepare && tsgo --noEmit",
+    "check-types": "bun run docs:prepare && tsgo --noEmit",
     "test:e2e": "playwright test"
   },
   "dependencies": {
