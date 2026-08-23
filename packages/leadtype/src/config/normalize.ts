@@ -15,9 +15,15 @@
  * precedence rule a reader would have to look up.
  */
 
+import path from "node:path";
 import { normalizeUrlPrefix, stripTrailingSlashes } from "../internal/docs-url";
 import type { DocsCollection, DocsConfig, GitSourceSpec } from "../llm/llm";
-import { isShaRef } from "../sync/sync";
+import {
+  defaultCacheDir,
+  formatSparse,
+  isShaRef,
+  sameSparse,
+} from "../sync/sync";
 import {
   type ConfigDeprecation,
   DEFAULT_COLLECTION_KEY,
@@ -77,46 +83,20 @@ function configLabel(configPath: string | undefined): string {
   return configPath ? `docs config at "${configPath}"` : "docs config";
 }
 
-/**
- * What applies when no `baseUrl` is authored anywhere — recorded in provenance
- * so doctor and `generate --explain` can say it instead of a reader having to
- * know `normalizeBaseUrl`'s fallback chain.
- */
 export const BASE_URL_DEFAULT_SOURCE =
-  "deployment URL env vars (NEXT_PUBLIC_SITE_URL, VERCEL_URL, …) or localhost";
+  "deployment URL env vars (NEXT_PUBLIC_SITE_URL, VERCEL_URL, and others) or localhost";
 
-/**
- * A `?` or `#` anywhere in the authored value. A bare trailing delimiter
- * (`https://acme.dev?`) parses with empty `search`/`hash`, so the parsed
- * components alone would pass it through into every joined URL.
- */
 const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
 
-/**
- * Strip userinfo-shaped text from a value we are about to echo. The
- * parser has already rejected it, so the string may not have a well-formed
- * `://` — take an optional scheme and up to two slashes, then everything
- * through the last `@` that isn't in a path.
- */
+/** Remove userinfo-shaped text before including a rejected URL in an error. */
 function redactUserinfo(value: string): string {
   return value.replace(
-    /^((?:[a-zA-Z][a-zA-Z+\-.]*:)?\/{0,2})([^/\s]*@)/,
+    /^((?:[a-zA-Z][a-zA-Z0-9+\-.]*:)?\/*)([^/\s]*@)/,
     "$1<redacted>@"
   );
 }
 
-/**
- * Validate and normalize an authored base URL: an absolute http(s) origin
- * plus optional path prefix. The returned value is the parser's own
- * serialization with trailing slashes stripped, so URL joins can never
- * produce `//` and authored text WHATWG merely tolerates (`\` for `/` in
- * special schemes, unencoded spaces) comes back in normalized, encoded form
- * rather than passing through raw. `subject` names the value in errors
- * (`docs config …: baseUrl`, `--base-url`, `createDocsProject baseUrl`) so
- * every place a base URL is authored shares this one validator; the env
- * fallback chain in `normalizeBaseUrl` is not authored input and stays
- * outside it.
- */
+/** Validate and serialize an authored base URL used as an artifact prefix. */
 export function normalizeAuthoredBaseUrl(
   baseUrl: string,
   subject: string
@@ -126,49 +106,34 @@ export function normalizeAuthoredBaseUrl(
   try {
     parsed = new URL(normalized);
   } catch {
-    // A value the parser rejects can still carry userinfo — an out-of-range
-    // port (`https://user:pass@host:99999`) throws before the credentials
-    // check below ever runs — so redact anything userinfo-shaped before
-    // echoing; the secret must not land in stderr/CI logs. Do not require
-    // `://`: `https:/user:pass@host` still has a secret, and a password that
-    // itself contains `@` must not leak the tail.
     const redacted = redactUserinfo(normalized);
     throw new Error(
-      `${subject} "${redacted}" is not an absolute URL. Use the site's public origin, optionally with a path prefix — e.g. "https://acme.dev" or "https://acme.dev/handbook".`
+      `${subject} "${redacted}" is not an absolute URL. Use the site's public origin, optionally with a path prefix. For example, "https://acme.dev" or "https://acme.dev/handbook".`
     );
   }
+
   if (parsed.username !== "" || parsed.password !== "") {
-    // Ordered above every rejection that echoes the authored value (protocol,
-    // query/fragment): this one does not echo, because the whole point is
-    // that it carries a secret, and error text lands in CI logs. `ftp:` is a
-    // WHATWG special scheme, so `ftp://user:pass@host` parses with populated
-    // userinfo and must hit this message, not the echoing protocol one. (The
-    // parse-failure branch above redacts userinfo-shaped text for the same
-    // reason.) The serialized return would otherwise
-    // copy the credentials into every public artifact URL joins feed —
-    // sitemap, search metadata, feeds, agent files.
     throw new Error(
-      `${subject} must not embed credentials (user:password@host) — the value is copied into publicly generated artifacts (sitemap, search metadata, feeds). Use the bare origin, optionally with a path prefix.`
+      `${subject} must not embed credentials (user:password@host). The value is copied into publicly generated artifacts (sitemap, search metadata, feeds). Use the bare origin, optionally with a path prefix.`
     );
   }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(
-      `${subject} "${baseUrl}" must be an http or https URL — generated links are joined onto it verbatim.`
-    );
-  }
+
   if (
     parsed.search ||
     parsed.hash ||
     QUERY_OR_FRAGMENT_DELIMITER_PATTERN.test(normalized)
   ) {
     throw new Error(
-      `${subject} "${baseUrl}" must not carry a query or fragment — it is a prefix every generated URL joins onto.`
+      `${subject} must not carry a query or fragment. It is a prefix every generated URL joins onto.`
     );
   }
-  // The serialized form, not the authored text: the parser has already
-  // normalized what it tolerated (`https://acme.dev\api` parses with `\` as
-  // `/`, a space stays raw in the input but is encoded in `href`), and
-  // returning the raw string would carry those into every joined URL.
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(
+      `${subject} "${baseUrl}" must be an http or https URL. Generated links are joined onto it verbatim.`
+    );
+  }
+
   return stripTrailingSlashes(parsed.href);
 }
 
@@ -185,7 +150,6 @@ function normalizeConfigBaseUrl(
   );
 }
 
-/** Carry the normalized `baseUrl` on the canonical config, when one exists. */
 function foldBaseUrl(
   config: DocsConfig,
   baseUrl: string | undefined
@@ -313,15 +277,20 @@ function resolveCollectionEntry(
 
 /**
  * Build the acquisition graph. Two collections pointing at the same
- * `(repository, ref)` share one git source — which is what sync already does
- * internally, now visible in the model. Conflicting `cacheDir` values for one
- * source are rejected here rather than at clone time.
+ * `(repository, ref)` share one git source — and this graph is the one sync
+ * clones from (`projectRemoteSources` in sync/sync.ts is a projection of it,
+ * not a second derivation). Because sync acts on exactly what is resolved
+ * here, everything a shared acquisition must agree on — `cacheDir`, the
+ * sparse path set — is validated here, at normalize time, rather than at
+ * clone time.
  */
 function resolveSources(
   collections: Record<string, DocsCollection>,
   configPath: string | undefined,
   /** Collection key → authored source name, for collections under a `gitSource`. */
-  authoredSourceNames: ReadonlyMap<string, string> = new Map()
+  authoredSourceNames: ReadonlyMap<string, string>,
+  /** Directory relative cacheDirs resolve against, for equivalence checks. */
+  configDir: string | undefined
 ): { sources: ResolvedSource[]; sourceIdByCollection: Map<string, string> } {
   const sources: ResolvedSource[] = [];
   const gitByRepoRef = new Map<string, ResolvedGitSource>();
@@ -369,6 +338,48 @@ function resolveSources(
           sourceIdByCollection.set(key, authoredName);
         }
       }
+      // Mixing an explicit cacheDir with the default is a conflict too: the
+      // clone happens at one resolved path, and the collections disagree about
+      // where that is. Comparing resolved paths (not authored strings) keeps
+      // the one benign case working — an explicit cacheDir that spells out the
+      // default location.
+      if (
+        (existing.cacheDir === undefined) !==
+        (collection.cacheDir === undefined)
+      ) {
+        const explicitDir = (existing.cacheDir ??
+          collection.cacheDir) as string;
+        // Relative cache dirs are contractually relative to the config file's
+        // directory. When the caller passes only `configPath`, that directory
+        // is still known — cwd is a last resort, never a silent substitute.
+        const resolveBase =
+          configDir ?? (configPath ? path.dirname(configPath) : ".");
+        const defaultDir = defaultCacheDir(collection.repository, ref);
+        if (
+          path.resolve(resolveBase, explicitDir) !==
+          path.resolve(resolveBase, defaultDir)
+        ) {
+          const existingLabel = `[${existing.collectionKeys.join(", ")}]`;
+          const [withDir, withoutDir] =
+            existing.cacheDir === undefined
+              ? [`"${key}"`, existingLabel]
+              : [existingLabel, `"${key}"`];
+          throw new Error(
+            `${configLabel(configPath)}: collections ${withDir} and ${withoutDir} target ${collection.repository}@${ref}, but ${withDir} sets cacheDir "${explicitDir}" while ${withoutDir} uses the default ("${defaultDir}"). One acquisition clones to one directory — set the same cacheDir on every collection sharing it, or remove the explicit cacheDir.`
+          );
+        }
+      }
+      // One checkout can only have one path set. Silently taking the first
+      // would leave the other collection reading a directory that isn't there.
+      const sparse =
+        collection.sparse && collection.sparse.length > 0
+          ? collection.sparse
+          : undefined;
+      if (!sameSparse(existing.sparse, sparse)) {
+        throw new Error(
+          `${configLabel(configPath)}: collections [${existing.collectionKeys.join(", ")}] and "${key}" target ${collection.repository}@${ref} but set different sparse paths (${formatSparse(existing.sparse)} vs ${formatSparse(sparse)}). One checkout has one path set — make them match, or list every path both collections need.`
+        );
+      }
       existing.cacheDir ??= collection.cacheDir;
       existing.collectionKeys.push(key);
       sourceIdByCollection.set(key, existing.id);
@@ -405,7 +416,39 @@ function resolveSources(
     });
   }
 
+  assertUniqueSourceIds(sources, configPath);
+
   return { sources, sourceIdByCollection };
+}
+
+function describeSourceForIdError(source: ResolvedSource): string {
+  return source.kind === "local"
+    ? `the implicit local source (collections [${source.collectionKeys.join(", ")}] have no repository, so they resolve to id "${source.id}")`
+    : `the git source for ${source.repository}@${source.ref} (collections [${source.collectionKeys.join(", ")}])`;
+}
+
+/**
+ * Source ids are the join key between collections and sources in sync output,
+ * doctor, and `generate --json`. Named sources can't collide with each other —
+ * they are object keys — but an authored name can collide with a derived id:
+ * a git source named "local" beside a collection with no repository would put
+ * two sources with `id: "local"` in the graph, and every consumer keyed on id
+ * would silently read the wrong one.
+ */
+function assertUniqueSourceIds(
+  sources: ResolvedSource[],
+  configPath: string | undefined
+): void {
+  const byId = new Map<string, ResolvedSource>();
+  for (const source of sources) {
+    const other = byId.get(source.id);
+    if (other) {
+      throw new Error(
+        `${configLabel(configPath)}: source id "${source.id}" names both ${describeSourceForIdError(other)} and ${describeSourceForIdError(source)}. Ids join collections to sources in sync output, doctor, and JSON — rename the git source.`
+      );
+    }
+    byId.set(source.id, source);
+  }
 }
 
 const TOP_LEVEL_PROVENANCE_FIELDS = [
@@ -500,9 +543,6 @@ export function normalizeDocsConfig(
     recordExplicit(provenance, field, config[field], configPath);
   }
 
-  // `baseUrl` always gets a provenance entry, authored or not: it is the one
-  // value with an env-var fallback chain, so "where would it come from?" has
-  // an answer even when nothing was written down.
   const baseUrl = normalizeConfigBaseUrl(config.baseUrl, configPath);
   provenance.baseUrl =
     config.baseUrl === undefined
@@ -594,7 +634,8 @@ export function normalizeDocsConfig(
   const { sources, sourceIdByCollection } = resolveSources(
     canonicalCollections,
     configPath,
-    authoredSourceNames
+    authoredSourceNames,
+    options.configDir
   );
 
   const collections = Object.entries(canonicalCollections).map(

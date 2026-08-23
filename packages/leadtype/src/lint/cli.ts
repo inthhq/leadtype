@@ -4,13 +4,16 @@ import { basename, dirname, relative, resolve } from "node:path";
 import type { PluggableList } from "unified";
 import { findNearestNodeModules } from "../cli/generate";
 import { type LoadedDocsConfig, loadDocsConfig } from "../config/load";
+import {
+  type ResolvedProjectCollection,
+  resolveProjectFromLoaded,
+} from "../config/project";
 import type { DocsPathMount } from "../internal/docs-url";
 import { setLogFormat, setVerbose } from "../internal/logger";
 import { getFlattenerNames } from "../internal/remark-phase";
 import type { DocsConfig } from "../llm/llm";
 import { readPathsLockfile } from "../redirects/node";
 import type { DocsRedirect } from "../redirects/redirects";
-import { resolveAllCollections } from "../sync/sync";
 import { lintConfigLinks } from "./config-lint";
 import { type ReporterFormat, renderReport } from "./reporters";
 import {
@@ -252,6 +255,41 @@ export async function runLintCommand(
     return 1;
   }
 
+  // Multi-source projects resolve through the shared pipeline, which applies
+  // source-owned inheritance — a collection whose frontmatterSchema, mounts,
+  // or flatteners come from its source repository via `inheritConfig: true`
+  // used to be linted against the defaults instead. Cache-only, like the
+  // runtime: lint never clones, so a source that isn't synced is a clear
+  // error naming `leadtype sync` rather than a silently empty lint.
+  let projectCollections: ResolvedProjectCollection[] | undefined;
+  if (
+    loaded?.config.collections &&
+    Object.keys(loaded.config.collections).length > 0
+  ) {
+    const project = await resolveProjectFromLoaded(loaded, {
+      rootDir: resolvedSrcDir,
+      // Lint reads authored and inherited navigation only; deriving one from
+      // the content tree would walk every collection a second time for
+      // nothing lint looks at.
+      infer: false,
+    });
+    const blocking = project.diagnostics.find(
+      (entry) => entry.level === "error"
+    );
+    if (blocking) {
+      io.stderr.write(
+        `leadtype lint: ${blocking.message}${blocking.fix ? `. Run \`${blocking.fix}\`.` : ""}\n`
+      );
+      return 1;
+    }
+    loaded = {
+      config: project.config,
+      path: loaded.path,
+      resolved: project.resolved,
+    };
+    projectCollections = project.collections;
+  }
+
   const lintConfig = loaded?.config.lint;
   const collections = loaded?.config.collections;
   const effectiveIgnore =
@@ -332,36 +370,40 @@ export async function runLintCommand(
   const knownComponents = [...knownComponentSet];
 
   let result: LintResult;
-  if (loaded && collections && Object.keys(collections).length > 0) {
-    const configDir = resolve(loaded.path, "..");
-    const resolved = resolveAllCollections(collections, configDir);
-    // Each collection publishes its whole tree under its urlPrefix, with the
-    // collection's own mounts taking precedence for their subpaths (the
+  if (loaded && projectCollections && projectCollections.length > 0) {
+    // Every collection passed content-dir resolution — a missing or stale
+    // checkout was a blocking diagnostic above — so `contentDir` is set.
+    const contentDirOf = (collection: ResolvedProjectCollection): string =>
+      collection.contentDir as string;
+    // Each collection publishes its whole tree under its route prefix, with
+    // the collection's own mounts taking precedence for their subpaths (the
     // catch-all sorts last). Routes and prefixes are unioned across
     // collections so cross-collection links validate against real routes.
-    const mountsFor = (entry: (typeof resolved)[number]): DocsPathMount[] => [
-      ...(entry.collection.mounts ?? []),
-      { pathPrefix: "", urlPrefix: entry.urlPrefix },
+    const mountsFor = (
+      collection: ResolvedProjectCollection
+    ): DocsPathMount[] => [
+      ...(collection.mounts ?? []),
+      { pathPrefix: "", urlPrefix: collection.routePrefix },
     ];
-    const allMounts = resolved.flatMap(mountsFor);
+    const allMounts = projectCollections.flatMap(mountsFor);
     const routeSets = await Promise.all(
-      resolved.map((entry) =>
+      projectCollections.map((collection) =>
         collectRouteSet({
-          srcDir: entry.absoluteDir,
+          srcDir: contentDirOf(collection),
           ignore: effectiveIgnore,
-          mounts: mountsFor(entry),
+          mounts: mountsFor(collection),
         })
       )
     );
     const combinedRouteSet = new Set(routeSets.flatMap((set) => [...set]));
     const combined: LintViolation[] = [];
     let filesScanned = 0;
-    for (const entry of resolved) {
+    for (const collection of projectCollections) {
       io.stderr.write(
-        `Linting collection [${entry.key}] at ${entry.absoluteDir}\n`
+        `Linting collection [${collection.key}] at ${contentDirOf(collection)}\n`
       );
       const each = await lintDocs({
-        srcDir: entry.absoluteDir,
+        srcDir: contentDirOf(collection),
         ignore: effectiveIgnore,
         unknownFieldSeverity,
         knownComponents,
@@ -372,14 +414,14 @@ export async function runLintCommand(
         ...(externalLinksOptions
           ? { externalLinks: externalLinksOptions }
           : {}),
-        schemas: entry.collection.frontmatterSchema
-          ? { frontmatter: entry.collection.frontmatterSchema }
+        schemas: collection.frontmatterSchema
+          ? { frontmatter: collection.frontmatterSchema }
           : undefined,
       });
       for (const violation of each.violations) {
         combined.push({
           ...violation,
-          message: `[collection:${entry.key}] ${violation.message}`,
+          message: `[collection:${collection.key}] ${violation.message}`,
         });
       }
       filesScanned += each.summary.filesScanned;
