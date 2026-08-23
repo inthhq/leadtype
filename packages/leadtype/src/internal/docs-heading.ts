@@ -13,6 +13,8 @@ const THEMATIC_BREAK_PATTERN =
   /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const HEADING_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
+const HEADING_CLOSING_SEQUENCE_PATTERN = /\s+#+\s*$/;
+const HTML_TAG_PATTERN = /<[^>]+>/g;
 const WHITESPACE_PATTERN = /\s+/g;
 
 function normalizeHeadingText(input: string): string {
@@ -21,9 +23,9 @@ function normalizeHeadingText(input: string): string {
 
 function cleanHeadingText(input: string): string {
   return input
-    .replace(/\s+#+\s*$/, "")
+    .replace(HEADING_CLOSING_SEQUENCE_PATTERN, "")
     .replace(MARKDOWN_LINK_PATTERN, "$1")
-    .replace(/<[^>]+>/g, " ")
+    .replace(HTML_TAG_PATTERN, " ")
     .replace(HEADING_INLINE_PATTERN, " ")
     .replace(WHITESPACE_PATTERN, " ")
     .trim();

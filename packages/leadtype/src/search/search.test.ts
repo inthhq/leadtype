@@ -18,6 +18,8 @@ import {
   validateDocsQuery,
 } from "./index";
 
+const CHUNK_ANCHOR_INDEX = 2;
+
 const flattenTocIds = (
   items: ReturnType<typeof extractDocsTableOfContents>
 ): string[] => {
@@ -604,12 +606,13 @@ describe("createDocsSearchIndex and searchDocs", () => {
         )
       );
       const searchAnchors = index.chunks
-        .map((chunk) => chunk[2])
+        .map((chunk) => chunk[CHUNK_ANCHOR_INDEX])
         .filter(Boolean);
       const tocPositions = searchAnchors.map((anchor) =>
         tocIds.indexOf(anchor)
       );
 
+      expect(searchAnchors.length).toBeGreaterThan(1);
       expect(tocPositions.every((position) => position >= 0)).toBe(true);
       expect(tocPositions).toEqual(
         [...tocPositions].sort((left, right) => left - right)
