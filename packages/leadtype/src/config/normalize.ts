@@ -16,7 +16,7 @@
  */
 
 import path from "node:path";
-import { normalizeUrlPrefix } from "../internal/docs-url";
+import { normalizeUrlPrefix, stripTrailingSlashes } from "../internal/docs-url";
 import type { DocsCollection, DocsConfig, GitSourceSpec } from "../llm/llm";
 import {
   defaultCacheDir,
@@ -81,6 +81,87 @@ export type NormalizedDocsConfig = {
 
 function configLabel(configPath: string | undefined): string {
   return configPath ? `docs config at "${configPath}"` : "docs config";
+}
+
+export const BASE_URL_DEFAULT_SOURCE =
+  "deployment URL env vars (NEXT_PUBLIC_SITE_URL, VERCEL_URL, and others) or localhost";
+
+const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
+
+/**
+ * Mask everything before the last `@` when echoing a rejected URL in an error.
+ * Shape-aware variants leaked malformed authorities, so stray `@` characters
+ * in paths are deliberately over-masked.
+ */
+function redactUserinfo(value: string): string {
+  const delimiterIndex = value.lastIndexOf("@");
+  return delimiterIndex === -1
+    ? value
+    : `<redacted>@${value.slice(delimiterIndex + 1)}`;
+}
+
+/** Validate and serialize an authored base URL used as an artifact prefix. */
+export function normalizeAuthoredBaseUrl(
+  baseUrl: string,
+  subject: string
+): string {
+  const normalized = stripTrailingSlashes(baseUrl.trim());
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    const redacted = redactUserinfo(normalized);
+    throw new Error(
+      `${subject} "${redacted}" is not an absolute URL. Use the site's public origin, optionally with a path prefix. For example, "https://acme.dev" or "https://acme.dev/handbook".`
+    );
+  }
+
+  if (parsed.username !== "" || parsed.password !== "") {
+    throw new Error(
+      `${subject} must not embed credentials (user:password@host). The value is copied into publicly generated artifacts (sitemap, search metadata, feeds). Use the bare origin, optionally with a path prefix.`
+    );
+  }
+
+  if (
+    parsed.search ||
+    parsed.hash ||
+    QUERY_OR_FRAGMENT_DELIMITER_PATTERN.test(normalized)
+  ) {
+    throw new Error(
+      `${subject} must not carry a query or fragment. It is a prefix every generated URL joins onto.`
+    );
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    const redacted = redactUserinfo(baseUrl);
+    throw new Error(
+      `${subject} "${redacted}" must be an http or https URL. Generated links are joined onto it verbatim.`
+    );
+  }
+
+  return stripTrailingSlashes(parsed.href);
+}
+
+function normalizeConfigBaseUrl(
+  baseUrl: string | undefined,
+  configPath: string | undefined
+): string | undefined {
+  if (baseUrl === undefined) {
+    return;
+  }
+  return normalizeAuthoredBaseUrl(
+    baseUrl,
+    `${configLabel(configPath)}: baseUrl`
+  );
+}
+
+function foldBaseUrl(
+  config: DocsConfig,
+  baseUrl: string | undefined
+): DocsConfig {
+  return baseUrl === undefined || config.baseUrl === baseUrl
+    ? config
+    : { ...config, baseUrl };
 }
 
 /**
@@ -467,6 +548,12 @@ export function normalizeDocsConfig(
     recordExplicit(provenance, field, config[field], configPath);
   }
 
+  const baseUrl = normalizeConfigBaseUrl(config.baseUrl, configPath);
+  provenance.baseUrl =
+    config.baseUrl === undefined
+      ? { origin: "default", inferredFrom: BASE_URL_DEFAULT_SOURCE }
+      : explicit(configPath);
+
   if (!(config.collections || config.sources)) {
     // Single-source: the content root comes from the host (`--docs-dir` for the
     // CLI, `contentDir` for the runtime source), so the resolved collection
@@ -490,12 +577,13 @@ export function normalizeDocsConfig(
     };
 
     return {
-      config,
+      config: foldBaseUrl(config, baseUrl),
       resolved: {
         mode: "single-source",
         ...(configPath ? { configPath } : {}),
         ...(options.configDir ? { configDir: options.configDir } : {}),
         product: config.product,
+        ...(baseUrl === undefined ? {} : { baseUrl }),
         collections: [
           {
             key: DEFAULT_COLLECTION_KEY,
@@ -581,12 +669,16 @@ export function normalizeDocsConfig(
   // the flat map, and leaving both would let a consumer read the project twice.
   const { sources: _authoredSources, ...withoutSources } = config;
   return {
-    config: { ...withoutSources, collections: canonicalCollections },
+    config: foldBaseUrl(
+      { ...withoutSources, collections: canonicalCollections },
+      baseUrl
+    ),
     resolved: {
       mode: "multi-source",
       ...(configPath ? { configPath } : {}),
       ...(options.configDir ? { configDir: options.configDir } : {}),
       product: config.product,
+      ...(baseUrl === undefined ? {} : { baseUrl }),
       collections,
       sources,
       deprecations,

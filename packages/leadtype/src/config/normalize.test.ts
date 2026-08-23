@@ -818,3 +818,226 @@ describe("formatDeprecationWarning", () => {
     expect(warning?.hint).toMatch(/next major release/);
   });
 });
+
+describe("baseUrl", () => {
+  it("keeps an authored value, normalized, with explicit provenance", () => {
+    const { config, resolved } = normalize({
+      product,
+      baseUrl: "https://acme.dev/handbook/",
+    });
+
+    expect(config.baseUrl).toBe("https://acme.dev/handbook");
+    expect(resolved.baseUrl).toBe("https://acme.dev/handbook");
+    expect(resolved.provenance.baseUrl).toEqual({
+      origin: "explicit",
+      configPath: CONFIG_PATH,
+    });
+    expect(serializeResolvedConfig(resolved).baseUrl).toBe(
+      "https://acme.dev/handbook"
+    );
+  });
+
+  it("records the env-fallback default when nothing was authored", () => {
+    const { config, resolved } = normalize({ product });
+
+    expect(config.baseUrl).toBeUndefined();
+    expect(resolved.baseUrl).toBeUndefined();
+    expect(resolved.provenance.baseUrl).toMatchObject({
+      origin: "default",
+      inferredFrom: expect.stringContaining("env vars"),
+    });
+  });
+
+  it("carries the normalized value on the canonical multi-source config", () => {
+    const { config, resolved } = normalize({
+      product,
+      baseUrl: "https://acme.dev///",
+      collections: { docs: { dir: "docs", routePrefix: "/docs" } },
+    });
+
+    expect(config.baseUrl).toBe("https://acme.dev");
+    expect(resolved.baseUrl).toBe("https://acme.dev");
+    expect(resolved.mode).toBe("multi-source");
+  });
+
+  it("returns the parser's serialization, not the authored text", () => {
+    // WHATWG tolerates `\` for `/` in special schemes and a raw space in the
+    // path — returning the authored string would carry both, unnormalized,
+    // into every joined URL.
+    const backslash = normalize({ product, baseUrl: "https://acme.dev\\api" });
+    expect(backslash.config.baseUrl).toBe("https://acme.dev/api");
+
+    const spaced = normalize({ product, baseUrl: "https://acme.dev/my docs" });
+    expect(spaced.config.baseUrl).toBe("https://acme.dev/my%20docs");
+  });
+
+  it("rejects a value that is not an absolute URL", () => {
+    expect(() => normalize({ product, baseUrl: "acme.dev" })).toThrow(
+      /baseUrl "acme.dev" is not an absolute URL/
+    );
+  });
+
+  it("rejects a non-http(s) protocol", () => {
+    expect(() => normalize({ product, baseUrl: "ftp://acme.dev" })).toThrow(
+      /must be an http or https URL/
+    );
+  });
+
+  it("rejects a query or fragment — the value is a join prefix", () => {
+    expect(() =>
+      normalize({ product, baseUrl: "https://acme.dev?utm=1" })
+    ).toThrow(/must not carry a query or fragment/);
+    expect(() =>
+      normalize({ product, baseUrl: "https://acme.dev#docs" })
+    ).toThrow(/must not carry a query or fragment/);
+  });
+
+  it("does not echo query or fragment secrets", () => {
+    for (const baseUrl of [
+      "https://acme.dev?token=ci-secret",
+      "ftp://acme.dev#ci-secret",
+    ]) {
+      let message = "";
+      try {
+        normalize({ product, baseUrl });
+      } catch (error) {
+        message = String(error);
+      }
+      expect(message).toMatch(/must not carry a query or fragment/);
+      expect(message).not.toContain("ci-secret");
+    }
+  });
+
+  it("rejects embedded credentials without echoing them", () => {
+    // The serialized return feeds URL joins that land in publicly generated
+    // artifacts (sitemap, search metadata, feeds), so userinfo must never
+    // survive — and the error text must not leak the secret either.
+    let message = "";
+    try {
+      normalize({ product, baseUrl: "https://buildbot:s3cret@acme.dev" });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toMatch(/must not embed credentials/);
+    expect(message).not.toContain("s3cret");
+    expect(message).not.toContain("buildbot");
+
+    // A bare username is userinfo the serializer would preserve too.
+    expect(() =>
+      normalize({ product, baseUrl: "https://buildbot@acme.dev" })
+    ).toThrow(/must not embed credentials/);
+
+    // `ftp:` is a WHATWG special scheme, so userinfo parses and populates.
+    // The credentials rejection must fire before the protocol rejection,
+    // which echoes the authored value — otherwise the scheme error would
+    // interpolate the secret into stderr/CI logs.
+    let ftpMessage = "";
+    try {
+      normalize({ product, baseUrl: "ftp://buildbot:s3cret@acme.dev" });
+    } catch (error) {
+      ftpMessage = String(error);
+    }
+    expect(ftpMessage).toMatch(/must not embed credentials/);
+    expect(ftpMessage).not.toContain("s3cret");
+    expect(ftpMessage).not.toContain("buildbot");
+
+    // A non-special custom scheme parses without populating URL userinfo, so
+    // its protocol diagnostic must redact credential-shaped authored text.
+    let customSchemeMessage = "";
+    try {
+      normalize({
+        product,
+        baseUrl: "htps:buildbot:s3cret@acme.dev:bad",
+      });
+    } catch (error) {
+      customSchemeMessage = String(error);
+    }
+    expect(customSchemeMessage).toMatch(/must be an http or https URL/);
+    expect(customSchemeMessage).toContain("<redacted>@acme.dev:bad");
+    expect(customSchemeMessage).not.toContain("s3cret");
+    expect(customSchemeMessage).not.toContain("buildbot");
+
+    // A credentialed value can also fail to parse at all — an out-of-range
+    // port throws in `new URL` before the credentials check runs — so the
+    // parse-failure echo must redact userinfo-shaped text too.
+    let malformedMessage = "";
+    try {
+      normalize({ product, baseUrl: "https://buildbot:s3cret@acme.dev:99999" });
+    } catch (error) {
+      malformedMessage = String(error);
+    }
+    expect(malformedMessage).toMatch(/is not an absolute URL/);
+    expect(malformedMessage).toContain("<redacted>@acme.dev");
+    expect(malformedMessage).not.toContain("s3cret");
+    expect(malformedMessage).not.toContain("buildbot");
+
+    // `@` inside the password is still userinfo. The first `@` is not the
+    // authority delimiter; redacting only through it would echo `ss@host`.
+    let multiAtMessage = "";
+    try {
+      normalize({ product, baseUrl: "https://user:pa@ss@acme.dev:99999" });
+    } catch (error) {
+      multiAtMessage = String(error);
+    }
+    expect(multiAtMessage).toMatch(/is not an absolute URL/);
+    expect(multiAtMessage).toContain("<redacted>@acme.dev");
+    expect(multiAtMessage).not.toContain("pa@ss");
+    expect(multiAtMessage).not.toContain("ss@acme");
+
+    // A single slash after the scheme is still userinfo. Requiring `://`
+    // would miss it and echo the password.
+    let singleSlashMessage = "";
+    try {
+      normalize({
+        product,
+        baseUrl: "https:/buildbot:s3cret@acme.dev:bad",
+      });
+    } catch (error) {
+      singleSlashMessage = String(error);
+    }
+    expect(singleSlashMessage).toMatch(/is not an absolute URL/);
+    expect(singleSlashMessage).toContain("<redacted>@acme.dev");
+    expect(singleSlashMessage).not.toContain("s3cret");
+    expect(singleSlashMessage).not.toContain("buildbot");
+
+    // A credential-free malformed value still echoes unchanged.
+    expect(() => normalize({ product, baseUrl: "not a url" })).toThrow(
+      /"not a url" is not an absolute URL/
+    );
+  });
+
+  it("redacts malformed authorities without relying on URL syntax", () => {
+    for (const baseUrl of [
+      "https:///buildbot:s3cret@acme.dev:bad",
+      "https:////buildbot:s3cret@acme.dev:bad",
+      "https: //buildbot:s3cret@acme.dev:bad",
+      "s3://buildbot:s3cret@acme.dev:bad",
+      "h2c://buildbot:s3cret@acme.dev:bad",
+    ]) {
+      let message = "";
+      try {
+        normalize({ product, baseUrl });
+      } catch (error) {
+        message = String(error);
+      }
+      expect(message).toMatch(/is not an absolute URL/);
+      expect(message).toContain("<redacted>@acme.dev");
+      expect(message).not.toContain("s3cret");
+      expect(message).not.toContain("buildbot");
+    }
+  });
+
+  it("rejects a bare trailing delimiter the URL parser reports as empty", () => {
+    // WHATWG URL parses `https://acme.dev?` with an empty `search`, so only
+    // the authored string reveals the delimiter that would corrupt joins.
+    expect(() => normalize({ product, baseUrl: "https://acme.dev?" })).toThrow(
+      /must not carry a query or fragment/
+    );
+    expect(() => normalize({ product, baseUrl: "https://acme.dev#" })).toThrow(
+      /must not carry a query or fragment/
+    );
+    expect(() => normalize({ product, baseUrl: "https://acme.dev/?" })).toThrow(
+      /must not carry a query or fragment/
+    );
+  });
+});

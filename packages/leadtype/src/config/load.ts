@@ -91,8 +91,16 @@ export type LoadedDocsConfig = {
  * `.js`/`.mjs` config — or one written by an agent — is exactly the case
  * where a typo'd key would otherwise vanish silently.
  */
-const TOP_LEVEL_CONFIG_KEYS = [
+const defineCompleteKeys =
+  <ObjectType>() =>
+  <const Keys extends readonly (keyof ObjectType)[]>(
+    keys: Exclude<keyof ObjectType, Keys[number]> extends never ? Keys : never
+  ): Keys =>
+    keys;
+
+const TOP_LEVEL_CONFIG_KEYS = defineCompleteKeys<DocsConfig>()([
   "product",
+  "baseUrl",
   "organization",
   "llms",
   "frontmatterSchema",
@@ -112,7 +120,7 @@ const TOP_LEVEL_CONFIG_KEYS = [
   "agents",
   "redirects",
   "lint",
-] as const satisfies readonly (keyof DocsConfig)[];
+] as const);
 
 const COLLECTION_KEYS = [
   "repository",
@@ -1566,6 +1574,13 @@ export function validateDocsConfig(
     }
   }
 
+  if (value.baseUrl !== undefined && typeof value.baseUrl !== "string") {
+    // URL-validity itself is checked by normalization, which both this loader
+    // and directly-supplied configs run through — only the authored shape is
+    // this function's job.
+    throw new Error(`docs config at "${configPath}": baseUrl must be a string`);
+  }
+
   const organization = validateOrganization(value.organization, configPath);
   const llms = validateLlmsConfig(value.llms, configPath);
   const agents = validateAgentsConfig(value.agents, configPath);
@@ -1583,6 +1598,7 @@ export function validateDocsConfig(
   }
 
   return {
+    ...(typeof value.baseUrl === "string" ? { baseUrl: value.baseUrl } : {}),
     ...(collections ? { collections } : {}),
     ...(sources ? { sources } : {}),
     ...(groups ? { groups } : {}),

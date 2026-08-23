@@ -26,7 +26,11 @@ import {
   type ResolvedProjectCollection,
   resolveProject,
 } from "../config/project";
-import { serializeResolvedConfig } from "../config/types";
+import {
+  type ConfigValueOrigin,
+  serializeResolvedConfig,
+} from "../config/types";
+import { normalizeBaseUrl } from "../internal/docs-url";
 import type { LogCall } from "../internal/logger";
 import type { DocsCollection, DocsConfig } from "../llm";
 import { defaultCacheDir, readSyncManifest } from "../sync/sync";
@@ -64,6 +68,15 @@ export type DoctorReport = {
     path?: string;
     mode: "single-source" | "multi-source" | "none";
     deprecations: { field: string; replacement: string }[];
+    /**
+     * What the config resolves `baseUrl` to in doctor's own environment:
+     * `explicit` when the config authors it, `default` when it falls through
+     * to deployment URL env vars or localhost. An explicit `--base-url`
+     * passed to `generate` overrides this at generation time, and a build's
+     * env fallbacks may differ from doctor's. Absent only when no config
+     * resolved at all.
+     */
+    baseUrl?: { value: string; origin: ConfigValueOrigin };
     /** Per-field origin for top-level config values. */
     provenance: Record<string, unknown>;
   };
@@ -532,6 +545,17 @@ export async function runDoctorCommand(
         field: entry.field,
         replacement: entry.replacement,
       })),
+      // What the config resolves here and now: the authored field, else
+      // deployment URL env vars / localhost in doctor's own process env. A
+      // `generate --base-url` flag or the build's env can override this.
+      ...(resolved
+        ? {
+            baseUrl: {
+              value: normalizeBaseUrl(resolved.baseUrl),
+              origin: resolved.provenance.baseUrl?.origin ?? "default",
+            },
+          }
+        : {}),
       provenance: resolved ? serializeResolvedConfig(resolved).provenance : {},
     },
     sources,
@@ -636,6 +660,11 @@ function renderHuman(report: DoctorReport, srcDir: string): string {
       ? `  ${rel(report.config.path)}  (${report.config.mode})`
       : "  none found"
   );
+  if (report.config.baseUrl) {
+    lines.push(
+      `  baseUrl: ${report.config.baseUrl.value}  (${report.config.baseUrl.origin})`
+    );
+  }
   if (report.config.deprecations.length > 0) {
     lines.push(
       `  ${report.config.deprecations.length} deprecated field(s): ${report.config.deprecations

@@ -23,12 +23,12 @@ The two entry points are structurally identical and differ in *ownership*.
 
 | File | Helper | Owned by | Declares |
 | --- | --- | --- | --- |
-| `leadtype.config.ts` (project root) | `defineLeadtypeConfig` | the site that publishes the docs | sources, routes, feeds, redirects, robots policy, agent surfaces |
+| `leadtype.config.ts` (project root) | `defineLeadtypeConfig` | the site that publishes the docs | `baseUrl`, sources, routes, feeds, redirects, robots policy, agent surfaces |
 | `docs.config.ts` (in a docs dir) | `defineDocsConfig` | the repo that owns the content | navigation, frontmatter schema, flatteners, mounts |
 
 **If you have one repo, use `defineDocsConfig` and stop reading this section.** The two helpers accept the same shape and behave identically; the distinction is about *ownership*, and ownership only becomes a question once more than one repo is involved.
 
-It starts mattering when a docs site pins a source repo: the source repo ships its own `docs.config.ts`, and the site inherits the content-owned half of it with `inheritConfig`. Site controls never inherit — a source repo cannot set the robots policy of a site that renders it.
+It starts mattering when a docs site pins a source repo: the source repo ships its own `docs.config.ts`, and the site inherits the content-owned half of it with `inheritConfig`. Site controls never inherit — a source repo cannot set the robots policy of a site that renders it, and it cannot set `baseUrl` either: where a site publishes is the consuming site's fact, so a source-owned config read by several sites should leave `baseUrl` unset and let each site's own config (or its `--base-url` / `createDocsProject({ baseUrl })` override) supply it. In a single-repo project the one config file is both owners at once, which is why `leadtype init` writes `baseUrl` there.
 
 ```ts
 // leadtype.config.ts — the docs site
