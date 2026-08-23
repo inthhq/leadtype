@@ -76,7 +76,7 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const DEFAULT_TOC_MIN_LEVEL = 2;
 const DEFAULT_TOC_MAX_LEVEL = 3;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
+const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
 const SETEXT_H1_PATTERN = /^=+\s*$/;
 const SETEXT_H2_PATTERN = /^-+\s*$/;
 const FENCE_PATTERN = /^(`{3,}|~{3,})/;
@@ -1521,15 +1521,15 @@ export function extractDocsTableOfContents(
     }
 
     const title = cleanHeadingText(rawTitle);
-    if (!title) {
-      return;
-    }
-
     // Number every heading — ATX and Setext, in or out of minLevel..maxLevel.
     // createDocsHeadingSlugger / github-slugger / rehype-slug all claim an
     // anchor for out-of-range headings too; counting only the visible subset
     // would hand a TOC entry the unsuffixed id those headings already own.
     const id = slugger.slug(title);
+
+    if (!title) {
+      return;
+    }
 
     if (level < minLevel || level > maxLevel) {
       return;
@@ -1593,8 +1593,8 @@ export function extractDocsTableOfContents(
       const marker = headingMatch[1];
       const rawTitle = headingMatch[2];
       pendingLine = null;
-      if (marker && rawTitle) {
-        consumeHeading(rawTitle, marker.length);
+      if (marker) {
+        consumeHeading(rawTitle ?? "", marker.length);
       }
       continue;
     }

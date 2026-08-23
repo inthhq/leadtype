@@ -4230,6 +4230,15 @@ describe("extractDocsTableOfContents", () => {
     expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
   });
 
+  it("counts empty ATX headings when numbering later empty slugs", () => {
+    const toc = extractDocsTableOfContents(["##", "## !!!"].join("\n"), {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => item.id)).toEqual(["-1"]);
+  });
+
   it("counts Setext headings when numbering anchors", () => {
     const toc = extractDocsTableOfContents(
       ["Install", "=======", "## Install"].join("\n"),
