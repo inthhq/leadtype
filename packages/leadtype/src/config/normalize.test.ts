@@ -953,7 +953,7 @@ describe("baseUrl", () => {
       customSchemeMessage = String(error);
     }
     expect(customSchemeMessage).toMatch(/must be an http or https URL/);
-    expect(customSchemeMessage).toContain("htps:<redacted>@acme.dev:bad");
+    expect(customSchemeMessage).toContain("<redacted>@acme.dev:bad");
     expect(customSchemeMessage).not.toContain("s3cret");
     expect(customSchemeMessage).not.toContain("buildbot");
 
@@ -1006,10 +1006,11 @@ describe("baseUrl", () => {
     );
   });
 
-  it("redacts malformed authorities with extra slashes or digits in the scheme", () => {
+  it("redacts malformed authorities without relying on URL syntax", () => {
     for (const baseUrl of [
       "https:///buildbot:s3cret@acme.dev:bad",
       "https:////buildbot:s3cret@acme.dev:bad",
+      "https: //buildbot:s3cret@acme.dev:bad",
       "s3://buildbot:s3cret@acme.dev:bad",
       "h2c://buildbot:s3cret@acme.dev:bad",
     ]) {
