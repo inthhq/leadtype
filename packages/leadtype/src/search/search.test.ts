@@ -520,6 +520,59 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("does not reserve a Setext anchor for an indented underline", () => {
+    const content = [
+      "Install",
+      "    ---",
+      "## Install",
+      "The ATX section covers widgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "install",
+          title: "Install",
+          urlPath: "/docs/install",
+          absoluteUrl: "https://leadtype.dev/docs/install",
+          relativePath: "install.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/install#install"
+    );
+  });
+
+  it("reserves inline-marked Setext headings before later ATX anchors", () => {
+    const content = [
+      "<em>Install</em>",
+      "---",
+      "The Setext section covers widgets.",
+      "## Install",
+      "The ATX section covers sprockets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "install",
+          title: "Install",
+          urlPath: "/docs/install",
+          absoluteUrl: "https://leadtype.dev/docs/install",
+          relativePath: "install.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/install#install-1"
+    );
+  });
+
   it("does not reserve headings inside tilde code fences", () => {
     const content = [
       "# Reference",
@@ -580,6 +633,13 @@ describe("createDocsSearchIndex and searchDocs", () => {
         "~~~",
         "## Example",
         "The real example covers widgets.",
+      ].join("\n"),
+      [
+        "<em>Install</em>",
+        "---",
+        "Inline markup section covers widgets.",
+        "## Install",
+        "The ATX section covers sprockets.",
       ].join("\n"),
     ];
 

@@ -4303,6 +4303,35 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
+  it("does not treat a four-space-indented underline as Setext", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "    ---", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+    ]);
+  });
+
+  it("allows inline markup at the start of Setext heading text", () => {
+    const toc = extractDocsTableOfContents(
+      ["<em>Install</em>", "---", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),

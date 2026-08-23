@@ -1,13 +1,20 @@
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
-const SETEXT_H1_PATTERN = /^=+\s*$/;
-const SETEXT_H2_PATTERN = /^-+\s*$/;
+const SETEXT_H1_PATTERN = /^ {0,3}=+[ \t]*$/;
+const SETEXT_H2_PATTERN = /^ {0,3}-+[ \t]*$/;
 const FENCE_PATTERN = /^(`{3,}|~{3,})/;
 const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
 const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
 const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
-const HTML_OR_MDX_BLOCK_PATTERN = /^ {0,3}[<{]/;
+const HTML_BLOCK_START_PATTERN =
+  /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
+const HTML_BLOCK_TAG_PATTERN =
+  /^ {0,3}<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|\/?>|$)/i;
+const STANDALONE_HTML_TAG_PATTERN =
+  /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?\/?>[ \t]*$/;
+const MDX_BLOCK_START_PATTERN =
+  /^ {0,3}(?:\{|<\/?[A-Z][A-Za-z0-9_.:-]*(?:[ \t/>]|$))/;
 const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
 const THEMATIC_BREAK_PATTERN =
   /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
@@ -31,6 +38,15 @@ function cleanHeadingText(input: string): string {
     .trim();
 }
 
+function isHtmlOrMdxBlock(line: string): boolean {
+  return (
+    HTML_BLOCK_START_PATTERN.test(line) ||
+    HTML_BLOCK_TAG_PATTERN.test(line) ||
+    STANDALONE_HTML_TAG_PATTERN.test(line) ||
+    MDX_BLOCK_START_PATTERN.test(line)
+  );
+}
+
 function isSetextHeadingText(line: string): boolean {
   if (line.trim().length === 0) {
     return false;
@@ -40,7 +56,7 @@ function isSetextHeadingText(line: string): boolean {
     INDENTED_CODE_PATTERN.test(line) ||
     BLOCKQUOTE_PATTERN.test(line) ||
     LIST_ITEM_PATTERN.test(line) ||
-    HTML_OR_MDX_BLOCK_PATTERN.test(line) ||
+    isHtmlOrMdxBlock(line) ||
     LINK_DEFINITION_PATTERN.test(line) ||
     THEMATIC_BREAK_PATTERN.test(line)
   );
@@ -111,8 +127,8 @@ export function scanDocsMarkdown(content: string): DocsMarkdownToken[] {
       continue;
     }
 
-    const isSetextH1 = SETEXT_H1_PATTERN.test(trimmedLine);
-    const isSetextH2 = SETEXT_H2_PATTERN.test(trimmedLine);
+    const isSetextH1 = SETEXT_H1_PATTERN.test(line);
+    const isSetextH2 = SETEXT_H2_PATTERN.test(line);
     if (pendingSetextTitle !== null && (isSetextH1 || isSetextH2)) {
       tokens.push({
         kind: "heading",
