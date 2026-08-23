@@ -49,7 +49,7 @@ For fumadocs specifically, use the thin [`leadtype/fumadocs`](/docs/integrations
 `createDocsSource` does no I/O on construction beyond a directory scan for `listPages()` caching. Page bodies are loaded lazily.
 
 <Callout title="Legacy: groups-driven navigation" variant="info">
-  `groups` is the older taxonomy shape: pages declare membership in frontmatter (`group: guides`) and the source resolves a tree from those slugs. It keeps working — see the [config model](/docs/concepts/config-model#canonical-field-names) for the rename policy. Use `nav` with this lower-level `createDocsSource()` API; the canonical docs-config field is `navigation`, which `leadtype init` and config diagnostics use.
+  `groups` is the older taxonomy shape: pages declare membership in frontmatter (`group: guides`) and the source resolves a tree from those slugs. It keeps working — see the [config model](/docs/concepts/config-model#canonical-field-names) for the rename policy. Use `nav` with this lower-level `createDocsSource()` API; the canonical docs-config field is `navigation`, which the config schema and diagnostics use.
 
   ```ts
   import { createDocsSource } from "leadtype";

@@ -67,7 +67,7 @@ A `DocsProject` — a **superset of the `DocsSource` contract**, so every framew
 
 For a project with multiple collections under distinct route prefixes, no first-party static-params helper can be handed the whole project: Next's `createGenerateStaticParams`, Astro's `createGetStaticPaths`, Nuxt's `createPrerenderRoutes`, SvelteKit's `createEntries`, and TanStack Start's `createStaticParams` all derive params from each page's collection-local `slug`, which drops the `routePrefix` — a changelog page at `/changelog/1-0` yields `['1-0']`, and two collection index pages yield duplicate params — so a single catch-all fed by local slugs omits or misroutes collections. Two layouts work:
 
-**One route per collection.** Mount a catch-all at each collection's `routePrefix` and hand it that collection's own source. A collection source's slugs are local by construction — `['1-0']` under the `/changelog` route renders `/changelog/1-0` — so the stock helper keeps working in every adapter, with no custom code:
+**One route per collection.** Mount a catch-all at each collection's `routePrefix` and hand it that collection's own source. A collection source's slugs are local by construction — `['1-0']` under the `/changelog` route renders `/changelog/1-0` — so the stock params helper works without extra options in Next, Astro, SvelteKit, and TanStack Start:
 
 ```ts
 // @noErrors - illustrative; app/changelog/[[...slug]]/page.tsx,
@@ -75,6 +75,15 @@ For a project with multiple collections under distinct route prefixes, no first-
 const changelog = project.getSource("changelog");
 export const generateStaticParams = createGenerateStaticParams({
   source: changelog,
+});
+```
+
+Nuxt's `createPrerenderRoutes` emits absolute paths and defaults their prefix to `/docs`. Pass the collection prefix explicitly:
+
+```ts
+const createChangelogRoutes = createPrerenderRoutes({
+  source: changelog,
+  basePath: "/changelog",
 });
 ```
 
