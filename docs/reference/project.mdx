@@ -44,9 +44,9 @@ Every field is optional.
 | --- | --- | --- |
 | `config` | `DocsConfig` | Use this config instead of discovering one — for an app that already imports its own config module. |
 | `cwd` | `string` | Where to discover the config from, when `config` is omitted. Defaults to the working directory. |
-| `configPath` | `string` | Path the supplied `config` came from. On its own it fixes both where the config's relative paths resolve and where the content root is, using the same basename rule as discovery. |
+| `configPath` | `string` | Path the supplied `config` came from. It fixes where relative config paths resolve and derives the project root using the same basename rule as discovery. A `docs.config.*` outside the standard `docs/` directory does not make its directory the content root; pass `contentDir` too. |
 | `configDir` | `string` | Project root when the config's file path is unknown. Pass `configPath` *or* `configDir`, not both: when both are set, `configDir` wins as the project root — the default content root becomes `<configDir>/docs` — while relative paths still resolve against `configPath`'s directory. |
-| `contentDir` | `string` | Content root for a single-source project. Defaults to the directory holding a `docs.config.*`, or `<configDir>/docs` otherwise. |
+| `contentDir` | `string` | Content root for a single-source project. Defaults to `<projectRoot>/docs`; pass it explicitly when a nonstandard `docs.config.*` sits beside the content. |
 | `baseUrl` | `string` | Overrides the config's site-owned `baseUrl`. Prefer setting `baseUrl` in the config — pass this only when one config serves several deployments. |
 | `locale`, `i18n` | `LocaleCode`, `DocsI18nConfig` | Locale selection and i18n config; `i18n` falls back to the config's. |
 | `remarkPlugins` | `PluggableList` | Same as [`createDocsSource`](/docs/reference/source#configuration). |
@@ -145,7 +145,7 @@ project.diagnostics; // what stopped a step, and the fix
 | Option | Type | Notes |
 | --- | --- | --- |
 | `cwd` | `string` | Project root. Defaults to the current directory. |
-| `config`, `configPath` | `DocsConfig`, `string` | Skip discovery with a config you already hold; `configPath` fixes where its relative paths resolve and where the content root is. |
+| `config`, `configPath` | `DocsConfig`, `string` | Skip discovery with a config you already hold; `configPath` fixes where its relative paths resolve. Use `contentDir` or `docsDirs` when content is not under the derived project root's `docs/` directory. |
 | `docsDirs` | `string[]` | Docs directories relative to `cwd` for a single-source project. Defaults to `["docs"]`. |
 | `contentDir` | `string` | Content root for a single-source project, overriding `docsDirs`. |
 | `inherit` | `boolean` | Apply source-owned config inheritance. Default `true`. |
