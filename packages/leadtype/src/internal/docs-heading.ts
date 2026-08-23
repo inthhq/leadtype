@@ -21,18 +21,54 @@ const THEMATIC_BREAK_PATTERN =
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const HEADING_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const HEADING_CLOSING_SEQUENCE_PATTERN = /\s+#+\s*$/;
-const HTML_TAG_PATTERN = /<[^>]+>/g;
 const WHITESPACE_PATTERN = /\s+/g;
 
 function normalizeHeadingText(input: string): string {
   return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
 }
 
+function stripHtmlTags(input: string): string {
+  const output: string[] = [];
+  let tagBuffer = "";
+  let quote: '"' | "'" | null = null;
+
+  for (const character of input) {
+    if (!tagBuffer) {
+      if (character === "<") {
+        tagBuffer = character;
+      } else {
+        output.push(character);
+      }
+      continue;
+    }
+
+    tagBuffer += character;
+    if (quote !== null) {
+      if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === ">") {
+      output.push(" ");
+      tagBuffer = "";
+    }
+  }
+
+  if (tagBuffer) {
+    output.push(tagBuffer);
+  }
+  return output.join("");
+}
+
 function cleanHeadingText(input: string): string {
-  return input
+  return stripHtmlTags(input)
     .replace(HEADING_CLOSING_SEQUENCE_PATTERN, "")
     .replace(MARKDOWN_LINK_PATTERN, "$1")
-    .replace(HTML_TAG_PATTERN, " ")
     .replace(HEADING_INLINE_PATTERN, " ")
     .replace(WHITESPACE_PATTERN, " ")
     .trim();

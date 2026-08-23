@@ -548,7 +548,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
 
   it("reserves inline-marked Setext headings before later ATX anchors", () => {
     const content = [
-      "<em>Install</em>",
+      '<em title="1 > 0">Install</em>',
       "---",
       "The Setext section covers widgets.",
       "## Install",
@@ -635,7 +635,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
         "The real example covers widgets.",
       ].join("\n"),
       [
-        "<em>Install</em>",
+        '<em title="1 > 0">Install</em>',
         "   ---",
         "Inline markup section covers widgets.",
         "## Install",

@@ -4334,7 +4334,7 @@ describe("extractDocsTableOfContents", () => {
 
   it("allows inline markup at the start of Setext heading text", () => {
     const toc = extractDocsTableOfContents(
-      ["<em>Install</em>", "---", "## Install"].join("\n"),
+      ['<em title="1 > 0">Install</em>', "---", "## Install"].join("\n"),
       {
         urlPath: "/docs/example",
         absoluteUrl: "https://leadtype.dev/docs/example",
