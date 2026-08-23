@@ -556,7 +556,9 @@ describe("createDocsSearchIndex and searchDocs", () => {
     const fixtures = [
       [
         "# Reference",
+        "Reference overview.",
         "## API",
+        "First API overview.",
         "### Details",
         "Nested details cover widgets.",
         "## API",
@@ -605,18 +607,12 @@ describe("createDocsSearchIndex and searchDocs", () => {
           { minLevel: 1, maxLevel: 6 }
         )
       );
-      const searchAnchors = index.chunks
-        .map((chunk) => chunk[CHUNK_ANCHOR_INDEX])
-        .filter(Boolean);
-      const tocPositions = searchAnchors.map((anchor) =>
-        tocIds.indexOf(anchor)
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
       );
 
       expect(searchAnchors.length).toBeGreaterThan(1);
-      expect(tocPositions.every((position) => position >= 0)).toBe(true);
-      expect(tocPositions).toEqual(
-        [...tocPositions].sort((left, right) => left - right)
-      );
+      expect(searchAnchors).toEqual(tocIds);
     }
   });
 
