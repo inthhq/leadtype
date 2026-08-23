@@ -641,6 +641,13 @@ describe("createDocsSearchIndex and searchDocs", () => {
         "## Install",
         "The ATX section covers sprockets.",
       ].join("\r\n"),
+      [
+        "<hgroup>Note</hgroup>",
+        "---",
+        "Inline HTML section covers widgets.",
+        "## Note",
+        "The ATX section covers sprockets.",
+      ].join("\n"),
     ];
 
     for (const content of fixtures) {

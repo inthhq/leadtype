@@ -4332,19 +4332,30 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
-  it("allows inline markup at the start of Setext heading text", () => {
-    const toc = extractDocsTableOfContents(
-      ['<em title="1 > 0">Install</em>', "---", "## Install"].join("\n"),
+  it("allows inline HTML at the start of Setext heading text", () => {
+    const fixtures = [
       {
-        urlPath: "/docs/example",
-        absoluteUrl: "https://leadtype.dev/docs/example",
-      }
-    );
+        heading: '<em title="1 > 0">Install</em>',
+        title: "Install",
+      },
+      { heading: "<hgroup>Note</hgroup>", title: "Note" },
+    ];
 
-    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
-      { id: "install", title: "Install" },
-      { id: "install-1", title: "Install" },
-    ]);
+    for (const { heading, title } of fixtures) {
+      const toc = extractDocsTableOfContents(
+        [heading, "---", `## ${title}`].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      const id = title.toLowerCase();
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id, title },
+        { id: `${id}-1`, title },
+      ]);
+    }
   });
 
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
@@ -4365,7 +4376,6 @@ describe("extractDocsTableOfContents", () => {
       "- Note",
       "    Note",
       "<aside>Note</aside>",
-      "<hgroup>Note</hgroup>",
       "<span>",
       "<Callout>Note</Callout>",
       "{note}",

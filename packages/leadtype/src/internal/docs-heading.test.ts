@@ -1,5 +1,16 @@
+import { htmlBlockNames } from "micromark-util-html-tag-name";
 import { describe, expect, it } from "vitest";
-import { createDocsHeadingSlugger, slugifyDocsHeading } from "./docs-heading";
+import {
+  createDocsHeadingSlugger,
+  docsHtmlBlockTagNames,
+  slugifyDocsHeading,
+} from "./docs-heading";
+
+describe("docs HTML block tags", () => {
+  it("matches the tag list used by the Markdown parser", () => {
+    expect(docsHtmlBlockTagNames).toEqual(htmlBlockNames);
+  });
+});
 
 describe("createDocsHeadingSlugger", () => {
   it("suffixes duplicate slugs the way extractDocsTableOfContents does", () => {
