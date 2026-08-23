@@ -4409,6 +4409,18 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("recognizes standalone HTML tags with quoted delimiters", () => {
+    const toc = extractDocsTableOfContents(
+      ['<span title="1 > 0">', "---", "</span>", "## !!!", "## !!!"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+  });
+
   it("respects custom heading level ranges", () => {
     const toc = extractDocsTableOfContents(
       ["# Page", "## Section", "### Child", "#### Detail"].join("\n"),

@@ -713,6 +713,43 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.urlWithHash).toBe("/docs/anchors#anchors-and");
   });
 
+  it("keeps standalone HTML tags from shifting empty heading anchors", () => {
+    const content = [
+      '<span title="1 > 0">',
+      "---",
+      "</span>",
+      "## !!!",
+      "First punctuation section covers widgets.",
+      "## !!!",
+      "Second punctuation section covers sprockets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["", "-1"]);
+    expect(searchAnchors).toEqual(["", ...tocIds]);
+  });
+
   it("slugifies headings for hash links", () => {
     expect(slugifyDocsHeading("Café API: Quick Start!")).toBe(
       "cafe-api-quick-start"
