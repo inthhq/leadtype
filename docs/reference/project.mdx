@@ -63,11 +63,11 @@ Explicit wins, in the same order `generate` resolves `--base-url`:
 
 ## What it returns
 
-A `DocsProject` — a **superset of the `DocsSource` contract**, so every framework adapter accepts it. For a single-collection project, `createGenerateStaticParams({ source })`, `createLoadPageData({ source })`, and the rest keep working unchanged, with no parallel code path.
+A `DocsProject` — a **superset of the `DocsSource` contract**, so every framework adapter accepts it. Every static-params helper — Next's `createGenerateStaticParams`, Astro's `createGetStaticPaths`, Nuxt's `createPrerenderRoutes`, SvelteKit's `createEntries`, TanStack Start's `createStaticParams` — derives params from each page's mount-aware `urlPath`, relative to the source's `routePrefix`. For an unmounted single collection that is exactly the collection-local slug, so nothing changes; where the two differ — a `mounts` entry, a collection's prefix — the params now name the URL the generated sitemap actually advertises, and the load helpers resolve those params back to the same page. A page whose URL a catch-all cannot serve is a **thrown error naming the page and the fixes**, never a param that silently renders the wrong URL.
 
-For a project with multiple collections under distinct route prefixes, no first-party static-params helper can be handed the whole project: Next's `createGenerateStaticParams`, Astro's `createGetStaticPaths`, Nuxt's `createPrerenderRoutes`, SvelteKit's `createEntries`, and TanStack Start's `createStaticParams` all derive params from each page's collection-local `slug`, which drops the `routePrefix` — a changelog page at `/changelog/1-0` yields `['1-0']`, and two collection index pages yield duplicate params — so a single catch-all fed by local slugs omits or misroutes collections. Two layouts work:
+For a project with multiple collections under distinct route prefixes, two layouts work:
 
-**One route per collection.** Mount a catch-all at each collection's `routePrefix` and hand it that collection's own source. A collection source's slugs are local by construction — `['1-0']` under the `/changelog` route renders `/changelog/1-0` — so the stock params helper works without extra options in Next, Astro, SvelteKit, and TanStack Start:
+**One route per collection.** Mount a catch-all at each collection's `routePrefix` and hand it that collection's own source. A collection source carries its `routePrefix`, so every adapter derives local params against the right base with no extra wiring — including Nuxt, whose `createPrerenderRoutes` emits the collection's real routes (`/changelog/1-0`), not `/docs/…`:
 
 ```ts
 // @noErrors - illustrative; app/changelog/[[...slug]]/page.tsx,
@@ -78,26 +78,18 @@ export const generateStaticParams = createGenerateStaticParams({
 });
 ```
 
-Nuxt's `createPrerenderRoutes` emits absolute paths and defaults their prefix to `/docs`. Pass the collection prefix explicitly:
-
-```ts
-const createChangelogRoutes = createPrerenderRoutes({
-  source: changelog,
-  basePath: "/changelog",
-});
-```
-
-**One merged catch-all at the site root.** Derive params from `urlPath`, which already carries each collection's prefix:
+**One merged catch-all at the site root.** Pass `basePath: "/"` and the params carry each collection's prefix (`['changelog', '1-0']`):
 
 ```ts
 // @noErrors - illustrative; app/[[...slug]]/page.tsx at the site root.
-export const generateStaticParams = async () =>
-  (await project.listPages()).map((page) => ({
-    slug: page.urlPath.split("/").filter(Boolean),
-  }));
+export const generateStaticParams = createGenerateStaticParams({
+  source: project,
+  basePath: "/",
+});
+const loadPageData = createLoadPageData({ source: project, basePath: "/" });
 ```
 
-These params include the route prefix (`['changelog', '1-0']`), so the snippet only lines up with a catch-all at the site root. Inside a prefixed route — such as the scaffolded `app/docs/[[...slug]]/page.tsx` — the same params would render `/docs/changelog/1-0`, the misrouting described above. A site-root optional catch-all also collides with a static `app/page.tsx`; to keep a hand-built homepage, use a required `[...slug]` segment or the per-collection layout.
+`basePath` names the route prefix the catch-all is actually mounted at, and defaults to the source's own `routePrefix` — the primary (first-declared) collection's, for a whole project. Handing a multi-collection project to a helper without it therefore throws on the first page outside the primary prefix — a `/docs` catch-all cannot serve `/changelog/1-0` — pointing at both layouts above. A site-root optional catch-all also collides with a static `app/page.tsx`; to keep a hand-built homepage, use a required `[...slug]` segment or the per-collection layout.
 
 On top of the `DocsSource` methods (`listPages`, `loadPage`, `getNavigation`, `buildSearchIndex`, `resolveInclude`, `cleanup`), the project adds the resolved graph:
 

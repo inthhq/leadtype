@@ -33,6 +33,7 @@ import {
   toLocalizedDocsUrlPath,
 } from "../i18n";
 import {
+  baseUrlPrefixForMounts,
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
@@ -208,6 +209,15 @@ export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
   {
     /** Absolute path to the resolved docs directory. */
     contentDir: string;
+    /**
+     * URL prefix this source's unprefixed files resolve under — the catch-all
+     * mount's `urlPrefix`, `"/docs"` when no mount claims the root. Framework
+     * adapters use it as the default route base when deriving static params
+     * from `urlPath`. Optional so hand-rolled sources keep satisfying the
+     * contract. Param helpers keep using collection-local slugs when it is
+     * absent; Nuxt prerendering emits each page's absolute `urlPath` instead.
+     */
+    routePrefix?: string;
     /** Compute the docs navigation from configured groups + filesystem state. */
     getNavigation(): Promise<DocsNavigation>;
     /** Enumerate every doc page found under `contentDir`. */
@@ -888,6 +898,7 @@ export async function createDocsSource<
 
   return {
     contentDir,
+    routePrefix: baseUrlPrefixForMounts(config.mounts),
     getNavigation,
     listPages,
     loadPage,

@@ -5,6 +5,7 @@ import {
   joinUrlPath,
   type LoadPageConfig,
   listJoinedSlugs,
+  normalizeUrlPath,
   type StaticSlugConfig,
 } from "../internal/framework";
 import type { DocsPage } from "../source";
@@ -35,8 +36,33 @@ export function createPrerenderRoutes(
   config: StaticSlugConfig
 ): () => Promise<string[]> {
   return async () => {
-    const slugs = await listJoinedSlugs(config);
-    const basePath = config.basePath ?? "/docs";
+    const basePath =
+      config.basePath === undefined
+        ? undefined
+        : normalizeUrlPath(config.basePath);
+    // Without an override, each page's mount-aware `urlPath` *is* its route —
+    // this is what makes `createPrerenderRoutes({ source })` correct for a
+    // collection source (whose routePrefix is not `/docs`), for `mounts`, and
+    // for a whole multi-collection project in one call.
+    //
+    // Nuxt prerender entries are absolute paths, not params under a catch-all,
+    // so pages that leave the source prefix are emitted rather than thrown:
+    // the string *is* the request path. The other adapters throw because
+    // their params would be served under the catch-all's own prefix.
+    // A site-root basePath has the same result: absolute page URLs already
+    // include every collection prefix and mount.
+    if (basePath === undefined || basePath === "/") {
+      const pages = await config.source.listPages();
+      return pages.map((page) => normalizeUrlPath(page.urlPath));
+    }
+    // An explicit prefix re-roots: slugs are taken relative to the source's
+    // own prefix (so a mount that remaps `policies/privacy` →
+    // `/docs/legal/privacy` still contributes `legal/privacy`), then joined
+    // onto the override. `listJoinedSlugs` is not given that prefix — that
+    // would filter against the new base and throw on every page. Pages the
+    // source prefix cannot represent still throw. `createLoadPage` with the
+    // same basePath maps those slugs back through the source prefix.
+    const slugs = await listJoinedSlugs({ source: config.source });
     return slugs.map((slug) => joinUrlPath(basePath, slug));
   };
 }

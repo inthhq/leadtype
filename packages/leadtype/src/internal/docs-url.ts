@@ -78,6 +78,23 @@ export function pathPrefixForUrlPrefix(urlPrefix: string): string {
   return urlPrefix.replace(LEADING_SLASHES_PATTERN, "");
 }
 
+/**
+ * The URL prefix a source's *unprefixed* files resolve under — the mount with
+ * an empty `pathPrefix` when one exists, `"/docs"` otherwise. Mirrors
+ * `resolveDocsPathMount` exactly: files matching no mount fall through to
+ * `/docs`, and among several catch-all mounts the first declared wins (the
+ * longest-prefix sort is stable). This is what a framework adapter treats as
+ * the source's own route base when no `basePath` is passed.
+ */
+export function baseUrlPrefixForMounts(mounts?: DocsPathMount[]): string {
+  const catchAll = mounts?.find(
+    (mount) => !normalizeMountPathPrefix(mount.pathPrefix)
+  );
+  return catchAll
+    ? normalizeUrlPrefix(catchAll.urlPrefix)
+    : DEFAULT_DOCS_URL_PREFIX;
+}
+
 function resolveDocsPathMount(
   relativePath: string,
   mounts: DocsPathMount[] | undefined
