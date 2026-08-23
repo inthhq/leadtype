@@ -4317,6 +4317,21 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
+  it("allows a Setext underline to use three spaces and CRLF", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "   ---", "## Install"].join("\r\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
   it("allows inline markup at the start of Setext heading text", () => {
     const toc = extractDocsTableOfContents(
       ["<em>Install</em>", "---", "## Install"].join("\n"),
@@ -4350,6 +4365,8 @@ describe("extractDocsTableOfContents", () => {
       "- Note",
       "    Note",
       "<aside>Note</aside>",
+      "<hgroup>Note</hgroup>",
+      "<span>",
       "<Callout>Note</Callout>",
       "{note}",
       "[note]: /docs/note",

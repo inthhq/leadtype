@@ -1,8 +1,8 @@
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
 const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
-const SETEXT_H1_PATTERN = /^ {0,3}=+[ \t]*$/;
-const SETEXT_H2_PATTERN = /^ {0,3}-+[ \t]*$/;
+const SETEXT_H1_PATTERN = /^ {0,3}=+\s*$/;
+const SETEXT_H2_PATTERN = /^ {0,3}-+\s*$/;
 const FENCE_PATTERN = /^(`{3,}|~{3,})/;
 const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
 const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
@@ -10,7 +10,7 @@ const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
 const HTML_BLOCK_START_PATTERN =
   /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
 const HTML_BLOCK_TAG_PATTERN =
-  /^ {0,3}<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|\/?>|$)/i;
+  /^ {0,3}<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hgroup|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|\/?>|$)/i;
 const STANDALONE_HTML_TAG_PATTERN =
   /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?\/?>[ \t]*$/;
 const MDX_BLOCK_START_PATTERN =

@@ -636,11 +636,11 @@ describe("createDocsSearchIndex and searchDocs", () => {
       ].join("\n"),
       [
         "<em>Install</em>",
-        "---",
+        "   ---",
         "Inline markup section covers widgets.",
         "## Install",
         "The ATX section covers sprockets.",
-      ].join("\n"),
+      ].join("\r\n"),
     ];
 
     for (const content of fixtures) {
