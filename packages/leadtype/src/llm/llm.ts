@@ -31,6 +31,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { NlwebOpenApiConfig } from "../nlweb/openapi";
 import type { DocsOpenApiConfig } from "../openapi";
 import {
   type DocsFrontmatterSchema,
@@ -41,6 +42,7 @@ import {
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
+  type ApiCatalogEntry,
   type ContentSignals,
   type DocsNavigation,
   type DocsNavigationGroup,
@@ -78,6 +80,13 @@ const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
 const SETEXT_H1_PATTERN = /^=+\s*$/;
 const SETEXT_H2_PATTERN = /^-+\s*$/;
 const FENCE_PATTERN = /^(`{3,}|~{3,})/;
+const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
+const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
+const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
+const HTML_OR_MDX_BLOCK_PATTERN = /^ {0,3}[<{]/;
+const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
+const THEMATIC_BREAK_PATTERN =
+  /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
@@ -558,8 +567,8 @@ export type DocsConfig<
   /**
    * Opt-in redirect tracking for renamed/deleted pages. When present,
    * generate maintains a committed paths lockfile, auto-detects pure moves by
-   * content hash, emits `docs/redirects.json`, and fails loudly when a page
-   * disappears without a successor.
+   * authored-source hash, emits `docs/redirects.json`, and fails loudly when a
+   * page disappears without a successor.
    */
   redirects?: DocsRedirectsConfig;
   /** Options for `leadtype lint` — ignore globs and per-rule severities. */
@@ -608,6 +617,7 @@ export type DocsRedirectsConfig = {
    * Lockfile location, resolved relative to the docs source directory.
    * Defaults to `paths.lock.json` inside it. Commit this file — it is the
    * record of previously published paths that rename detection diffs against.
+   * Page hashes are of the authored source body, not generated mirrors.
    */
   lockfile?: string;
   /**
@@ -675,7 +685,45 @@ export type DocsAgentsConfig = {
     enabled?: boolean;
     /** The `/ask` endpoint path or absolute URL. Defaults to `/ask`. */
     endpoint?: string;
+    /**
+     * The generated OpenAPI 3.1 description of the `/ask` endpoint, emitted at
+     * `/openapi.json` and referenced as the API's `service-desc` in the RFC
+     * 9727 catalog. Set `enabled: false` to skip it.
+     *
+     * @example
+     * ```ts
+     * nlweb: {
+     *   enabled: true,
+     *   openapi: { url: "/api/openapi.json" },
+     * }
+     * ```
+     */
+    openapi?: NlwebOpenApiConfig;
   };
+  /**
+   * APIs this site publishes, listed in the RFC 9727 catalog at
+   * `/.well-known/api-catalog`. Site-owned: a docs source repo describes
+   * content, but only the site that serves the APIs knows where they live.
+   * Leave it unset and no catalog is generated or advertised.
+   *
+   * @example
+   * ```ts
+   * apis: [
+   *   {
+   *     href: "/ask",
+   *     title: "Documentation query API",
+   *     type: "application/json",
+   *     version: "1.0",
+   *     serviceDesc: {
+   *       href: "/openapi.json",
+   *       type: "application/vnd.oai.openapi+json;version=3.1",
+   *     },
+   *     serviceDoc: { href: "/docs/reference/nlweb", type: "text/html" },
+   *   },
+   * ]
+   * ```
+   */
+  apis?: ApiCatalogEntry[];
   robots?: {
     /** Crawler-access stance. Defaults to `balanced`. */
     policy?: RobotsPolicy;
@@ -1057,6 +1105,11 @@ export type AgentReadabilityConfig = {
   contentSignals?: Partial<ContentSignals>;
   /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a robots.txt `Schemamap:` directive. */
   schemamapUrlPath?: string;
+  /**
+   * APIs this site publishes, listed in the RFC 9727 catalog at
+   * `/.well-known/api-catalog`. No APIs means no catalog is written.
+   */
+  apis?: ApiCatalogEntry[];
   /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
@@ -1429,6 +1482,21 @@ function isTocHeadingLevel(level: number): level is 1 | 2 | 3 | 4 | 5 | 6 {
   return level >= 1 && level <= 6;
 }
 
+function isSetextHeadingText(line: string): boolean {
+  if (line.trim().length === 0) {
+    return false;
+  }
+
+  return !(
+    INDENTED_CODE_PATTERN.test(line) ||
+    BLOCKQUOTE_PATTERN.test(line) ||
+    LIST_ITEM_PATTERN.test(line) ||
+    HTML_OR_MDX_BLOCK_PATTERN.test(line) ||
+    LINK_DEFINITION_PATTERN.test(line) ||
+    THEMATIC_BREAK_PATTERN.test(line)
+  );
+}
+
 /**
  * Extract a nested table of contents from markdown or MDX content. This helper
  * is framework-neutral and intentionally returns plain JSON so any docs app can
@@ -1531,7 +1599,7 @@ export function extractDocsTableOfContents(
       continue;
     }
 
-    pendingLine = trimmedLine.length > 0 ? trimmedLine : null;
+    pendingLine = isSetextHeadingText(line) ? trimmedLine : null;
   }
 
   return items;
@@ -2904,7 +2972,8 @@ export async function generateLLMFullContextFiles(
 function toAgentReadabilityPage(
   doc: MarkdownDoc,
   baseUrl: string,
-  mounts?: DocsPathMount[]
+  mounts: DocsPathMount[] | undefined,
+  markdownFilePath: string
 ): AgentReadabilityPage {
   const markdownUrlPath = toMountedMarkdownUrlPath(
     `${doc.relativePath}.md`,
@@ -2917,6 +2986,7 @@ function toAgentReadabilityPage(
     absoluteUrl: doc.absoluteUrl,
     markdownUrlPath,
     markdownAbsoluteUrl: toAbsoluteUrl(markdownUrlPath, baseUrl),
+    markdownFilePath,
     relativePath: doc.relativePath,
     groups: [...doc.groups],
     lastModified: doc.lastModified,
@@ -3021,8 +3091,18 @@ export async function generateAgentReadabilityArtifacts(
   // urlPath, so pages outside the navigation keep that deterministic tail.
   const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
   const pages = orderedDocs.map((doc) =>
-    toAgentReadabilityPage(doc, baseUrl, config.mounts)
+    toAgentReadabilityPage(
+      doc,
+      baseUrl,
+      config.mounts,
+      `${DOCS_DIRNAME}/${doc.relativePath}.md`
+    )
   );
+  // No configured APIs means no catalog: an empty RFC 9727 linkset advertises
+  // a catalog that lists nothing, so the artifact and its manifest entry are
+  // both omitted.
+  const apis = config.apis ?? [];
+  const hasApis = apis.length > 0;
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: generatedAt.toISOString(),
@@ -3033,11 +3113,12 @@ export async function generateAgentReadabilityArtifacts(
     pages,
     navigation,
     files: {
-      apiCatalog: API_CATALOG_URL_PATH,
+      ...(hasApis ? { apiCatalog: API_CATALOG_URL_PATH } : {}),
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(hasApis ? { apis } : {}),
     ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
     ...(config.seo ? { seo: config.seo } : {}),
   };
@@ -3052,6 +3133,7 @@ export async function generateAgentReadabilityArtifacts(
   const shouldEmitRootCrawlerFiles =
     config.emitRootCrawlerFiles ??
     !(i18n && locale && locale !== i18n.defaultLocale);
+  const shouldEmitApiCatalog = shouldEmitRootCrawlerFiles && hasApis;
 
   const sitemapXml = renderSitemapXml(pages);
   const sitemapMd = renderSitemapMarkdown({
@@ -3061,8 +3143,12 @@ export async function generateAgentReadabilityArtifacts(
   });
   if (shouldEmitRootCrawlerFiles) {
     await mkdir(outDir, { recursive: true });
-    await mkdir(path.dirname(files.apiCatalog), { recursive: true });
-    await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    if (shouldEmitApiCatalog) {
+      await mkdir(path.dirname(files.apiCatalog), { recursive: true });
+      await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    } else {
+      await rm(files.apiCatalog, { force: true });
+    }
     await writeFileAtomic(files.sitemapXml, sitemapXml);
     await writeFileAtomic(files.sitemapMd, sitemapMd);
     await writeFileAtomic(
@@ -3084,9 +3170,9 @@ export async function generateAgentReadabilityArtifacts(
   return {
     files: {
       manifest: files.manifest,
+      ...(shouldEmitApiCatalog ? { apiCatalog: files.apiCatalog } : {}),
       ...(shouldEmitRootCrawlerFiles
         ? {
-            apiCatalog: files.apiCatalog,
             robotsTxt: files.robotsTxt,
             sitemapMd: files.sitemapMd,
             sitemapXml: files.sitemapXml,
@@ -3134,7 +3220,7 @@ export type GenerateAgentArtifactsConfig = {
   llms?: DocsLlmsConfig;
   /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
   groups?: DocsGroup[];
-  agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  agents?: Pick<DocsAgentsConfig, "apis" | "robots" | "seo">;
   /**
    * Pin manifest `generatedAt` and per-page `lastModified` fallbacks so
    * repeated runs can produce reproducible output. Accepts a date string or a
@@ -3352,17 +3438,25 @@ export async function generateAgentArtifacts(
     config.groups
   );
   const pages = docs.map((doc) =>
-    toAgentReadabilityPage(doc, baseUrl, ROOT_PAGE_MOUNTS)
+    toAgentReadabilityPage(
+      doc,
+      baseUrl,
+      ROOT_PAGE_MOUNTS,
+      toMountedMarkdownUrlPath(
+        `${doc.relativePath}.md`,
+        ROOT_PAGE_MOUNTS
+      ).slice(1)
+    )
   );
 
   const markdownFiles = await Promise.all(
     docs.map(async (doc, index) => {
+      const page = pages[index];
       const markdownUrlPath =
-        pages[index]?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
-      const filePath = path.join(
-        outDir,
-        ...markdownUrlPath.slice(1).split("/")
-      );
+        page?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
+      const markdownFilePath =
+        page?.markdownFilePath ?? markdownUrlPath.slice(1);
+      const filePath = path.join(outDir, ...markdownFilePath.split("/"));
       await mkdir(path.dirname(filePath), { recursive: true });
       await writeFileAtomic(filePath, renderAgentPageMirror(doc));
       return filePath;
@@ -3377,6 +3471,8 @@ export async function generateAgentArtifacts(
   await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
   await writeFileAtomic(wellKnownLlmsTxtPath, llmsTxt);
 
+  const apis = config.agents?.apis ?? [];
+  const hasApis = apis.length > 0;
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: generatedAt.toISOString(),
@@ -3385,11 +3481,12 @@ export async function generateAgentArtifacts(
     pages,
     navigation,
     files: {
-      apiCatalog: API_CATALOG_URL_PATH,
+      ...(hasApis ? { apiCatalog: API_CATALOG_URL_PATH } : {}),
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(hasApis ? { apis } : {}),
     ...(inputs.jsonLd ? { jsonLd: inputs.jsonLd } : {}),
     ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
   };
@@ -3412,8 +3509,13 @@ export async function generateAgentArtifacts(
   const sitemapMdPath = path.join(outDir, SITEMAP_MARKDOWN_FILE);
   const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
   const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
-  await mkdir(path.dirname(apiCatalogPath), { recursive: true });
-  await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  // Only sites that declare APIs get a catalog — see the docs-source path.
+  if (hasApis) {
+    await mkdir(path.dirname(apiCatalogPath), { recursive: true });
+    await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  } else {
+    await rm(apiCatalogPath, { force: true });
+  }
   await writeFileAtomic(sitemapXmlPath, renderSitemapXml(pages));
   await writeFileAtomic(
     sitemapMdPath,
@@ -3440,7 +3542,7 @@ export async function generateAgentArtifacts(
       wellKnownLlmsTxt: wellKnownLlmsTxtPath,
       manifest: manifestPath,
       markdown: markdownFiles,
-      apiCatalog: apiCatalogPath,
+      ...(hasApis ? { apiCatalog: apiCatalogPath } : {}),
       robotsTxt: robotsTxtPath,
       sitemapMd: sitemapMdPath,
       sitemapXml: sitemapXmlPath,

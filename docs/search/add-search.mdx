@@ -49,9 +49,10 @@ For server routes or any code that already has the JSON, query directly with
 import type { DocsSearchContentStore } from "leadtype/search";
 
 const contentJson: DocsSearchContentStore = {
-  version: 2,
+  version: 3,
   generatedAt: "2026-06-15T10:30:00.000Z",
   chunks: [],
+  codeChunks: [],
 };
 
 export default contentJson;
@@ -60,7 +61,7 @@ export default contentJson;
 import type { DocsSearchIndex } from "leadtype/search";
 
 const indexJson: DocsSearchIndex = {
-  version: 2,
+  version: 3,
   generatedAt: "2026-06-15T10:30:00.000Z",
   documents: [],
   chunks: [],

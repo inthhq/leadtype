@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createAgentArtifactHandler } from "../internal/framework";
 import {
   type AgentPageInput,
   type GenerateAgentArtifactsResult,
@@ -113,13 +114,9 @@ describe("generateAgentArtifacts", () => {
     expect(robots).toContain(`Sitemap: ${BASE_URL}/sitemap.xml`);
     expect(robots).toContain("Allow: /llms.txt");
 
-    expect(result.files.apiCatalog).toBeDefined();
-    const apiCatalog = JSON.parse(
-      await readFile(result.files.apiCatalog ?? "", "utf-8")
-    );
-    expect(apiCatalog.linkset[0]["api-catalog"][0].href).toBe(
-      `${BASE_URL}/.well-known/api-catalog`
-    );
+    // No `agents.apis` in the base config, so no catalog is published.
+    expect(result.files.apiCatalog).toBeUndefined();
+    expect(result.manifest.files.apiCatalog).toBeUndefined();
 
     const sitemapXml = await readFile(result.files.sitemapXml ?? "", "utf-8");
     expect(sitemapXml).toContain(`<loc>${BASE_URL}/benchmarks/chrome</loc>`);
@@ -192,15 +189,32 @@ describe("generateAgentArtifacts", () => {
       (page) => page.urlPath === "/benchmarks/chrome"
     );
     expect(chrome?.markdownUrlPath).toBe("/benchmarks/chrome.md");
+    expect(chrome?.markdownFilePath).toBe("benchmarks/chrome.md");
     expect(chrome?.markdownAbsoluteUrl).toBe(
       `${BASE_URL}/benchmarks/chrome.md`
     );
     const root = manifest.pages.find((page) => page.urlPath === "/");
     expect(root?.markdownUrlPath).toBe("/index.md");
+    expect(root?.markdownFilePath).toBe("index.md");
     expect(manifest.jsonLd?.organization?.name).toBe("Consent.io");
     expect(manifest.seo?.ogImage).toBe(`${BASE_URL}/og.png`);
     expect(manifest.navigation.groups.map((group) => group.slug)).toContain(
       "benchmarks"
+    );
+
+    const handler = createAgentArtifactHandler({ manifest, publicDir: outDir });
+    const chromeResponse = await handler(
+      new Request(`${BASE_URL}/benchmarks/chrome.md`)
+    );
+    expect(chromeResponse?.status).toBe(200);
+    await expect(chromeResponse?.text()).resolves.toContain("Chrome numbers.");
+
+    const rootResponse = await handler(
+      new Request(`${BASE_URL}/`, { headers: { accept: "text/markdown" } })
+    );
+    expect(rootResponse?.status).toBe(200);
+    await expect(rootResponse?.text()).resolves.toContain(
+      "Welcome to the benchmark."
     );
 
     const robots = await readFile(result.files.robotsTxt ?? "", "utf-8");
@@ -268,6 +282,50 @@ Body text.`,
     const llmsTxt = await readFile(result.files.llmsTxt, "utf-8");
     expect(llmsTxt).toContain("## Pages");
     expect(llmsTxt).toContain("(/blog/launch-post.md)");
+  });
+
+  it("publishes an RFC 9727 catalog from agents.apis", async () => {
+    const outDir = await createTempOutDir();
+    const result = await generateAgentArtifacts({
+      ...baseConfig(outDir),
+      agents: {
+        apis: [
+          {
+            href: "/ask",
+            title: "Consent query API",
+            type: "application/json",
+            serviceDesc: {
+              href: "https://api.cookiebench.com/openapi.json",
+              type: "application/vnd.oai.openapi+json;version=3.1",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.files.apiCatalog).toBeDefined();
+    expect(result.manifest.files.apiCatalog).toBe("/.well-known/api-catalog");
+    const catalog = JSON.parse(
+      await readFile(result.files.apiCatalog ?? "", "utf-8")
+    );
+    expect(catalog.linkset[0]).toEqual({
+      anchor: `${BASE_URL}/.well-known/api-catalog`,
+      item: [
+        {
+          href: `${BASE_URL}/ask`,
+          type: "application/json",
+          title: "Consent query API",
+        },
+      ],
+    });
+    expect(catalog.linkset[1]["service-desc"][0].href).toBe(
+      "https://api.cookiebench.com/openapi.json"
+    );
+
+    await generateAgentArtifacts(baseConfig(outDir));
+    await expect(
+      readFile(path.join(outDir, ".well-known", "api-catalog"), "utf-8")
+    ).rejects.toThrow();
   });
 
   it("skips root crawler files when emitRootCrawlerFiles is false", async () => {

@@ -34,6 +34,7 @@ function buildSearchBundle(): DocsSearchBundle {
       version: index.version,
       generatedAt: index.generatedAt,
       chunks: [],
+      codeChunks: [],
     },
   };
 }
@@ -123,6 +124,78 @@ describe("createSearchClient", () => {
     });
     const results = await client.search("quickstart");
     expect(results.length).toBeGreaterThan(0);
+  });
+
+  it("ignores a cached content store from an older index version", async () => {
+    const bundle = buildSearchBundle();
+    const scope = nextScope();
+    const cachedContent = {
+      version: 2,
+      generatedAt: bundle.content.generatedAt,
+      chunks: bundle.content.chunks,
+    };
+    const fetchImpl = ((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith(scope.indexUrl)) {
+        return Promise.resolve(Response.json(bundle.index));
+      }
+      return Promise.resolve(Response.json(cachedContent));
+    }) as typeof fetch;
+
+    const client = createSearchClient("docs", {
+      ...scope,
+      fetch: fetchImpl,
+    });
+
+    const results = await client.search("install");
+
+    expect(results[0]?.title).toBe("Install");
+    expect(results[0]?.excerpt).toContain("Install the package");
+  });
+
+  it("retries a mismatched artifact pair and caches the matching pair", async () => {
+    const bundle = buildSearchBundle();
+    const scope = nextScope();
+    const { content: _embeddedContent, ...index } = bundle.index;
+    let contentHits = 0;
+    let indexHits = 0;
+    const fetchImpl = ((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith(scope.indexUrl)) {
+        indexHits += 1;
+        return Promise.resolve(Response.json(index));
+      }
+      contentHits += 1;
+      if (contentHits === 1) {
+        return Promise.resolve(
+          Response.json({
+            ...bundle.content,
+            version: 2,
+          })
+        );
+      }
+      return Promise.resolve(Response.json(bundle.content));
+    }) as typeof fetch;
+    const client = createSearchClient("docs", {
+      ...scope,
+      fetch: fetchImpl,
+    });
+
+    const firstResults = await client.search("install");
+    expect(firstResults[0]?.excerpt).not.toContain("bun add leadtype");
+
+    const [secondResults, concurrentResults] = await Promise.all([
+      client.search("install"),
+      client.search("install"),
+    ]);
+    expect(secondResults[0]?.excerpt).toContain("bun add leadtype");
+    expect(concurrentResults[0]?.excerpt).toContain("bun add leadtype");
+    expect(indexHits).toBe(2);
+    expect(contentHits).toBe(2);
+
+    await client.search("install");
+    expect(indexHits).toBe(2);
+    expect(contentHits).toBe(2);
   });
 
   it("surfaces an error when the index fetch fails", async () => {

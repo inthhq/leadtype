@@ -46,6 +46,27 @@ test("agent surface: llms.txt and markdown mirror are served", async ({
   expect(mirror.status()).toBe(200);
   expect(await mirror.text()).toContain("Quickstart");
 
+  const mountedMirror = await request.get("/changelog/0-4.md");
+  expect(mountedMirror.status()).toBe(200);
+  expect(await mountedMirror.text()).toContain("Leadtype 0.4");
+
+  const mountedAsset = await request.get(
+    "/leadtype-assets/docs/changelog/0-4.md"
+  );
+  expect(mountedAsset.status()).toBe(200);
+  expect(await mountedAsset.text()).toContain("Leadtype 0.4");
+
+  const missingAsset = await request.get(
+    "/leadtype-assets/docs/not-in-the-manifest.md"
+  );
+  expect(missingAsset.status()).toBe(404);
+  expect(await missingAsset.text()).toBe("");
+
+  const missingMirror = await request.get("/docs/nope.md");
+  expect(missingMirror.status()).toBe(200);
+  expect(missingMirror.headers()["content-type"]).toContain("text/markdown");
+  expect(await missingMirror.text()).toContain("Page not found");
+
   const rss = await request.get("/changelog/rss.xml");
   expect(rss.status()).toBe(200);
   expect(await rss.text()).toContain("<title>Leadtype Changelog</title>");

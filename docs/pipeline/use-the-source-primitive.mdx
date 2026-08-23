@@ -374,11 +374,14 @@ function createMdxHeadingComponents() {
   return { h2: Heading2 };
 }
 
-// Call once per page — do not hoist the slugger to module scope.
-const mdxHeadingComponents = createMdxHeadingComponents();
+// Your MDX provider calls this for each page render. The slugger stays inside
+// that page boundary instead of leaking through a module-level singleton.
+export function useMDXComponents() {
+  return createMdxHeadingComponents();
+}
 ```
 
-Wire `createMdxHeadingComponents()` (and `h3`, etc.) into the page's `mdxComponents` map. Share the same factory result across `h1`–`h6` on that page. Authors can still pin an explicit `id` on a heading.
+Wire `useMDXComponents()` into the page's MDX provider. Add `h1` and `h3`–`h6` to the object returned by `createMdxHeadingComponents()` so all six components close over that page's one `slugger`. Authors can still pin an explicit `id` on a heading.
 
 ## Build a search index
 

@@ -15,6 +15,7 @@ import type {
   DocsSearchContentStore,
   DocsSearchIndex,
 } from "../search/index.js";
+import { isDocsSearchContentStoreCompatible } from "../search/search.js";
 
 /**
  * Subdirectory (under the artifacts base) that `generate` writes docs artifacts
@@ -61,16 +62,9 @@ async function readOptionalJson<T>(filePath: string): Promise<T | null> {
   }
 }
 
-/**
- * Thrown when the generated `docs/` artifacts are absent. Handlers match on
- * this class to surface the actionable setup guidance while keeping every
- * other error generic in HTTP responses.
- */
-export class MissingDocsArtifactsError extends Error {}
-
 function missingArtifactError(baseDir: string, file: string): Error {
   const docsDir = path.join(baseDir, DOCS_SUBDIR);
-  return new MissingDocsArtifactsError(
+  return new Error(
     `leadtype: no generated docs at ${docsDir} (missing ${file}). Either:\n` +
       "  • run `leadtype generate` so it writes ./public/docs, then retry; or\n" +
       "  • point `--artifacts <dir>` at a directory that contains a generated `docs/` folder; or\n" +
@@ -103,10 +97,15 @@ export async function loadDocsArtifacts(
     throw missingArtifactError(baseDir, MANIFEST_FILE);
   }
 
-  const content =
-    (await readOptionalJson<DocsSearchContentStore>(
-      path.join(docsDir, SEARCH_CONTENT_FILE)
-    )) ?? undefined;
+  // Embedded content belongs to this exact index snapshot and wins over a
+  // stale separate store left behind after changing generation modes.
+  const rawContent =
+    index.content === undefined
+      ? await readOptionalJson<unknown>(path.join(docsDir, SEARCH_CONTENT_FILE))
+      : undefined;
+  const content = isDocsSearchContentStoreCompatible(index, rawContent)
+    ? rawContent
+    : undefined;
 
   return {
     index,
