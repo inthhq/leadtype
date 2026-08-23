@@ -71,7 +71,7 @@
     },
     {
       "path": "/docs/pipeline/build-a-docs-site",
-      "hash": "0aa5d55f31b5ece1"
+      "hash": "8610145efb6b6f45"
     },
     {
       "path": "/docs/pipeline/collections",
@@ -107,7 +107,7 @@
     },
     {
       "path": "/docs/pipeline/use-the-source-primitive",
-      "hash": "bd0b3c5f4b74a1b0"
+      "hash": "a90d89585580a2be"
     },
     {
       "path": "/docs/pipeline/validate-in-ci",
@@ -143,7 +143,7 @@
     },
     {
       "path": "/docs/reference/llm",
-      "hash": "c8b85354b8dc06db"
+      "hash": "c2d487525505aab6"
     },
     {
       "path": "/docs/reference/markdown",
