@@ -15,7 +15,7 @@ import {
   toLocalizedDocsUrlPath,
 } from "../i18n";
 import { writeFileAtomic } from "../internal/atomic-fs";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import { createDocsHeadingSlugger } from "../internal/docs-heading";
 import {
   type DocsPathMount,
   GENERIC_DOC_TITLES,
@@ -58,7 +58,11 @@ import {
   type SeoMeta,
 } from "./readability";
 
-export { slugifyDocsHeading } from "../internal/docs-heading";
+export {
+  createDocsHeadingSlugger,
+  type DocsHeadingSlugger,
+  slugifyDocsHeading,
+} from "../internal/docs-heading";
 export type { DocsPathMount } from "../internal/docs-url";
 
 const DOCS_DIRNAME = "docs";
@@ -72,8 +76,17 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const DEFAULT_TOC_MIN_LEVEL = 2;
 const DEFAULT_TOC_MAX_LEVEL = 3;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
+const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
+const SETEXT_H1_PATTERN = /^=+\s*$/;
+const SETEXT_H2_PATTERN = /^-+\s*$/;
 const FENCE_PATTERN = /^(`{3,}|~{3,})/;
+const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
+const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
+const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
+const HTML_OR_MDX_BLOCK_PATTERN = /^ {0,3}[<{]/;
+const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
+const THEMATIC_BREAK_PATTERN =
+  /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
@@ -1469,6 +1482,21 @@ function isTocHeadingLevel(level: number): level is 1 | 2 | 3 | 4 | 5 | 6 {
   return level >= 1 && level <= 6;
 }
 
+function isSetextHeadingText(line: string): boolean {
+  if (line.trim().length === 0) {
+    return false;
+  }
+
+  return !(
+    INDENTED_CODE_PATTERN.test(line) ||
+    BLOCKQUOTE_PATTERN.test(line) ||
+    LIST_ITEM_PATTERN.test(line) ||
+    HTML_OR_MDX_BLOCK_PATTERN.test(line) ||
+    LINK_DEFINITION_PATTERN.test(line) ||
+    THEMATIC_BREAK_PATTERN.test(line)
+  );
+}
+
 /**
  * Extract a nested table of contents from markdown or MDX content. This helper
  * is framework-neutral and intentionally returns plain JSON so any docs app can
@@ -1482,54 +1510,31 @@ export function extractDocsTableOfContents(
   const { minLevel, maxLevel } = resolveTocOptions(options);
   const items: DocsTableOfContentsItem[] = [];
   const stack: DocsTableOfContentsItem[] = [];
-  const slugCounts = new Map<string, number>();
-  let activeFence: "`" | "~" | null = null;
+  const slugger = createDocsHeadingSlugger();
+  let activeFenceCharacter: "`" | "~" | null = null;
+  let activeFenceLength = 0;
+  let pendingLine: string | null = null;
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    const trimmedLine = line.trim();
-    const fenceMatch = trimmedLine.match(FENCE_PATTERN);
-    if (fenceMatch) {
-      const fenceMarker = fenceMatch[1] ?? "";
-      const fenceChar: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
-      if (activeFence === fenceChar) {
-        activeFence = null;
-        continue;
-      }
-      if (activeFence === null) {
-        activeFence = fenceChar;
-        continue;
-      }
-    }
-
-    if (activeFence !== null) {
-      continue;
-    }
-
-    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
-    if (!headingMatch) {
-      continue;
-    }
-
-    const marker = headingMatch[1];
-    const rawTitle = headingMatch[2];
-    if (!(marker && rawTitle)) {
-      continue;
-    }
-
-    const level = marker.length;
-    if (!isTocHeadingLevel(level) || level < minLevel || level > maxLevel) {
-      continue;
+  const consumeHeading = (rawTitle: string, level: number): void => {
+    if (!isTocHeadingLevel(level)) {
+      return;
     }
 
     const title = cleanHeadingText(rawTitle);
+    // Number every heading — ATX and Setext, in or out of minLevel..maxLevel.
+    // createDocsHeadingSlugger / github-slugger / rehype-slug all claim an
+    // anchor for out-of-range headings too; counting only the visible subset
+    // would hand a TOC entry the unsuffixed id those headings already own.
+    const id = slugger.slug(title);
+
     if (!title) {
-      continue;
+      return;
     }
 
-    const slug = slugifyDocsHeading(title);
-    const slugCount = slugCounts.get(slug) ?? 0;
-    slugCounts.set(slug, slugCount + 1);
-    const id = slugCount === 0 ? slug : `${slug}-${slugCount}`;
+    if (level < minLevel || level > maxLevel) {
+      return;
+    }
+
     const item: DocsTableOfContentsItem = {
       id,
       title,
@@ -1551,6 +1556,67 @@ export function extractDocsTableOfContents(
       items.push(item);
     }
     stack.push(item);
+  };
+
+  for (const line of stripFrontmatter(content).split("\n")) {
+    const trimmedLine = line.trim();
+    const fenceMatch = trimmedLine.match(FENCE_PATTERN);
+    if (fenceMatch) {
+      const fenceMarker = fenceMatch[1] ?? "";
+      const fenceCharacter: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
+      const fenceRemainder = trimmedLine.slice(fenceMarker.length);
+      const closesActiveFence =
+        activeFenceCharacter === fenceCharacter &&
+        fenceMarker.length >= activeFenceLength &&
+        fenceRemainder.trim().length === 0;
+      if (closesActiveFence) {
+        activeFenceCharacter = null;
+        activeFenceLength = 0;
+        pendingLine = null;
+        continue;
+      }
+      if (activeFenceCharacter === null) {
+        activeFenceCharacter = fenceCharacter;
+        activeFenceLength = fenceMarker.length;
+        pendingLine = null;
+        continue;
+      }
+    }
+
+    if (activeFenceCharacter !== null) {
+      pendingLine = null;
+      continue;
+    }
+
+    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
+    if (headingMatch) {
+      const marker = headingMatch[1];
+      const rawTitle = headingMatch[2];
+      pendingLine = null;
+      if (marker) {
+        consumeHeading(rawTitle ?? "", marker.length);
+      }
+      continue;
+    }
+
+    const isSetextH1 = SETEXT_H1_PATTERN.test(trimmedLine);
+    const isSetextH2 = SETEXT_H2_PATTERN.test(trimmedLine);
+    if (pendingLine !== null && (isSetextH1 || isSetextH2)) {
+      consumeHeading(pendingLine, isSetextH1 ? 1 : 2);
+      pendingLine = null;
+      continue;
+    }
+
+    if (isSetextH1 || isSetextH2) {
+      pendingLine = null;
+      continue;
+    }
+
+    if (isSetextHeadingText(line)) {
+      pendingLine = pendingLine ? `${pendingLine} ${trimmedLine}` : trimmedLine;
+    } else {
+      pendingLine = null;
+    }
   }
 
   return items;
