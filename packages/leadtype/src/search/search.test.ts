@@ -685,6 +685,55 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.excerpt).toContain("pnpm");
   });
 
+  it("builds excerpts around the match when the text has expanding characters", () => {
+    // NFKD expands these (… -> ..., ™ -> TM, ½ -> 1⁄2), so an offset found in
+    // the normalized text does not address the same spot in the original.
+    // Kept under one chunk so every expansion accumulates ahead of the match.
+    const ellipsisCountBeforeMatch = 180;
+    const lead = "note… ".repeat(ellipsisCountBeforeMatch);
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "expanding",
+          title: "Expanding",
+          urlPath: "/docs/expanding",
+          absoluteUrl: "https://leadtype.dev/docs/expanding",
+          relativePath: "expanding.mdx",
+          content: `# Expanding\n\n${lead}Then call hydrateWidget to finish.\n`,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "hydratewidget")[0]?.excerpt).toContain(
+      "hydrateWidget"
+    );
+  });
+
+  it("builds excerpts around whole-string normalized matches", () => {
+    // `ΟΣ`.toLowerCase() is `ος` (final sigma); per-code-point lowercasing
+    // yields `οσ`. Query tokens come from whole-string normalizeText, so the
+    // excerpt window has to search that same string. Offsets still come from
+    // the per-code-point map: toLowerCase is length-preserving, so the two
+    // strings disagree but the original-index map does not.
+    const lead = "note ".repeat(80);
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "greek",
+          title: "Greek",
+          urlPath: "/docs/greek",
+          absoluteUrl: "https://leadtype.dev/docs/greek",
+          relativePath: "greek.mdx",
+          content: `# Greek\n\n${lead}ΟΣ hydrateWidget after the sigma.\n`,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "ος")[0]?.excerpt).toContain("ΟΣ");
+  });
+
   it("searches metadata-only indexes and uses split content for excerpts", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

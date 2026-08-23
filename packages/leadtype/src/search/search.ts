@@ -628,8 +628,41 @@ function addPosting(
   indexTerms[term] = [posting];
 }
 
+/**
+ * `normalizeText` is not length-preserving — NFKD expands `…` to `...`, `½` to
+ * `1⁄2`, `ﬁ` to `fi`, and the CJK compatibility forms to their parts — so an
+ * offset found in the normalized text does not address the same character in
+ * the original.
+ *
+ * The match string is whole-string `normalizeText(input)` so it agrees with
+ * `tokenizeDocsSearchText` on context-sensitive lowercasing (`ΟΣ` → `ος`, not
+ * `οσ`). Offsets still come from per-code-point NFKD: decomposition is
+ * context-free, the diacritic strip removes the same marks either way, and
+ * `toLowerCase` is length-preserving on whatever survives that strip (`İ`
+ * alone expands, but NFKD has already reduced it to `i`), so the cheap map
+ * is identical to a prefix-length walk even when the two strings differ. A
+ * prefix fallback would be a no-op.
+ */
+function normalizeTextWithOffsets(input: string): {
+  normalized: string;
+  offsets: number[];
+} {
+  const normalized = normalizeText(input);
+  const offsets: number[] = [];
+  let originalIndex = 0;
+  for (const character of input) {
+    const mapped = normalizeText(character);
+    for (let unit = 0; unit < mapped.length; unit += 1) {
+      offsets.push(originalIndex);
+    }
+    originalIndex += character.length;
+  }
+  return { normalized, offsets };
+}
+
 function buildExcerpt(text: string, queryTokens: string[]): string {
-  const normalizedText = normalizeText(text);
+  const { normalized: normalizedText, offsets } =
+    normalizeTextWithOffsets(text);
   let matchIndex = -1;
   for (const token of queryTokens) {
     matchIndex = normalizedText.indexOf(token);
@@ -642,8 +675,9 @@ function buildExcerpt(text: string, queryTokens: string[]): string {
     return text.slice(0, 220).trim();
   }
 
-  const start = Math.max(0, matchIndex - 80);
-  const end = Math.min(text.length, matchIndex + 160);
+  const originalMatchIndex = offsets[matchIndex] ?? matchIndex;
+  const start = Math.max(0, originalMatchIndex - 80);
+  const end = Math.min(text.length, originalMatchIndex + 160);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
