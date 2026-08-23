@@ -8,7 +8,7 @@
     "dev": "bun run --filter leadtype build && bun run docs:generate && PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run nuxt dev",
     "build": "bun run --filter leadtype build && bun run docs:generate && nuxt build",
     "preview": "PORTLESS_PORT=443 PORTLESS_HTTPS=1 portless run nuxt preview",
-    "check-types": "bun run --filter leadtype build && bun run docs:generate && nuxt typecheck",
+    "check-types": "bun run docs:generate && nuxt typecheck",
     "test:e2e": "playwright test"
   },
   "dependencies": {
