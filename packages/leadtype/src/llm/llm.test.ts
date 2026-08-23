@@ -4139,6 +4139,25 @@ describe("extractDocsTableOfContents", () => {
     expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
   });
 
+  it("does not close a code fence with a shorter matching marker", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## Before",
+        "````md",
+        "```",
+        "## Still hidden",
+        "````",
+        "## After",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
+  });
+
   it("deduplicates repeated heading anchors per page", () => {
     const toc = extractDocsTableOfContents(
       ["## Install", "### Install", "## Install"].join("\n"),
@@ -4249,6 +4268,29 @@ describe("extractDocsTableOfContents", () => {
     expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
       { id: "setup", title: "Setup" },
       { id: "configure", title: "Configure" },
+    ]);
+  });
+
+  it("includes every paragraph line in a Setext heading", () => {
+    const toc = extractDocsTableOfContents(
+      ["First line", "second line", "---"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toEqual([
+      {
+        id: "first-line-second-line",
+        title: "First line second line",
+        level: 2,
+        urlPath: "/docs/example",
+        urlWithHash: "/docs/example#first-line-second-line",
+        absoluteUrlWithHash:
+          "https://leadtype.dev/docs/example#first-line-second-line",
+        children: [],
+      },
     ]);
   });
 

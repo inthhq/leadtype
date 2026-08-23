@@ -1511,7 +1511,8 @@ export function extractDocsTableOfContents(
   const items: DocsTableOfContentsItem[] = [];
   const stack: DocsTableOfContentsItem[] = [];
   const slugger = createDocsHeadingSlugger();
-  let activeFence: "`" | "~" | null = null;
+  let activeFenceCharacter: "`" | "~" | null = null;
+  let activeFenceLength = 0;
   let pendingLine: string | null = null;
 
   const consumeHeading = (rawTitle: string, level: number): void => {
@@ -1562,20 +1563,27 @@ export function extractDocsTableOfContents(
     const fenceMatch = trimmedLine.match(FENCE_PATTERN);
     if (fenceMatch) {
       const fenceMarker = fenceMatch[1] ?? "";
-      const fenceChar: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
-      if (activeFence === fenceChar) {
-        activeFence = null;
+      const fenceCharacter: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
+      const fenceRemainder = trimmedLine.slice(fenceMarker.length);
+      const closesActiveFence =
+        activeFenceCharacter === fenceCharacter &&
+        fenceMarker.length >= activeFenceLength &&
+        fenceRemainder.trim().length === 0;
+      if (closesActiveFence) {
+        activeFenceCharacter = null;
+        activeFenceLength = 0;
         pendingLine = null;
         continue;
       }
-      if (activeFence === null) {
-        activeFence = fenceChar;
+      if (activeFenceCharacter === null) {
+        activeFenceCharacter = fenceCharacter;
+        activeFenceLength = fenceMarker.length;
         pendingLine = null;
         continue;
       }
     }
 
-    if (activeFence !== null) {
+    if (activeFenceCharacter !== null) {
       pendingLine = null;
       continue;
     }
@@ -1599,7 +1607,16 @@ export function extractDocsTableOfContents(
       continue;
     }
 
-    pendingLine = isSetextHeadingText(line) ? trimmedLine : null;
+    if (isSetextH1 || isSetextH2) {
+      pendingLine = null;
+      continue;
+    }
+
+    if (isSetextHeadingText(line)) {
+      pendingLine = pendingLine ? `${pendingLine} ${trimmedLine}` : trimmedLine;
+    } else {
+      pendingLine = null;
+    }
   }
 
   return items;
