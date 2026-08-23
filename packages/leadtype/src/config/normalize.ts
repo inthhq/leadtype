@@ -88,7 +88,11 @@ export const BASE_URL_DEFAULT_SOURCE =
 
 const QUERY_OR_FRAGMENT_DELIMITER_PATTERN = /[?#]/;
 
-/** Remove userinfo-shaped text before including a rejected URL in an error. */
+/**
+ * Mask everything before the last `@` when echoing a rejected URL in an error.
+ * Shape-aware variants leaked malformed authorities, so stray `@` characters
+ * in paths are deliberately over-masked.
+ */
 function redactUserinfo(value: string): string {
   const delimiterIndex = value.lastIndexOf("@");
   return delimiterIndex === -1
