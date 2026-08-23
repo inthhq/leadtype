@@ -649,6 +649,15 @@ describe("leadtype CLI", () => {
     expect(result.files.agentReadabilityManifest).toBe(
       path.join(outDir, "docs", "agent-readability.json")
     );
+    const [searchIndex, readabilityManifest] = await Promise.all(
+      ["search-index.json", "agent-readability.json"].map(
+        async (fileName) =>
+          JSON.parse(
+            await readFile(path.join(outDir, "docs", fileName), "utf8")
+          ) as { generatedAt: string }
+      )
+    );
+    expect(searchIndex?.generatedAt).toBe(readabilityManifest?.generatedAt);
     expect(result.files.mcpServerCard).toBe(
       path.join(outDir, ".well-known", "mcp", "server-card.json")
     );
@@ -1010,10 +1019,20 @@ export default {
         path.join(outDir, "docs", "zh", "search-index.json"),
         "utf8"
       )
-    ) as { documents: [string, string, string, string][] };
+    ) as {
+      documents: [string, string, string, string][];
+      generatedAt: string;
+    };
     expect(zhSearch.documents.map((entry) => entry[3])).toEqual([
       "/docs/zh/quickstart",
     ]);
+    const zhReadability = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "zh", "agent-readability.json"),
+        "utf8"
+      )
+    ) as { generatedAt: string };
+    expect(zhSearch.generatedAt).toBe(zhReadability.generatedAt);
   });
 
   it("generates i18n projects whose navigation uses literal entries", async () => {

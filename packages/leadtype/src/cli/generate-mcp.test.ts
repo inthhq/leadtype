@@ -1,4 +1,11 @@
-import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -61,6 +68,8 @@ describe("generate --bundle --mcp", () => {
   beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), "leadtype-bundle-mcp-"));
     outDir = join(root, "out");
+    await mkdir(join(outDir, ".well-known"), { recursive: true });
+    await writeFile(join(outDir, ".well-known", "api-catalog"), "sentinel");
     await mkdir(join(root, "docs"), { recursive: true });
     await writeFile(
       join(root, "docs", "quickstart.mdx"),
@@ -106,8 +115,20 @@ describe("generate --bundle --mcp", () => {
     expect(await exists(join(outDir, "docs", "agent-readability.json"))).toBe(
       true
     );
+    const [searchIndex, manifest] = await Promise.all(
+      ["search-index.json", "agent-readability.json"].map(async (fileName) =>
+        JSON.parse(await readFile(join(outDir, "docs", fileName), "utf8"))
+      )
+    );
+    expect(searchIndex.generatedAt).toBe(manifest.generatedAt);
     // Bundle stays website-artifact-free even with --mcp.
     expect(await exists(join(outDir, "llms.txt"))).toBe(false);
+    expect(await exists(join(outDir, "sitemap.xml"))).toBe(false);
+    expect(await exists(join(outDir, "sitemap.md"))).toBe(false);
+    expect(await exists(join(outDir, "robots.txt"))).toBe(false);
+    expect(
+      await readFile(join(outDir, ".well-known", "api-catalog"), "utf8")
+    ).toBe("sentinel");
   });
 
   it("the emitted bundle is servable by the MCP tools", async () => {

@@ -86,10 +86,15 @@ import {
 } from "../mcp/card";
 import { DEFAULT_DOCS_TOOLS } from "../mcp/tools";
 import {
-  DEFAULT_NLWEB_ASK_PATH,
   generateNlwebArtifacts,
-  NLWEB_SCHEMA_MAP_PATH,
+  removeGeneratedNlwebOpenApi,
 } from "../nlweb/artifacts";
+import {
+  nlwebApiCatalogEntry,
+  resolveNlwebOpenApiConfig,
+  withNlwebApiCatalogEntry,
+} from "../nlweb/openapi";
+import { DEFAULT_NLWEB_ASK_PATH, NLWEB_SCHEMA_MAP_PATH } from "../nlweb/paths";
 import {
   type DocsOpenApiConfig,
   normalizeOpenApiConfig,
@@ -239,6 +244,7 @@ type GenerateResult = {
     mcpWellKnown?: string;
     nlwebSchemaFeed?: string;
     nlwebSchemaMap?: string;
+    nlwebOpenapi?: string;
     redirectsJson?: string;
     redirectsLockfile?: string;
   };
@@ -1993,14 +1999,6 @@ async function executeGenerate(
       // or explicitly enabled with --mcp. They are URL-independent: MCP keys on
       // urlPath and reads the .md mirror, so they work without a --base-url.
       if (bundleMcpEnabled) {
-        const search = await generateDocsSearchFiles({
-          outDir,
-          baseUrl: args.baseUrl,
-          mounts: effectiveMounts,
-          i18n: metadata.i18n,
-          locale: i18n?.defaultLocale,
-          transformers: metadata.transformers,
-        });
         const agentReadability = await generateAgentReadabilityArtifacts({
           outDir,
           baseUrl: args.baseUrl,
@@ -2011,6 +2009,18 @@ async function executeGenerate(
           i18n: metadata.i18n,
           locale: i18n?.defaultLocale,
           i18nManifest,
+          emitRootCrawlerFiles: false,
+          transformers: metadata.transformers,
+        });
+        const search = await generateDocsSearchFiles({
+          outDir,
+          baseUrl: args.baseUrl,
+          mounts: effectiveMounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          indexOptions: {
+            generatedAt: agentReadability.manifest.generatedAt,
+          },
           transformers: metadata.transformers,
         });
         bundleFiles.searchIndex = search.outputPath;
@@ -2048,6 +2058,11 @@ async function executeGenerate(
         srcDir,
       };
     } else {
+      const effectiveBaseUrl = normalizeBaseUrl(args.baseUrl);
+      const publishableAgentBaseUrl =
+        args.baseUrl?.trim() || !isLocalBaseUrl(effectiveBaseUrl)
+          ? effectiveBaseUrl
+          : undefined;
       const feedBaseUrl =
         metadata.feeds && metadata.feeds.length > 0
           ? resolveFeedBaseUrl(args.baseUrl)
@@ -2060,16 +2075,49 @@ async function executeGenerate(
       const mcpConfig = metadata.agents?.mcp;
       const mcpEnabled = mcpConfig?.enabled === true;
       const mcpEndpoint = mcpEnabled
-        ? resolveMcpEndpoint(args.baseUrl, mcpConfig.endpoint)
+        ? resolveMcpEndpoint(publishableAgentBaseUrl, mcpConfig.endpoint)
         : undefined;
       const nlwebConfig = metadata.agents?.nlweb;
       const nlwebEnabled = nlwebConfig?.enabled === true;
       const askEndpoint = nlwebEnabled
         ? resolveMcpEndpoint(
-            args.baseUrl,
+            publishableAgentBaseUrl,
             nlwebConfig.endpoint ?? DEFAULT_NLWEB_ASK_PATH
           )
         : undefined;
+      const nlwebOpenApi = nlwebEnabled
+        ? resolveNlwebOpenApiConfig(nlwebConfig.openapi)
+        : null;
+      const nlwebStateDir = path.join(srcDir, ".leadtype");
+      if (!nlwebEnabled) {
+        await removeGeneratedNlwebOpenApi({
+          outDir,
+          stateDir: nlwebStateDir,
+        });
+      }
+      // `/ask` is a real API this site publishes, so it joins the RFC 9727
+      // catalog with the generated OpenAPI document as its service-desc. A
+      // site that already declared the endpoint keeps its own entry.
+      const catalogApis = nlwebEnabled
+        ? withNlwebApiCatalogEntry(
+            metadata.agents?.apis,
+            nlwebApiCatalogEntry({
+              askEndpoint: askEndpoint ?? DEFAULT_NLWEB_ASK_PATH,
+              ...(nlwebOpenApi
+                ? {
+                    openapiUrl: resolveMcpEndpoint(
+                      publishableAgentBaseUrl,
+                      nlwebOpenApi.url
+                    ),
+                  }
+                : {}),
+              ...(metadata.documentationUrl
+                ? { docsUrl: metadata.documentationUrl }
+                : {}),
+            }),
+            publishableAgentBaseUrl
+          )
+        : metadata.agents?.apis;
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
@@ -2086,7 +2134,7 @@ async function executeGenerate(
             ? {
                 mcpEndpoint,
                 mcpServerCardUrl: resolveMcpEndpoint(
-                  args.baseUrl,
+                  publishableAgentBaseUrl,
                   `/${MCP_SERVER_CARD_PATH}`
                 ),
                 // Same subset the server card advertises, so the two
@@ -2110,14 +2158,6 @@ async function executeGenerate(
         transformers: metadata.transformers,
       });
 
-      const search = await generateDocsSearchFiles({
-        outDir,
-        baseUrl: args.baseUrl,
-        mounts: effectiveMounts,
-        i18n: metadata.i18n,
-        locale: i18n?.defaultLocale,
-        transformers: metadata.transformers,
-      });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
         baseUrl: args.baseUrl,
@@ -2134,15 +2174,37 @@ async function executeGenerate(
         ...(nlwebEnabled
           ? { schemamapUrlPath: `/${NLWEB_SCHEMA_MAP_PATH}` }
           : {}),
+        apis: catalogApis,
         jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
+      });
+      const search = await generateDocsSearchFiles({
+        outDir,
+        baseUrl: args.baseUrl,
+        mounts: effectiveMounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
+        indexOptions: {
+          generatedAt: agentReadability.manifest.generatedAt,
+        },
+        transformers: metadata.transformers,
       });
       const nlwebArtifacts = nlwebEnabled
         ? await generateNlwebArtifacts({
             outDir,
-            baseUrl: args.baseUrl,
+            stateDir: nlwebStateDir,
+            ...(publishableAgentBaseUrl
+              ? { baseUrl: publishableAgentBaseUrl }
+              : {}),
             product: effectiveProduct,
             pages: agentReadability.manifest.pages,
+            ...(nlwebConfig?.endpoint
+              ? { askEndpoint: nlwebConfig.endpoint }
+              : {}),
+            ...(nlwebConfig?.openapi ? { openapi: nlwebConfig.openapi } : {}),
+            ...(metadata.documentationUrl
+              ? { docsUrl: metadata.documentationUrl }
+              : {}),
           })
         : undefined;
 
@@ -2180,7 +2242,7 @@ async function executeGenerate(
       if (mcpEnabled) {
         mcpServerCard = await generateMcpServerCard({
           outDir,
-          baseUrl: args.baseUrl,
+          baseUrl: publishableAgentBaseUrl,
           product: effectiveProduct,
           config: {
             endpoint: mcpConfig.endpoint,
@@ -2221,15 +2283,7 @@ async function executeGenerate(
             locale: locale.code,
             transformers: metadata.transformers,
           });
-          await generateDocsSearchFiles({
-            outDir,
-            baseUrl: args.baseUrl,
-            mounts: effectiveMounts,
-            i18n: metadata.i18n,
-            locale: locale.code,
-            transformers: metadata.transformers,
-          });
-          await generateAgentReadabilityArtifacts({
+          const agentReadability = await generateAgentReadabilityArtifacts({
             outDir,
             baseUrl: args.baseUrl,
             product: effectiveProduct,
@@ -2242,8 +2296,20 @@ async function executeGenerate(
             transformers: metadata.transformers,
             robotsPolicy: metadata.agents?.robots?.policy,
             contentSignals: metadata.agents?.robots?.signals,
+            apis: catalogApis,
             jsonLd: metadata.jsonLd,
             seo: metadata.agents?.seo,
+          });
+          await generateDocsSearchFiles({
+            outDir,
+            baseUrl: args.baseUrl,
+            mounts: effectiveMounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+            indexOptions: {
+              generatedAt: agentReadability.manifest.generatedAt,
+            },
+            transformers: metadata.transformers,
           });
         }
       }
@@ -2328,6 +2394,9 @@ async function executeGenerate(
                 nlwebSchemaFeed: nlwebArtifacts.files.schemaFeed,
                 nlwebSchemaMap: nlwebArtifacts.files.schemaMap,
               }
+            : {}),
+          ...(nlwebArtifacts?.files.openapi
+            ? { nlwebOpenapi: nlwebArtifacts.files.openapi }
             : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
