@@ -1,5 +1,8 @@
 import type { LocalizedDocsMetadata } from "../i18n";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import {
+  createDocsHeadingSlugger,
+  scanDocsMarkdown,
+} from "../internal/docs-heading";
 import { editDistanceWithin } from "../internal/edit-distance";
 import {
   type DocsFrontmatter,
@@ -16,7 +19,7 @@ const DEFAULT_ASK_MAX_QUERY_CHARS = 600;
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_MAX_SOURCES = 6;
 const DEFAULT_MAX_CONTEXT_CHARS = 12_000;
-const SEARCH_INDEX_VERSION = 2;
+export const DOCS_SEARCH_INDEX_VERSION = 3;
 const TITLE_WEIGHT = 4;
 const HEADING_WEIGHT = 2;
 const BODY_WEIGHT = 1;
@@ -33,12 +36,12 @@ const PROXIMITY_MATCH_BOOST = 0.8;
 const MAX_PREFIX_EXPANSIONS = 24;
 const MAX_TYPO_EXPANSIONS = 16;
 const PROXIMITY_WINDOW = 8;
-const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
-const FENCE_PATTERN = /^```/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
+// Tokenizer behavior is serialized into chunk lengths and postings. Changes
+// to word matching, normalization, stopwords, or token filtering must bump
+// DOCS_SEARCH_INDEX_VERSION so older artifacts fail with a version mismatch.
 const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
 
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
@@ -180,9 +183,10 @@ export type DocsSearchPosting = [
 ];
 
 export type DocsSearchContentStore = {
-  version: typeof SEARCH_INDEX_VERSION;
+  version: typeof DOCS_SEARCH_INDEX_VERSION;
   generatedAt: string;
   chunks: string[];
+  codeChunks: string[];
 };
 
 export type DocsContentFile = DocsSearchDocumentRecord & {
@@ -191,7 +195,7 @@ export type DocsContentFile = DocsSearchDocumentRecord & {
 };
 
 export type DocsSearchIndex = {
-  version: typeof SEARCH_INDEX_VERSION;
+  version: typeof DOCS_SEARCH_INDEX_VERSION;
   generatedAt: string;
   documents: DocsSearchDocumentEntry[];
   chunks: DocsSearchChunkEntry[];
@@ -257,6 +261,8 @@ export type ValidateDocsQueryOptions = {
 
 export type ReadJsonWithLimitOptions = {
   maxBytes?: number;
+  /** Return `undefined` instead of rejecting an empty or whitespace-only body. */
+  allowEmpty?: boolean;
 };
 
 export type MemoryRateLimiterOptions = {
@@ -303,11 +309,14 @@ type MutableChunk = {
   anchor: string;
   headingPath: string[];
   text: string;
+  codeText: string;
   length: number;
 };
 
 type SectionBlock = {
   headingPath: string[];
+  /** Anchor id of this section's own heading, duplicate-suffixed. */
+  anchor: string;
   text: string;
   codeText: string;
 };
@@ -331,7 +340,7 @@ function withHash(url: string, anchor: string): string {
   return anchor ? `${url}#${anchor}` : url;
 }
 
-function tokenize(input: string): string[] {
+export function tokenizeDocsSearchText(input: string): string[] {
   const tokens: string[] = [];
   for (const match of normalizeText(input).matchAll(WORD_CHARACTER_PATTERN)) {
     const token = match[0];
@@ -340,6 +349,10 @@ function tokenize(input: string): string[] {
     }
   }
   return tokens;
+}
+
+export function countDocsSearchTokens(input: string): number {
+  return tokenizeDocsSearchText(input).length;
 }
 
 function stemToken(token: string): string {
@@ -387,7 +400,7 @@ function synonymTokensFor(
   const custom =
     synonyms && Object.hasOwn(synonyms, token) ? synonyms[token] : undefined;
   return [...(defaults ?? []), ...(custom ?? [])].flatMap((entry) =>
-    tokenize(entry)
+    tokenizeDocsSearchText(entry)
   );
 }
 
@@ -454,16 +467,12 @@ function collectWeightedSearchTerms(
   return Array.from(weightedTerms, ([term, weight]) => ({ term, weight }));
 }
 
-function countTerms(input: string): Map<string, number> {
+export function countDocsSearchTerms(input: string): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const token of tokenize(input)) {
+  for (const token of tokenizeDocsSearchText(input)) {
     counts.set(token, (counts.get(token) ?? 0) + 1);
   }
   return counts;
-}
-
-function stripFrontmatter(input: string): string {
-  return input.replace(FRONTMATTER_PATTERN, "");
 }
 
 function hasUnsupportedControlCharacter(input: string): boolean {
@@ -535,8 +544,11 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const headingPath: string[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
+  // Count every heading, including headings that produce no search chunk, so
+  // search anchors stay aligned with the TOC and rendered page.
+  const slugger = createDocsHeadingSlugger();
   let currentHeadingPath: string[] = [];
-  let inCodeFence = false;
+  let currentAnchor = "";
 
   const flush = () => {
     const text = cleanMarkdown(textLines.join("\n"));
@@ -547,6 +559,7 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     if (text || codeText) {
       blocks.push({
         headingPath: currentHeadingPath,
+        anchor: currentAnchor,
         text,
         codeText,
       });
@@ -555,32 +568,24 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     codeLines.length = 0;
   };
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    if (FENCE_PATTERN.test(line.trim())) {
-      inCodeFence = !inCodeFence;
-      codeLines.push(line);
+  const consumeHeading = (title: string, level: number): void => {
+    headingPath.length = level - 1;
+    headingPath.push(title);
+    currentHeadingPath = [...headingPath];
+    currentAnchor = slugger.slug(title);
+  };
+
+  for (const token of scanDocsMarkdown(content)) {
+    if (token.kind === "heading") {
+      flush();
+      consumeHeading(token.title, token.level);
       continue;
     }
-
-    if (!inCodeFence) {
-      const headingMatch = HEADING_PATTERN.exec(line.trim());
-      if (headingMatch) {
-        flush();
-        const levelMarker = headingMatch[1];
-        const rawTitle = headingMatch[2];
-        if (levelMarker && rawTitle) {
-          const level = levelMarker.length;
-          headingPath.length = level - 1;
-          headingPath.push(cleanMarkdown(rawTitle));
-          currentHeadingPath = [...headingPath];
-        }
-        continue;
-      }
-      textLines.push(line);
+    if (token.kind === "code") {
+      codeLines.push(token.value);
       continue;
     }
-
-    codeLines.push(line);
+    textLines.push(token.value);
   }
 
   flush();
@@ -679,7 +684,7 @@ function buildExcerpt(text: string, queryTokens: string[]): string {
 }
 
 function normalizeForPhraseMatch(input: string): string {
-  return tokenize(input).join(" ");
+  return tokenizeDocsSearchText(input).join(" ");
 }
 
 function hasOrderedProximityMatch(
@@ -735,7 +740,7 @@ function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
     return PHRASE_MATCH_BOOST;
   }
 
-  const textTokens = tokenize(text);
+  const textTokens = tokenizeDocsSearchText(text);
   return hasOrderedProximityMatch(textTokens, queryTokens)
     ? PROXIMITY_MATCH_BOOST
     : 0;
@@ -745,11 +750,35 @@ function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
 }
 
+export function isDocsSearchContentStoreCompatible(
+  index: DocsSearchIndex,
+  content: unknown
+): content is DocsSearchContentStore {
+  if (typeof content !== "object" || content === null) {
+    return false;
+  }
+
+  const candidate = content as Partial<DocsSearchContentStore>;
+  return (
+    candidate.version === index.version &&
+    candidate.generatedAt === index.generatedAt &&
+    Array.isArray(candidate.chunks) &&
+    candidate.chunks.length === index.chunks.length &&
+    Array.isArray(candidate.codeChunks) &&
+    candidate.codeChunks.length === index.chunks.length
+  );
+}
+
 function resolveContentStore(
   index: DocsSearchIndex,
   content?: DocsSearchContentStore
 ): DocsSearchContentStore | undefined {
-  return content ?? index.content;
+  if (isDocsSearchContentStoreCompatible(index, content)) {
+    return content;
+  }
+  return isDocsSearchContentStoreCompatible(index, index.content)
+    ? index.content
+    : undefined;
 }
 
 function documentRecordFromEntry(
@@ -797,6 +826,7 @@ function chunkFromEntry(
   const anchor = entry[CHUNK_ANCHOR];
   const contentStore = resolveContentStore(index, content);
   const text = contentStore?.chunks[entry[CHUNK_CONTENT_INDEX]] ?? "";
+  const codeText = contentStore?.codeChunks[entry[CHUNK_CONTENT_INDEX]] ?? "";
 
   return {
     id: entry[CHUNK_ID],
@@ -811,7 +841,7 @@ function chunkFromEntry(
     anchor,
     headingPath: entry[CHUNK_HEADING_PATH],
     text,
-    codeText: "",
+    codeText,
     length: entry[CHUNK_LENGTH],
     ...(documentRecord.locale ? { locale: documentRecord.locale } : {}),
     ...(documentRecord.sourceLocale
@@ -960,11 +990,11 @@ export function createDocsSearchIndex(
           urlPath: doc.urlPath,
           absoluteUrl: doc.absoluteUrl,
           relativePath: doc.relativePath,
-          anchor: slugifyDocsHeading(block.headingPath.at(-1) ?? ""),
+          anchor: block.anchor,
           headingPath: block.headingPath,
           text: chunkText,
           codeText,
-          length: tokenize(chunkText).length,
+          length: countDocsSearchTokens(chunkText),
           ...(doc.locale ? { locale: doc.locale } : {}),
           ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
           ...(doc.isFallback === undefined
@@ -990,7 +1020,7 @@ export function createDocsSearchIndex(
 
         const chunkIndex = mutableChunks.length;
         const chunkId = `chunk-${chunkIndex}`;
-        const length = tokenize(transformedChunk.text).length;
+        const length = countDocsSearchTokens(transformedChunk.text);
         const anchor = transformedChunk.anchor;
         mutableChunks.push({
           id: chunkId,
@@ -998,13 +1028,16 @@ export function createDocsSearchIndex(
           anchor,
           headingPath: transformedChunk.headingPath,
           text: transformedChunk.text,
+          codeText: transformedChunk.codeText,
           length,
         });
         chunkTermCounts.set(chunkIndex, {
-          title: countTerms(doc.title),
-          heading: countTerms(transformedChunk.headingPath.join(" ")),
-          body: countTerms([description, transformedChunk.text].join(" ")),
-          code: countTerms(transformedChunk.codeText),
+          title: countDocsSearchTerms(doc.title),
+          heading: countDocsSearchTerms(transformedChunk.headingPath.join(" ")),
+          body: countDocsSearchTerms(
+            [description, transformedChunk.text].join(" ")
+          ),
+          code: countDocsSearchTerms(transformedChunk.codeText),
         });
       }
     }
@@ -1044,15 +1077,16 @@ export function createDocsSearchIndex(
   );
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   return {
-    version: SEARCH_INDEX_VERSION,
+    version: DOCS_SEARCH_INDEX_VERSION,
     generatedAt,
     documents,
     chunks,
     terms,
     content: {
-      version: SEARCH_INDEX_VERSION,
+      version: DOCS_SEARCH_INDEX_VERSION,
       generatedAt,
       chunks: mutableChunks.map((chunk) => chunk.text),
+      codeChunks: mutableChunks.map((chunk) => chunk.codeText),
     },
     averageChunkLength:
       mutableChunks.length > 0 ? totalLength / mutableChunks.length : 0,
@@ -1064,7 +1098,7 @@ export function searchDocs(
   query: string,
   options: SearchDocsOptions = {}
 ): DocsSearchResult[] {
-  const queryTokens = tokenize(query);
+  const queryTokens = tokenizeDocsSearchText(query);
   if (queryTokens.length === 0 || index.chunks.length === 0) {
     return [];
   }
@@ -1338,17 +1372,28 @@ export function validateDocsQuery(
   return query;
 }
 
+export function readJsonWithLimit<T = unknown>(
+  request: Request,
+  options?: ReadJsonWithLimitOptions & { allowEmpty?: false }
+): Promise<T>;
+export function readJsonWithLimit<T = unknown>(
+  request: Request,
+  options: ReadJsonWithLimitOptions | undefined
+): Promise<T | undefined>;
 export async function readJsonWithLimit<T = unknown>(
   request: Request,
   options: ReadJsonWithLimitOptions = {}
-): Promise<T> {
+): Promise<T | undefined> {
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BODY_BYTES;
+  if (!request.body) {
+    if (options.allowEmpty) {
+      return;
+    }
+    requestError("Request body is required.", 400);
+  }
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > maxBytes) {
     requestError(`Request body must be ${maxBytes} bytes or fewer.`, 413);
-  }
-  if (!request.body) {
-    requestError("Request body is required.", 400);
   }
 
   const reader = request.body.getReader();
@@ -1369,6 +1414,9 @@ export async function readJsonWithLimit<T = unknown>(
     body += decoder.decode(result.value, { stream: true });
   }
   body += decoder.decode();
+  if (options.allowEmpty && !body.trim()) {
+    return;
+  }
 
   try {
     return JSON.parse(body) as T;

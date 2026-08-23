@@ -74,6 +74,43 @@ jobs:
       - name: Test evals
         run: bun run --filter leadtype-evals test
 
+  example-builds:
+    name: Build examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.3.11"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and link leadtype
+        run: |
+          bun run --filter leadtype build
+          bun install
+
+      - name: Build Astro example
+        run: bun run --filter astro-example build
+
+      - name: Build SvelteKit example
+        run: bun run --filter sveltekit-example build
+
+      - name: Check generated files are ignored
+        shell: bash
+        run: |
+          untracked="$(git ls-files --others --exclude-standard)"
+          if [[ -n "$untracked" ]]; then
+            printf 'Build left untracked files:\n%s\n' "$untracked"
+            exit 1
+          fi
+
   # Every Windows bug so far lived in runtime behavior or test assertions,
   # not the build — so this job must run the test suite, not just compile.
   validate-windows:

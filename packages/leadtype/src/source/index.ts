@@ -849,6 +849,7 @@ export async function createDocsSource<
         version: index.version,
         generatedAt: index.generatedAt,
         chunks: [],
+        codeChunks: [],
       },
     };
   }

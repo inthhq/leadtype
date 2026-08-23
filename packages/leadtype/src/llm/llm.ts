@@ -15,7 +15,10 @@ import {
   toLocalizedDocsUrlPath,
 } from "../i18n";
 import { writeFileAtomic } from "../internal/atomic-fs";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import {
+  createDocsHeadingSlugger,
+  scanDocsMarkdown,
+} from "../internal/docs-heading";
 import {
   type DocsPathMount,
   GENERIC_DOC_TITLES,
@@ -31,6 +34,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { NlwebOpenApiConfig } from "../nlweb/openapi";
 import type { DocsOpenApiConfig } from "../openapi";
 import {
   type DocsFrontmatterSchema,
@@ -41,6 +45,7 @@ import {
 import {
   type AgentReadabilityManifest,
   type AgentReadabilityPage,
+  type ApiCatalogEntry,
   type ContentSignals,
   type DocsNavigation,
   type DocsNavigationGroup,
@@ -56,7 +61,11 @@ import {
   type SeoMeta,
 } from "./readability";
 
-export { slugifyDocsHeading } from "../internal/docs-heading";
+export {
+  createDocsHeadingSlugger,
+  type DocsHeadingSlugger,
+  slugifyDocsHeading,
+} from "../internal/docs-heading";
 export type { DocsPathMount } from "../internal/docs-url";
 
 const DOCS_DIRNAME = "docs";
@@ -69,12 +78,6 @@ const SITEMAP_XML_FILE = "sitemap.xml";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const DEFAULT_TOC_MIN_LEVEL = 2;
 const DEFAULT_TOC_MAX_LEVEL = 3;
-const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
-const FENCE_PATTERN = /^(`{3,}|~{3,})/;
-const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
-const MARKDOWN_INLINE_PATTERN = /[`*_~>[\](){}|]/g;
-const WHITESPACE_PATTERN = /\s+/g;
 const NON_ALPHANUMERIC_PATTERN = /[^a-z0-9]+/gi;
 const NAV_INCLUDE_SORT_DEFAULT = ["order", "path"] as const;
 
@@ -552,8 +555,8 @@ export type DocsConfig<
   /**
    * Opt-in redirect tracking for renamed/deleted pages. When present,
    * generate maintains a committed paths lockfile, auto-detects pure moves by
-   * content hash, emits `docs/redirects.json`, and fails loudly when a page
-   * disappears without a successor.
+   * authored-source hash, emits `docs/redirects.json`, and fails loudly when a
+   * page disappears without a successor.
    */
   redirects?: DocsRedirectsConfig;
   /** Options for `leadtype lint` — ignore globs and per-rule severities. */
@@ -602,6 +605,7 @@ export type DocsRedirectsConfig = {
    * Lockfile location, resolved relative to the docs source directory.
    * Defaults to `paths.lock.json` inside it. Commit this file — it is the
    * record of previously published paths that rename detection diffs against.
+   * Page hashes are of the authored source body, not generated mirrors.
    */
   lockfile?: string;
   /**
@@ -669,7 +673,45 @@ export type DocsAgentsConfig = {
     enabled?: boolean;
     /** The `/ask` endpoint path or absolute URL. Defaults to `/ask`. */
     endpoint?: string;
+    /**
+     * The generated OpenAPI 3.1 description of the `/ask` endpoint, emitted at
+     * `/openapi.json` and referenced as the API's `service-desc` in the RFC
+     * 9727 catalog. Set `enabled: false` to skip it.
+     *
+     * @example
+     * ```ts
+     * nlweb: {
+     *   enabled: true,
+     *   openapi: { url: "/api/openapi.json" },
+     * }
+     * ```
+     */
+    openapi?: NlwebOpenApiConfig;
   };
+  /**
+   * APIs this site publishes, listed in the RFC 9727 catalog at
+   * `/.well-known/api-catalog`. Site-owned: a docs source repo describes
+   * content, but only the site that serves the APIs knows where they live.
+   * Leave it unset and no catalog is generated or advertised.
+   *
+   * @example
+   * ```ts
+   * apis: [
+   *   {
+   *     href: "/ask",
+   *     title: "Documentation query API",
+   *     type: "application/json",
+   *     version: "1.0",
+   *     serviceDesc: {
+   *       href: "/openapi.json",
+   *       type: "application/vnd.oai.openapi+json;version=3.1",
+   *     },
+   *     serviceDoc: { href: "/docs/reference/nlweb", type: "text/html" },
+   *   },
+   * ]
+   * ```
+   */
+  apis?: ApiCatalogEntry[];
   robots?: {
     /** Crawler-access stance. Defaults to `balanced`. */
     policy?: RobotsPolicy;
@@ -1051,6 +1093,11 @@ export type AgentReadabilityConfig = {
   contentSignals?: Partial<ContentSignals>;
   /** NLWeb schema-map path (e.g. `/schema-map.xml`) for a robots.txt `Schemamap:` directive. */
   schemamapUrlPath?: string;
+  /**
+   * APIs this site publishes, listed in the RFC 9727 catalog at
+   * `/.well-known/api-catalog`. No APIs means no catalog is written.
+   */
+  apis?: ApiCatalogEntry[];
   /** Site-level JSON-LD options, baked into the manifest for `renderSiteJsonLd`. */
   jsonLd?: RenderSiteJsonLdOptions;
   /** Site-level SEO defaults, baked into the manifest for `createDocsHead`. */
@@ -1383,20 +1430,6 @@ function withHash(url: string, anchor: string): string {
   return anchor ? `${url}#${anchor}` : url;
 }
 
-function stripFrontmatter(input: string): string {
-  return input.replace(FRONTMATTER_PATTERN, "");
-}
-
-function cleanHeadingText(input: string): string {
-  return input
-    .replace(/\s+#+\s*$/, "")
-    .replace(MARKDOWN_LINK_PATTERN, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(MARKDOWN_INLINE_PATTERN, " ")
-    .replace(WHITESPACE_PATTERN, " ")
-    .trim();
-}
-
 function resolveTocOptions(
   options: DocsTableOfContentsOptions = {}
 ): Required<DocsTableOfContentsOptions> {
@@ -1436,54 +1469,27 @@ export function extractDocsTableOfContents(
   const { minLevel, maxLevel } = resolveTocOptions(options);
   const items: DocsTableOfContentsItem[] = [];
   const stack: DocsTableOfContentsItem[] = [];
-  const slugCounts = new Map<string, number>();
-  let activeFence: "`" | "~" | null = null;
+  const slugger = createDocsHeadingSlugger();
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    const trimmedLine = line.trim();
-    const fenceMatch = trimmedLine.match(FENCE_PATTERN);
-    if (fenceMatch) {
-      const fenceMarker = fenceMatch[1] ?? "";
-      const fenceChar: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
-      if (activeFence === fenceChar) {
-        activeFence = null;
-        continue;
-      }
-      if (activeFence === null) {
-        activeFence = fenceChar;
-        continue;
-      }
+  const consumeHeading = (title: string, level: number): void => {
+    if (!isTocHeadingLevel(level)) {
+      return;
     }
 
-    if (activeFence !== null) {
-      continue;
-    }
+    // Number every heading — ATX and Setext, in or out of minLevel..maxLevel.
+    // createDocsHeadingSlugger / github-slugger / rehype-slug all claim an
+    // anchor for out-of-range headings too; counting only the visible subset
+    // would hand a TOC entry the unsuffixed id those headings already own.
+    const id = slugger.slug(title);
 
-    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
-    if (!headingMatch) {
-      continue;
-    }
-
-    const marker = headingMatch[1];
-    const rawTitle = headingMatch[2];
-    if (!(marker && rawTitle)) {
-      continue;
-    }
-
-    const level = marker.length;
-    if (!isTocHeadingLevel(level) || level < minLevel || level > maxLevel) {
-      continue;
-    }
-
-    const title = cleanHeadingText(rawTitle);
     if (!title) {
-      continue;
+      return;
     }
 
-    const slug = slugifyDocsHeading(title);
-    const slugCount = slugCounts.get(slug) ?? 0;
-    slugCounts.set(slug, slugCount + 1);
-    const id = slugCount === 0 ? slug : `${slug}-${slugCount}`;
+    if (level < minLevel || level > maxLevel) {
+      return;
+    }
+
     const item: DocsTableOfContentsItem = {
       id,
       title,
@@ -1505,6 +1511,12 @@ export function extractDocsTableOfContents(
       items.push(item);
     }
     stack.push(item);
+  };
+
+  for (const token of scanDocsMarkdown(content)) {
+    if (token.kind === "heading") {
+      consumeHeading(token.title, token.level);
+    }
   }
 
   return items;
@@ -2877,7 +2889,8 @@ export async function generateLLMFullContextFiles(
 function toAgentReadabilityPage(
   doc: MarkdownDoc,
   baseUrl: string,
-  mounts?: DocsPathMount[]
+  mounts: DocsPathMount[] | undefined,
+  markdownFilePath: string
 ): AgentReadabilityPage {
   const markdownUrlPath = toMountedMarkdownUrlPath(
     `${doc.relativePath}.md`,
@@ -2890,6 +2903,7 @@ function toAgentReadabilityPage(
     absoluteUrl: doc.absoluteUrl,
     markdownUrlPath,
     markdownAbsoluteUrl: toAbsoluteUrl(markdownUrlPath, baseUrl),
+    markdownFilePath,
     relativePath: doc.relativePath,
     groups: [...doc.groups],
     lastModified: doc.lastModified,
@@ -2994,8 +3008,18 @@ export async function generateAgentReadabilityArtifacts(
   // urlPath, so pages outside the navigation keep that deterministic tail.
   const orderedDocs = orderMarkdownDocsByNavigation(markdownDocs, navigation);
   const pages = orderedDocs.map((doc) =>
-    toAgentReadabilityPage(doc, baseUrl, config.mounts)
+    toAgentReadabilityPage(
+      doc,
+      baseUrl,
+      config.mounts,
+      `${DOCS_DIRNAME}/${doc.relativePath}.md`
+    )
   );
+  // No configured APIs means no catalog: an empty RFC 9727 linkset advertises
+  // a catalog that lists nothing, so the artifact and its manifest entry are
+  // both omitted.
+  const apis = config.apis ?? [];
+  const hasApis = apis.length > 0;
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: generatedAt.toISOString(),
@@ -3006,11 +3030,12 @@ export async function generateAgentReadabilityArtifacts(
     pages,
     navigation,
     files: {
-      apiCatalog: API_CATALOG_URL_PATH,
+      ...(hasApis ? { apiCatalog: API_CATALOG_URL_PATH } : {}),
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(hasApis ? { apis } : {}),
     ...(config.jsonLd ? { jsonLd: config.jsonLd } : {}),
     ...(config.seo ? { seo: config.seo } : {}),
   };
@@ -3025,6 +3050,7 @@ export async function generateAgentReadabilityArtifacts(
   const shouldEmitRootCrawlerFiles =
     config.emitRootCrawlerFiles ??
     !(i18n && locale && locale !== i18n.defaultLocale);
+  const shouldEmitApiCatalog = shouldEmitRootCrawlerFiles && hasApis;
 
   const sitemapXml = renderSitemapXml(pages);
   const sitemapMd = renderSitemapMarkdown({
@@ -3034,8 +3060,12 @@ export async function generateAgentReadabilityArtifacts(
   });
   if (shouldEmitRootCrawlerFiles) {
     await mkdir(outDir, { recursive: true });
-    await mkdir(path.dirname(files.apiCatalog), { recursive: true });
-    await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    if (shouldEmitApiCatalog) {
+      await mkdir(path.dirname(files.apiCatalog), { recursive: true });
+      await writeFileAtomic(files.apiCatalog, renderApiCatalog({ manifest }));
+    } else {
+      await rm(files.apiCatalog, { force: true });
+    }
     await writeFileAtomic(files.sitemapXml, sitemapXml);
     await writeFileAtomic(files.sitemapMd, sitemapMd);
     await writeFileAtomic(
@@ -3057,9 +3087,9 @@ export async function generateAgentReadabilityArtifacts(
   return {
     files: {
       manifest: files.manifest,
+      ...(shouldEmitApiCatalog ? { apiCatalog: files.apiCatalog } : {}),
       ...(shouldEmitRootCrawlerFiles
         ? {
-            apiCatalog: files.apiCatalog,
             robotsTxt: files.robotsTxt,
             sitemapMd: files.sitemapMd,
             sitemapXml: files.sitemapXml,
@@ -3107,7 +3137,7 @@ export type GenerateAgentArtifactsConfig = {
   llms?: DocsLlmsConfig;
   /** Optional grouping for the llms.txt page map, `sitemap.md`, and the manifest navigation. */
   groups?: DocsGroup[];
-  agents?: Pick<DocsAgentsConfig, "robots" | "seo">;
+  agents?: Pick<DocsAgentsConfig, "apis" | "robots" | "seo">;
   /**
    * Pin manifest `generatedAt` and per-page `lastModified` fallbacks so
    * repeated runs can produce reproducible output. Accepts a date string or a
@@ -3325,17 +3355,25 @@ export async function generateAgentArtifacts(
     config.groups
   );
   const pages = docs.map((doc) =>
-    toAgentReadabilityPage(doc, baseUrl, ROOT_PAGE_MOUNTS)
+    toAgentReadabilityPage(
+      doc,
+      baseUrl,
+      ROOT_PAGE_MOUNTS,
+      toMountedMarkdownUrlPath(
+        `${doc.relativePath}.md`,
+        ROOT_PAGE_MOUNTS
+      ).slice(1)
+    )
   );
 
   const markdownFiles = await Promise.all(
     docs.map(async (doc, index) => {
+      const page = pages[index];
       const markdownUrlPath =
-        pages[index]?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
-      const filePath = path.join(
-        outDir,
-        ...markdownUrlPath.slice(1).split("/")
-      );
+        page?.markdownUrlPath ?? toMarkdownUrlPath(doc.urlPath);
+      const markdownFilePath =
+        page?.markdownFilePath ?? markdownUrlPath.slice(1);
+      const filePath = path.join(outDir, ...markdownFilePath.split("/"));
       await mkdir(path.dirname(filePath), { recursive: true });
       await writeFileAtomic(filePath, renderAgentPageMirror(doc));
       return filePath;
@@ -3350,6 +3388,8 @@ export async function generateAgentArtifacts(
   await mkdir(path.dirname(wellKnownLlmsTxtPath), { recursive: true });
   await writeFileAtomic(wellKnownLlmsTxtPath, llmsTxt);
 
+  const apis = config.agents?.apis ?? [];
+  const hasApis = apis.length > 0;
   const manifest: AgentReadabilityManifest = {
     version: 1,
     generatedAt: generatedAt.toISOString(),
@@ -3358,11 +3398,12 @@ export async function generateAgentArtifacts(
     pages,
     navigation,
     files: {
-      apiCatalog: API_CATALOG_URL_PATH,
+      ...(hasApis ? { apiCatalog: API_CATALOG_URL_PATH } : {}),
       robotsTxt: `/${ROBOTS_FILE}`,
       sitemapMd: `/${SITEMAP_MARKDOWN_FILE}`,
       sitemapXml: `/${SITEMAP_XML_FILE}`,
     },
+    ...(hasApis ? { apis } : {}),
     ...(inputs.jsonLd ? { jsonLd: inputs.jsonLd } : {}),
     ...(config.agents?.seo ? { seo: config.agents.seo } : {}),
   };
@@ -3385,8 +3426,13 @@ export async function generateAgentArtifacts(
   const sitemapMdPath = path.join(outDir, SITEMAP_MARKDOWN_FILE);
   const robotsTxtPath = path.join(outDir, ROBOTS_FILE);
   const apiCatalogPath = path.join(outDir, API_CATALOG_FILE);
-  await mkdir(path.dirname(apiCatalogPath), { recursive: true });
-  await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  // Only sites that declare APIs get a catalog — see the docs-source path.
+  if (hasApis) {
+    await mkdir(path.dirname(apiCatalogPath), { recursive: true });
+    await writeFileAtomic(apiCatalogPath, renderApiCatalog({ manifest }));
+  } else {
+    await rm(apiCatalogPath, { force: true });
+  }
   await writeFileAtomic(sitemapXmlPath, renderSitemapXml(pages));
   await writeFileAtomic(
     sitemapMdPath,
@@ -3413,7 +3459,7 @@ export async function generateAgentArtifacts(
       wellKnownLlmsTxt: wellKnownLlmsTxtPath,
       manifest: manifestPath,
       markdown: markdownFiles,
-      apiCatalog: apiCatalogPath,
+      ...(hasApis ? { apiCatalog: apiCatalogPath } : {}),
       robotsTxt: robotsTxtPath,
       sitemapMd: sitemapMdPath,
       sitemapXml: sitemapXmlPath,

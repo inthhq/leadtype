@@ -72,8 +72,23 @@ import { createDocsProxy } from "leadtype/next";
 declare const manifest: AgentReadabilityManifest;
 
 // ---cut---
-export const proxy = createDocsProxy({ manifest });
+export const proxy = createDocsProxy({
+  manifest,
+  publicPathPrefix: "/leadtype-assets",
+});
 ```
+
+When the Proxy matcher includes canonical `.md` URLs, point
+`publicPathPrefix` at a dedicated route outside that matcher. That route should
+serve the generated files from `public/` as Markdown or plain text; a successful
+HTML SPA or catch-all fallback is treated as an unreadable mirror. Fetching the
+canonical URL from the Proxy itself would recurse. Keep the canonical
+`/docs/*.md` paths in the matcher so clients cannot bypass manifest membership
+or `missingStatus`. If the dedicated route reuses a public-route handler, map
+each requested storage path back through the manifest's `markdownFilePath` and
+`markdownUrlPath`; do not treat a storage `filePath` as a public URL.
+Build that reverse index from the default manifest and every locale manifest
+passed to `localizedManifests`; the proxy may resolve a mirror from any of them.
 
 ## TanStack Start
 

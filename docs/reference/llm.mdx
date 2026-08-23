@@ -416,6 +416,7 @@ import {
   renderJsonLd,
   renderJsonLdScript,
   renderMissingMarkdown,
+  renderUnreadableMarkdown,
   resolveMarkdownMirrorTarget,
   stringifyJsonLd,
 } from "leadtype/llm/readability";
@@ -451,7 +452,38 @@ Headers it sets:
 - `Link: <canonical>; rel="canonical"`
 - `Cache-Control: public, max-age=300, must-revalidate` (override with `cacheControl: "<directive>"` or omit with `cacheControl: null`)
 
-It also enriches frontmatter with `canonical_url` and `last_updated`, leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, root `llms-full.txt`, search JSON) alone, and returns a 200 markdown "Page not found" body only for agent-oriented requests.
+It also enriches frontmatter with `canonical_url` and `last_updated`, and leaves discovery artifacts (`llms.txt`, `sitemap.*`, `robots.txt`, `agent-readability.json`, root `llms-full.txt`, search JSON) alone.
+
+#### Missing pages vs. unreadable mirrors
+
+Two different failures used to answer the same way. They no longer do:
+
+| Situation | Status | Body |
+| --- | --- | --- |
+| No active or supplied locale manifest lists the page — an unknown `.md` path, or an agent-shaped request for a URL the generated metadata never listed | `missingStatus` (default `200`) | `renderMissingMarkdown` — "Page not found" plus recovery links |
+| The active manifest or a supplied locale manifest lists the page, and `readMarkdownFile` returns content | `200` | The generated markdown mirror |
+| The active manifest or a supplied locale manifest lists the page, but `readMarkdownFile` returns nothing or rejects | `500`, `Cache-Control: no-store` | `renderUnreadableMarkdown` — "Markdown temporarily unavailable" |
+
+The third row is the integrity case: generation recorded the page, so a mirror that cannot be read means a stale build output or an unreachable asset host — not a page that stopped existing. Answering 200 "Page not found" there tells an agent a live URL is dead, and lets a CDN cache that claim. It answers 500 with `no-store` instead, keeping the markdown `Content-Type`, canonical `Link`, and `llms-txt` discovery headers so the response is still readable, and sends no body for `HEAD`.
+
+The first row keeps leadtype's documented default: **200 with a readable recovery body**, so an agent that asked for markdown gets something it can act on rather than discarding the body with the status. Set `missingStatus: 404` when dead-link detection, crawl budgets, or monitoring matter more:
+
+```ts
+const response = await createAgentMarkdownResponse({
+  urlPath: request.url,
+  method: request.method,
+  headers: Object.fromEntries(request.headers),
+  manifest,
+  missingStatus: 404, // 200 (default) | 404
+  readMarkdownFile,
+});
+```
+
+The recovery body, canonical URL, and discovery links are identical at either status — only the status line changes. The option only ever applies to genuinely unknown routes: an existing page still returns 200, a renamed page still returns 308, a removed page still returns 410, and an unreadable mirror still returns 500. Every framework adapter accepts the same `missingStatus` in its handler config.
+
+For separately generated locales, preload each locale's Agent Readability manifest and pass `localizedManifests` keyed by locale code. Leadtype then uses the localized page's recorded `markdownFilePath`, including `index.md` storage layouts, and never guesses a cross-locale file path. A locale page without its matching manifest fails closed as a missing page, so a stale mirror left on disk cannot be served.
+
+Use `onReadError(target, cause?)` to report unreadable mirrors to your logger or error tracker. `cause` is present for a rejected read or an invalid manifest target and absent when the reader returned nothing. `target.filePath` is absent when manifest target validation failed. Leadtype waits for async reporters before returning the stable 500 response, and a reporter failure does not replace that response. `localizedManifests` and `onReadError` are available in the core config and every framework handler config.
 
 Optional `userAgentPattern` overrides the default AI user-agent regex (defaults cover GPTBot, ChatGPT-User, OAI-SearchBot, Claude-Web, ClaudeBot, anthropic-ai, CCBot, Google-Extended, AmazonBot/Amazonbot, Bingbot, MetaExternalAgent, ByteSpider/Bytespider, PerplexityBot, MistralBot, AppleBot, Applebot-Extended, YouBot).
 
@@ -577,7 +609,8 @@ For a step-by-step integration guide, see [Optimize docs for agents](/docs/aeo/o
 | `resolveMarkdownMirrorTarget` | Map `/docs/foo` or `/docs/foo.md` to the generated `docs/foo.md` file path. |
 | `createMarkdownResponseHeaders` | Produce canonical markdown headers with `Content-Type`, `Vary`, `Link`, `Cache-Control`. |
 | `enrichMarkdownFrontmatter` | Add `canonical_url` and `last_updated` aliases to generated markdown (CRLF-tolerant). |
-| `renderMissingMarkdown` | Render the 200 markdown body used for missing docs pages requested by agents. |
+| `renderMissingMarkdown` | Render the recovery markdown body for a route with no page behind it (served at `missingStatus`, default 200). |
+| `renderUnreadableMarkdown` | Render the 500 markdown body for a manifest-known page whose mirror could not be read. |
 | `acceptsMarkdownHeader` | Detect whether an `Accept` header is asking for markdown (q-value aware). |
 | `isAgentUserAgent` | Detect known AI crawler and agent user agents. Accepts an optional regex override. |
 | `isAgentReadabilityArtifactPath` | Avoid rewriting `llms.txt`, `llms-full.txt`, sitemap, robots, search JSON, and manifest artifact paths. |
@@ -703,7 +736,7 @@ const pages = await resolveDocsTableOfContents({
 });
 ```
 
-For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX string plus page URL metadata and returns plain JSON. It ignores frontmatter and fenced code blocks, and it uses the same `slugifyDocsHeading` helper that rendered headings must use to keep `id` attributes in sync.
+For custom pipelines, `extractDocsTableOfContents` accepts a markdown or MDX string plus page URL metadata and returns plain JSON. It ignores frontmatter and fenced code blocks, and it numbers duplicate anchors with a page-scoped `createDocsHeadingSlugger`. Use one slugger instance across every rendered heading on the page so its `id` attributes stay in sync with the TOC.
 
 ## Group design
 

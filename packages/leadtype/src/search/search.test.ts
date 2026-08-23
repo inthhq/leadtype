@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { extractDocsTableOfContents } from "../llm/llm";
 import {
   attachDocsSearchContent,
   createAnswerContext,
   createDocsSearchIndex,
   createMemoryRateLimiter,
+  type DocsSearchContentStore,
   type DocsSearchDocument,
   DocsSearchRequestError,
   getClientIdentifier,
@@ -15,6 +17,18 @@ import {
   slugifyDocsHeading,
   validateDocsQuery,
 } from "./index";
+
+const CHUNK_ANCHOR_INDEX = 2;
+
+const flattenTocIds = (
+  items: ReturnType<typeof extractDocsTableOfContents>
+): string[] => {
+  const ids: string[] = [];
+  for (const item of items) {
+    ids.push(item.id, ...flattenTocIds(item.children));
+  }
+  return ids;
+};
 
 const docs: DocsSearchDocument[] = [
   {
@@ -85,7 +99,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(index.version).toBe(2);
+    expect(index.version).toBe(3);
     expect(index.documents[0]).toEqual([
       "quickstart",
       "Quickstart",
@@ -96,8 +110,15 @@ describe("createDocsSearchIndex and searchDocs", () => {
     ]);
     expect(index.chunks[0]).toHaveLength(6);
     expect(index.chunks[0]).not.toHaveProperty("text");
-    expect(index.content?.version).toBe(2);
+    expect(index.content?.version).toBe(3);
     expect(index.content?.chunks[0]).toContain("Install the package");
+    expect(index.content?.codeChunks).toHaveLength(index.chunks.length);
+    expect(
+      index.content?.codeChunks.some((chunk) => chunk.includes("cafe"))
+    ).toBe(true);
+    expect(readDocsContentFile(index, "code")?.chunks[0]?.codeText).toContain(
+      'const cafe = "café";'
+    );
   });
 
   it("normalizes case, punctuation, and diacritics", () => {
@@ -352,6 +373,249 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("suffixes repeated heading slugs like the rendered page and the TOC", () => {
+    const content = [
+      "# API Reference",
+      "",
+      "## createThing",
+      "",
+      "### Example",
+      "",
+      "Use createThing to build a widget alpha.",
+      "",
+      "## createOther",
+      "",
+      "### Example",
+      "",
+      "Use createOther to build a gadget beta.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "api",
+          title: "API Reference",
+          urlPath: "/docs/api",
+          absoluteUrl: "https://leadtype.dev/docs/api",
+          relativePath: "api.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    // Both sections are titled "Example"; the second must not deep-link to
+    // the first. `extractDocsTableOfContents` numbers them example/example-1.
+    expect(searchDocs(index, "alpha")[0]?.urlWithHash).toBe(
+      "/docs/api#example"
+    );
+    expect(searchDocs(index, "beta")[0]?.urlWithHash).toBe(
+      "/docs/api#example-1"
+    );
+  });
+
+  it("does not collide a generated suffix with a later literal slug", () => {
+    const content = [
+      "# Reference",
+      "",
+      "## API",
+      "",
+      "The first API section covers widgets.",
+      "",
+      "## API",
+      "",
+      "The second API section covers gadgets.",
+      "",
+      "## API-1",
+      "",
+      "The literal API-1 section covers sprockets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "reference",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/reference#api"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/reference#api-1"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/reference#api-1-1"
+    );
+  });
+
+  it("counts headings that produce no search chunk", () => {
+    const content = [
+      "# Reference",
+      "",
+      "## Example",
+      "### Details",
+      "",
+      "Nested details cover widgets.",
+      "",
+      "## Example",
+      "",
+      "The later example covers sprockets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "reference",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/reference#example-1"
+    );
+  });
+
+  it("reserves Setext headings before allocating later ATX anchors", () => {
+    const content = [
+      "Install",
+      "=======",
+      "",
+      "The Setext section covers widgets.",
+      "",
+      "## Install",
+      "",
+      "The ATX section covers sprockets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "install",
+          title: "Install",
+          urlPath: "/docs/install",
+          absoluteUrl: "https://leadtype.dev/docs/install",
+          relativePath: "install.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/install#install-1"
+    );
+  });
+
+  it("does not reserve headings inside tilde code fences", () => {
+    const content = [
+      "# Reference",
+      "",
+      "~~~md",
+      "## Example",
+      "~~~",
+      "",
+      "## Example",
+      "",
+      "The real example covers widgets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "reference",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/reference#example"
+    );
+  });
+
+  it("keeps search anchors in the same order as TOC ids", () => {
+    const fixtures = [
+      [
+        "# Reference",
+        "Reference overview.",
+        "## API",
+        "First API overview.",
+        "### Details",
+        "Nested details cover widgets.",
+        "## API",
+        "The second API covers gadgets.",
+        "## API-1",
+        "The literal suffix covers sprockets.",
+      ].join("\n"),
+      [
+        "Install",
+        "=======",
+        "Setext body covers widgets.",
+        "## Install",
+        "ATX body covers sprockets.",
+      ].join("\n"),
+      [
+        "# Reference",
+        "~~~md",
+        "## Example",
+        "~~~",
+        "## Example",
+        "The real example covers widgets.",
+      ].join("\n"),
+    ];
+
+    for (const content of fixtures) {
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(
+          content,
+          {
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+          },
+          { minLevel: 1, maxLevel: 6 }
+        )
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(searchAnchors.length).toBeGreaterThan(1);
+      expect(searchAnchors).toEqual(tocIds);
+    }
+  });
+
   it("slugifies headings for hash links", () => {
     expect(slugifyDocsHeading("Café API: Quick Start!")).toBe(
       "cafe-api-quick-start"
@@ -491,6 +755,30 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("ignores legacy split content stores missing code chunks", () => {
+    const index = createDocsSearchIndex(docs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const { content, ...metadataOnlyIndex } = index;
+    if (!content) {
+      throw new Error("Expected createDocsSearchIndex to embed content.");
+    }
+    const legacyContent = JSON.parse(
+      JSON.stringify({
+        version: 2,
+        generatedAt: index.generatedAt,
+        chunks: content.chunks,
+      })
+    ) as DocsSearchContentStore;
+
+    const result = searchDocs(metadataOnlyIndex, "pnpm", {
+      content: legacyContent,
+    })[0];
+
+    expect(result?.title).toBe("Quickstart");
+    expect(result?.excerpt).not.toContain("pnpm");
+  });
+
   it("reads docs content as files and precise chunks", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
@@ -588,6 +876,27 @@ describe("request guards", () => {
     await expect(readJsonWithLimit(oversized, { maxBytes: 8 })).rejects.toThrow(
       DocsSearchRequestError
     );
+
+    const bodyless = new Request("https://example.com/api", {
+      method: "POST",
+    });
+    await expect(
+      readJsonWithLimit(bodyless, { allowEmpty: true })
+    ).resolves.toBeUndefined();
+
+    await expect(
+      readJsonWithLimit(
+        new Request("https://example.com/api", { method: "POST" })
+      )
+    ).rejects.toThrow(DocsSearchRequestError);
+
+    const whitespace = new Request("https://example.com/api", {
+      method: "POST",
+      body: "  \n\t",
+    });
+    await expect(
+      readJsonWithLimit(whitespace, { allowEmpty: true })
+    ).resolves.toBeUndefined();
   });
 
   it("derives client identifiers from forwarding headers", () => {
