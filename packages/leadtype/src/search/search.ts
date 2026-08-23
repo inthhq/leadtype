@@ -34,8 +34,17 @@ const MAX_PREFIX_EXPANSIONS = 24;
 const MAX_TYPO_EXPANSIONS = 16;
 const PROXIMITY_WINDOW = 8;
 const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
-const FENCE_PATTERN = /^```/;
+const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
+const SETEXT_H1_PATTERN = /^=+\s*$/;
+const SETEXT_H2_PATTERN = /^-+\s*$/;
+const FENCE_PATTERN = /^(`{3,}|~{3,})/;
+const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
+const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
+const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
+const HTML_OR_MDX_BLOCK_PATTERN = /^ {0,3}[<{]/;
+const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
+const THEMATIC_BREAK_PATTERN =
+  /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
@@ -504,6 +513,31 @@ function cleanMarkdown(input: string): string {
     .trim();
 }
 
+function cleanHeadingText(input: string): string {
+  return input
+    .replace(/\s+#+\s*$/, "")
+    .replace(MARKDOWN_LINK_PATTERN, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(MARKDOWN_INLINE_PATTERN, " ")
+    .replace(WHITESPACE_PATTERN, " ")
+    .trim();
+}
+
+function isSetextHeadingText(line: string): boolean {
+  if (line.trim().length === 0) {
+    return false;
+  }
+
+  return !(
+    INDENTED_CODE_PATTERN.test(line) ||
+    BLOCKQUOTE_PATTERN.test(line) ||
+    LIST_ITEM_PATTERN.test(line) ||
+    HTML_OR_MDX_BLOCK_PATTERN.test(line) ||
+    LINK_DEFINITION_PATTERN.test(line) ||
+    THEMATIC_BREAK_PATTERN.test(line)
+  );
+}
+
 function splitWithOverlap(
   text: string,
   maxChunkChars: number,
@@ -553,7 +587,10 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const slugger = createDocsHeadingSlugger();
   let currentHeadingPath: string[] = [];
   let currentAnchor = "";
-  let inCodeFence = false;
+  let activeFenceCharacter: "`" | "~" | null = null;
+  let activeFenceLength = 0;
+  let pendingSetextLineCount = 0;
+  let pendingSetextTitle: string | null = null;
 
   const flush = () => {
     const text = cleanMarkdown(textLines.join("\n"));
@@ -573,34 +610,85 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     codeLines.length = 0;
   };
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    if (FENCE_PATTERN.test(line.trim())) {
-      inCodeFence = !inCodeFence;
-      codeLines.push(line);
-      continue;
-    }
+  const resetPendingSetext = (): void => {
+    pendingSetextLineCount = 0;
+    pendingSetextTitle = null;
+  };
 
-    if (!inCodeFence) {
-      const headingMatch = HEADING_PATTERN.exec(line.trim());
-      if (headingMatch) {
-        flush();
-        const levelMarker = headingMatch[1];
-        const rawTitle = headingMatch[2];
-        if (levelMarker && rawTitle) {
-          const level = levelMarker.length;
-          const title = cleanMarkdown(rawTitle);
-          headingPath.length = level - 1;
-          headingPath.push(title);
-          currentHeadingPath = [...headingPath];
-          currentAnchor = slugger.slug(title);
-        }
+  const consumeHeading = (rawTitle: string, level: number): void => {
+    const title = cleanHeadingText(rawTitle);
+    headingPath.length = level - 1;
+    headingPath.push(title);
+    currentHeadingPath = [...headingPath];
+    currentAnchor = slugger.slug(title);
+  };
+
+  for (const line of stripFrontmatter(content).split("\n")) {
+    const trimmedLine = line.trim();
+    const fenceMatch = FENCE_PATTERN.exec(trimmedLine);
+    if (fenceMatch) {
+      const fenceMarker = fenceMatch[1] ?? "";
+      const fenceCharacter: "`" | "~" = fenceMarker.startsWith("`") ? "`" : "~";
+      const fenceRemainder = trimmedLine.slice(fenceMarker.length);
+      const closesActiveFence =
+        activeFenceCharacter === fenceCharacter &&
+        fenceMarker.length >= activeFenceLength &&
+        fenceRemainder.trim().length === 0;
+      codeLines.push(line);
+      resetPendingSetext();
+      if (closesActiveFence) {
+        activeFenceCharacter = null;
+        activeFenceLength = 0;
         continue;
       }
-      textLines.push(line);
+      if (activeFenceCharacter === null) {
+        activeFenceCharacter = fenceCharacter;
+        activeFenceLength = fenceMarker.length;
+      }
       continue;
     }
 
-    codeLines.push(line);
+    if (activeFenceCharacter !== null) {
+      codeLines.push(line);
+      resetPendingSetext();
+      continue;
+    }
+
+    const headingMatch = HEADING_PATTERN.exec(trimmedLine);
+    if (headingMatch) {
+      flush();
+      resetPendingSetext();
+      const levelMarker = headingMatch[1];
+      if (levelMarker) {
+        consumeHeading(headingMatch[2] ?? "", levelMarker.length);
+      }
+      continue;
+    }
+
+    const isSetextH1 = SETEXT_H1_PATTERN.test(trimmedLine);
+    const isSetextH2 = SETEXT_H2_PATTERN.test(trimmedLine);
+    if (pendingSetextTitle !== null && (isSetextH1 || isSetextH2)) {
+      textLines.splice(-pendingSetextLineCount, pendingSetextLineCount);
+      flush();
+      consumeHeading(pendingSetextTitle, isSetextH1 ? 1 : 2);
+      resetPendingSetext();
+      continue;
+    }
+
+    if (isSetextH1 || isSetextH2) {
+      resetPendingSetext();
+      continue;
+    }
+
+    textLines.push(line);
+    if (isSetextHeadingText(line)) {
+      pendingSetextTitle = pendingSetextTitle
+        ? `${pendingSetextTitle} ${trimmedLine}`
+        : trimmedLine;
+      pendingSetextLineCount += 1;
+    } else {
+      resetPendingSetext();
+    }
   }
 
   flush();

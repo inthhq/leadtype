@@ -476,6 +476,69 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("reserves Setext headings before allocating later ATX anchors", () => {
+    const content = [
+      "Install",
+      "=======",
+      "",
+      "The Setext section covers widgets.",
+      "",
+      "## Install",
+      "",
+      "The ATX section covers sprockets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "install",
+          title: "Install",
+          urlPath: "/docs/install",
+          absoluteUrl: "https://leadtype.dev/docs/install",
+          relativePath: "install.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/install#install-1"
+    );
+  });
+
+  it("does not reserve headings inside tilde code fences", () => {
+    const content = [
+      "# Reference",
+      "",
+      "~~~md",
+      "## Example",
+      "~~~",
+      "",
+      "## Example",
+      "",
+      "The real example covers widgets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "reference",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/reference#example"
+    );
+  });
+
   it("slugifies headings for hash links", () => {
     expect(slugifyDocsHeading("Café API: Quick Start!")).toBe(
       "cafe-api-quick-start"
