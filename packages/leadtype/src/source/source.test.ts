@@ -38,6 +38,38 @@ paths:
   );
 }
 
+function isNestedIn(dir: string, ancestor: string): boolean {
+  const resolvedDir = path.resolve(dir);
+  const resolvedAncestor = path.resolve(ancestor);
+  return (
+    resolvedDir !== resolvedAncestor &&
+    resolvedDir.startsWith(`${resolvedAncestor}${path.sep}`)
+  );
+}
+
+async function rmTempDir(dir: string): Promise<void> {
+  const delaysMs =
+    process.platform === "win32" ? [10, 20, 40, 80, 160, 320] : [];
+  for (const delayMs of delaysMs) {
+    try {
+      await rm(dir, { force: true, recursive: true });
+      return;
+    } catch (error) {
+      const retryable =
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "EPERM" ||
+          error.code === "EACCES" ||
+          error.code === "EBUSY");
+      if (!retryable) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  await rm(dir, { force: true, recursive: true });
+}
+
 describe("createDocsSource", () => {
   let contentDir: string;
   const extraTempDirs: string[] = [];
@@ -47,11 +79,13 @@ describe("createDocsSource", () => {
   });
 
   afterEach(async () => {
-    await Promise.all(
-      [contentDir, ...extraTempDirs.splice(0)].map(async (dir) => {
-        await rm(dir, { force: true, recursive: true });
-      })
+    // Type-table tests re-point `contentDir` inside `extraTempDirs`. Deleting
+    // both in parallel races on Windows (EPERM rmdir of a live child).
+    const dirs = [contentDir, ...extraTempDirs.splice(0)];
+    const roots = dirs.filter(
+      (dir) => !dirs.some((other) => isNestedIn(dir, other))
     );
+    await Promise.all(roots.map((dir) => rmTempDir(dir)));
   });
 
   it("lists every .md / .mdx page under contentDir with stable slug derivation", async () => {

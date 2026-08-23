@@ -301,9 +301,9 @@ const config = defineDocsConfig({
     },
   ],
   // Dogfood redirect tracking: the pipeline maintains docs/paths.lock.json
-  // (committed), auto-redirects pure renames by content hash, and fails the
-  // build when a page disappears without a successor. Acknowledge intentional
-  // deletions under `removed` to serve 410 Gone.
+  // (committed), auto-redirects pure renames by authored-source hash, and
+  // fails the build when a page disappears without a successor. Acknowledge
+  // intentional deletions under `removed` to serve 410 Gone.
   redirects: {},
   lint: { snippets: { typecheck: true } },
   agents: {

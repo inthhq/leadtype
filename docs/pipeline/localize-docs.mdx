@@ -142,3 +142,9 @@ curl https://example.com/docs/i18n-manifest.json
 
 Each locale's `llms.txt` should link `.md` URLs under that locale's prefix, and
 the manifest should list every locale with its artifact paths.
+
+When one runtime handler serves multiple locale prefixes, preload each locale's
+generated `agent-readability.json` and pass it as
+`localizedManifests: { zh: zhManifest, ... }`. Without the matching localized
+manifest, the handler fails closed with the missing-page response and does not
+guess a mirror storage path.

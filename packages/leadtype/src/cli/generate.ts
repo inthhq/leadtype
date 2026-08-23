@@ -13,10 +13,7 @@ import {
   inferNavigationFromContent,
   mergeInferenceReports,
 } from "../config/infer";
-import {
-  inheritCollectionSourceConfigs,
-  LEADTYPE_CONFIG_FILENAMES,
-} from "../config/inherit";
+import { LEADTYPE_CONFIG_FILENAMES } from "../config/inherit";
 import {
   type LoadedDocsConfig,
   loadDocsConfig,
@@ -25,8 +22,8 @@ import {
 import {
   BASE_URL_DEFAULT_SOURCE,
   normalizeAuthoredBaseUrl,
-  normalizeDocsConfig,
 } from "../config/normalize";
+import { resolveProjectFromLoaded } from "../config/project";
 import type { ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
 import type { ConvertCacheOptions } from "../convert/incremental";
@@ -93,10 +90,15 @@ import {
 } from "../mcp/card";
 import { DEFAULT_DOCS_TOOLS } from "../mcp/tools";
 import {
-  DEFAULT_NLWEB_ASK_PATH,
   generateNlwebArtifacts,
-  NLWEB_SCHEMA_MAP_PATH,
+  removeGeneratedNlwebOpenApi,
 } from "../nlweb/artifacts";
+import {
+  nlwebApiCatalogEntry,
+  resolveNlwebOpenApiConfig,
+  withNlwebApiCatalogEntry,
+} from "../nlweb/openapi";
+import { DEFAULT_NLWEB_ASK_PATH, NLWEB_SCHEMA_MAP_PATH } from "../nlweb/paths";
 import {
   type DocsOpenApiConfig,
   normalizeOpenApiConfig,
@@ -111,7 +113,7 @@ import { generateDocsSearchFiles } from "../search/node";
 import {
   resolveAllCollections,
   type SyncMode,
-  syncCollections,
+  syncSources,
 } from "../sync/sync";
 import type { DocsTransformer } from "../transformers";
 import { watchInputs } from "./watch";
@@ -246,6 +248,7 @@ type GenerateResult = {
     mcpWellKnown?: string;
     nlwebSchemaFeed?: string;
     nlwebSchemaMap?: string;
+    nlwebOpenapi?: string;
     redirectsJson?: string;
     redirectsLockfile?: string;
   };
@@ -428,11 +431,6 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg === "--out") {
       args.outDir = readValue(argv, ++i, "--out");
     } else if (arg === "--base-url") {
-      // Same rules the config loader applies to an authored `baseUrl` — this
-      // value feeds URL joins directly, so a bad one must fail as a usage
-      // error, not corrupt every generated link. The env fallback chain (no
-      // flag, no config field) is not authored input and stays with
-      // `normalizeBaseUrl`.
       args.baseUrl = normalizeAuthoredBaseUrl(
         readValue(argv, ++i, "--base-url"),
         "--base-url"
@@ -1678,36 +1676,42 @@ async function executeGenerate(
         );
       }
       const configDir = path.dirname(loadedConfig.path);
-      await syncCollections({
+      // Sync acts on the resolved source graph from the first normalization
+      // pass — the only pass that saw authored source names — not on a second
+      // derivation from the collections map.
+      await syncSources({
         mode: args.syncMode,
         configDir,
-        collections: loadedConfig.config.collections,
+        sources: loadedConfig.resolved.sources,
       });
-      const collections = await inheritCollectionSourceConfigs(
-        loadedConfig.config.collections,
+      // The post-sync resolution — source-owned inheritance and the
+      // re-normalization that keeps the first pass's sources and deprecations
+      // — is the same pipeline `resolveProject` runs. Generate differs only in
+      // syncing first (so the cache the resolver reads is fresh) and in
+      // failing hard: a diagnostic doctor reports is a build error here.
+      const project = await resolveProjectFromLoaded(loadedConfig, {
+        rootDir: srcDir,
+        // Generate derives navigation itself during staging; resolving it
+        // here too would walk every content tree a second time.
+        infer: false,
+      });
+      const blocking = project.diagnostics.find(
+        (entry) => entry.level === "error"
+      );
+      if (blocking) {
+        throw new Error(
+          `${blocking.message}${blocking.fix ? `. Run \`${blocking.fix}\`.` : ""}`
+        );
+      }
+      loadedConfig = {
+        config: project.config,
+        path: loadedConfig.path,
+        resolved: project.resolved,
+      };
+      docsSources = resolveDocsSourcesFromCollections(
+        project.config.collections ?? {},
         configDir
       );
-      // Re-normalize, don't just swap the collections in: `resolved` was
-      // derived from the pre-inheritance config, so carrying it through
-      // unchanged leaves every inherited navigation, schema, groups, and
-      // mounts missing from the resolved model — for the exact
-      // `inheritConfig: true` shape the docs recommend. Deprecations and the
-      // acquisition graph stay from the first pass, which is the only one that
-      // saw the authored aliases and source names.
-      const renormalized = normalizeDocsConfig(
-        { ...loadedConfig.config, collections },
-        { configPath: loadedConfig.path, configDir }
-      );
-      loadedConfig = {
-        config: renormalized.config,
-        path: loadedConfig.path,
-        resolved: {
-          ...renormalized.resolved,
-          sources: loadedConfig.resolved.sources,
-          deprecations: loadedConfig.resolved.deprecations,
-        },
-      };
-      docsSources = resolveDocsSourcesFromCollections(collections, configDir);
     } else {
       const docsDirsToResolve =
         args.docsDirs.length > 0 ? args.docsDirs : [DEFAULT_DOCS_DIR];
@@ -1785,10 +1789,6 @@ async function executeGenerate(
       args,
       docsSources
     );
-    // One resolved base URL for every site artifact: the explicit flag wins,
-    // then the config's site-owned `baseUrl`, then the deployment-URL env
-    // fallbacks `normalizeBaseUrl` applies at each consumer — the same order
-    // `createDocsProject` resolves its `baseUrl` argument in.
     const baseUrl = args.baseUrl ?? metadata.baseUrl;
     const hasExplicitPathFilters =
       args.include.length > 0 || args.exclude.length > 0;
@@ -1939,9 +1939,6 @@ async function executeGenerate(
       }
     }
 
-    // Site artifacts embed absolute URLs, so when neither the flag nor the
-    // config supplies `baseUrl`, report what the env fallback actually
-    // resolved to — the same explain treatment other derived values get.
     if (!args.bundle && baseUrl === undefined) {
       inference = mergeInferenceReports(inference, {
         values: [
@@ -2028,14 +2025,6 @@ async function executeGenerate(
       // or explicitly enabled with --mcp. They are URL-independent: MCP keys on
       // urlPath and reads the .md mirror, so they work without a --base-url.
       if (bundleMcpEnabled) {
-        const search = await generateDocsSearchFiles({
-          outDir,
-          baseUrl,
-          mounts: effectiveMounts,
-          i18n: metadata.i18n,
-          locale: i18n?.defaultLocale,
-          transformers: metadata.transformers,
-        });
         const agentReadability = await generateAgentReadabilityArtifacts({
           outDir,
           baseUrl,
@@ -2046,6 +2035,18 @@ async function executeGenerate(
           i18n: metadata.i18n,
           locale: i18n?.defaultLocale,
           i18nManifest,
+          emitRootCrawlerFiles: false,
+          transformers: metadata.transformers,
+        });
+        const search = await generateDocsSearchFiles({
+          outDir,
+          baseUrl,
+          mounts: effectiveMounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          indexOptions: {
+            generatedAt: agentReadability.manifest.generatedAt,
+          },
           transformers: metadata.transformers,
         });
         bundleFiles.searchIndex = search.outputPath;
@@ -2083,6 +2084,11 @@ async function executeGenerate(
         srcDir,
       };
     } else {
+      const effectiveBaseUrl = normalizeBaseUrl(baseUrl);
+      const publishableAgentBaseUrl =
+        baseUrl?.trim() || !isLocalBaseUrl(effectiveBaseUrl)
+          ? effectiveBaseUrl
+          : undefined;
       const feedBaseUrl =
         metadata.feeds && metadata.feeds.length > 0
           ? resolveFeedBaseUrl(baseUrl)
@@ -2095,16 +2101,49 @@ async function executeGenerate(
       const mcpConfig = metadata.agents?.mcp;
       const mcpEnabled = mcpConfig?.enabled === true;
       const mcpEndpoint = mcpEnabled
-        ? resolveMcpEndpoint(baseUrl, mcpConfig.endpoint)
+        ? resolveMcpEndpoint(publishableAgentBaseUrl, mcpConfig.endpoint)
         : undefined;
       const nlwebConfig = metadata.agents?.nlweb;
       const nlwebEnabled = nlwebConfig?.enabled === true;
       const askEndpoint = nlwebEnabled
         ? resolveMcpEndpoint(
-            baseUrl,
+            publishableAgentBaseUrl,
             nlwebConfig.endpoint ?? DEFAULT_NLWEB_ASK_PATH
           )
         : undefined;
+      const nlwebOpenApi = nlwebEnabled
+        ? resolveNlwebOpenApiConfig(nlwebConfig.openapi)
+        : null;
+      const nlwebStateDir = path.join(srcDir, ".leadtype");
+      if (!nlwebEnabled) {
+        await removeGeneratedNlwebOpenApi({
+          outDir,
+          stateDir: nlwebStateDir,
+        });
+      }
+      // `/ask` is a real API this site publishes, so it joins the RFC 9727
+      // catalog with the generated OpenAPI document as its service-desc. A
+      // site that already declared the endpoint keeps its own entry.
+      const catalogApis = nlwebEnabled
+        ? withNlwebApiCatalogEntry(
+            metadata.agents?.apis,
+            nlwebApiCatalogEntry({
+              askEndpoint: askEndpoint ?? DEFAULT_NLWEB_ASK_PATH,
+              ...(nlwebOpenApi
+                ? {
+                    openapiUrl: resolveMcpEndpoint(
+                      publishableAgentBaseUrl,
+                      nlwebOpenApi.url
+                    ),
+                  }
+                : {}),
+              ...(metadata.documentationUrl
+                ? { docsUrl: metadata.documentationUrl }
+                : {}),
+            }),
+            publishableAgentBaseUrl
+          )
+        : metadata.agents?.apis;
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
@@ -2121,7 +2160,7 @@ async function executeGenerate(
             ? {
                 mcpEndpoint,
                 mcpServerCardUrl: resolveMcpEndpoint(
-                  baseUrl,
+                  publishableAgentBaseUrl,
                   `/${MCP_SERVER_CARD_PATH}`
                 ),
                 // Same subset the server card advertises, so the two
@@ -2145,14 +2184,6 @@ async function executeGenerate(
         transformers: metadata.transformers,
       });
 
-      const search = await generateDocsSearchFiles({
-        outDir,
-        baseUrl,
-        mounts: effectiveMounts,
-        i18n: metadata.i18n,
-        locale: i18n?.defaultLocale,
-        transformers: metadata.transformers,
-      });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
         baseUrl,
@@ -2169,15 +2200,37 @@ async function executeGenerate(
         ...(nlwebEnabled
           ? { schemamapUrlPath: `/${NLWEB_SCHEMA_MAP_PATH}` }
           : {}),
+        apis: catalogApis,
         jsonLd: metadata.jsonLd,
         seo: metadata.agents?.seo,
+      });
+      const search = await generateDocsSearchFiles({
+        outDir,
+        baseUrl,
+        mounts: effectiveMounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
+        indexOptions: {
+          generatedAt: agentReadability.manifest.generatedAt,
+        },
+        transformers: metadata.transformers,
       });
       const nlwebArtifacts = nlwebEnabled
         ? await generateNlwebArtifacts({
             outDir,
-            baseUrl,
+            stateDir: nlwebStateDir,
+            ...(publishableAgentBaseUrl
+              ? { baseUrl: publishableAgentBaseUrl }
+              : {}),
             product: effectiveProduct,
             pages: agentReadability.manifest.pages,
+            ...(nlwebConfig?.endpoint
+              ? { askEndpoint: nlwebConfig.endpoint }
+              : {}),
+            ...(nlwebConfig?.openapi ? { openapi: nlwebConfig.openapi } : {}),
+            ...(metadata.documentationUrl
+              ? { docsUrl: metadata.documentationUrl }
+              : {}),
           })
         : undefined;
 
@@ -2215,7 +2268,7 @@ async function executeGenerate(
       if (mcpEnabled) {
         mcpServerCard = await generateMcpServerCard({
           outDir,
-          baseUrl,
+          baseUrl: publishableAgentBaseUrl,
           product: effectiveProduct,
           config: {
             endpoint: mcpConfig.endpoint,
@@ -2256,15 +2309,7 @@ async function executeGenerate(
             locale: locale.code,
             transformers: metadata.transformers,
           });
-          await generateDocsSearchFiles({
-            outDir,
-            baseUrl,
-            mounts: effectiveMounts,
-            i18n: metadata.i18n,
-            locale: locale.code,
-            transformers: metadata.transformers,
-          });
-          await generateAgentReadabilityArtifacts({
+          const agentReadability = await generateAgentReadabilityArtifacts({
             outDir,
             baseUrl,
             product: effectiveProduct,
@@ -2277,8 +2322,20 @@ async function executeGenerate(
             transformers: metadata.transformers,
             robotsPolicy: metadata.agents?.robots?.policy,
             contentSignals: metadata.agents?.robots?.signals,
+            apis: catalogApis,
             jsonLd: metadata.jsonLd,
             seo: metadata.agents?.seo,
+          });
+          await generateDocsSearchFiles({
+            outDir,
+            baseUrl,
+            mounts: effectiveMounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+            indexOptions: {
+              generatedAt: agentReadability.manifest.generatedAt,
+            },
+            transformers: metadata.transformers,
           });
         }
       }
@@ -2302,9 +2359,12 @@ async function executeGenerate(
             metadata.redirects.lockfile ?? "paths.lock.json"
           ),
           outDir,
+          sourceDir: sourceMirror.docsDir,
           pages: agentReadability.manifest.pages.map((page) => ({
             urlPath: page.urlPath,
             relativePath: page.relativePath,
+            ...(page.logicalPath ? { logicalPath: page.logicalPath } : {}),
+            ...(page.sourceLocale ? { sourceLocale: page.sourceLocale } : {}),
           })),
           removed: metadata.redirects.removed,
         });
@@ -2360,6 +2420,9 @@ async function executeGenerate(
                 nlwebSchemaFeed: nlwebArtifacts.files.schemaFeed,
                 nlwebSchemaMap: nlwebArtifacts.files.schemaMap,
               }
+            : {}),
+          ...(nlwebArtifacts?.files.openapi
+            ? { nlwebOpenapi: nlwebArtifacts.files.openapi }
             : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,

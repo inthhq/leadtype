@@ -1,6 +1,6 @@
 import path from "node:path";
 import { loadLeadtypeConfig } from "../config/load";
-import { type SyncMode, syncCollections } from "../sync/sync";
+import { type SyncMode, syncSources } from "../sync/sync";
 
 export type SyncCliIo = {
   stderr: Pick<NodeJS.WriteStream, "write">;
@@ -115,10 +115,13 @@ export async function runSyncCommand(
 
   const configDir = path.dirname(loaded.path);
   try {
-    const result = await syncCollections({
+    // Sync consumes the resolved source graph — the same one doctor and
+    // `generate --json` report — rather than re-deriving its own from the
+    // collections map. One graph, one set of ids, one place that validated it.
+    const result = await syncSources({
       mode: args.mode,
       configDir,
-      collections,
+      sources: loaded.resolved.sources,
       repoFilter: args.repoFilter,
     });
 
@@ -136,28 +139,18 @@ export async function runSyncCommand(
     } as const;
     // Report the resolved source id and its dependent collections, so one line
     // of output answers "what did this clone, and what reads from it?" — the
-    // same ids the config, JSON output, and error messages use.
-    const resolvedById = new Map(
-      loaded.resolved.sources
-        .filter((source) => source.kind === "git")
-        .map((source) => [`${source.repository}#${source.ref}`, source])
-    );
+    // same ids the config, JSON output, and error messages use. The synced
+    // source *is* a projection of the resolved graph, so the id, ref kind, and
+    // dependents come straight off it — no remapping.
     const mutable: string[] = [];
     for (const entry of result.sources) {
       const label = labels[entry.status];
-      const resolved = resolvedById.get(
-        `${entry.source.repository}#${entry.source.ref}`
-      );
-      const dependents = (
-        resolved?.collectionKeys ?? entry.source.collectionKeys
-      ).join(", ");
-      const id = resolved?.id ?? entry.source.repository;
       io.stdout.write(
-        `${label}  ${id}  ${entry.source.repository}@${entry.source.ref}  ${entry.commit.slice(0, 7)}  → ${entry.source.cacheDir}\n` +
-          `          collections: ${dependents}\n`
+        `${label}  ${entry.source.id}  ${entry.source.repository}@${entry.source.ref}  ${entry.commit.slice(0, 7)}  → ${entry.source.cacheDir}\n` +
+          `          collections: ${entry.source.collectionKeys.join(", ")}\n`
       );
-      if (resolved?.kind === "git" && resolved.refKind === "mutable") {
-        mutable.push(`${id} (${entry.source.ref})`);
+      if (entry.source.refKind === "mutable") {
+        mutable.push(`${entry.source.id} (${entry.source.ref})`);
       }
     }
     if (mutable.length > 0) {

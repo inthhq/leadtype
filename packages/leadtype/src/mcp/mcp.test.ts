@@ -20,7 +20,11 @@ import {
   type DocsSearchIndex,
 } from "../search/index";
 import { type DocsArtifacts, loadDocsArtifacts } from "./artifacts";
-import { createMcpServerCard, resolveMcpServerInfo } from "./card";
+import {
+  createMcpServerCard,
+  resolveMcpEndpoint,
+  resolveMcpServerInfo,
+} from "./card";
 import { createMcpHandler } from "./http";
 import { createDocsMcpServer } from "./server";
 import { defineDocsTools } from "./tools";
@@ -280,6 +284,10 @@ describe("loadDocsArtifacts (from disk)", () => {
       JSON.stringify(buildManifest())
     );
     await writeFile(
+      join(docsDir, "search-content.json"),
+      JSON.stringify({ version: 2, generatedAt: "stale", chunks: [] })
+    );
+    await writeFile(
       join(docsDir, "guides", "quickstart.md"),
       QUICKSTART_MARKDOWN
     );
@@ -288,6 +296,8 @@ describe("loadDocsArtifacts (from disk)", () => {
   it("reads index + manifest and get-page serves the .md from disk", async () => {
     const artifacts = await loadDocsArtifacts({ artifacts: dir });
     expect(artifacts.manifest.pages.length).toBe(2);
+    expect(artifacts.content).toBeUndefined();
+    expect(artifacts.index.content?.chunks.length).toBeGreaterThan(0);
 
     const [, getPage] = defineDocsTools(artifacts);
     const result = await getPage.handler({
@@ -295,6 +305,47 @@ describe("loadDocsArtifacts (from disk)", () => {
     });
     // Byte-identical to the file on disk — Q2: the .md mirror is the content source.
     expect(textOf(result)).toBe(QUICKSTART_MARKDOWN);
+  });
+
+  it("ignores legacy split content and keeps index-only search available", async () => {
+    const legacyDir = await mkdtemp(join(tmpdir(), "leadtype-mcp-legacy-"));
+    try {
+      const docsDir = join(legacyDir, "docs");
+      await mkdir(docsDir, { recursive: true });
+      const generatedIndex = createDocsSearchIndex(docs);
+      const { content, ...metadataOnlyIndex } = generatedIndex;
+      if (!content) {
+        throw new Error("Expected createDocsSearchIndex to embed content.");
+      }
+      await Promise.all([
+        writeFile(
+          join(docsDir, "search-index.json"),
+          JSON.stringify(metadataOnlyIndex)
+        ),
+        writeFile(
+          join(docsDir, "search-content.json"),
+          JSON.stringify({
+            version: 2,
+            generatedAt: generatedIndex.generatedAt,
+            chunks: content.chunks,
+          })
+        ),
+        writeFile(
+          join(docsDir, "agent-readability.json"),
+          JSON.stringify(buildManifest())
+        ),
+      ]);
+
+      const artifacts = await loadDocsArtifacts({ artifacts: legacyDir });
+      expect(artifacts.content).toBeUndefined();
+
+      const [search] = defineDocsTools(artifacts, { tools: ["search-docs"] });
+      const result = await search.handler({ query: "quickstart" });
+      const hits = JSON.parse(textOf(result)) as { urlPath: string }[];
+      expect(hits[0]?.urlPath).toBe("/docs/guides/quickstart");
+    } finally {
+      await rm(legacyDir, { force: true, recursive: true });
+    }
   });
 
   it("throws a helpful error when artifacts are absent", async () => {
@@ -326,6 +377,13 @@ describe("loadDocsArtifacts (from disk)", () => {
 });
 
 describe("createMcpServerCard", () => {
+  it("treats an empty configured endpoint as the default MCP path", () => {
+    expect(resolveMcpEndpoint(undefined, "")).toBe("/mcp");
+    expect(resolveMcpEndpoint("https://leadtype.dev/docs/", "")).toBe(
+      "https://leadtype.dev/docs/mcp"
+    );
+  });
+
   it("resolves the same default serverInfo the runtime uses", () => {
     expect(
       resolveMcpServerInfo({

@@ -253,6 +253,29 @@ test("agent readability discovery files are served at the site root", async ({
   expect(llmsFullText).not.toContain("# Page not found");
 });
 
+test("the advertised NLWeb route answers CORS preflight", async ({
+  request,
+}) => {
+  const response = await request.fetch("/ask", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://client.example",
+      "Access-Control-Request-Headers": "content-type",
+      "Access-Control-Request-Method": "POST",
+    },
+  });
+
+  expect(response.status()).toBe(204);
+  expect(await response.text()).toBe("");
+  expect(response.headers()["access-control-allow-origin"]).toBe("*");
+  expect(response.headers()["access-control-allow-methods"]).toBe(
+    "GET, POST, OPTIONS"
+  );
+  expect(response.headers()["access-control-allow-headers"]).toBe(
+    "content-type, accept"
+  );
+});
+
 test("docs pages expose canonical and markdown mirror metadata", async ({
   request,
 }) => {

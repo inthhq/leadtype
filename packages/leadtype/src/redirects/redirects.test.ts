@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   hashRedirectContent,
   readPathsLockfile,
+  resolveRedirectPageFile,
   updateDocsRedirects,
 } from "./node";
 import {
@@ -23,6 +24,16 @@ async function createTempDir(): Promise<string> {
   return dir;
 }
 
+async function seedMirror(
+  outDir: string,
+  relativePath: string,
+  body: string
+): Promise<void> {
+  const filePath = path.join(outDir, "docs", relativePath);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, body);
+}
+
 afterEach(async () => {
   await Promise.all(
     tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))
@@ -39,6 +50,79 @@ describe("hashRedirectContent", () => {
     );
     expect(moved).toBe(original);
     expect(hashRedirectContent("# Other body\n")).not.toBe(original);
+  });
+});
+
+describe("resolveRedirectPageFile", () => {
+  it("prefers an explicit sourcePath, then authored source, then the mirror", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    const explicit = path.join(dir, "explicit.mdx");
+    await mkdir(sourceDir, { recursive: true });
+    await writeFile(path.join(sourceDir, "guide.mdx"), "# source\n");
+    await seedMirror(outDir, "guide.md", "# mirror\n");
+    await writeFile(explicit, "# explicit\n");
+
+    expect(
+      resolveRedirectPageFile(
+        { relativePath: "guide", sourcePath: explicit },
+        { outDir, sourceDir }
+      )
+    ).toBe(explicit);
+    expect(
+      resolveRedirectPageFile({ relativePath: "guide" }, { outDir, sourceDir })
+    ).toBe(path.join(sourceDir, "guide.mdx"));
+    expect(resolveRedirectPageFile({ relativePath: "guide" }, { outDir })).toBe(
+      path.join(outDir, "docs", "guide.md")
+    );
+  });
+
+  it("rejects a relativePath that would escape the output docs dir", () => {
+    const outDir = path.join(tmpdir(), "leadtype-redirects-escape");
+    expect(() =>
+      resolveRedirectPageFile({ relativePath: "../secret" }, { outDir })
+    ).toThrow("not a safe path");
+  });
+
+  it("finds default-locale sources under docs/<locale>/ using sourceLocale", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    await mkdir(path.join(sourceDir, "en"), { recursive: true });
+    await writeFile(path.join(sourceDir, "en", "guide.mdx"), "# en source\n");
+    await seedMirror(outDir, "guide.md", "# mirror\n");
+
+    expect(
+      resolveRedirectPageFile(
+        {
+          relativePath: "guide",
+          logicalPath: "guide",
+          sourceLocale: "en",
+        },
+        { outDir, sourceDir }
+      )
+    ).toBe(path.join(sourceDir, "en", "guide.mdx"));
+  });
+
+  it("finds includeFallback sources under the source locale, not the requested one", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    await mkdir(path.join(sourceDir, "en"), { recursive: true });
+    await writeFile(path.join(sourceDir, "en", "guide.mdx"), "# en source\n");
+    await seedMirror(outDir, "fr/guide.md", "# fr mirror\n");
+
+    expect(
+      resolveRedirectPageFile(
+        {
+          relativePath: "fr/guide",
+          logicalPath: "guide",
+          sourceLocale: "en",
+        },
+        { outDir, sourceDir }
+      )
+    ).toBe(path.join(sourceDir, "en", "guide.mdx"));
   });
 });
 
@@ -211,16 +295,6 @@ describe("resolveRedirect", () => {
 });
 
 describe("updateDocsRedirects", () => {
-  async function seedMirror(
-    outDir: string,
-    relativePath: string,
-    body: string
-  ): Promise<void> {
-    const filePath = path.join(outDir, "docs", relativePath);
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, body);
-  }
-
   it("creates the lockfile, detects renames on later runs, and emits redirects.json", async () => {
     const dir = await createTempDir();
     const outDir = path.join(dir, "public");
@@ -337,5 +411,211 @@ describe("updateDocsRedirects", () => {
     expect(result.redirects).toEqual([
       { from: "/docs/old", to: "/docs/new", status: REDIRECT_STATUS_MOVED },
     ]);
+  });
+
+  it("falls back to hashing the mirror when sourceDir is absent", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    await seedMirror(
+      outDir,
+      "guide.md",
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|string|\n"
+    );
+
+    const first = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      pages: [{ urlPath: "/docs/guide", relativePath: "guide" }],
+    });
+    const firstHash = first.lockfile.pages[0]?.hash;
+    expect(firstHash).toBe(
+      hashRedirectContent(
+        "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|string|\n"
+      )
+    );
+
+    await seedMirror(
+      outDir,
+      "guide.md",
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|ThemeTokens|\n"
+    );
+    const second = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      pages: [{ urlPath: "/docs/guide", relativePath: "guide" }],
+    });
+    expect(second.lockfile.pages[0]?.hash).not.toBe(firstHash);
+    const committed = await readPathsLockfile(lockfilePath);
+    expect(committed?.pages[0]?.hash).not.toBe(firstHash);
+  });
+
+  it("hashes authored source so generated-mirror churn does not rewrite the lockfile", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    await mkdir(sourceDir, { recursive: true });
+    await writeFile(
+      path.join(sourceDir, "guide.mdx"),
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n"
+    );
+    await seedMirror(
+      outDir,
+      "guide.md",
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|string|\n"
+    );
+
+    const first = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [{ urlPath: "/docs/guide", relativePath: "guide" }],
+    });
+    const firstHash = first.lockfile.pages[0]?.hash;
+    expect(firstHash).toBe(
+      hashRedirectContent("---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n")
+    );
+    expect(firstHash).not.toBe(
+      hashRedirectContent(
+        "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|string|\n"
+      )
+    );
+
+    await seedMirror(
+      outDir,
+      "guide.md",
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|ThemeTokens|\n"
+    );
+    const second = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [{ urlPath: "/docs/guide", relativePath: "guide" }],
+    });
+    expect(second.lockfile.pages[0]?.hash).toBe(firstHash);
+    const committed = await readPathsLockfile(lockfilePath);
+    expect(committed?.pages[0]?.hash).toBe(firstHash);
+  });
+
+  it("still detects a source-file rename when hashing authored pages", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    await mkdir(path.join(sourceDir, "guides"), { recursive: true });
+    await writeFile(
+      path.join(sourceDir, "guides", "x.mdx"),
+      "---\ntitle: X\n---\n# X\n\nBody.\n"
+    );
+    await seedMirror(
+      outDir,
+      "guides/x.md",
+      "---\ntitle: X\n---\n# X\n\nBody.\n\nExtracted table that will change.\n"
+    );
+
+    await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [{ urlPath: "/docs/guides/x", relativePath: "guides/x" }],
+    });
+
+    await rm(path.join(sourceDir, "guides", "x.mdx"));
+    await mkdir(path.join(sourceDir, "concepts"), { recursive: true });
+    await writeFile(
+      path.join(sourceDir, "concepts", "x.mdx"),
+      "---\ntitle: X\n---\n# X\n\nBody.\n"
+    );
+    await rm(path.join(outDir, "docs", "guides", "x.md"));
+    await seedMirror(
+      outDir,
+      "concepts/x.md",
+      "---\ntitle: X\n---\n# X\n\nBody.\n\nDifferent extracted table.\n"
+    );
+
+    const second = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [{ urlPath: "/docs/concepts/x", relativePath: "concepts/x" }],
+    });
+    expect(second.moved).toEqual([
+      { from: "/docs/guides/x", to: "/docs/concepts/x" },
+    ]);
+  });
+
+  it("reads redirectFrom from the generated mirror so afterFrontmatter still applies", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    await mkdir(sourceDir, { recursive: true });
+    await writeFile(
+      path.join(sourceDir, "old.mdx"),
+      "---\ntitle: Old\n---\n# Old body.\n"
+    );
+    await seedMirror(outDir, "old.md", "---\ntitle: Old\n---\n# Old body.\n");
+    await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [{ urlPath: "/docs/old", relativePath: "old" }],
+    });
+
+    await rm(path.join(sourceDir, "old.mdx"));
+    await rm(path.join(outDir, "docs", "old.md"));
+    await writeFile(
+      path.join(sourceDir, "new.mdx"),
+      "---\ntitle: New\n---\n# Rewritten body.\n"
+    );
+    await seedMirror(
+      outDir,
+      "new.md",
+      '---\ntitle: New\nredirectFrom:\n  - "/docs/old"\n---\n# Rewritten body with extracted types.\n'
+    );
+    const result = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [{ urlPath: "/docs/new", relativePath: "new" }],
+    });
+    expect(result.redirects).toEqual([
+      { from: "/docs/old", to: "/docs/new", status: REDIRECT_STATUS_MOVED },
+    ]);
+  });
+
+  it("hashes default-locale-in-subfolder sources instead of the generated mirror", async () => {
+    const dir = await createTempDir();
+    const outDir = path.join(dir, "public");
+    const sourceDir = path.join(dir, "docs-src");
+    const lockfilePath = path.join(dir, "paths.lock.json");
+    await mkdir(path.join(sourceDir, "en"), { recursive: true });
+    await writeFile(
+      path.join(sourceDir, "en", "guide.mdx"),
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n"
+    );
+    await seedMirror(
+      outDir,
+      "guide.md",
+      "---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n\n|Prop|Type|\n|---|---|\n|theme|string|\n"
+    );
+
+    const result = await updateDocsRedirects({
+      lockfilePath,
+      outDir,
+      sourceDir,
+      pages: [
+        {
+          urlPath: "/docs/guide",
+          relativePath: "guide",
+          logicalPath: "guide",
+          sourceLocale: "en",
+        },
+      ],
+    });
+    expect(result.lockfile.pages[0]?.hash).toBe(
+      hashRedirectContent("---\ntitle: Guide\n---\n# Guide\n\nAuthored body.\n")
+    );
   });
 });

@@ -22,7 +22,7 @@ export const source = loader({ baseUrl: "/docs", source: fumaSource });
 export const leadtypeSource = fumaSource.leadtype;
 ```
 
-If your docs are described by a Leadtype config, pass a `DocsSource` instead of a content directory. A single-collection project is one — so the content root, navigation, mounts, and OpenAPI overlay come from the config rather than being restated here:
+If a Leadtype config describes your docs, pass a `DocsSource` instead of a content directory. You can pass a single-collection project directly when each page's `urlPath` is the loader's `baseUrl` plus its collection-local slug. This is the common case for one unmounted collection. The content root, navigation, and OpenAPI overlay then come from the config:
 
 ```ts title="lib/source.ts"
 import { loader } from "fumadocs-core/source";
@@ -35,10 +35,9 @@ export const source = loader({ baseUrl: "/docs", source: fumaSource });
 export const leadtypeSource = fumaSource.leadtype;
 ```
 
-`fumadocsSource()` maps each page to its collection-local `slug` and `relativePath`, and reads `meta.json` only from that source's `contentDir`. A merged multi-collection project therefore drops every `routePrefix` and collides on identical local pages. Give each collection its own loader via `project.getSource(key)`:
+`fumadocsSource()` maps each page to its collection-local `slug` and `relativePath`, and reads `meta.json` only from that source's `contentDir`. It does not map route prefixes or mounts onto those slugs. A merged multi-collection project can therefore collide on identical local pages, and a mount that moves a subtree outside the loader's `baseUrl` is served at the wrong route. Give each collection its own loader via `project.getSource(key)`. Wire a mounted subtree through a route at its `urlPrefix`; the Fumadocs adapter does not preserve that mount for you.
 
 ```ts title="lib/changelog-source.ts"
-// @noErrors
 import { loader } from "fumadocs-core/source";
 import { createDocsProject } from "leadtype";
 import { fumadocsSource } from "leadtype/fumadocs";

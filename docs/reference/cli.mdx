@@ -287,6 +287,8 @@ If `docs.config.ts` sets `agents.mcp.enabled`, bundle mode also emits `docs/sear
 }
 ```
 
+`files.apiCatalog` appears only when `agents.apis` declares at least one API — without APIs there is no catalog to generate.
+
 The root sitemap and robots files are the crawler-facing defaults. Host apps that merge docs pages with blog, marketing, changelog, or product pages can override those root files or use the runtime helpers to serve merged responses.
 
 In `--bundle` mode, `mode` is `"bundle"` and `files` always contains `agentsMd`. URL-anchored site fields (`llmsTxt`, sitemap, robots, etc.) are absent. When MCP is enabled through `agents.mcp.enabled` or `--mcp`, `files` also includes `searchIndex`, `searchContent`, and `agentReadabilityManifest`.

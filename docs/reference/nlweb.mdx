@@ -30,12 +30,18 @@ import { createAskHandler } from "leadtype/nlweb";
 
 const handler = createAskHandler({ artifacts: "./public" });
 export const GET = handler;
+export const OPTIONS = handler;
 export const POST = handler;
 ```
 
+Pass `onError` to send server-side failures to your host logger or error
+tracker. The callback receives the original error before the HTTP response is
+sanitized. A promise it returns is awaited before the response is sent, so an
+async flush completes first and a slow reporter delays the response.
+
 The handler accepts the NLWeb request shapes — `?query=` params, a flat JSON
-body, or the `{ query: { text }, prefer: { streaming } }` document — and
-answers with:
+body, or the `{ query: { text }, prefer: { streaming } }` document. JSON request
+bodies are limited to 16 KiB. The handler answers with:
 
 ```json
 {
@@ -63,6 +69,55 @@ expect.)
 `mode=summarize` / `mode=generate` need an LLM and are not implemented —
 queries always answer in list mode.
 
+## Failure responses
+
+Every non-2xx `/ask` response is JSON — an NLWeb-shaped envelope with a
+leadtype-defined `error` extension — except the bodyless `204` answer to an
+`OPTIONS` preflight. Failures stay JSON even when the request asked for
+streaming.
+
+```json
+{
+  "query_id": "…",
+  "_meta": { "response_type": "failure", "version": "0.55" },
+  "error": {
+    "code": "missing_query",
+    "message": "Missing query.",
+    "resolution": "Pass query in the URL or JSON request body."
+  },
+  "results": []
+}
+```
+
+`error`, `error.code`, and `error.resolution` are leadtype extensions to the
+NLWeb response shape. The code is stable — branch on it rather than on the
+message. Codes are exported as `NLWEB_ERROR_CODES` (typed as
+`NlwebErrorCode`), and the response body is typed as `NlwebAskResponse`, a
+union of `NlwebAskAnswer` and `NlwebAskFailure`. Narrow it with
+`"error" in body`.
+
+| Code | Status | Returned when |
+| --- | --- | --- |
+| `invalid_json` | 400 | The request body is non-empty and is not parseable JSON. |
+| `invalid_request` | 400 | The body parses but is not an `/ask` document — not a JSON object, or `query`/`query_id` of the wrong type. |
+| `request_too_large` | 413 | The JSON request body exceeds the 16 KiB limit. |
+| `missing_query` | 400 | No query in the URL or the body. |
+| `method_not_allowed` | 405 | A method other than `GET`, `POST`, or `OPTIONS`. The response keeps its `Allow` header. |
+| `artifacts_unavailable` | 500 | The generated docs artifacts are missing, unreadable, or invalid — usually `leadtype generate` has not run where the handler is deployed, or its output is stale or incomplete. |
+| `internal_error` | 500 | Anything else. |
+
+`resolution` is a short recovery hint for the caller. Server-side detail —
+stack traces, filesystem paths, the directory the handler looked in — never
+reaches the response body, so `artifacts_unavailable` and `internal_error`
+carry generic guidance. Pass `onError` to route the original error to your
+server logs or error tracker.
+
+An empty `POST` body is not an error: a `POST` may carry the whole request in
+URL params. A URL `query_id` is echoed on answers and every failure. For
+`POST`, a body `query_id` is also accepted and takes precedence. Unsupported
+methods are rejected without reading their bodies, so their `405` response can
+only use the URL value. When no ID is supplied, the handler mints one.
+
 ## Emit the schema feeds
 
 ```ts
@@ -80,3 +135,85 @@ other than `/ask`.
 
 Hosts that regenerate robots.txt at request time pass the directive through
 `createRobotsTxtResponse({ schemamapUrlPath: "/schema-map.xml" })`.
+
+## The OpenAPI description
+
+`leadtype generate` also writes an OpenAPI 3.1 description of the `/ask`
+endpoint to `/openapi.json`, so a client gets the typed contract instead of
+inferring one from this page. It describes:
+
+- `GET /ask` — the `query`, `q`, `query_id`, and `streaming` URL parameters.
+- `POST /ask` — the same parameters, an optional body, and both request shapes
+  (`{"query": "…"}` and `{"query": {"text": "…"}}`), with an example of each.
+- `OPTIONS /ask` — the `204` preflight and the CORS headers it answers with.
+- The `200`, which carries both the JSON document and the `text/event-stream`
+  response. This content map describes `Accept` negotiation without defining
+  the reserved header as a Parameter Object, which OpenAPI consumers must
+  ignore. Because OpenAPI 3.1 has no vocabulary for per-event SSE payloads, the
+  response carries an `x-sse-events` map of `start` / `result` / `complete` to
+  the schema of each event's `data:` payload.
+- The `400` and `500` failures shared by `GET` and `POST`, the POST-only `413`
+  body-limit failure, and the path-level `405`. All use the one `AskFailure`
+  envelope, with `error.code` typed as an enum of the codes above.
+
+Every operation has a stable `operationId` — `nlwebAskGet`, `nlwebAskPost`,
+`nlwebAskOptions` — a description, and typed parameters and responses, so an
+operation converts to an LLM function definition without guesswork.
+
+The `405` is published on the path rather than on an operation
+(`x-leadtype-method-not-allowed`): it is the answer to methods that have no
+operation in the document, and `GET` and `POST` never return it.
+The `413` appears only on `POST`, because `GET` never reads a request body.
+
+### Configure it
+
+```ts
+// docs/docs.config.ts
+agents: {
+  nlweb: {
+    enabled: true,
+    endpoint: "/ask",
+    openapi: {
+      url: "/api/openapi.json",
+    },
+  },
+},
+```
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `endpoint` | `/ask` | Where the handler is mounted. An absolute URL (`https://api.example.com/v1/ask`) is split into the document's `servers` entry and its `paths` key, so a cross-origin endpoint is described honestly. |
+| `openapi.enabled` | `true` | Set `false` to skip the document. |
+| `openapi.url` | `/openapi.json` | The public URL. Also supplies the default `output`, so moving one moves both. |
+| `openapi.output` | the `url` path | Output path, relative to the generate output root. |
+
+`output` is validated at config load, not at build time: it must be a relative
+`.json` path inside the output root, so an absolute path, a `..` segment, or a
+path that would overwrite another generated artifact (`mcp.json`,
+`agent-readability.json`, anything under `docs/`) fails before a build can
+clobber anything.
+
+### Discovery
+
+The endpoint is listed in the [RFC 9727 API
+catalog](/docs/aeo/optimize-docs-for-agents#list-your-apis). When OpenAPI
+generation is enabled, the catalog lists the document as the endpoint's
+`service-desc`; turning the document off leaves `/ask` discoverable without
+advertising a description that does not exist:
+
+```bash
+# The catalog lists /ask and points at its description.
+curl -s https://example.com/.well-known/api-catalog | jq '.linkset'
+
+# The description itself — every operation, with its stable operationId.
+curl -s https://example.com/openapi.json | jq '[.paths."/ask" | to_entries[] | select(.value.operationId) | {method: .key, id: .value.operationId}]'
+
+# The contract matches the endpoint: ask a real question.
+curl -s "https://example.com/ask?query=quickstart" | jq '._meta, .results[0].url'
+
+# And the streaming form the document describes.
+curl -sN -H "Accept: text/event-stream" "https://example.com/ask?query=quickstart"
+```
+
+If your site already declares `/ask` in `agents.apis`, your entry is kept as
+authored — leadtype only fills in a missing `service-desc`.

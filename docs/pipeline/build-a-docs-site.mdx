@@ -97,7 +97,7 @@ If your docs app compiles MDX through a bundler, start from your config: `create
 - `resolveInclude()` for programmatic partial loading
 - `collections`, `sources`, and `getSource(key)` for multi-collection projects
 
-It returns a superset of the `DocsSource` contract, so the five static-params adapters (`leadtype/next`, `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`) accept the project as their `source`. `leadtype/fumadocs` also accepts a `DocsSource`, but `fumadocsSource()` maps each page to its collection-local `slug` and `relativePath` and reads `meta.json` only from the primary `contentDir` — a merged multi-collection project is not a usable Fumadocs source. Pass `project.getSource(key)` into one `fumadocsSource()` / `loader()` per collection, or use it with a single-collection project. Reach for the lower-level `createDocsSource()` only when no config describes the content you're wiring.
+It returns a superset of the `DocsSource` contract, so the five static-params adapters (`leadtype/next`, `leadtype/nuxt`, `leadtype/sveltekit`, `leadtype/astro`, `leadtype/tanstack-start`) accept the project as their `source`. `leadtype/fumadocs` also accepts a `DocsSource`, but `fumadocsSource()` maps each page to its collection-local `slug` and `relativePath` and reads `meta.json` only from the primary `contentDir`. Pass `project.getSource(key)` into one `fumadocsSource()` / `loader()` per collection. You may pass a single-collection project directly only when every page's `urlPath` matches the loader's `baseUrl` plus that local slug. A mount that moves a subtree outside that base needs separate route wiring because the Fumadocs adapter does not preserve mounts. Reach for the lower-level `createDocsSource()` only when no config describes the content you're wiring.
 
 → [`createDocsProject` reference](/docs/reference/project) — discovery, diagnostics, and the project API
 → [Use the source primitive](/docs/pipeline/use-the-source-primitive) — per-framework wiring, and when the escape hatch is right
@@ -108,7 +108,7 @@ It returns a superset of the `DocsSource` contract, so the five static-params ad
 If your runtime needs files on disk — for a CDN-only deploy, a static export, a separate agent-only service, or to share artifacts across multiple sibling apps — run the CLI. It writes:
 
 - `public/llms.txt` and `public/llms-full.txt`
-- `public/.well-known/api-catalog`
+- `public/.well-known/api-catalog` — only when `agents.apis` declares an API
 - `public/docs/*.md` (markdown mirrors)
 - `public/docs/search-index.json` + `search-content.json`
 - `public/sitemap.xml`, `public/sitemap.md`, `public/robots.txt`
