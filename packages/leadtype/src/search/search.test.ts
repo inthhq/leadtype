@@ -443,6 +443,39 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("counts headings that produce no search chunk", () => {
+    const content = [
+      "# Reference",
+      "",
+      "## Example",
+      "### Details",
+      "",
+      "Nested details cover widgets.",
+      "",
+      "## Example",
+      "",
+      "The later example covers sprockets.",
+      "",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "reference",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/reference#example-1"
+    );
+  });
+
   it("slugifies headings for hash links", () => {
     expect(slugifyDocsHeading("Café API: Quick Start!")).toBe(
       "cafe-api-quick-start"

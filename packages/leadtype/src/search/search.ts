@@ -1,5 +1,5 @@
 import type { LocalizedDocsMetadata } from "../i18n";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import { createDocsHeadingSlugger } from "../internal/docs-heading";
 import { editDistanceWithin } from "../internal/edit-distance";
 import {
   type DocsFrontmatter,
@@ -548,12 +548,9 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const headingPath: string[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
-  // Repeated heading slugs must not collide. github-slugger (what rehype-slug
-  // uses) tracks allocated IDs and bumps the suffix until the candidate is
-  // free, so `## API` / `## API` / `## API-1` is `api`, `api-1`, `api-1-1`
-  // rather than two chunks sharing `api-1`. Counting every heading — including
-  // ones whose section produces no chunk — keeps later IDs in step.
-  const allocatedAnchors = new Set<string>();
+  // Count every heading, including headings that produce no search chunk, so
+  // search anchors stay aligned with the TOC and rendered page.
+  const slugger = createDocsHeadingSlugger();
   let currentHeadingPath: string[] = [];
   let currentAnchor = "";
   let inCodeFence = false;
@@ -576,21 +573,6 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     codeLines.length = 0;
   };
 
-  const nextAnchor = (title: string): string => {
-    const slug = slugifyDocsHeading(title);
-    if (!slug) {
-      return "";
-    }
-    let candidate = slug;
-    let suffix = 0;
-    while (allocatedAnchors.has(candidate)) {
-      suffix += 1;
-      candidate = `${slug}-${suffix}`;
-    }
-    allocatedAnchors.add(candidate);
-    return candidate;
-  };
-
   for (const line of stripFrontmatter(content).split("\n")) {
     if (FENCE_PATTERN.test(line.trim())) {
       inCodeFence = !inCodeFence;
@@ -610,7 +592,7 @@ function collectSectionBlocks(content: string): SectionBlock[] {
           headingPath.length = level - 1;
           headingPath.push(title);
           currentHeadingPath = [...headingPath];
-          currentAnchor = nextAnchor(title);
+          currentAnchor = slugger.slug(title);
         }
         continue;
       }
