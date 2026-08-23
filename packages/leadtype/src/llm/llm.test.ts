@@ -4139,6 +4139,25 @@ describe("extractDocsTableOfContents", () => {
     expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
   });
 
+  it("does not close a code fence with a shorter matching marker", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## Before",
+        "````md",
+        "```",
+        "## Still hidden",
+        "````",
+        "## After",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["Before", "After"]);
+  });
+
   it("deduplicates repeated heading anchors per page", () => {
     const toc = extractDocsTableOfContents(
       ["## Install", "### Install", "## Install"].join("\n"),
@@ -4163,6 +4182,163 @@ describe("extractDocsTableOfContents", () => {
       urlWithHash: "/docs/example#install-2",
       absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-2",
     });
+  });
+
+  it("counts headings outside the level range when numbering anchors", () => {
+    // The rendered page slugs every heading, so the h1 claims `install` and
+    // the h2 below it renders as `install-1` — even though the default 2..3
+    // range keeps the h1 out of the TOC itself.
+    const toc = extractDocsTableOfContents(
+      ["# Install", "## Install", "#### Setup", "### Setup"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc[0]).toMatchObject({
+      id: "install-1",
+      level: 2,
+      urlWithHash: "/docs/example#install-1",
+      absoluteUrlWithHash: "https://leadtype.dev/docs/example#install-1",
+    });
+    expect(toc[0]?.children[0]).toMatchObject({
+      id: "setup-1",
+      level: 3,
+      urlWithHash: "/docs/example#setup-1",
+    });
+  });
+
+  it("does not collide a later Foo-1 heading with a numbered duplicate", () => {
+    const toc = extractDocsTableOfContents(
+      ["## Foo", "## Foo", "## Foo-1"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.id)).toEqual(["foo", "foo-1", "foo-1-1"]);
+  });
+
+  it("still suffixes empty slugs the way the previous counter did", () => {
+    const toc = extractDocsTableOfContents(["## !!!", "## !!!"].join("\n"), {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+  });
+
+  it("counts empty ATX headings when numbering later empty slugs", () => {
+    const toc = extractDocsTableOfContents(["##", "## !!!"].join("\n"), {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => item.id)).toEqual(["-1"]);
+  });
+
+  it("counts Setext headings when numbering anchors", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "=======", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toHaveLength(1);
+    expect(toc[0]).toMatchObject({
+      id: "install-1",
+      title: "Install",
+      level: 2,
+      urlWithHash: "/docs/example#install-1",
+    });
+  });
+
+  it("includes in-range Setext headings and ignores underlined text in fences", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "Setup",
+        "------",
+        "```md",
+        "Hidden",
+        "=======",
+        "```",
+        "## Configure",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "setup", title: "Setup" },
+      { id: "configure", title: "Configure" },
+    ]);
+  });
+
+  it("includes every paragraph line in a Setext heading", () => {
+    const toc = extractDocsTableOfContents(
+      ["First line", "second line", "---"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc).toEqual([
+      {
+        id: "first-line-second-line",
+        title: "First line second line",
+        level: 2,
+        urlPath: "/docs/example",
+        urlWithHash: "/docs/example#first-line-second-line",
+        absoluteUrlWithHash:
+          "https://leadtype.dev/docs/example#first-line-second-line",
+        children: [],
+      },
+    ]);
+  });
+
+  it("does not treat a thematic break after a blank line as a Setext heading", () => {
+    const toc = extractDocsTableOfContents(
+      ["A paragraph.", "", "---", "## After"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.title)).toEqual(["After"]);
+  });
+
+  it("does not treat block constructs before a thematic break as Setext headings", () => {
+    const blockConstructs = [
+      "> Note",
+      "- Note",
+      "    Note",
+      "<aside>Note</aside>",
+      "<Callout>Note</Callout>",
+      "{note}",
+      "[note]: /docs/note",
+      "* * *",
+      "---",
+    ];
+
+    for (const blockConstruct of blockConstructs) {
+      const toc = extractDocsTableOfContents(
+        [blockConstruct, "---", "## Note"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => item.id)).toEqual(["note"]);
+    }
   });
 
   it("respects custom heading level ranges", () => {
