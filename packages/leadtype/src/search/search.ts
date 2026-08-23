@@ -1,5 +1,8 @@
 import type { LocalizedDocsMetadata } from "../i18n";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import {
+  createDocsHeadingSlugger,
+  scanDocsMarkdown,
+} from "../internal/docs-heading";
 import { editDistanceWithin } from "../internal/edit-distance";
 import {
   type DocsFrontmatter,
@@ -33,9 +36,6 @@ const PROXIMITY_MATCH_BOOST = 0.8;
 const MAX_PREFIX_EXPANSIONS = 24;
 const MAX_TYPO_EXPANSIONS = 16;
 const PROXIMITY_WINDOW = 8;
-const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
-const FENCE_PATTERN = /^```/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
@@ -315,6 +315,8 @@ type MutableChunk = {
 
 type SectionBlock = {
   headingPath: string[];
+  /** Anchor id of this section's own heading, duplicate-suffixed. */
+  anchor: string;
   text: string;
   codeText: string;
 };
@@ -473,10 +475,6 @@ export function countDocsSearchTerms(input: string): Map<string, number> {
   return counts;
 }
 
-function stripFrontmatter(input: string): string {
-  return input.replace(FRONTMATTER_PATTERN, "");
-}
-
 function hasUnsupportedControlCharacter(input: string): boolean {
   for (const character of input) {
     const codePoint = character.codePointAt(0);
@@ -546,8 +544,11 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const headingPath: string[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
+  // Count every heading, including headings that produce no search chunk, so
+  // search anchors stay aligned with the TOC and rendered page.
+  const slugger = createDocsHeadingSlugger();
   let currentHeadingPath: string[] = [];
-  let inCodeFence = false;
+  let currentAnchor = "";
 
   const flush = () => {
     const text = cleanMarkdown(textLines.join("\n"));
@@ -558,6 +559,7 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     if (text || codeText) {
       blocks.push({
         headingPath: currentHeadingPath,
+        anchor: currentAnchor,
         text,
         codeText,
       });
@@ -566,32 +568,24 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     codeLines.length = 0;
   };
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    if (FENCE_PATTERN.test(line.trim())) {
-      inCodeFence = !inCodeFence;
-      codeLines.push(line);
+  const consumeHeading = (title: string, level: number): void => {
+    headingPath.length = level - 1;
+    headingPath.push(title);
+    currentHeadingPath = [...headingPath];
+    currentAnchor = slugger.slug(title);
+  };
+
+  for (const token of scanDocsMarkdown(content)) {
+    if (token.kind === "heading") {
+      flush();
+      consumeHeading(token.title, token.level);
       continue;
     }
-
-    if (!inCodeFence) {
-      const headingMatch = HEADING_PATTERN.exec(line.trim());
-      if (headingMatch) {
-        flush();
-        const levelMarker = headingMatch[1];
-        const rawTitle = headingMatch[2];
-        if (levelMarker && rawTitle) {
-          const level = levelMarker.length;
-          headingPath.length = level - 1;
-          headingPath.push(cleanMarkdown(rawTitle));
-          currentHeadingPath = [...headingPath];
-        }
-        continue;
-      }
-      textLines.push(line);
+    if (token.kind === "code") {
+      codeLines.push(token.value);
       continue;
     }
-
-    codeLines.push(line);
+    textLines.push(token.value);
   }
 
   flush();
@@ -962,7 +956,7 @@ export function createDocsSearchIndex(
           urlPath: doc.urlPath,
           absoluteUrl: doc.absoluteUrl,
           relativePath: doc.relativePath,
-          anchor: slugifyDocsHeading(block.headingPath.at(-1) ?? ""),
+          anchor: block.anchor,
           headingPath: block.headingPath,
           text: chunkText,
           codeText,
