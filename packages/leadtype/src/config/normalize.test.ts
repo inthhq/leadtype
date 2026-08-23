@@ -941,6 +941,22 @@ describe("baseUrl", () => {
     expect(ftpMessage).not.toContain("s3cret");
     expect(ftpMessage).not.toContain("buildbot");
 
+    // A non-special custom scheme parses without populating URL userinfo, so
+    // its protocol diagnostic must redact credential-shaped authored text.
+    let customSchemeMessage = "";
+    try {
+      normalize({
+        product,
+        baseUrl: "htps:buildbot:s3cret@acme.dev:bad",
+      });
+    } catch (error) {
+      customSchemeMessage = String(error);
+    }
+    expect(customSchemeMessage).toMatch(/must be an http or https URL/);
+    expect(customSchemeMessage).toContain("htps:<redacted>@acme.dev:bad");
+    expect(customSchemeMessage).not.toContain("s3cret");
+    expect(customSchemeMessage).not.toContain("buildbot");
+
     // A credentialed value can also fail to parse at all — an out-of-range
     // port throws in `new URL` before the credentials check runs — so the
     // parse-failure echo must redact userinfo-shaped text too.
