@@ -4338,6 +4338,7 @@ describe("extractDocsTableOfContents", () => {
         heading: '<em title="1 > 0">Install</em>',
         title: "Install",
       },
+      { heading: "Install <!-- don't -->", title: "Install" },
       { heading: "<hgroup>Note</hgroup>", title: "Note" },
     ];
 
@@ -4356,6 +4357,17 @@ describe("extractDocsTableOfContents", () => {
         { id: `${id}-1`, title },
       ]);
     }
+  });
+
+  it("keeps a trailing marker wrapped in inline HTML in the heading title", () => {
+    const toc = extractDocsTableOfContents("## Anchors and <code>#</code>", {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "anchors-and", title: "Anchors and #" },
+    ]);
   });
 
   it("does not treat a thematic break after a blank line as a Setext heading", () => {

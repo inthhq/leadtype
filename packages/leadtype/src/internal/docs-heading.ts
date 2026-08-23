@@ -109,6 +109,13 @@ function stripHtmlTags(input: string): string {
     }
 
     tagBuffer += character;
+    if (tagBuffer.startsWith("<!--")) {
+      if (tagBuffer.endsWith("-->")) {
+        output.push(" ");
+        tagBuffer = "";
+      }
+      continue;
+    }
     if (quote !== null) {
       if (character === quote) {
         quote = null;
@@ -132,8 +139,7 @@ function stripHtmlTags(input: string): string {
 }
 
 function cleanHeadingText(input: string): string {
-  return stripHtmlTags(input)
-    .replace(HEADING_CLOSING_SEQUENCE_PATTERN, "")
+  return stripHtmlTags(input.replace(HEADING_CLOSING_SEQUENCE_PATTERN, ""))
     .replace(MARKDOWN_LINK_PATTERN, "$1")
     .replace(HEADING_INLINE_PATTERN, " ")
     .replace(WHITESPACE_PATTERN, " ")

@@ -648,6 +648,13 @@ describe("createDocsSearchIndex and searchDocs", () => {
         "## Note",
         "The ATX section covers sprockets.",
       ].join("\n"),
+      [
+        "Install <!-- don't -->",
+        "---",
+        "Inline comment section covers widgets.",
+        "## Install",
+        "The ATX section covers sprockets.",
+      ].join("\n"),
     ];
 
     for (const content of fixtures) {
@@ -681,6 +688,29 @@ describe("createDocsSearchIndex and searchDocs", () => {
       expect(searchAnchors.length).toBeGreaterThan(1);
       expect(searchAnchors).toEqual(tocIds);
     }
+  });
+
+  it("keeps inline HTML text in search heading labels", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "anchors",
+          title: "Anchors",
+          urlPath: "/docs/anchors",
+          absoluteUrl: "https://leadtype.dev/docs/anchors",
+          relativePath: "anchors.mdx",
+          content: [
+            "## Anchors and <code>#</code>",
+            "Literal marker covers widgets.",
+          ].join("\n"),
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    const result = searchDocs(index, "widgets")[0];
+    expect(result?.headingPath.at(-1)).toBe("Anchors and #");
+    expect(result?.urlWithHash).toBe("/docs/anchors#anchors-and");
   });
 
   it("slugifies headings for hash links", () => {
