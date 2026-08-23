@@ -114,7 +114,7 @@ execution, no writes.
 | Helper | Purpose |
 | --- | --- |
 | `validateDocsQuery(input, { maxChars, fieldName? })` | Trim and cap query text. |
-| `readJsonWithLimit(request, { maxBytes })` | Reject oversized JSON bodies before parse. |
+| `readJsonWithLimit(request, { maxBytes, allowEmpty? })` | Reject oversized JSON before parsing. With `allowEmpty: true`, bodyless and whitespace-only requests resolve to `undefined`. |
 | `getClientIdentifier(request, { fallback? })` | Read proxy IP headers for a limiter key. |
 | `createMemoryRateLimiter({ limit, windowMs })` | In-memory `RateLimiter` (demos). |
 

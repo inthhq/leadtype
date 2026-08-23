@@ -36,6 +36,10 @@ export function createPrerenderRoutes(
   config: StaticSlugConfig
 ): () => Promise<string[]> {
   return async () => {
+    const basePath =
+      config.basePath === undefined
+        ? undefined
+        : normalizeUrlPath(config.basePath);
     // Without an override, each page's mount-aware `urlPath` *is* its route —
     // this is what makes `createPrerenderRoutes({ source })` correct for a
     // collection source (whose routePrefix is not `/docs`), for `mounts`, and
@@ -45,21 +49,11 @@ export function createPrerenderRoutes(
     // so pages that leave the source prefix are emitted rather than thrown:
     // the string *is* the request path. The other adapters throw because
     // their params would be served under the catch-all's own prefix.
-    if (config.basePath === undefined) {
+    // A site-root basePath has the same result: absolute page URLs already
+    // include every collection prefix and mount.
+    if (basePath === undefined || basePath === "/") {
       const pages = await config.source.listPages();
       return pages.map((page) => normalizeUrlPath(page.urlPath));
-    }
-    const basePath = normalizeUrlPath(config.basePath);
-    // A site-root catch-all is not a re-root: pass `basePath` through so
-    // pages under every collection prefix are enumerated, matching the
-    // other adapters. Re-rooting against the primary prefix would throw
-    // on `/changelog/1-0`.
-    if (basePath === "/") {
-      const slugs = await listJoinedSlugs({
-        source: config.source,
-        basePath: config.basePath,
-      });
-      return slugs.map((slug) => joinUrlPath("/", slug));
     }
     // An explicit prefix re-roots: slugs are taken relative to the source's
     // own prefix (so a mount that remaps `policies/privacy` →

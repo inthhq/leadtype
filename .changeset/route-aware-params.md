@@ -13,4 +13,4 @@ Params are now each page's mount-aware `urlPath` relative to a route base, and t
 - A new `basePath` option on every params/load helper names the prefix the catch-all is actually mounted at; `basePath: "/"` serves a whole multi-collection project from one site-root catch-all with route-prefixed params.
 - A page whose URL falls outside the base throws with the page, its URL, and both fixes — never a param that silently renders the wrong URL.
 
-`mounts` that move pages within the prefix now round-trip correctly (params match the advertised URL and still load the page); raw collection-local slugs passed to the load helpers keep resolving as before.
+`mounts` that move pages within the prefix now round-trip correctly (params match the advertised URL and still load the page). Raw collection-local slugs passed to the load helpers keep resolving unless another page's mounted route claims the same params; in that collision, the route owner wins.

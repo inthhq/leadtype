@@ -1,12 +1,18 @@
 /**
  * Redirect computation for renamed and deleted docs pages (issue #98).
  *
- * A committed lockfile records every page's public path and a content hash.
- * On the next generate, a path that disappeared while its hash reappeared at
- * a new path is a pure move and gets an automatic permanent redirect. A path
- * that disappeared with no successor fails the build loudly — the author
- * either adds `redirectFrom` frontmatter to the successor page or lists the
- * path under `redirects.removed` in the docs config to serve 410 Gone.
+ * A committed lockfile records every page's public path and a content hash
+ * of the authored source body (frontmatter excluded). On the next generate,
+ * a path that disappeared while its hash reappeared at a new path is a pure
+ * move and gets an automatic permanent redirect. A path that disappeared
+ * with no successor fails the build loudly — the author either adds
+ * `redirectFrom` frontmatter to the successor page or lists the path under
+ * `redirects.removed` in the docs config to serve 410 Gone.
+ *
+ * Hashes come from the authored source when one exists. Generated-only
+ * pages (OpenAPI overlays) fall back to the mirror. Fingerprinting
+ * generated markdown for authored pages rewrites the lockfile when
+ * unrelated type tables, includes, or converter output change.
  *
  * This module is runtime-agnostic (no filesystem access) so `resolveRedirect`
  * can run inside edge/server handlers. Lockfile and artifact IO lives in
@@ -28,7 +34,11 @@ export type DocsRedirect = {
 export type DocsPathsLockfilePage = {
   /** Public URL path of the page, e.g. `/docs/guides/script-loader`. */
   path: string;
-  /** Content hash of the page body (frontmatter excluded). */
+  /**
+   * Content hash of the authored source body (frontmatter excluded). Falls
+   * back to the generated markdown mirror only when no authored source
+   * exists (OpenAPI-generated pages).
+   */
   hash: string;
 };
 

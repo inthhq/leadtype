@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   AgentReadabilityManifest,
+  LocalizedAgentReadabilityManifests,
   MarkdownMirrorTarget,
+  MarkdownReadErrorHandler,
+  MissingMarkdownStatus,
 } from "../llm/readability";
 import {
   createAgentMarkdownResponse,
@@ -23,7 +26,17 @@ export type AgentArtifactHandlerConfig = {
   artifactBasePath?: string;
   publicDir?: string;
   readMarkdownFile?: ReadMarkdownFile;
+  /** Generated locale manifests, keyed by locale code, for exact cross-locale reads. */
+  localizedManifests?: LocalizedAgentReadabilityManifests;
+  /** Observe reader failures before the handler returns its stable 500 response. */
+  onReadError?: MarkdownReadErrorHandler;
   cacheControl?: string | null;
+  /**
+   * Status for a route with no page behind it. Defaults to `200`; pass `404`
+   * to have unknown routes read as misses. A manifest-known page whose mirror
+   * cannot be read still answers 500 either way.
+   */
+  missingStatus?: MissingMarkdownStatus;
 };
 
 export type LoadPageConfig = {
@@ -33,7 +46,8 @@ export type LoadPageConfig = {
    * `urlPath` segments relative to it, so a page a mount moved elsewhere under
    * the prefix still loads. Pass `"/"` for a site-root catch-all.
    *
-   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   * @defaultValue the source's own `routePrefix`; when absent, loading keeps
+   * collection-local slug behavior.
    */
   basePath?: string;
 };
@@ -45,7 +59,8 @@ export type StaticSlugConfig = {
    * are each page's `urlPath` relative to it. Pass `"/"` for a site-root
    * catch-all serving every collection.
    *
-   * @defaultValue the source's own `routePrefix` (`"/docs"` when absent)
+   * @defaultValue the source's own `routePrefix`; when absent, param helpers
+   * keep collection-local slugs. Nuxt prerendering emits absolute `urlPath`s.
    */
   basePath?: string;
 };
@@ -140,7 +155,7 @@ export async function listRouteSlugs(
     const slug = routeSlugFromUrlPath(page.urlPath, base);
     if (slug === null) {
       throw new Error(
-        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}" — a catch-all mounted at "${base}" cannot serve it. Mount a catch-all at the prefix that owns the page and pass that prefix as \`basePath\`; hand a multi-collection project that collection's source (\`project.getSource(key)\`); or pass \`basePath: "/"\` for a site-root catch-all. A same-tree \`mounts\` entry is not its own source — give the mount an empty pathPrefix so \`routePrefix\` is the catch-all, or split that subtree into its own collection.`
+        `leadtype: page "${page.relativePath}${page.extension}" resolves to "${page.urlPath}", outside the route base "${base}". A catch-all mounted at "${base}" cannot serve it. Pass \`basePath: "/"\` for a site-root catch-all, or split pages outside the base into their own collection and pass that collection's source (\`project.getSource(key)\`) to a catch-all at its route prefix.`
       );
     }
     return slug;
@@ -241,31 +256,56 @@ function getArtifactResponse(
 ): Response | null {
   const url = new URL(request.url);
   const requestOrigin = url.origin;
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    return null;
+  }
+  const withoutHeadBody = (response: Response | null): Response | null => {
+    if (!(response && method === "HEAD")) {
+      return response;
+    }
+    return new Response(null, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  };
   switch (url.pathname) {
     case "/sitemap.xml":
-      return createSitemapXmlResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createSitemapXmlResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          cacheControl: config.cacheControl,
+        })
+      );
     case "/sitemap.md":
-      return createSitemapMarkdownResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createSitemapMarkdownResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          cacheControl: config.cacheControl,
+        })
+      );
     case "/robots.txt":
-      return createRobotsTxtResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createRobotsTxtResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          cacheControl: config.cacheControl,
+        })
+      );
+    // Returns null when the site publishes no APIs, so the well-known path
+    // 404s instead of serving an empty catalog.
     case "/.well-known/api-catalog":
-      return createApiCatalogResponse({
-        manifest: config.manifest,
-        requestOrigin,
-        cacheControl: config.cacheControl,
-      });
+      return withoutHeadBody(
+        createApiCatalogResponse({
+          manifest: config.manifest,
+          requestOrigin,
+          method,
+          cacheControl: config.cacheControl,
+        })
+      );
     default:
       return null;
   }
@@ -291,6 +331,11 @@ export function createAgentArtifactHandler(
       readMarkdownFile,
       requestOrigin: url.origin,
       cacheControl: config.cacheControl,
+      ...(config.localizedManifests
+        ? { localizedManifests: config.localizedManifests }
+        : {}),
+      ...(config.onReadError ? { onReadError: config.onReadError } : {}),
+      ...(config.missingStatus ? { missingStatus: config.missingStatus } : {}),
     });
   };
 }

@@ -214,7 +214,8 @@ export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
      * mount's `urlPrefix`, `"/docs"` when no mount claims the root. Framework
      * adapters use it as the default route base when deriving static params
      * from `urlPath`. Optional so hand-rolled sources keep satisfying the
-     * contract; adapters keep using collection-local slugs when it is absent.
+     * contract. Param helpers keep using collection-local slugs when it is
+     * absent; Nuxt prerendering emits each page's absolute `urlPath` instead.
      */
     routePrefix?: string;
     /** Compute the docs navigation from configured groups + filesystem state. */
@@ -858,6 +859,7 @@ export async function createDocsSource<
         version: index.version,
         generatedAt: index.generatedAt,
         chunks: [],
+        codeChunks: [],
       },
     };
   }
