@@ -715,7 +715,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
 
   it("keeps standalone HTML tags from shifting empty heading anchors", () => {
     const content = [
-      '<span title="1 > 0">',
+      '<span title="1 < 2 > 0">',
       "---",
       "</span>",
       "## !!!",

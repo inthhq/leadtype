@@ -4411,7 +4411,9 @@ describe("extractDocsTableOfContents", () => {
 
   it("recognizes standalone HTML tags with quoted delimiters", () => {
     const toc = extractDocsTableOfContents(
-      ['<span title="1 > 0">', "---", "</span>", "## !!!", "## !!!"].join("\n"),
+      ['<span title="1 < 2 > 0">', "---", "</span>", "## !!!", "## !!!"].join(
+        "\n"
+      ),
       {
         urlPath: "/docs/example",
         absoluteUrl: "https://leadtype.dev/docs/example",

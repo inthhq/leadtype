@@ -78,7 +78,7 @@ const HTML_BLOCK_TAG_PATTERN = new RegExp(
   "i"
 );
 const STANDALONE_HTML_TAG_PATTERN =
-  /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"<]*"|'[^'<]*')*)?\/?>[ \t]*$/;
+  /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"]*"|'[^']*')*)?\/?>[ \t]*$/;
 const MDX_BLOCK_START_PATTERN =
   /^ {0,3}(?:\{|<\/?[A-Z][A-Za-z0-9_.:-]*(?:[ \t/>]|$))/;
 const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
