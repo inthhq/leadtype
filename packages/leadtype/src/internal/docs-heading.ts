@@ -8,9 +8,10 @@ const INDENTED_CODE_PATTERN = /^(?: {4}|\t)/;
 const BLOCKQUOTE_PATTERN = /^ {0,3}>/;
 const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
 const HTML_BLOCK_START_PATTERN =
-  /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
+  /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t\r>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
 const HTML_DECLARATION_START_PATTERN = /^<![A-Za-z]/;
-const HTML_TAG_START_PATTERN = /^<\/?[A-Za-z][A-Za-z0-9-]*(?=[\t\n\f\r />])/;
+const HTML_TAG_START_PATTERN =
+  /^<\/?(?:[A-Za-z][A-Za-z0-9-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?=[\t\n\f\r />])/;
 export const docsHtmlBlockTagNames = [
   "address",
   "article",
@@ -76,13 +77,13 @@ export const docsHtmlBlockTagNames = [
   "ul",
 ] as const;
 const HTML_BLOCK_TAG_PATTERN = new RegExp(
-  `^ {0,3}</?(?:${docsHtmlBlockTagNames.join("|")})(?:[ \\t]|/?>|$)`,
+  `^ {0,3}</?(?:${docsHtmlBlockTagNames.join("|")})(?:[ \\t\\r]|/?>|$)`,
   "i"
 );
 const STANDALONE_HTML_TAG_PATTERN =
   /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"]*"|'[^']*')*)?\/?>[ \t\r]*$/;
 const MDX_BLOCK_START_PATTERN =
-  /^ {0,3}(?:\{|<\/?[A-Z][A-Za-z0-9_.:-]*(?:[ \t/>]|$))/;
+  /^ {0,3}(?:\{|<\/?(?:[A-Z][A-Za-z0-9_$:-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?:[ \t\r/>]|$))/;
 const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
 const THEMATIC_BREAK_PATTERN =
   /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
@@ -91,9 +92,8 @@ const HEADING_INLINE_PATTERN = /[`*_~[\](){}|]/g;
 const HEADING_CLOSING_SEQUENCE_PATTERN = /\s+#+\s*$/;
 const WHITESPACE_PATTERN = /\s+/g;
 
-function normalizeHeadingText(input: string): string {
-  return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
-}
+const normalizeHeadingText = (input: string): string =>
+  input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
 
 type HtmlConstruct =
   | { closingSequence: "-->" | "?>" | "]]>"; tracksQuotes: false }

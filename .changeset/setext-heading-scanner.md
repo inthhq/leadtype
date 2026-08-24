@@ -2,4 +2,4 @@
 "leadtype": patch
 ---
 
-Keep table-of-contents and search anchors aligned for Setext headings with inline markup, and ignore underlines indented as code.
+Keep table-of-contents and search anchors aligned with rendered Setext and ATX headings containing inline HTML or MDX markup, including indentation and line-ending edge cases.

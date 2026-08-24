@@ -4370,6 +4370,21 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
+  it("strips MDX member-expression tags from ATX heading text", () => {
+    const toc = extractDocsTableOfContents(
+      ["## <Icons.Install /> Install", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
@@ -4409,6 +4424,39 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("recognizes lowercase MDX member-expression flow tags", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "<components.Note>",
+        "---",
+        "</components.Note>",
+        "## Components Note",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.id)).toEqual(["components-note"]);
+  });
+
+  it("recognizes bare block starters for LF and CRLF", () => {
+    for (const blockStart of ["<pre", "<div", "<Callout"]) {
+      for (const lineEnding of ["\n", "\r\n"]) {
+        const toc = extractDocsTableOfContents(
+          ["Title", blockStart, "---", "## After"].join(lineEnding),
+          {
+            urlPath: "/docs/example",
+            absoluteUrl: "https://leadtype.dev/docs/example",
+          }
+        );
+
+        expect(toc.map((item) => item.id)).toEqual(["after"]);
+      }
+    }
+  });
+
   it("recognizes standalone HTML tags with quoted delimiters for LF and CRLF", () => {
     for (const lineEnding of ["\n", "\r\n"]) {
       const toc = extractDocsTableOfContents(
@@ -4444,6 +4492,21 @@ describe("extractDocsTableOfContents", () => {
       { id: "install", title: "Install" },
       { id: "install-1", title: "Install" },
       { id: "install-2", title: "Install" },
+    ]);
+  });
+
+  it("strips CDATA and preserves unterminated HTML constructs", () => {
+    const toc = extractDocsTableOfContents(
+      ["## Install <![CDATA[x]]>", '## Install <em title="x'].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-em-title-x", title: 'Install <em title="x' },
     ]);
   });
 

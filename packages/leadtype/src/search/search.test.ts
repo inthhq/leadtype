@@ -713,6 +713,92 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.urlWithHash).toBe("/docs/anchors#anchors-and");
   });
 
+  it("keeps MDX member-expression heading labels aligned with anchors", () => {
+    const content = [
+      "## <Icons.Install /> Install",
+      "Icon section covers widgets.",
+      "## Install",
+      "Plain section covers sprockets.",
+      "<components.Note>",
+      "---",
+      "</components.Note>",
+      "## Components Note",
+      "Member flow section covers gadgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#components-note"
+    );
+  });
+
+  it("keeps bare block starters aligned for LF and CRLF", () => {
+    for (const blockStart of ["<pre", "<div", "<Callout"]) {
+      for (const lineEnding of ["\n", "\r\n"]) {
+        const content = [
+          "Title",
+          blockStart,
+          "---",
+          "## After",
+          "After section covers widgets.",
+        ].join(lineEnding);
+        const index = createDocsSearchIndex(
+          [
+            {
+              id: "fixture",
+              title: "Fixture",
+              urlPath: "/docs/fixture",
+              absoluteUrl: "https://leadtype.dev/docs/fixture",
+              relativePath: "fixture.mdx",
+              content,
+            },
+          ],
+          { generatedAt: "2026-01-01T00:00:00.000Z" }
+        );
+        const tocIds = flattenTocIds(
+          extractDocsTableOfContents(content, {
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+          })
+        );
+        const searchAnchors = index.chunks.map(
+          (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+        );
+
+        expect(tocIds).toEqual(["after"]);
+        expect(searchAnchors).toEqual(["", ...tocIds]);
+      }
+    }
+  });
+
   it("keeps standalone HTML tags from shifting LF or CRLF heading anchors", () => {
     for (const lineEnding of ["\n", "\r\n"]) {
       const content = [
