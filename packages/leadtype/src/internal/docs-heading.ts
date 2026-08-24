@@ -95,6 +95,7 @@ const WHITESPACE_PATTERN = /\s+/g;
 const JAVASCRIPT_IDENTIFIER_START_PATTERN = /^[$_\p{ID_Start}]$/u;
 const JAVASCRIPT_IDENTIFIER_PART_PATTERN =
   /^(?:[$_\p{ID_Continue}]|\u200C|\u200D)$/u;
+const JAVASCRIPT_WHITESPACE_PATTERN = /^\s$/;
 const JAVASCRIPT_CONTROL_KEYWORDS = new Set([
   "catch",
   "for",
@@ -129,6 +130,33 @@ const getUnicodeCharacterAt = (input: string, index: number): string => {
   const codePoint = input.codePointAt(index);
   return codePoint === undefined ? "" : String.fromCodePoint(codePoint);
 };
+
+function getNextJavaScriptTokenStart(input: string, start: number): string {
+  let cursor = start;
+  while (cursor < input.length) {
+    const character = input[cursor];
+    const nextCharacter = input[cursor + 1];
+    if (
+      character !== undefined &&
+      JAVASCRIPT_WHITESPACE_PATTERN.test(character)
+    ) {
+      cursor += 1;
+      continue;
+    }
+    if (character === "/" && nextCharacter === "/") {
+      const lineEnd = input.indexOf("\n", cursor + 2);
+      cursor = lineEnd < 0 ? input.length : lineEnd + 1;
+      continue;
+    }
+    if (character === "/" && nextCharacter === "*") {
+      const commentEnd = input.indexOf("*/", cursor + 2);
+      cursor = commentEnd < 0 ? input.length : commentEnd + 2;
+      continue;
+    }
+    return getUnicodeCharacterAt(input, cursor);
+  }
+  return "";
+}
 
 type HtmlConstruct =
   | { closingSequence: "-->" | "?>" | "]]>"; tracksQuotes: false }
@@ -402,7 +430,16 @@ function findHtmlConstructEnd(
         pendingAsyncDeclaration = null;
       }
 
-      if (isKeywordPosition && identifier === "class") {
+      const nextClassTokenStart =
+        isKeywordPosition && identifier === "class"
+          ? getNextJavaScriptTokenStart(input, identifierEnd)
+          : "";
+      const startsClass =
+        isKeywordPosition &&
+        identifier === "class" &&
+        (nextClassTokenStart === "{" ||
+          JAVASCRIPT_IDENTIFIER_START_PATTERN.test(nextClassTokenStart));
+      if (startsClass) {
         pendingClasses.push({
           allowsRegexAfterClose: wasStatementStart,
           braceDepth,
