@@ -106,6 +106,8 @@ const JAVASCRIPT_REGEX_PREFIX_KEYWORDS = new Set([
   "await",
   "case",
   "delete",
+  "do",
+  "else",
   "in",
   "instanceof",
   "new",
@@ -147,6 +149,48 @@ function getHtmlConstruct(input: string): HtmlConstruct | null {
   return null;
 }
 
+const closesJavaScriptControlBlock = (prefix: string): boolean => {
+  if (!prefix.endsWith(")")) {
+    return false;
+  }
+
+  let parenthesisDepth = 0;
+  for (let index = prefix.length - 1; index >= 0; index -= 1) {
+    const character = prefix[index];
+    if (character === ")") {
+      parenthesisDepth += 1;
+      continue;
+    }
+    if (character !== "(") {
+      continue;
+    }
+    parenthesisDepth -= 1;
+    if (parenthesisDepth !== 0) {
+      continue;
+    }
+
+    const beforeParenthesis = prefix.slice(0, index).trimEnd();
+    let identifierStart = beforeParenthesis.length;
+    while (
+      identifierStart > 0 &&
+      JAVASCRIPT_IDENTIFIER_PART_PATTERN.test(
+        beforeParenthesis[identifierStart - 1] ?? ""
+      )
+    ) {
+      identifierStart -= 1;
+    }
+    const identifier = beforeParenthesis.slice(identifierStart);
+    const beforeIdentifier = beforeParenthesis
+      .slice(0, identifierStart)
+      .trimEnd();
+    return (
+      !beforeIdentifier.endsWith(".") &&
+      JAVASCRIPT_CONTROL_KEYWORDS.has(identifier)
+    );
+  }
+  return false;
+};
+
 const closesJavaScriptStatementBlock = (prefix: string): boolean => {
   let depth = 0;
   for (let index = prefix.length - 1; index >= 0; index -= 1) {
@@ -164,8 +208,7 @@ const closesJavaScriptStatementBlock = (prefix: string): boolean => {
     }
     const beforeBlock = prefix.slice(0, index).trimEnd();
     return (
-      beforeBlock.endsWith("=>") ||
-      beforeBlock.endsWith(")") ||
+      closesJavaScriptControlBlock(beforeBlock) ||
       /(?:^|[^A-Za-z0-9_$])(?:do|else|finally|try)$/.test(beforeBlock)
     );
   }

@@ -906,6 +906,56 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "gauges")[0]?.urlWithHash).toBe("/docs/fixture#0");
   });
 
+  it("keeps regex statements and division around JavaScript bodies aligned", () => {
+    const content = [
+      "## <Badge onClick={() => { if (ready) foo(); else /don't/.test(value); }} /> Install",
+      "Else regex section covers widgets.",
+      "## <Badge onClick={() => { do /don't/.test(value); while (ready); }} /> Install",
+      "Do regex section covers sprockets.",
+      "## <Badge value={function named() {} / 'x > y'} /> Install",
+      "Function division section covers calipers.",
+      "## Install",
+      "Plain section covers gadgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["install", "install-1", "install-2", "install-3"]);
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-3"
+    );
+  });
+
   it("keeps MDX fragment flow and inline heading anchors aligned", () => {
     const content = [
       "<>",

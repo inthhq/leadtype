@@ -4478,6 +4478,28 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("distinguishes regex statements from division around JavaScript bodies", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## <Badge onClick={() => { if (ready) foo(); else /don't/.test(value); }} /> Install",
+        "## <Badge onClick={() => { do /don't/.test(value); while (ready); }} /> Install",
+        "## <Badge value={function named() {} / 'x > y'} /> Install",
+        "## Install",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+      { id: "install-2", title: "Install" },
+      { id: "install-3", title: "Install" },
+    ]);
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
