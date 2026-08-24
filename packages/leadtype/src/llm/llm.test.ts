@@ -4530,6 +4530,34 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("stacks declaration contexts and recognizes statement colons", () => {
+    const tags = [
+      `<Badge onClick={() => { function helper(callback = function nested() {}) {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { class Outer extends (class Inner {}) {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { label: {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { switch (value) { case 1: {} /don't/.test(value); } }} />`,
+      `<Badge onClick={() => { switch (value) { case ready ? one : two: {} /don't/.test(value); } }} />`,
+      `<Badge value={(function outer(callback = function nested() {}) {}) / "x > y"} />`,
+      `<Badge value={(class Outer extends (class Inner {}) {}) / "x > y"} />`,
+      `<Badge value={{ value: {} / "x > y" }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),

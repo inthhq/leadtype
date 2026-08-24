@@ -131,7 +131,17 @@ type JavaScriptBraceContext = {
   statementBody: boolean;
 };
 
-type JavaScriptParenthesisKind = "control" | "function" | "other";
+type JavaScriptParenthesisContext =
+  | { kind: "control" }
+  | { declaration: boolean; kind: "function" }
+  | { kind: "other" };
+
+type JavaScriptCaseColonContext = {
+  braceDepth: number;
+  bracketDepth: number;
+  conditionalDepth: number;
+  parenthesisDepth: number;
+};
 
 function getHtmlConstruct(input: string): HtmlConstruct | null {
   if (input.startsWith("<!--")) {
@@ -174,22 +184,26 @@ function findHtmlConstructEnd(
   let javascriptRegex = false;
   let javascriptRegexAllowed = true;
   let javascriptStatementStart = false;
+  let bracketDepth = 0;
+  let caseColonContext: JavaScriptCaseColonContext | null = null;
   let nextIdentifierIsProperty = false;
   let nextBraceContext: JavaScriptBraceContext | null = null;
   let pendingAsyncDeclaration: boolean | null = null;
-  let pendingClass: {
+  const pendingClasses: Array<{
     allowsRegexAfterClose: boolean;
+    braceDepth: number;
     parenthesisDepth: number;
-  } | null = null;
+  }> = [];
   let pendingControlParenthesis: "for" | "other" | null = null;
-  let pendingFunctionDeclaration: boolean | null = null;
-  let awaitingFunctionParameters = false;
+  let pendingLabelColon = false;
+  let awaitingFunctionParameters: boolean | null = null;
   const braceContexts: JavaScriptBraceContext[] = [];
-  const parenthesisKinds: JavaScriptParenthesisKind[] = [];
+  const parenthesisContexts: JavaScriptParenthesisContext[] = [];
   let quote: '"' | "'" | null = null;
   let regexCharacterClass = false;
   const templateInterpolationDepths: Array<number | null> = [];
   for (let index = start; index < input.length; index += 1) {
+    const previousCharacter = input[index - 1];
     const character = input[index];
     const nextCharacter = input[index + 1];
     if (javascriptComment === "line") {
@@ -300,12 +314,14 @@ function findHtmlConstructEnd(
         javascriptRegex = true;
         regexCharacterClass = false;
         javascriptStatementStart = false;
+        pendingLabelColon = false;
         nextIdentifierIsProperty = false;
         nextBraceContext = null;
         continue;
       }
       javascriptRegexAllowed = true;
       javascriptStatementStart = false;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       continue;
@@ -313,6 +329,7 @@ function findHtmlConstructEnd(
     if (character === '"' || character === "'") {
       quote = character;
       javascriptStatementStart = false;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       continue;
@@ -320,6 +337,7 @@ function findHtmlConstructEnd(
     if (braceDepth > 0 && character === "`") {
       templateInterpolationDepths.push(null);
       javascriptStatementStart = false;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       continue;
@@ -339,6 +357,10 @@ function findHtmlConstructEnd(
       const identifier = input.slice(index, identifierEnd);
       const wasStatementStart: boolean = javascriptStatementStart;
       const isKeywordPosition = !nextIdentifierIsProperty;
+      const startsCaseClause =
+        isKeywordPosition &&
+        wasStatementStart &&
+        (identifier === "case" || identifier === "default");
       const isControlKeyword =
         isKeywordPosition && JAVASCRIPT_CONTROL_KEYWORDS.has(identifier);
       const preservesForAwait =
@@ -352,20 +374,32 @@ function findHtmlConstructEnd(
       if (isKeywordPosition && identifier === "async") {
         pendingAsyncDeclaration = wasStatementStart;
       } else if (isKeywordPosition && identifier === "function") {
-        pendingFunctionDeclaration =
-          wasStatementStart || pendingAsyncDeclaration;
-        awaitingFunctionParameters = true;
+        awaitingFunctionParameters =
+          wasStatementStart || Boolean(pendingAsyncDeclaration);
         pendingAsyncDeclaration = null;
       } else {
         pendingAsyncDeclaration = null;
       }
 
       if (isKeywordPosition && identifier === "class") {
-        pendingClass = {
+        pendingClasses.push({
           allowsRegexAfterClose: wasStatementStart,
-          parenthesisDepth: parenthesisKinds.length,
+          braceDepth,
+          parenthesisDepth: parenthesisContexts.length,
+        });
+      }
+
+      if (startsCaseClause) {
+        caseColonContext = {
+          braceDepth,
+          bracketDepth,
+          conditionalDepth: 0,
+          parenthesisDepth: parenthesisContexts.length,
         };
       }
+
+      pendingLabelColon =
+        wasStatementStart && isKeywordPosition && !startsCaseClause;
 
       if (
         isKeywordPosition &&
@@ -399,6 +433,7 @@ function findHtmlConstructEnd(
       }
       javascriptRegexAllowed = false;
       javascriptStatementStart = false;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       pendingControlParenthesis = null;
@@ -406,15 +441,19 @@ function findHtmlConstructEnd(
       continue;
     }
     if (braceDepth > 0 && character === "(") {
-      let parenthesisKind: JavaScriptParenthesisKind = "other";
-      if (awaitingFunctionParameters) {
-        parenthesisKind = "function";
+      let parenthesisContext: JavaScriptParenthesisContext = { kind: "other" };
+      if (awaitingFunctionParameters !== null) {
+        parenthesisContext = {
+          declaration: awaitingFunctionParameters,
+          kind: "function",
+        };
       } else if (pendingControlParenthesis) {
-        parenthesisKind = "control";
+        parenthesisContext = { kind: "control" };
       }
-      parenthesisKinds.push(parenthesisKind);
-      awaitingFunctionParameters = false;
+      parenthesisContexts.push(parenthesisContext);
+      awaitingFunctionParameters = null;
       pendingControlParenthesis = null;
+      pendingLabelColon = false;
       javascriptRegexAllowed = true;
       javascriptStatementStart = false;
       nextIdentifierIsProperty = false;
@@ -422,20 +461,21 @@ function findHtmlConstructEnd(
       continue;
     }
     if (braceDepth > 0 && character === ")") {
-      const parenthesisKind = parenthesisKinds.pop() ?? "other";
-      if (parenthesisKind === "control") {
+      const parenthesisContext = parenthesisContexts.pop() ?? {
+        kind: "other",
+      };
+      if (parenthesisContext.kind === "control") {
         nextBraceContext = {
           allowsRegexAfterClose: true,
           statementBody: true,
         };
         javascriptRegexAllowed = true;
         javascriptStatementStart = true;
-      } else if (parenthesisKind === "function") {
+      } else if (parenthesisContext.kind === "function") {
         nextBraceContext = {
-          allowsRegexAfterClose: pendingFunctionDeclaration ?? false,
+          allowsRegexAfterClose: parenthesisContext.declaration,
           statementBody: true,
         };
-        pendingFunctionDeclaration = null;
         javascriptRegexAllowed = false;
         javascriptStatementStart = false;
       } else {
@@ -447,20 +487,23 @@ function findHtmlConstructEnd(
         javascriptStatementStart = false;
       }
       pendingControlParenthesis = null;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       continue;
     }
     if (character === "{") {
       let braceContext: JavaScriptBraceContext | null = nextBraceContext;
+      const pendingClass = pendingClasses.at(-1);
       const startsClassBody =
-        pendingClass !== null &&
-        pendingClass.parenthesisDepth === parenthesisKinds.length;
+        pendingClass !== undefined &&
+        pendingClass.braceDepth === braceDepth &&
+        pendingClass.parenthesisDepth === parenthesisContexts.length;
       if (startsClassBody && pendingClass) {
         braceContext = {
           allowsRegexAfterClose: pendingClass.allowsRegexAfterClose,
           statementBody: false,
         };
-        pendingClass = null;
+        pendingClasses.pop();
       }
       braceContext ??= javascriptStatementStart
         ? { allowsRegexAfterClose: true, statementBody: true }
@@ -472,6 +515,7 @@ function findHtmlConstructEnd(
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       pendingControlParenthesis = null;
+      pendingLabelColon = false;
       continue;
     }
     if (character === "}" && braceDepth > 0) {
@@ -486,25 +530,45 @@ function findHtmlConstructEnd(
       }
       braceDepth -= 1;
       const braceContext = braceContexts.pop();
+      if (
+        caseColonContext !== null &&
+        braceDepth < caseColonContext.braceDepth
+      ) {
+        caseColonContext = null;
+      }
       javascriptRegexAllowed = braceContext?.allowsRegexAfterClose ?? false;
       javascriptStatementStart = braceContext?.allowsRegexAfterClose ?? false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       pendingControlParenthesis = null;
+      pendingLabelColon = false;
       continue;
     }
     if (braceDepth > 0 && character === "[") {
+      bracketDepth += 1;
       javascriptRegexAllowed = true;
       javascriptStatementStart = false;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       pendingControlParenthesis = null;
       continue;
     }
-    if (braceDepth > 0 && (character === "]" || character === ".")) {
+    if (braceDepth > 0 && character === "]") {
+      bracketDepth = Math.max(0, bracketDepth - 1);
       javascriptRegexAllowed = false;
       javascriptStatementStart = false;
-      nextIdentifierIsProperty = character === ".";
+      pendingLabelColon = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
+      continue;
+    }
+    if (braceDepth > 0 && character === ".") {
+      javascriptRegexAllowed = false;
+      javascriptStatementStart = false;
+      pendingLabelColon = false;
+      nextIdentifierIsProperty = true;
       nextBraceContext = null;
       pendingControlParenthesis = null;
       continue;
@@ -512,6 +576,7 @@ function findHtmlConstructEnd(
     if (braceDepth > 0 && character === "=" && nextCharacter === ">") {
       javascriptRegexAllowed = true;
       javascriptStatementStart = false;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = {
         allowsRegexAfterClose: false,
@@ -526,8 +591,42 @@ function findHtmlConstructEnd(
       character !== undefined &&
       ",:;?=.!&|+-*%^~<>".includes(character)
     ) {
+      const activeCaseColonContext = caseColonContext;
+      const atCaseColonDepth =
+        activeCaseColonContext !== null &&
+        activeCaseColonContext.braceDepth === braceDepth &&
+        activeCaseColonContext.bracketDepth === bracketDepth &&
+        activeCaseColonContext.parenthesisDepth === parenthesisContexts.length;
+      if (
+        character === "?" &&
+        atCaseColonDepth &&
+        activeCaseColonContext !== null &&
+        previousCharacter !== "?" &&
+        nextCharacter !== "?" &&
+        nextCharacter !== "."
+      ) {
+        activeCaseColonContext.conditionalDepth += 1;
+      }
+
+      let startsStatement = character === ";";
+      if (character === ":" && pendingLabelColon) {
+        startsStatement = true;
+      } else if (
+        character === ":" &&
+        atCaseColonDepth &&
+        activeCaseColonContext !== null
+      ) {
+        if (activeCaseColonContext.conditionalDepth > 0) {
+          activeCaseColonContext.conditionalDepth -= 1;
+        } else {
+          caseColonContext = null;
+          startsStatement = true;
+        }
+      }
+
       javascriptRegexAllowed = true;
-      javascriptStatementStart = character === ";";
+      javascriptStatementStart = startsStatement;
+      pendingLabelColon = false;
       nextIdentifierIsProperty = false;
       nextBraceContext = null;
       pendingControlParenthesis = null;
