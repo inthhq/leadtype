@@ -4483,7 +4483,7 @@ describe("extractDocsTableOfContents", () => {
       [
         "## <Badge onClick={() => { if (ready) foo(); else /don't/.test(value); }} /> Install",
         "## <Badge onClick={() => { do /don't/.test(value); while (ready); }} /> Install",
-        "## <Badge value={function named() {} / 'x > y'} /> Install",
+        "## <Badge value={(function named() {}) / 'x > y'} /> Install",
         "## Install",
       ].join("\n"),
       {
@@ -4498,6 +4498,36 @@ describe("extractDocsTableOfContents", () => {
       { id: "install-2", title: "Install" },
       { id: "install-3", title: "Install" },
     ]);
+  });
+
+  it("tracks JavaScript block context without rescanning literal braces", () => {
+    const tags = [
+      `<Badge onClick={() => { if (ready) { const marker = "}"; } /don't/.test(value); }} />`,
+      `<Badge onClick={() => { if (ready) { /* } { */ } /don't/.test(value); }} />`,
+      "<Badge onClick={() => { if (ready) { const marker = `}`; } /don't/.test(value); }} />",
+      `<Badge onClick={() => { if (ready) { const marker = /[{}]/; } /don't/.test(value); }} />`,
+      `<Badge onClick={() => { function helper() {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { class Helper {} /don't/.test(value); }} />`,
+      `<Badge value={(function named() {}) / "x > y"} />`,
+      `<Badge value={(class Named {}) / "x > y"} />`,
+      `<Badge value={obj.if() / "x > y"} />`,
+      `<Badge onClick={async () => { for await (const item of values) /don't/.test(item); }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
   });
 
   it("does not treat a thematic break after a blank line as a Setext heading", () => {

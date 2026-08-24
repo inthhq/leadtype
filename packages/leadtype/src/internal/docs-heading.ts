@@ -126,6 +126,13 @@ type HtmlConstruct =
   | { closingSequence: "-->" | "?>" | "]]>"; tracksQuotes: false }
   | { closingSequence: ">"; tracksQuotes: boolean };
 
+type JavaScriptBraceContext = {
+  allowsRegexAfterClose: boolean;
+  statementBody: boolean;
+};
+
+type JavaScriptParenthesisKind = "control" | "function" | "other";
+
 function getHtmlConstruct(input: string): HtmlConstruct | null {
   if (input.startsWith("<!--")) {
     return { closingSequence: "-->", tracksQuotes: false };
@@ -149,72 +156,6 @@ function getHtmlConstruct(input: string): HtmlConstruct | null {
   return null;
 }
 
-const closesJavaScriptControlBlock = (prefix: string): boolean => {
-  if (!prefix.endsWith(")")) {
-    return false;
-  }
-
-  let parenthesisDepth = 0;
-  for (let index = prefix.length - 1; index >= 0; index -= 1) {
-    const character = prefix[index];
-    if (character === ")") {
-      parenthesisDepth += 1;
-      continue;
-    }
-    if (character !== "(") {
-      continue;
-    }
-    parenthesisDepth -= 1;
-    if (parenthesisDepth !== 0) {
-      continue;
-    }
-
-    const beforeParenthesis = prefix.slice(0, index).trimEnd();
-    let identifierStart = beforeParenthesis.length;
-    while (
-      identifierStart > 0 &&
-      JAVASCRIPT_IDENTIFIER_PART_PATTERN.test(
-        beforeParenthesis[identifierStart - 1] ?? ""
-      )
-    ) {
-      identifierStart -= 1;
-    }
-    const identifier = beforeParenthesis.slice(identifierStart);
-    const beforeIdentifier = beforeParenthesis
-      .slice(0, identifierStart)
-      .trimEnd();
-    return (
-      !beforeIdentifier.endsWith(".") &&
-      JAVASCRIPT_CONTROL_KEYWORDS.has(identifier)
-    );
-  }
-  return false;
-};
-
-const closesJavaScriptStatementBlock = (prefix: string): boolean => {
-  let depth = 0;
-  for (let index = prefix.length - 1; index >= 0; index -= 1) {
-    const character = prefix[index];
-    if (character === "}") {
-      depth += 1;
-      continue;
-    }
-    if (character !== "{") {
-      continue;
-    }
-    depth -= 1;
-    if (depth !== 0) {
-      continue;
-    }
-    const beforeBlock = prefix.slice(0, index).trimEnd();
-    return (
-      closesJavaScriptControlBlock(beforeBlock) ||
-      /(?:^|[^A-Za-z0-9_$])(?:do|else|finally|try)$/.test(beforeBlock)
-    );
-  }
-  return false;
-};
-
 function findHtmlConstructEnd(
   input: string,
   start: number,
@@ -232,8 +173,19 @@ function findHtmlConstructEnd(
   let javascriptComment: "block" | "line" | null = null;
   let javascriptRegex = false;
   let javascriptRegexAllowed = true;
-  let nextParenthesisIsControl = false;
-  const parenthesisKinds: boolean[] = [];
+  let javascriptStatementStart = false;
+  let nextIdentifierIsProperty = false;
+  let nextBraceContext: JavaScriptBraceContext | null = null;
+  let pendingAsyncDeclaration: boolean | null = null;
+  let pendingClass: {
+    allowsRegexAfterClose: boolean;
+    parenthesisDepth: number;
+  } | null = null;
+  let pendingControlParenthesis: "for" | "other" | null = null;
+  let pendingFunctionDeclaration: boolean | null = null;
+  let awaitingFunctionParameters = false;
+  const braceContexts: JavaScriptBraceContext[] = [];
+  const parenthesisKinds: JavaScriptParenthesisKind[] = [];
   let quote: '"' | "'" | null = null;
   let regexCharacterClass = false;
   const templateInterpolationDepths: Array<number | null> = [];
@@ -273,6 +225,8 @@ function findHtmlConstructEnd(
       if (character === "/" && !regexCharacterClass) {
         javascriptRegex = false;
         javascriptRegexAllowed = false;
+        javascriptStatementStart = false;
+        nextIdentifierIsProperty = false;
       }
       continue;
     }
@@ -292,13 +246,22 @@ function findHtmlConstructEnd(
       if (character === "`") {
         templateInterpolationDepths.pop();
         javascriptRegexAllowed = false;
+        javascriptStatementStart = false;
+        nextIdentifierIsProperty = false;
         continue;
       }
       if (character === "$" && nextCharacter === "{") {
         braceDepth += 1;
+        braceContexts.push({
+          allowsRegexAfterClose: false,
+          statementBody: false,
+        });
         templateInterpolationDepths[templateInterpolationDepths.length - 1] =
           braceDepth;
         javascriptRegexAllowed = true;
+        javascriptStatementStart = false;
+        nextIdentifierIsProperty = false;
+        nextBraceContext = null;
         index += 1;
       }
       continue;
@@ -316,6 +279,8 @@ function findHtmlConstructEnd(
         quote = null;
         if (braceDepth > 0) {
           javascriptRegexAllowed = false;
+          javascriptStatementStart = false;
+          nextIdentifierIsProperty = false;
         }
       }
       continue;
@@ -334,17 +299,29 @@ function findHtmlConstructEnd(
       if (javascriptRegexAllowed) {
         javascriptRegex = true;
         regexCharacterClass = false;
+        javascriptStatementStart = false;
+        nextIdentifierIsProperty = false;
+        nextBraceContext = null;
         continue;
       }
       javascriptRegexAllowed = true;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
       continue;
     }
     if (character === '"' || character === "'") {
       quote = character;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
       continue;
     }
     if (braceDepth > 0 && character === "`") {
       templateInterpolationDepths.push(null);
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
       continue;
     }
     if (
@@ -360,8 +337,55 @@ function findHtmlConstructEnd(
         identifierEnd += 1;
       }
       const identifier = input.slice(index, identifierEnd);
-      nextParenthesisIsControl = JAVASCRIPT_CONTROL_KEYWORDS.has(identifier);
-      javascriptRegexAllowed = JAVASCRIPT_REGEX_PREFIX_KEYWORDS.has(identifier);
+      const wasStatementStart: boolean = javascriptStatementStart;
+      const isKeywordPosition = !nextIdentifierIsProperty;
+      const isControlKeyword =
+        isKeywordPosition && JAVASCRIPT_CONTROL_KEYWORDS.has(identifier);
+      const preservesForAwait =
+        identifier === "await" && pendingControlParenthesis === "for";
+      if (isControlKeyword) {
+        pendingControlParenthesis = identifier === "for" ? "for" : "other";
+      } else if (!preservesForAwait) {
+        pendingControlParenthesis = null;
+      }
+
+      if (isKeywordPosition && identifier === "async") {
+        pendingAsyncDeclaration = wasStatementStart;
+      } else if (isKeywordPosition && identifier === "function") {
+        pendingFunctionDeclaration =
+          wasStatementStart || pendingAsyncDeclaration;
+        awaitingFunctionParameters = true;
+        pendingAsyncDeclaration = null;
+      } else {
+        pendingAsyncDeclaration = null;
+      }
+
+      if (isKeywordPosition && identifier === "class") {
+        pendingClass = {
+          allowsRegexAfterClose: wasStatementStart,
+          parenthesisDepth: parenthesisKinds.length,
+        };
+      }
+
+      if (
+        isKeywordPosition &&
+        (identifier === "do" ||
+          identifier === "else" ||
+          identifier === "finally" ||
+          identifier === "try")
+      ) {
+        nextBraceContext = {
+          allowsRegexAfterClose: true,
+          statementBody: true,
+        };
+        javascriptStatementStart = true;
+      } else {
+        nextBraceContext = null;
+        javascriptStatementStart = false;
+      }
+      javascriptRegexAllowed =
+        isKeywordPosition && JAVASCRIPT_REGEX_PREFIX_KEYWORDS.has(identifier);
+      nextIdentifierIsProperty = false;
       index = identifierEnd - 1;
       continue;
     }
@@ -374,54 +398,126 @@ function findHtmlConstructEnd(
         numberEnd += 1;
       }
       javascriptRegexAllowed = false;
-      nextParenthesisIsControl = false;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
       index = numberEnd - 1;
       continue;
     }
     if (braceDepth > 0 && character === "(") {
-      parenthesisKinds.push(nextParenthesisIsControl);
-      nextParenthesisIsControl = false;
+      let parenthesisKind: JavaScriptParenthesisKind = "other";
+      if (awaitingFunctionParameters) {
+        parenthesisKind = "function";
+      } else if (pendingControlParenthesis) {
+        parenthesisKind = "control";
+      }
+      parenthesisKinds.push(parenthesisKind);
+      awaitingFunctionParameters = false;
+      pendingControlParenthesis = null;
       javascriptRegexAllowed = true;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
       continue;
     }
     if (braceDepth > 0 && character === ")") {
-      javascriptRegexAllowed = parenthesisKinds.pop() ?? false;
-      nextParenthesisIsControl = false;
+      const parenthesisKind = parenthesisKinds.pop() ?? "other";
+      if (parenthesisKind === "control") {
+        nextBraceContext = {
+          allowsRegexAfterClose: true,
+          statementBody: true,
+        };
+        javascriptRegexAllowed = true;
+        javascriptStatementStart = true;
+      } else if (parenthesisKind === "function") {
+        nextBraceContext = {
+          allowsRegexAfterClose: pendingFunctionDeclaration ?? false,
+          statementBody: true,
+        };
+        pendingFunctionDeclaration = null;
+        javascriptRegexAllowed = false;
+        javascriptStatementStart = false;
+      } else {
+        nextBraceContext = {
+          allowsRegexAfterClose: false,
+          statementBody: true,
+        };
+        javascriptRegexAllowed = false;
+        javascriptStatementStart = false;
+      }
+      pendingControlParenthesis = null;
+      nextIdentifierIsProperty = false;
       continue;
     }
     if (character === "{") {
+      let braceContext: JavaScriptBraceContext | null = nextBraceContext;
+      const startsClassBody =
+        pendingClass !== null &&
+        pendingClass.parenthesisDepth === parenthesisKinds.length;
+      if (startsClassBody && pendingClass) {
+        braceContext = {
+          allowsRegexAfterClose: pendingClass.allowsRegexAfterClose,
+          statementBody: false,
+        };
+        pendingClass = null;
+      }
+      braceContext ??= javascriptStatementStart
+        ? { allowsRegexAfterClose: true, statementBody: true }
+        : { allowsRegexAfterClose: false, statementBody: false };
       braceDepth += 1;
+      braceContexts.push(braceContext);
       javascriptRegexAllowed = true;
-      nextParenthesisIsControl = false;
+      javascriptStatementStart = braceContext.statementBody;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
       continue;
     }
     if (character === "}" && braceDepth > 0) {
       if (templateInterpolationDepth === braceDepth) {
         braceDepth -= 1;
+        braceContexts.pop();
         templateInterpolationDepths[templateInterpolationDepths.length - 1] =
           null;
+        javascriptStatementStart = false;
+        nextIdentifierIsProperty = false;
         continue;
       }
       braceDepth -= 1;
-      javascriptRegexAllowed = closesJavaScriptStatementBlock(
-        input.slice(0, index + 1)
-      );
-      nextParenthesisIsControl = false;
+      const braceContext = braceContexts.pop();
+      javascriptRegexAllowed = braceContext?.allowsRegexAfterClose ?? false;
+      javascriptStatementStart = braceContext?.allowsRegexAfterClose ?? false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
       continue;
     }
     if (braceDepth > 0 && character === "[") {
       javascriptRegexAllowed = true;
-      nextParenthesisIsControl = false;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
       continue;
     }
     if (braceDepth > 0 && (character === "]" || character === ".")) {
       javascriptRegexAllowed = false;
-      nextParenthesisIsControl = false;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = character === ".";
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
       continue;
     }
     if (braceDepth > 0 && character === "=" && nextCharacter === ">") {
       javascriptRegexAllowed = true;
-      nextParenthesisIsControl = false;
+      javascriptStatementStart = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = {
+        allowsRegexAfterClose: false,
+        statementBody: true,
+      };
+      pendingControlParenthesis = null;
       index += 1;
       continue;
     }
@@ -431,7 +527,10 @@ function findHtmlConstructEnd(
       ",:;?=.!&|+-*%^~<>".includes(character)
     ) {
       javascriptRegexAllowed = true;
-      nextParenthesisIsControl = false;
+      javascriptStatementStart = character === ";";
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
       continue;
     }
     if (character === ">" && braceDepth === 0) {
