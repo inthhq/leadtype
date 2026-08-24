@@ -4441,6 +4441,23 @@ describe("extractDocsTableOfContents", () => {
     expect(toc.map((item) => item.id)).toEqual(["components-note"]);
   });
 
+  it("recognizes MDX fragments in flow and ATX heading text", () => {
+    const toc = extractDocsTableOfContents(
+      ["<>", "Install", "</>", "---", "## <>Install</>", "## Install"].join(
+        "\n"
+      ),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
   it("recognizes bare block starters for LF and CRLF", () => {
     for (const blockStart of ["<pre", "<div", "<Callout"]) {
       for (const lineEnding of ["\n", "\r\n"]) {

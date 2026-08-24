@@ -760,6 +760,51 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("keeps MDX fragment flow and inline heading anchors aligned", () => {
+    const content = [
+      "<>",
+      "Install",
+      "</>",
+      "---",
+      "## <>Install</>",
+      "Fragment section covers widgets.",
+      "## Install",
+      "Plain section covers sprockets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["install", "install-1"]);
+    expect(searchAnchors).toEqual(["", ...tocIds]);
+    expect(searchDocs(index, "widgets")[0]?.headingPath.at(-1)).toBe("Install");
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+  });
+
   it("keeps bare block starters aligned for LF and CRLF", () => {
     for (const blockStart of ["<pre", "<div", "<Callout"]) {
       for (const lineEnding of ["\n", "\r\n"]) {

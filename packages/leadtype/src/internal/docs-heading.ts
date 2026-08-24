@@ -10,7 +10,10 @@ const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
 const HTML_BLOCK_START_PATTERN =
   /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t\r>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
 const HTML_DECLARATION_START_PATTERN = /^<![A-Za-z]/;
-const HTML_TAG_START_PATTERN =
+// Dotted names intentionally follow MDX JSX semantics. Source extensions are
+// discarded before this shared TOC/search scanner runs, so distinguishing
+// plain Markdown would require threading syntax metadata through public APIs.
+const HTML_OR_MDX_TAG_START_PATTERN =
   /^<\/?(?:[A-Za-z][A-Za-z0-9-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?=[\t\n\f\r />])/;
 export const docsHtmlBlockTagNames = [
   "address",
@@ -83,7 +86,7 @@ const HTML_BLOCK_TAG_PATTERN = new RegExp(
 const STANDALONE_HTML_TAG_PATTERN =
   /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"]*"|'[^']*')*)?\/?>[ \t\r]*$/;
 const MDX_BLOCK_START_PATTERN =
-  /^ {0,3}(?:\{|<\/?(?:[A-Z][A-Za-z0-9_$:-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?:[ \t\r/>]|$))/;
+  /^ {0,3}(?:\{|<\/?>|<\/?(?:[A-Z][A-Za-z0-9_$:-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?:[ \t\r/>]|$))/;
 const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
 const THEMATIC_BREAK_PATTERN =
   /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
@@ -112,7 +115,11 @@ function getHtmlConstruct(input: string): HtmlConstruct | null {
   if (HTML_DECLARATION_START_PATTERN.test(input)) {
     return { closingSequence: ">", tracksQuotes: false };
   }
-  if (HTML_TAG_START_PATTERN.test(input)) {
+  if (
+    input.startsWith("<>") ||
+    input.startsWith("</>") ||
+    HTML_OR_MDX_TAG_START_PATTERN.test(input)
+  ) {
     return { closingSequence: ">", tracksQuotes: true };
   }
   return null;
