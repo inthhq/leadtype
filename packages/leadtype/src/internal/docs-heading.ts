@@ -588,6 +588,21 @@ function findHtmlConstructEnd(
     }
     if (
       braceDepth > 0 &&
+      (character === "+" || character === "-") &&
+      nextCharacter === character
+    ) {
+      const isPostfixUpdate: boolean = !javascriptRegexAllowed;
+      javascriptRegexAllowed = !isPostfixUpdate;
+      javascriptStatementStart = false;
+      pendingLabelColon = false;
+      nextIdentifierIsProperty = false;
+      nextBraceContext = null;
+      pendingControlParenthesis = null;
+      index += 1;
+      continue;
+    }
+    if (
+      braceDepth > 0 &&
       character !== undefined &&
       ",:;?=.!&|+-*%^~<>".includes(character)
     ) {

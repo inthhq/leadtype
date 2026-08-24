@@ -4558,6 +4558,33 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("distinguishes postfix updates from prefix and binary operators", () => {
+    const tags = [
+      "<Badge value={x++ / 2} />",
+      "<Badge value={x-- / 2} />",
+      `<Badge value={x++ / /don't/.test(value)} />`,
+      "<Badge value={++x / 2} />",
+      "<Badge value={--x / 2} />",
+      `<Badge value={x + /don't/.test(value)} />`,
+      `<Badge value={x - /don't/.test(value)} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
