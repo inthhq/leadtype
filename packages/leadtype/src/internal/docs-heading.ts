@@ -123,6 +123,20 @@ function getHtmlConstruct(input: string): HtmlConstruct | null {
   return null;
 }
 
+const startsJavaScriptRegex = (input: string, index: number): boolean => {
+  const prefix = input.slice(0, index).trimEnd();
+  const previousCharacter = prefix.at(-1);
+  if (
+    previousCharacter === undefined ||
+    "{([=,:;!?&|+-*%^~<>".includes(previousCharacter)
+  ) {
+    return true;
+  }
+  return /(?:^|[^A-Za-z0-9_$])(?:await|case|delete|in|instanceof|new|of|return|throw|typeof|void|yield)$/.test(
+    prefix
+  );
+};
+
 function findHtmlConstructEnd(
   input: string,
   start: number,
@@ -137,9 +151,48 @@ function findHtmlConstructEnd(
 
   let braceDepth = 0;
   let escaped = false;
+  let javascriptComment: "block" | "line" | null = null;
+  let javascriptRegex = false;
   let quote: '"' | "'" | "`" | null = null;
+  let regexCharacterClass = false;
   for (let index = start; index < input.length; index += 1) {
     const character = input[index];
+    const nextCharacter = input[index + 1];
+    if (javascriptComment === "line") {
+      if (character === "\n" || character === "\r") {
+        javascriptComment = null;
+      }
+      continue;
+    }
+    if (javascriptComment === "block") {
+      if (character === "*" && nextCharacter === "/") {
+        javascriptComment = null;
+        index += 1;
+      }
+      continue;
+    }
+    if (javascriptRegex) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (character === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (character === "[") {
+        regexCharacterClass = true;
+        continue;
+      }
+      if (character === "]") {
+        regexCharacterClass = false;
+        continue;
+      }
+      if (character === "/" && !regexCharacterClass) {
+        javascriptRegex = false;
+      }
+      continue;
+    }
     if (quote !== null) {
       if (escaped) {
         escaped = false;
@@ -153,6 +206,23 @@ function findHtmlConstructEnd(
         quote = null;
       }
       continue;
+    }
+    if (braceDepth > 0 && character === "/") {
+      if (nextCharacter === "/") {
+        javascriptComment = "line";
+        index += 1;
+        continue;
+      }
+      if (nextCharacter === "*") {
+        javascriptComment = "block";
+        index += 1;
+        continue;
+      }
+      if (startsJavaScriptRegex(input, index)) {
+        javascriptRegex = true;
+        regexCharacterClass = false;
+        continue;
+      }
     }
     if (
       character === '"' ||

@@ -781,6 +781,52 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe("/docs/fixture#0");
   });
 
+  it("keeps JavaScript literal MDX attributes aligned with rendered anchors", () => {
+    const content = [
+      "## <Badge pattern={/don't/} /> Install",
+      "Regex section covers widgets.",
+      "## Install",
+      "Plain section covers sprockets.",
+      "<span value={/* don't > */ 1 > 0}>",
+      "---",
+      "</span>",
+      "## 0",
+      "Comparison section covers levels.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["install", "install-1", "0"]);
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe("/docs/fixture#0");
+  });
+
   it("keeps MDX fragment flow and inline heading anchors aligned", () => {
     const content = [
       "<>",

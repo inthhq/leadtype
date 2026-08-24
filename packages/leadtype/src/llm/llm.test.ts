@@ -4421,6 +4421,32 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
+  it("parses JavaScript literals in MDX expression attributes", () => {
+    for (const lineEnding of ["\n", "\r\n"]) {
+      const toc = extractDocsTableOfContents(
+        [
+          "<span value={/* don't > */ 1 > 0}>",
+          "---",
+          "</span>",
+          "<span value={10 / 2 > 0}>",
+          "---",
+          "</span>",
+          "## <Badge pattern={/don't/} /> Install",
+          "## Install",
+        ].join(lineEnding),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
