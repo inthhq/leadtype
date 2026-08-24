@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createDocsHeadingSlugger,
   docsHtmlBlockTagNames,
+  scanDocsMarkdown,
   slugifyDocsHeading,
 } from "./docs-heading";
 
@@ -55,5 +56,28 @@ describe("createDocsHeadingSlugger", () => {
     expect(slugger.slug("Foo-1")).toBe("foo-1");
     expect(slugger.slug("Foo")).toBe("foo");
     expect(slugger.slug("Foo")).toBe("foo-2");
+  });
+});
+
+describe("scanDocsMarkdown", () => {
+  it("rejects malformed escaped class binding starts", () => {
+    const invalidBindingStarts = [
+      "\\x61",
+      "\\u{}",
+      "\\u{110000}",
+      "\\u0030",
+      "\\uD800",
+    ];
+
+    for (const bindingStart of invalidBindingStarts) {
+      const [heading] = scanDocsMarkdown(
+        `## <Badge value={class ${bindingStart} { static { function helper() {} /don't/.test(value); } }} /> Install`
+      );
+
+      expect(heading).toMatchObject({ kind: "heading", level: 2 });
+      expect(heading?.kind === "heading" ? heading.title : "Install").not.toBe(
+        "Install"
+      );
+    }
   });
 });

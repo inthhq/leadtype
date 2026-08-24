@@ -95,7 +95,10 @@ const WHITESPACE_PATTERN = /\s+/g;
 const JAVASCRIPT_IDENTIFIER_START_PATTERN = /^[$_\p{ID_Start}]$/u;
 const JAVASCRIPT_IDENTIFIER_PART_PATTERN =
   /^(?:[$_\p{ID_Continue}]|\u200C|\u200D)$/u;
+const JAVASCRIPT_FIXED_UNICODE_ESCAPE_PATTERN = /^[0-9A-Fa-f]{4}$/;
+const JAVASCRIPT_CODE_POINT_ESCAPE_PATTERN = /^[0-9A-Fa-f]+$/;
 const JAVASCRIPT_WHITESPACE_PATTERN = /^\s$/;
+const MAX_UNICODE_CODE_POINT = 0x10_ff_ff;
 const JAVASCRIPT_CONTROL_KEYWORDS = new Set([
   "catch",
   "for",
@@ -131,7 +134,64 @@ const getUnicodeCharacterAt = (input: string, index: number): string => {
   return codePoint === undefined ? "" : String.fromCodePoint(codePoint);
 };
 
-function getNextJavaScriptTokenStart(input: string, start: number): string {
+type JavaScriptIdentifierCharacter = {
+  character: string;
+  end: number;
+};
+
+function getEscapedJavaScriptIdentifierCharacterAt(
+  input: string,
+  start: number
+): JavaScriptIdentifierCharacter | null {
+  if (input[start] !== "\\" || input[start + 1] !== "u") {
+    return null;
+  }
+
+  let hexadecimalDigits: string;
+  let end: number;
+  if (input[start + 2] === "{") {
+    const escapeEnd = input.indexOf("}", start + 3);
+    if (escapeEnd < 0) {
+      return null;
+    }
+    hexadecimalDigits = input.slice(start + 3, escapeEnd);
+    if (!JAVASCRIPT_CODE_POINT_ESCAPE_PATTERN.test(hexadecimalDigits)) {
+      return null;
+    }
+    end = escapeEnd + 1;
+  } else {
+    hexadecimalDigits = input.slice(start + 2, start + 6);
+    if (!JAVASCRIPT_FIXED_UNICODE_ESCAPE_PATTERN.test(hexadecimalDigits)) {
+      return null;
+    }
+    end = start + 6;
+  }
+
+  const codePoint = Number.parseInt(hexadecimalDigits, 16);
+  return codePoint <= MAX_UNICODE_CODE_POINT
+    ? { character: String.fromCodePoint(codePoint), end }
+    : null;
+}
+
+function getJavaScriptIdentifierCharacterAt(
+  input: string,
+  start: number,
+  pattern: RegExp
+): JavaScriptIdentifierCharacter | null {
+  const sourceCharacter = getUnicodeCharacterAt(input, start);
+  if (pattern.test(sourceCharacter)) {
+    return { character: sourceCharacter, end: start + sourceCharacter.length };
+  }
+  const escapedCharacter = getEscapedJavaScriptIdentifierCharacterAt(
+    input,
+    start
+  );
+  return escapedCharacter !== null && pattern.test(escapedCharacter.character)
+    ? escapedCharacter
+    : null;
+}
+
+function getNextJavaScriptTokenStart(input: string, start: number): number {
   let cursor = start;
   while (cursor < input.length) {
     const character = input[cursor];
@@ -153,9 +213,9 @@ function getNextJavaScriptTokenStart(input: string, start: number): string {
       cursor = commentEnd < 0 ? input.length : commentEnd + 2;
       continue;
     }
-    return getUnicodeCharacterAt(input, cursor);
+    return cursor;
   }
-  return "";
+  return -1;
 }
 
 type HtmlConstruct =
@@ -382,20 +442,23 @@ function findHtmlConstructEnd(
       nextBraceContext = null;
       continue;
     }
-    if (
-      braceDepth > 0 &&
-      JAVASCRIPT_IDENTIFIER_START_PATTERN.test(
-        getUnicodeCharacterAt(input, index)
-      )
-    ) {
-      const identifierStart = getUnicodeCharacterAt(input, index);
-      let identifierEnd = index + identifierStart.length;
+    const identifierStart = getJavaScriptIdentifierCharacterAt(
+      input,
+      index,
+      JAVASCRIPT_IDENTIFIER_START_PATTERN
+    );
+    if (braceDepth > 0 && identifierStart !== null) {
+      let identifierEnd = identifierStart.end;
       while (identifierEnd < input.length) {
-        const identifierPart = getUnicodeCharacterAt(input, identifierEnd);
-        if (!JAVASCRIPT_IDENTIFIER_PART_PATTERN.test(identifierPart)) {
+        const identifierPart = getJavaScriptIdentifierCharacterAt(
+          input,
+          identifierEnd,
+          JAVASCRIPT_IDENTIFIER_PART_PATTERN
+        );
+        if (identifierPart === null) {
           break;
         }
-        identifierEnd += identifierPart.length;
+        identifierEnd = identifierPart.end;
       }
       const identifier = input.slice(index, identifierEnd);
       const wasStatementStart: boolean = javascriptStatementStart;
@@ -433,12 +496,16 @@ function findHtmlConstructEnd(
       const nextClassTokenStart =
         isKeywordPosition && identifier === "class"
           ? getNextJavaScriptTokenStart(input, identifierEnd)
-          : "";
+          : -1;
       const startsClass =
         isKeywordPosition &&
         identifier === "class" &&
-        (nextClassTokenStart === "{" ||
-          JAVASCRIPT_IDENTIFIER_START_PATTERN.test(nextClassTokenStart));
+        (input[nextClassTokenStart] === "{" ||
+          getJavaScriptIdentifierCharacterAt(
+            input,
+            nextClassTokenStart,
+            JAVASCRIPT_IDENTIFIER_START_PATTERN
+          ) !== null);
       if (startsClass) {
         pendingClasses.push({
           allowsRegexAfterClose: wasStatementStart,
