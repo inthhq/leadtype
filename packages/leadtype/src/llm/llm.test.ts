@@ -4303,6 +4303,418 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
+  it("does not treat a four-space-indented underline as Setext", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "    ---", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+    ]);
+  });
+
+  it("allows a Setext underline to use three spaces and CRLF", () => {
+    const toc = extractDocsTableOfContents(
+      ["Install", "   ---", "## Install"].join("\r\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
+  it("allows inline HTML at the start of Setext heading text", () => {
+    const fixtures = [
+      {
+        heading: '<em title="1 > 0">Install</em>',
+        title: "Install",
+      },
+      { heading: "Install <!-- don't -->", title: "Install" },
+      { heading: "<hgroup>Note</hgroup>", title: "Note" },
+    ];
+
+    for (const { heading, title } of fixtures) {
+      const toc = extractDocsTableOfContents(
+        [heading, "---", `## ${title}`].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      const id = title.toLowerCase();
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id, title },
+        { id: `${id}-1`, title },
+      ]);
+    }
+  });
+
+  it("keeps a trailing marker wrapped in inline HTML in the heading title", () => {
+    const toc = extractDocsTableOfContents("## Anchors and <code>#</code>", {
+      urlPath: "/docs/example",
+      absoluteUrl: "https://leadtype.dev/docs/example",
+    });
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "anchors-and", title: "Anchors and #" },
+    ]);
+  });
+
+  it("strips MDX JSX tags from ATX heading text", () => {
+    for (const tag of [
+      "<Icons.Install />",
+      "<Icons:Install />",
+      "<_Icon />",
+      "<$Icon />",
+      "<My_Icon />",
+      "<My$Icon />",
+    ]) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("preserves malformed MDX JSX names in heading text", () => {
+    for (const { id, tag } of [
+      { id: "9icon-install", tag: "<9Icon />" },
+      { id: "my-icon-install", tag: "<My..Icon />" },
+      { id: "my-icon-part-install", tag: "<My:Icon:Part />" },
+    ]) {
+      const toc = extractDocsTableOfContents(`## ${tag} Install`, {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      });
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id, title: `${tag} Install` },
+      ]);
+    }
+  });
+
+  it("handles balanced MDX expression attributes in flow and heading text", () => {
+    for (const tag of [
+      "<span value={1 > 0}>",
+      "<span value={{ nested: 1 > 0 }}>",
+    ]) {
+      const toc = extractDocsTableOfContents(
+        [tag, "---", "</span>", "## 0"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => item.id)).toEqual(["0"]);
+    }
+
+    const toc = extractDocsTableOfContents(
+      ["## <span value={1 > 0}>Install</span>", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
+  it("parses JavaScript literals in MDX expression attributes", () => {
+    for (const lineEnding of ["\n", "\r\n"]) {
+      const toc = extractDocsTableOfContents(
+        [
+          "<span value={/* don't > */ 1 > 0}>",
+          "---",
+          "</span>",
+          "<span value={10 / 2 > 0}>",
+          "---",
+          "</span>",
+          "## <Badge pattern={/don't/} /> Install",
+          "## <Badge onClick={() => { if (ready) {} /don't/.test(value); }} /> Install",
+          "## <Badge onClick={() => { if (ready) /don't/.test(value); }} /> Install",
+          "## <Badge onClick={() => { while (ready) /don't/.test(value); }} /> Install",
+          `## <Badge value={\`outer \${\`don't\`}\`} /> Install`,
+          "## <Badge value={{} / 2 > 0} /> Install",
+          "## <Badge value={compute() / 2 > 0} /> Install",
+          "## Install",
+        ].join(lineEnding),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+        { id: "install-2", title: "Install" },
+        { id: "install-3", title: "Install" },
+        { id: "install-4", title: "Install" },
+        { id: "install-5", title: "Install" },
+        { id: "install-6", title: "Install" },
+        { id: "install-7", title: "Install" },
+      ]);
+    }
+  });
+
+  it("distinguishes regex statements from division around JavaScript bodies", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## <Badge onClick={() => { if (ready) foo(); else /don't/.test(value); }} /> Install",
+        "## <Badge onClick={() => { do /don't/.test(value); while (ready); }} /> Install",
+        "## <Badge value={(function named() {}) / 'x > y'} /> Install",
+        "## Install",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+      { id: "install-2", title: "Install" },
+      { id: "install-3", title: "Install" },
+    ]);
+  });
+
+  it("tracks JavaScript block context without rescanning literal braces", () => {
+    const tags = [
+      `<Badge onClick={() => { if (ready) { const marker = "}"; } /don't/.test(value); }} />`,
+      `<Badge onClick={() => { if (ready) { /* } { */ } /don't/.test(value); }} />`,
+      "<Badge onClick={() => { if (ready) { const marker = `}`; } /don't/.test(value); }} />",
+      `<Badge onClick={() => { if (ready) { const marker = /[{}]/; } /don't/.test(value); }} />`,
+      `<Badge onClick={() => { function helper() {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { class Helper {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { try {} catch { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={(function named() {}) / "x > y"} />`,
+      `<Badge value={(class Named {}) / "x > y"} />`,
+      `<Badge value={obj.if() / "x > y"} />`,
+      `<Badge onClick={async () => { for await (const item of values) /don't/.test(item); }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("stacks declaration contexts and recognizes statement colons", () => {
+    const tags = [
+      `<Badge onClick={() => { function helper(callback = function nested() {}) {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { class Outer extends (class Inner {}) {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { label: {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { switch (value) { case 1: {} /don't/.test(value); } }} />`,
+      `<Badge onClick={() => { switch (value) { case ready ? one : two: {} /don't/.test(value); } }} />`,
+      `<Badge onClick={() => { switch (value) { case (() => { switch (inner) { case 1: return 2; } return 3; })(): {} /don't/.test(value); } }} />`,
+      `<Badge value={(function outer(callback = function nested() {}) {}) / "x > y"} />`,
+      `<Badge value={(class Outer extends (class Inner {}) {}) / "x > y"} />`,
+      `<Badge value={{ value: {} / "x > y" }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("distinguishes postfix updates from prefix and binary operators", () => {
+    const tags = [
+      "<Badge value={x++ / 2} />",
+      "<Badge value={x-- / 2} />",
+      `<Badge value={x++ / /don't/.test(value)} />`,
+      "<Badge value={++x / 2} />",
+      "<Badge value={--x / 2} />",
+      `<Badge value={x + /don't/.test(value)} />`,
+      `<Badge value={x - /don't/.test(value)} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("recognizes Unicode identifiers and spread operands", () => {
+    const tags = [
+      '<Badge value={value / "x > y"} />',
+      '<Badge value={π / "x > y"} />',
+      '<Badge value={a\u200Cb / "x > y"} />',
+      '<Badge value={a\u200Db / "x > y"} />',
+      '<Badge value={\u{10400} / "x > y"} />',
+      '<Badge value={π.value / "x > y"} />',
+      '<Badge value={π?.value / "x > y"} />',
+      `<Badge value={{ .../don't/ }} />`,
+      '<Badge value={{ ...value / "x > y" }} />',
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("recognizes regex operands in class heritage", () => {
+    const tags = [
+      `<Badge value={class extends /don't/.constructor {}} />`,
+      `<Badge value={class Named extends /don't/.constructor {}} />`,
+      '<Badge value={class extends (Base / "x > y") {}} />',
+      '<Badge value={class Named extends (Base / "x > y") {}} />',
+      '<Badge value={(class {}) / "x > y"} />',
+      '<Badge value={(class Named {}) / "x > y"} />',
+      '<Badge value={obj.extends / "x > y"} />',
+      `<Badge onClick={() => { class Named {} /don't/.test(value); }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("recognizes statement bodies in class static blocks", () => {
+    const tags = [
+      `<Badge value={class { static { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={class Named { static { class Helper {} /don't/.test(value); } }} />`,
+      '<Badge value={(class { static = {}; }) / "x > y"} />',
+      '<Badge value={(class { static() {} }) / "x > y"} />',
+      '<Badge value={(class { static field = {}; static method() {} }) / "x > y"} />',
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("does not classify member names as class keywords", () => {
+    const tags = [
+      `<Badge value={{ class() { function nested() {} /don't/.test(value); } }} />`,
+      `<Badge value={{ class: () => { function nested() {} /don't/.test(value); } }} />`,
+      `<Badge value={{ ["class"]() { function nested() {} /don't/.test(value); } }} />`,
+      `<Badge value={class { class() { function nested() {} /don't/.test(value); } }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("recognizes escaped class binding identifiers", () => {
+    const tags = [
+      `<Badge value={class /* named */ \\u0061 { static { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={class \\u{10400} { static { function helper() {} /don't/.test(value); } }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
@@ -4321,6 +4733,7 @@ describe("extractDocsTableOfContents", () => {
       "- Note",
       "    Note",
       "<aside>Note</aside>",
+      "<span>",
       "<Callout>Note</Callout>",
       "{note}",
       "[note]: /docs/note",
@@ -4339,6 +4752,124 @@ describe("extractDocsTableOfContents", () => {
 
       expect(toc.map((item) => item.id)).toEqual(["note"]);
     }
+  });
+
+  it("recognizes lowercase MDX member-expression flow tags", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "<components.Note>",
+        "---",
+        "</components.Note>",
+        "## Components Note",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => item.id)).toEqual(["components-note"]);
+  });
+
+  it("recognizes MDX fragments in flow and ATX heading text", () => {
+    const toc = extractDocsTableOfContents(
+      ["<>", "Install", "</>", "---", "## <>Install</>", "## Install"].join(
+        "\n"
+      ),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
+  it("keeps a one-line MDX fragment as Setext heading text", () => {
+    const toc = extractDocsTableOfContents(
+      ["<>Install</>", "---", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
+  it("recognizes bare block starters for LF and CRLF", () => {
+    for (const blockStart of ["<pre", "<div", "<Callout"]) {
+      for (const lineEnding of ["\n", "\r\n"]) {
+        const toc = extractDocsTableOfContents(
+          ["Title", blockStart, "---", "## After"].join(lineEnding),
+          {
+            urlPath: "/docs/example",
+            absoluteUrl: "https://leadtype.dev/docs/example",
+          }
+        );
+
+        expect(toc.map((item) => item.id)).toEqual(["after"]);
+      }
+    }
+  });
+
+  it("recognizes standalone HTML tags with quoted delimiters for LF and CRLF", () => {
+    for (const lineEnding of ["\n", "\r\n"]) {
+      const toc = extractDocsTableOfContents(
+        ['<span title="1 < 2 > 0">', "---", "</span>", "## !!!", "## !!!"].join(
+          lineEnding
+        ),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => item.id)).toEqual(["", "-1"]);
+    }
+  });
+
+  it("preserves comparisons and strips declarations from heading text", () => {
+    const toc = extractDocsTableOfContents(
+      [
+        "## 1 < 2 > 0",
+        "## Install <?don't?>",
+        "## Install <!THING don't>",
+        "## Install",
+      ].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "1-2-0", title: "1 < 2 > 0" },
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+      { id: "install-2", title: "Install" },
+    ]);
+  });
+
+  it("strips CDATA and preserves unterminated HTML constructs", () => {
+    const toc = extractDocsTableOfContents(
+      ["## Install <![CDATA[x]]>", '## Install <em title="x'].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-em-title-x", title: 'Install <em title="x' },
+    ]);
   });
 
   it("respects custom heading level ranges", () => {

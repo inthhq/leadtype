@@ -520,6 +520,59 @@ describe("createDocsSearchIndex and searchDocs", () => {
     );
   });
 
+  it("does not reserve a Setext anchor for an indented underline", () => {
+    const content = [
+      "Install",
+      "    ---",
+      "## Install",
+      "The ATX section covers widgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "install",
+          title: "Install",
+          urlPath: "/docs/install",
+          absoluteUrl: "https://leadtype.dev/docs/install",
+          relativePath: "install.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/install#install"
+    );
+  });
+
+  it("reserves inline-marked Setext headings before later ATX anchors", () => {
+    const content = [
+      '<em title="1 > 0">Install</em>',
+      "---",
+      "The Setext section covers widgets.",
+      "## Install",
+      "The ATX section covers sprockets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "install",
+          title: "Install",
+          urlPath: "/docs/install",
+          absoluteUrl: "https://leadtype.dev/docs/install",
+          relativePath: "install.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/install#install-1"
+    );
+  });
+
   it("does not reserve headings inside tilde code fences", () => {
     const content = [
       "# Reference",
@@ -581,6 +634,27 @@ describe("createDocsSearchIndex and searchDocs", () => {
         "## Example",
         "The real example covers widgets.",
       ].join("\n"),
+      [
+        '<em title="1 > 0">Install</em>',
+        "   ---",
+        "Inline markup section covers widgets.",
+        "## Install",
+        "The ATX section covers sprockets.",
+      ].join("\r\n"),
+      [
+        "<hgroup>Note</hgroup>",
+        "---",
+        "Inline HTML section covers widgets.",
+        "## Note",
+        "The ATX section covers sprockets.",
+      ].join("\n"),
+      [
+        "Install <!-- don't -->",
+        "---",
+        "Inline comment section covers widgets.",
+        "## Install",
+        "The ATX section covers sprockets.",
+      ].join("\n"),
     ];
 
     for (const content of fixtures) {
@@ -614,6 +688,861 @@ describe("createDocsSearchIndex and searchDocs", () => {
       expect(searchAnchors.length).toBeGreaterThan(1);
       expect(searchAnchors).toEqual(tocIds);
     }
+  });
+
+  it("keeps inline HTML text in search heading labels", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "anchors",
+          title: "Anchors",
+          urlPath: "/docs/anchors",
+          absoluteUrl: "https://leadtype.dev/docs/anchors",
+          relativePath: "anchors.mdx",
+          content: [
+            "## Anchors and <code>#</code>",
+            "Literal marker covers widgets.",
+          ].join("\n"),
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    const result = searchDocs(index, "widgets")[0];
+    expect(result?.headingPath.at(-1)).toBe("Anchors and #");
+    expect(result?.urlWithHash).toBe("/docs/anchors#anchors-and");
+  });
+
+  it("keeps MDX member-expression heading labels aligned with anchors", () => {
+    const content = [
+      "## <Icons.Install /> Install",
+      "Icon section covers widgets.",
+      "## Install",
+      "Plain section covers sprockets.",
+      "## <Icons:Install /> Install",
+      "Namespaced section covers calipers.",
+      "## <_Icon /> Setup",
+      "Underscore section covers ratchets.",
+      "## <$Icon /> Configure",
+      "Dollar section covers spanners.",
+      "<components.Note>",
+      "---",
+      "</components.Note>",
+      "## Components Note",
+      "Member flow section covers gadgets.",
+      "<span value={1 > 0}>",
+      "---",
+      "</span>",
+      "## 0",
+      "Expression section covers levels.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
+    );
+    expect(searchDocs(index, "ratchets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#setup"
+    );
+    expect(searchDocs(index, "spanners")[0]?.urlWithHash).toBe(
+      "/docs/fixture#configure"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#components-note"
+    );
+    expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe("/docs/fixture#0");
+  });
+
+  it("keeps letter-started MDX JSX names aligned with rendered anchors", () => {
+    const content = [
+      "## <My_Icon /> Install",
+      "Underscore section covers widgets.",
+      "## <My$Icon /> Install",
+      "Dollar section covers sprockets.",
+      "## Install",
+      "Plain section covers gadgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["install", "install-1", "install-2"]);
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
+    );
+  });
+
+  it("keeps JavaScript literal MDX attributes aligned with rendered anchors", () => {
+    const content = [
+      "## <Badge pattern={/don't/} /> Install",
+      "Regex section covers widgets.",
+      "## <Badge onClick={() => { if (ready) {} /don't/.test(value); }} /> Install",
+      "Statement section covers calipers.",
+      "## <Badge onClick={() => { if (ready) /don't/.test(value); }} /> Install",
+      "Control section covers saws.",
+      `## <Badge value={\`outer \${\`don't\`}\`} /> Install`,
+      "Template section covers drills.",
+      "## <Badge value={{} / 2 > 0} /> Install",
+      "Division section covers ratchets.",
+      "## <Badge value={compute() / 2 > 0} /> Install",
+      "Call division section covers levels.",
+      "## Install",
+      "Plain section covers sprockets.",
+      "<span value={/* don't > */ 1 > 0}>",
+      "---",
+      "</span>",
+      "## 0",
+      "Comparison section covers gauges.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual([
+      "install",
+      "install-1",
+      "install-2",
+      "install-3",
+      "install-4",
+      "install-5",
+      "install-6",
+      "0",
+    ]);
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-6"
+    );
+    expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "ratchets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-4"
+    );
+    expect(searchDocs(index, "saws")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
+    );
+    expect(searchDocs(index, "drills")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-3"
+    );
+    expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-5"
+    );
+    expect(searchDocs(index, "gauges")[0]?.urlWithHash).toBe("/docs/fixture#0");
+  });
+
+  it("keeps regex statements and division around JavaScript bodies aligned", () => {
+    const content = [
+      "## <Badge onClick={() => { if (ready) foo(); else /don't/.test(value); }} /> Install",
+      "Else regex section covers widgets.",
+      "## <Badge onClick={() => { do /don't/.test(value); while (ready); }} /> Install",
+      "Do regex section covers sprockets.",
+      "## <Badge value={(function named() {}) / 'x > y'} /> Install",
+      "Function division section covers calipers.",
+      "## Install",
+      "Plain section covers gadgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["install", "install-1", "install-2", "install-3"]);
+    expect(searchAnchors).toEqual(tocIds);
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
+    );
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-3"
+    );
+  });
+
+  it("keeps forward JavaScript block context aligned with rendered anchors", () => {
+    const tags = [
+      `<Badge onClick={() => { if (ready) { const marker = "}"; } /don't/.test(value); }} />`,
+      `<Badge onClick={() => { if (ready) { /* } { */ } /don't/.test(value); }} />`,
+      "<Badge onClick={() => { if (ready) { const marker = `}`; } /don't/.test(value); }} />",
+      `<Badge onClick={() => { if (ready) { const marker = /[{}]/; } /don't/.test(value); }} />`,
+      `<Badge onClick={() => { function helper() {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { class Helper {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { try {} catch { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={(function named() {}) / "x > y"} />`,
+      `<Badge value={(class Named {}) / "x > y"} />`,
+      `<Badge value={obj.if() / "x > y"} />`,
+      `<Badge onClick={async () => { for await (const item of values) /don't/.test(item); }} />`,
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps nested declarations and statement colons aligned with rendered anchors", () => {
+    const tags = [
+      `<Badge onClick={() => { function helper(callback = function nested() {}) {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { class Outer extends (class Inner {}) {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { label: {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { switch (value) { case 1: {} /don't/.test(value); } }} />`,
+      `<Badge onClick={() => { switch (value) { case ready ? one : two: {} /don't/.test(value); } }} />`,
+      `<Badge onClick={() => { switch (value) { case (() => { switch (inner) { case 1: return 2; } return 3; })(): {} /don't/.test(value); } }} />`,
+      `<Badge value={(function outer(callback = function nested() {}) {}) / "x > y"} />`,
+      `<Badge value={(class Outer extends (class Inner {}) {}) / "x > y"} />`,
+      `<Badge value={{ value: {} / "x > y" }} />`,
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps postfix updates and prefix operators aligned with rendered anchors", () => {
+    const tags = [
+      "<Badge value={x++ / 2} />",
+      "<Badge value={x-- / 2} />",
+      `<Badge value={x++ / /don't/.test(value)} />`,
+      "<Badge value={++x / 2} />",
+      "<Badge value={--x / 2} />",
+      `<Badge value={x + /don't/.test(value)} />`,
+      `<Badge value={x - /don't/.test(value)} />`,
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps Unicode identifiers and spread operands aligned with rendered anchors", () => {
+    const tags = [
+      '<Badge value={value / "x > y"} />',
+      '<Badge value={π / "x > y"} />',
+      '<Badge value={a\u200Cb / "x > y"} />',
+      '<Badge value={a\u200Db / "x > y"} />',
+      '<Badge value={\u{10400} / "x > y"} />',
+      '<Badge value={π.value / "x > y"} />',
+      '<Badge value={π?.value / "x > y"} />',
+      `<Badge value={{ .../don't/ }} />`,
+      '<Badge value={{ ...value / "x > y" }} />',
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps class-heritage regex operands aligned with rendered anchors", () => {
+    const tags = [
+      `<Badge value={class extends /don't/.constructor {}} />`,
+      `<Badge value={class Named extends /don't/.constructor {}} />`,
+      '<Badge value={class extends (Base / "x > y") {}} />',
+      '<Badge value={class Named extends (Base / "x > y") {}} />',
+      '<Badge value={(class {}) / "x > y"} />',
+      '<Badge value={(class Named {}) / "x > y"} />',
+      '<Badge value={obj.extends / "x > y"} />',
+      `<Badge onClick={() => { class Named {} /don't/.test(value); }} />`,
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps class static blocks aligned with rendered anchors", () => {
+    const tags = [
+      `<Badge value={class { static { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={class Named { static { class Helper {} /don't/.test(value); } }} />`,
+      '<Badge value={(class { static = {}; }) / "x > y"} />',
+      '<Badge value={(class { static() {} }) / "x > y"} />',
+      '<Badge value={(class { static field = {}; static method() {} }) / "x > y"} />',
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps class-named members aligned with rendered anchors", () => {
+    const tags = [
+      `<Badge value={{ class() { function nested() {} /don't/.test(value); } }} />`,
+      `<Badge value={{ class: () => { function nested() {} /don't/.test(value); } }} />`,
+      `<Badge value={{ ["class"]() { function nested() {} /don't/.test(value); } }} />`,
+      `<Badge value={class { class() { function nested() {} /don't/.test(value); } }} />`,
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps escaped class bindings aligned with rendered anchors", () => {
+    const tags = [
+      `<Badge value={class /* named */ \\u0061 { static { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={class \\u{10400} { static { function helper() {} /don't/.test(value); } }} />`,
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
+  it("keeps MDX fragment flow and inline heading anchors aligned", () => {
+    const content = [
+      "<>",
+      "Install",
+      "</>",
+      "---",
+      "<>Setup</>",
+      "---",
+      "Setext fragment section covers gadgets.",
+      "## <>Install</>",
+      "Fragment section covers widgets.",
+      "## Install",
+      "Plain section covers sprockets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(tocIds).toEqual(["setup", "install", "install-1"]);
+    expect(searchAnchors).toEqual(["", ...tocIds]);
+    expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#setup"
+    );
+    expect(searchDocs(index, "widgets")[0]?.headingPath.at(-1)).toBe("Install");
+    expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install"
+    );
+    expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-1"
+    );
+  });
+
+  it("keeps bare block starters aligned for LF and CRLF", () => {
+    for (const blockStart of ["<pre", "<div", "<Callout"]) {
+      for (const lineEnding of ["\n", "\r\n"]) {
+        const content = [
+          "Title",
+          blockStart,
+          "---",
+          "## After",
+          "After section covers widgets.",
+        ].join(lineEnding);
+        const index = createDocsSearchIndex(
+          [
+            {
+              id: "fixture",
+              title: "Fixture",
+              urlPath: "/docs/fixture",
+              absoluteUrl: "https://leadtype.dev/docs/fixture",
+              relativePath: "fixture.mdx",
+              content,
+            },
+          ],
+          { generatedAt: "2026-01-01T00:00:00.000Z" }
+        );
+        const tocIds = flattenTocIds(
+          extractDocsTableOfContents(content, {
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+          })
+        );
+        const searchAnchors = index.chunks.map(
+          (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+        );
+
+        expect(tocIds).toEqual(["after"]);
+        expect(searchAnchors).toEqual(["", ...tocIds]);
+      }
+    }
+  });
+
+  it("keeps standalone HTML tags from shifting LF or CRLF heading anchors", () => {
+    for (const lineEnding of ["\n", "\r\n"]) {
+      const content = [
+        '<span title="1 < 2 > 0">',
+        "---",
+        "</span>",
+        "## !!!",
+        "First punctuation section covers widgets.",
+        "## !!!",
+        "Second punctuation section covers sprockets.",
+      ].join(lineEnding);
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["", "-1"]);
+      expect(searchAnchors).toEqual(["", ...tocIds]);
+    }
+  });
+
+  it("keeps comparison and declaration heading labels aligned with anchors", () => {
+    const content = [
+      "## 1 < 2 > 0",
+      "Comparison section covers widgets.",
+      "## Install <?don't?>",
+      "Processing section covers sprockets.",
+      "## Install <!THING don't>",
+      "Declaration section covers gadgets.",
+    ].join("\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "fixture",
+          title: "Fixture",
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+          relativePath: "fixture.mdx",
+          content,
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    const comparison = searchDocs(index, "widgets")[0];
+    const processing = searchDocs(index, "sprockets")[0];
+    const declaration = searchDocs(index, "gadgets")[0];
+    const tocIds = flattenTocIds(
+      extractDocsTableOfContents(content, {
+        urlPath: "/docs/fixture",
+        absoluteUrl: "https://leadtype.dev/docs/fixture",
+      })
+    );
+    const searchAnchors = index.chunks.map(
+      (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+    );
+
+    expect(searchAnchors).toEqual(tocIds);
+    expect(comparison?.headingPath.at(-1)).toBe("1 < 2 > 0");
+    expect(comparison?.urlWithHash).toBe("/docs/fixture#1-2-0");
+    expect(processing?.headingPath.at(-1)).toBe("Install");
+    expect(processing?.urlWithHash).toBe("/docs/fixture#install");
+    expect(declaration?.headingPath.at(-1)).toBe("Install");
+    expect(declaration?.urlWithHash).toBe("/docs/fixture#install-1");
   });
 
   it("slugifies headings for hash links", () => {

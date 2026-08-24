@@ -1,5 +1,17 @@
+import { htmlBlockNames } from "micromark-util-html-tag-name";
 import { describe, expect, it } from "vitest";
-import { createDocsHeadingSlugger, slugifyDocsHeading } from "./docs-heading";
+import {
+  createDocsHeadingSlugger,
+  docsHtmlBlockTagNames,
+  scanDocsMarkdown,
+  slugifyDocsHeading,
+} from "./docs-heading";
+
+describe("docs HTML block tags", () => {
+  it("matches the tag list used by the Markdown parser", () => {
+    expect(docsHtmlBlockTagNames).toEqual(htmlBlockNames);
+  });
+});
 
 describe("createDocsHeadingSlugger", () => {
   it("suffixes duplicate slugs the way extractDocsTableOfContents does", () => {
@@ -44,5 +56,54 @@ describe("createDocsHeadingSlugger", () => {
     expect(slugger.slug("Foo-1")).toBe("foo-1");
     expect(slugger.slug("Foo")).toBe("foo");
     expect(slugger.slug("Foo")).toBe("foo-2");
+  });
+});
+
+describe("scanDocsMarkdown", () => {
+  it("recognizes binding-less catch statement bodies", () => {
+    const [heading] = scanDocsMarkdown(
+      `## <Badge onClick={() => { try {} catch { function helper() {} /don't/.test(value); } }} /> Install`
+    );
+
+    expect(heading).toEqual({ kind: "heading", level: 2, title: "Install" });
+  });
+
+  it("rejects malformed escaped class binding starts", () => {
+    const invalidBindingStarts = [
+      [
+        "\\x61",
+        "<Badge value= class \\x61 static function helper /don't/.test value ; /> Install",
+      ],
+      [
+        "\\u{}",
+        "<Badge value= class \\u static function helper /don't/.test value ; /> Install",
+      ],
+      // This also guards the range check before String.fromCodePoint, which
+      // would throw for an out-of-range escape instead of rejecting it.
+      [
+        "\\u{110000}",
+        "<Badge value= class \\u 110000 static function helper /don't/.test value ; /> Install",
+      ],
+      [
+        "\\u0030",
+        "<Badge value= class \\u0030 static function helper /don't/.test value ; /> Install",
+      ],
+      [
+        "\\uD800",
+        "<Badge value= class \\uD800 static function helper /don't/.test value ; /> Install",
+      ],
+    ];
+
+    for (const [bindingStart, expectedTitle] of invalidBindingStarts) {
+      const [heading] = scanDocsMarkdown(
+        `## <Badge value={class ${bindingStart} { static { function helper() {} /don't/.test(value); } }} /> Install`
+      );
+
+      expect(heading).toEqual({
+        kind: "heading",
+        level: 2,
+        title: expectedTitle,
+      });
+    }
   });
 });

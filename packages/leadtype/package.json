@@ -233,6 +233,7 @@
     "mdast-util-mdx": "3.0.0",
     "mdast-util-mdx-jsx": "3.2.0",
     "mdast-util-mdxjs-esm": "2.0.1",
+    "micromark-util-html-tag-name": "2.0.1",
     "react": "^19.0.0",
     "rollup": "^4.40.0",
     "rollup-plugin-dts": "^6.2.1",
