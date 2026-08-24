@@ -4371,7 +4371,12 @@ describe("extractDocsTableOfContents", () => {
   });
 
   it("strips MDX member-expression tags from ATX heading text", () => {
-    for (const tag of ["<Icons.Install />", "<_Icon />", "<$Icon />"]) {
+    for (const tag of [
+      "<Icons.Install />",
+      "<Icons:Install />",
+      "<_Icon />",
+      "<$Icon />",
+    ]) {
       const toc = extractDocsTableOfContents(
         [`## ${tag} Install`, "## Install"].join("\n"),
         {
@@ -4385,6 +4390,35 @@ describe("extractDocsTableOfContents", () => {
         { id: "install-1", title: "Install" },
       ]);
     }
+  });
+
+  it("handles balanced MDX expression attributes in flow and heading text", () => {
+    for (const tag of [
+      "<span value={1 > 0}>",
+      "<span value={{ nested: 1 > 0 }}>",
+    ]) {
+      const toc = extractDocsTableOfContents(
+        [tag, "---", "</span>", "## 0"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => item.id)).toEqual(["0"]);
+    }
+
+    const toc = extractDocsTableOfContents(
+      ["## <span value={1 > 0}>Install</span>", "## Install"].join("\n"),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
   });
 
   it("does not treat a thematic break after a blank line as a Setext heading", () => {

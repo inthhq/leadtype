@@ -719,6 +719,8 @@ describe("createDocsSearchIndex and searchDocs", () => {
       "Icon section covers widgets.",
       "## Install",
       "Plain section covers sprockets.",
+      "## <Icons:Install /> Install",
+      "Namespaced section covers calipers.",
       "## <_Icon /> Setup",
       "Underscore section covers ratchets.",
       "## <$Icon /> Configure",
@@ -728,6 +730,11 @@ describe("createDocsSearchIndex and searchDocs", () => {
       "</components.Note>",
       "## Components Note",
       "Member flow section covers gadgets.",
+      "<span value={1 > 0}>",
+      "---",
+      "</span>",
+      "## 0",
+      "Expression section covers levels.",
     ].join("\n");
     const index = createDocsSearchIndex(
       [
@@ -759,6 +766,9 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
       "/docs/fixture#install-1"
     );
+    expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
+    );
     expect(searchDocs(index, "ratchets")[0]?.urlWithHash).toBe(
       "/docs/fixture#setup"
     );
@@ -768,6 +778,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "gadgets")[0]?.urlWithHash).toBe(
       "/docs/fixture#components-note"
     );
+    expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe("/docs/fixture#0");
   });
 
   it("keeps MDX fragment flow and inline heading anchors aligned", () => {

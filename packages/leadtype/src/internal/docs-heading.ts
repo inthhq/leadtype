@@ -10,11 +10,11 @@ const LIST_ITEM_PATTERN = /^ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$)/;
 const HTML_BLOCK_START_PATTERN =
   /^ {0,3}(?:<(?:pre|script|style|textarea)(?:[ \t\r>]|$)|<!--|<\?|<![A-Za-z]|<!\[CDATA\[)/i;
 const HTML_DECLARATION_START_PATTERN = /^<![A-Za-z]/;
-// Dotted names intentionally follow MDX JSX semantics. Source extensions are
-// discarded before this shared TOC/search scanner runs, so distinguishing
-// plain Markdown would require threading syntax metadata through public APIs.
+// MDX JSX names and fragments intentionally follow MDX semantics. Source
+// extensions are discarded before this shared TOC/search scanner runs, so
+// distinguishing plain Markdown requires syntax metadata in public APIs.
 const HTML_OR_MDX_TAG_START_PATTERN =
-  /^<\/?(?:[A-Za-z][A-Za-z0-9-]*|[_$][A-Za-z0-9_$]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?=[\t\n\f\r />])/;
+  /^<\/?(?:[A-Za-z][A-Za-z0-9-]*|[_$][A-Za-z0-9_$]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+|[A-Za-z_$][A-Za-z0-9_$]*:[A-Za-z_$][A-Za-z0-9_$]*)(?=[\t\n\f\r />])/;
 export const docsHtmlBlockTagNames = [
   "address",
   "article",
@@ -83,10 +83,8 @@ const HTML_BLOCK_TAG_PATTERN = new RegExp(
   `^ {0,3}</?(?:${docsHtmlBlockTagNames.join("|")})(?:[ \\t\\r]|/?>|$)`,
   "i"
 );
-const STANDALONE_HTML_TAG_PATTERN =
-  /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+(?:[^<>"']|"[^"]*"|'[^']*')*)?\/?>[ \t\r]*$/;
 const MDX_BLOCK_START_PATTERN =
-  /^ {0,3}(?:\{|<\/?>[ \t\r]*$|<\/?(?:[A-Z_$][A-Za-z0-9_$:-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)(?:[ \t\r/>]|$))/;
+  /^ {0,3}(?:\{|<\/?>[ \t\r]*$|<\/?(?:[A-Z_$][A-Za-z0-9_$-]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+|[A-Za-z_$][A-Za-z0-9_$]*:[A-Za-z_$][A-Za-z0-9_$]*)(?:[ \t\r/>]|$))/;
 const LINK_DEFINITION_PATTERN = /^ {0,3}\[[^\]]+\]:/;
 const THEMATIC_BREAK_PATTERN =
   /^ {0,3}(?:(?:\*\s*){3,}|(?:_\s*){3,}|(?:-\s*){3,})$/;
@@ -137,24 +135,58 @@ function findHtmlConstructEnd(
       : closingIndex + construct.closingSequence.length;
   }
 
-  let quote: '"' | "'" | null = null;
+  let braceDepth = 0;
+  let escaped = false;
+  let quote: '"' | "'" | "`" | null = null;
   for (let index = start; index < input.length; index += 1) {
     const character = input[index];
     if (quote !== null) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (braceDepth > 0 && character === "\\") {
+        escaped = true;
+        continue;
+      }
       if (character === quote) {
         quote = null;
       }
       continue;
     }
-    if (character === '"' || character === "'") {
+    if (
+      character === '"' ||
+      character === "'" ||
+      (braceDepth > 0 && character === "`")
+    ) {
       quote = character;
       continue;
     }
-    if (character === ">") {
+    if (character === "{") {
+      braceDepth += 1;
+      continue;
+    }
+    if (character === "}" && braceDepth > 0) {
+      braceDepth -= 1;
+      continue;
+    }
+    if (character === ">" && braceDepth === 0) {
       return index + 1;
     }
   }
   return -1;
+}
+
+function isStandaloneHtmlOrMdxTag(line: string): boolean {
+  const content = line.trimEnd().replace(/^ {0,3}/, "");
+  if (!HTML_OR_MDX_TAG_START_PATTERN.test(content)) {
+    return false;
+  }
+  const construct: HtmlConstruct = {
+    closingSequence: ">",
+    tracksQuotes: true,
+  };
+  return findHtmlConstructEnd(content, 0, construct) === content.length;
 }
 
 function stripHtmlTags(input: string): string {
@@ -198,7 +230,7 @@ function isHtmlOrMdxBlock(line: string): boolean {
   return (
     HTML_BLOCK_START_PATTERN.test(line) ||
     HTML_BLOCK_TAG_PATTERN.test(line) ||
-    STANDALONE_HTML_TAG_PATTERN.test(line) ||
+    isStandaloneHtmlOrMdxTag(line) ||
     MDX_BLOCK_START_PATTERN.test(line)
   );
 }
