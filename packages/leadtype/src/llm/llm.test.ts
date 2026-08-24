@@ -4370,12 +4370,14 @@ describe("extractDocsTableOfContents", () => {
     ]);
   });
 
-  it("strips MDX member-expression tags from ATX heading text", () => {
+  it("strips MDX JSX tags from ATX heading text", () => {
     for (const tag of [
       "<Icons.Install />",
       "<Icons:Install />",
       "<_Icon />",
       "<$Icon />",
+      "<My_Icon />",
+      "<My$Icon />",
     ]) {
       const toc = extractDocsTableOfContents(
         [`## ${tag} Install`, "## Install"].join("\n"),
@@ -4388,6 +4390,23 @@ describe("extractDocsTableOfContents", () => {
       expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
         { id: "install", title: "Install" },
         { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
+  it("preserves malformed MDX JSX names in heading text", () => {
+    for (const { id, tag } of [
+      { id: "9icon-install", tag: "<9Icon />" },
+      { id: "my-icon-install", tag: "<My..Icon />" },
+      { id: "my-icon-part-install", tag: "<My:Icon:Part />" },
+    ]) {
+      const toc = extractDocsTableOfContents(`## ${tag} Install`, {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      });
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id, title: `${tag} Install` },
       ]);
     }
   });

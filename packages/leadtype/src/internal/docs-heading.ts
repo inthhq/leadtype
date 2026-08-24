@@ -14,7 +14,7 @@ const HTML_DECLARATION_START_PATTERN = /^<![A-Za-z]/;
 // extensions are discarded before this shared TOC/search scanner runs, so
 // distinguishing plain Markdown requires syntax metadata in public APIs.
 const HTML_OR_MDX_TAG_START_PATTERN =
-  /^<\/?(?:[A-Za-z][A-Za-z0-9-]*|[_$][A-Za-z0-9_$]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+|[A-Za-z_$][A-Za-z0-9_$]*:[A-Za-z_$][A-Za-z0-9_$]*)(?=[\t\n\f\r />])/;
+  /^<\/?(?:[A-Za-z][A-Za-z0-9_$-]*|[_$][A-Za-z0-9_$]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+|[A-Za-z_$][A-Za-z0-9_$]*:[A-Za-z_$][A-Za-z0-9_$]*)(?=[\t\n\f\r />])/;
 export const docsHtmlBlockTagNames = [
   "address",
   "article",
