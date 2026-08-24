@@ -92,8 +92,9 @@ const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const HEADING_INLINE_PATTERN = /[`*_~[\](){}|]/g;
 const HEADING_CLOSING_SEQUENCE_PATTERN = /\s+#+\s*$/;
 const WHITESPACE_PATTERN = /\s+/g;
-const JAVASCRIPT_IDENTIFIER_START_PATTERN = /[A-Za-z_$]/;
-const JAVASCRIPT_IDENTIFIER_PART_PATTERN = /[A-Za-z0-9_$]/;
+const JAVASCRIPT_IDENTIFIER_START_PATTERN = /^[$_\p{ID_Start}]$/u;
+const JAVASCRIPT_IDENTIFIER_PART_PATTERN =
+  /^(?:[$_\p{ID_Continue}]|\u200C|\u200D)$/u;
 const JAVASCRIPT_CONTROL_KEYWORDS = new Set([
   "catch",
   "for",
@@ -121,6 +122,11 @@ const JAVASCRIPT_REGEX_PREFIX_KEYWORDS = new Set([
 
 const normalizeHeadingText = (input: string): string =>
   input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
+
+const getUnicodeCharacterAt = (input: string, index: number): string => {
+  const codePoint = input.codePointAt(index);
+  return codePoint === undefined ? "" : String.fromCodePoint(codePoint);
+};
 
 type HtmlConstruct =
   | { closingSequence: "-->" | "?>" | "]]>"; tracksQuotes: false }
@@ -344,15 +350,18 @@ function findHtmlConstructEnd(
     }
     if (
       braceDepth > 0 &&
-      character !== undefined &&
-      JAVASCRIPT_IDENTIFIER_START_PATTERN.test(character)
+      JAVASCRIPT_IDENTIFIER_START_PATTERN.test(
+        getUnicodeCharacterAt(input, index)
+      )
     ) {
-      let identifierEnd = index + 1;
-      while (
-        identifierEnd < input.length &&
-        JAVASCRIPT_IDENTIFIER_PART_PATTERN.test(input[identifierEnd] ?? "")
-      ) {
-        identifierEnd += 1;
+      const identifierStart = getUnicodeCharacterAt(input, index);
+      let identifierEnd = index + identifierStart.length;
+      while (identifierEnd < input.length) {
+        const identifierPart = getUnicodeCharacterAt(input, identifierEnd);
+        if (!JAVASCRIPT_IDENTIFIER_PART_PATTERN.test(identifierPart)) {
+          break;
+        }
+        identifierEnd += identifierPart.length;
       }
       const identifier = input.slice(index, identifierEnd);
       const wasStatementStart: boolean = javascriptStatementStart;
@@ -565,12 +574,16 @@ function findHtmlConstructEnd(
       continue;
     }
     if (braceDepth > 0 && character === ".") {
-      javascriptRegexAllowed = false;
+      const isSpreadOperator = input.startsWith("...", index);
+      javascriptRegexAllowed = isSpreadOperator;
       javascriptStatementStart = false;
       pendingLabelColon = false;
-      nextIdentifierIsProperty = true;
+      nextIdentifierIsProperty = !isSpreadOperator;
       nextBraceContext = null;
       pendingControlParenthesis = null;
+      if (isSpreadOperator) {
+        index += 2;
+      }
       continue;
     }
     if (braceDepth > 0 && character === "=" && nextCharacter === ">") {

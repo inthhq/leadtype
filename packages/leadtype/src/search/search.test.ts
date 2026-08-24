@@ -1117,6 +1117,60 @@ describe("createDocsSearchIndex and searchDocs", () => {
     }
   });
 
+  it("keeps Unicode identifiers and spread operands aligned with rendered anchors", () => {
+    const tags = [
+      '<Badge value={value / "x > y"} />',
+      '<Badge value={π / "x > y"} />',
+      '<Badge value={a\u200Cb / "x > y"} />',
+      '<Badge value={a\u200Db / "x > y"} />',
+      '<Badge value={\u{10400} / "x > y"} />',
+      '<Badge value={π.value / "x > y"} />',
+      '<Badge value={π?.value / "x > y"} />',
+      `<Badge value={{ .../don't/ }} />`,
+      '<Badge value={{ ...value / "x > y" }} />',
+    ];
+
+    for (const tag of tags) {
+      const content = [
+        `## ${tag} Install`,
+        "First section covers widgets.",
+        "## Install",
+        "Second section covers sprockets.",
+      ].join("\n");
+      const index = createDocsSearchIndex(
+        [
+          {
+            id: "fixture",
+            title: "Fixture",
+            urlPath: "/docs/fixture",
+            absoluteUrl: "https://leadtype.dev/docs/fixture",
+            relativePath: "fixture.mdx",
+            content,
+          },
+        ],
+        { generatedAt: "2026-01-01T00:00:00.000Z" }
+      );
+      const tocIds = flattenTocIds(
+        extractDocsTableOfContents(content, {
+          urlPath: "/docs/fixture",
+          absoluteUrl: "https://leadtype.dev/docs/fixture",
+        })
+      );
+      const searchAnchors = index.chunks.map(
+        (chunk) => chunk[CHUNK_ANCHOR_INDEX]
+      );
+
+      expect(tocIds).toEqual(["install", "install-1"]);
+      expect(searchAnchors).toEqual(tocIds);
+      expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install"
+      );
+      expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+        "/docs/fixture#install-1"
+      );
+    }
+  });
+
   it("keeps MDX fragment flow and inline heading anchors aligned", () => {
     const content = [
       "<>",

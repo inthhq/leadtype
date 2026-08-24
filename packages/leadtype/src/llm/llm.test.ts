@@ -4586,6 +4586,35 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("recognizes Unicode identifiers and spread operands", () => {
+    const tags = [
+      '<Badge value={value / "x > y"} />',
+      '<Badge value={π / "x > y"} />',
+      '<Badge value={a\u200Cb / "x > y"} />',
+      '<Badge value={a\u200Db / "x > y"} />',
+      '<Badge value={\u{10400} / "x > y"} />',
+      '<Badge value={π.value / "x > y"} />',
+      '<Badge value={π?.value / "x > y"} />',
+      `<Badge value={{ .../don't/ }} />`,
+      '<Badge value={{ ...value / "x > y" }} />',
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
