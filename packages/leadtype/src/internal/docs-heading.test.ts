@@ -62,22 +62,40 @@ describe("createDocsHeadingSlugger", () => {
 describe("scanDocsMarkdown", () => {
   it("rejects malformed escaped class binding starts", () => {
     const invalidBindingStarts = [
-      "\\x61",
-      "\\u{}",
-      "\\u{110000}",
-      "\\u0030",
-      "\\uD800",
+      [
+        "\\x61",
+        "<Badge value= class \\x61 static function helper /don't/.test value ; /> Install",
+      ],
+      [
+        "\\u{}",
+        "<Badge value= class \\u static function helper /don't/.test value ; /> Install",
+      ],
+      // This also guards the range check before String.fromCodePoint, which
+      // would throw for an out-of-range escape instead of rejecting it.
+      [
+        "\\u{110000}",
+        "<Badge value= class \\u 110000 static function helper /don't/.test value ; /> Install",
+      ],
+      [
+        "\\u0030",
+        "<Badge value= class \\u0030 static function helper /don't/.test value ; /> Install",
+      ],
+      [
+        "\\uD800",
+        "<Badge value= class \\uD800 static function helper /don't/.test value ; /> Install",
+      ],
     ];
 
-    for (const bindingStart of invalidBindingStarts) {
+    for (const [bindingStart, expectedTitle] of invalidBindingStarts) {
       const [heading] = scanDocsMarkdown(
         `## <Badge value={class ${bindingStart} { static { function helper() {} /don't/.test(value); } }} /> Install`
       );
 
-      expect(heading).toMatchObject({ kind: "heading", level: 2 });
-      expect(heading?.kind === "heading" ? heading.title : "Install").not.toBe(
-        "Install"
-      );
+      expect(heading).toEqual({
+        kind: "heading",
+        level: 2,
+        title: expectedTitle,
+      });
     }
   });
 });

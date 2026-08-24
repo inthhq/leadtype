@@ -442,12 +442,15 @@ function findHtmlConstructEnd(
       nextBraceContext = null;
       continue;
     }
-    const identifierStart = getJavaScriptIdentifierCharacterAt(
-      input,
-      index,
-      JAVASCRIPT_IDENTIFIER_START_PATTERN
-    );
-    if (braceDepth > 0 && identifierStart !== null) {
+    const identifierStart =
+      braceDepth > 0
+        ? getJavaScriptIdentifierCharacterAt(
+            input,
+            index,
+            JAVASCRIPT_IDENTIFIER_START_PATTERN
+          )
+        : null;
+    if (identifierStart !== null) {
       let identifierEnd = identifierStart.end;
       while (identifierEnd < input.length) {
         const identifierPart = getJavaScriptIdentifierCharacterAt(
