@@ -123,6 +123,31 @@ function getHtmlConstruct(input: string): HtmlConstruct | null {
   return null;
 }
 
+const closesJavaScriptStatementBlock = (prefix: string): boolean => {
+  let depth = 0;
+  for (let index = prefix.length - 1; index >= 0; index -= 1) {
+    const character = prefix[index];
+    if (character === "}") {
+      depth += 1;
+      continue;
+    }
+    if (character !== "{") {
+      continue;
+    }
+    depth -= 1;
+    if (depth !== 0) {
+      continue;
+    }
+    const beforeBlock = prefix.slice(0, index).trimEnd();
+    return (
+      beforeBlock.endsWith("=>") ||
+      beforeBlock.endsWith(")") ||
+      /(?:^|[^A-Za-z0-9_$])(?:do|else|finally|try)$/.test(beforeBlock)
+    );
+  }
+  return false;
+};
+
 const startsJavaScriptRegex = (input: string, index: number): boolean => {
   const prefix = input.slice(0, index).trimEnd();
   const previousCharacter = prefix.at(-1);
@@ -130,6 +155,9 @@ const startsJavaScriptRegex = (input: string, index: number): boolean => {
     previousCharacter === undefined ||
     "{([=,:;!?&|+-*%^~<>".includes(previousCharacter)
   ) {
+    return true;
+  }
+  if (previousCharacter === "}" && closesJavaScriptStatementBlock(prefix)) {
     return true;
   }
   return /(?:^|[^A-Za-z0-9_$])(?:await|case|delete|in|instanceof|new|of|return|throw|typeof|void|yield)$/.test(

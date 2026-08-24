@@ -4432,6 +4432,8 @@ describe("extractDocsTableOfContents", () => {
           "---",
           "</span>",
           "## <Badge pattern={/don't/} /> Install",
+          "## <Badge onClick={() => { if (ready) {} /don't/.test(value); }} /> Install",
+          "## <Badge value={{} / 2 > 0} /> Install",
           "## Install",
         ].join(lineEnding),
         {
@@ -4443,6 +4445,8 @@ describe("extractDocsTableOfContents", () => {
       expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
         { id: "install", title: "Install" },
         { id: "install-1", title: "Install" },
+        { id: "install-2", title: "Install" },
+        { id: "install-3", title: "Install" },
       ]);
     }
   });

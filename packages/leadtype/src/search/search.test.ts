@@ -785,6 +785,10 @@ describe("createDocsSearchIndex and searchDocs", () => {
     const content = [
       "## <Badge pattern={/don't/} /> Install",
       "Regex section covers widgets.",
+      "## <Badge onClick={() => { if (ready) {} /don't/.test(value); }} /> Install",
+      "Statement section covers calipers.",
+      "## <Badge value={{} / 2 > 0} /> Install",
+      "Division section covers ratchets.",
       "## Install",
       "Plain section covers sprockets.",
       "<span value={/* don't > */ 1 > 0}>",
@@ -816,13 +820,25 @@ describe("createDocsSearchIndex and searchDocs", () => {
       (chunk) => chunk[CHUNK_ANCHOR_INDEX]
     );
 
-    expect(tocIds).toEqual(["install", "install-1", "0"]);
+    expect(tocIds).toEqual([
+      "install",
+      "install-1",
+      "install-2",
+      "install-3",
+      "0",
+    ]);
     expect(searchAnchors).toEqual(tocIds);
     expect(searchDocs(index, "widgets")[0]?.urlWithHash).toBe(
       "/docs/fixture#install"
     );
     expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-3"
+    );
+    expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
       "/docs/fixture#install-1"
+    );
+    expect(searchDocs(index, "ratchets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-2"
     );
     expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe("/docs/fixture#0");
   });
