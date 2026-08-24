@@ -136,6 +136,10 @@ type HtmlConstruct =
 
 type JavaScriptBraceContext = {
   allowsRegexAfterClose: boolean;
+  classBody?: {
+    bracketDepth: number;
+    parenthesisDepth: number;
+  };
   statementBody: boolean;
 };
 
@@ -368,6 +372,12 @@ function findHtmlConstructEnd(
       const identifier = input.slice(index, identifierEnd);
       const wasStatementStart: boolean = javascriptStatementStart;
       const isKeywordPosition = !nextIdentifierIsProperty;
+      const activeClassBody = braceContexts.at(-1)?.classBody;
+      const startsStaticBlock =
+        isKeywordPosition &&
+        identifier === "static" &&
+        activeClassBody?.bracketDepth === bracketDepth &&
+        activeClassBody.parenthesisDepth === parenthesisContexts.length;
       const startsCaseClause =
         isKeywordPosition &&
         wasStatementStart &&
@@ -413,11 +423,12 @@ function findHtmlConstructEnd(
         wasStatementStart && isKeywordPosition && !startsCaseClause;
 
       if (
-        isKeywordPosition &&
-        (identifier === "do" ||
-          identifier === "else" ||
-          identifier === "finally" ||
-          identifier === "try")
+        startsStaticBlock ||
+        (isKeywordPosition &&
+          (identifier === "do" ||
+            identifier === "else" ||
+            identifier === "finally" ||
+            identifier === "try"))
       ) {
         nextBraceContext = {
           allowsRegexAfterClose: true,
@@ -512,6 +523,10 @@ function findHtmlConstructEnd(
       if (startsClassBody && pendingClass) {
         braceContext = {
           allowsRegexAfterClose: pendingClass.allowsRegexAfterClose,
+          classBody: {
+            bracketDepth,
+            parenthesisDepth: parenthesisContexts.length,
+          },
           statementBody: false,
         };
         pendingClasses.pop();

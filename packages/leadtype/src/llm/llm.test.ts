@@ -4643,6 +4643,31 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("recognizes statement bodies in class static blocks", () => {
+    const tags = [
+      `<Badge value={class { static { function helper() {} /don't/.test(value); } }} />`,
+      `<Badge value={class Named { static { class Helper {} /don't/.test(value); } }} />`,
+      '<Badge value={(class { static = {}; }) / "x > y"} />',
+      '<Badge value={(class { static() {} }) / "x > y"} />',
+      '<Badge value={(class { static field = {}; static method() {} }) / "x > y"} />',
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
