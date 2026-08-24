@@ -1018,6 +1018,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
       `<Badge onClick={() => { label: {} /don't/.test(value); }} />`,
       `<Badge onClick={() => { switch (value) { case 1: {} /don't/.test(value); } }} />`,
       `<Badge onClick={() => { switch (value) { case ready ? one : two: {} /don't/.test(value); } }} />`,
+      `<Badge onClick={() => { switch (value) { case (() => { switch (inner) { case 1: return 2; } return 3; })(): {} /don't/.test(value); } }} />`,
       `<Badge value={(function outer(callback = function nested() {}) {}) / "x > y"} />`,
       `<Badge value={(class Outer extends (class Inner {}) {}) / "x > y"} />`,
       `<Badge value={{ value: {} / "x > y" }} />`,

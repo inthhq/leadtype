@@ -185,7 +185,7 @@ function findHtmlConstructEnd(
   let javascriptRegexAllowed = true;
   let javascriptStatementStart = false;
   let bracketDepth = 0;
-  let caseColonContext: JavaScriptCaseColonContext | null = null;
+  const caseColonContexts: JavaScriptCaseColonContext[] = [];
   let nextIdentifierIsProperty = false;
   let nextBraceContext: JavaScriptBraceContext | null = null;
   let pendingAsyncDeclaration: boolean | null = null;
@@ -390,12 +390,12 @@ function findHtmlConstructEnd(
       }
 
       if (startsCaseClause) {
-        caseColonContext = {
+        caseColonContexts.push({
           braceDepth,
           bracketDepth,
           conditionalDepth: 0,
           parenthesisDepth: parenthesisContexts.length,
-        };
+        });
       }
 
       pendingLabelColon =
@@ -530,11 +530,11 @@ function findHtmlConstructEnd(
       }
       braceDepth -= 1;
       const braceContext = braceContexts.pop();
-      if (
-        caseColonContext !== null &&
-        braceDepth < caseColonContext.braceDepth
+      while (
+        caseColonContexts.at(-1)?.braceDepth !== undefined &&
+        (caseColonContexts.at(-1)?.braceDepth ?? 0) > braceDepth
       ) {
-        caseColonContext = null;
+        caseColonContexts.pop();
       }
       javascriptRegexAllowed = braceContext?.allowsRegexAfterClose ?? false;
       javascriptStatementStart = braceContext?.allowsRegexAfterClose ?? false;
@@ -606,16 +606,16 @@ function findHtmlConstructEnd(
       character !== undefined &&
       ",:;?=.!&|+-*%^~<>".includes(character)
     ) {
-      const activeCaseColonContext = caseColonContext;
+      const activeCaseColonContext = caseColonContexts.at(-1);
       const atCaseColonDepth =
-        activeCaseColonContext !== null &&
+        activeCaseColonContext !== undefined &&
         activeCaseColonContext.braceDepth === braceDepth &&
         activeCaseColonContext.bracketDepth === bracketDepth &&
         activeCaseColonContext.parenthesisDepth === parenthesisContexts.length;
       if (
         character === "?" &&
         atCaseColonDepth &&
-        activeCaseColonContext !== null &&
+        activeCaseColonContext !== undefined &&
         previousCharacter !== "?" &&
         nextCharacter !== "?" &&
         nextCharacter !== "."
@@ -629,12 +629,12 @@ function findHtmlConstructEnd(
       } else if (
         character === ":" &&
         atCaseColonDepth &&
-        activeCaseColonContext !== null
+        activeCaseColonContext !== undefined
       ) {
         if (activeCaseColonContext.conditionalDepth > 0) {
           activeCaseColonContext.conditionalDepth -= 1;
         } else {
-          caseColonContext = null;
+          caseColonContexts.pop();
           startsStatement = true;
         }
       }
