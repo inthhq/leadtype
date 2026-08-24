@@ -92,6 +92,30 @@ const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const HEADING_INLINE_PATTERN = /[`*_~[\](){}|]/g;
 const HEADING_CLOSING_SEQUENCE_PATTERN = /\s+#+\s*$/;
 const WHITESPACE_PATTERN = /\s+/g;
+const JAVASCRIPT_IDENTIFIER_START_PATTERN = /[A-Za-z_$]/;
+const JAVASCRIPT_IDENTIFIER_PART_PATTERN = /[A-Za-z0-9_$]/;
+const JAVASCRIPT_CONTROL_KEYWORDS = new Set([
+  "catch",
+  "for",
+  "if",
+  "switch",
+  "while",
+  "with",
+]);
+const JAVASCRIPT_REGEX_PREFIX_KEYWORDS = new Set([
+  "await",
+  "case",
+  "delete",
+  "in",
+  "instanceof",
+  "new",
+  "of",
+  "return",
+  "throw",
+  "typeof",
+  "void",
+  "yield",
+]);
 
 const normalizeHeadingText = (input: string): string =>
   input.normalize("NFKD").replace(DIACRITIC_PATTERN, "").toLowerCase();
@@ -148,23 +172,6 @@ const closesJavaScriptStatementBlock = (prefix: string): boolean => {
   return false;
 };
 
-const startsJavaScriptRegex = (input: string, index: number): boolean => {
-  const prefix = input.slice(0, index).trimEnd();
-  const previousCharacter = prefix.at(-1);
-  if (
-    previousCharacter === undefined ||
-    "{([=,:;!?&|+-*%^~<>".includes(previousCharacter)
-  ) {
-    return true;
-  }
-  if (previousCharacter === "}" && closesJavaScriptStatementBlock(prefix)) {
-    return true;
-  }
-  return /(?:^|[^A-Za-z0-9_$])(?:await|case|delete|in|instanceof|new|of|return|throw|typeof|void|yield)$/.test(
-    prefix
-  );
-};
-
 function findHtmlConstructEnd(
   input: string,
   start: number,
@@ -181,8 +188,12 @@ function findHtmlConstructEnd(
   let escaped = false;
   let javascriptComment: "block" | "line" | null = null;
   let javascriptRegex = false;
-  let quote: '"' | "'" | "`" | null = null;
+  let javascriptRegexAllowed = true;
+  let nextParenthesisIsControl = false;
+  const parenthesisKinds: boolean[] = [];
+  let quote: '"' | "'" | null = null;
   let regexCharacterClass = false;
+  const templateInterpolationDepths: Array<number | null> = [];
   for (let index = start; index < input.length; index += 1) {
     const character = input[index];
     const nextCharacter = input[index + 1];
@@ -218,6 +229,34 @@ function findHtmlConstructEnd(
       }
       if (character === "/" && !regexCharacterClass) {
         javascriptRegex = false;
+        javascriptRegexAllowed = false;
+      }
+      continue;
+    }
+    const templateInterpolationDepth = templateInterpolationDepths.at(-1);
+    if (
+      templateInterpolationDepths.length > 0 &&
+      templateInterpolationDepth === null
+    ) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (character === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (character === "`") {
+        templateInterpolationDepths.pop();
+        javascriptRegexAllowed = false;
+        continue;
+      }
+      if (character === "$" && nextCharacter === "{") {
+        braceDepth += 1;
+        templateInterpolationDepths[templateInterpolationDepths.length - 1] =
+          braceDepth;
+        javascriptRegexAllowed = true;
+        index += 1;
       }
       continue;
     }
@@ -232,6 +271,9 @@ function findHtmlConstructEnd(
       }
       if (character === quote) {
         quote = null;
+        if (braceDepth > 0) {
+          javascriptRegexAllowed = false;
+        }
       }
       continue;
     }
@@ -246,26 +288,107 @@ function findHtmlConstructEnd(
         index += 1;
         continue;
       }
-      if (startsJavaScriptRegex(input, index)) {
+      if (javascriptRegexAllowed) {
         javascriptRegex = true;
         regexCharacterClass = false;
         continue;
       }
+      javascriptRegexAllowed = true;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (braceDepth > 0 && character === "`") {
+      templateInterpolationDepths.push(null);
+      continue;
     }
     if (
-      character === '"' ||
-      character === "'" ||
-      (braceDepth > 0 && character === "`")
+      braceDepth > 0 &&
+      character !== undefined &&
+      JAVASCRIPT_IDENTIFIER_START_PATTERN.test(character)
     ) {
-      quote = character;
+      let identifierEnd = index + 1;
+      while (
+        identifierEnd < input.length &&
+        JAVASCRIPT_IDENTIFIER_PART_PATTERN.test(input[identifierEnd] ?? "")
+      ) {
+        identifierEnd += 1;
+      }
+      const identifier = input.slice(index, identifierEnd);
+      nextParenthesisIsControl = JAVASCRIPT_CONTROL_KEYWORDS.has(identifier);
+      javascriptRegexAllowed = JAVASCRIPT_REGEX_PREFIX_KEYWORDS.has(identifier);
+      index = identifierEnd - 1;
+      continue;
+    }
+    if (braceDepth > 0 && character !== undefined && /[0-9]/.test(character)) {
+      let numberEnd = index + 1;
+      while (
+        numberEnd < input.length &&
+        /[A-Za-z0-9_.]/.test(input[numberEnd] ?? "")
+      ) {
+        numberEnd += 1;
+      }
+      javascriptRegexAllowed = false;
+      nextParenthesisIsControl = false;
+      index = numberEnd - 1;
+      continue;
+    }
+    if (braceDepth > 0 && character === "(") {
+      parenthesisKinds.push(nextParenthesisIsControl);
+      nextParenthesisIsControl = false;
+      javascriptRegexAllowed = true;
+      continue;
+    }
+    if (braceDepth > 0 && character === ")") {
+      javascriptRegexAllowed = parenthesisKinds.pop() ?? false;
+      nextParenthesisIsControl = false;
       continue;
     }
     if (character === "{") {
       braceDepth += 1;
+      javascriptRegexAllowed = true;
+      nextParenthesisIsControl = false;
       continue;
     }
     if (character === "}" && braceDepth > 0) {
+      if (templateInterpolationDepth === braceDepth) {
+        braceDepth -= 1;
+        templateInterpolationDepths[templateInterpolationDepths.length - 1] =
+          null;
+        continue;
+      }
       braceDepth -= 1;
+      javascriptRegexAllowed = closesJavaScriptStatementBlock(
+        input.slice(0, index + 1)
+      );
+      nextParenthesisIsControl = false;
+      continue;
+    }
+    if (braceDepth > 0 && character === "[") {
+      javascriptRegexAllowed = true;
+      nextParenthesisIsControl = false;
+      continue;
+    }
+    if (braceDepth > 0 && (character === "]" || character === ".")) {
+      javascriptRegexAllowed = false;
+      nextParenthesisIsControl = false;
+      continue;
+    }
+    if (braceDepth > 0 && character === "=" && nextCharacter === ">") {
+      javascriptRegexAllowed = true;
+      nextParenthesisIsControl = false;
+      index += 1;
+      continue;
+    }
+    if (
+      braceDepth > 0 &&
+      character !== undefined &&
+      ",:;?=.!&|+-*%^~<>".includes(character)
+    ) {
+      javascriptRegexAllowed = true;
+      nextParenthesisIsControl = false;
       continue;
     }
     if (character === ">" && braceDepth === 0) {

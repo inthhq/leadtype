@@ -4433,7 +4433,11 @@ describe("extractDocsTableOfContents", () => {
           "</span>",
           "## <Badge pattern={/don't/} /> Install",
           "## <Badge onClick={() => { if (ready) {} /don't/.test(value); }} /> Install",
+          "## <Badge onClick={() => { if (ready) /don't/.test(value); }} /> Install",
+          "## <Badge onClick={() => { while (ready) /don't/.test(value); }} /> Install",
+          `## <Badge value={\`outer \${\`don't\`}\`} /> Install`,
           "## <Badge value={{} / 2 > 0} /> Install",
+          "## <Badge value={compute() / 2 > 0} /> Install",
           "## Install",
         ].join(lineEnding),
         {
@@ -4447,6 +4451,10 @@ describe("extractDocsTableOfContents", () => {
         { id: "install-1", title: "Install" },
         { id: "install-2", title: "Install" },
         { id: "install-3", title: "Install" },
+        { id: "install-4", title: "Install" },
+        { id: "install-5", title: "Install" },
+        { id: "install-6", title: "Install" },
+        { id: "install-7", title: "Install" },
       ]);
     }
   });

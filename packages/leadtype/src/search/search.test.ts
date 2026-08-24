@@ -787,15 +787,21 @@ describe("createDocsSearchIndex and searchDocs", () => {
       "Regex section covers widgets.",
       "## <Badge onClick={() => { if (ready) {} /don't/.test(value); }} /> Install",
       "Statement section covers calipers.",
+      "## <Badge onClick={() => { if (ready) /don't/.test(value); }} /> Install",
+      "Control section covers saws.",
+      `## <Badge value={\`outer \${\`don't\`}\`} /> Install`,
+      "Template section covers drills.",
       "## <Badge value={{} / 2 > 0} /> Install",
       "Division section covers ratchets.",
+      "## <Badge value={compute() / 2 > 0} /> Install",
+      "Call division section covers levels.",
       "## Install",
       "Plain section covers sprockets.",
       "<span value={/* don't > */ 1 > 0}>",
       "---",
       "</span>",
       "## 0",
-      "Comparison section covers levels.",
+      "Comparison section covers gauges.",
     ].join("\n");
     const index = createDocsSearchIndex(
       [
@@ -825,6 +831,9 @@ describe("createDocsSearchIndex and searchDocs", () => {
       "install-1",
       "install-2",
       "install-3",
+      "install-4",
+      "install-5",
+      "install-6",
       "0",
     ]);
     expect(searchAnchors).toEqual(tocIds);
@@ -832,15 +841,24 @@ describe("createDocsSearchIndex and searchDocs", () => {
       "/docs/fixture#install"
     );
     expect(searchDocs(index, "sprockets")[0]?.urlWithHash).toBe(
-      "/docs/fixture#install-3"
+      "/docs/fixture#install-6"
     );
     expect(searchDocs(index, "calipers")[0]?.urlWithHash).toBe(
       "/docs/fixture#install-1"
     );
     expect(searchDocs(index, "ratchets")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-4"
+    );
+    expect(searchDocs(index, "saws")[0]?.urlWithHash).toBe(
       "/docs/fixture#install-2"
     );
-    expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe("/docs/fixture#0");
+    expect(searchDocs(index, "drills")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-3"
+    );
+    expect(searchDocs(index, "levels")[0]?.urlWithHash).toBe(
+      "/docs/fixture#install-5"
+    );
+    expect(searchDocs(index, "gauges")[0]?.urlWithHash).toBe("/docs/fixture#0");
   });
 
   it("keeps MDX fragment flow and inline heading anchors aligned", () => {
