@@ -964,6 +964,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
       `<Badge onClick={() => { if (ready) { const marker = /[{}]/; } /don't/.test(value); }} />`,
       `<Badge onClick={() => { function helper() {} /don't/.test(value); }} />`,
       `<Badge onClick={() => { class Helper {} /don't/.test(value); }} />`,
+      `<Badge onClick={() => { try {} catch { function helper() {} /don't/.test(value); } }} />`,
       `<Badge value={(function named() {}) / "x > y"} />`,
       `<Badge value={(class Named {}) / "x > y"} />`,
       `<Badge value={obj.if() / "x > y"} />`,

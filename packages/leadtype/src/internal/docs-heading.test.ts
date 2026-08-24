@@ -60,6 +60,14 @@ describe("createDocsHeadingSlugger", () => {
 });
 
 describe("scanDocsMarkdown", () => {
+  it("recognizes binding-less catch statement bodies", () => {
+    const [heading] = scanDocsMarkdown(
+      `## <Badge onClick={() => { try {} catch { function helper() {} /don't/.test(value); } }} /> Install`
+    );
+
+    expect(heading).toEqual({ kind: "heading", level: 2, title: "Install" });
+  });
+
   it("rejects malformed escaped class binding starts", () => {
     const invalidBindingStarts = [
       [

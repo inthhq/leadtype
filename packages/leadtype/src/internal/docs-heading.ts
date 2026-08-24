@@ -532,7 +532,8 @@ function findHtmlConstructEnd(
       if (
         startsStaticBlock ||
         (isKeywordPosition &&
-          (identifier === "do" ||
+          (identifier === "catch" ||
+            identifier === "do" ||
             identifier === "else" ||
             identifier === "finally" ||
             identifier === "try"))
