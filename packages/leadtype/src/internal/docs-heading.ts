@@ -106,9 +106,11 @@ const JAVASCRIPT_CONTROL_KEYWORDS = new Set([
 const JAVASCRIPT_REGEX_PREFIX_KEYWORDS = new Set([
   "await",
   "case",
+  "default",
   "delete",
   "do",
   "else",
+  "extends",
   "in",
   "instanceof",
   "new",

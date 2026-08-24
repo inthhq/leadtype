@@ -4615,6 +4615,34 @@ describe("extractDocsTableOfContents", () => {
     }
   });
 
+  it("recognizes regex operands in class heritage", () => {
+    const tags = [
+      `<Badge value={class extends /don't/.constructor {}} />`,
+      `<Badge value={class Named extends /don't/.constructor {}} />`,
+      '<Badge value={class extends (Base / "x > y") {}} />',
+      '<Badge value={class Named extends (Base / "x > y") {}} />',
+      '<Badge value={(class {}) / "x > y"} />',
+      '<Badge value={(class Named {}) / "x > y"} />',
+      '<Badge value={obj.extends / "x > y"} />',
+      `<Badge onClick={() => { class Named {} /don't/.test(value); }} />`,
+    ];
+
+    for (const tag of tags) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
+
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
+  });
+
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
     const toc = extractDocsTableOfContents(
       ["A paragraph.", "", "---", "## After"].join("\n"),
