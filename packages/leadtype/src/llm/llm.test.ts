@@ -4371,18 +4371,20 @@ describe("extractDocsTableOfContents", () => {
   });
 
   it("strips MDX member-expression tags from ATX heading text", () => {
-    const toc = extractDocsTableOfContents(
-      ["## <Icons.Install /> Install", "## Install"].join("\n"),
-      {
-        urlPath: "/docs/example",
-        absoluteUrl: "https://leadtype.dev/docs/example",
-      }
-    );
+    for (const tag of ["<Icons.Install />", "<_Icon />", "<$Icon />"]) {
+      const toc = extractDocsTableOfContents(
+        [`## ${tag} Install`, "## Install"].join("\n"),
+        {
+          urlPath: "/docs/example",
+          absoluteUrl: "https://leadtype.dev/docs/example",
+        }
+      );
 
-    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
-      { id: "install", title: "Install" },
-      { id: "install-1", title: "Install" },
-    ]);
+      expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+        { id: "install", title: "Install" },
+        { id: "install-1", title: "Install" },
+      ]);
+    }
   });
 
   it("does not treat a thematic break after a blank line as a Setext heading", () => {
@@ -4446,6 +4448,21 @@ describe("extractDocsTableOfContents", () => {
       ["<>", "Install", "</>", "---", "## <>Install</>", "## Install"].join(
         "\n"
       ),
+      {
+        urlPath: "/docs/example",
+        absoluteUrl: "https://leadtype.dev/docs/example",
+      }
+    );
+
+    expect(toc.map((item) => ({ id: item.id, title: item.title }))).toEqual([
+      { id: "install", title: "Install" },
+      { id: "install-1", title: "Install" },
+    ]);
+  });
+
+  it("keeps a one-line MDX fragment as Setext heading text", () => {
+    const toc = extractDocsTableOfContents(
+      ["<>Install</>", "---", "## Install"].join("\n"),
       {
         urlPath: "/docs/example",
         absoluteUrl: "https://leadtype.dev/docs/example",
