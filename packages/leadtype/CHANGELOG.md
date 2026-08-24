@@ -1,5 +1,240 @@
 # leadtype
 
+## 0.5.0
+
+### Minor Changes
+
+- 3981fd2: Make `baseUrl` a config field, so the common path stops repeating it.
+
+  A docs audit found `baseUrl` was the one value every snippet had to state twice — `generate --base-url https://…` for the CLI and `createDocsProject({ baseUrl })` for the runtime — because it was not part of the config. It now is: a site-owned, top-level field next to `product`.
+
+  ```ts
+  export default defineDocsConfig({
+    product: { name: "Acme", tagline: "Acme does one useful thing." },
+    baseUrl: "https://acme.dev",
+  });
+  ```
+
+  With it set, the scaffolded common path carries no knobs at all: `leadtype generate` needs no `--base-url`, and the runtime is `createDocsProject()` with zero arguments. `leadtype init` writes the value once, into `docs/docs.config.ts`, and nowhere else.
+
+  Precedence is explicit-wins: the `--base-url` flag and the `createDocsProject({ baseUrl })` argument override the config field, and a config without the field keeps the deployment-URL env fallbacks exactly as before. One shared validator now covers every authored spelling — the config field, the flag, and the argument: a base URL must be an absolute http(s) URL, optionally with a path prefix, carrying no query, fragment, or embedded credentials, and is normalized (trailing slashes stripped) so URL joins cannot produce `//`. For the flag and the argument this is stricter than before — they used to forward whatever they were given, so a value like `ftp://acme.dev`, `https://acme.dev?`, or an unparseable string flowed straight into every joined URL and corrupted the generated artifacts. Such a value now fails up front instead: `generate` exits 2 and `createDocsProject` throws.
+
+  Because a base URL says where _this_ site publishes, the field is never inherited via `inheritConfig` — a source-owned `docs.config.*` consumed by several sites should leave it unset and let each site supply its own.
+
+  The resolved value is inspectable like every other derived-or-authored value: provenance carries a `baseUrl` entry (`explicit` with the config path, or `default` naming the env fallback chain), `leadtype doctor` reports the resolved URL and its origin, and `generate --explain` reports the fallback when nothing was authored anywhere.
+
+- 4c1b962: Add a canonical config vocabulary and one resolved-config normalizer.
+
+  `defineLeadtypeConfig` names the project/site config in `leadtype.config.ts`, alongside `defineDocsConfig` for a source repo's content-owned `docs.config.ts`. Three collection fields are renamed: `prefix` → `routePrefix`, `sourceConfig` → `inheritConfig`, `schema` → `frontmatterSchema`.
+
+  Every existing config keeps working. Both spellings normalize to one internal `ResolvedDocsConfig` that generate, sync, lint, score, and the runtime source all read, so no subsystem re-derives the project from raw config. The resolved shape adds a deduped source graph — collections sharing a `(repository, ref)` resolve to one acquisition — and per-field provenance recording whether each value was authored, inherited from a source repo, inferred, or defaulted.
+
+  Deprecated fields carry `@deprecated` guidance in the IDE and warn once per config file at load. Setting an old name and its replacement together is an error naming both rather than a silent precedence rule. Nothing is removed before 1.0.
+
+- 5aa8d2b: Derive navigation and the `llms.txt` body when they aren't authored, so a new project reaches useful output from identity alone.
+
+  Navigation is derived from the content tree — root pages at the root, one section per top-level directory titled from its `index` page, ordered `index` first then frontmatter `order` then path, so it never depends on filesystem enumeration order. The `llms.txt` body becomes a "Best Starting Points" block built from that same resolved navigation, which keeps an agent's entry points from drifting from a reader's. Product name and tagline fall back to `package.json`.
+
+  Both `leadtype generate` and `createDocsSource()` derive the same tree, so the rendered sidebar and the generated artifacts agree. Explicit configuration always wins: authoring `navigation`, `groups`, or `llms.sections` turns inference off for that field, and inference never merges with or rewrites an authored value.
+
+  `leadtype generate --explain` reports every derived value, what it was derived from, and the field that takes control of it. Ambiguous derivations — pages with no frontmatter `title`, or more pages than the starting-points block lists — warn with the field to set.
+
+  `leadtype init` now scaffolds identity only.
+
+- 2fda088: Add `createDocsProject()` — the resolved project config as a runtime source.
+
+  `createDocsSource()` describes one content directory, so an app restates what its config already says: the content root, navigation, mounts, the frontmatter schema, and for a multi-collection project all of that per collection plus route prefixes and source-owned inheritance. Two descriptions of one project drift, and when they do the rendered site and the generated agent artifacts disagree about what exists.
+
+  A project reads the same resolved config the artifact pipeline reads, and returns a superset of `DocsSource`, so every first-party adapter accepts it unchanged:
+
+  ```ts
+  const source = await createDocsProject({
+    config: docsConfig,
+    configPath: "docs/docs.config.ts",
+    baseUrl: "https://example.com",
+  });
+  ```
+
+  Multi-collection projects get one merged, route-aware page API — `listPages()` tags each page with its collection, `loadPage()` accepts a collection-local slug or the full route — plus `project.collections`, `project.sources`, and `project.getSource(key)` for custom integrations. Source-owned config inheritance now runs through one shared implementation, so human rendering and generated artifacts cannot resolve it differently.
+
+  Remote collections are cache-only: a missing, unverifiable, or wrong-revision cache fails with a diagnostic naming `leadtype sync` rather than cloning inside a request. Route collisions name both collections.
+
+  `createDocsSource()` stays fully supported and is what the project is built on. `leadtype init` now scaffolds the project primitive.
+
+- 43883be: Add `gitSource()` for declaring one git acquisition with its content collections beneath it.
+
+  The flat `collections` map makes every collection carry `repository`, `ref`, and `cacheDir` even when several come from the same repository — so a config repeats acquisition three times for one clone, and a reader has to know that matching `(repository, ref)` pairs are deduped. A source group declares the clone once:
+
+  ```ts
+  sources: {
+    c15t: gitSource({
+      repository: "https://github.com/c15t/c15t.git",
+      ref: "main",
+      inheritConfig: true,
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog", inheritConfig: false },
+      },
+    }),
+  }
+  ```
+
+  The source owns acquisition and the default inheritance policy; each collection owns its directory, route prefix, navigation, and any inheritance exception. Both forms normalize to the same source graph, and `sources` may be used alongside `collections`.
+
+  Collection ids stay global rather than being scoped to their source, because they name staging mounts, error messages, and JSON output — two sources declaring the same id is an error naming both, not an auto-rename. So is declaring one `(repository, ref)` under two source names.
+
+  `sparse` limits a checkout to the repository paths you actually need, via a blobless partial clone — pinning a docs directory out of a monorepo no longer downloads the whole repository. Collections sharing an acquisition must agree on the path set, and the set is recorded in the sync manifest so adding a path re-clones rather than reusing an incomplete cache.
+
+  `leadtype sync` now reports each source id with its dependent collections, and warns when a source tracks a mutable ref instead of a pinned commit. `leadtype generate --json` reports the same acquisition graph, using the same ids — a named source keeps its authored name, an anonymous one is identified by `repository#ref`. `inheritConfig: false` opts a collection out of a source-level inheritance default.
+
+- c21b6b9: Add `leadtype doctor` — a read-only explanation of the resolved project.
+
+  The other commands each answer a question about a project by doing something to it. None answered "what _is_ this project, and why?" — which config was discovered, whether it resolved single-source or multi-repo, which values were authored versus inherited versus inferred, which collections share one clone, what routes will exist, and which command fixes what is currently wrong.
+
+  Doctor never clones, refreshes, writes, or generates, so an unsynced remote is a finding naming `leadtype sync` rather than a fetch. Everything it reports comes from the same config loader and resolvers `generate` and `sync` use, so a clean doctor run and a clean generate run cannot disagree.
+
+  Checks cover config discovery and provenance, deprecated aliases, the deduped acquisition graph with pinned-versus-mutable refs and cache freshness, collection directories and include globs, the resolved navigation tree and pages that fall back to the root instead of being placed, expected output artifacts and their staleness, the detected framework adapter, and enabled agent surfaces.
+
+  Human output is concise and every finding names its owning config field and a concrete next command. `--json` carries stable finding ids and provenance so agents can act without parsing prose. Exit `0` when nothing is an error, `1` when a required input is missing or invalid.
+
+- ba6ecdb: Reduce navigation config churn for large and repeated docs trees.
+
+  A curated tree earns its cost while every entry is a decision. It stops earning it when a section is mostly inventory — twenty pages where three must lead and the rest could be alphabetical — because then every new page is added twice, on disk and in the config, and the two drift.
+
+  `navigation.fromDirectory()` (from `leadtype/navigation`) includes a directory without listing it, and the new `pin` option on include entries keeps the pages whose position is a decision at the front:
+
+  ```ts
+  {
+    title: "Concepts",
+    base: "concepts",
+    pages: navigation.fromDirectory(".", {
+      pin: ["initialization-flow", "consent-models"],
+      exclude: "internal-*",
+    }),
+  }
+  ```
+
+  Pinned pages lead in the order given; the rest follow in `sort` order, so adding a page appends it to the tail and never displaces a deliberate choice. Explicit refs and an expansion can share one `pages` array. A pin matching nothing is an error rather than a silent no-op — that is almost always a rename the config missed. Expansion still happens once during navigation resolution, so one resolved tree keeps driving the sidebar, `llms.txt`, `AGENTS.md`, the sitemap, and Agent Readability metadata.
+
+  `leadtype nav` prints the tree your config actually resolves to and reports drift: pages no curated entry places, pages two entries both claim, and pages whose `group:` names a group the config never declares. Human and `--json` output, per collection, read-only — it never writes config, moves content, or changes a public route.
+
+- f20c593: Describe the NLWeb `/ask` endpoint with a generated OpenAPI 3.1 document.
+
+  With `agents.nlweb.enabled`, `leadtype generate` now writes an OpenAPI 3.1 JSON description of the endpoint `createAskHandler()` serves to `/openapi.json`, so a machine client reads the contract instead of inferring it from prose. It models `GET` and `POST` (both the flat and the NLWeb request shapes, with the body optional because a `POST` may carry the query in URL parameters), the `query`/`q`/`query_id`/`streaming` parameters, the `OPTIONS` preflight and its CORS headers, the JSON answer and the `text/event-stream` response on the same `200`, and one failure envelope with `error.code` typed as an enum. `GET` and `POST` declare `400` and `500`, the body-limit `413` belongs only to `POST`, and `405` is published on the path item because it belongs to methods with no operation. SSE event payloads are published as an `x-sse-events` map — OpenAPI 3.1 has no vocabulary for them. Every operation carries a stable `operationId` (`nlwebAskGet`, `nlwebAskPost`, `nlwebAskOptions`), a description, and typed parameters and responses, so it converts to an LLM function definition without guesswork. Content negotiation is represented by the two `200` media types; the reserved `Accept` header is not emitted as a Parameter Object because OpenAPI consumers must ignore it there.
+
+  `agents.nlweb.openapi` configures it: `enabled` turns it off, `url` sets the public URL (default `/openapi.json`), and `output` sets the emitted path. Each defaults from the other, so moving one moves both; explicitly empty values are rejected instead of invoking those defaults. The derived output uses decoded URL pathname segments, never its query or fragment. `url` rejects malformed percent escapes, backslashes, ASCII controls, and userinfo; `output` rejects percent escapes, ASCII controls, and Windows-reserved device-name segments and is validated at config load rather than at build time — it must be a relative `.json` path inside the output root, so an absolute path, a `.` or `..` segment, or a path that would overwrite another generated artifact or sit beneath one is rejected before a build can clobber it. The public generator repeats this validation before writing its schema artifacts. An absolute `agents.nlweb.endpoint` is split into the document's `servers` entry and its `paths` key, so a cross-origin `/ask` is described honestly. NLWeb endpoints that are empty, whitespace-only, surrounded by whitespace, parent-relative, or contain a query string or fragment; MCP endpoints that contain only whitespace (the empty-string default remains valid); protocol-relative endpoints; non-HTTP scheme-like endpoints; absolute endpoints with userinfo; and NLWeb or MCP endpoints with backslashes, ASCII controls, or malformed percent escapes now fail at config load.
+
+  `leadtype generate` records emitted OpenAPI ownership per output root in `<source>/.leadtype/nlweb.json`, outside the public output directory, and removes only that owned document after a successful move or after NLWeb is removed from config. The ownership map is best-effort: an immutable source tree still generates every public artifact, and a checksummed `x-leadtype-generated` extension lets later runs update an unchanged-path contract without writable state. Move or disable cleanup still cannot be tracked until the source state becomes writable. Changing `url` or `output` does not leave a stale contract at the old URL, while an untracked, hand-authored `openapi.json` is never deleted. Ownership remains on an old output until its deletion succeeds, so a failed cleanup is retried instead of forgotten. Moves between ancestor and descendant paths stage the replacement and keep a rollback copy while resolving file/directory conflicts; an unowned sibling is preserved and aborts the move with the old document restored. Cleanup compares filesystem entries when classifying moves, so case-only and case-equivalent ancestor or descendant moves on a case-insensitive filesystem preserve the new document.
+
+  The endpoint now lists itself in the RFC 9727 API catalog, so an NLWeb site publishes a catalog without declaring anything in `agents.apis`. With `--base-url` or a non-local deployment environment URL, the NLWeb endpoint, `service-desc`, OpenAPI server, schema-feed URLs, MCP endpoint and server card, and agent-interface links use one effective base, including its pathname. Without a publishable base, all of those URLs stay relative for request-origin resolution. Turning OpenAPI off leaves the endpoint listed without a dead description link. A site that declares `/ask` itself keeps its own entry; only a missing `service-desc` is filled in. Catalog rendering deduplicates entries after URL resolution and merges unique links within matching relations. `leadtype generate` reports the emitted file as `files.nlwebOpenapi`.
+
+  `leadtype/nlweb` exports `buildAskOpenApiDocument`, `resolveNlwebOpenApiConfig`, `resolveAskEndpointLocation`, `nlwebApiCatalogEntry`, `withNlwebApiCatalogEntry`, and `writeAskOpenApiDocument` for hosts that build or serve the document themselves.
+
+- 4120312: Give the NLWeb `/ask` handler a machine-actionable failure contract.
+
+  Every non-2xx response now returns an NLWeb-shaped envelope with a leadtype-defined `error` extension: a stable `error.code`, a message, and a short `error.resolution`. The bodyless `204` answer to an `OPTIONS` preflight is the only exception, and failures stay JSON even when the request asked for streaming. `405` keeps its `Allow` header and gains the envelope; both carry the JSON content type and CORS headers.
+
+  Codes ship as `NLWEB_ERROR_CODES`: `invalid_json`, `invalid_request`, `request_too_large`, `missing_query`, `method_not_allowed`, `artifacts_unavailable`, and `internal_error`. A non-empty body that fails to parse is now `invalid_json` instead of being silently reported as a missing query, JSON that parses but isn't an `/ask` document — a non-object payload, or a `query`/`query_id` of the wrong type — is `invalid_request`, and a body over 16 KiB returns `413 request_too_large` with a size-specific recovery hint. An empty `POST` body still answers from the URL query.
+
+  `artifacts_unavailable` and `internal_error` responses are generic: the artifacts error no longer puts local directory paths in the HTTP body. A URL `query_id` is echoed on every failure. `POST` failures also accept the body field, so rejected requests can be correlated without making unsupported methods read their bodies.
+
+  Artifact validation now requires a content store, recomputes every stored chunk length from its selected content, and rejects empty or malformed posting lists before search. Corrupt indexes fail as `artifacts_unavailable` instead of returning plausible but misranked or empty answers.
+
+  Search artifact format version 3 persists each transformed chunk's code text alongside its visible content. Runtime validation can therefore recompute every title, heading, body, and code posting count exactly, rejecting missing, forged, or inflated weights. Regenerate version 2 search artifacts with this Leadtype release before deploying `/ask`.
+
+  Core search, browser clients, and MCP artifact loading validate that separately stored index and content artifacts have matching versions, timestamps, and chunk counts. During an in-place v2-to-v3 deployment, a mixed pair falls back to index-only search instead of crashing while the content artifact catches up. Browser clients do not retain that transient mismatch: a later search retries the pair and caches it once both artifacts match.
+
+  Request-body parsing is now strict. A malformed or non-object JSON body, an invalid `query`, or a non-string `query_id` returns `400` even when the URL contains a valid query; previously those bodies could be ignored and answered from URL parameters. Use the optional `onError` callback to send the original server-side error to your logger while keeping HTTP responses sanitized. A promise returned by the callback is awaited before the response is sent.
+
+  `POST` JSON bodies are capped at 16 KiB. Unsupported methods return `405` without consuming their bodies.
+
+  `NlwebAskResponse` is now a discriminated union of `NlwebAskAnswer` and `NlwebAskFailure` (narrow with `"error" in body`), with `NlwebAskError` and `NlwebErrorCode` exported alongside it.
+
+- 8e3c431: Add `resolveProject()` — one function for the whole config pipeline.
+
+  Answering "what is this project?" takes five ordered steps: discover the config, apply source-owned inheritance, normalize to canonical names, derive what wasn't authored, and resolve each collection's content directory through the sync cache. `generate`, `doctor`, `nav`, and `createDocsProject` each assembled those by hand, and `doctor` and `nav` shipped with the _same two_ bugs as a result — both skipped inheritance, and both resolved a remote collection's `dir` against the config directory rather than its checkout.
+
+  They now read one resolved project. It throws only for a malformed config; everything environmental — an unsynced source, a missing directory, unreadable source config — is a diagnostic carrying a stable id, the owning config field, and the command that fixes it. That split is what lets `doctor` report a problem and keep going while `createDocsProject` refuses to hand a renderer a source it cannot read.
+
+  `createDocsProject()` no longer needs a config passed to it: it discovers `leadtype.config.*` or `docs.config.*` the same way the CLI does, so an app with a config file doesn't import it just to hand it back.
+
+  ```ts
+  export const source = await createDocsProject({
+    baseUrl: "https://example.com",
+  });
+  ```
+
+  Config loading also moves out of the CLI into `leadtype`'s config module, so the runtime no longer reaches through the generate pipeline to answer which config describes a project.
+
+- 5f29292: List real API endpoints in the API catalog, per RFC 9727.
+
+  The generated `/.well-known/api-catalog` used to describe documentation artifacts: a publisher-root anchor pointing back at itself, plus `service-doc`, `service-desc`, and `describedby`. It contained no link relation that identifies an API, which is the one thing RFC 9727 requires of a catalog. Declare your APIs in site-owned `agents.apis` and the catalog now anchors itself, lists every API with `item`, and anchors each API to carry its own `service-desc`, `service-doc`, `service-meta`, and `status` links, plus media type, title, and optional version. An `href` may be root-relative, document-relative, or absolute, so a catalog can publish cross-origin APIs.
+
+  Catalog membership is configured separately from the discovery `Link` header: `agents.apis` names APIs, `AgentDiscoveryLinksConfig` names artifact paths. Pass the manifest to `createAgentDiscoveryHeaders()` / `createAgentDiscoveryLinkHeader()` and the `api-catalog` link is advertised only when a catalog was generated. `service-desc` no longer defaults to `/docs/agent-readability.json` on either surface — that file describes documentation readability, not an API contract, and clients that fetched it as an API description got nothing usable. Point `serviceDescPath` (with the new `serviceDescType`) at a real OpenAPI document instead.
+
+  Catalog and discovery URLs reject special-scheme forms that omit their required slashes instead of accepting WHATWG repairs, while valid opaque URIs remain supported and serialize spaces as `%20`. API item and relation `type` attributes must be valid printable-ASCII media types at config load and direct rendering boundaries.
+
+  The zero-argument discovery helpers also stop advertising an API catalog by default, because they cannot know whether one was generated. Pass a manifest when available, or set `apiCatalogPath` explicitly to opt in.
+
+  `createApiCatalogResponse()` now serves `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`, adds the self-referential `Link: …; rel="api-catalog"` header RFC 9727 expects on `HEAD`, and returns a bodyless response when `method` is `HEAD`.
+
+  Sites with no configured APIs no longer publish a catalog at all. `leadtype generate` and `generateAgentArtifacts()` skip the file and omit `files.apiCatalog` from the manifest, and the runtime adapters 404 the well-known route. Accordingly, `createApiCatalogResponse()` returns `Response | null` and `renderApiCatalog()` throws when no APIs are configured — an empty catalog sends agents looking for APIs that were never declared.
+
+- fa2b38c: Derive framework adapter params from routes, not collection-local slugs.
+
+  All five static-params helpers — Next `createGenerateStaticParams`, Astro `createGetStaticPaths`, Nuxt `createPrerenderRoutes`, SvelteKit `createEntries`, TanStack Start `createStaticParams` — used to map each page's collection-local `slug`, which is mount-unaware and drops a collection's `routePrefix`. A changelog page at `/changelog/1-0` yielded `['1-0']`, collection indexes yielded duplicate params, and a `mounts` entry rendered pages at URLs the generated sitemap never advertises.
+
+  Params are now each page's mount-aware `urlPath` relative to a route base, and the load helpers resolve those params back through the same route space:
+
+  - The base defaults to the source's own `routePrefix`, a new property on `DocsSource` (the catch-all mount's `urlPrefix`, `"/docs"` otherwise). For an unmounted single collection the emitted params are byte-identical to before — existing `app/docs/[[...slug]]` catch-alls keep working untouched.
+  - `project.getSource(key)` sources carry their collection's `routePrefix`, so one catch-all per collection needs no extra wiring in any adapter — including Nuxt, whose `createPrerenderRoutes` previously joined slugs onto `config.basePath ?? "/docs"` and now emits each page's real route.
+  - A new `basePath` option on every params/load helper names the prefix the catch-all is actually mounted at; `basePath: "/"` serves a whole multi-collection project from one site-root catch-all with route-prefixed params.
+  - A page whose URL falls outside the base throws with the page, its URL, and the available fixes — never a param that silently renders the wrong URL.
+
+  `mounts` that move pages within the prefix now round-trip correctly (params match the advertised URL and still load the page). Raw collection-local slugs passed to the load helpers keep resolving unless another page's mounted route claims the same params; in that collision, the route owner wins.
+
+- 2c5a3c6: Tell a broken markdown mirror apart from a page that never existed.
+
+  `createAgentMarkdownResponse()` answered both with the same 200 "Page not found" body. That is right for one of them and wrong for the other. When the manifest lists a page, generation recorded that the page and its mirror exist — so a `readMarkdownFile` that comes back empty means a stale build output, a half-deployed asset host, or an adapter whose fetch failed. Reporting that as a missing page tells an agent a live URL is dead, and invites a CDN to cache the claim.
+
+  That case now answers `500` with `Cache-Control: no-store` and a body that says what actually happened, keeping the markdown `Content-Type`, canonical `Link`, and `llms-txt` discovery headers so the response stays readable, and sending no body for `HEAD`. The new `renderUnreadableMarkdown()` renders it. Adapters inherit this: a Next proxy whose markdown fetch fails for a manifest page now reports a server error instead of a soft miss. The core and framework handler configs also accept `onReadError(target, cause?)` for reporting rejected, empty, or invalid manifest-target reads without changing the stable response. Invalid manifest targets omit `target.filePath` and include the validation error as `cause`.
+
+  Routes with no page behind them — an explicit unknown `.md` path, or an agent-shaped request for a URL the manifest never listed — return 200 with the recovery body by default. Explicit `.md` paths enter recovery even without a Markdown `Accept` header or agent user-agent, so mount site-wide middleware after static routes or scope it when the host owns other `.md` routes. Leadtype's generated Agent Skills and agent-card paths are excluded and keep falling through to the static host. The new `missingStatus` option takes `200` (default) or `404` for sites where dead-link detection, crawl budgets, or monitoring matter more; the recovery body, canonical URL, and discovery links are identical at either status. Every framework adapter accepts it in its handler config.
+
+  `missingStatus` never touches the other outcomes: an existing page still returns 200, a renamed page 308, a removed page 410, and an unreadable mirror 500.
+
+  Manifest pages now also carry `markdownFilePath`, recording where the generator wrote each markdown mirror relative to the output directory. `resolveManifestMarkdownMirrorTarget()` returns it as `MarkdownMirrorTarget.filePath`, so both the docs-tree and bring-your-own-pages generators resolve their actual layouts. Older manifests keep using the previous `docs/<relativePath>.md` fallback.
+
+  For older bring-your-own-pages manifests, runtime readers retry the legacy root-relative mirror when the guessed `docs/` path is missing or throws. The retry is accepted only when its generator-owned `canonical_url` and `last_updated` frontmatter match the manifest page, preventing a stale root file from being served for an old mounted docs-tree manifest. A successful retry suppresses the guessed-path error; if both attempts fail, reporting preserves the original failure context.
+
+  The default-locale manifest may point at separately generated locale manifests without listing their pages itself. Pass those preloaded manifests through `localizedManifests`, keyed by locale code, to serve their pages. Cross-locale reads now require an exact page entry from the matching version-1 manifest and use its recorded `markdownFilePath`, including `index.md` storage. Missing or mismatched locale manifests and unlisted pages fail closed without probing a guessed path, so stale files left on disk are never served.
+
+  Generated filesystem paths may contain literal percent signs. Next proxy requests encode each path segment at the URL boundary, while encoded traversal and separator attempts remain rejected during manifest resolution.
+
+### Patch Changes
+
+- d725444: Route `leadtype generate` and `leadtype lint` through the same resolved project as doctor and the runtime.
+
+  Generate used to assemble a project of its own after sync, and lint read collections without running source-owned inheritance — so a remote collection with `inheritConfig: true` was checked against the defaults, and a stale checkout's `docs.config` could still be imported before the cache was verified. Both commands now call `resolveProjectFromLoaded`. Inheritance is applied; a missing or wrong-revision cache is a diagnostic naming `leadtype sync` rather than a silently empty lint or a module that should never have run.
+
+- bdc62b3: Keep repeated search-result heading anchors aligned with the table of contents and rendered page. Search indexing now uses the same page-scoped heading allocator and recognizes the same ATX, Setext, and fenced-code boundaries, including headings that do not produce a search chunk.
+- b392b12: Anchor search result excerpts on the match in the original text. `buildExcerpt` located the query inside the NFKD-normalized text and then sliced the raw text with that offset, but NFKD is not length-preserving (`…` → `...`, `½` → `1⁄2`, `ﬁ` → `fi`, CJK compatibility forms), so the excerpt window drifted past the match — far enough on some chunks that the excerpt came back as just `...`.
+- a9ba44c: Keep table-of-contents and search anchors aligned with rendered Setext and ATX headings containing inline HTML or MDX markup, including indentation and line-ending edge cases.
+- d517dc5: Make the generated docs-skill and the `leadtype init` AGENTS.md pointer describe documentation authoring, not just retrieval. A skill's description is the whole activation signal a client sees before loading it, so "read and search the docs" lost the most common docs task there is — writing, editing, reviewing, and restructuring the pages themselves.
+- f9d2185: Hash `paths.lock.json` entries from authored source, not generated markdown.
+
+  The lockfile exists to remember published paths so a later generate can detect renames. Fingerprinting the generated `.md` mirror folded ExtractedTypeTable rows, expanded includes, and converter formatting into every hash — so working on unrelated types, running generate in `--watch`, or even regenerating with a slightly different pipeline rewrote a committed lockfile. Hashes now come from the source `.mdx`/`.md` body when one exists (frontmatter still excluded). Pages with no authored source, such as generated OpenAPI reference pages, still hash the mirror. `redirectFrom` is still read from the generated mirror, so `afterFrontmatter` transformers that add it keep working.
+
+  The next generate after upgrading rewrites hashes once. Old and new hashes cannot match, so a rename in that same generate will fail as an unmatched disappearance instead of auto-redirecting. Upgrade and rename in two separate generates (two commits). After the first rewrite, authored pages only change the lockfile when their source body or the path set changes.
+
+- 99fb9a4: Make `leadtype sync` consume the resolved source graph instead of rebuilding one.
+
+  `resolveSources` (what doctor and `generate --json` report) and `resolveRemoteSources` (what sync cloned from) used the same `(repository, ref)` key with different rules, so a config could look coherent in doctor and then fail at clone time — or worse, look coherent and sync the wrong checkout. Three of those gaps were real: collections that disagreed on `sparse` merged silently, a mix of explicit and default `cacheDir` resolved one way in normalize and the other in sync, and a git source named `local` collided with the implicit local source.
+
+  Those checks now live in `resolveSources`. A shared acquisition must agree on its sparse set and its cache directory (compared as resolved paths, so spelling out the default location is still valid). Duplicate source ids are rejected at config load. `syncSources` projects that graph; it no longer decides identity. Configs that already synced keep the same clone layout, manifests, and output. Configs that could not sync now fail when the config loads, with the same specifics, instead of only when `leadtype sync` runs.
+
+- f3891e8: Number table-of-contents anchors across every heading, not just the ones inside `minLevel`/`maxLevel`. `createDocsHeadingSlugger` is the shared page-wide counter: first-party heading renderers (and a page-scoped `createMdxHeadingComponents()` snippet) now use it so `source.loadPage().toc` hashes match rendered `id`s. Setext headings are counted too, and emitted ids are reserved so `Foo` / `Foo` / `Foo-1` becomes `foo` / `foo-1` / `foo-1-1`. A heading filtered out of the TOC still claims its anchor, so with the default 2..3 range a page opening with `# Install` followed by `## Install` emits `#install-1` for the h2 instead of the h1's `#install`. `leadtype lint` already collected anchors over the full 1..6 range; the TOC now agrees with it.
+
 ## 0.4.3
 
 ### Patch Changes
