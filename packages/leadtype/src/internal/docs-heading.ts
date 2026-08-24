@@ -606,8 +606,8 @@ function findHtmlConstructEnd(
       (character === "+" || character === "-") &&
       nextCharacter === character
     ) {
-      const isPostfixUpdate: boolean = !javascriptRegexAllowed;
-      javascriptRegexAllowed = !isPostfixUpdate;
+      // Prefix updates still expect an operand and postfix updates yield a
+      // value, so a following slash keeps the meaning it already had.
       javascriptStatementStart = false;
       pendingLabelColon = false;
       nextIdentifierIsProperty = false;
