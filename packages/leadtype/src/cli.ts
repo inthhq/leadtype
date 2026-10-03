@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  type CliFlag,
   createDisabledTelemetry,
   dispatchCommand,
   type CliCommand as HexbusCliCommand,
@@ -52,15 +51,6 @@ Commands:
 
 Run leadtype <command> --help for command-specific options.
 `;
-
-const globalFlags: CliFlag[] = [
-  {
-    description: "Show version",
-    expectsValue: false,
-    names: ["--version"],
-    type: "special",
-  },
-];
 
 const commands: LeadtypeCliCommand[] = [
   {
@@ -215,11 +205,7 @@ async function readPackageVersion(): Promise<string> {
 function createLeadtypeContext(argv: string[], io: CliIo): LeadtypeCliContext {
   // Command parsers own every token after the command name, including flags
   // such as --config, --version and --force that Hexbus also recognizes.
-  const parsed = parseCliArgs(
-    argv.slice(0, 1),
-    commands as HexbusCliCommand[],
-    globalFlags
-  );
+  const parsed = parseCliArgs(argv.slice(0, 1), commands as HexbusCliCommand[]);
   const state: LeadtypeCliContext["state"] = {};
   return {
     commandArgs: parsed.commandName ? argv.slice(1) : argv,
@@ -290,9 +276,7 @@ export async function runCli(
   io: CliIo = { stderr: process.stderr, stdout: process.stdout }
 ): Promise<number> {
   setLogStreams(io);
-  const context = createLeadtypeContext(argv, io);
-
-  if (context.flags.version === true) {
+  if (argv[0] === "--version") {
     io.stdout.write(`leadtype v${await readPackageVersion()}\n`);
     return 0;
   }
@@ -302,6 +286,12 @@ export async function runCli(
     return 0;
   }
 
+  if (argv[0].startsWith("-")) {
+    io.stderr.write(`unknown command: ${argv[0]}\n\n${MAIN_USAGE}`);
+    return 2;
+  }
+
+  const context = createLeadtypeContext(argv, io);
   const result = await dispatchCommand(context, commands, {
     noCommand: {
       async action() {

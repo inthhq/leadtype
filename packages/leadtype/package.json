@@ -203,7 +203,7 @@
     "check-types": "tsgo --noEmit",
     "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
-    "test": "vitest run"
+    "test": "bun run build && vitest run"
   },
   "dependencies": {
     "@types/mdast": "4.0.4",

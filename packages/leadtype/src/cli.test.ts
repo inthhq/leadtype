@@ -13,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { glob as fg } from "tinyglobby";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { isDirectRun, runCli } from "./cli";
 
 const execFileAsync = promisify(execFile);
@@ -246,6 +246,22 @@ describe("leadtype CLI", () => {
     expect(await runCli(["--version"], capture.io)).toBe(0);
     expect(capture.stdout).toBe(`leadtype v${pkg.version}\n`);
     expect(capture.stderr).toBe("");
+  });
+
+  it.each([
+    "--logger",
+    "--config",
+  ])("reports unsupported top-level %s through the supplied error stream", async (flag) => {
+    const capture = createCapture();
+    const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    try {
+      expect(await runCli([flag, "value"], capture.io)).toBe(2);
+      expect(capture.stderr).toContain(`unknown command: ${flag}`);
+      expect(capture.stdout).toBe("");
+      expect(stdout).not.toHaveBeenCalled();
+    } finally {
+      stdout.mockRestore();
+    }
   });
 
   it("passes --force through to init when replacing an existing config", async () => {
