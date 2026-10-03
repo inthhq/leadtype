@@ -1,9 +1,8 @@
 #!/usr/bin/env bun
 
 import { spawn } from "node:child_process";
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { AgentReadabilityManifest } from "leadtype/llm/readability";
 import {
   appRoot,
   baseUrl,
@@ -39,13 +38,6 @@ await new Promise<void>((resolve, reject) => {
 });
 
 await mkdir(generatedDir, { recursive: true });
-const manifest: AgentReadabilityManifest = JSON.parse(
-  await readFile(join(outDir, "docs", "agent-readability.json"), "utf8")
-);
-await writeFile(
-  join(generatedDir, "docs-nav.json"),
-  `${JSON.stringify(manifest.navigation, null, 2)}\n`
-);
 for (const [source, target] of [
   ["agent-readability.json", "agent-readability.json"],
   ["search-index.json", "docs-search-index.json"],

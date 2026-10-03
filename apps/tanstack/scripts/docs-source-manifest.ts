@@ -70,6 +70,10 @@ if (
   );
 }
 await writeFile(
+  join(generatedDir, "docs-nav.json"),
+  `${JSON.stringify(navigation, null, 2)}\n`
+);
+await writeFile(
   join(generatedDir, "docs-pages.json"),
   `${JSON.stringify(manifest, null, 2)}\n`
 );
