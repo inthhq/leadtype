@@ -82,6 +82,80 @@ describe("i18n helpers", () => {
     ).toBe("/changelog/zh/v1");
   });
 
+  it("resolves localized docs and markdown urls for root mount", () => {
+    const rootMount = [{ pathPrefix: "", urlPrefix: "/" }];
+    expect(toLocalizedDocsUrlPath("index.md", "en", i18n, rootMount)).toBe("/");
+    expect(toLocalizedDocsUrlPath("index.md", "zh", i18n, rootMount)).toBe(
+      "/zh"
+    );
+    expect(
+      toLocalizedDocsUrlPath("quickstart.mdx", "en", i18n, rootMount)
+    ).toBe("/quickstart");
+    expect(
+      toLocalizedDocsUrlPath("quickstart.mdx", "zh", i18n, rootMount)
+    ).toBe("/zh/quickstart");
+    expect(toLocalizedMarkdownUrlPath("index.md", "en", i18n, rootMount)).toBe(
+      "/index.md"
+    );
+    expect(toLocalizedMarkdownUrlPath("index.md", "zh", i18n, rootMount)).toBe(
+      "/zh/index.md"
+    );
+    expect(
+      toLocalizedMarkdownUrlPath("quickstart.mdx", "en", i18n, rootMount)
+    ).toBe("/quickstart.md");
+    expect(
+      toLocalizedMarkdownUrlPath("quickstart.mdx", "zh", i18n, rootMount)
+    ).toBe("/zh/quickstart.md");
+    expect(getDocsLocaleUrlPrefix("en", i18n, "/")).toBe("/");
+    expect(getDocsLocaleUrlPrefix("zh", i18n, "/")).toBe("/zh");
+    expect(resolveDocsLocale("/", i18n, "/")).toBe("en");
+    expect(resolveDocsLocale("/zh", i18n, "/")).toBe("zh");
+    expect(resolveDocsLocale("/zh/quickstart", i18n, "/")).toBe("zh");
+    expect(stripLocaleFromDocsPath("/zh", i18n, "/")).toBe("/");
+    expect(stripLocaleFromDocsPath("/zh/quickstart", i18n, "/")).toBe(
+      "/quickstart"
+    );
+
+    // Root mount alongside named mount
+    const rootAndNamedMounts = [
+      { pathPrefix: "changelog", urlPrefix: "/changelog" },
+      { pathPrefix: "", urlPrefix: "/" },
+    ];
+    expect(
+      toLocalizedDocsUrlPath("changelog/v1.mdx", "zh", i18n, rootAndNamedMounts)
+    ).toBe("/changelog/zh/v1");
+    expect(
+      toLocalizedDocsUrlPath("quickstart.mdx", "zh", i18n, rootAndNamedMounts)
+    ).toBe("/zh/quickstart");
+
+    // Root subtree mount without catch-all keeps /docs fallback
+    const rootSubtreeWithoutCatchAll = [{ pathPrefix: "site", urlPrefix: "/" }];
+    expect(
+      toLocalizedDocsUrlPath(
+        "site/index.md",
+        "zh",
+        i18n,
+        rootSubtreeWithoutCatchAll
+      )
+    ).toBe("/zh");
+    expect(
+      toLocalizedDocsUrlPath(
+        "site/intro.md",
+        "zh",
+        i18n,
+        rootSubtreeWithoutCatchAll
+      )
+    ).toBe("/zh/intro");
+    expect(
+      toLocalizedDocsUrlPath(
+        "other/page.mdx",
+        "zh",
+        i18n,
+        rootSubtreeWithoutCatchAll
+      )
+    ).toBe("/docs/zh/other/page");
+  });
+
   it("exposes locale prefix helpers", () => {
     expect(isDefaultLocale("en", i18n)).toBe(true);
     expect(isDefaultLocale("zh", i18n)).toBe(false);

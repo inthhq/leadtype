@@ -178,6 +178,15 @@ export function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
   return `${stripTrailingSlashes(baseUrl)}${urlPath}`;
 }
 
+export function resolveDocsUrlPrefix(
+  relativePath: string,
+  mounts?: DocsPathMount[]
+): string {
+  return normalizeUrlPrefix(
+    resolveDocsPathMount(relativePath, mounts).mount.urlPrefix
+  );
+}
+
 /** True when `value` equals `prefix` or nests under it (`<prefix>/...`). */
 export function matchesUrlPrefix(value: string, prefix: string): boolean {
   return value === prefix || value.startsWith(`${prefix}/`);

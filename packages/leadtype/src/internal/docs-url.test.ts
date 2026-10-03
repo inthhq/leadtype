@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   normalizeDocsUrl,
+  resolveDocsUrlPrefix,
   stripDocsExtension,
   stripTrailingSlashes,
   toAbsoluteUrl,
@@ -29,6 +30,18 @@ describe("docs URL helpers", () => {
     expect(toMountedMarkdownUrlPath("changelog/index.mdx", mounts)).toBe(
       "/changelog/index.md"
     );
+    expect(resolveDocsUrlPrefix("quickstart.mdx", mounts)).toBe("/docs");
+    expect(resolveDocsUrlPrefix("changelog/v1.mdx", mounts)).toBe("/changelog");
+    expect(
+      resolveDocsUrlPrefix("site/intro.md", [
+        { pathPrefix: "site", urlPrefix: "/" },
+      ])
+    ).toBe("/");
+    expect(
+      resolveDocsUrlPrefix("other/page.md", [
+        { pathPrefix: "site", urlPrefix: "/" },
+      ])
+    ).toBe("/docs");
   });
 
   it("normalizes URL and markdown variants", () => {
