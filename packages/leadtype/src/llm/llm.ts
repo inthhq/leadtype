@@ -3503,6 +3503,16 @@ export type AgentsMdConfig = {
    * Used for the relative-path prefix in every link. Default: `docs`.
    */
   docsSubdir?: string;
+  /**
+   * Name of the docs subdirectory under `srcDir`. Defaults to `"docs"`.
+   * Set this when source documentation lives outside `docs/` (e.g. `content/docs`).
+   */
+  docsDirName?: string;
+  /**
+   * Mounted route paths. Reshapes each doc's `urlPath` so curated starting
+   * points, link blocks, and navigation entries match mounted routes.
+   */
+  mounts?: DocsPathMount[];
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
   transformers?: DocsTransformer[];
@@ -3606,6 +3616,7 @@ export async function generateAgentsMd(
   const srcDir = path.resolve(config.srcDir);
   const outDir = path.resolve(config.outDir);
   const docsSubdir = config.docsSubdir ?? DOCS_DIRNAME;
+  const docsDirName = config.docsDirName ?? DOCS_DIRNAME;
   // baseUrl is required by readSourceDocs for the SourceDoc.absoluteUrl
   // field, but AGENTS.md output never reads that field — relative paths only.
   // Pass through any configured fallback so SourceDoc objects are well-formed.
@@ -3613,8 +3624,8 @@ export async function generateAgentsMd(
   const sourceDocs = await readSourceDocs(
     srcDir,
     baseUrl,
-    undefined,
-    DOCS_DIRNAME,
+    config.mounts,
+    docsDirName,
     {
       i18n: config.i18n,
       locale: config.locale,

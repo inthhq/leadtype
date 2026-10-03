@@ -2014,6 +2014,7 @@ async function executeGenerate(
         product: effectiveProduct,
         groups,
         nav: effectiveNav,
+        mounts: effectiveMounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
         transformers: metadata.transformers,

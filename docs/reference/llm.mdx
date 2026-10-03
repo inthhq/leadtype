@@ -655,6 +655,8 @@ Writes `<outDir>/AGENTS.md` (singular, at the root) with the same product summar
 | `product` | Same `ProductInfo` shape as `generateLlmsTxt`. The `blocks` array renders here too, so author offline-friendly content (relative links, no website-routing prose). |
 | `groups` | Group tree from `docs.config.ts`. Same shape as `generateLlmsTxt`. |
 | `docsSubdir` | Subdirectory under `outDir` that holds the `.md` files. Default: `docs`. Used as the relative-path prefix in every link. |
+| `docsDirName` | Name of the docs subdirectory under `srcDir`. Defaults to `docs`. Set when source docs live in another directory (e.g. `content/docs`). |
+| `mounts` | Mounted route paths. Reshapes each doc's `urlPath` so curated starting points, link blocks, and navigation entries match mounted routes. |
 
 Returns `{ outputPath: string }` pointing at the written `AGENTS.md`.
 

@@ -242,3 +242,67 @@ describe("generate --bundle with agents.mcp.enabled", () => {
     );
   });
 });
+
+describe("generate --bundle with mounts", () => {
+  let root: string;
+  let outDir: string;
+  let exitCode: number;
+
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), "leadtype-bundle-mounts-"));
+    outDir = join(root, "out");
+    await mkdir(join(root, "docs"), { recursive: true });
+    await writeFile(
+      join(root, "docs", "docs.config.ts"),
+      [
+        "export default {",
+        "  product: {",
+        '    name: "ChangelogPkg",',
+        '    tagline: "Changelog package.",',
+        "  },",
+        "};",
+      ].join("\n")
+    );
+    await writeFile(
+      join(root, "docs", "index.mdx"),
+      [
+        "---",
+        "title: Changelog",
+        "description: Release notes and updates.",
+        "---",
+        "",
+        "# Changelog",
+        "",
+        "Latest version updates.",
+      ].join("\n")
+    );
+
+    exitCode = await runGenerateCommand(
+      [
+        "--bundle",
+        "--src",
+        root,
+        "--docs-dir",
+        "docs=/changelog",
+        "--out",
+        outDir,
+      ],
+      silentIo
+    );
+  });
+
+  afterAll(async () => {
+    await rm(root, { force: true, recursive: true });
+  });
+
+  it("resolves mounted starting points in generated AGENTS.md", async () => {
+    expect(exitCode).toBe(0);
+    const agentsMdPath = join(outDir, "AGENTS.md");
+    expect(await exists(agentsMdPath)).toBe(true);
+    const content = await readFile(agentsMdPath, "utf8");
+    expect(content).toContain("## Best Starting Points");
+    expect(content).toContain(
+      "- [Changelog](./docs/index.md): Release notes and updates."
+    );
+  });
+});

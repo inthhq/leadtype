@@ -649,6 +649,34 @@ describe("generateAgentsMd", () => {
     // Link blocks use relative filesystem paths inside the bundle.
     expect(agents).toContain("](./docs/quickstart.md)");
   });
+
+  it("resolves mounted links and custom docsDirName in AGENTS.md", async () => {
+    const projectDir = await createTempProject();
+    const outDir = path.join(projectDir, "out");
+    const customDocsDir = path.join(projectDir, "content");
+
+    await mkdir(customDocsDir, { recursive: true });
+    await writeFile(
+      path.join(customDocsDir, "index.mdx"),
+      "---\ntitle: Changelog\ndescription: Latest updates.\n---\n\n# Changelog\n"
+    );
+
+    await generateAgentsMd({
+      srcDir: projectDir,
+      outDir,
+      docsDirName: "content",
+      mounts: [{ pathPrefix: "", urlPrefix: "/changelog" }],
+      product: {
+        name: "TestProduct",
+        summary: "Product with mounts.",
+        bestStartingPoints: [{ urlPath: "/changelog" }],
+      },
+    });
+
+    const agents = await readFile(path.join(outDir, "AGENTS.md"), "utf8");
+    expect(agents).toContain("## Best Starting Points");
+    expect(agents).toContain("- [Changelog](./docs/index.md): Latest updates.");
+  });
 });
 
 describe("generateLLMFullContextFiles", () => {
