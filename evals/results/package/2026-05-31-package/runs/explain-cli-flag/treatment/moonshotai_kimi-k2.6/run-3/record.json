@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required fields (lastModified and lastAuthor), states they are added to frontmatter, and says the values come from git history. All rubric requirements are met. The extra detail about the git command and fallback does not violate any rubric point.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 18181,
+  "outputTokens": 182,
+  "durationMs": 26138,
+  "steps": 10,
+  "errors": []
+}

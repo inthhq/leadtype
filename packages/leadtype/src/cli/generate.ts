@@ -1,60 +1,184 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { glob as fg } from "tinyglobby";
 import type { Pluggable, PluggableList } from "unified";
+import {
+  emptyInferenceReport,
+  formatInferenceReport,
+  inferLlmsBlocks,
+  inferNavigationFromContent,
+  mergeInferenceReports,
+} from "../config/infer";
+import { LEADTYPE_CONFIG_FILENAMES } from "../config/inherit";
+import {
+  type LoadedDocsConfig,
+  loadDocsConfig,
+  loadLeadtypeConfig,
+} from "../config/load";
+import {
+  BASE_URL_DEFAULT_SOURCE,
+  normalizeAuthoredBaseUrl,
+} from "../config/normalize";
+import { resolveProjectFromLoaded } from "../config/project";
+import type { ResolvedSource } from "../config/types";
 import { convertAllMdx } from "../convert";
+import type { ConvertCacheOptions } from "../convert/incremental";
+import { type DocsFeedConfig, generateFeedArtifacts } from "../feed";
 import { type DocsI18nManifest, normalizeDocsI18nConfig } from "../i18n";
 import {
+  copyFileAtomic,
+  sweepLeakedTempFiles,
+  writeFileAtomic,
+} from "../internal/atomic-fs";
+import {
+  normalizeDocsSourceInput,
+  parseDocsSourceInput,
+} from "../internal/docs-source";
+import {
   type DocsPathMount,
+  normalizeBaseUrl,
   normalizeDocsPath,
   normalizeUrlPrefix,
+  pathPrefixForUrlPrefix,
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
+import {
+  acquireGenerateLock,
+  type GenerateLock,
+} from "../internal/generate-lock";
 import {
   logger,
   setLogFormat,
   setLogStreams,
   setVerbose,
 } from "../internal/logger";
-import type { DocsConfig, DocsGroup, ProductInfo } from "../llm";
+import type {
+  DocsCollection,
+  DocsConfig,
+  DocsFrontmatterSchema,
+  DocsGroup,
+  DocsNavEntry,
+  DocsNavigation,
+  DocsNavNode,
+  DocsNavPageEntry,
+  LlmsProductInfo,
+  ProductInfo,
+  RenderSiteJsonLdOptions,
+} from "../llm";
 import {
   generateAgentReadabilityArtifacts,
   generateAgentsMd,
   generateLLMFullContextFiles,
   generateLlmsTxt,
+  generateSkillArtifacts,
+  resolveAgentInputs,
   resolveDocsNavigation,
 } from "../llm";
 import {
-  defaultRemarkPlugins,
-  remarkInclude,
-  remarkTypeTableToMarkdown,
-} from "../remark";
+  defaultMarkdownTransforms,
+  includeMarkdown,
+  nativeMarkdownComponentsToMarkdown,
+} from "../markdown";
+import {
+  generateMcpServerCard,
+  MCP_SERVER_CARD_PATH,
+  resolveMcpEndpoint,
+} from "../mcp/card";
+import { DEFAULT_DOCS_TOOLS } from "../mcp/tools";
+import {
+  generateNlwebArtifacts,
+  removeGeneratedNlwebOpenApi,
+} from "../nlweb/artifacts";
+import {
+  nlwebApiCatalogEntry,
+  resolveNlwebOpenApiConfig,
+  withNlwebApiCatalogEntry,
+} from "../nlweb/openapi";
+import { DEFAULT_NLWEB_ASK_PATH, NLWEB_SCHEMA_MAP_PATH } from "../nlweb/paths";
+import {
+  type DocsOpenApiConfig,
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "../openapi";
+import {
+  type UpdateDocsRedirectsResult,
+  updateDocsRedirects,
+} from "../redirects/node";
 import type { GenerateDocsSearchFilesResult } from "../search/node";
 import { generateDocsSearchFiles } from "../search/node";
+import {
+  resolveAllCollections,
+  type SyncMode,
+  syncSources,
+} from "../sync/sync";
+import type { DocsTransformer } from "../transformers";
+import { watchInputs } from "./watch";
 
 const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_OUT_DIR = "public";
-const DOCS_CONFIG_FILENAMES = [
-  "docs.config.ts",
-  "docs.config.js",
-  "docs.config.mjs",
-  "docs.config.cjs",
-] as const;
 const GROUP_SEPARATOR_PATTERN = /[-_]+/g;
 const INFER_GROUPS_READ_BATCH_SIZE = 32;
 const TITLE_CASE_PATTERN = /\b\w/g;
 const FORMAT_VALUES = new Set(["text", "json"]);
+const MCP_FLAG_DEPRECATION_MESSAGE =
+  "--mcp is deprecated as a generate shortcut and will be removed in the next major version";
+const MCP_FLAG_DEPRECATION_HINT =
+  "set agents.mcp.enabled in docs.config.ts instead; --mcp remains as a compatibility override for now";
+const ENRICH_GIT_FLAG_DEPRECATION_MESSAGE =
+  "--enrich-git is deprecated because git enrichment now runs by default";
+const ENRICH_GIT_FLAG_DEPRECATION_HINT =
+  "remove the flag from generate scripts; enrichment is best-effort and is skipped when git metadata is unavailable";
+
+function isLocalBaseUrl(baseUrl: string): boolean {
+  try {
+    const { hostname } = new URL(baseUrl);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "0.0.0.0"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveFeedBaseUrl(baseUrl?: string): string {
+  const resolvedBaseUrl = normalizeBaseUrl(baseUrl);
+  if (baseUrl?.trim() || !isLocalBaseUrl(resolvedBaseUrl)) {
+    return resolvedBaseUrl;
+  }
+
+  throw new Error(
+    "configured feeds require `baseUrl` in the docs config, --base-url, or a deployment URL env var so RSS and Atom links are absolute"
+  );
+}
 
 type GenerateFormat = "json" | "text";
+
+export type { LoadedDocsConfig } from "../config/load";
 
 export type GenerateArgs = {
   baseUrl?: string;
   bundle: boolean;
+  /**
+   * Deprecated bundle-mode shortcut. Prefer `agents.mcp.enabled` in config;
+   * while this flag exists, it explicitly emits `search-index.json` +
+   * `agent-readability.json` for `leadtype mcp --package <name>`.
+   */
+  mcp: boolean;
   docsDirs: string[];
+  /**
+   * Generate defaults this to true. Git metadata is best-effort: no `.git`,
+   * shallow history, untracked files, or missing git simply skip enrichment.
+   */
   enrichGit: boolean;
+  /** True only when the deprecated `--enrich-git` flag was explicitly passed. */
+  enrichGitFlag: boolean;
   exclude: string[];
   format: GenerateFormat;
   help: boolean;
@@ -63,7 +187,22 @@ export type GenerateArgs = {
   outDir: string;
   srcDir: string;
   summary?: string;
+  /**
+   * How to ensure remote sources are present before generating. Only used
+   * when the loaded config defines `collections`.
+   *   - `missing` (default): error if any cache is missing or ref-drifted.
+   *   - `auto` (`--sync`): clone missing caches; leave existing ones alone.
+   *   - `refresh` (`--refresh`): re-fetch and fast-forward every cache.
+   *   - `offline` (`--offline`): never touch the network; error on miss.
+   */
+  syncMode: SyncMode;
   verbose: boolean;
+  /** Re-run generation whenever docs sources or the config file change. */
+  watch: boolean;
+  /** Ignore the incremental cache and reconvert every file. */
+  force: boolean;
+  /** Print which values were derived rather than authored, and how to author them. */
+  explain: boolean;
 };
 
 export type GenerateIo = {
@@ -75,6 +214,7 @@ type SourceMirror = {
   cleanup: () => Promise<void>;
   docsDir: string;
   filters: GenerateFilters;
+  gitSourcePaths?: Map<string, string>;
   srcDir: string;
 };
 
@@ -89,64 +229,113 @@ type GenerateResult = {
   files: {
     agentsMd?: string;
     agentReadabilityManifest?: string;
-    docsRobotsTxt?: string;
-    docsSitemapMd?: string;
-    docsSitemapXml?: string;
+    apiCatalog?: string;
+    robotsTxt?: string;
+    sitemapMd?: string;
+    sitemapXml?: string;
     i18nManifest?: string;
     docsLlmsTxt?: string;
     llmsFullTxt?: string;
     llmsTxt?: string;
+    feeds?: Record<string, { rss?: string; atom?: string }>;
     searchContent?: string;
     searchIndex?: string;
+    wellKnownLlmsTxt?: string;
+    skillMd?: string;
+    agentSkills?: string;
+    mcpServerCard?: string;
+    mcpJson?: string;
+    mcpWellKnown?: string;
+    nlwebSchemaFeed?: string;
+    nlwebSchemaMap?: string;
+    nlwebOpenapi?: string;
+    redirectsJson?: string;
+    redirectsLockfile?: string;
   };
   groups: DocsGroup[];
+  nav?: DocsNavEntry[];
   filters: GenerateFilters;
   mounts: DocsPathMount[];
   mode: "site" | "bundle";
   outDir: string;
-  product: ProductInfo;
+  product: LlmsProductInfo;
   search?: GenerateDocsSearchFilesResult;
   srcDir: string;
+  /**
+   * The resolved acquisition graph, present for multi-source projects. Source
+   * and collection ids here are the same ones human output and error messages
+   * use, so automation and a reader can talk about the same thing.
+   */
+  sources?: ResolvedSource[];
 };
 
-function createGenerateRemarkPlugins({
+function createGenerateMarkdownTransforms({
   sourceRoot,
   typeTableBasePath,
   typeTableStrict,
+  flatteners,
 }: {
   sourceRoot: string;
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
+  flatteners?: PluggableList;
 }): PluggableList {
-  const plugins: PluggableList = [remarkInclude];
-  for (const plugin of defaultRemarkPlugins) {
+  const plugins: PluggableList = [includeMarkdown];
+  for (const plugin of defaultMarkdownTransforms) {
     plugins.push(
-      plugin === remarkTypeTableToMarkdown
+      plugin === nativeMarkdownComponentsToMarkdown
         ? ([
-            remarkTypeTableToMarkdown,
+            nativeMarkdownComponentsToMarkdown,
             {
-              basePath: typeTableBasePath ?? sourceRoot,
-              strict: typeTableStrict,
+              typeTable: {
+                basePath: typeTableBasePath ?? sourceRoot,
+                strict: typeTableStrict,
+              },
             },
           ] as Pluggable)
         : plugin
     );
   }
+  // Custom flatteners are appended; convertAllMdx phase-sorts them into the
+  // `custom` phase (after resolve, before the built-in flatteners).
+  if (flatteners) {
+    plugins.push(...flatteners);
+  }
   return plugins;
 }
 
-type LoadedDocsConfig = {
-  config: DocsConfig;
-  path: string;
-};
-
 type ResolvedGenerateMetadata = {
   configPath?: string;
+  /** The config's site-owned `baseUrl`. The explicit `--base-url` flag wins. */
+  baseUrl?: string;
+  collectionFrontmatterSchemas?: CollectionFrontmatterSchema[];
+  frontmatterSchema?: DocsFrontmatterSchema;
+  flatteners?: PluggableList;
   groups: DocsGroup[];
   i18n?: DocsConfig["i18n"];
-  product: ProductInfo;
+  nav?: DocsNavEntry[];
+  product: LlmsProductInfo;
+  /** Derived from `product` + `organization`: JSON-LD options for `renderSiteJsonLd`. */
+  jsonLd?: RenderSiteJsonLdOptions;
+  /** Derived from `organization`: the agent-card `provider`. */
+  provider?: { organization: string; url?: string };
+  /** Derived from `product.docs`: the agent-card `documentationUrl`. */
+  documentationUrl?: string;
+  mounts?: DocsPathMount[];
+  feeds?: DocsFeedConfig[];
+  git?: DocsConfig["git"];
+  openapi?: DocsOpenApiConfig;
+  transformers?: DocsTransformer[];
   typeTableBasePath?: string;
   typeTableStrict?: boolean;
+  agents?: DocsConfig["agents"];
+  redirects?: DocsConfig["redirects"];
+};
+
+type CollectionFrontmatterSchema = {
+  filePaths?: string[];
+  pathPrefix: string;
+  schema: DocsFrontmatterSchema;
 };
 
 const GENERATE_USAGE = `leadtype generate — convert MDX and produce site or package-bundle artifacts
@@ -156,11 +345,14 @@ Usage:
 
 By default, runs in site mode and writes:
   llms.txt, llms-full.txt, docs/*.md, docs/search-index.json,
-  docs/sitemap.xml, docs/sitemap.md, docs/robots.txt
+  sitemap.xml, sitemap.md, robots.txt
 
 With --bundle, runs in package mode and writes:
-  AGENTS.md, docs/*.md
-  (skips llms.txt, llms-full.txt, and search artifacts — those are website-only)
+  AGENTS.md, SKILL.md, docs/*.md
+  (skips URL-anchored site artifacts like llms.txt, llms-full.txt, sitemap, robots)
+  If docs.config.ts sets agents.mcp.enabled, also emits docs/search-index.json
+  + docs/agent-readability.json so the tarball can serve a version-matched MCP
+  server (leadtype mcp --package). --mcp enables the same artifacts without config.
 
 Options:
   --src <dir>        Source repo/root directory (default: .)
@@ -168,16 +360,31 @@ Options:
                      Use <dir>=<url-prefix> to mount a source outside /docs, e.g. changelog=/changelog.
   --out <dir>        Output root directory (default: public)
   --bundle           Bundle mode for npm packages (AGENTS.md + docs/*.md)
-  --base-url <url>   Base URL for generated links (site mode)
+  --mcp              Deprecated: bundle-mode shortcut for MCP artifacts. Prefer agents.mcp.enabled in docs.config.ts
+  --base-url <url>   Base URL for generated links (site mode). Overrides the config's baseUrl
   --name <name>      Product name for generated index files
   --summary <text>   Product summary for generated index files
   --include <glob>   Include MDX paths matching this docs-root-relative glob
   --exclude <glob>   Exclude MDX paths matching this docs-root-relative glob
-  --enrich-git       Add lastModified and lastAuthor from git history
+  --enrich-git       Deprecated: git enrichment runs by default and skips when git metadata is unavailable
+  --sync             Clone missing remote sources before generating (collections mode)
+  --refresh          Re-fetch and fast-forward every remote source (collections mode)
+  --offline          Fail if any remote source cache is missing or stale; never touch the network
+  -w, --watch        Rebuild whenever docs sources or the config file change.
+                     Files whose config-declared transformers/flatteners import
+                     other modules need a restart (or --force) to pick up edits
+                     to those modules.
+  --force            Ignore the incremental cache and reconvert every file
+  --explain          Report which values were derived rather than authored, and
+                     which config field makes each one explicit
   --format <fmt>     text | json (default: text)
   --json             Alias for --format json
   -v, --verbose      Print per-file progress events to stderr
   -h, --help         Show this help
+
+Repeat runs are incremental: unchanged MDX files (including their <include>
+targets and type-table TypeScript sources) are skipped using a cache under
+node_modules/.cache/leadtype/. Use --force to rebuild everything.
 `;
 
 function readValue(argv: string[], index: number, flag: string): string {
@@ -195,16 +402,23 @@ function isGenerateFormat(value: string): value is GenerateFormat {
 export function parseGenerateArgs(argv: string[]): GenerateArgs {
   const args: GenerateArgs = {
     bundle: false,
+    mcp: false,
     docsDirs: [],
-    enrichGit: false,
+    enrichGit: true,
+    enrichGitFlag: false,
     exclude: [],
     format: "text",
     help: false,
     include: [],
     outDir: DEFAULT_OUT_DIR,
     srcDir: ".",
+    syncMode: "missing",
     verbose: false,
+    watch: false,
+    force: false,
+    explain: false,
   };
+  const syncFlags: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -217,7 +431,10 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     } else if (arg === "--out") {
       args.outDir = readValue(argv, ++i, "--out");
     } else if (arg === "--base-url") {
-      args.baseUrl = readValue(argv, ++i, "--base-url");
+      args.baseUrl = normalizeAuthoredBaseUrl(
+        readValue(argv, ++i, "--base-url"),
+        "--base-url"
+      );
     } else if (arg === "--name") {
       args.name = readValue(argv, ++i, "--name");
     } else if (arg === "--summary") {
@@ -228,8 +445,20 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.exclude.push(readValue(argv, ++i, "--exclude"));
     } else if (arg === "--enrich-git") {
       args.enrichGit = true;
+      args.enrichGitFlag = true;
     } else if (arg === "--bundle") {
       args.bundle = true;
+    } else if (arg === "--mcp") {
+      args.mcp = true;
+    } else if (arg === "--sync") {
+      syncFlags.push(arg);
+      args.syncMode = "auto";
+    } else if (arg === "--refresh") {
+      syncFlags.push(arg);
+      args.syncMode = "refresh";
+    } else if (arg === "--offline") {
+      syncFlags.push(arg);
+      args.syncMode = "offline";
     } else if (arg === "--format") {
       const value = readValue(argv, ++i, "--format");
       if (!isGenerateFormat(value)) {
@@ -238,6 +467,12 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
       args.format = value;
     } else if (arg === "--json") {
       args.format = "json";
+    } else if (arg === "--watch" || arg === "-w") {
+      args.watch = true;
+    } else if (arg === "--force") {
+      args.force = true;
+    } else if (arg === "--explain") {
+      args.explain = true;
     } else if (arg === "--verbose" || arg === "-v") {
       args.verbose = true;
     } else if (arg) {
@@ -245,8 +480,19 @@ export function parseGenerateArgs(argv: string[]): GenerateArgs {
     }
   }
 
-  if (args.docsDirs.length === 0) {
-    args.docsDirs = [DEFAULT_DOCS_DIR];
+  const distinctSyncFlags = [...new Set(syncFlags)];
+  if (distinctSyncFlags.length > 1) {
+    throw new Error(
+      `${distinctSyncFlags.join(" and ")} are mutually exclusive`
+    );
+  }
+
+  // `--mcp` only emits artifacts in bundle mode; accepting it in site mode would
+  // silently no-op and mislead automation into thinking MCP files were emitted.
+  if (args.mcp && !args.bundle) {
+    throw new Error(
+      "--mcp requires --bundle (MCP artifacts ship in the bundle)"
+    );
   }
 
   return args;
@@ -308,136 +554,6 @@ async function inferGroups(docsDir: string): Promise<DocsGroup[]> {
     }));
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validateProductInfo(value: unknown): ProductInfo | undefined {
-  if (!isPlainRecord(value)) {
-    return;
-  }
-  if (typeof value.name !== "string" || typeof value.summary !== "string") {
-    return;
-  }
-  return value as ProductInfo;
-}
-
-function validateDocsGroups(value: unknown): DocsGroup[] | undefined {
-  if (!Array.isArray(value)) {
-    return;
-  }
-  for (const group of value) {
-    if (!isPlainRecord(group)) {
-      return;
-    }
-    if (typeof group.slug !== "string" || typeof group.title !== "string") {
-      return;
-    }
-    if (
-      group.children !== undefined &&
-      validateDocsGroups(group.children) === undefined
-    ) {
-      return;
-    }
-  }
-  return value as DocsGroup[];
-}
-
-function validateDocsConfig(value: unknown, configPath: string): DocsConfig {
-  if (!isPlainRecord(value)) {
-    throw new Error(`docs config at "${configPath}" must export an object`);
-  }
-  const product = validateProductInfo(value.product);
-  if (!product) {
-    throw new Error(
-      `docs config at "${configPath}" must export product.name and product.summary`
-    );
-  }
-  const groups = validateDocsGroups(value.groups);
-  if (!groups) {
-    throw new Error(
-      `docs config at "${configPath}" must export groups as an array of { slug, title } entries`
-    );
-  }
-  return {
-    groups,
-    ...(value.i18n === undefined
-      ? {}
-      : { i18n: value.i18n as DocsConfig["i18n"] }),
-    product,
-    typeTableBasePath:
-      typeof value.typeTableBasePath === "string"
-        ? value.typeTableBasePath
-        : undefined,
-    typeTableStrict:
-      typeof value.typeTableStrict === "boolean"
-        ? value.typeTableStrict
-        : undefined,
-  };
-}
-
-async function importConfigModule(configPath: string): Promise<unknown> {
-  if (configPath.endsWith(".ts")) {
-    let createJiti: typeof import("jiti").createJiti;
-    try {
-      ({ createJiti } = await import("jiti"));
-    } catch {
-      throw new Error(
-        `loading TypeScript docs config at "${configPath}" requires the optional peer dependency \`jiti\`. Install it (\`bun add -D jiti\`) or use a .js/.mjs/.cjs config.`
-      );
-    }
-    const jiti = createJiti(import.meta.url, {
-      alias: {
-        leadtype: path.resolve(import.meta.dirname, "../index.ts"),
-      },
-      moduleCache: false,
-    });
-    return jiti.import(configPath, { default: true });
-  }
-
-  const mod = (await import(pathToFileURL(configPath).href)) as {
-    default?: unknown;
-  };
-  return mod.default ?? mod;
-}
-
-async function loadDocsConfigFromDir(
-  docsDir: string
-): Promise<LoadedDocsConfig | null> {
-  const configPath = DOCS_CONFIG_FILENAMES.map((filename) =>
-    path.join(docsDir, filename)
-  ).find((candidate) => existsSync(candidate));
-
-  if (!configPath) {
-    return null;
-  }
-
-  try {
-    const imported = await importConfigModule(configPath);
-    return {
-      config: validateDocsConfig(imported, configPath),
-      path: configPath,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `failed to load docs config at "${configPath}": ${message}`
-    );
-  }
-}
-
-async function loadDocsConfig(
-  docsDirs: string[]
-): Promise<LoadedDocsConfig | null> {
-  for (const docsDir of docsDirs) {
-    const loaded = await loadDocsConfigFromDir(docsDir);
-    if (loaded) {
-      return loaded;
-    }
-  }
-  return null;
-}
-
 async function readPackageProduct(
   srcDir: string,
   args: GenerateArgs
@@ -445,7 +561,7 @@ async function readPackageProduct(
   if (args.name && args.summary) {
     return {
       name: args.name,
-      summary: args.summary,
+      tagline: args.summary,
     };
   }
 
@@ -460,7 +576,7 @@ async function readPackageProduct(
 
   const name =
     args.name ?? (typeof packageData.name === "string" ? packageData.name : "");
-  const summary =
+  const tagline =
     args.summary ??
     (typeof packageData.description === "string"
       ? packageData.description
@@ -468,7 +584,7 @@ async function readPackageProduct(
 
   return {
     name: name || "Docs",
-    summary: summary || "Generated documentation.",
+    tagline: tagline || "Generated documentation.",
   };
 }
 
@@ -479,68 +595,261 @@ function applyProductOverrides(
   return {
     ...product,
     name: args.name ?? product.name,
-    summary: args.summary ?? product.summary,
+    tagline: args.summary ?? product.tagline,
   };
+}
+
+function mergeCollectionGroups(
+  collections: Record<string, DocsCollection>
+): DocsGroup[] {
+  const merged: DocsGroup[] = [];
+  const seen = new Set<string>();
+  for (const collection of Object.values(collections)) {
+    if (!collection.groups) {
+      continue;
+    }
+    for (const group of collection.groups) {
+      if (seen.has(group.slug.toLowerCase())) {
+        throw new Error(
+          `Group slug "${group.slug}" appears in multiple collections; group slugs must be globally unique across the project.`
+        );
+      }
+      seen.add(group.slug.toLowerCase());
+      merged.push(group);
+    }
+  }
+  return merged;
+}
+
+function prefixCollectionNavPath(value: string, mountPath: string): string {
+  if (!(mountPath && value.startsWith("/"))) {
+    return value;
+  }
+  return `/${normalizeDocsPath(path.join(mountPath, value.replace(/^\/+/, "")))}`;
+}
+
+function prefixCollectionRootNavPath(value: string, mountPath: string): string {
+  if (!mountPath) {
+    return value;
+  }
+  return `/${normalizeDocsPath(path.join(mountPath, value.replace(/^\/+/, "")))}`;
+}
+
+function prefixCollectionNavPageEntry(
+  entry: DocsNavPageEntry,
+  mountPath: string,
+  isRoot = false
+): DocsNavPageEntry {
+  const prefixPath = isRoot
+    ? prefixCollectionRootNavPath
+    : prefixCollectionNavPath;
+  if (typeof entry === "string") {
+    return prefixPath(entry, mountPath);
+  }
+  return {
+    ...entry,
+    include: prefixPath(entry.include, mountPath),
+    ...(entry.exclude === undefined
+      ? {}
+      : {
+          exclude: Array.isArray(entry.exclude)
+            ? entry.exclude.map((exclude) => prefixPath(exclude, mountPath))
+            : prefixPath(entry.exclude, mountPath),
+        }),
+  };
+}
+
+function prefixCollectionNavNode(
+  node: DocsNavNode,
+  mountPath: string,
+  isRoot = true
+): DocsNavNode {
+  if (!mountPath) {
+    return node;
+  }
+  const base =
+    isRoot || node.base?.startsWith("/")
+      ? normalizeDocsPath(
+          path.join(mountPath, node.base?.replace(/^\/+/, "") ?? "")
+        )
+      : node.base;
+  return {
+    ...node,
+    ...(base === undefined ? {} : { base }),
+    ...(node.pages
+      ? {
+          pages: node.pages.map((entry) =>
+            prefixCollectionNavPageEntry(entry, mountPath)
+          ),
+        }
+      : {}),
+    ...(node.children
+      ? {
+          children: node.children.map((child) =>
+            prefixCollectionNavNode(child, mountPath, false)
+          ),
+        }
+      : {}),
+  };
+}
+
+function isDocsNavNode(entry: DocsNavEntry): entry is DocsNavNode {
+  return (
+    typeof entry === "object" &&
+    entry !== null &&
+    "title" in entry &&
+    typeof entry.title === "string"
+  );
+}
+
+function prefixCollectionNavEntry(
+  entry: DocsNavEntry,
+  mountPath: string
+): DocsNavEntry {
+  return isDocsNavNode(entry)
+    ? prefixCollectionNavNode(entry, mountPath)
+    : prefixCollectionNavPageEntry(entry, mountPath, true);
+}
+
+function mergeCollectionNav(
+  collections: Record<string, DocsCollection>,
+  sources: ResolvedDocsSource[]
+): DocsNavEntry[] {
+  const nav: DocsNavEntry[] = [];
+  const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
+  for (const [key, collection] of Object.entries(collections)) {
+    if (!collection.navigation) {
+      continue;
+    }
+    const source = sourcesByKey.get(key);
+    for (const entry of collection.navigation) {
+      nav.push(prefixCollectionNavEntry(entry, source?.mountPath ?? ""));
+    }
+  }
+  return nav;
+}
+
+async function sourceStagedMdxPaths(
+  source: ResolvedDocsSource
+): Promise<string[]> {
+  const include =
+    source.filters && source.filters.include.length > 0
+      ? source.filters.include
+      : ["**/*.mdx"];
+  const exclude = source.filters?.exclude ?? [];
+  const files = await fg(include, {
+    absolute: false,
+    cwd: source.docsDir,
+    dot: true,
+    expandDirectories: false,
+    ignore: exclude,
+    onlyFiles: true,
+  });
+  return files
+    .filter((file) => file.endsWith(".mdx"))
+    .map((file) => joinDocsRelativePath(source.mountPath, file));
+}
+
+async function resolveCollectionFrontmatterSchemas(
+  collections: Record<string, DocsCollection>,
+  sources: ResolvedDocsSource[]
+): Promise<CollectionFrontmatterSchema[]> {
+  const schemas: CollectionFrontmatterSchema[] = [];
+  const sourcesByKey = new Map(sources.map((source) => [source.input, source]));
+  for (const [key, collection] of Object.entries(collections)) {
+    if (!collection.frontmatterSchema) {
+      continue;
+    }
+    const source = sourcesByKey.get(key);
+    schemas.push({
+      filePaths: source ? await sourceStagedMdxPaths(source) : undefined,
+      pathPrefix: source?.mountPath ?? "",
+      schema: collection.frontmatterSchema,
+    });
+  }
+  return schemas;
 }
 
 async function resolveGenerateMetadata(
   srcDir: string,
-  docsDirs: string[],
-  args: GenerateArgs
+  loaded: LoadedDocsConfig | null,
+  args: GenerateArgs,
+  docsSources: ResolvedDocsSource[]
 ): Promise<ResolvedGenerateMetadata> {
-  const loadedConfig = await loadDocsConfig(docsDirs);
-  if (loadedConfig) {
+  if (loaded) {
+    const collectionGroups = loaded.config.collections
+      ? mergeCollectionGroups(loaded.config.collections)
+      : undefined;
+    const collectionNav = loaded.config.collections
+      ? mergeCollectionNav(loaded.config.collections, docsSources)
+      : undefined;
+    const collectionFrontmatterSchemas = loaded.config.collections
+      ? await resolveCollectionFrontmatterSchemas(
+          loaded.config.collections,
+          docsSources
+        )
+      : undefined;
+    const flatteners = [
+      ...(loaded.config.flatteners ?? []),
+      ...(loaded.config.collections
+        ? Object.values(loaded.config.collections).flatMap(
+            (collection) => collection.flatteners ?? []
+          )
+        : []),
+    ];
+    const agentInputs = resolveAgentInputs({
+      product: applyProductOverrides(loaded.config.product, args),
+      organization: loaded.config.organization,
+      llms: loaded.config.llms,
+    });
     return {
-      configPath: loadedConfig.path,
-      groups: loadedConfig.config.groups,
-      i18n: loadedConfig.config.i18n,
-      product: applyProductOverrides(loadedConfig.config.product, args),
-      typeTableBasePath: loadedConfig.config.typeTableBasePath
-        ? path.resolve(srcDir, loadedConfig.config.typeTableBasePath)
+      configPath: loaded.path,
+      baseUrl: loaded.config.baseUrl,
+      collectionFrontmatterSchemas:
+        collectionFrontmatterSchemas && collectionFrontmatterSchemas.length > 0
+          ? collectionFrontmatterSchemas
+          : undefined,
+      flatteners: flatteners.length > 0 ? flatteners : undefined,
+      frontmatterSchema: loaded.config.frontmatterSchema,
+      groups: collectionGroups ?? loaded.config.groups ?? [],
+      i18n: loaded.config.i18n,
+      nav:
+        collectionNav && collectionNav.length > 0
+          ? collectionNav
+          : loaded.config.navigation,
+      mounts: loaded.config.mounts,
+      feeds: loaded.config.feeds,
+      git: loaded.config.git,
+      openapi: loaded.config.openapi,
+      ...agentInputs,
+      transformers: loaded.config.transformers,
+      typeTableBasePath: loaded.config.typeTableBasePath
+        ? path.resolve(srcDir, loaded.config.typeTableBasePath)
         : undefined,
-      typeTableStrict: loadedConfig.config.typeTableStrict,
+      typeTableStrict: loaded.config.typeTableStrict,
+      agents: loaded.config.agents,
+      redirects: loaded.config.redirects,
     };
   }
-
-  return {
+  return readPackageProduct(srcDir, args).then((product) => ({
     groups: [],
-    product: await readPackageProduct(srcDir, args),
-  };
+    product: resolveAgentInputs({ product }).product,
+  }));
 }
 
 type ResolvedDocsSource = {
   docsDir: string;
   input: string;
+  mounts?: DocsPathMount[];
   mountPath: string;
   urlPrefix: string;
+  /**
+   * Per-source filters from a `DocsCollection.{include,exclude}`. Globs are
+   * interpreted relative to the source's `docsDir`. Combined with the global
+   * CLI `--include`/`--exclude` filters during staging.
+   */
+  filters?: GenerateFilters;
 };
-
-function normalizeDocsSourceInput(input: string): string {
-  return path.normalize(input).replace(/[/\\]+$/, "");
-}
-
-function parseDocsSourceInput(input: string): {
-  docsDir: string;
-  urlPrefix?: string;
-} {
-  const separatorIndex = input.indexOf("=");
-  if (separatorIndex === -1) {
-    return { docsDir: input };
-  }
-  const docsDir = input.slice(0, separatorIndex);
-  const urlPrefix = input.slice(separatorIndex + 1);
-  if (!(docsDir.trim() && urlPrefix.trim())) {
-    throw new Error(
-      `Invalid --docs-dir value "${input}". Use <dir> or <dir>=<url-prefix>.`
-    );
-  }
-  if (normalizeUrlPrefix(urlPrefix) === "/") {
-    throw new Error(
-      `Invalid --docs-dir value "${input}". URL prefix must not be the site root.`
-    );
-  }
-  return { docsDir, urlPrefix };
-}
 
 function resolveDocsSources(
   srcDir: string,
@@ -574,10 +883,62 @@ function resolveDocsSources(
 }
 
 function sourceMounts(sources: ResolvedDocsSource[]): DocsPathMount[] {
-  return sources.map((source) => ({
-    pathPrefix: source.mountPath,
-    urlPrefix: source.urlPrefix,
-  }));
+  return sources.flatMap((source) => [
+    {
+      pathPrefix: source.mountPath,
+      urlPrefix: source.urlPrefix,
+    },
+    ...(source.mounts ?? []).map((mount) => ({
+      pathPrefix: normalizeDocsPath(
+        path.join(source.mountPath, mount.pathPrefix)
+      ),
+      urlPrefix: mount.urlPrefix,
+    })),
+  ]);
+}
+
+function resolveDocsSourcesFromCollections(
+  collections: Record<string, DocsCollection>,
+  configDir: string
+): ResolvedDocsSource[] {
+  const resolved = resolveAllCollections(collections, configDir);
+  const seenUrlPrefixes = new Set<string>();
+  const seenMounts = new Set<string>();
+  return resolved.map((entry) => {
+    if (entry.urlPrefix === "/") {
+      throw new Error(
+        `collection "${entry.key}" prefix must not be the site root.`
+      );
+    }
+    if (seenUrlPrefixes.has(entry.urlPrefix)) {
+      throw new Error(
+        `multiple collections share URL prefix "${entry.urlPrefix}".`
+      );
+    }
+    seenUrlPrefixes.add(entry.urlPrefix);
+    const mountPath = pathPrefixForUrlPrefix(entry.urlPrefix);
+    const mountKey = mountPath.toLowerCase();
+    if (mountPath && seenMounts.has(mountKey)) {
+      throw new Error(
+        `multiple collections resolve to the same staging mount "${mountPath}".`
+      );
+    }
+    seenMounts.add(mountKey);
+    const include = entry.collection.include ?? [];
+    const exclude = entry.collection.exclude ?? [];
+    const filters: GenerateFilters | undefined =
+      include.length > 0 || exclude.length > 0
+        ? { include, exclude }
+        : undefined;
+    return {
+      docsDir: entry.absoluteDir,
+      input: entry.key,
+      mounts: entry.collection.mounts,
+      mountPath,
+      urlPrefix: entry.urlPrefix,
+      filters,
+    };
+  });
 }
 
 function joinDocsRelativePath(mountPath: string, relativePath: string): string {
@@ -590,16 +951,29 @@ function joinDocsRelativePath(mountPath: string, relativePath: string): string {
 async function copySourceFiles(
   source: ResolvedDocsSource,
   targetDocsDir: string,
-  relativePaths?: string[]
+  relativePaths?: string[],
+  gitSourcePaths?: Map<string, string>
 ): Promise<void> {
-  const files =
-    relativePaths ??
-    (await fg("**/*", {
+  let files: string[];
+  if (relativePaths) {
+    files = relativePaths;
+  } else {
+    const include =
+      source.filters && source.filters.include.length > 0
+        ? source.filters.include
+        : ["**/*"];
+    const exclude = source.filters?.exclude ?? [];
+    files = await fg(include, {
       absolute: false,
       cwd: source.docsDir,
       dot: true,
+      // Match the staging-level expansion semantics so bare-directory
+      // include entries don't silently fan out to `dir/**`.
+      expandDirectories: false,
+      ignore: exclude,
       onlyFiles: true,
-    }));
+    });
+  }
 
   await Promise.all(
     files.map(async (file) => {
@@ -613,6 +987,7 @@ async function copySourceFiles(
       }
       await mkdir(path.dirname(targetPath), { recursive: true });
       await cp(sourcePath, targetPath);
+      gitSourcePaths?.set(path.resolve(targetPath), sourcePath);
     })
   );
 }
@@ -620,13 +995,20 @@ async function copySourceFiles(
 async function copyFilteredSourceFiles(
   sources: ResolvedDocsSource[],
   targetDocsDir: string,
-  filters: GenerateFilters
+  filters: GenerateFilters,
+  gitSourcePaths?: Map<string, string>
 ): Promise<void> {
   const stagingRoot = await mkdtemp(path.join(tmpdir(), "leadtype-sources-"));
   const stagingDocsDir = path.join(stagingRoot, DEFAULT_DOCS_DIR);
+  const stagingGitSourcePaths = new Map<string, string>();
   try {
     for (const source of sources) {
-      await copySourceFiles(source, stagingDocsDir);
+      await copySourceFiles(
+        source,
+        stagingDocsDir,
+        undefined,
+        stagingGitSourcePaths
+      );
     }
 
     const patterns =
@@ -658,6 +1040,10 @@ async function copyFilteredSourceFiles(
         const targetPath = path.join(targetDocsDir, file);
         await mkdir(path.dirname(targetPath), { recursive: true });
         await cp(sourcePath, targetPath);
+        gitSourcePaths?.set(
+          path.resolve(targetPath),
+          stagingGitSourcePaths.get(path.resolve(sourcePath)) ?? sourcePath
+        );
       })
     );
   } finally {
@@ -701,10 +1087,21 @@ async function copyMountedMarkdownMirrors(
           `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
         );
       }
-      await rm(targetDir, { force: true, recursive: true });
+      // A mount whose urlPrefix resolves inside its own source subtree (e.g.
+      // pathPrefix "guides" with urlPrefix "/docs/guides/public") nests
+      // targetDir under sourceDir. Exclude the mirror from the source glob so
+      // a previous run's mirror output is never re-mirrored into itself.
+      const targetRelativeToSource = path.relative(sourceDir, targetDir);
+      const targetInsideSource =
+        targetRelativeToSource.length > 0 &&
+        !targetRelativeToSource.startsWith("..") &&
+        !path.isAbsolute(targetRelativeToSource);
       const files = await fg("**/*.md", {
         absolute: false,
         cwd: sourceDir,
+        ignore: targetInsideSource
+          ? [`${normalizeDocsPath(targetRelativeToSource)}/**`]
+          : [],
         onlyFiles: true,
       });
       await Promise.all(
@@ -712,11 +1109,58 @@ async function copyMountedMarkdownMirrors(
           const sourcePath = path.join(sourceDir, file);
           const targetPath = path.join(targetDir, file);
           await mkdir(path.dirname(targetPath), { recursive: true });
-          await cp(sourcePath, targetPath);
+          await copyFileAtomic(sourcePath, targetPath);
         })
       );
+      // Prune mirror files whose source pages no longer exist. Pruning after
+      // the copy (instead of rm -rf on the whole mirror before it) keeps the
+      // mirror readable throughout — a concurrent reader never sees the
+      // directory disappear mid-generation.
+      const currentFiles = new Set(files);
+      const mirroredFiles = await fg("**/*.md", {
+        absolute: false,
+        cwd: targetDir,
+        onlyFiles: true,
+      });
+      const staleFiles = mirroredFiles.filter(
+        (file) => !currentFiles.has(file)
+      );
+      await Promise.all(
+        staleFiles.map((file) =>
+          rm(path.join(targetDir, file), { force: true })
+        )
+      );
+      await removeEmptyMirrorDirs(targetDir, staleFiles);
     })
   );
+}
+
+/**
+ * Remove directories left empty after pruning stale mirror files, walking
+ * each pruned file's parent chain up to (but never including) the mirror
+ * root. A non-empty directory stops the walk — everything above it is
+ * non-empty too.
+ */
+async function removeEmptyMirrorDirs(
+  targetDir: string,
+  prunedFiles: string[]
+): Promise<void> {
+  const parents = new Set(
+    prunedFiles.map((file) => path.dirname(path.join(targetDir, file)))
+  );
+  for (const parent of [...parents].sort(
+    (left, right) => right.length - left.length
+  )) {
+    let current = parent;
+    while (current.startsWith(`${targetDir}${path.sep}`)) {
+      try {
+        await rmdir(current);
+      } catch {
+        break;
+      }
+      current = path.dirname(current);
+    }
+  }
 }
 
 async function hasMarkdownFiles(dir: string): Promise<boolean> {
@@ -762,7 +1206,7 @@ async function copyDefaultLocaleMarkdownAliases(
       const sourcePath = path.join(defaultLocaleDir, file);
       const targetPath = path.join(docsDir, file);
       await mkdir(path.dirname(targetPath), { recursive: true });
-      await cp(sourcePath, targetPath);
+      await copyFileAtomic(sourcePath, targetPath);
     })
   );
   await rm(defaultLocaleDir, { force: true, recursive: true });
@@ -807,14 +1251,15 @@ async function writeI18nManifest(
   }
   const outputPath = path.join(outDir, DEFAULT_DOCS_DIR, "i18n-manifest.json");
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return outputPath;
 }
 
 async function createSourceMirror(
   srcDir: string,
   sources: ResolvedDocsSource[],
-  args: GenerateArgs
+  args: GenerateArgs,
+  forceStaging = false
 ): Promise<SourceMirror> {
   const filters = {
     exclude: [...args.exclude],
@@ -824,9 +1269,21 @@ async function createSourceMirror(
 
   const isDefaultSingleSource =
     sources.length === 1 &&
-    normalizeDocsSourceInput(sources[0]?.input ?? "") === DEFAULT_DOCS_DIR;
+    normalizeDocsSourceInput(sources[0]?.input ?? "") === DEFAULT_DOCS_DIR &&
+    path.resolve(sources[0]?.docsDir ?? "") ===
+      path.resolve(srcDir, DEFAULT_DOCS_DIR);
 
-  if (isDefaultSingleSource && !hasFilters) {
+  // A collection's own `include`/`exclude` must stage a filtered mirror too:
+  // serving the directory in place applies no filter, so in exactly this
+  // shape — and only without `openapi`, whose `forceStaging` routed through
+  // `copySourceFiles` and honored them — a single default `docs` collection's
+  // filters were silently ignored and its excluded pages shipped.
+  const hasSourceFilters = sources.some((source) => source.filters);
+
+  if (
+    isDefaultSingleSource &&
+    !(hasFilters || hasSourceFilters || forceStaging)
+  ) {
     const docsDir = sources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
     return {
       cleanup: async () => {
@@ -840,13 +1297,19 @@ async function createSourceMirror(
 
   const tempRoot = await mkdtemp(path.join(tmpdir(), "leadtype-generate-"));
   const tempDocsDir = path.join(tempRoot, DEFAULT_DOCS_DIR);
+  const gitSourcePaths = new Map<string, string>();
 
   try {
     if (hasFilters) {
-      await copyFilteredSourceFiles(sources, tempDocsDir, filters);
+      await copyFilteredSourceFiles(
+        sources,
+        tempDocsDir,
+        filters,
+        gitSourcePaths
+      );
     } else {
       for (const source of sources) {
-        await copySourceFiles(source, tempDocsDir);
+        await copySourceFiles(source, tempDocsDir, undefined, gitSourcePaths);
       }
     }
   } catch (error) {
@@ -860,6 +1323,7 @@ async function createSourceMirror(
     },
     docsDir: tempDocsDir,
     filters,
+    gitSourcePaths,
     srcDir: tempRoot,
   };
 }
@@ -870,6 +1334,164 @@ export function getGenerateUsage(): string {
 
 function renderGenerateResult(result: GenerateResult): string {
   return JSON.stringify(result, null, 2);
+}
+
+const BUNDLE_DOCS_URL = "https://leadtype.dev/docs/package-docs/bundle";
+
+/**
+ * The installable npm name for the bundled package. The pointer must reference
+ * `node_modules/<name>/AGENTS.md`, so it needs the real package name from the
+ * output package's `package.json` — not `product.name`, which is often a human
+ * display name ("My library") that wouldn't resolve as a directory.
+ */
+async function readBundlePackageName(
+  outDir: string,
+  fallback: string
+): Promise<string> {
+  const packageJsonPath = path.join(outDir, "package.json");
+  if (existsSync(packageJsonPath)) {
+    try {
+      const data = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
+        name?: unknown;
+      };
+      if (typeof data.name === "string" && data.name.length > 0) {
+        return data.name;
+      }
+    } catch {
+      // Fall through to the product-name fallback on unreadable/invalid JSON.
+    }
+  }
+  return fallback;
+}
+
+/**
+ * The wiring guidance printed after a successful `--bundle` run. Bundled docs
+ * only pay off when an agent actually reads them, and our evals show the root
+ * `AGENTS.md` pointer is what makes that reliable — so we surface the exact
+ * snippet here instead of leaving it buried in the docs.
+ */
+function renderBundlePointerGuidance(packageName: string): string {
+  return [
+    "",
+    "Make coding agents read these docs — the highest-leverage setup step.",
+    "Add this to your published README so consuming projects point their root",
+    "AGENTS.md at the bundle (in our evals this lifts bundle-read from ~29% to",
+    "~90–100%):",
+    "",
+    "  ```md",
+    `  When working with the \`${packageName}\` library, read the bundled docs`,
+    `  in \`node_modules/${packageName}/AGENTS.md\` first — they're`,
+    "  version-matched to the installed package and stay accurate as it updates.",
+    "  ```",
+    "",
+    `  Details: ${BUNDLE_DOCS_URL}`,
+    "",
+  ].join("\n");
+}
+
+type GenerateOutcome = {
+  code: number;
+  /** Directories and files a --watch session should observe. */
+  watchPaths: string[];
+};
+
+function defaultWatchPaths(srcDir: string): string[] {
+  return [
+    path.join(srcDir, DEFAULT_DOCS_DIR),
+    ...LEADTYPE_CONFIG_FILENAMES.map((filename) => path.join(srcDir, filename)),
+  ].filter((candidate) => existsSync(candidate));
+}
+
+function readLeadtypeVersion(): string {
+  try {
+    const requireFromHere = createRequire(import.meta.url);
+    const packageJson = requireFromHere("leadtype/package.json") as {
+      version?: unknown;
+    };
+    return typeof packageJson.version === "string"
+      ? packageJson.version
+      : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function hashText(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+/**
+ * Build the incremental-cache options for this run, or undefined when there
+ * is no conventional cache home (`node_modules/`) to write into.
+ *
+ * The fingerprint invalidates the whole cache when anything the per-file
+ * checks can't see changes: the leadtype version, the docs config file
+ * (transformers/flatteners are functions, so the config's content hash
+ * stands in for them), or flags that alter conversion output.
+ */
+/**
+ * Nearest `node_modules` walking upward from `startDir`, mirroring Node's own
+ * module resolution — hoisted monorepo layouts keep dependencies at the
+ * workspace root, so a subpackage `--src` without its own `node_modules`
+ * still gets a cache home.
+ */
+export function findNearestNodeModules(startDir: string): string | undefined {
+  let dir = path.resolve(startDir);
+  for (;;) {
+    const candidate = path.join(dir, "node_modules");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return;
+    }
+    dir = parent;
+  }
+}
+
+async function resolveConvertCache(opts: {
+  srcDir: string;
+  outDir: string;
+  args: GenerateArgs;
+  configPath?: string;
+}): Promise<ConvertCacheOptions | undefined> {
+  const nodeModulesDir = findNearestNodeModules(opts.srcDir);
+  if (!nodeModulesDir) {
+    return;
+  }
+  const cacheId = hashText(
+    JSON.stringify({
+      outDir: opts.outDir,
+      docsDirs: opts.args.docsDirs,
+      include: opts.args.include,
+      exclude: opts.args.exclude,
+      bundle: opts.args.bundle,
+    })
+  ).slice(0, 16);
+  let configHash = "no-config";
+  if (opts.configPath) {
+    try {
+      configHash = hashText(await readFile(opts.configPath, "utf8"));
+    } catch {
+      configHash = "unreadable-config";
+    }
+  }
+  const fingerprint = [
+    readLeadtypeVersion(),
+    configHash,
+    JSON.stringify({ enrichGit: opts.args.enrichGit }),
+  ].join("|");
+  return {
+    file: path.join(
+      nodeModulesDir,
+      ".cache",
+      "leadtype",
+      `generate-${cacheId}.json`
+    ),
+    fingerprint,
+    ...(opts.args.force ? { force: true } : {}),
+  };
 }
 
 export async function runGenerateCommand(
@@ -892,15 +1514,223 @@ export async function runGenerateCommand(
   setLogFormat(args.format === "json" ? "json" : "human");
   setVerbose(args.verbose);
   setLogStreams({ stderr: io.stderr });
+  if (args.mcp) {
+    logger.warn({
+      human: {
+        message: MCP_FLAG_DEPRECATION_MESSAGE,
+        hint: MCP_FLAG_DEPRECATION_HINT,
+      },
+      json: {
+        event: "generate.deprecated_flag",
+        fields: {
+          flag: "--mcp",
+          hint: MCP_FLAG_DEPRECATION_HINT,
+        },
+      },
+    });
+  }
+  if (args.enrichGitFlag) {
+    logger.warn({
+      human: {
+        message: ENRICH_GIT_FLAG_DEPRECATION_MESSAGE,
+        hint: ENRICH_GIT_FLAG_DEPRECATION_HINT,
+      },
+      json: {
+        event: "generate.deprecated_flag",
+        fields: {
+          flag: "--enrich-git",
+          hint: ENRICH_GIT_FLAG_DEPRECATION_HINT,
+        },
+      },
+    });
+  }
 
+  if (!args.watch) {
+    return (await executeGenerate(args, io)).code;
+  }
+  return await runGenerateWatch(args, io);
+}
+
+/**
+ * Run generation once, then keep the process alive and re-run on changes to
+ * the docs sources or config file. A failing build does not exit — the next
+ * change gets another chance, which is the loop docs authors iterate in.
+ */
+async function runGenerateWatch(
+  args: GenerateArgs,
+  io: GenerateIo
+): Promise<number> {
+  const outDir = path.resolve(args.outDir);
+  let outcome = await executeGenerate(args, io);
+  // `--force` applies to the initial build only: watch-triggered rebuilds
+  // stay incremental, which is the point of watching.
+  const rerunArgs: GenerateArgs = { ...args, force: false };
+  let watcher: ReturnType<typeof watchInputs> | undefined;
+  let running = false;
+  let queued = false;
+
+  const armWatcher = (): ReturnType<typeof watchInputs> =>
+    watchInputs({
+      paths: outcome.watchPaths,
+      ignorePaths: [outDir],
+      onChange: (changedPaths) => {
+        logger.info({
+          human: {
+            message: `change detected (${changedPaths.length} path${changedPaths.length === 1 ? "" : "s"}) — regenerating`,
+          },
+          json: {
+            event: "generate.watch_rebuild",
+            fields: { changed: changedPaths.slice(0, 20) },
+          },
+        });
+        scheduleRerun();
+      },
+    });
+
+  const scheduleRerun = (): void => {
+    rerun().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error({
+        human: { message: `watch rebuild failed: ${message}` },
+        json: { event: "generate.watch_error", fields: { message } },
+      });
+    });
+  };
+
+  const rerun = async (): Promise<void> => {
+    if (running) {
+      queued = true;
+      return;
+    }
+    running = true;
+    try {
+      const previousWatchPaths = outcome.watchPaths.join("\0");
+      outcome = await executeGenerate(rerunArgs, io);
+      // A config edit can add or remove docs sources — re-arm so the new
+      // set is observed.
+      if (outcome.watchPaths.join("\0") !== previousWatchPaths) {
+        watcher?.close();
+        watcher = armWatcher();
+      }
+    } finally {
+      running = false;
+      if (queued) {
+        queued = false;
+        scheduleRerun();
+      }
+    }
+  };
+
+  watcher = armWatcher();
+  logger.info({
+    human: { message: "watching for changes — press Ctrl+C to stop" },
+    json: {
+      event: "generate.watch_start",
+      fields: { paths: outcome.watchPaths },
+    },
+  });
+
+  await new Promise<void>((resolvePromise) => {
+    const stop = (): void => {
+      watcher?.close();
+      resolvePromise();
+    };
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+  });
+  return 0;
+}
+
+async function executeGenerate(
+  args: GenerateArgs,
+  io: GenerateIo
+): Promise<GenerateOutcome> {
   const srcDir = path.resolve(args.srcDir);
+  let watchPaths = defaultWatchPaths(srcDir);
+
+  const reportFailure = (message: string): void => {
+    if (args.format === "json") {
+      logger.error({
+        human: { message },
+        json: {
+          event: "generate.fail",
+          fields: {
+            error: message,
+            filters: { exclude: args.exclude, include: args.include },
+          },
+        },
+      });
+    } else {
+      io.stderr.write(`leadtype generate: ${message}\n`);
+    }
+  };
+
+  let loadedConfig: LoadedDocsConfig | null;
   let docsSources: ResolvedDocsSource[];
   try {
-    docsSources = resolveDocsSources(srcDir, args.docsDirs);
+    loadedConfig = await loadLeadtypeConfig(srcDir);
+    if (loadedConfig?.config.collections) {
+      if (args.docsDirs.length > 0) {
+        throw new Error(
+          `cannot pass --docs-dir when ${loadedConfig.path} defines \`collections\`. Collections fully describe their sources.`
+        );
+      }
+      const configDir = path.dirname(loadedConfig.path);
+      // Sync acts on the resolved source graph from the first normalization
+      // pass — the only pass that saw authored source names — not on a second
+      // derivation from the collections map.
+      await syncSources({
+        mode: args.syncMode,
+        configDir,
+        sources: loadedConfig.resolved.sources,
+      });
+      // The post-sync resolution — source-owned inheritance and the
+      // re-normalization that keeps the first pass's sources and deprecations
+      // — is the same pipeline `resolveProject` runs. Generate differs only in
+      // syncing first (so the cache the resolver reads is fresh) and in
+      // failing hard: a diagnostic doctor reports is a build error here.
+      const project = await resolveProjectFromLoaded(loadedConfig, {
+        rootDir: srcDir,
+        // Generate derives navigation itself during staging; resolving it
+        // here too would walk every content tree a second time.
+        infer: false,
+      });
+      const blocking = project.diagnostics.find(
+        (entry) => entry.level === "error"
+      );
+      if (blocking) {
+        throw new Error(
+          `${blocking.message}${blocking.fix ? `. Run \`${blocking.fix}\`.` : ""}`
+        );
+      }
+      loadedConfig = {
+        config: project.config,
+        path: loadedConfig.path,
+        resolved: project.resolved,
+      };
+      docsSources = resolveDocsSourcesFromCollections(
+        project.config.collections ?? {},
+        configDir
+      );
+    } else {
+      const docsDirsToResolve =
+        args.docsDirs.length > 0 ? args.docsDirs : [DEFAULT_DOCS_DIR];
+      docsSources = resolveDocsSources(srcDir, docsDirsToResolve);
+      if (!loadedConfig) {
+        loadedConfig = await loadDocsConfig({
+          docsDirs: docsSources.map((source) => source.docsDir),
+        });
+      }
+    }
   } catch (error) {
-    io.stderr.write(`${String(error)}\n`);
-    return 1;
+    const message = error instanceof Error ? error.message : String(error);
+    reportFailure(message);
+    return { code: 1, watchPaths };
   }
+  watchPaths = [
+    ...docsSources.map((source) => source.docsDir),
+    ...(loadedConfig ? [loadedConfig.path] : []),
+  ];
   const docsDir =
     docsSources[0]?.docsDir ?? path.join(srcDir, DEFAULT_DOCS_DIR);
   const docsDirs = docsSources.map((source) => source.docsDir);
@@ -922,52 +1752,258 @@ export async function runGenerateCommand(
         `leadtype generate: docs directory not found at ${missingDocsDir}\n`
       );
     }
-    return 1;
+    return { code: 1, watchPaths };
+  }
+
+  // Serialize concurrent generate runs targeting the same outDir (parallel CI
+  // task graphs commonly fan out lint/typecheck/build, each regenerating docs).
+  // Atomic per-file writes keep individual artifacts readable at all times;
+  // the lock keeps whole runs from interleaving their read-back phases.
+  let generateLock: GenerateLock | undefined;
+  if (process.env.LEADTYPE_NO_LOCK !== "1") {
+    try {
+      const waitTimeoutMs = Number(process.env.LEADTYPE_LOCK_TIMEOUT_MS);
+      generateLock = await acquireGenerateLock(
+        outDir,
+        Number.isFinite(waitTimeoutMs) && waitTimeoutMs > 0
+          ? { waitTimeoutMs }
+          : {}
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      reportFailure(message);
+      return { code: 1, watchPaths };
+    }
   }
 
   let sourceMirror: SourceMirror | undefined;
   try {
-    const metadata = await resolveGenerateMetadata(srcDir, docsDirs, args);
-    sourceMirror = await createSourceMirror(srcDir, docsSources, args);
-    const { groups, product, typeTableBasePath, typeTableStrict } =
-      metadata.configPath
-        ? metadata
-        : {
+    if (generateLock) {
+      // With the lock held, no other run is in flight — safe to sweep temp
+      // files leaked into the output tree by a previous hard-killed run.
+      await sweepLeakedTempFiles(outDir);
+    }
+    const metadata = await resolveGenerateMetadata(
+      srcDir,
+      loadedConfig,
+      args,
+      docsSources
+    );
+    const baseUrl = args.baseUrl ?? metadata.baseUrl;
+    const hasExplicitPathFilters =
+      args.include.length > 0 || args.exclude.length > 0;
+    // A filtered run's page set is partial by design: diffing it against the
+    // lockfile would flag every excluded page as disappeared, and pruning
+    // would delete their outputs. Redirect tracking only runs on full builds.
+    const redirectsEnabled =
+      metadata.redirects !== undefined && !hasExplicitPathFilters;
+    sourceMirror = await createSourceMirror(
+      srcDir,
+      docsSources,
+      args,
+      metadata.openapi !== undefined && !hasExplicitPathFilters
+    );
+    const generatedOpenApi =
+      metadata.openapi === undefined || hasExplicitPathFilters
+        ? { indexPages: [], nav: [], pages: [] }
+        : await writeOpenApiPages({
+            configs: normalizeOpenApiConfig(
+              metadata.openapi,
+              metadata.configPath ? path.dirname(metadata.configPath) : docsDir,
+              baseUrl ? { baseUrl } : {}
+            ),
+            docsDir: sourceMirror.docsDir,
+          });
+    if (metadata.openapi !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "OpenAPI generation is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.openapi_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
+    // Emitted after source-mirror creation (like the OpenAPI skip above) so a
+    // run that fails on empty filter matches doesn't log a skip for a step it
+    // never reached.
+    if (metadata.redirects !== undefined && hasExplicitPathFilters) {
+      logger.warn({
+        human: {
+          message:
+            "Redirect tracking is skipped when --include or --exclude filters are active.",
+        },
+        json: {
+          event: "generate.redirects_skipped",
+          fields: { exclude: args.exclude, include: args.include },
+        },
+      });
+    }
+    // Collections-mode configs may omit per-collection `groups` and lean on
+    // the same frontmatter-discovery path used when no config is present.
+    // Filtered single-folder runs also disable curated nav, so infer groups
+    // when the loaded config only provided `nav`.
+    const needsGroupInference =
+      !metadata.configPath ||
+      Boolean(
+        loadedConfig?.config.collections && metadata.groups.length === 0
+      ) ||
+      (hasExplicitPathFilters && metadata.groups.length === 0);
+    const { groups, nav, product, typeTableBasePath, typeTableStrict } =
+      needsGroupInference
+        ? {
             ...metadata,
             groups: await inferGroups(sourceMirror.docsDir),
-          };
+          }
+        : metadata;
+    const bundleMcpEnabled = args.mcp || metadata.agents?.mcp?.enabled === true;
+
+    // Derived navigation: only when nothing structural was authored. Any
+    // `navigation` tree or `group:` frontmatter means the author has an
+    // information architecture in mind, and inference must not merge with it.
+    // Path filters disable curated nav entirely, so they opt out too.
+    let inference = emptyInferenceReport();
+    let derivedNav: DocsNavEntry[] | undefined;
+    // Not for localized projects: derivation keys sections off the first path
+    // segment, which for `docs/en/…` is the locale — while navigation resolves
+    // per locale over locale-stripped paths, so no derived section can ever
+    // match and generate fails outright.
+    if (
+      !hasExplicitPathFilters &&
+      metadata.i18n === undefined &&
+      (nav === undefined || nav.length === 0) &&
+      groups.length === 0
+    ) {
+      const inferred = await inferNavigationFromContent(sourceMirror.docsDir, {
+        // Generated OpenAPI pages already contribute their own nav node.
+        exclude: [
+          ...generatedOpenApi.pages.map((page) => page.relativePath),
+          ...generatedOpenApi.indexPages.map((page) => page.relativePath),
+        ],
+      });
+      if (inferred.navigation.length > 0) {
+        derivedNav = inferred.navigation;
+        inference = mergeInferenceReports(inference, inferred.report);
+      }
+    }
+
+    const effectiveNav = hasExplicitPathFilters
+      ? undefined
+      : [...(derivedNav ?? nav ?? []), ...generatedOpenApi.nav];
+    const effectiveMounts = [...mounts, ...(metadata.mounts ?? [])];
     const i18n = normalizeDocsI18nConfig(metadata.i18n);
     const i18nManifest = buildI18nManifest(metadata.i18n);
+    const gitSourcePaths = sourceMirror.gitSourcePaths;
 
     const localesToValidate = i18n
       ? i18n.locales.map((locale) => locale.code)
       : [undefined];
+    let defaultLocaleNavigation: DocsNavigation | undefined;
     for (const locale of localesToValidate) {
       const navigation = await resolveDocsNavigation({
         srcDir: sourceMirror.srcDir,
         groups,
-        mounts,
+        nav: effectiveNav,
+        mounts: effectiveMounts,
         i18n: metadata.i18n,
         locale,
       });
-      const firstUnknownGroup = navigation.unknown[0];
+      // Fallback entries are the default locale's files re-selected under
+      // this locale (`fallback: "default"`), so their finding belongs to the
+      // default locale's pass — reporting it here would name a locale-prefixed
+      // copy of a file that has exactly one edit site.
+      const firstUnknownGroup = navigation.unknown.find(
+        (entry) => entry.isFallback !== true
+      );
       if (firstUnknownGroup) {
         throw new Error(
           `${firstUnknownGroup.urlPath} declares unknown group "${firstUnknownGroup.slug}"`
         );
       }
+      defaultLocaleNavigation ??= navigation;
     }
+
+    // Derived llms.txt body, from the same resolved navigation the sidebar and
+    // sitemap come from — so an agent's starting points can't drift from the
+    // human entry points. Skipped entirely when `llms.sections` was authored.
+    let effectiveProduct = product;
+    if (product.blocks === undefined && defaultLocaleNavigation) {
+      const derived = inferLlmsBlocks({
+        navigation: defaultLocaleNavigation,
+      });
+      if (derived.blocks.length > 0) {
+        effectiveProduct = { ...product, blocks: derived.blocks };
+        inference = mergeInferenceReports(inference, derived.report);
+      }
+    }
+
+    if (!args.bundle && baseUrl === undefined) {
+      inference = mergeInferenceReports(inference, {
+        values: [
+          {
+            field: "baseUrl",
+            derivedFrom: BASE_URL_DEFAULT_SOURCE,
+            summary: normalizeBaseUrl(undefined),
+            makeExplicit:
+              "Set `baseUrl` in the docs config, or pass --base-url.",
+          },
+        ],
+        warnings: [],
+      });
+    }
+
+    for (const warning of inference.warnings) {
+      logger.warn({
+        human: { message: warning.message, hint: warning.hint },
+        json: {
+          event: "generate.inference_ambiguous",
+          fields: { field: warning.field, message: warning.message },
+        },
+      });
+    }
+    // Text mode only: JSON output is a machine record on stdout, and a prose
+    // report written before it makes the whole stream unparseable. In JSON
+    // mode the same information rides on the result object instead.
+    if (args.explain && args.format !== "json") {
+      io.stdout.write(formatInferenceReport(inference));
+    }
+
+    const convertCache = await resolveConvertCache({
+      srcDir,
+      outDir,
+      args,
+      configPath: loadedConfig?.path,
+    });
 
     await convertAllMdx({
       srcDir: sourceMirror.docsDir,
       outDir: path.join(outDir, "docs"),
-      remarkPlugins: createGenerateRemarkPlugins({
+      ...(convertCache ? { cache: convertCache } : {}),
+      // Redirect tracking diffs the emitted page set, so stale mirrors from
+      // renamed/deleted sources must be garbage-collected or the old path
+      // never "disappears" and rename detection can't fire. The pipeline's
+      // own generated sitemaps (docs-scoped and per-locale) are written into
+      // this outDir after conversion, so keep them out of the sweep.
+      ...(redirectsEnabled
+        ? { prune: true, pruneKeep: ["**/sitemap.md"] }
+        : {}),
+      markdownTransforms: createGenerateMarkdownTransforms({
         sourceRoot: srcDir,
         typeTableBasePath,
         typeTableStrict,
+        flatteners: metadata.flatteners,
       }),
       enrichFrontmatterFromGit: args.enrichGit,
       failOnError: typeTableStrict,
+      frontmatterSchemaByPath: metadata.collectionFrontmatterSchemas,
+      frontmatterSchema: metadata.frontmatterSchema,
+      ignoredGitAuthors: metadata.git?.ignoredAuthors,
+      gitSourcePath: gitSourcePaths
+        ? (filePath) => gitSourcePaths.get(path.resolve(filePath)) ?? filePath
+        : undefined,
+      transformers: metadata.transformers,
     });
 
     let result: GenerateResult;
@@ -975,67 +2011,275 @@ export async function runGenerateCommand(
       const agents = await generateAgentsMd({
         srcDir: sourceMirror.srcDir,
         outDir,
-        product,
+        product: effectiveProduct,
         groups,
+        nav: effectiveNav,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
       });
+      const bundleFiles: GenerateResult["files"] = {
+        agentsMd: agents.outputPath,
+      };
+      // Bundle MCP artifacts are inferred from docs.config.ts (`agents.mcp.enabled`)
+      // or explicitly enabled with --mcp. They are URL-independent: MCP keys on
+      // urlPath and reads the .md mirror, so they work without a --base-url.
+      if (bundleMcpEnabled) {
+        const agentReadability = await generateAgentReadabilityArtifacts({
+          outDir,
+          baseUrl,
+          product: effectiveProduct,
+          groups,
+          nav: effectiveNav,
+          mounts: effectiveMounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          i18nManifest,
+          emitRootCrawlerFiles: false,
+          transformers: metadata.transformers,
+        });
+        const search = await generateDocsSearchFiles({
+          outDir,
+          baseUrl,
+          mounts: effectiveMounts,
+          i18n: metadata.i18n,
+          locale: i18n?.defaultLocale,
+          indexOptions: {
+            generatedAt: agentReadability.manifest.generatedAt,
+          },
+          transformers: metadata.transformers,
+        });
+        bundleFiles.searchIndex = search.outputPath;
+        if (search.contentOutputPath) {
+          bundleFiles.searchContent = search.contentOutputPath;
+        }
+        bundleFiles.agentReadabilityManifest = agentReadability.files.manifest;
+      }
+      // Ship the docs-skill SKILL.md next to AGENTS.md (offline-pointing), unless
+      // the author disabled it.
+      const bundleSkills = await generateSkillArtifacts({
+        outDir,
+        // Skill `bodyPath` resolves against the real source root (`--src`), not
+        // the temp conversion mirror (which only holds the docs tree).
+        srcDir,
+        product: effectiveProduct,
+        skills: metadata.agents?.skills,
+        mode: "bundle",
+        mcpEnabled: bundleMcpEnabled,
+      });
+      if (bundleSkills.files[0]) {
+        bundleFiles.skillMd = bundleSkills.files[0];
+      }
       result = {
         docsDir,
         docsDirs,
-        files: { agentsMd: agents.outputPath },
+        files: bundleFiles,
         filters: sourceMirror.filters,
         groups,
-        mounts,
+        ...(effectiveNav ? { nav: effectiveNav } : {}),
+        mounts: effectiveMounts,
         mode: "bundle",
         outDir,
-        product,
+        product: effectiveProduct,
         srcDir,
       };
     } else {
+      const effectiveBaseUrl = normalizeBaseUrl(baseUrl);
+      const publishableAgentBaseUrl =
+        baseUrl?.trim() || !isLocalBaseUrl(effectiveBaseUrl)
+          ? effectiveBaseUrl
+          : undefined;
+      const feedBaseUrl =
+        metadata.feeds && metadata.feeds.length > 0
+          ? resolveFeedBaseUrl(baseUrl)
+          : undefined;
       if (i18n) {
         await copyDefaultLocaleMarkdownAliases(outDir, i18n.defaultLocale);
       }
-      await copyMountedMarkdownMirrors(outDir, mounts);
+      await copyMountedMarkdownMirrors(outDir, effectiveMounts);
       const i18nManifestPath = await writeI18nManifest(outDir, i18nManifest);
+      const mcpConfig = metadata.agents?.mcp;
+      const mcpEnabled = mcpConfig?.enabled === true;
+      const mcpEndpoint = mcpEnabled
+        ? resolveMcpEndpoint(publishableAgentBaseUrl, mcpConfig.endpoint)
+        : undefined;
+      const nlwebConfig = metadata.agents?.nlweb;
+      const nlwebEnabled = nlwebConfig?.enabled === true;
+      const askEndpoint = nlwebEnabled
+        ? resolveMcpEndpoint(
+            publishableAgentBaseUrl,
+            nlwebConfig.endpoint ?? DEFAULT_NLWEB_ASK_PATH
+          )
+        : undefined;
+      const nlwebOpenApi = nlwebEnabled
+        ? resolveNlwebOpenApiConfig(nlwebConfig.openapi)
+        : null;
+      const nlwebStateDir = path.join(srcDir, ".leadtype");
+      if (!nlwebEnabled) {
+        await removeGeneratedNlwebOpenApi({
+          outDir,
+          stateDir: nlwebStateDir,
+        });
+      }
+      // `/ask` is a real API this site publishes, so it joins the RFC 9727
+      // catalog with the generated OpenAPI document as its service-desc. A
+      // site that already declared the endpoint keeps its own entry.
+      const catalogApis = nlwebEnabled
+        ? withNlwebApiCatalogEntry(
+            metadata.agents?.apis,
+            nlwebApiCatalogEntry({
+              askEndpoint: askEndpoint ?? DEFAULT_NLWEB_ASK_PATH,
+              ...(nlwebOpenApi
+                ? {
+                    openapiUrl: resolveMcpEndpoint(
+                      publishableAgentBaseUrl,
+                      nlwebOpenApi.url
+                    ),
+                  }
+                : {}),
+              ...(metadata.documentationUrl
+                ? { docsUrl: metadata.documentationUrl }
+                : {}),
+            }),
+            publishableAgentBaseUrl
+          )
+        : metadata.agents?.apis;
       await generateLlmsTxt({
         srcDir: sourceMirror.srcDir,
         outDir,
-        baseUrl: args.baseUrl,
-        product,
+        baseUrl,
+        product: effectiveProduct,
         groups,
-        mounts,
+        nav: effectiveNav,
+        mounts: effectiveMounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
+        agentInterfaces: {
+          ...(mcpEndpoint
+            ? {
+                mcpEndpoint,
+                mcpServerCardUrl: resolveMcpEndpoint(
+                  publishableAgentBaseUrl,
+                  `/${MCP_SERVER_CARD_PATH}`
+                ),
+                // Same subset the server card advertises, so the two
+                // discovery surfaces never disagree about the endpoint.
+                mcpTools: [...new Set(mcpConfig?.tools ?? DEFAULT_DOCS_TOOLS)],
+              }
+            : {}),
+          ...(askEndpoint ? { askEndpoint } : {}),
+        },
       });
 
       await generateLLMFullContextFiles({
         outDir,
-        baseUrl: args.baseUrl,
+        baseUrl,
         product: { name: product.name },
         groups,
-        mounts,
+        nav: effectiveNav,
+        mounts: effectiveMounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
+        transformers: metadata.transformers,
       });
 
-      const search = await generateDocsSearchFiles({
-        outDir,
-        baseUrl: args.baseUrl,
-        mounts,
-        i18n: metadata.i18n,
-        locale: i18n?.defaultLocale,
-      });
       const agentReadability = await generateAgentReadabilityArtifacts({
         outDir,
-        baseUrl: args.baseUrl,
-        product,
+        baseUrl,
+        product: effectiveProduct,
         groups,
-        mounts,
+        nav: effectiveNav,
+        mounts: effectiveMounts,
         i18n: metadata.i18n,
         locale: i18n?.defaultLocale,
         i18nManifest,
+        transformers: metadata.transformers,
+        robotsPolicy: metadata.agents?.robots?.policy,
+        contentSignals: metadata.agents?.robots?.signals,
+        ...(nlwebEnabled
+          ? { schemamapUrlPath: `/${NLWEB_SCHEMA_MAP_PATH}` }
+          : {}),
+        apis: catalogApis,
+        jsonLd: metadata.jsonLd,
+        seo: metadata.agents?.seo,
       });
+      const search = await generateDocsSearchFiles({
+        outDir,
+        baseUrl,
+        mounts: effectiveMounts,
+        i18n: metadata.i18n,
+        locale: i18n?.defaultLocale,
+        indexOptions: {
+          generatedAt: agentReadability.manifest.generatedAt,
+        },
+        transformers: metadata.transformers,
+      });
+      const nlwebArtifacts = nlwebEnabled
+        ? await generateNlwebArtifacts({
+            outDir,
+            stateDir: nlwebStateDir,
+            ...(publishableAgentBaseUrl
+              ? { baseUrl: publishableAgentBaseUrl }
+              : {}),
+            product: effectiveProduct,
+            pages: agentReadability.manifest.pages,
+            ...(nlwebConfig?.endpoint
+              ? { askEndpoint: nlwebConfig.endpoint }
+              : {}),
+            ...(nlwebConfig?.openapi ? { openapi: nlwebConfig.openapi } : {}),
+            ...(metadata.documentationUrl
+              ? { docsUrl: metadata.documentationUrl }
+              : {}),
+          })
+        : undefined;
+
+      // Emit the agent-skills surface (/.well-known/agent-skills + agent-card).
+      // Default-on: the auto docs-skill is free and points agents at the docs.
+      const siteSkills = await generateSkillArtifacts({
+        outDir,
+        // Skill `bodyPath` resolves against the real source root (`--src`), not
+        // the temp conversion mirror (which only holds the docs tree).
+        srcDir,
+        baseUrl,
+        product: effectiveProduct,
+        skills: {
+          ...metadata.agents?.skills,
+          agentCard: metadata.agents?.agentCard?.enabled,
+        },
+        mode: "site",
+        mcpEnabled,
+        mcpEndpoint,
+        // Agent-card provider / docs URL derived from `organization` + `product.docs`.
+        ...(metadata.provider ? { provider: metadata.provider } : {}),
+        ...(metadata.documentationUrl
+          ? { documentationUrl: metadata.documentationUrl }
+          : {}),
+        ...(metadata.agents?.agentCard?.version
+          ? { version: metadata.agents.agentCard.version }
+          : {}),
+      });
+      const agentSkillsIndex = siteSkills.files.find((f) =>
+        f.endsWith("index.json")
+      );
+      let mcpServerCard:
+        | Awaited<ReturnType<typeof generateMcpServerCard>>
+        | undefined;
+      if (mcpEnabled) {
+        mcpServerCard = await generateMcpServerCard({
+          outDir,
+          baseUrl: publishableAgentBaseUrl,
+          product: effectiveProduct,
+          config: {
+            endpoint: mcpConfig.endpoint,
+            icon: mcpConfig.icon,
+            logo: mcpConfig.logo,
+            serverInfo: mcpConfig.serverInfo,
+            authentication: mcpConfig.authentication,
+            tools: mcpConfig.tools,
+          },
+        });
+      }
 
       if (i18n) {
         for (const locale of i18n.locales) {
@@ -1045,38 +2289,91 @@ export async function runGenerateCommand(
           await generateLlmsTxt({
             srcDir: sourceMirror.srcDir,
             outDir,
-            baseUrl: args.baseUrl,
-            product,
+            baseUrl,
+            product: effectiveProduct,
             groups,
-            mounts,
+            nav: effectiveNav,
+            mounts: effectiveMounts,
             i18n: metadata.i18n,
             locale: locale.code,
+            transformers: metadata.transformers,
           });
           await generateLLMFullContextFiles({
             outDir,
-            baseUrl: args.baseUrl,
+            baseUrl,
             product: { name: product.name },
             groups,
-            mounts,
+            nav: effectiveNav,
+            mounts: effectiveMounts,
             i18n: metadata.i18n,
             locale: locale.code,
+            transformers: metadata.transformers,
           });
-          await generateDocsSearchFiles({
+          const agentReadability = await generateAgentReadabilityArtifacts({
             outDir,
-            baseUrl: args.baseUrl,
-            mounts,
-            i18n: metadata.i18n,
-            locale: locale.code,
-          });
-          await generateAgentReadabilityArtifacts({
-            outDir,
-            baseUrl: args.baseUrl,
-            product,
+            baseUrl,
+            product: effectiveProduct,
             groups,
-            mounts,
+            nav: effectiveNav,
+            mounts: effectiveMounts,
             i18n: metadata.i18n,
             locale: locale.code,
             i18nManifest,
+            transformers: metadata.transformers,
+            robotsPolicy: metadata.agents?.robots?.policy,
+            contentSignals: metadata.agents?.robots?.signals,
+            apis: catalogApis,
+            jsonLd: metadata.jsonLd,
+            seo: metadata.agents?.seo,
+          });
+          await generateDocsSearchFiles({
+            outDir,
+            baseUrl,
+            mounts: effectiveMounts,
+            i18n: metadata.i18n,
+            locale: locale.code,
+            indexOptions: {
+              generatedAt: agentReadability.manifest.generatedAt,
+            },
+            transformers: metadata.transformers,
+          });
+        }
+      }
+      const feeds = await generateFeedArtifacts({
+        outDir,
+        baseUrl: feedBaseUrl,
+        author: product.name,
+        feeds: metadata.feeds,
+        mounts: effectiveMounts,
+        i18n: metadata.i18n,
+      });
+
+      // Redirect tracking (opt-in via `redirects` in the docs config): diff
+      // this run's pages against the committed lockfile, auto-redirect pure
+      // moves, and fail loudly on unexplained disappearances.
+      let redirectsUpdate: UpdateDocsRedirectsResult | undefined;
+      if (redirectsEnabled && metadata.redirects) {
+        redirectsUpdate = await updateDocsRedirects({
+          lockfilePath: path.resolve(
+            docsDir,
+            metadata.redirects.lockfile ?? "paths.lock.json"
+          ),
+          outDir,
+          sourceDir: sourceMirror.docsDir,
+          pages: agentReadability.manifest.pages.map((page) => ({
+            urlPath: page.urlPath,
+            relativePath: page.relativePath,
+            ...(page.logicalPath ? { logicalPath: page.logicalPath } : {}),
+            ...(page.sourceLocale ? { sourceLocale: page.sourceLocale } : {}),
+          })),
+          removed: metadata.redirects.removed,
+        });
+        for (const move of redirectsUpdate.moved) {
+          logger.info({
+            human: {
+              message: `redirect: ${move.from} → ${move.to} (rename detected)`,
+            },
+            json: { event: "generate.redirect_detected", fields: move },
           });
         }
       }
@@ -1086,25 +2383,67 @@ export async function runGenerateCommand(
         docsDirs,
         files: {
           agentReadabilityManifest: agentReadability.files.manifest,
-          docsRobotsTxt: agentReadability.files.robotsTxt,
-          docsSitemapMd: agentReadability.files.sitemapMd,
-          docsSitemapXml: agentReadability.files.sitemapXml,
+          ...(redirectsUpdate
+            ? {
+                redirectsJson: redirectsUpdate.redirectsPath,
+                redirectsLockfile: redirectsUpdate.lockfilePath,
+              }
+            : {}),
+          ...(agentReadability.files.apiCatalog
+            ? { apiCatalog: agentReadability.files.apiCatalog }
+            : {}),
+          ...(agentReadability.files.robotsTxt
+            ? { robotsTxt: agentReadability.files.robotsTxt }
+            : {}),
+          ...(agentReadability.files.sitemapMd
+            ? { sitemapMd: agentReadability.files.sitemapMd }
+            : {}),
+          ...(agentReadability.files.sitemapXml
+            ? { sitemapXml: agentReadability.files.sitemapXml }
+            : {}),
+          ...(Object.keys(feeds.files).length > 0
+            ? { feeds: feeds.files }
+            : {}),
           i18nManifest: i18nManifestPath,
           docsLlmsTxt: path.join(outDir, "docs", "llms.txt"),
           llmsFullTxt: path.join(outDir, "llms-full.txt"),
           llmsTxt: path.join(outDir, "llms.txt"),
+          wellKnownLlmsTxt: path.join(outDir, ".well-known", "llms.txt"),
+          ...(agentSkillsIndex ? { agentSkills: agentSkillsIndex } : {}),
+          ...(mcpServerCard ? { mcpServerCard: mcpServerCard.outputPath } : {}),
+          ...(mcpServerCard ? { mcpJson: mcpServerCard.rootPath } : {}),
+          ...(mcpServerCard
+            ? { mcpWellKnown: mcpServerCard.wellKnownPath }
+            : {}),
+          ...(nlwebArtifacts
+            ? {
+                nlwebSchemaFeed: nlwebArtifacts.files.schemaFeed,
+                nlwebSchemaMap: nlwebArtifacts.files.schemaMap,
+              }
+            : {}),
+          ...(nlwebArtifacts?.files.openapi
+            ? { nlwebOpenapi: nlwebArtifacts.files.openapi }
+            : {}),
           searchContent: search.contentOutputPath,
           searchIndex: search.outputPath,
         },
         filters: sourceMirror.filters,
         groups,
-        mounts,
+        ...(effectiveNav ? { nav: effectiveNav } : {}),
+        mounts: effectiveMounts,
         mode: "site",
         outDir,
-        product,
+        product: effectiveProduct,
         search,
         srcDir,
       };
+    }
+
+    // Multi-source projects report the acquisition graph so `--json` names the
+    // same source and collection ids as the human output and error messages.
+    const resolvedSources = loadedConfig?.resolved.sources;
+    if (resolvedSources?.some((source) => source.kind === "git")) {
+      result.sources = resolvedSources;
     }
 
     if (args.format === "json") {
@@ -1117,28 +2456,20 @@ export async function runGenerateCommand(
         fields: { outDir, mode: result.mode },
       },
     });
+    // Print the root-pointer wiring snippet after a bundle run so authors know
+    // the one setup step that makes agents actually read the docs. Text mode
+    // only — JSON output stays a clean machine record on stdout.
+    if (result.mode === "bundle" && args.format !== "json") {
+      const packageName = await readBundlePackageName(outDir, product.name);
+      io.stdout.write(`${renderBundlePointerGuidance(packageName)}\n`);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (args.format === "json") {
-      logger.error({
-        human: { message },
-        json: {
-          event: "generate.fail",
-          fields: {
-            error: message,
-            filters: {
-              exclude: args.exclude,
-              include: args.include,
-            },
-          },
-        },
-      });
-    } else {
-      io.stderr.write(`leadtype generate: ${message}\n`);
-    }
-    return 1;
+    reportFailure(message);
+    return { code: 1, watchPaths };
   } finally {
     await sourceMirror?.cleanup();
+    await generateLock?.release();
   }
-  return 0;
+  return { code: 0, watchPaths };
 }

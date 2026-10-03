@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: ANSWER.md correctly identifies `nav` (in docs.config.ts) as the curated driver of sidebar, llms.txt, AGENTS.md etc.; correctly describes `group` as legacy/optional fallback + taxonomy/search metadata; and states that an unknown group slug produces a hard build failure with the \"unknown group\" error. No rubric violations or incorrect claims are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 77076,
+  "outputTokens": 121,
+  "durationMs": 60622,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default described as static/local BM25 lexical index with no DB; (2) specific conditions given (vocabulary mismatch / conceptual queries + large corpus), not merely generic 'better search'; (3) lexical BM25 explicitly retained for exact matches in a hybrid setup. Minor deviations exist (corpus size stated as 'millions of lines' rather than 'tens of thousands of chunks', plus two extra conditions), but these do not violate any required criterion.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 27067,
+  "outputTokens": 706,
+  "durationMs": 57422,
+  "steps": 20,
+  "errors": []
+}

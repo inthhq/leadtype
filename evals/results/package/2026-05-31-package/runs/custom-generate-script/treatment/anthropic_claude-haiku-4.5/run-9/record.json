@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first and correctly orders the generators after conversion. It uses generateLlmsTxt and generateLLMFullContextFiles, passing product/groups from config. However, the import for generateDocsSearchFiles uses 'leadtype/search/node-index', which deviates from the documented search-node API (e.g., 'leadtype/search/node') and is likely an invented module name, so the search index may not be generated. This makes the script incorrect per rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 53,
+  "inputTokens": 43924,
+  "outputTokens": 656,
+  "durationMs": 116222,
+  "steps": 46,
+  "errors": []
+}

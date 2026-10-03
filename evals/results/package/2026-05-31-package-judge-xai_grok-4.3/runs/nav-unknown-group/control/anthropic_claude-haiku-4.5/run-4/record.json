@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The agent response correctly identifies `nav` as the primary/curated driver and `group` as legacy, satisfying the first two REQUIRED rubric points. It completely fails the third: it asserts that unknown groups produce no hard error and are tracked in an `unknown` array with soft-fail behavior, which directly contradicts the ground truth that the build fails with an \"unknown group\" error. This is stated plainly and confidently (with code snippets and design rationale), so failureMode is confident_wrong rather than uncertain.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 26502,
+  "outputTokens": 350,
+  "durationMs": 38830,
+  "steps": 12,
+  "errors": []
+}

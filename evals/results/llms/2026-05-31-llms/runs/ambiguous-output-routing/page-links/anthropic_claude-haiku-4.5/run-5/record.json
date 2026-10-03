@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "page-links",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response does not identify the required LLM files / leadtype/llm output APIs (e.g., generateLLMFullContextFiles) as the correct area; it instead points to a documentation page (/docs/reference/llm.md). While it correctly describes /llms-full.txt as a fallback, missing the key API reference makes the answer incomplete and misdirected. This deficiency is stated plainly without hedging, hence 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 3859,
+  "outputTokens": 173,
+  "durationMs": 18479,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied exactly: the response states the default is a static/local BM25 lexical index with no DB, gives the precise conditions (vocabulary mismatch OR corpus > tens of thousands of chunks), and explicitly says to keep the lexical index for exact matches as the primary/complementary path. No incorrect claims about vector DBs or replacement are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 16199,
+  "outputTokens": 366,
+  "durationMs": 24605,
+  "steps": 7,
+  "errors": []
+}

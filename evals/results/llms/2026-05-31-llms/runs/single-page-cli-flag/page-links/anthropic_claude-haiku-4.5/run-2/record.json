@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "page-links",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the command prints a JSON object and lists the required llms output fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it invents fields that are not part of the result shape (agentReadabilityJson instead of agentReadabilityManifest, and sitemapMd that is not in the ground truth), violating the 'Incorrect if' condition about inventing fields. The errors are stated confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2481,
+  "outputTokens": 120,
+  "durationMs": 8463,
+  "steps": 4,
+  "errors": []
+}

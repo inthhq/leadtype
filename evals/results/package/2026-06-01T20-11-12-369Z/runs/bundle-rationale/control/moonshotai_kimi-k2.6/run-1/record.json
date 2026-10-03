@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response partially meets the rubric. It correctly explains that AGENTS.md works offline/version-matched inside the tarball (point 2) and that --bundle skips llms.txt, llms-full.txt, and search artifacts (point 3). However, it fails to explicitly state why llms.txt is wrong inside a tarball: it doesn't mention that llms.txt relies on absolute URLs or that no major agent looks for it in node_modules (point 1). The omission makes the answer incomplete per the rubric.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 30960,
+  "outputTokens": 1896,
+  "durationMs": 25562,
+  "steps": 8,
+  "errors": []
+}

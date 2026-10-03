@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first (converting MDX to public/docs/*.md) and then runs generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, satisfying the required ordering. It imports from leadtype/convert, leadtype/llm, and leadtype/search/node (library APIs, not CLI). product and nav from docs.config.ts are passed to the generators. All four required artifact outputs are generated.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 26,
+  "inputTokens": 34530,
+  "outputTokens": 374,
+  "durationMs": 91113,
+  "steps": 27,
+  "errors": []
+}

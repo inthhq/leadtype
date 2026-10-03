@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files/leadtype/llm output APIs (listing generateLLMFullContextFiles, etc.) and does not route the user to search UI. It explains that the monolithic /llms-full.txt is a fallback for comprehensive context when the standard /llms.txt page-level links (group navigation) are insufficient, which satisfies the rubric.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 16,
+  "inputTokens": 5897,
+  "outputTokens": 271,
+  "durationMs": 31424,
+  "steps": 17,
+  "errors": []
+}

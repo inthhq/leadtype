@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response does not attempt to describe the --enrich-git flag; it instead writes a note that the package is unavailable and refuses to answer. It fails to name either required frontmatter field, does not state they are added to frontmatter, and does not attribute values to git history. The entire required content is missing, making it off-topic and a refusal.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 35298,
+  "outputTokens": 421,
+  "durationMs": 54931,
+  "steps": 11,
+  "errors": []
+}

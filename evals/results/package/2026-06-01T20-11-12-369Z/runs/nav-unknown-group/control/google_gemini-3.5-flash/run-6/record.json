@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly describes the build‑time error for unknown groups and identifies `nav` as driving the sidebar. However, it does not mention that `nav` drives `llms.txt` sections, and it incorrectly states that `AGENTS.md` sections are structured around group declarations – a confident error. The rubric requires both points about `nav` and `llms.txt`/`AGENTS.md`, so it is incomplete. Overall, the response is mostly accurate but misses a required detail.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 54,
+  "inputTokens": 1671456,
+  "outputTokens": 12829,
+  "durationMs": 370438,
+  "steps": 34,
+  "errors": []
+}

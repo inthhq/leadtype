@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that group controls sidebar navigation, llms.txt sections, and AGENTS.md grouping. It correctly describes /llms-full.txt as a single monolithic all-docs file not split per group. It names two valid optional frontmatter fields (icon and deprecated) from the approved list. All required rubric points are satisfied without contradiction.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 3,
+  "toolCalls": 7,
+  "inputTokens": 4837,
+  "outputTokens": 285,
+  "durationMs": 20881,
+  "steps": 8,
+  "errors": []
+}

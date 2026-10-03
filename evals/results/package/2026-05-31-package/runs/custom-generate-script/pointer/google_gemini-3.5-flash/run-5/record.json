@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx to write Markdown mirrors into public/docs before any index or search generators, satisfying the critical ordering rule. It uses generateLlmsTxt and generateLLMFullContextFiles to produce llms.txt and llms-full.txt, and generateDocsSearchFiles for the search index. Product and nav are imported from docs.config.ts and passed into the llms generators where needed. All required API imports match the leadtype library, and no CLI is used.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 57339,
+  "outputTokens": 799,
+  "durationMs": 75559,
+  "steps": 25,
+  "errors": []
+}

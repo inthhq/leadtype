@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object describing the generated artifacts, meeting the first required point. It also lists multiple output-path fields including llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying the second requirement. No required points are missed, and the answer is accurate as a machine-readable summary.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2229,
+  "outputTokens": 6,
+  "durationMs": 14278,
+  "steps": 4,
+  "errors": []
+}

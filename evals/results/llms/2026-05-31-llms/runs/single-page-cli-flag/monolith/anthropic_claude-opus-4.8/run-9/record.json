@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON result object and names several valid output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest'. This invents a field not present in the actual result shape, making the explanation inaccurate and failing the rubric's \"Incorrect if\" condition. The overall quality is high, but the presence of an invented field prevents a completely correct grade.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4498,
+  "outputTokens": 333,
+  "durationMs": 18863,
+  "steps": 4,
+  "errors": []
+}

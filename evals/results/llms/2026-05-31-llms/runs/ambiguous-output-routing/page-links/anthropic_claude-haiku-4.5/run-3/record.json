@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (leadtype/llm) as the right documentation area for agent-facing output APIs, listing generateLLMFullContextFiles and other relevant functions. It explains that the monolithic /llms-full.txt is a fallback used when page-level links are insufficient, which satisfies the rubric's required points. No incorrect routing to search UI or misrepresentation of the fallback as primary is present.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 3957,
+  "outputTokens": 232,
+  "durationMs": 16694,
+  "steps": 7,
+  "errors": []
+}

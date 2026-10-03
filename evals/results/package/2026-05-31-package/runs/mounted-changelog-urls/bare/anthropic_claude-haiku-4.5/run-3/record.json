@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response invents a non-existent `--mount` flag instead of using the required `--docs-dir` with mount syntax (`--docs-dir changelog=/changelog`). It describes the internal generated copy as `.generated/docs/changelog/v1.mdx` and the public mirror as `out/changelog/v1/index.html`, which do not match the expected `public/docs/changelog/v1.md` and `public/changelog/v1.md`. The canonical URL is given as `/changelog/v1` instead of `/changelog/v1.md`. All of the required points are violated, and the answer is stated confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 4383,
+  "outputTokens": 293,
+  "durationMs": 27841,
+  "steps": 13,
+  "errors": []
+}

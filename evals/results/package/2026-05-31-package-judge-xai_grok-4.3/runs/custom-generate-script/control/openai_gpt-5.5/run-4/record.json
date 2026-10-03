@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is imported and invoked first (after only an rm + navigation validation that does not read the output docs), followed by generateLlmsTxt + generateLLMFullContextFiles (from leadtype/llm) and generateDocsSearchFiles (from leadtype/search/node). product/nav from docs.config.ts are passed to the generators. No CLI usage or invented APIs; ordering is exactly the mandated sequence so later generators read the freshly-written public/docs/*.md.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 45677,
+  "outputTokens": 549,
+  "durationMs": 120712,
+  "steps": 23,
+  "errors": []
+}

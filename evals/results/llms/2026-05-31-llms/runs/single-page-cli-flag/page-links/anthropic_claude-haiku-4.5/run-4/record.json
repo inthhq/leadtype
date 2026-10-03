@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object to stdout and names required fields like llmsFullTxt, docsLlmsTxt, llmsTxt. However, it invents fields not in the ground truth: agentReadabilityJson (should be agentReadabilityManifest) and sitemapMd. These erroneous additions violate the rubric’s 'incorrect if' clause, making the answer incorrect. The core description is mostly right but includes false details.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2475,
+  "outputTokens": 161,
+  "durationMs": 7700,
+  "steps": 4,
+  "errors": []
+}

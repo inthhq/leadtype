@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is called first with the proper src/out dirs, followed by generateLlmsTxt + generateLLMFullContextFiles (from leadtype/llm) and generateDocsSearchFiles (from leadtype/search/node), and product/nav from docs.config.ts are passed through. No CLI usage or invented APIs. The only minor deviation is generateLlmsTxt using srcDir:'.' rather than an explicit docs path, but this does not violate any required ordering or call constraint.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 44,
+  "inputTokens": 36471,
+  "outputTokens": 613,
+  "durationMs": 119471,
+  "steps": 45,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md contains a single paragraph that names both required fields (lastModified and lastAuthor), states they are added to page YAML frontmatter, and states the values are taken from git history via the git log command. All three REQUIRED rubric points are satisfied and none of the incorrect behaviors are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 34926,
+  "outputTokens": 285,
+  "durationMs": 41702,
+  "steps": 22,
+  "errors": []
+}

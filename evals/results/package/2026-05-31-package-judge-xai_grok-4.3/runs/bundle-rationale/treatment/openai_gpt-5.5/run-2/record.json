@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED points are met exactly: llms.txt described as HTTP/website convention with absolute URLs and no node_modules discovery; AGENTS.md described with relative links, offline use inside node_modules, and version-matching; --bundle explicitly stated to skip llms.txt/llms-full.txt plus the other website artifacts. No incorrect claims present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 15913,
+  "outputTokens": 43,
+  "durationMs": 16482,
+  "steps": 5,
+  "errors": []
+}

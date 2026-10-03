@@ -1,12 +1,29 @@
 ---
 title: "Lint rules"
 description: "Schema, link, and navigation checks. CLI and library API."
-group: reference
+status: updated
+related:
+  - title: "Frontmatter"
+    href: "/docs/writing/frontmatter"
+    description: "See the default fields that lint validates."
+  - title: "Validate in CI"
+    href: "/docs/pipeline/validate-in-ci"
+    description: "Run lint before generated artifacts reach production."
 ---
 
-# Lint rules
-
 `leadtype lint` validates source MDX before generation. Run it in CI to fail PRs on schema and link issues before they reach a build. CLI flags are documented in the [CLI reference](/docs/reference/cli) — this page covers the rules, schemas, and library API.
+
+Lint is config-aware: with no `--src`, it discovers your docs config exactly like `generate` does (`leadtype.config.*` at the project root, then `docs.config.*` in `./docs` or `./content`) and lints that tree with the config applied — mounts extend which links are internal and where their routes live, `lint.ignore` replaces the default ignore globs, and `lint.rules` remaps rule severities:
+
+```ts
+// docs.config.ts
+lint: {
+  rules: {
+    "geo:image-alt": "error", // escalate
+    "unflattened-component": "off", // disable
+  },
+},
+```
 
 ```ts
 import { lintDocs } from "leadtype/lint";
@@ -30,11 +47,31 @@ Grouped by what they catch.
 
 | Rule | Severity | Catches |
 | --- | --- | --- |
-| `invalid-link` | error | A `/docs/...` link points to a route that doesn't exist. |
+| `invalid-link` | error | A `/docs/...` link — or a link under any configured mount prefix, or a relative `./x` / `../x` link resolved against its source file — points to a route that doesn't exist. With redirect tracking enabled, a link to a renamed page reports where it moved. Links under a generated tree (the OpenAPI `output` prefix) are assumed valid, since those routes only exist after `leadtype generate`. |
+| `snippet:parse` | error | A fenced code block with a known language doesn't parse — TS/TSX/JS via the TypeScript parser (skipped when the optional `typescript` peer isn't installed), JSON/JSONC and YAML via real parsers, and snippets contributed by `<include>` targets are checked on the expanded page. Common docs idioms parse without annotation: bare API signatures, `key: value` config excerpts, object/type-shape blocks, sibling JSX examples, `...` ellipsis lines, JSON comments and trailing commas, multi-document YAML. Mark anything else deliberate with a `// @noErrors` line (the same twoslash directive the typecheck tier honors). |
+| `snippet:types` | error (opt-in) | With `lint.snippets.typecheck` enabled, module-shaped `ts`/`tsx` snippets are assembled into virtual modules and typechecked against your project's `tsconfig.json` and installed packages — when an API changes, doc examples calling the old API fail lint. Fragments without imports are skipped (opt in with `// @check`); `// @noErrors` opts out; multi-file examples use `// @filename: name.ts`; `// ---cut---` hides setup lines from rendered output while they still typecheck. Imports of packages your project doesn't install degrade to `any` instead of failing, as do JSX-environment gaps — strictness applies to everything that resolves, most importantly the documented package itself. |
+| `external-link` | error (opt-in) | An external `http(s)` URL responds with 404/410, fails DNS, or times out. Off in PR CI by design (network checks don't belong in a merge gate) — enable with `--external-links` in a scheduled workflow or `lint.rules["external-link"]`. Live URLs are cached (default 7 days, `lint.externalLinks.ttlHours`), failures never are; HEAD with GET fallback, one retry; rate-limited (429) and auth/bot-gated responses (401/403/999) count as unverifiable, not dead — bot-protected hosts routinely block non-browser clients for live pages; `lint.externalLinks.ignore` skips known-flaky prefixes entirely. |
+| `invalid-anchor` | error | A `#fragment` — same-page or on a cross-page docs link — matches no heading anchor on the target page. Anchors come from the same extractor that builds the site TOC (rendered markdown, includes expanded), so lint and the site can't disagree. |
+| `config-link` | error / warn | The docs config itself links to a dead route: a curated `navigation` entry matching no page, an `llms.sections` link to a missing route (error), a feed `source.urlPrefix` matching no pages, or a `redirects.removed` path that is live again (warn). |
 | `unresolved-placeholder` | error | A docs URL still contains `{framework}` or similar. |
 | `cross-framework-link` | error | A framework-scoped page links to another framework's docs. |
+| `unflattened-component` | warn | A rendered JSX component has no built-in or custom flattener — agents would see raw JSX in the generated markdown. |
+| `jsonld` | warn | The page's frontmatter would emit invalid JSON-LD — most often a `lastModified`/`last_updated` value that isn't a valid date, producing a broken `dateModified`. Broken schema is worse than none. |
+| `geo:heading-skip` | warn | A heading jumps a level (e.g. `H2` → `H4`). Keep the hierarchy sequential so answer engines can parse the topic tree. |
+| `geo:code-language` | warn | A fenced code block has no language label (a bare fence). Tag it with the language (e.g. `ts`) so engines surface it for the right stack. |
+| `geo:image-alt` | warn | An image has no alt text. Answer engines can't see images — describe what it conveys. |
 
-Linting renders MDX through the [default remark stack](/docs/reference/remark) before walking links — same flattening the converter performs, so link checks see the final URLs.
+### GEO rules
+
+The `geo:*` rules are the **mechanical** half of [Write for agents & GEO](/docs/writing/write-for-agents#how-to-structure-for-answer-engines-geo) — the structure signals a linter can check. The editorial ones (lead-with-the-answer, question-form headings) can't be linted; that's what the guide is for. All three are warn-level: legitimate exceptions exist, so they never fail the build by default (gate with `--max-warnings` if you want them to). The same checks feed the **Structure** portion of [`leadtype score`](/docs/reference/cli#score).
+
+Linting renders MDX through the [default markdown transform stack](/docs/reference/markdown) before walking links — same flattening the converter performs, so link checks see the final URLs.
+
+The `unflattened-component` rule walks the MDX AST, so components inside code fences or inline code are examples — not rendered JSX — and never warn. It recognizes the built-in [tag contract](/docs/writing/components#the-naming-contract) plus any custom `defineComponentFlattener` plugins declared in your config.
+
+### Link-check scope and non-goals
+
+Checked: absolute links under `/docs` and every mount prefix, relative `./x` / `../x` links (resolved against the source file, extension optional), same-page and cross-page `#anchor` fragments, and the docs config's own links. Not checked: external URLs (network checks belong in scheduled CI, not PR CI — see the external-link roadmap), links produced at runtime by components, anchors on pages outside the linted tree, and query strings (stripped before validation).
 
 ## Library API
 
@@ -73,7 +110,17 @@ type LintResult = {
       | "parse-error"
       | "invalid-link"
       | "unresolved-placeholder"
-      | "cross-framework-link";
+      | "cross-framework-link"
+      | "unflattened-component"
+      | "jsonld"
+      | "config-link"
+      | "invalid-anchor"
+      | "snippet:parse"
+      | "snippet:types"
+      | "external-link"
+      | "geo:heading-skip"
+      | "geo:code-language"
+      | "geo:image-alt";
     field?: string;
     message: string;
   }>;
@@ -96,18 +143,20 @@ Required-field failures are reported as `schema` violations — that's the publi
 | `title` | Yes | non-empty string |
 | `description` | No | string |
 | `icon` | No | string |
-| `deprecated` | No | boolean |
-| `deprecatedReason` | No | string |
-| `experimental` | No | boolean |
-| `canary` | No | boolean |
-| `new` | No | boolean |
-| `draft` | No | boolean |
+| `status` | No | `new`, `updated`, or `experimental` |
+| `deprecated` | No | non-empty string |
+| `date` | No | ISO-8601 or parseable date |
 | `tags` | No | string array |
 | `group` | No | string or string array |
-| `availableIn` | No | array of `{ framework, url?, title? }` |
+| `variants` | No | array of `{ value, label?, href, description? }` |
+| `related` | No | array of `{ title, href, description? }` |
 | `full` | No | boolean |
 
-`lastModified` and `lastAuthor` are produced by the converter when `--enrich-git` is set. Don't author them.
+`lastModified` and `lastAuthor` are produced by `leadtype generate` when git metadata is available. Don't author them.
+
+Page `status` is editorial metadata. Release channels such as canary, RC,
+preview, and stable should be modeled in build config or transformers, not in
+source-authored page status.
 
 ### Changelog frontmatter
 
@@ -162,7 +211,7 @@ Once you provide a custom schema, `unknown-field` warnings apply to *that* schem
 
 - Run lint **before** `leadtype generate` so content errors fail fast.
 - Use `--format github` in GitHub Actions and `--format json` in any other CI.
-- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `availableIn` or a stale URL template.
+- Treat `unresolved-placeholder` as a content bug first — usually a missing entry in `variants` or a stale URL template.
 - After a docs move, lint and run `meta.json` updates together; they drift at the same time.
 
-For wiring lint into pipelines, see [Validate in CI](/docs/build/validate-in-ci).
+For wiring lint into pipelines, see [Validate in CI](/docs/pipeline/validate-in-ci).

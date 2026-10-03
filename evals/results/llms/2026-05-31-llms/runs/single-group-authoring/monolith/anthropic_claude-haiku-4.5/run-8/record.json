@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fully satisfies all required rubric points: it explains that group organizes navigation, llms.txt sections, and AGENTS.md grouping; it correctly characterizes /llms-full.txt as a monolithic all-docs file, not sharded per group; and it names several valid optional frontmatter fields, including icon, deprecated, experimental, tags, lastModified, and lastAuthor, all from the ground truth list. No incorrect claims are made.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3874,
+  "outputTokens": 224,
+  "durationMs": 13405,
+  "steps": 4,
+  "errors": []
+}

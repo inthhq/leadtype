@@ -1,0 +1,158 @@
+---
+title: "leadtype doctor"
+description: "Read-only diagnosis of the resolved project — which config was found, where each value came from, which collections share a clone, what routes exist, and which command fixes what."
+related:
+  - title: "The config model"
+    href: "/docs/concepts/config-model"
+    description: "The resolved project and provenance doctor reports on."
+  - title: "CLI reference"
+    href: "/docs/reference/cli"
+    description: "Every command and flag."
+  - title: "Collections"
+    href: "/docs/pipeline/collections"
+    description: "The multi-source config doctor inspects."
+---
+
+`generate`, `sync`, `lint`, and `score` each answer a question about your project by doing something to it. `doctor` answers a different one, before any work happens: **what is this project, and why?**
+
+```bash
+leadtype doctor
+```
+
+```text
+Config
+  docs/docs.config.ts  (single-source)
+
+Sources
+  local  local  → docs
+
+Collections
+  docs  /docs  51 page(s)  docs
+
+Navigation
+  explicit  51 routed page(s)
+  sections: Concepts, Docs Pipeline, AEO & Agent Readability, Reference, Changelog
+
+Output
+  public  6 present, 0 missing, 0 stale
+
+Integrations
+  framework: Astro
+  surfaces:  mcp, nlweb, skills, agent-card, robots:balanced, redirects, feeds:1
+
+No findings.
+```
+
+## Read-only by construction
+
+`doctor` never clones, refreshes, writes, or generates. A remote source that has not been synced is a finding that names `leadtype sync`, not a reason to fetch. That is what makes it safe to run first, in CI, or against a production config you are debugging.
+
+Everything it reports comes from the same config loader and resolvers `generate` and `sync` use, so a clean `doctor` run and a clean `generate` run cannot disagree about the project.
+
+## What it checks
+
+**Config** — which file was discovered and whether the project resolved as single-source or multi-source; schema errors and mutually exclusive fields; deprecated aliases with their replacements; and per-field provenance, so you can see whether a value was authored here, inherited from a source repository, inferred, or defaulted.
+
+**Sources** — the deduped acquisition graph. Which collections share one clone, whether each `ref` is a pinned commit or a mutable branch, which revision is currently cached, and whether a sync is required or the cache is stale.
+
+**Collections and routes** — that each content directory exists and is readable, that include/exclude globs actually match files, and each collection's resolved public route prefix.
+
+**Navigation** — whether the tree was authored here, **inherited** from a source repository, derived from `groups`, or inferred from the content tree (`mixed` when collections disagree — each collection also reports its own origin); a summary of the resolved sections; and pages absent from a curated tree that fall back to the root of the sidebar rather than being placed deliberately.
+
+**Outputs and integrations** — the output root, which expected artifacts are present or missing, which are older than the newest source file or the config, the detected framework adapter, and which agent surfaces are enabled.
+
+## Findings
+
+Every finding carries a stable id, the config field or file that owns it, and a concrete next command:
+
+```text
+Findings
+  ✗ [source.not-synced] collection "docs" reads https://github.com/acme/acme.git@main,
+    which has no checkout at ".leadtype/acme"
+      owner: collections.docs.repository
+      fix:   leadtype sync
+  ! [source.mutable-ref] source "acme" tracks mutable ref "main", so a published
+    build is not reproducible
+      owner: collections.docs.ref
+      fix:   Pin `ref` to a commit SHA or an immutable tag.
+```
+
+Exit `0` when nothing is an error — warnings and info still print. Exit `1` when a required input is missing or invalid, so CI can gate on it.
+
+## `--json`
+
+Stable ids and provenance, for agents and automation:
+
+```bash
+leadtype doctor --json
+```
+
+```json
+{
+  "ok": false,
+  "config": {
+    "path": "/repo/leadtype.config.ts",
+    "mode": "multi-source",
+    "deprecations": [
+      { "field": "collections.docs.prefix", "replacement": "collections.docs.routePrefix" }
+    ],
+    "provenance": {
+      "navigation": { "origin": "explicit", "configPath": "/repo/leadtype.config.ts" }
+    }
+  },
+  "sources": [
+    {
+      "id": "acme",
+      "kind": "git",
+      "repository": "https://github.com/acme/acme.git",
+      "ref": "main",
+      "refKind": "mutable",
+      "syncedCommit": null,
+      "collections": ["docs", "changelog"]
+    }
+  ],
+  "issues": [
+    {
+      "id": "source.not-synced",
+      "level": "error",
+      "message": "collection \"docs\" reads …",
+      "owner": "collections.docs.repository",
+      "fix": "leadtype sync"
+    }
+  ]
+}
+```
+
+`id` values are stable across releases; `message` is prose and may be reworded. Key on the id.
+
+### Finding ids
+
+| Id | Level | Means |
+| --- | --- | --- |
+| `config.missing` | warn | No config file was found. |
+| `config.invalid` | error | The config failed to load or validate. Nothing else is reported. |
+| `config.deprecated-field` | warn | A deprecated field was normalized. |
+| `config.unknown-key` | warn | A config field is not one leadtype reads — likely a typo; the message suggests the closest known field. |
+| `source.not-synced` | error | A remote collection has no checkout. |
+| `source.cache-unverifiable` | error | A checkout exists but carries no sync manifest. |
+| `source.cache-stale` | error | The cache holds a different revision than the config asks for. |
+| `source.mutable-ref` | warn | A source tracks a branch or moving tag. |
+| `source.shared-acquisition` | info | One clone is read by several collections. |
+| `source.inherit-failed` | error | A collection enables `inheritConfig` but its source config could not be read. `generate` and `createDocsProject` refuse to run on this, so doctor fails too. |
+| `source.dir-missing` | error | A collection's `dir` does not exist. |
+| `collection.no-matches` | warn | A collection's globs match no files. |
+| `nav.unresolvable` | error | The navigation tree did not resolve — a pin or page entry matches nothing. |
+| `nav.unknown-group` | error | A page declares a `group:` that no config declares. |
+| `nav.unrepresented-page` | warn | A page is absent from the curated tree and falls back to the root. |
+| `output.not-generated` | warn | No artifacts under the output root. |
+| `output.missing-artifacts` | warn | Some expected artifacts are absent. |
+| `output.stale` | warn | Artifacts are older than the newest source file or the config. |
+
+## Options
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--src <dir>` | `.` | Project root to inspect. |
+| `--docs-dir <dir>` | `docs` | Docs source folder relative to `--src`. Repeatable — the first directory mounts at the docs root and each further one under its folder name, matching `generate`. |
+| `--out <dir>` | `public` | Output root to check artifacts against, resolved against the current directory like `leadtype generate`. |
+| `--json` | off | Machine-readable report on stdout. Warnings stay on stderr. |

@@ -51,11 +51,48 @@ function stripIndexSegments(relativePath: string): string {
     .replace(ROOT_INDEX_PATTERN, "");
 }
 
-function normalizeMountPathPrefix(input: string): string {
+export function normalizeMountPathPrefix(input: string): string {
   return stripTrailingSlashes(normalizeDocsPath(input)).replace(
     LEADING_SLASHES_PATTERN,
     ""
   );
+}
+
+const DEFAULT_DOCS_URL_PREFIX = "/docs";
+const NESTED_DOCS_PREFIX = `${DEFAULT_DOCS_URL_PREFIX}/`;
+
+/**
+ * The staging mount path implied by a public URL prefix — where a
+ * collection's files sit in the merged tree `leadtype generate` stages.
+ * The default `/docs` collection stages at the root; everything else stages
+ * under a path mirroring its prefix. Shared between generation and the
+ * runtime so both resolve mounts against the same merged-tree layout.
+ */
+export function pathPrefixForUrlPrefix(urlPrefix: string): string {
+  if (urlPrefix === DEFAULT_DOCS_URL_PREFIX) {
+    return "";
+  }
+  if (urlPrefix.startsWith(NESTED_DOCS_PREFIX)) {
+    return urlPrefix.slice(NESTED_DOCS_PREFIX.length);
+  }
+  return urlPrefix.replace(LEADING_SLASHES_PATTERN, "");
+}
+
+/**
+ * The URL prefix a source's *unprefixed* files resolve under — the mount with
+ * an empty `pathPrefix` when one exists, `"/docs"` otherwise. Mirrors
+ * `resolveDocsPathMount` exactly: files matching no mount fall through to
+ * `/docs`, and among several catch-all mounts the first declared wins (the
+ * longest-prefix sort is stable). This is what a framework adapter treats as
+ * the source's own route base when no `basePath` is passed.
+ */
+export function baseUrlPrefixForMounts(mounts?: DocsPathMount[]): string {
+  const catchAll = mounts?.find(
+    (mount) => !normalizeMountPathPrefix(mount.pathPrefix)
+  );
+  return catchAll
+    ? normalizeUrlPrefix(catchAll.urlPrefix)
+    : DEFAULT_DOCS_URL_PREFIX;
 }
 
 function resolveDocsPathMount(
@@ -106,9 +143,14 @@ export function toDocsUrlPath(
   const normalizedPath = stripIndexSegments(mountedRelativePath);
   const urlPrefix = normalizeUrlPrefix(mount.urlPrefix);
 
-  return normalizedPath.length > 0
-    ? `${urlPrefix}/${normalizedPath}`
-    : urlPrefix;
+  if (normalizedPath.length === 0) {
+    return urlPrefix;
+  }
+  // A root mount (`urlPrefix: "/"`) maps pages onto the site root; joining
+  // with the prefix verbatim would emit `//page`.
+  return urlPrefix === "/"
+    ? `/${normalizedPath}`
+    : `${urlPrefix}/${normalizedPath}`;
 }
 
 export function toMarkdownUrlPath(urlPath: string): string {
@@ -123,7 +165,10 @@ export function toMountedMarkdownUrlPath(
   const stripped = stripIndexSegments(
     resolveDocsPathMount(relativePath, mounts).mountedRelativePath
   );
-  return stripped.length > 0 ? `${urlPath}.md` : `${urlPath}/index.md`;
+  if (stripped.length > 0) {
+    return `${urlPath}.md`;
+  }
+  return urlPath === "/" ? "/index.md" : `${urlPath}/index.md`;
 }
 
 export function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
@@ -131,6 +176,11 @@ export function toAbsoluteUrl(urlPath: string, baseUrl: string): string {
     return urlPath;
   }
   return `${stripTrailingSlashes(baseUrl)}${urlPath}`;
+}
+
+/** True when `value` equals `prefix` or nests under it (`<prefix>/...`). */
+export function matchesUrlPrefix(value: string, prefix: string): boolean {
+  return value === prefix || value.startsWith(`${prefix}/`);
 }
 
 export function normalizeDocsUrl(url: string): string {

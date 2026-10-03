@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files reference page and its agent-facing output APIs, explicitly warning against using the Search docs. It clearly explains that the monolithic /llms-full.txt is a fallback for when page-level scoped bundles or links are insufficient, satisfying both required rubric points.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 5159,
+  "outputTokens": 506,
+  "durationMs": 30611,
+  "steps": 5,
+  "errors": []
+}

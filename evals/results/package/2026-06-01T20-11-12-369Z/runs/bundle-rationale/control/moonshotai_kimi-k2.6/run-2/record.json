@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP artifact not looked for in node_modules, AGENTS.md is designed for offline version-matched discovery with on-disk relative links, and --bundle omits llms.txt, llms-full.txt, and search artifacts like search-index.json because they are website-only. All required rubric points are satisfied without any incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 39700,
+  "outputTokens": 1755,
+  "durationMs": 26298,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that --json outputs a single JSON object and names the required fields llmsTxt, docsLlmsTxt, and llmsFullTxt. However, it includes invented fields (sitemapMd, agentReadabilityJson) not present in the ground truth result shape, which violates the rubric's 'incorrect if' condition. While the core explanation is accurate, the inclusion of these incorrect fields makes the overall answer wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4525,
+  "outputTokens": 265,
+  "durationMs": 17970,
+  "steps": 4,
+  "errors": []
+}

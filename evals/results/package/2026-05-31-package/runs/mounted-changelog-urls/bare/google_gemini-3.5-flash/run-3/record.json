@@ -1,0 +1,23 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent did not produce any ANSWER.md or relevant response; it only generated unrelated scripts that attempt to search for leadtype files. No required points are met.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 77,
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "durationMs": 1049413,
+  "steps": 0,
+  "errors": [
+    "Invalid error response format: Gateway request failed: The operation timed out."
+  ]
+}

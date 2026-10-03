@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "variant": "discovery",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object and names required keys like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents fields not present in the result shape (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', and separate sitemapXml/sitemapMd keys where the ground truth just indicates 'sitemap/robots'). This violates the rubric's 'Incorrect if' condition on invented fields, so the answer is not fully correct.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 5,
+  "inputTokens": 3465,
+  "outputTokens": 316,
+  "durationMs": 20474,
+  "steps": 5,
+  "errors": []
+}

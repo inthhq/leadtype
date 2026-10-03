@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the primary driver and group as a legacy fallback, but it omits required specifics like nav's role in generating llms.txt and AGENTS.md grouping. Critically, it misstates the build‑time behavior for unknown groups—claiming that a lenient lint configuration may only produce warnings and allow the build to succeed, whereas the rubric requires the assertion that the build fails with an 'unknown group' error. This confident misstatement violates the required point and the rubric's 'Incorrect if' clause.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 31,
+  "inputTokens": 20881,
+  "outputTokens": 271,
+  "durationMs": 45446,
+  "steps": 20,
+  "errors": []
+}

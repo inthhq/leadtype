@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent produced no build script at 'scripts/build-docs.ts' and no final text. The task required writing a specific build script using leadtype library APIs, but the agent only produced unrelated inspection and package files. Since the required script is entirely missing, none of the rubric points are satisfied.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 54,
+  "inputTokens": 80419,
+  "outputTokens": 137,
+  "durationMs": 135700,
+  "steps": 50,
+  "errors": []
+}

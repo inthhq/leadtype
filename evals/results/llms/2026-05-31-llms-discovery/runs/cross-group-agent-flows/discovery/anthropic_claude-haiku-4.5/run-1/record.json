@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the hosted flow entry point as `/llms.txt` (HTTP) and the bundle flow entry point as `AGENTS.md` (in the installed package). It explicitly states that bundle mode skips website artifacts including `llms.txt`, `llms-full.txt`, search files, sitemaps, robots.txt, and agent-readability.json, satisfying the required rubric points. No entry points are swapped and it does not claim bundle mode emits those files.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 10,
+  "inputTokens": 6148,
+  "outputTokens": 259,
+  "durationMs": 25764,
+  "steps": 6,
+  "errors": []
+}

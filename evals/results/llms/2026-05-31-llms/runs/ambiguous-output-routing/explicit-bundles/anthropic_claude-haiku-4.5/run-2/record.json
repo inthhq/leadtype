@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files documentation (/docs/reference/llm.md) and explains the /llms-full.txt fallback. However, it also recommends /docs/reference/search.md as a relevant area, which the rubric explicitly states is incorrect (should not route the user to Search docs/APIs). Including this extra, wrongly recommended area violates the requirement to not route to Search UI/APIs.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3994,
+  "outputTokens": 244,
+  "durationMs": 15921,
+  "steps": 8,
+  "errors": []
+}

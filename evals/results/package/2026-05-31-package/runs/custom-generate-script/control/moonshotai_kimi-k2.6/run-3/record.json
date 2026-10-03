@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first, ensuring that the markdown mirrors are written to public/docs/ before any generator runs. It then sequentially calls generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, all of which read the already-converted markdown. Product and nav from docs.config.ts are passed to the generators as required. No CLI usage or invented APIs are present; every required function is called in the correct order.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 35602,
+  "outputTokens": 290,
+  "durationMs": 70905,
+  "steps": 12,
+  "errors": []
+}

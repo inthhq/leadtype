@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies nav as the curated driver and group as legacy/fallback. However, it incorrectly claims that an unknown group slug causes no build error, while the rubric requires stating that it causes a build failure (unknown group error). This is a critical factual error on the second required point. The confident assertion of no error results in a low score.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 301150,
+  "outputTokens": 3104,
+  "durationMs": 76387,
+  "steps": 15,
+  "errors": []
+}

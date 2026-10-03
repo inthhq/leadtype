@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains why AGENTS.md is the right format: it uses relative links, works offline, and is discovered by agents on disk, while llms.txt is a website convention with absolute URLs. It correctly states that --bundle skips llms.txt, llms-full.txt, and the search index as website-only artifacts. All required rubric points are fully covered, so the answer is correct and complete.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 17666,
+  "outputTokens": 350,
+  "durationMs": 22194,
+  "steps": 8,
+  "errors": []
+}

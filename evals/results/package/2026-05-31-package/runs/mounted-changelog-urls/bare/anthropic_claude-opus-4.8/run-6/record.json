@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response uses the correct mount syntax --docs-dir changelog=/changelog, states the canonical URL as /changelog/..., and mentions both the internal copy under public/docs/changelog/ and the public mirror at public/changelog/. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 15943,
+  "outputTokens": 568,
+  "durationMs": 62905,
+  "steps": 16,
+  "errors": []
+}

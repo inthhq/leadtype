@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of the sidebar, llms.txt sections, and agent-facing indexes (covering AGENTS.md grouping via the Vercel Agent Readability manifest). It describes `group` as legacy/fallback used for taxonomy, search facets, and validation. It explicitly states that an unknown `group` slug causes a fatal build‑time error, not a silent skip or warning. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 456713,
+  "outputTokens": 5255,
+  "durationMs": 69271,
+  "steps": 16,
+  "errors": []
+}

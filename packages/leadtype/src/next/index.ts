@@ -1,17 +1,139 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import {
+  type AgentArtifactHandlerConfig,
+  createLoadPage,
+  createPublicMarkdownReader,
+  createRequiredAgentArtifactHandler,
+  joinUrlPath,
+  listRouteSlugs,
+  splitRouteSlug,
+} from "../internal/framework";
 import type {
   AgentReadabilityManifest,
+  AgentReadabilityPage,
+  LocalizedAgentReadabilityManifests,
   MarkdownMirrorTarget,
+  MarkdownReadErrorHandler,
+  MissingMarkdownStatus,
 } from "../llm/readability";
-import { createAgentMarkdownResponse } from "../llm/readability";
 import type { DocsPage, DocsSource } from "../source";
+
+const SUPPORTED_MANIFEST_VERSION = 1;
+const MARKDOWN_MEDIA_TYPES = new Set([
+  "application/octet-stream",
+  "text/markdown",
+  "text/plain",
+  "text/x-markdown",
+]);
 
 export type {
   AgentReadabilityManifest,
   MarkdownMirrorTarget,
+  MissingMarkdownStatus,
 } from "../llm/readability";
 export type { DocsPage, DocsSource } from "../source";
+
+export type NextDocsMetadata = {
+  title?: string;
+  description?: string;
+  alternates?: {
+    canonical?: string;
+    types?: Record<string, string>;
+    [key: string]: unknown;
+  };
+  openGraph?: {
+    title?: string;
+    description?: string;
+    url?: string;
+    type?: string;
+    locale?: string;
+    images?: unknown;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+export type NextGenerateMetadataRouteProps = {
+  params?: Promise<Record<string, unknown>>;
+};
+
+export type NextGenerateMetadataContext = {
+  page: AgentReadabilityPage;
+  manifest: AgentReadabilityManifest;
+  urlPath: string;
+  metadata: NextDocsMetadata;
+};
+
+type MaybePromise<T> = T | Promise<T>;
+
+export type NextMetadataOverride<T> =
+  | T
+  | ((context: NextGenerateMetadataContext) => MaybePromise<T>);
+
+export type CreateGenerateMetadataConfig = {
+  /**
+   * Agent Readability manifest emitted by `leadtype generate`.
+   */
+  manifest: AgentReadabilityManifest;
+
+  /**
+   * Public docs route prefix.
+   *
+   * @defaultValue `"/docs"`
+   */
+  basePath?: string;
+
+  /**
+   * Convert route props into the docs URL path. Override this when the route
+   * params are not named `slug` or when docs live under a custom route shape.
+   */
+  resolveUrlPath?: (input: {
+    params: Record<string, unknown> | undefined;
+    slug: string[];
+    basePath: string;
+  }) => MaybePromise<string>;
+
+  /**
+   * Override the generated page title.
+   *
+   * When `openGraph.title` is not explicitly overridden, this also updates the
+   * generated OpenGraph title so browser and social metadata stay in sync.
+   */
+  title?: NextMetadataOverride<string | undefined>;
+
+  /**
+   * Override the generated page description.
+   *
+   * When `openGraph.description` is not explicitly overridden, this also
+   * updates the generated OpenGraph description.
+   */
+  description?: NextMetadataOverride<string | undefined>;
+
+  /**
+   * Merge OpenGraph metadata into the generated defaults. Explicit values here
+   * win over `title` and `description` cascade behavior.
+   */
+  openGraph?: NextMetadataOverride<NextDocsMetadata["openGraph"]>;
+
+  /**
+   * Merge alternate links into the generated canonical and markdown alternate
+   * defaults.
+   */
+  alternates?: NextMetadataOverride<NextDocsMetadata["alternates"]>;
+
+  /**
+   * Merge arbitrary framework metadata into the generated defaults after the
+   * dedicated title, description, alternates, and OpenGraph overrides run.
+   */
+  metadata?: NextMetadataOverride<Partial<NextDocsMetadata> | undefined>;
+
+  /**
+   * Final hook for apps that need full control over the returned object. Runs
+   * after every generated default and override has been applied.
+   */
+  transform?: (
+    context: NextGenerateMetadataContext
+  ) => MaybePromise<NextDocsMetadata>;
+};
 
 /**
  * Configuration for {@link createGenerateStaticParams}.
@@ -21,6 +143,17 @@ export type CreateGenerateStaticParamsConfig = {
    * Framework-neutral docs source used to enumerate all known pages.
    */
   source: DocsSource;
+
+  /**
+   * Route prefix the catch-all consuming these params is mounted at (e.g.
+   * `app/docs/[[...slug]]` → `"/docs"`). Params are each page's `urlPath`
+   * relative to it, so `mounts` and collection `routePrefix`es are honoured.
+   * Pass `"/"` for a site-root catch-all serving every collection.
+   *
+   * @defaultValue the source's own `routePrefix`; when absent, param helpers
+   * keep collection-local slugs
+   */
+  basePath?: string;
 };
 
 /**
@@ -31,7 +164,136 @@ export type CreateLoadPageDataConfig = {
    * Framework-neutral docs source used to resolve route slugs.
    */
   source: DocsSource;
+
+  /**
+   * Route prefix the consuming catch-all is mounted at — match the value
+   * given to {@link createGenerateStaticParams} so emitted params load the
+   * page they address.
+   *
+   * @defaultValue the source's own `routePrefix`; when absent, loading keeps
+   * collection-local slug behavior
+   */
+  basePath?: string;
 };
+
+function pageTitle(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest
+): string {
+  return `${page.title} | ${manifest.product.name}`;
+}
+
+function pageDescription(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest
+): string {
+  return (
+    page.description ||
+    `${page.title} documentation for ${manifest.product.name}.`
+  );
+}
+
+function assertManifestVersion(manifest: { version: number }): void {
+  if (manifest.version !== SUPPORTED_MANIFEST_VERSION) {
+    throw new Error(
+      `leadtype: agent-readability manifest version ${manifest.version} is not supported (expected ${SUPPORTED_MANIFEST_VERSION}). Regenerate the manifest with the matching leadtype version.`
+    );
+  }
+}
+
+async function resolveOverride<T>(
+  override: NextMetadataOverride<T> | undefined,
+  context: NextGenerateMetadataContext
+): Promise<T | undefined> {
+  if (typeof override === "function") {
+    return await (
+      override as (context: NextGenerateMetadataContext) => MaybePromise<T>
+    )(context);
+  }
+  return override;
+}
+
+function readRouteSlug(params: Record<string, unknown> | undefined): string[] {
+  const slug = params?.slug;
+  if (typeof slug === "string" || Array.isArray(slug)) {
+    return splitRouteSlug(slug);
+  }
+  return [];
+}
+
+async function resolveRouteParams(
+  params: NextGenerateMetadataRouteProps["params"]
+): Promise<Record<string, unknown> | undefined> {
+  return await params;
+}
+
+function createDefaultNextMetadata(
+  page: AgentReadabilityPage,
+  manifest: AgentReadabilityManifest
+): NextDocsMetadata {
+  const title = pageTitle(page, manifest);
+  const description = pageDescription(page, manifest);
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: page.absoluteUrl,
+      types: {
+        "text/markdown": page.markdownAbsoluteUrl,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: page.absoluteUrl,
+      type: "article",
+      ...(page.locale ? { locale: page.locale } : {}),
+    },
+  };
+}
+
+function mergeAlternates(
+  base: NextDocsMetadata["alternates"],
+  override: NextDocsMetadata["alternates"]
+): NextDocsMetadata["alternates"] {
+  if (!override) {
+    return base;
+  }
+  return {
+    ...base,
+    ...override,
+    types: {
+      ...base?.types,
+      ...override.types,
+    },
+  };
+}
+
+function mergeOpenGraph(
+  base: NextDocsMetadata["openGraph"],
+  override: NextDocsMetadata["openGraph"]
+): NextDocsMetadata["openGraph"] {
+  if (!override) {
+    return base;
+  }
+  return { ...base, ...override };
+}
+
+function mergeNextMetadata(
+  base: NextDocsMetadata,
+  override: Partial<NextDocsMetadata>
+): NextDocsMetadata {
+  return {
+    ...base,
+    ...override,
+    alternates: override.alternates
+      ? mergeAlternates(base.alternates, override.alternates)
+      : base.alternates,
+    openGraph: override.openGraph
+      ? mergeOpenGraph(base.openGraph, override.openGraph)
+      : base.openGraph,
+  };
+}
 
 /**
  * Configuration for {@link createDocsRouteHandler}.
@@ -41,6 +303,13 @@ export type CreateDocsRouteHandlerConfig = {
    * Agent Readability manifest emitted by `leadtype generate`.
    */
   manifest: AgentReadabilityManifest;
+
+  /**
+   * Public route prefix where generated docs artifacts are mounted.
+   *
+   * @defaultValue `"/docs"`
+   */
+  artifactBasePath?: string;
 
   /**
    * Directory where `leadtype generate` wrote public artifacts.
@@ -57,6 +326,18 @@ export type CreateDocsRouteHandlerConfig = {
   cacheControl?: string | null;
 
   /**
+   * Status for a route with no page behind it.
+   *
+   * @remarks
+   * Defaults to `200`, so an agent that asked for markdown keeps the recovery
+   * body. Pass `404` when dead-link detection matters more. A manifest-known
+   * page whose mirror cannot be read answers 500 either way.
+   *
+   * @defaultValue `200`
+   */
+  missingStatus?: MissingMarkdownStatus;
+
+  /**
    * Custom markdown reader for a resolved generated markdown target.
    *
    * @remarks
@@ -67,6 +348,10 @@ export type CreateDocsRouteHandlerConfig = {
   readMarkdownFile?: (
     target: MarkdownMirrorTarget
   ) => string | null | undefined | Promise<string | null | undefined>;
+  /** Generated locale manifests, keyed by locale code, for exact cross-locale reads. */
+  localizedManifests?: LocalizedAgentReadabilityManifests;
+  /** Observe reader failures before the handler returns its stable 500 response. */
+  onReadError?: MarkdownReadErrorHandler;
 };
 
 /**
@@ -81,8 +366,8 @@ export function createGenerateStaticParams(
   config: CreateGenerateStaticParamsConfig
 ): () => Promise<Array<{ slug: string[] }>> {
   return async () => {
-    const pages = await config.source.listPages();
-    return pages.map((page) => ({ slug: page.slug }));
+    const slugs = await listRouteSlugs(config);
+    return slugs.map((slug) => ({ slug }));
   };
 }
 
@@ -101,39 +386,108 @@ export function createGenerateStaticParams(
 export function createLoadPageData(
   config: CreateLoadPageDataConfig
 ): (slug: string[] | undefined) => Promise<DocsPage | null> {
-  return async (slug) => await config.source.loadPage(slug ?? []);
+  const loadPage = createLoadPage(config);
+  return async (slug) => await loadPage(slug ?? []);
 }
 
-function isMissingFileError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return false;
-  }
-  const code = (error as { code?: unknown }).code;
-  return code === "ENOENT" || code === "ENOTDIR";
-}
+/**
+ * Build the function Next's App Router expects from `generateMetadata`.
+ *
+ * @example
+ * ```ts
+ * export const generateMetadata = createGenerateMetadata({ manifest });
+ * ```
+ */
+export function createGenerateMetadata(
+  config: CreateGenerateMetadataConfig
+): (props: NextGenerateMetadataRouteProps) => Promise<NextDocsMetadata> {
+  return async (props) => {
+    assertManifestVersion(config.manifest);
+    const params = await resolveRouteParams(props.params);
+    const basePath = config.basePath ?? "/docs";
+    const slug = readRouteSlug(params);
+    const urlPath = config.resolveUrlPath
+      ? await config.resolveUrlPath({ params, slug, basePath })
+      : joinUrlPath(basePath, slug.join("/"));
+    const page = config.manifest.pages.find(
+      (entry) => entry.urlPath === urlPath
+    );
 
-function createDefaultMarkdownReader(
-  publicDir: string
-): (target: MarkdownMirrorTarget) => Promise<string | null> {
-  const resolvedPublicDir = path.resolve(publicDir);
-  return async (target) => {
-    // `target.filePath` is derived from a path that has already been guarded
-    // against `..` segments by `resolveMarkdownMirrorTarget`. Resolve once
-    // more and reject anything that escapes `publicDir` — defense in depth in
-    // case a future caller passes a hand-built target.
-    const candidate = path.resolve(resolvedPublicDir, target.filePath);
-    const relative = path.relative(resolvedPublicDir, candidate);
-    if (relative.startsWith("..") || path.isAbsolute(relative)) {
-      return null;
+    if (!page) {
+      return {};
     }
-    try {
-      return await readFile(candidate, "utf8");
-    } catch (error) {
-      if (isMissingFileError(error)) {
-        return null;
-      }
-      throw error;
+
+    let metadata = createDefaultNextMetadata(page, config.manifest);
+    let context: NextGenerateMetadataContext = {
+      page,
+      manifest: config.manifest,
+      urlPath,
+      metadata,
+    };
+
+    const title = await resolveOverride(config.title, context);
+    if (title !== undefined) {
+      metadata = {
+        ...metadata,
+        title,
+        openGraph: {
+          ...metadata.openGraph,
+          title,
+        },
+      };
     }
+
+    const description = await resolveOverride(config.description, {
+      ...context,
+      metadata,
+    });
+    if (description !== undefined) {
+      metadata = {
+        ...metadata,
+        description,
+        openGraph: {
+          ...metadata.openGraph,
+          description,
+        },
+      };
+    }
+
+    const alternates = await resolveOverride(config.alternates, {
+      ...context,
+      metadata,
+    });
+    if (alternates !== undefined) {
+      metadata = {
+        ...metadata,
+        alternates: mergeAlternates(metadata.alternates, alternates),
+      };
+    }
+
+    const openGraph = await resolveOverride(config.openGraph, {
+      ...context,
+      metadata,
+    });
+    if (openGraph !== undefined) {
+      metadata = {
+        ...metadata,
+        openGraph: mergeOpenGraph(metadata.openGraph, openGraph),
+      };
+    }
+
+    const extraMetadata = await resolveOverride(config.metadata, {
+      ...context,
+      metadata,
+    });
+    if (extraMetadata) {
+      metadata = mergeNextMetadata(metadata, extraMetadata);
+    }
+
+    if (config.transform) {
+      context = { ...context, metadata };
+      return await config.transform(context);
+    }
+
+    return metadata;
   };
 }
 
@@ -162,19 +516,108 @@ export function createDocsRouteHandler(
 ): (request: Request) => Promise<Response> {
   const publicDir = config.publicDir ?? "./public";
   const readMarkdownFile =
-    config.readMarkdownFile ?? createDefaultMarkdownReader(publicDir);
+    config.readMarkdownFile ?? createPublicMarkdownReader(publicDir);
+  return createRequiredAgentArtifactHandler({
+    manifest: config.manifest,
+    artifactBasePath: config.artifactBasePath,
+    publicDir,
+    readMarkdownFile,
+    cacheControl: config.cacheControl,
+    ...(config.localizedManifests
+      ? { localizedManifests: config.localizedManifests }
+      : {}),
+    ...(config.onReadError ? { onReadError: config.onReadError } : {}),
+    ...(config.missingStatus ? { missingStatus: config.missingStatus } : {}),
+  });
+}
+
+export type CreateDocsProxyConfig = Pick<
+  AgentArtifactHandlerConfig,
+  | "artifactBasePath"
+  | "cacheControl"
+  | "localizedManifests"
+  | "manifest"
+  | "missingStatus"
+  | "onReadError"
+> & {
+  /**
+   * URL prefix used to fetch generated markdown through an asset route that is
+   * outside the Proxy matcher. Use a dedicated route when the matcher includes
+   * canonical `.md` URLs, so the internal fetch cannot recurse.
+   *
+   * @defaultValue `"/"`
+   */
+  publicPathPrefix?: string;
+};
+
+/**
+ * Build a Next Proxy handler for apps that serve human docs and markdown
+ * mirrors from the same route tree.
+ *
+ * @remarks
+ * Proxy cannot read from the filesystem, so this helper fetches generated
+ * markdown from Next's static asset serving using the current request origin.
+ *
+ * @example
+ * ```ts
+ * export const proxy = createDocsProxy({ manifest });
+ * ```
+ */
+export function createDocsProxy(
+  config: CreateDocsProxyConfig
+): (request: Request) => Promise<Response> {
   return async (request) => {
     const url = new URL(request.url);
-    const headers = Object.fromEntries(request.headers);
-    const response = await createAgentMarkdownResponse({
-      urlPath: url.pathname,
-      method: request.method,
-      headers,
+    const readMarkdownFile = async (target: MarkdownMirrorTarget) => {
+      const publicPathPrefix = joinUrlPath(config.publicPathPrefix ?? "/");
+      const encodedFilePath = target.filePath
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      const expectedAssetPath = joinUrlPath(publicPathPrefix, encodedFilePath);
+      const assetUrl = new URL(expectedAssetPath, url);
+      const resolvedAssetPath = decodeURIComponent(assetUrl.pathname);
+      const decodedExpectedAssetPath = decodeURIComponent(expectedAssetPath);
+      const decodedPublicPathPrefix = decodeURIComponent(publicPathPrefix);
+      const isUnderPublicPathPrefix =
+        decodedPublicPathPrefix === "/" ||
+        resolvedAssetPath === decodedPublicPathPrefix ||
+        resolvedAssetPath.startsWith(`${decodedPublicPathPrefix}/`);
+      if (
+        resolvedAssetPath !== decodedExpectedAssetPath ||
+        !isUnderPublicPathPrefix
+      ) {
+        throw new Error(
+          `leadtype: markdown mirror "${target.markdownUrlPath}" resolves outside the configured public path prefix.`
+        );
+      }
+      const response = await fetch(assetUrl);
+      if (!response.ok) {
+        return null;
+      }
+      const mediaType = response.headers
+        .get("content-type")
+        ?.split(";", 1)[0]
+        ?.trim()
+        .toLowerCase();
+      if (mediaType && !MARKDOWN_MEDIA_TYPES.has(mediaType)) {
+        throw new Error(
+          `leadtype: markdown mirror "${target.markdownUrlPath}" returned unexpected content type "${mediaType}".`
+        );
+      }
+      return await response.text();
+    };
+    const handler = createRequiredAgentArtifactHandler({
       manifest: config.manifest,
+      artifactBasePath: config.artifactBasePath,
       readMarkdownFile,
-      requestOrigin: url.origin,
       cacheControl: config.cacheControl,
+      ...(config.localizedManifests
+        ? { localizedManifests: config.localizedManifests }
+        : {}),
+      ...(config.onReadError ? { onReadError: config.onReadError } : {}),
+      ...(config.missingStatus ? { missingStatus: config.missingStatus } : {}),
     });
-    return response ?? new Response(null, { status: 404 });
+    return await handler(request);
   };
 }

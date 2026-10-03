@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls the conversion function first, then the LLM and search generators, satisfying the required ordering. However, the `generateLlmsTxt` call is misconfigured: it sets `srcDir: \".\"`, which would search the project root for markdown files instead of the `public/docs` directory where the converted files were written. This would cause the generated `llms.txt` to be empty or incorrect, violating the requirement that the script correctly produce the artifacts. The other generators may work, but the error makes the script incomplete against the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 85,
+  "inputTokens": 59046,
+  "outputTokens": 292,
+  "durationMs": 399115,
+  "steps": 22,
+  "errors": []
+}

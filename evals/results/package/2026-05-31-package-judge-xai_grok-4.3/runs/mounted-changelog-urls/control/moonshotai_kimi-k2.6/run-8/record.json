@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the invocation repeats `--docs-dir` using the `changelog=/changelog` mount syntax; the canonical URL is stated as `/changelog/v1` (not under `/docs`); and the table explicitly distinguishes the internal copy at `docs/changelog/v1.md` (for search) from the public mirror at `changelog/v1.md`. No rubric violations or invented flags.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 28199,
+  "outputTokens": 348,
+  "durationMs": 59548,
+  "steps": 17,
+  "errors": []
+}

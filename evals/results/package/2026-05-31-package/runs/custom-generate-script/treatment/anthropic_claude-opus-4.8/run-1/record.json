@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports all needed library APIs from leadtype (not CLI), calls convertAllMdx first to produce public/docs/*.md, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in order, ensuring the generators read the pre-converted markdown. It passes product and nav from docs.config.ts into the routing and full-context generators, meeting every required rubric point. No ordering violation, invented APIs, or CLI usage.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 23,
+  "inputTokens": 39191,
+  "outputTokens": 832,
+  "durationMs": 64671,
+  "steps": 11,
+  "errors": []
+}

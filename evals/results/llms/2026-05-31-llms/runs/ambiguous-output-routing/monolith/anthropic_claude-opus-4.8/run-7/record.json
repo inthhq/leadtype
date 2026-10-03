@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files area (docs/reference/llm.md) as the right place for agent-facing output APIs, avoiding the Search UI/APIs. It explicitly identifies /llms-full.txt as a fallback used when page-level links are insufficient, describing the normal graph-based flow as preferred. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 10,
+  "inputTokens": 5283,
+  "outputTokens": 539,
+  "durationMs": 37530,
+  "steps": 7,
+  "errors": []
+}

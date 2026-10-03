@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names (lastModified + lastAuthor) are stated, they are described as being added to frontmatter, and their source is explicitly git history / git-log metadata. No invented fields, no wrong provenance, and the paragraph format matches the task. Minor deduction only for extra implementation detail that the rubric does not require.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 19016,
+  "outputTokens": 47,
+  "durationMs": 17526,
+  "steps": 6,
+  "errors": []
+}

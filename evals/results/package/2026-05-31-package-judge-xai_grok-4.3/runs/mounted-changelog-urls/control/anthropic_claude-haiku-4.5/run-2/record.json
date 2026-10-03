@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the invocation repeats `--docs-dir` using the `changelog=/changelog` mount syntax; the canonical URL is stated as `/changelog/v1.md`; and both the internal `public/docs/changelog/` staging copy and the public mirror at `public/changelog/v1.md` are described. No rubric violations or invented flags.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 30,
+  "inputTokens": 57253,
+  "outputTokens": 417,
+  "durationMs": 60782,
+  "steps": 23,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly distinguishes llms.txt as a web convention unsuitable for tarballs and notes AGENTS.md works offline, but it fails to state that --bundle skips llms.txt and llms-full.txt—instead incorrectly listing humans.txt, navigation sidebars, and theme assets. This missing required point makes the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 3529,
+  "outputTokens": 250,
+  "durationMs": 24621,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly states that the curated nav drives the sidebar, llms.txt, AGENTS.md, and agent navigation. It identifies group as legacy/fallback, still useful for fallback navigation and metadata. It states that an unknown group slug causes the build to fail with an error, not a silent skip. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 42380,
+  "outputTokens": 50,
+  "durationMs": 70465,
+  "steps": 13,
+  "errors": []
+}

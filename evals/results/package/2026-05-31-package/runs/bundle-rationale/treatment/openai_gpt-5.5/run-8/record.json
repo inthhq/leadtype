@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies llms.txt as a website convention with absolute URLs that coding agents don't expect in node_modules, explains that AGENTS.md uses relative links and works offline/version-matched, and lists the website artifacts that --bundle skips, including llms.txt, llms-full.txt, and others. All required points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 16528,
+  "outputTokens": 51,
+  "durationMs": 19312,
+  "steps": 6,
+  "errors": []
+}

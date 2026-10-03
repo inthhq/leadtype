@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "variant": "discovery",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the --json flag prints a single JSON object describing the generation run, and it names the required fields llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents the field 'agentReadabilityJson', whereas the ground truth specifies 'agentReadabilityManifest'. Since the rubric states that inventing fields makes the response incorrect, the overall answer is incorrect despite meeting the required points.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3099,
+  "outputTokens": 6,
+  "durationMs": 18507,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states that by default leadtype uses a static BM25 lexical index with no hosted database. It gives specific conditions for adding embeddings: conceptual/abstract queries (vocabulary mismatch) and vast datasets (very large corpus). It also explicitly says to keep the lexical index for exact matches and treat embeddings as complementary. All required rubric points are satisfied with precise, accurate detail.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 34114,
+  "outputTokens": 560,
+  "durationMs": 54633,
+  "steps": 15,
+  "errors": []
+}

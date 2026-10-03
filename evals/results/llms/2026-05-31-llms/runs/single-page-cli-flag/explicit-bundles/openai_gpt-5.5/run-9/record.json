@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing generated paths and names required fields like llmsTxt and docsLlmsTxt. However, it invents the field \"agentReadabilityJson\" instead of the correct \"agentReadabilityManifest\", which contradicts the ground truth and triggers the 'incorrect if invents fields' condition. The overall explanation is otherwise thorough and accurate, justifying a high but not perfect score.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1762,
+  "outputTokens": 6,
+  "durationMs": 15734,
+  "steps": 5,
+  "errors": []
+}

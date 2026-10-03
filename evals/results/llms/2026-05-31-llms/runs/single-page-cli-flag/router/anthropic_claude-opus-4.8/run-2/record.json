@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names required fields like llmsTxt, docsLlmsTxt, and llmsFullTxt. However, it invents a field 'agentReadabilityJson' that does not match the actual result shape (the correct field is 'agentReadabilityManifest'), which violates the rubric's \"Incorrect if\" rule.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3471,
+  "outputTokens": 289,
+  "durationMs": 17492,
+  "steps": 5,
+  "errors": []
+}

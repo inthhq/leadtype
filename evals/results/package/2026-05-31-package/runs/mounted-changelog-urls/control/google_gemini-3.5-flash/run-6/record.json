@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response does not provide the required `leadtype generate` invocation or any description of what it emits for `changelog/v1.mdx`. It merely states an intention to search, which fails all rubric points and constitutes a refusal to complete the task.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 32623,
+  "outputTokens": 153,
+  "durationMs": 117815,
+  "steps": 50,
+  "errors": []
+}

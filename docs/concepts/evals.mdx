@@ -1,0 +1,166 @@
+---
+title: "Evals"
+description: "How Leadtype measures whether bundling agent docs actually helps coding agents — and how the llms.txt defaults were chosen."
+---
+
+Leadtype treats agent-facing docs as **behavior**, not just files on disk. The repo ships eval harnesses (under `evals/`) that run real coding agents against generated artifacts and grade them with an independent LLM judge.
+
+Read this if you want the evidence behind three claims: that **bundling docs into a package measurably helps coding agents**, that the default `llms.txt` + `llms-full.txt` shape **routes agents most reliably**, and that agents **rarely discover `llms.txt` on their own** unless pointed at it.
+
+## How the harness works
+
+Each eval is one **cell** — a fixture (task) × arm × model — run 10 times. A run:
+
+1. Spins up an isolated temp project and `npm install`s a packed `leadtype` tarball, so `node_modules/leadtype/` looks like a real install.
+2. Lets the agent work with a small set of path-scoped tools (`read`, `write`, `list`, `glob`, `grep`, and a narrow `npm`). No shell, no network beyond the model call.
+3. Sends the agent's answer (and any files it wrote) to an **LLM judge**, which grades it against a per-fixture rubric and returns pass/fail + a 0–100 score + a failure-mode classification. We judge with **`deepseek-v4-pro`** — a model from a family with **no candidate under test**, so it has no same-family preference. The judge is the headline metric; "did the agent read our files" is tracked separately as supporting evidence.
+
+Pass rates are reported with a **Wilson 95% confidence interval**, and every run's transcript, judge verdict, and produced files are archived under `evals/results/` for inspection. Except where noted (the cost table was re-measured `2026-06-01` after a token-counting fix), the numbers below are from the `2026-05-31` run: the package benchmark uses **5 models across 4 families** (Anthropic Haiku 4.5 / Opus 4.8, OpenAI GPT‑5.5, Moonshot Kimi K2.6, Google Gemini 3.5 Flash) **× 4 arms × 10 runs**, judged by `deepseek-v4-pro` and [cross-validated with `grok-4.3`](#judge-choice-matters). The hosted-docs benchmarks use a 3-model subset (Haiku, Opus, GPT‑5.5).
+
+## Does bundling docs help? (package benchmark)
+
+The package benchmark answers the core question with an A/B test:
+
+- **Treatment** — the installed `leadtype` ships its bundled `AGENTS.md` + `docs/*.md`.
+- **Control** — those files are stripped (along with `dist/*.map` source maps, which would otherwise leak the original commented source). The compiled JS — including the CLI's `--help` text — and the `.d.ts` types stay. An honest "a package that simply didn't bundle agent docs," **not** "an agent with no information."
+
+Three things change when the docs are present, and they differ in how universal they are. Two hold for **every** model and are the wins to lead with; the third is real but uneven:
+
+1. **Every run gets cheaper** — universal, frontier models included.
+2. **Agents stop confidently guessing wrong** about the API — the clearest, most judge-robust correctness win.
+3. **Raw accuracy rises** — but mostly for the small, cheap models most agents run on; the frontier lift is small and judge-sensitive.
+
+### Every run gets cheaper
+
+Pooled across fixtures, bundling docs cut the **tokens** every model spent — the agent reads one short doc instead of probing the package with repeated `grep`/`read`/`list` calls. Tokens (input + output, summed across every step of the tool loop) drop **32–54%**, and tool calls drop for every model too:
+
+| Model | Tokens (docs → none) | Tool calls (docs → none) | Wall-clock (docs → none) |
+| --- | --- | --- | --- |
+| `claude-haiku-4.5` | 115.8k → 227.0k (**−49%**) | 15.1 → 18.2 (−17%) | 54.2s → 41.4s (+31%) |
+| `claude-opus-4.8` | 98.8k → 215.4k (**−54%**) | 9.1 → 15.5 (−41%) | 38.5s → 71.4s (−46%) |
+| `gemini-3.5-flash` | 228.1k → 422.3k (**−46%**) | 14.0 → 27.5 (−49%) | 60.5s → 136.6s (−56%) |
+| `kimi-k2.6` | 153.5k → 309.3k (**−50%**) | 15.6 → 20.1 (−22%) | 52.9s → 79.9s (−34%) |
+| `gpt-5.5` | 160.3k → 234.5k (**−32%**) | 14.4 → 15.5 (−7%) | 51.4s → 61.2s (−16%) |
+
+Even GPT‑5.5, which barely needs docs for correctness, spent **32%** fewer tokens with them — the token win holds regardless of model tier or whether docs ever move the pass rate. **Wall-clock is not a claim we lean on:** it tracks gateway latency more than work done, and is unstable run-to-run (Haiku came out *slower* with docs here, −37% in an earlier run). Tokens and tool calls are the defensible cost signal.
+
+<Callout title="Cost re-measured after a token-counting fix" variant="info">
+  The cost figures above are from a `2026-06-01` treatment-vs-control re-run. The
+  original harness recorded only the **final** step of each tool loop
+  (`result.usage`) rather than the **sum across all steps** (`result.totalUsage`),
+  which undercounted per-run tokens several-fold. The fix doesn't touch the
+  pass-rate or confident-wrong results below — those come from the `2026-05-31`
+  run and only depend on the judge's verdict.
+</Callout>
+
+### Agents stop confidently guessing wrong
+
+The judge classifies each failure, and the dangerous mode is **confidently wrong** — asserting the opposite of the truth with no hedging. Docs cut it across the board:
+
+| Model | Confident-wrong: control → treatment |
+| --- | --- |
+| `claude-haiku-4.5` | 28% → **10%** |
+| `claude-opus-4.8` | 7% → **0%** |
+| `gemini-3.5-flash` | 8% → **0%** |
+| `gpt-5.5` | 8% → **0%** |
+| `kimi-k2.6` | 3% → 2% |
+
+The clearest case is **`nav-unknown-group`** — "what happens if a page declares a `group` the config doesn't know?" The build actually fails, but without docs agents don't say "I don't know"; they confidently assert the *wrong* answer. Bundling docs is cheap insurance against exactly that, and it's the most defensible reason to ship them — it doesn't depend on the model being small or the judge being generous.
+
+### Accuracy lift — concentrated in small models
+
+Bundling docs also lifts raw task success, but the gain is **largest for the smaller, cheaper models that most agents actually run on, and marginal for frontier models** that recover more from the package alone:
+
+| Model | With bundled docs | Without (control) | Lift |
+| --- | --- | --- | --- |
+| `claude-haiku-4.5` (small) | 87% | 70% | **+17 pts** |
+| `gemini-3.5-flash` (small) | 100% | 85% | **+15 pts** |
+| `gpt-5.5` (frontier) | 98% | 87% | +12 pts |
+| `claude-opus-4.8` (frontier) | 98% | 92% | +7 pts |
+| `kimi-k2.6` (frontier) | 98% | 95% | +3 pts |
+
+(Pooled over all fixtures, n = 60 runs per cell, judged by neutral `deepseek-v4-pro`.)
+
+#### Decomposing the value: code vs. docs vs. memory
+
+A `bare` arm installs **nothing** (pure training-memory recall); `control` adds the compiled package; `treatment` adds the docs; `pointer` adds leadtype's recommended root `AGENTS.md` pointer. The ladder shows exactly what each layer buys:
+
+| Model | bare (memory) | → control (+code) | → treatment (+docs) | → pointer |
+| --- | --- | --- | --- | --- |
+| `claude-haiku-4.5` | 22% | 70% | 87% | 93% |
+| `gemini-3.5-flash` | 78% | 85% | 100% | 98% |
+| `gpt-5.5` | 90% | 87% | 98% | 98% |
+| `claude-opus-4.8` | 87% | 92% | 98% | 100% |
+| `kimi-k2.6` | 88% | 95% | 98% | 98% |
+
+Small models are nearly helpless from memory (Haiku 22%) and gain from *both* the installed code and the docs; frontier models already know ~90% and docs add the last few points.
+
+#### Where the lift comes from
+
+The per-fixture breakdown is more telling than the average: almost all of the accuracy lift comes from **two** behavioral gotchas the compiled package can't self-document.
+
+- **`nav-unknown-group`** (+28 pooled) — the confident-wrong case above; docs turn a confident *wrong* answer into a correct one.
+- **`search-when-embeddings`** (+28 pooled) — "when is the default static BM25 index enough vs. embeddings?" Another non-obvious behavioral rule recoverable only from prose.
+- **`explain-cli-flag`, `mounted-changelog-urls`, `bundle-rationale`, `custom-generate-script`** — roughly flat (−2 to +6). Recoverable from the CLI's `--help`, the `.d.ts` types, or the README. We keep them to show the benchmark isn't cherry-picked and to pin down where docs *don't* pay off.
+
+So docs add little for facts your CLI, types, or README already expose — the accuracy payoff is concentrated where the library's behavior is non-obvious, and largest for smaller models. [Write for agents](/docs/writing/write-for-agents) turns this into an authoring rule.
+
+### Judge choice matters
+
+LLM judges can favor their own family. Once Gemini was a candidate, the judge had to come from a family with no candidate, so we grade with `deepseek-v4-pro` and re-graded the headline arms with a second neutral judge, `grok-4.3`:
+
+| Lift (treatment − control) | Haiku | Gemini | GPT‑5.5 | Opus | Kimi |
+| --- | --- | --- | --- | --- | --- |
+| `deepseek-v4-pro` (canonical) | +17 | +15 | +12 | +7 | +3 |
+| `grok-4.3` (cross-check) | +27 | +8 | +7 | +0 | +2 |
+
+Both neutral judges agree on the **direction and rank order** — small models gain most, frontier least. Frontier magnitudes are judge-sensitive (Opus +7 vs +0) but small either way, so the qualitative claim holds. Reproduce with `bun run rejudge <runDir> --judge xai/grok-4.3 --arms treatment,control`.
+
+## Which llms.txt shape routes agents best? (hosted-docs benchmark)
+
+The hosted-docs benchmark simulates a hosted docs web root as local files (3-model subset). Agents start at `/llms.txt` and follow links; a "pass" means the judge marked the answer correct, and **context match** means the agent actually read the context path the variant intends. A shape only earns trust when both are high.
+
+### What we found
+
+Pass rate is similar across shapes, so the discriminating metric is **context match** — did the agent follow the path the shape intends?
+
+| Variant | Context match | Verdict |
+| --- | --- | --- |
+| Page-level `.md` links | **100%** | Agents follow it reliably |
+| Section `llms.txt` indexes | **88%** | Solid |
+| Root `llms-full.txt` monolith | **83%** | Reliable broad fallback |
+| Root `llms-full.txt` router | **28%** | Agents bypass the intended links |
+| Explicit group bundles | **26%** | Agents bypass the intended links |
+
+`page-links`, `monolith`, and `section-indexes` are the shapes agents reliably *use as intended*. `explicit-bundles` and `router` look fine on pass rate but agents don't follow their intended path — they answer from the `/llms.txt` summary or grab whatever bundle looks closest. The extra structure doesn't earn its keep.
+
+### Agents rarely discover `llms.txt` on their own
+
+The routing benchmark *tells* agents to start at `/llms.txt`. A separate **discovery** arm drops that hint and serves a realistic web root (docs pages + `llms.txt` + `llms-full.txt` + sitemap + robots). Agents then consult `/llms.txt` only **~29% of the time** — they mostly grep the doc pages directly and still answer correctly. So `llms.txt` earns its keep most as a *pointed-to* entry (a root `AGENTS.md`, or a tool that fetches it), not as an organically-discovered one.
+
+## Current defaults
+
+Leadtype keeps the public website artifact set small:
+
+```txt
+public/
+├── llms.txt
+├── llms-full.txt
+└── docs/*.md
+```
+
+`/llms.txt` routes agents to page-level markdown first; `/llms-full.txt` is the broad all-docs fallback. Groups organize navigation, `llms.txt` sections, search metadata, and `AGENTS.md`; they aren't published as per-group full-context files by default.
+
+For packages, `leadtype generate --bundle` ships `AGENTS.md` + `docs/*.md` inside the tarball — and the recommended consumer setup is a root `AGENTS.md` pointing at `node_modules/leadtype/AGENTS.md`, which the benchmark's `pointer` arm shows beats leaving the agent to find the bundle on its own.
+
+## Run the evals
+
+```bash
+cd evals
+bun install && bun run pack-leadtype
+bun run evals:full:arms       # package: 5 models × bare/control/treatment/pointer × 10
+bun run evals:llms:full        # hosted-docs routing (3-model subset)
+bun run evals:llms:discovery   # unhinted llms.txt discovery
+```
+
+The detailed harness docs live in `evals/README.md`.

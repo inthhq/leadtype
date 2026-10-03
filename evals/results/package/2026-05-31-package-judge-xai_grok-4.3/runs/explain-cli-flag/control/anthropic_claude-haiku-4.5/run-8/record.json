@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "ANSWER.md names both required fields (lastModified and lastAuthor), states they are added to generated markdown frontmatter, and correctly attributes the values to git history / git log. All three REQUIRED rubric points are satisfied; extra details (ISO format, skip behavior) do not violate any rule.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 36007,
+  "outputTokens": 184,
+  "durationMs": 32624,
+  "steps": 18,
+  "errors": []
+}

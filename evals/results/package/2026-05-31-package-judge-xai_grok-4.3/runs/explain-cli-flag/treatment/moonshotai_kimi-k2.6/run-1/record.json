@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both exact field names (lastModified, lastAuthor) are stated, they are explicitly added to page frontmatter, and their source is identified as git history (via git log). The paragraph contains extra implementation details but does not contradict the ground truth or invent incorrect fields/sources, so the response satisfies the rubric.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 13244,
+  "outputTokens": 191,
+  "durationMs": 19892,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "discovery",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes stdout as printing a single JSON result object and names several real fields (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', inventing a field not in the result shape. This violates the rubric's 'Incorrect if' clause, making it incorrect. Despite the mistake, it still covers many correct fields and the overall concept, so the score is 60.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2221,
+  "outputTokens": 121,
+  "durationMs": 7337,
+  "steps": 4,
+  "errors": []
+}

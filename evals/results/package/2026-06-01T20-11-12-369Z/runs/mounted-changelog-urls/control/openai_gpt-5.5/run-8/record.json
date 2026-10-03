@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The invocation uses --docs-dir changelog=/changelog, correctly applying the mount syntax. It states the canonical URL as /changelog/v1(.md), not /docs/changelog/..., and mentions the internal copy at public/docs/changelog/ for search and the mirror at public/changelog/. All rubric requirements are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 212874,
+  "outputTokens": 1957,
+  "durationMs": 55364,
+  "steps": 16,
+  "errors": []
+}

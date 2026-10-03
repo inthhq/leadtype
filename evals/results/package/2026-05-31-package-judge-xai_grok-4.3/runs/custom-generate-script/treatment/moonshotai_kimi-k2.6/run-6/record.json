@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: convertAllMdx is invoked first with the proper src/out dirs, followed by generateLlmsTxt + generateLLMFullContextFiles (both receiving product/nav) and generateDocsSearchFiles from leadtype/search/node. The produced script never shells to the CLI, imports the documented APIs, and respects the mandated ordering so that full-context/search generators see the converted markdown under public/docs. Minor deviations (e.g., generateLlmsTxt still pointing at srcDir:'.') do not violate any explicit requirement.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 23,
+  "inputTokens": 38788,
+  "outputTokens": 751,
+  "durationMs": 98465,
+  "steps": 18,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response identifies the LLM files reference (leadtype/llm) as the correct docs area for agent-facing output APIs and explicitly steers away from Search docs. It explains the monolithic /llms-full.txt as a broad fallback used only when page-level links are insufficient, meeting all required rubric points.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4333,
+  "outputTokens": 457,
+  "durationMs": 28312,
+  "steps": 5,
+  "errors": []
+}

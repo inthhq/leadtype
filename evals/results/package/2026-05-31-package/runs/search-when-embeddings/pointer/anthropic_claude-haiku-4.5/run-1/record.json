@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fully satisfies all required rubric points: describes default BM25 static lexical index with no database, specifies conditions (vocabulary mismatch and large corpus), and states that the lexical index is kept for exact matches as complementary to embeddings.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 13535,
+  "outputTokens": 312,
+  "durationMs": 22436,
+  "steps": 7,
+  "errors": []
+}

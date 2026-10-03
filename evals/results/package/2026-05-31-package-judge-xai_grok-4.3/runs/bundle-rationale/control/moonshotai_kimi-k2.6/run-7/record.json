@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED points are met: the answer correctly identifies llms.txt as an HTTP/website convention relying on absolute URLs (and nothing looking inside node_modules), contrasts it with AGENTS.md's relative paths that enable offline/version-matched use inside the tarball, and explicitly states that --bundle skips llms.txt/llms-full.txt plus the other website artifacts (search, sitemaps, robots, etc.) because they require a base URL and web server. No rubric violations or incorrect claims appear. Minor deduction only for not quoting the exact phrase 'nothing looks for it in node_modules,' which is optional.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 27927,
+  "outputTokens": 164,
+  "durationMs": 39084,
+  "steps": 9,
+  "errors": []
+}

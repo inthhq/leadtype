@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default as a static BM25 lexical index without a database, and correctly states that the lexical index should be kept for exact matches and as a complementary layer. However, it fails to specify the required condition that embeddings are warranted only when the corpus grows past tens of thousands of chunks, instead stating 'too large or too dynamic' which is not specific enough per the rubric. This omission makes the answer incomplete, and the confident tone without hedging constitutes confident wrongness.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 144338,
+  "outputTokens": 2326,
+  "durationMs": 65906,
+  "steps": 11,
+  "errors": []
+}

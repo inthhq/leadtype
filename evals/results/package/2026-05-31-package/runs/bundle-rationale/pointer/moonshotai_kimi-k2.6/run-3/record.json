@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website/HTTP convention using absolute URLs and not sought in node_modules, making it unsuitable for a tarball. It correctly describes AGENTS.md as using relative links, working offline, and being version-matched. It lists the skipped artifacts (llms.txt, llms-full.txt, search index, sitemap, robots, agent-readability) and explains they are URL-anchored website artifacts. All required points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 17951,
+  "outputTokens": 240,
+  "durationMs": 22889,
+  "steps": 8,
+  "errors": []
+}

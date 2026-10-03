@@ -14,12 +14,17 @@
 import type { Paragraph, Root, RootContent } from "mdast";
 import type { MdxJsxFlowElement } from "mdast-util-mdx";
 import type { VFile } from "vfile";
-import { createText, getAttributeValue, hasName, type MdxNode } from "../libs";
+import {
+  createText,
+  getAttributeValue,
+  hasName,
+  type MdxNode,
+} from "../../markdown/libs";
 import {
   createTypeTableExtractionFailureMessage,
   extractTypeFromFile,
   resolveDefaultTypeTableBasePath,
-} from "./type-table.remark";
+} from "../../markdown/plugins/type-table";
 
 export type RemarkResolveTypeTableJsxOptions = {
   /** Base directory used to resolve relative `path=` attributes. */
@@ -197,7 +202,11 @@ export function remarkResolveTypeTableJsx(
       }
     };
 
-    visitChildren(tree.children);
+    // Some MDX pipelines (e.g. Next's loader) can invoke the transformer with a
+    // root that has no `children`; guard so the plugin no-ops instead of throwing.
+    if (Array.isArray(tree.children)) {
+      visitChildren(tree.children);
+    }
     return tree;
   };
 }

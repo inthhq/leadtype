@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports all required library functions, calls convertAllMdx first to produce Markdown mirrors under public/docs, then runs generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in the correct order, and passes product and nav from docs.config.ts into the LLM generators. Every required rubric point is satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 27,
+  "inputTokens": 52899,
+  "outputTokens": 545,
+  "durationMs": 75146,
+  "steps": 28,
+  "errors": []
+}

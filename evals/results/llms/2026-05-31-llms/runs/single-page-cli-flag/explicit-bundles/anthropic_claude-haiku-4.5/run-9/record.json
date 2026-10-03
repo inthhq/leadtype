@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that `--json` prints a JSON object with artifact paths, satisfying the first required point. It explicitly names `llmsFullTxt`, `docsLlmsTxt`, and `llmsTxt` among the fields, meeting the second required point. No incorrect or invented fields are described; the answer is aligned with the ground truth and is comprehensive.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3075,
+  "outputTokens": 91,
+  "durationMs": 9004,
+  "steps": 5,
+  "errors": []
+}

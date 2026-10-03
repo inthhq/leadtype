@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent correctly states that --json outputs a JSON object describing generated artifacts, and it names the required llmsTxt, docsLlmsTxt, and llmsFullTxt fields. However, it invents the field 'agentReadabilityJson', while the correct field (per rubric) is 'agentReadabilityManifest'. This violates the 'Incorrect if' condition about inventing fields not in the result shape, making the overall answer incorrect despite partially satisfying the required points. The error is stated confidently with no hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 4326,
+  "outputTokens": 330,
+  "durationMs": 24657,
+  "steps": 5,
+  "errors": []
+}

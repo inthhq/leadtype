@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt is a website convention with absolute URLs, irrelevant inside an npm tarball where no agent looks for it. It correctly describes AGENTS.md as a filesystem convention with relative links, working offline and version-matched. It lists the exact artifacts skipped by --bundle (llms.txt, llms-full.txt, search index, sitemaps, robots, etc.) and why they are website-only. No required point from the rubric is missed.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 17537,
+  "outputTokens": 261,
+  "durationMs": 17986,
+  "steps": 6,
+  "errors": []
+}

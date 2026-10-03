@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies that leadtype uses a local, in-memory lexical index with no external database or vector DB. It gives specific conditions for adding embeddings (semantic mismatch and large corpus) and explains that the lexical index should be retained as a complementary layer. The only minor imprecision is that it doesn't name 'BM25' explicitly, but the described ranking mechanism matches BM25. Extra condition about latency tolerance does not detract from correctness.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 4465,
+  "outputTokens": 345,
+  "durationMs": 33254,
+  "steps": 14,
+  "errors": []
+}

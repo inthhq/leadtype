@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx before the full-context and search generators, satisfying the ordering requirement. It imports product and nav from docs.config.ts and passes them to generateLlmsTxt and generateLLMFullContextFiles. It uses library APIs (convert, llm, search/node) rather than the CLI, and produces the required artifacts. All REQUIRED rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 37,
+  "inputTokens": 45887,
+  "outputTokens": 864,
+  "durationMs": 105830,
+  "steps": 25,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical search (point 1) and correctly states that the lexical index should be kept as complementary (point 3). However, for the specific conditions warranting embeddings (point 2), it misses the cold‑start memory issue and the approximate threshold of tens of thousands of chunks. Instead it incorrectly cites 'lexical noise degrades precision' as the reason, which is not the ground‑truth condition. This omission makes the answer incomplete and partially wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 36,
+  "inputTokens": 591460,
+  "outputTokens": 6904,
+  "durationMs": 112252,
+  "steps": 27,
+  "errors": []
+}

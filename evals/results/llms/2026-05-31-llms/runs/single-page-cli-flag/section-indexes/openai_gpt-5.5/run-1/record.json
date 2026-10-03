@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response meets both REQUIRED points: it states that a JSON object is printed (satisfying point 1), and it names several required output-path fields like llmsTxt, docsLlmsTxt, llmsFullTxt (satisfying point 2). However, it lists 'agentReadabilityJson', but the ground truth gives the field as 'agentReadabilityManifest'; this invented field violates the rubric's 'Invents fields that aren't part of the result shape' clause, so the overall answer is incorrect. The confident wording, with no hedging, makes the failure mode 'confident_wrong'. The score reflects partial completeness for correctly describing the general format and most fields, but deducts for the inaccuracy.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1570,
+  "outputTokens": 13,
+  "durationMs": 12921,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files reference as the right area, naming generateLLMFullContextFiles, and does not route to Search UI/APIs. It explains that /llms-full.txt is a fallback used when page-level links are insufficient, with a 'preferred approach' starting from /llms.txt. All required points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 3936,
+  "outputTokens": 226,
+  "durationMs": 20466,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response covers all required points: explains llms.txt is a website convention with absolute URLs, not suitable for tarballs; explains AGENTS.md uses relative paths, works offline and is version-matched; and states --bundle skips website artifacts including llms.txt, llms-full.txt, and search-index.json. No incorrect statements.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 14572,
+  "outputTokens": 267,
+  "durationMs": 31875,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: default is correctly described as static/local BM25 lexical index with no DB; specific conditions (vocabulary mismatch / semantic queries that tuning cannot fix, plus large corpus) are stated rather than a generic claim; and the response explicitly says to keep the lexical/BM25 index for exact matches and use embeddings only in hybrid/complementary fashion. Minor wording differences on corpus size threshold do not violate the rubric.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 32193,
+  "outputTokens": 135,
+  "durationMs": 58687,
+  "steps": 17,
+  "errors": [],
+  "failureMode": "none"
+}

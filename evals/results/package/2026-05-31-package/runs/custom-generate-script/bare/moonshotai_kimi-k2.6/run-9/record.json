@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the necessary library APIs, calls convertAllMdx first, then generates llms.txt, llm-full.txt, and the search index, and passes product/nav from the config. All required points are satisfied, and the ordering is correct. No errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 66,
+  "inputTokens": 62191,
+  "outputTokens": 1398,
+  "durationMs": 497966,
+  "steps": 22,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` organizes navigation, `llms.txt` sections, `AGENTS.md` grouping, and search metadata, and correctly describes `/llms-full.txt` as a monolithic all-docs file not split per group. However, it confidently lists `description` as an optional frontmatter field, which is not in the rubric's approved list. This violates the rubric’s condition that the answer must not invent fields not in the schema, making the overall response incorrect. The error is stated without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3631,
+  "outputTokens": 258,
+  "durationMs": 16714,
+  "steps": 8,
+  "errors": []
+}

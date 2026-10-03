@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md clearly identifies `nav` as the curated source for sidebar, llms.txt, AGENTS.md, etc., and `group` as legacy, useful for fallback navigation and search/facets. It explicitly states that an unknown group causes a build failure (not a silent skip or warning). All required rubric points are satisfied without contradiction.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 53395,
+  "outputTokens": 67,
+  "durationMs": 35101,
+  "steps": 9,
+  "errors": []
+}

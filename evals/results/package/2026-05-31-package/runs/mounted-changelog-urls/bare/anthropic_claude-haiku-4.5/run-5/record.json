@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": false,
+  "score": 15,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response uses '--source' flags instead of the required '--docs-dir changelog=/changelog' mount syntax, completely missing the required invocation. It also incorrectly states the internal copy location as '.leadtype/internal/changelog/v1.html' instead of 'public/docs/changelog/v1.md'. While it correctly identifies the public URL prefix as '/changelog/', the core command is wrong, and the internal location description contradicts the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 4440,
+  "outputTokens": 304,
+  "durationMs": 24553,
+  "steps": 12,
+  "errors": []
+}

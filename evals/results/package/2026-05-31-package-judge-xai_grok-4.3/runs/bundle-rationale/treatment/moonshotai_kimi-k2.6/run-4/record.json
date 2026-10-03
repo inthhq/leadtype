@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: llms.txt described as website/HTTP convention with absolute URLs (and nothing looks in node_modules), AGENTS.md described with relative links + offline/version-matched behavior inside node_modules, and --bundle explicitly stated to skip llms.txt/llms-full.txt plus the other website artifacts. No incorrect claims present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 17036,
+  "outputTokens": 246,
+  "durationMs": 19235,
+  "steps": 6,
+  "errors": []
+}

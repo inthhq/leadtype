@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response distinguishes AGENTS.md as for local use and llms.txt as a web artifact, but it fails to mention that llms.txt is a website convention with absolute URLs (or that nothing looks for it in node_modules). It does not state that AGENTS.md links are relative and works offline, and while it says --bundle skips llms.txt, it omits llms-full.txt and other specific artifacts. Thus all three required points are insufficiently addressed.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 4215,
+  "outputTokens": 206,
+  "durationMs": 27170,
+  "steps": 13,
+  "errors": []
+}

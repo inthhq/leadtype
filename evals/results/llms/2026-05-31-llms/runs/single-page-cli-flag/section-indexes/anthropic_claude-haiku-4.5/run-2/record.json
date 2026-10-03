@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names several valid output-path fields (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it invents the field 'agentReadabilityJson' which does not match the ground truth's 'agentReadabilityManifest', and omits many other expected top-level fields (mode, source/output dirs, product, groups) and the bundle mode shape. The invented field makes the answer incorrect by the rubric's definition.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2532,
+  "outputTokens": 122,
+  "durationMs": 8593,
+  "steps": 5,
+  "errors": []
+}

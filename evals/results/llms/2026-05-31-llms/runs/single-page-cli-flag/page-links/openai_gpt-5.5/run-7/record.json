@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "variant": "page-links",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object with generated file paths, and names required keys like llmsTxt, docsLlmsTxt, llmsFullTxt. However, it includes 'agentReadabilityJson', which is not part of the result shape according to the ground truth (which specifies 'agentReadabilityManifest'). This invented field violates the rubric's 'Incorrect if' condition, making the answer incorrect. Otherwise it covers many valid bonus keys.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2066,
+  "outputTokens": 13,
+  "durationMs": 14386,
+  "steps": 5,
+  "errors": []
+}

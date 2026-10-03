@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated navigation driver and `group` as a legacy fallback for taxonomy and filtering. It also correctly states that an unknown `group` slug generally causes a build failure. However, it introduces an exception (when `groups` is omitted entirely) where the build silently ignores the unknown slug, which contradicts the rubric's requirement that an unknown slug always causes a build failure. This confident assertion of a silent-ignore case makes the response incorrect. Additionally, the required explicit mention of `llms.txt` sections and `AGENTS.md` grouping is missing, but the main failure is the incorrect exception.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 68905,
+  "outputTokens": 389,
+  "durationMs": 102555,
+  "steps": 18,
+  "errors": []
+}

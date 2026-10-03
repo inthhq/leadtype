@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object with paths of generated artifacts, and lists several valid fields like llmsTxt, docsLlmsTxt, llmsFullTxt, searchIndex, searchContent, and sitemap/robots. However, it includes 'agentReadabilityJson' which is an invented field (the correct key per ground truth is 'agentReadabilityManifest'). This violates the erroneous invention criterion, making the answer incorrect overall. The error is stated plainly without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1810,
+  "outputTokens": 6,
+  "durationMs": 13599,
+  "steps": 6,
+  "errors": []
+}

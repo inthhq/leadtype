@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files reference area (/docs/reference/llm.md) and names the relevant output APIs including generateLLMFullContextFiles, satisfying the first required point. It explains that /llms-full.txt is a fallback for when page-level markdown links are not preferred or are insufficient, satisfying the second required point. No incorrect routing to Search UI/APIs occurs, and the monolithic file is not described as the primary path.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3359,
+  "outputTokens": 218,
+  "durationMs": 14450,
+  "steps": 7,
+  "errors": []
+}

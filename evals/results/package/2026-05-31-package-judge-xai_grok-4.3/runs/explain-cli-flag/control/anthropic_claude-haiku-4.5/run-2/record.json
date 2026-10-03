@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: both exact field names (lastModified and lastAuthor) are stated, they are described as frontmatter fields injected into the output, and their source is explicitly git history / git log. No rubric violations (no invented fields, no wrong provenance, no description of a different flag). Extra implementation details do not contradict the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 26003,
+  "outputTokens": 219,
+  "durationMs": 19580,
+  "steps": 11,
+  "errors": []
+}

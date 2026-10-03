@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly identifies llms.txt as an HTTP/website convention (fetched from /llms.txt) that does not belong in a tarball, describes AGENTS.md as the filesystem root with relative ./docs links that work offline and version-matched inside node_modules, and explicitly lists the artifacts --bundle skips (llms.txt, llms-full.txt plus search/sitemap/robots files). No incorrect claims appear (no recommendation to ship llms.txt, no assertion that AGENTS.md uses absolute URLs or that --bundle emits those files). The two-paragraph format and content are faithful to the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 27666,
+  "outputTokens": 48,
+  "durationMs": 40520,
+  "steps": 12,
+  "errors": []
+}

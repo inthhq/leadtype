@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer clearly explains that llms.txt is a website convention with absolute URLs and that coding agents don't look for it in node_modules, making it wrong for a tarball. It explains AGENTS.md uses relative links, works offline, and is version-matched. It correctly lists llms.txt, llms-full.txt, and other website artifacts as skipped by --bundle. All required points satisfied, no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 15885,
+  "outputTokens": 329,
+  "durationMs": 19289,
+  "steps": 6,
+  "errors": []
+}

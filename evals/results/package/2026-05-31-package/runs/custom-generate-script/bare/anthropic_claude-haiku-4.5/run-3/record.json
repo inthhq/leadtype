@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script does not import or call any leadtype library APIs. Instead, it manually reimplements MDX conversion, routing generation, full‑text concatenation, and search indexing. The rubric explicitly requires use of `convertAllMdx`, `generateLlmsTxt`, `generateLLMFullContextFiles`, and a search‑node API (e.g. `generateDocsSearchFiles`), all of which are missing. Because the agent confidently states that the script uses the library APIs, it is factually wrong and meets the definition of 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 17912,
+  "outputTokens": 561,
+  "durationMs": 81752,
+  "steps": 20,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "page-links",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `group` drives navigation, `llms.txt` sections, and `AGENTS.md` grouping, and accurately describes `/llms-full.txt` as a monolithic all-docs file not sharded by group. However, it lists `availableIn` and `description` as optional frontmatter fields, which are not in the rubric's ground-truth set. This invention violates the rubric's 'Incorrect if' rule, making the overall answer incorrect despite the otherwise accurate summary.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3347,
+  "outputTokens": 272,
+  "durationMs": 13519,
+  "steps": 4,
+  "errors": []
+}

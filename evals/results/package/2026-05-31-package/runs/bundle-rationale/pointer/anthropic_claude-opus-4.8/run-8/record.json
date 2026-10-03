@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website convention using absolute URLs and that no agent looks for it in node_modules, making it wrong inside a tarball. It details that AGENTS.md uses relative links, works offline, and is version-matched, fitting the filesystem convention. It explicitly lists the skipped website artifacts including llms.txt, llms-full.txt, search index, sitemap, and robots, fully meeting all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 5,
+  "inputTokens": 17942,
+  "outputTokens": 424,
+  "durationMs": 27119,
+  "steps": 5,
+  "errors": []
+}

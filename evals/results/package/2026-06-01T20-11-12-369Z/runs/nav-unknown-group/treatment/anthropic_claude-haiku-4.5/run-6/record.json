@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that nav drives sidebar, llms.txt, and AGENTS.md (point 1), group is legacy/optional and useful for fallback navigation and search facets (point 2), and unknown group causes build failure with an error (point 3), satisfying all required rubric points.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 104650,
+  "outputTokens": 1795,
+  "durationMs": 22951,
+  "steps": 7,
+  "errors": []
+}

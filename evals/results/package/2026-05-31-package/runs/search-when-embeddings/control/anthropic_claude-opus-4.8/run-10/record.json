@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes leadtype's default search as a static, edge-safe BM25 lexical index without a database, meeting the first required point. It gives specific conditions for when embeddings are warranted: vocabulary mismatch (users search with terms not in the docs) and a large enough corpus to cause recurring mismatches — effectively covering the rubric's specified conditions (vocabulary/intent mismatch and very large corpus). It explicitly states that the lexical index should be kept for exact matches and that embeddings are complementary, not a replacement, satisfying the third required point. No incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 33942,
+  "outputTokens": 714,
+  "durationMs": 88754,
+  "steps": 15,
+  "errors": []
+}

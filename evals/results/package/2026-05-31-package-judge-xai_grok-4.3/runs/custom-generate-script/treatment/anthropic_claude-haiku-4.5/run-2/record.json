@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "Script satisfies every REQUIRED rubric point: imports product/nav from docs.config.ts, calls convertAllMdx (leadtype/convert) first to populate public/docs/*.md, then calls generateLlmsTxt + generateLLMFullContextFiles (leadtype/llm) and generateDocsSearchFiles (leadtype/search/node) with the config objects, and never shells out to the CLI. Ordering is correct so later generators read the converted markdown. Extra generateAgentReadabilityArtifacts call does not violate any rule.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 38,
+  "inputTokens": 27725,
+  "outputTokens": 709,
+  "durationMs": 74054,
+  "steps": 28,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object with paths of generated artifacts, satisfying the first required point. It names llmsFullTxt, docsLlmsTxt, and llmsTxt, meeting the second required point. It also lists several bonus fields. There is a minor inaccuracy: 'agentReadabilityJson' instead of 'agentReadabilityManifest', but it does not invalidate the required information. Thus the response is correct with a high score.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1463,
+  "outputTokens": 6,
+  "durationMs": 10872,
+  "steps": 5,
+  "errors": []
+}

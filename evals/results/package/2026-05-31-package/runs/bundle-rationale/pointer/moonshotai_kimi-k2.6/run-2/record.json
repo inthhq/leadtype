@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt is a website/HTTP convention with absolute URLs and is not looked for in node_modules, meeting point 1. It explains that AGENTS.md uses relative links and works offline, meeting point 2. It states that --bundle skips llms.txt, llms-full.txt, and the search index, meeting point 3. All required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 8370,
+  "outputTokens": 191,
+  "durationMs": 15937,
+  "steps": 5,
+  "errors": []
+}

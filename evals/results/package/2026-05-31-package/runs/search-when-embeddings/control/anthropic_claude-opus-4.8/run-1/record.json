@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default as a static BM25 lexical index with no database, and correctly states that the lexical index must be kept for exact matches, with embeddings complementary. However, it does not specify the corpus size threshold for adding embeddings; it only says 'Large, heterogeneous corpora' without mentioning 'past tens of thousands of chunks' as required by the rubric. This makes the conditions insufficiently specific, causing a required point to be missed.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 29805,
+  "outputTokens": 742,
+  "durationMs": 77340,
+  "steps": 11,
+  "errors": []
+}

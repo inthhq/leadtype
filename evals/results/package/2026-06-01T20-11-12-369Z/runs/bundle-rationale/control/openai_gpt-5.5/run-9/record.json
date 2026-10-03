@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website/HTTP convention with absolute URLs, not meant for node_modules, while AGENTS.md uses relative paths for offline, version-matched docs inside the installed package. It explicitly lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, search index, sitemap, and robots. All required rubric points are met with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 93036,
+  "outputTokens": 1432,
+  "durationMs": 36564,
+  "steps": 8,
+  "errors": []
+}

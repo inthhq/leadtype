@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   mkdir,
@@ -10,15 +11,55 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { glob as fg } from "tinyglobby";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { isDirectRun, runCli } from "./cli";
 
+const execFileAsync = promisify(execFile);
 const tempDirs: string[] = [];
+const gitSourceDirs: string[] = [];
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../.."
 );
+const markdownEntry = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "markdown",
+  "index.ts"
+);
+const valibotEntry = fileURLToPath(import.meta.resolve("valibot"));
+// Fixture configs import `gitSource` from source rather than `"leadtype"` so
+// they exercise the working tree, not whatever dist happens to be built.
+const leadtypeEntry = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "index.ts"
+);
+const GIT_REPOSITORY_ENV_KEYS = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIR",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_QUARANTINE_PATH",
+  "GIT_WORK_TREE",
+] as const;
+const GIT_IDENTITY_ENV_KEYS = [
+  "GIT_AUTHOR_DATE",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_AUTHOR_NAME",
+  "GIT_COMMITTER_DATE",
+  "GIT_COMMITTER_EMAIL",
+  "GIT_COMMITTER_NAME",
+] as const;
+const BASE_URL_ENV_KEYS = [
+  "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL",
+  "NEXT_PUBLIC_VERCEL_URL",
+  "VERCEL_URL",
+  "PORTLESS_URL",
+] as const;
 
 type Capture = {
   stderr: string;
@@ -65,6 +106,18 @@ async function createTempDir(): Promise<string> {
   return dir;
 }
 
+function gitFixtureEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of [...GIT_REPOSITORY_ENV_KEYS, ...GIT_IDENTITY_ENV_KEYS]) {
+    delete env[key];
+  }
+  return env;
+}
+
+async function execGitFixture(args: string[], cwd: string): Promise<void> {
+  await execFileAsync("git", args, { cwd, env: gitFixtureEnv() });
+}
+
 async function writeMdxPage(
   srcDir: string,
   relativePath: string,
@@ -86,9 +139,37 @@ ${body}
   );
 }
 
+async function createGitDocsSource(
+  files: Record<string, string>
+): Promise<string> {
+  const sourceDir = await mkdtemp(path.join(tmpdir(), "leadtype-git-source-"));
+  gitSourceDirs.push(sourceDir);
+  for (const [relativePath, content] of Object.entries(files)) {
+    const filePath = path.join(sourceDir, relativePath);
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, content);
+  }
+  await execGitFixture(["init"], sourceDir);
+  await execGitFixture(["branch", "-M", "main"], sourceDir);
+  await execGitFixture(["config", "user.email", "test@example.com"], sourceDir);
+  await execGitFixture(["config", "user.name", "Leadtype Test"], sourceDir);
+  await execGitFixture(["config", "commit.gpgsign", "false"], sourceDir);
+  await execGitFixture(["add", "."], sourceDir);
+  await execGitFixture(["commit", "-m", "Add docs"], sourceDir);
+  return sourceDir;
+}
+
 afterEach(async () => {
   await Promise.all(
     tempDirs.splice(0).map(async (dir) => {
+      await rm(dir, { force: true, recursive: true });
+    })
+  );
+});
+
+afterAll(async () => {
+  await Promise.all(
+    gitSourceDirs.splice(0).map(async (dir) => {
       await rm(dir, { force: true, recursive: true });
     })
   );
@@ -138,6 +219,88 @@ describe("leadtype CLI", () => {
     expect(capture.stdout).toContain("lint");
   });
 
+  it.each([
+    "init",
+    "doctor",
+    "generate",
+    "nav",
+    "sync",
+    "lint",
+    "mcp",
+    "score",
+  ])("preserves help for the %s command", async (command) => {
+    const capture = createCapture();
+    expect(await runCli([command, "--help"], capture.io)).toBe(0);
+    expect(capture.stdout).toContain(`leadtype ${command}`);
+    expect(capture.stderr).toBe("");
+  });
+
+  it("prints the package version at the top level", async () => {
+    const capture = createCapture();
+    const pkg = JSON.parse(
+      await readFile(
+        path.join(repoRoot, "packages/leadtype/package.json"),
+        "utf8"
+      )
+    );
+    expect(await runCli(["--version"], capture.io)).toBe(0);
+    expect(capture.stdout).toBe(`leadtype v${pkg.version}\n`);
+    expect(capture.stderr).toBe("");
+  });
+
+  it("passes --force through to init when replacing an existing config", async () => {
+    const dir = await createTempDir();
+    await mkdir(path.join(dir, "docs"));
+    await writeFile(path.join(dir, "docs/docs.config.ts"), "old config");
+    const capture = createCapture();
+    expect(
+      await runCli(
+        ["init", "--framework", "next", "--dir", dir, "--force"],
+        capture.io
+      )
+    ).toBe(0);
+    expect(
+      await readFile(path.join(dir, "docs/docs.config.ts"), "utf8")
+    ).not.toBe("old config");
+  });
+
+  it("loads a consumer TypeScript config through the built Node CLI", async () => {
+    const dir = await createTempDir();
+    await writeMdxPage(
+      dir,
+      "index.mdx",
+      "title: Consumer\ndescription: Consumer docs."
+    );
+    await mkdir(path.join(dir, "node_modules"));
+    await symlink(
+      path.join(repoRoot, "packages/leadtype"),
+      path.join(dir, "node_modules/leadtype"),
+      process.platform === "win32" ? "junction" : "dir"
+    );
+    await writeFile(
+      path.join(dir, "docs/docs.config.ts"),
+      'import { defineDocsConfig } from "leadtype";\nexport default defineDocsConfig({product:{name:"Consumer",tagline:"Consumer docs."}});\n'
+    );
+    const { stderr } = await execFileAsync(
+      "node",
+      [
+        path.join(repoRoot, "packages/leadtype/dist/cli.js"),
+        "generate",
+        "--src",
+        dir,
+        "--out",
+        path.join(dir, "out"),
+        "--base-url",
+        "https://example.com",
+      ],
+      { cwd: dir }
+    );
+    expect(stderr).toContain("Generated docs pipeline output");
+    expect(
+      await readFile(path.join(dir, "out/docs/index.md"), "utf8")
+    ).toContain("Consumer");
+  });
+
   it("runs lint against this repo's docs", async () => {
     const capture = createCapture();
 
@@ -174,9 +337,11 @@ describe("leadtype CLI", () => {
     expect(code).toBe(0);
     expect(capture.stdout).toBe("");
     expect(capture.stderr).toContain("Generated docs pipeline output");
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(true);
     expect(existsSync(path.join(outDir, "llms.txt"))).toBe(true);
     expect(existsSync(path.join(outDir, "llms-full.txt"))).toBe(true);
@@ -189,24 +354,334 @@ describe("leadtype CLI", () => {
     expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
       true
     );
-    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "sitemap.md"))).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.md"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
     expect(
       existsSync(path.join(outDir, "docs", "agent-readability.json"))
     ).toBe(true);
+    expect(
+      existsSync(path.join(outDir, ".well-known", "mcp", "server-card.json"))
+    ).toBe(true);
+    expect(existsSync(path.join(outDir, "mcp.json"))).toBe(true);
+
+    const mcpServerCard = JSON.parse(
+      await readFile(
+        path.join(outDir, ".well-known", "mcp", "server-card.json"),
+        "utf8"
+      )
+    ) as {
+      serverInfo: { name: string; version: string };
+      transport: { endpoint: string; type: string };
+      capabilities: { tools?: Record<string, unknown> };
+    };
+    expect(mcpServerCard.serverInfo).toEqual(
+      expect.objectContaining({
+        name: "leadtype-docs",
+        version: "1.0.0",
+      })
+    );
+    expect(mcpServerCard.transport).toEqual({
+      type: "streamable-http",
+      endpoint: "https://leadtype.dev/leadtype/mcp",
+    });
+    expect(mcpServerCard.capabilities).toEqual({ tools: {} });
+    expect(mcpServerCard.serverInfo).toEqual(
+      expect.objectContaining({
+        instructions:
+          "Search and read the documentation for Shared MDX conversion, linting, and LLM-doc generation package.",
+      })
+    );
 
     const docsSummary = await readFile(
       path.join(outDir, "docs", "llms.txt"),
       "utf8"
     );
     expect(docsSummary).toContain("Methodology");
-    expect(docsSummary).toContain("Build a docs site");
-    expect(docsSummary).toContain("](/docs/methodology.md)");
+    expect(docsSummary).toContain("Build an agent-ready docs site");
+    expect(docsSummary).toContain("](/docs/concepts/methodology.md)");
 
     const llmsFull = await readFile(path.join(outDir, "llms-full.txt"), "utf8");
     expect(llmsFull).toContain("# leadtype Full Context");
     expect(llmsFull).toContain("Methodology");
+  });
+
+  it("enriches generated markdown from git by default", async () => {
+    const srcDir = await createGitDocsSource({
+      "docs/quickstart.mdx": [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "Git metadata should be automatic.",
+      ].join("\n"),
+    });
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    const originalGitDir = process.env.GIT_DIR;
+    const originalGitWorkTree = process.env.GIT_WORK_TREE;
+
+    process.env.GIT_DIR = path.join(repoRoot, ".git");
+    process.env.GIT_WORK_TREE = repoRoot;
+    try {
+      const code = await runCli(
+        [
+          "generate",
+          "--src",
+          srcDir,
+          "--out",
+          outDir,
+          "--include",
+          "quickstart.mdx",
+          "--name",
+          "Git Docs",
+          "--summary",
+          "Docs with git metadata.",
+        ],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      const markdown = await readFile(
+        path.join(outDir, "docs", "quickstart.md"),
+        "utf8"
+      );
+      expect(markdown).toContain("lastModified:");
+      expect(markdown).toContain("lastAuthor: Leadtype Test");
+    } finally {
+      if (originalGitDir === undefined) {
+        delete process.env.GIT_DIR;
+      } else {
+        process.env.GIT_DIR = originalGitDir;
+      }
+      if (originalGitWorkTree === undefined) {
+        delete process.env.GIT_WORK_TREE;
+      } else {
+        process.env.GIT_WORK_TREE = originalGitWorkTree;
+      }
+    }
+  });
+
+  it("uses the latest non-bot author for git enrichment", async () => {
+    const relativePath = "docs/quickstart.mdx";
+    const srcDir = await createGitDocsSource({
+      [relativePath]: [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "A human wrote this page.",
+      ].join("\n"),
+    });
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeFile(
+      path.join(srcDir, relativePath),
+      [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "Automation touched this page.",
+      ].join("\n")
+    );
+    await execGitFixture(["add", "."], srcDir);
+    await execGitFixture(
+      [
+        "-c",
+        "user.email=codex@example.com",
+        "-c",
+        "user.name=Codex",
+        "commit",
+        "-m",
+        "Automated docs update",
+      ],
+      srcDir
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--include",
+        "quickstart.mdx",
+        "--name",
+        "Git Docs",
+        "--summary",
+        "Docs with git metadata.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("Automation touched this page.");
+    expect(markdown).toContain("lastModified:");
+    expect(markdown).toContain("lastAuthor: Leadtype Test");
+    expect(markdown).not.toContain("lastAuthor: Codex");
+  });
+
+  it("uses configured ignored git authors for git enrichment", async () => {
+    const relativePath = "docs/quickstart.mdx";
+    const srcDir = await createGitDocsSource({
+      [relativePath]: [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "A human wrote this page.",
+      ].join("\n"),
+    });
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Git Docs",
+    tagline: "Docs with git metadata.",
+  },
+  navigation: ["quickstart"],
+  git: {
+    ignoredAuthors: ["Release Agent"],
+  },
+};`
+    );
+    await writeFile(
+      path.join(srcDir, relativePath),
+      [
+        "---",
+        "title: Quickstart",
+        "description: Start here.",
+        "---",
+        "",
+        "# Quickstart",
+        "",
+        "A release agent touched this page.",
+      ].join("\n")
+    );
+    await execGitFixture(["add", "."], srcDir);
+    await execGitFixture(
+      [
+        "-c",
+        "user.email=release-agent@example.com",
+        "-c",
+        "user.name=Release Agent",
+        "commit",
+        "-m",
+        "Automated release docs update",
+      ],
+      srcDir
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--include",
+        "quickstart.mdx",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("A release agent touched this page.");
+    expect(markdown).toContain("lastModified:");
+    expect(markdown).toContain("lastAuthor: Leadtype Test");
+    expect(markdown).not.toContain("lastAuthor: Release Agent");
+  });
+
+  it("skips default git enrichment without failing when no .git metadata exists", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      "title: Quickstart\ndescription: Start here."
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "No Git Docs",
+        "--summary",
+        "Docs without git metadata.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "quickstart.md"),
+      "utf8"
+    );
+    expect(markdown).not.toContain("lastModified:");
+    expect(markdown).not.toContain("lastAuthor:");
+  });
+
+  it("warns that --enrich-git is deprecated", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      "title: Quickstart\ndescription: Start here."
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--enrich-git",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "Deprecated Flag Docs",
+        "--summary",
+        "Docs with a deprecated flag.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stderr).toContain("--enrich-git is deprecated");
+    expect(capture.stderr).toContain("runs by default");
   });
 
   it("prints machine-readable generate output for agents", async () => {
@@ -238,9 +713,14 @@ describe("leadtype CLI", () => {
         agentReadabilityManifest: string;
         docsLlmsFullTxt?: string;
         llmsFullTxt: string;
+        mcpServerCard: string;
+        mcpJson: string;
+        robotsTxt: string;
         searchIndex: string;
+        sitemapXml: string;
       };
       groups: Array<{ slug: string }>;
+      nav?: Array<string | { title: string }>;
       outDir: string;
       search: { docs: number };
     };
@@ -251,9 +731,39 @@ describe("leadtype CLI", () => {
     expect(result.files.agentReadabilityManifest).toBe(
       path.join(outDir, "docs", "agent-readability.json")
     );
+    const [searchIndex, readabilityManifest] = await Promise.all(
+      ["search-index.json", "agent-readability.json"].map(
+        async (fileName) =>
+          JSON.parse(
+            await readFile(path.join(outDir, "docs", fileName), "utf8")
+          ) as { generatedAt: string }
+      )
+    );
+    expect(searchIndex?.generatedAt).toBe(readabilityManifest?.generatedAt);
+    expect(result.files.mcpServerCard).toBe(
+      path.join(outDir, ".well-known", "mcp", "server-card.json")
+    );
+    expect(result.files.mcpJson).toBe(path.join(outDir, "mcp.json"));
     expect(result.files.llmsFullTxt).toBe(path.join(outDir, "llms-full.txt"));
+    expect(result.files.robotsTxt).toBe(path.join(outDir, "robots.txt"));
+    expect(result.files.sitemapXml).toBe(path.join(outDir, "sitemap.xml"));
     expect(result.files.docsLlmsFullTxt).toBeUndefined();
-    expect(result.groups.map((group) => group.slug)).toContain("docs-site");
+    expect(existsSync(path.join(outDir, "robots.txt"))).toBe(true);
+    expect(existsSync(path.join(outDir, "sitemap.xml"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
+    expect(result.nav?.slice(0, 3)).toEqual([
+      "index",
+      "quickstart",
+      "how-it-works",
+    ]);
+    expect(
+      result.nav
+        ?.filter(
+          (entry): entry is { title: string } => typeof entry !== "string"
+        )
+        .map((group) => group.title)
+    ).toEqual(expect.arrayContaining(["Changelog"]));
     expect(result.search.docs).toBeGreaterThan(0);
   });
 
@@ -275,7 +785,21 @@ describe("leadtype CLI", () => {
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
+  },
+  organization: {
+    name: "Configured Org",
+    url: "https://example.com",
+    email: "hello@example.com",
+    sameAs: ["https://github.com/example"],
+    contactPoint: {
+      contactType: "customer support",
+      email: "support@example.com",
+    },
+    address: {
+      addressCountry: "US",
+      addressLocality: "San Francisco",
+    },
   },
   groups: [
     { slug: "zeta", title: "Zeta First" },
@@ -304,7 +828,9 @@ describe("leadtype CLI", () => {
       groups: Array<{ slug: string; title: string }>;
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "Configured Product",
       summary: "Configured product summary.",
     });
@@ -325,6 +851,169 @@ describe("leadtype CLI", () => {
     expect(docsLlmsTxt.indexOf("## Zeta First")).toBeLessThan(
       docsLlmsTxt.indexOf("## Alpha Second")
     );
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as {
+      jsonLd?: {
+        organization?: {
+          name?: string;
+          url?: string;
+          address?: { addressCountry?: string; addressLocality?: string };
+          contactPoint?: { contactType?: string; email?: string };
+          email?: string;
+          sameAs?: string[];
+        };
+      };
+    };
+    expect(manifest.jsonLd?.organization).toMatchObject({
+      name: "Configured Org",
+      url: "https://example.com",
+      address: { addressCountry: "US", addressLocality: "San Francisco" },
+      contactPoint: {
+        contactType: "customer support",
+        email: "support@example.com",
+      },
+      email: "hello@example.com",
+      sameAs: ["https://github.com/example"],
+    });
+  });
+
+  it("uses one MCP discovery config for server-card, agent-card, and docs-skill", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Configured Product",
+    tagline: "Configured product summary.",
+  },
+  navigation: ["quickstart"],
+  agents: {
+    mcp: {
+      enabled: true,
+      endpoint: "/api/mcp",
+      serverInfo: { name: "configured-docs", version: "2.0.0" },
+      authentication: { required: true },
+    },
+  },
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+
+    const serverCard = JSON.parse(
+      await readFile(
+        path.join(outDir, ".well-known", "mcp", "server-card.json"),
+        "utf8"
+      )
+    ) as {
+      authentication: { required: boolean };
+      serverInfo: { name: string; version: string };
+      transport: { endpoint: string };
+    };
+    expect(serverCard.serverInfo).toEqual(
+      expect.objectContaining({ name: "configured-docs", version: "2.0.0" })
+    );
+    expect(serverCard.transport.endpoint).toBe("https://example.com/api/mcp");
+    expect(serverCard.authentication.required).toBe(true);
+
+    const agentCard = JSON.parse(
+      await readFile(
+        path.join(outDir, ".well-known", "agent-card.json"),
+        "utf8"
+      )
+    ) as { url: string };
+    expect(agentCard.url).toBe("https://example.com/api/mcp");
+
+    const skillMd = await readFile(
+      path.join(
+        outDir,
+        ".well-known",
+        "agent-skills",
+        "configured-product-docs",
+        "SKILL.md"
+      ),
+      "utf8"
+    );
+    expect(skillMd).toContain("https://example.com/api/mcp");
+  });
+
+  it("applies config flatteners to custom components during generate", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    // Temp dirs have no node_modules, so import the flattener factory by
+    // absolute source path; the `Symbol.for` phase tag works across module
+    // instances, so scheduling is unaffected.
+    const markdownEntry = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "markdown",
+      "index.ts"
+    );
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `import { defineComponentFlattener } from ${JSON.stringify(markdownEntry)};
+
+export default {
+  product: { name: "Flattener Product", tagline: "Custom flatteners." },
+  groups: [{ slug: "guide", title: "Guide" }],
+  flatteners: [
+    defineComponentFlattener({
+      name: "Regulation",
+      props: { region: "string" },
+      toMarkdown: ({ props, content, b }) =>
+        b.blockquote([\`**\${props.region}** \${content}\`]),
+    }),
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "compliance.mdx",
+      'title: "Compliance"\ndescription: "Rules."\ngroup: guide',
+      '<Regulation region="GDPR">Store consent first.</Regulation>'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "compliance.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("**GDPR** Store consent first.");
+    expect(markdown).not.toContain("<Regulation");
   });
 
   it("generates locale-scoped i18n artifacts while keeping default URLs stable", async () => {
@@ -338,7 +1027,7 @@ describe("leadtype CLI", () => {
       `export default {
   product: {
     name: "Localized Product",
-    summary: "Localized product summary.",
+    tagline: "Localized product summary.",
   },
   groups: [{ slug: "get-started", title: "Get Started" }],
   i18n: {
@@ -412,10 +1101,92 @@ describe("leadtype CLI", () => {
         path.join(outDir, "docs", "zh", "search-index.json"),
         "utf8"
       )
-    ) as { documents: [string, string, string, string][] };
+    ) as {
+      documents: [string, string, string, string][];
+      generatedAt: string;
+    };
     expect(zhSearch.documents.map((entry) => entry[3])).toEqual([
       "/docs/zh/quickstart",
     ]);
+    const zhReadability = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "zh", "agent-readability.json"),
+        "utf8"
+      )
+    ) as { generatedAt: string };
+    expect(zhSearch.generatedAt).toBe(zhReadability.generatedAt);
+  });
+
+  it("generates i18n projects whose navigation uses literal entries", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Localized Product",
+    tagline: "Localized product summary.",
+  },
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "zh"],
+  },
+  navigation: [
+    "index",
+    { title: "Guides", base: "guides", pages: [{ include: "*", pin: "setup" }] },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "index.mdx",
+      'title: "Home"\ndescription: "English home."',
+      "English home."
+    );
+    await writeMdxPage(
+      srcDir,
+      "guides/setup.mdx",
+      'title: "Setup"\ndescription: "English setup."',
+      "English setup."
+    );
+    await writeMdxPage(
+      srcDir,
+      "zh/index.mdx",
+      'title: "首页"\ndescription: "中文首页。"',
+      "中文首页。"
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // Literal nav entries name locale-stripped logical paths, so the per-
+    // locale validation pass resolves "index" against "zh/index.mdx" and the
+    // untranslated "guides/setup" against the default locale's page (the
+    // `fallback: "default"` re-selection). Matching on the locale-prefixed
+    // output path instead made every `navigation` + `i18n` project exit 1.
+    expect(code).toBe(0);
+
+    const defaultSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(defaultSummary).toContain("](/docs/index.md)");
+    expect(defaultSummary).toContain("](/docs/guides/setup.md)");
+
+    // The zh docs map lists real translations only — the untranslated guide
+    // is served by fallback, not advertised as Chinese content — and the pin
+    // it names simply has nothing to reorder there.
+    const zhSummary = await readFile(
+      path.join(outDir, "docs", "zh", "llms.txt"),
+      "utf8"
+    );
+    expect(zhSummary).toContain("首页");
+    expect(zhSummary).not.toContain("English setup");
   });
 
   it("lets --name and --summary override docs config product fields", async () => {
@@ -429,7 +1200,7 @@ describe("leadtype CLI", () => {
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [{ slug: "guides", title: "Guides" }],
 };`
@@ -461,7 +1232,9 @@ describe("leadtype CLI", () => {
     const result = JSON.parse(capture.stdout) as {
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "CLI Product",
       summary: "CLI summary.",
     });
@@ -495,7 +1268,9 @@ describe("leadtype CLI", () => {
       groups: Array<{ slug: string; title: string }>;
       product: { name: string; summary: string };
     };
-    expect(result.product).toEqual({
+    // `blocks` is derived from resolved navigation when `llms.sections`
+    // is absent, so identity is asserted without pinning the derived body.
+    expect(result.product).toMatchObject({
       name: "fallback-docs",
       summary: "Fallback docs summary.",
     });
@@ -515,7 +1290,7 @@ describe("leadtype CLI", () => {
       `export default {
   product: {
     name: "c15t",
-    summary: "Consent tooling docs.",
+    tagline: "Consent tooling docs.",
   },
   groups: [
     { slug: "guides", title: "Guides" },
@@ -719,7 +1494,7 @@ description: "First release."
       `export default {
   product: {
     name: "c15t",
-    summary: "Consent tooling docs.",
+    tagline: "Consent tooling docs.",
   },
   groups: [
     { slug: "guides", title: "Guides" },
@@ -814,6 +1589,404 @@ Initial release.
     );
   });
 
+  it("mounts a docs subdirectory from docs.config.ts", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "c15t",
+    tagline: "Consent tooling docs.",
+  },
+  navigation: [
+    { title: "Docs", pages: ["quickstart"] },
+    { title: "Changelog", base: "changelog", pages: ["v1"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "changelog", "v1.mdx"),
+      `---
+title: "Version 1"
+description: "First release."
+---
+
+# Version 1
+`
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://c15t.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      mounts: Array<{ pathPrefix: string; urlPrefix: string }>;
+    };
+    expect(result.mounts).toEqual([
+      { pathPrefix: "", urlPrefix: "/docs" },
+      { pathPrefix: "changelog", urlPrefix: "/changelog" },
+    ]);
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
+
+    const docsSummary = await readFile(
+      path.join(outDir, "docs", "llms.txt"),
+      "utf8"
+    );
+    expect(docsSummary).toContain("](/changelog/v1.md)");
+    expect(docsSummary).not.toContain("](/docs/changelog/v1.md)");
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(outDir, "docs", "agent-readability.json"),
+        "utf8"
+      )
+    ) as { pages: Array<{ markdownUrlPath: string; urlPath: string }> };
+    expect(manifest.pages).toContainEqual(
+      expect.objectContaining({
+        markdownUrlPath: "/changelog/v1.md",
+        urlPath: "/changelog/v1",
+      })
+    );
+  });
+
+  it("generates configured RSS and Atom feeds from mounted pages", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  navigation: [
+    { title: "Docs", pages: ["quickstart"] },
+    { title: "Changelog", base: "changelog", pages: ["v1", "v2", "draft"] },
+  ],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  feeds: [
+    {
+      id: "changelog",
+      title: "Feed Product Changelog",
+      description: "Release notes for Feed Product.",
+      source: { urlPrefix: "/changelog" },
+      formats: ["rss", "atom"],
+      output: {
+        rss: "/changelog/rss.xml",
+        atom: "/changelog/atom.xml",
+      },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/v1.mdx",
+      [
+        'title: "Version 1"',
+        'description: "First release."',
+        "date: 2026-06-01",
+      ].join("\n")
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/v2.mdx",
+      [
+        'title: "Version 2"',
+        'description: "Second release."',
+        "date: 2026-06-02",
+      ].join("\n")
+    );
+    await writeMdxPage(
+      srcDir,
+      "changelog/draft.mdx",
+      [
+        'title: "Draft release"',
+        'description: "Hidden release."',
+        "date: 2026-06-03",
+        "draft: true",
+      ].join("\n")
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const result = JSON.parse(capture.stdout) as {
+      files: { feeds?: Record<string, { rss?: string; atom?: string }> };
+    };
+    expect(result.files.feeds?.changelog).toEqual({
+      atom: path.join(outDir, "changelog", "atom.xml"),
+      rss: path.join(outDir, "changelog", "rss.xml"),
+    });
+
+    const rss = await readFile(
+      path.join(outDir, "changelog", "rss.xml"),
+      "utf8"
+    );
+    expect(rss).toContain("<rss");
+    expect(rss).toContain("https://example.com/changelog/v2");
+    expect(rss).toContain("https://example.com/changelog/v1");
+    expect(rss).not.toContain("Draft release");
+    expect(rss.indexOf("/changelog/v2")).toBeLessThan(
+      rss.indexOf("/changelog/v1")
+    );
+
+    const atom = await readFile(
+      path.join(outDir, "changelog", "atom.xml"),
+      "utf8"
+    );
+    expect(atom).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(atom).toContain("<name>Feed Product</name>");
+    expect(atom).toContain("<id>https://example.com/changelog/v2</id>");
+    expect(atom).not.toContain("Draft release");
+  });
+
+  it("rejects feed output paths that are not .xml or collide", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+
+    const writeFeedConfig = async (output: string) => {
+      await mkdir(path.join(srcDir, "docs"), { recursive: true });
+      await writeFile(
+        path.join(srcDir, "docs", "docs.config.ts"),
+        `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: ${output},
+};`
+      );
+    };
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    await writeFeedConfig(`[
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/quickstart.md" },
+    },
+  ]`);
+    let capture = createCapture();
+    let code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("must end with");
+
+    await writeFeedConfig(`[
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/feed.xml" },
+    },
+    {
+      id: "duplicate",
+      title: "Duplicate",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/feed.xml" },
+    },
+  ]`);
+    capture = createCapture();
+    code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--base-url",
+        "https://example.com",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("output paths must be unique");
+  });
+
+  it("requires --base-url or a deployment URL env var when feeds are configured", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: [
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+        capture.io
+      );
+
+      expect(code).toBe(1);
+      expect(capture.stderr).toContain(
+        "configured feeds require `baseUrl` in the docs config, --base-url, or a deployment URL env var"
+      );
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("generates configured feeds from env-derived base URLs", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+  product: {
+    name: "Feed Product",
+    tagline: "Feed-ready docs.",
+  },
+  groups: [{ slug: "guides", title: "Guides" }],
+  feeds: [
+    {
+      id: "guides",
+      title: "Guides",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides\ndate: 2026-06-01'
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      process.env.NEXT_PUBLIC_SITE_URL = "https://docs.example.com";
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      const rss = await readFile(path.join(outDir, "docs", "rss.xml"), "utf8");
+      expect(rss).toContain("https://docs.example.com/docs/quickstart");
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
   it("fails clearly when docs config is invalid", async () => {
     const srcDir = await createTempDir();
     const outDir = await createTempDir();
@@ -838,7 +2011,145 @@ Initial release.
     expect(code).toBe(1);
     const error = JSON.parse(capture.stderr) as { error: string };
     expect(error.error).toContain("failed to load docs config");
-    expect(error.error).toContain("product.name and product.summary");
+    expect(error.error).toContain("product.name and product.tagline");
+  });
+
+  it("accepts product and openapi-only docs config", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "openapi"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "openapi", "api.yaml"),
+      `
+openapi: 3.1.0
+info: { title: Acme API, version: 1.0.0 }
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      responses: { "200": { description: ok } }
+`
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        openapi: { input: "./openapi/api.yaml", output: "api" },
+      };`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "api", "index.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "api", "list-users.md"))).toBe(
+      true
+    );
+  });
+
+  it("accepts the identity-only config `leadtype init` scaffolds", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs", "guides"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+      };`
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "index.mdx"),
+      '---\ntitle: "Home"\ndescription: "Start here."\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "docs", "guides", "setup.mdx"),
+      '---\ntitle: "Setup"\ndescription: "Install it."\n---\n\nBody.\n'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // Navigation and the llms.txt body are derived, so identity is enough.
+    expect(code).toBe(0);
+    const llms = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llms).toContain("Best Starting Points");
+    expect(llms).toContain("/docs/guides/setup.md");
+  });
+
+  it("rejects unsupported organization contactPoint fields", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        organization: {
+          name: "Acme Inc",
+          contactPoint: { contactType: "sales", telphone: "+1-555-0100" },
+        },
+        groups: [{ slug: "guides", title: "Guides" }],
+      };`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      "organization.contactPoint.telphone is not a supported field"
+    );
+  });
+
+  it("rejects an empty organization address", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "docs.config.ts"),
+      `export default {
+        product: { name: "Acme", tagline: "Acme docs." },
+        organization: { name: "Acme Inc", address: {} },
+        groups: [{ slug: "guides", title: "Guides" }],
+      };`
+    );
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ngroup: guides'
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    const error = JSON.parse(capture.stderr) as { error: string };
+    expect(error.error).toContain(
+      "organization.address must include at least one field"
+    );
   });
 
   it("fails when a configured docs set references an unknown group", async () => {
@@ -852,7 +2163,7 @@ Initial release.
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [{ slug: "guides", title: "Guides" }],
 };`
@@ -886,7 +2197,7 @@ Initial release.
       `export default {
   product: {
     name: "Configured Product",
-    summary: "Configured product summary.",
+    tagline: "Configured product summary.",
   },
   groups: [{ slug: "guides", title: "Guides" }],
   typeTableStrict: true,
@@ -920,8 +2231,10 @@ Initial release.
         repoRoot,
         "--out",
         outDir,
+        "--base-url",
+        "https://example.com",
         "--include",
-        "build/**",
+        "pipeline/**",
         "--format",
         "json",
       ],
@@ -932,14 +2245,20 @@ Initial release.
     const result = JSON.parse(capture.stdout) as {
       filters: { include: string[] };
     };
-    expect(result.filters.include).toEqual(["build/**"]);
+    expect(result.filters.include).toEqual(["pipeline/**"]);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
+      existsSync(
+        path.join(outDir, "docs", "pipeline", "generate-static-artifacts.md")
+      )
     ).toBe(true);
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(false);
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(false);
+    expect(existsSync(path.join(outDir, "docs", "rest-api"))).toBe(false);
+    expect(capture.stderr).toContain("generate.openapi_skipped");
   });
 
   it("applies exclude path globs after includes", async () => {
@@ -953,20 +2272,24 @@ Initial release.
         repoRoot,
         "--out",
         outDir,
+        "--base-url",
+        "https://example.com",
         "--include",
-        "build/**",
+        "pipeline/**",
         "--exclude",
-        "build/build-a-docs-site.mdx",
+        "pipeline/build-a-docs-site.mdx",
       ],
       capture.io
     );
 
     expect(code).toBe(0);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "add-search.md"))
+      existsSync(
+        path.join(outDir, "docs", "pipeline", "generate-static-artifacts.md")
+      )
     ).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
     ).toBe(false);
   });
 
@@ -1000,9 +2323,9 @@ Initial release.
 
   it("treats a bare directory in --include as matching no MDX files", async () => {
     // tinyglobby expands bare directory names to `dir/**` by default; fast-glob
-    // didn't. With expandDirectories disabled at the call site, `--include build`
+    // didn't. With expandDirectories disabled at the call site, `--include pipeline`
     // should fail the same way `--include nope` does — not silently include
-    // every file under `docs/build/`.
+    // every file under `docs/pipeline/`.
     const outDir = await createTempDir();
     const capture = createCapture();
 
@@ -1014,7 +2337,7 @@ Initial release.
         "--out",
         outDir,
         "--include",
-        "build",
+        "pipeline",
         "--format",
         "json",
       ],
@@ -1027,7 +2350,7 @@ Initial release.
       filters: { include: string[] };
     };
     expect(error.error).toContain("No MDX files matched");
-    expect(error.filters.include).toEqual(["build"]);
+    expect(error.filters.include).toEqual(["pipeline"]);
   });
 
   it("rejects invalid generate formats as usage errors", async () => {
@@ -1067,13 +2390,24 @@ This page is valid, but the output path is not a directory.
     );
     await writeFile(outDir, "not a directory");
 
-    const beforeTempDirs = new Set(
-      await fg("leadtype-generate-*", {
+    // Source-mirror staging dirs only. `leadtype-generate-*` also matches the
+    // cross-process lock protocol's dirs (`…<hash>.lock` and its
+    // `.lock.reclaim-*` trash), which any concurrent generate run — or the
+    // generate-lock tests in a parallel vitest worker — creates and removes in
+    // the shared tmpdir. Snapshotting those makes this assertion flake on
+    // whatever happens to be in flight; they have their own lifecycle
+    // (release, dead-pid reclaim, stale sweep) and are not what this test is
+    // about.
+    const listMirrorDirs = async (): Promise<string[]> => {
+      const dirs = await fg("leadtype-generate-*", {
         absolute: true,
         cwd: tmpdir(),
         onlyDirectories: true,
-      })
-    );
+      });
+      return dirs.filter((dir) => !path.basename(dir).includes(".lock"));
+    };
+
+    const beforeTempDirs = new Set(await listMirrorDirs());
 
     const code = await runCli(
       [
@@ -1090,14 +2424,8 @@ This page is valid, but the output path is not a directory.
       capture.io
     );
 
-    const afterTempDirs = new Set(
-      await fg("leadtype-generate-*", {
-        absolute: true,
-        cwd: tmpdir(),
-        onlyDirectories: true,
-      })
-    );
-    const leakedTempDirs = [...afterTempDirs].filter(
+    const afterTempDirs = await listMirrorDirs();
+    const leakedTempDirs = afterTempDirs.filter(
       (dir) => !beforeTempDirs.has(dir)
     );
 
@@ -1135,13 +2463,13 @@ This page is valid, but the output path is not a directory.
 
     expect(code).toBe(0);
     const result = JSON.parse(capture.stdout) as {
-      files: { agentsMd?: string; docsSitemapXml?: string; llmsTxt?: string };
+      files: { agentsMd?: string; sitemapXml?: string; llmsTxt?: string };
       mode: string;
     };
     expect(result.mode).toBe("bundle");
     expect(result.files.agentsMd).toBe(path.join(outDir, "AGENTS.md"));
     expect(result.files.llmsTxt).toBeUndefined();
-    expect(result.files.docsSitemapXml).toBeUndefined();
+    expect(result.files.sitemapXml).toBeUndefined();
 
     // AGENTS.md exists, has the product header, and uses relative links.
     expect(existsSync(path.join(outDir, "AGENTS.md"))).toBe(true);
@@ -1156,17 +2484,86 @@ This page is valid, but the output path is not a directory.
     expect(existsSync(path.join(outDir, "docs", "llms-full.txt"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "sitemap.xml"))).toBe(false);
     expect(existsSync(path.join(outDir, "docs", "robots.txt"))).toBe(false);
+    // This repo's docs.config.ts enables agents.mcp, so package bundles include
+    // the URL-independent MCP retrieval artifacts without requiring --mcp.
     expect(existsSync(path.join(outDir, "docs", "search-index.json"))).toBe(
-      false
+      true
     );
     expect(existsSync(path.join(outDir, "docs", "search-content.json"))).toBe(
-      false
+      true
     );
-    // .md files should still ship.
-    expect(existsSync(path.join(outDir, "docs", "methodology.md"))).toBe(true);
     expect(
-      existsSync(path.join(outDir, "docs", "build", "build-a-docs-site.md"))
+      existsSync(path.join(outDir, "docs", "agent-readability.json"))
     ).toBe(true);
+    // .md files should still ship.
+    expect(
+      existsSync(path.join(outDir, "docs", "concepts", "methodology.md"))
+    ).toBe(true);
+    expect(
+      existsSync(path.join(outDir, "docs", "pipeline", "build-a-docs-site.md"))
+    ).toBe(true);
+  });
+
+  it("prints the root-pointer wiring snippet after a --bundle run", async () => {
+    const outDir = await createTempDir();
+    // The pointer must reference the installable npm name, taken from the
+    // output package's package.json — not the human --name.
+    await writeFile(
+      path.join(outDir, "package.json"),
+      JSON.stringify({ name: "acme" })
+    );
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--name",
+        "Acme Toolkit",
+        "--summary",
+        "Bundled docs for acme.",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("node_modules/acme/AGENTS.md");
+    expect(capture.stdout).toContain("read the bundled docs");
+    expect(capture.stdout).toContain(
+      "https://leadtype.dev/docs/package-docs/bundle"
+    );
+  });
+
+  it("keeps stdout clean (no wiring snippet) for --bundle --json", async () => {
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        repoRoot,
+        "--out",
+        outDir,
+        "--name",
+        "leadtype",
+        "--summary",
+        "Bundled docs for leadtype.",
+        "--format",
+        "json",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stdout).not.toContain("node_modules/");
+    // stdout must still parse as a single JSON document.
+    expect(() => JSON.parse(capture.stdout)).not.toThrow();
   });
 
   it("fails clearly when the docs source directory is missing", async () => {
@@ -1180,5 +2577,1033 @@ This page is valid, but the output path is not a directory.
 
     expect(code).toBe(1);
     expect(capture.stderr).toContain("docs directory not found");
+  });
+
+  it("generates from leadtype.config.ts collections (local-only)", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    // Two local collections: `guide` at /docs and `changelog` at /changelog.
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\ndescription: "Guide intro."\n---\n\n# Intro\n\nBody.\n'
+    );
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "changelog", "v1.mdx"),
+      '---\ntitle: "v1"\ndescription: "First release."\n---\n\n# v1\n\nNotes.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Collections Product", tagline: "Multi-collection demo." },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs" },
+    changelog: { dir: "./changelog", prefix: "/changelog" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "intro.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
+
+    const llmsTxt = await readFile(path.join(outDir, "llms.txt"), "utf8");
+    expect(llmsTxt).toContain("# Collections Product");
+  });
+
+  it("applies a single default collection's exclude when generating", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(srcDir, "index.mdx", 'title: "Home"');
+    await writeMdxPage(srcDir, "drafts/wip.mdx", 'title: "WIP"');
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Filtered Product", tagline: "Single collection." },
+  collections: {
+    docs: { dir: "docs", routePrefix: "/docs", exclude: ["drafts/**"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--format", "json"],
+      capture.io
+    );
+
+    // A single default `docs` collection is the one shape that used to skip
+    // staging and serve the directory in place — which applied no filter, so
+    // this exact config's `exclude` did nothing and the draft shipped. The
+    // collection's filters must stage a filtered mirror here like they do in
+    // every other shape.
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "index.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "drafts", "wip.md"))).toBe(
+      false
+    );
+  });
+
+  it("inherits source-owned navigation, groups, and flatteners after sync", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/docs.config.ts": `import { defineComponentFlattener } from ${JSON.stringify(markdownEntry)};
+
+export default {
+  navigation: [{ title: "Source Navigation", base: "", pages: [""] }],
+  groups: [{ slug: "source", title: "Source Group" }],
+  mounts: [{ pathPrefix: "changelog", urlPrefix: "/changelog" }],
+  flatteners: [
+    defineComponentFlattener({
+      name: "RemoteNote",
+      toMarkdown: ({ content }) => \`Remote note: \${content}\`,
+    }),
+  ],
+};`,
+      "docs/index.mdx":
+        '---\ntitle: "Remote Intro"\ngroup: source\n---\n\n<RemoteNote>Inherited flattener.</RemoteNote>\n',
+      "docs/changelog/v1.mdx":
+        '---\ntitle: "v1"\ndescription: "First release."\n---\n\nNotes.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "Remote Product", tagline: "Synced docs." },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    },
+  },
+};`
+    );
+
+    const syncCode = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(syncCode).toBe(0);
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Remote note: Inherited flattener.");
+    expect(existsSync(path.join(outDir, "changelog", "v1.md"))).toBe(true);
+    const manifest = await readFile(
+      path.join(outDir, "docs", "agent-readability.json"),
+      "utf8"
+    );
+    expect(manifest).toContain("Source Navigation");
+    expect(manifest).toContain('"urlPath": "/changelog/v1"');
+
+    const offlineOutDir = await createTempDir();
+    const offlineCapture = createCapture();
+    const offlineCode = await runCli(
+      ["generate", "--src", srcDir, "--out", offlineOutDir, "--offline"],
+      offlineCapture.io
+    );
+    expect(offlineCode).toBe(0);
+    expect(existsSync(path.join(offlineOutDir, "docs", "index.md"))).toBe(true);
+    expect(existsSync(path.join(offlineOutDir, "changelog", "v1.md"))).toBe(
+      true
+    );
+  });
+
+  it("loads sourceConfig.path relative to the collection dir", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/config/source-docs.config.ts": `export default {
+  navigation: [{ title: "Explicit Source Config", base: "", pages: [""] }],
+};`,
+      "docs/index.mdx": '---\ntitle: "Explicit Path"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: { path: "config/source-docs.config.ts" },
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    const manifest = await readFile(
+      path.join(outDir, "docs", "agent-readability.json"),
+      "utf8"
+    );
+    expect(manifest).toContain("Explicit Source Config");
+  });
+
+  it("keeps explicit UI collection fields ahead of inherited source config", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/docs.config.ts": `export default {
+  navigation: [{ title: "Source Navigation", base: "", pages: [""] }],
+  groups: [{ slug: "source", title: "Source Group" }],
+};`,
+      "docs/index.mdx": '---\ntitle: "Override"\ngroup: ui\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+      navigation: [{ title: "UI Navigation", base: "", pages: [""] }],
+      groups: [{ slug: "ui", title: "UI Group" }],
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    const manifest = await readFile(
+      path.join(outDir, "docs", "agent-readability.json"),
+      "utf8"
+    );
+    expect(manifest).toContain("UI Navigation");
+    expect(manifest).not.toContain("Source Navigation");
+  });
+
+  it("fails clearly when inheritConfig is enabled and no source config exists", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Missing Config"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(1);
+    // Authored with the legacy names, so the run still works — but diagnostics
+    // speak the canonical vocabulary, and the load warns once about the rename.
+    expect(capture.stderr).toContain(
+      'collection "docs" inheritConfig is enabled'
+    );
+    expect(capture.stderr).toContain("docs.config.ts");
+    expect(capture.stderr).toContain(
+      "collections.docs.sourceConfig → collections.docs.inheritConfig"
+    );
+    expect(capture.stderr).toContain(
+      "collections.docs.prefix → collections.docs.routePrefix"
+    );
+  });
+
+  it("clones once for a gitSource group and mounts every child collection", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Docs"\n---\n\nDocs body.\n',
+      "changelog/1-0.mdx": '---\ntitle: "1.0"\n---\n\nRelease body.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import { gitSource } from ${JSON.stringify(leadtypeEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  sources: {
+    upstream: gitSource({
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/upstream",
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog" },
+      },
+    }),
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    // Acquisition is declared once; both collections stage from the one clone.
+    expect(existsSync(path.join(srcDir, ".leadtype", "upstream", ".git"))).toBe(
+      true
+    );
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Docs body.");
+    expect(
+      await readFile(path.join(outDir, "docs", "changelog", "1-0.md"), "utf8")
+    ).toContain("Release body.");
+  });
+
+  it("names the dependent collections when a source cannot be acquired", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import { gitSource } from ${JSON.stringify(leadtypeEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  sources: {
+    upstream: gitSource({
+      repository: "https://example.invalid/missing.git",
+      collections: {
+        docs: { dir: "docs", routePrefix: "/docs" },
+        changelog: { dir: "changelog", routePrefix: "/changelog" },
+      },
+    }),
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    // One failed clone must name everything that depended on it, not just the
+    // collection that happened to be resolved first.
+    expect(capture.stderr).toContain("docs");
+    expect(capture.stderr).toContain("changelog");
+  });
+
+  it("runs a collections config authored entirely in canonical field names", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/index.mdx": '---\ntitle: "Canonical"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      routePrefix: "/docs",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+    // A clean config prints no migration noise at all.
+    expect(capture.stderr).not.toContain("deprecated");
+    expect(
+      await readFile(path.join(outDir, "docs", "index.md"), "utf8")
+    ).toContain("Canonical");
+  });
+
+  it("uses inherited frontmatterSchema as the collection schema", async () => {
+    const sourceRepo = await createGitDocsSource({
+      "docs/docs.config.ts": `import * as v from ${JSON.stringify(valibotEntry)};
+
+export default {
+  navigation: [{ title: "Schema Source", base: "", pages: [""] }],
+  frontmatterSchema: v.object({
+    title: v.string(),
+    sdkVersion: v.string(),
+  }),
+};`,
+      "docs/index.mdx": '---\ntitle: "Schema Missing"\n---\n\nBody.\n',
+    });
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      repository: ${JSON.stringify(sourceRepo)},
+      ref: "main",
+      cacheDir: ".leadtype/source",
+      dir: "docs",
+      prefix: "/docs",
+      sourceConfig: true,
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync"],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("Invalid frontmatter");
+    expect(capture.stderr).toContain("sdkVersion");
+  });
+
+  it("does not apply a root collection schema to sibling collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "index.mdx"),
+      '---\ntitle: "SDK Docs"\nsdkVersion: "1.0.0"\n---\n\nBody.\n'
+    );
+    await mkdir(path.join(srcDir, "api"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "api", "index.mdx"),
+      '---\ntitle: "API Docs"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `import * as v from ${JSON.stringify(valibotEntry)};
+
+export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    docs: {
+      dir: "./docs",
+      prefix: "/docs",
+      schema: v.object({
+        title: v.string(),
+        sdkVersion: v.string(),
+      }),
+    },
+    api: {
+      dir: "./api",
+      prefix: "/api",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "api", "index.md"))).toBe(true);
+  });
+
+  it("rejects --docs-dir when leadtype.config.ts defines collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--docs-dir", "guide"],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain("cannot pass --docs-dir");
+    expect(capture.stderr).toContain("collections");
+  });
+
+  it("rejects --sync + --refresh together", async () => {
+    const capture = createCapture();
+    const code = await runCli(["generate", "--sync", "--refresh"], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("mutually exclusive");
+  });
+
+  it("rejects --sync + --offline together", async () => {
+    const capture = createCapture();
+    const code = await runCli(["generate", "--sync", "--offline"], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("mutually exclusive");
+  });
+
+  it("rejects a config that sets both groups and collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  groups: [{ slug: "g", title: "G" }],
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('sets both "groups" and "collections"');
+  });
+
+  it("leadtype sync errors when no leadtype.config.ts is present", async () => {
+    const srcDir = await createTempDir();
+    const capture = createCapture();
+
+    const code = await runCli(["sync", "--src", srcDir], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("no leadtype.config");
+  });
+
+  it("leadtype sync errors when the config has no collections", async () => {
+    const srcDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  groups: [{ slug: "g", title: "G" }],
+};`
+    );
+
+    const code = await runCli(["sync", "--src", srcDir], capture.io);
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain("no `collections` to sync");
+  });
+
+  it("leadtype sync reports 'no remote sources' for local-only collections", async () => {
+    const srcDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(["sync", "--src", srcDir], capture.io);
+    expect(code).toBe(0);
+    expect(capture.stdout).toContain("No remote sources to sync");
+  });
+
+  it("collection.include narrows which MDX files ship", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "guide", "draft.mdx"),
+      '---\ntitle: "Draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", include: ["intro.mdx"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "intro.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "draft.md"))).toBe(false);
+  });
+
+  it("collection.exclude drops matching MDX while keeping the rest", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "guide", "draft.mdx"),
+      '---\ntitle: "Draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", exclude: ["draft.mdx"] },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(0);
+    expect(existsSync(path.join(outDir, "docs", "intro.md"))).toBe(true);
+    expect(existsSync(path.join(outDir, "docs", "draft.md"))).toBe(false);
+  });
+
+  it("per-collection filters don't bleed across collections", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await mkdir(path.join(srcDir, "changelog"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "guide", "draft.mdx"),
+      '---\ntitle: "Draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "changelog", "draft.mdx"),
+      '---\ntitle: "Changelog draft"\n---\n\nDraft body.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", exclude: ["draft.mdx"] },
+    changelog: { dir: "./changelog", prefix: "/changelog" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(0);
+    // Guide's draft is excluded by its own filter.
+    expect(existsSync(path.join(outDir, "docs", "draft.md"))).toBe(false);
+    // Changelog's draft is NOT affected by the guide collection's exclude.
+    expect(existsSync(path.join(outDir, "changelog", "draft.md"))).toBe(true);
+  });
+
+  it("rejects collection.include that isn't an array of strings", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    guide: { dir: "./guide", prefix: "/docs", include: "not-an-array" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain(
+      "include must be an array of glob strings"
+    );
+  });
+
+  it("treats `--sync --sync` as a single --sync, not a mutex violation", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--sync", "--sync"],
+      capture.io
+    );
+    expect(code).toBe(0);
+  });
+
+  it("rejects a collection repository that begins with `-`", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    guide: { repository: "--upload-pack=evil", dir: "docs", prefix: "/docs" },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('repository must not begin with "-"');
+  });
+
+  it("rejects a collection ref that begins with `-`", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await mkdir(path.join(srcDir, "guide"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: {
+    guide: {
+      repository: "https://github.com/example/repo",
+      ref: "--foo",
+      dir: "docs",
+      prefix: "/docs",
+    },
+  },
+};`
+    );
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain('ref must not begin with "-"');
+  });
+
+  it("lint --src honors the explicit project root when looking for leadtype.config.ts", async () => {
+    const monorepoRoot = await createTempDir();
+    const packageRoot = path.join(monorepoRoot, "packages", "foo");
+    await mkdir(path.join(packageRoot, "guide"), { recursive: true });
+    await writeFile(
+      path.join(packageRoot, "guide", "intro.mdx"),
+      '---\ntitle: "Intro"\n---\n\nBody.\n'
+    );
+    await writeFile(
+      path.join(packageRoot, "leadtype.config.ts"),
+      `export default {
+  product: { name: "P", tagline: "S" },
+  collections: { guide: { dir: "./guide", prefix: "/docs" } },
+};`
+    );
+
+    const capture = createCapture();
+    const code = await runCli(["lint", "--src", packageRoot], capture.io);
+
+    expect(code).toBe(0);
+    // The collection banner proves we routed through the project config.
+    expect(capture.stderr).toContain("Linting collection [guide]");
+  });
+});
+
+describe("config-owned baseUrl", () => {
+  async function baseUrlFixture(configBody: string): Promise<{
+    srcDir: string;
+    outDir: string;
+  }> {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    await mkdir(path.join(srcDir, "docs"), { recursive: true });
+    await writeFile(path.join(srcDir, "docs", "docs.config.ts"), configBody);
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."'
+    );
+    return { srcDir, outDir };
+  }
+
+  const configWithBaseUrl = `export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+  baseUrl: "https://config.acme.dev/",
+};`;
+
+  it("uses the config's baseUrl for site artifacts, normalized", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(configWithBaseUrl);
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const sitemap = await readFile(path.join(outDir, "sitemap.xml"), "utf8");
+    expect(sitemap).toContain("https://config.acme.dev/docs/quickstart");
+    expect(sitemap).not.toContain("acme.dev//");
+  });
+
+  it("lets --base-url override the config field", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(configWithBaseUrl);
+    const capture = createCapture();
+
+    const code = await runCli(
+      [
+        "generate",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        // Trailing slash on purpose: the flag now runs through the authored
+        // base-URL validator, and values it previously tolerated must keep
+        // working, normalized.
+        "--base-url",
+        "https://preview.acme.dev/",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const sitemap = await readFile(path.join(outDir, "sitemap.xml"), "utf8");
+    expect(sitemap).toContain("https://preview.acme.dev/docs/quickstart");
+    expect(sitemap).not.toContain("acme.dev//");
+    expect(sitemap).not.toContain("https://config.acme.dev");
+  });
+
+  it("rejects an invalid --base-url as a usage error", async () => {
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--base-url", "acme.dev"],
+      capture.io
+    );
+
+    // The flag feeds URL joins directly — same rules as the config field,
+    // failing at parse time before any source is read or file is written.
+    expect(code).toBe(2);
+    expect(capture.stderr).toContain(
+      '--base-url "acme.dev" is not an absolute URL'
+    );
+  });
+
+  it("satisfies configured feeds without repeating --base-url", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(`export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+  baseUrl: "https://config.acme.dev",
+  feeds: [
+    {
+      id: "docs",
+      title: "Docs",
+      source: { urlPrefix: "/docs" },
+      formats: ["rss"],
+      output: { rss: "/docs/rss.xml" },
+    },
+  ],
+};`);
+    // Feeds only list dated pages.
+    await writeMdxPage(
+      srcDir,
+      "quickstart.mdx",
+      'title: "Quickstart"\ndescription: "Start here."\ndate: 2026-06-01'
+    );
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      const rss = await readFile(path.join(outDir, "docs", "rss.xml"), "utf8");
+      expect(rss).toContain("https://config.acme.dev/docs/quickstart");
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("rejects an invalid config baseUrl with the field named", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(`export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+  baseUrl: "not-a-url",
+};`);
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code).toBe(1);
+    expect(capture.stderr).toContain(
+      'baseUrl "not-a-url" is not an absolute URL'
+    );
+  });
+
+  it("--explain reports the fallback when no baseUrl is set anywhere", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(`export default {
+  product: { name: "Configured", tagline: "Configured docs." },
+};`);
+    const capture = createCapture();
+    const previousBaseUrlEnv = BASE_URL_ENV_KEYS.map(
+      (key) => [key, process.env[key]] as const
+    );
+
+    try {
+      for (const key of BASE_URL_ENV_KEYS) {
+        delete process.env[key];
+      }
+      const code = await runCli(
+        ["generate", "--src", srcDir, "--out", outDir, "--explain"],
+        capture.io
+      );
+
+      expect(code).toBe(0);
+      expect(capture.stdout).toContain("baseUrl");
+      expect(capture.stdout).toContain("deployment URL env vars");
+      expect(capture.stdout).toContain(
+        "Set `baseUrl` in the docs config, or pass --base-url."
+      );
+    } finally {
+      for (const [key, value] of previousBaseUrlEnv) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it("--explain stays quiet about baseUrl when the config authors it", async () => {
+    const { srcDir, outDir } = await baseUrlFixture(configWithBaseUrl);
+    const capture = createCapture();
+
+    const code = await runCli(
+      ["generate", "--src", srcDir, "--out", outDir, "--explain"],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    expect(capture.stdout).not.toContain("deployment URL env vars");
   });
 });

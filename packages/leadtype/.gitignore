@@ -3,8 +3,14 @@
 # and writes AGENTS.md plus converted markdown into this package. These files
 # ship in the published tarball; nothing in them is committed.
 /AGENTS.md
+/SKILL.md
 /docs/
 # Root-level byproducts of the llm helper. Not published (not in package.json
 # `files`); just regenerated alongside the docs/ output.
 /llms.txt
 /llms-full.txt
+/robots.txt
+/sitemap.md
+/sitemap.xml
+/.well-known/
+/rollup.config-*.mjs

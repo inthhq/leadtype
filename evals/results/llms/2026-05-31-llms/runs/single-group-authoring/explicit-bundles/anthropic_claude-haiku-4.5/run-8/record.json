@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that group drives sidebar navigation, llms.txt sections, search metadata, and AGENTS.md grouping. It clearly states that /llms-full.txt is a monolithic, ungrouped bundle of all docs, not split per group. It names at least two valid optional frontmatter fields (deprecated and tags), meeting all required rubric points without error.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3225,
+  "outputTokens": 197,
+  "durationMs": 12969,
+  "steps": 5,
+  "errors": []
+}

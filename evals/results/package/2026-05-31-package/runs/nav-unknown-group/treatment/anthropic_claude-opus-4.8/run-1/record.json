@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated source driving sidebar and agent map, describes group as legacy for fallback/taxonomy, and states that unknown group slug causes a build failure with an explicit error. All rubric requirements are fully met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 11537,
+  "outputTokens": 412,
+  "durationMs": 32764,
+  "steps": 4,
+  "errors": []
+}

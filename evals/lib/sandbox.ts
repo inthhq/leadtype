@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { glob } from "tinyglobby";
 import type { Mode } from "./transcript";
 
 const evalsRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -29,11 +30,68 @@ export type SandboxHandle = {
   cleanup: () => Promise<void>;
 };
 
+// Every package sandbox needs the same installed `node_modules/leadtype` (the
+// fixtures declare no other deps). Installing it 480× dominates wall-clock, so
+// install once into a template and copy-on-write clone it per sandbox.
+// Memoized as a promise so concurrent callers share a single install.
+let templatePromise: Promise<string> | undefined;
+
 /**
- * Create a tempdir, copy the fixture's starter files in (PROMPT.md and
- * EVAL.ts are excluded — they belong to the harness, not the agent's
- * project), `npm install` the leadtype tarball, and (in control mode)
- * strip the bundled docs the agent would otherwise discover.
+ * Kick off the one-time template install before the run pool starts, so the
+ * first concurrent batch of sandboxes doesn't all block on it. Best-effort:
+ * if it fails, createSandbox falls back to a per-sandbox install. No-op once
+ * the template promise is memoized.
+ */
+export async function warmTemplate(): Promise<void> {
+  try {
+    await prepareTemplate();
+  } catch {
+    // createSandbox handles the real failure path with a direct install.
+  }
+}
+
+function prepareTemplate(): Promise<string> {
+  if (!templatePromise) {
+    templatePromise = (async () => {
+      const tarball = findLeadtypeTarball();
+      const dir = await mkdtemp(path.join(tmpdir(), "leadtype-template-"));
+      await npmInstall(dir, tarball);
+      return dir;
+    })();
+  }
+  return templatePromise;
+}
+
+function cloneNodeModules(templateDir: string, tempDir: string): Promise<void> {
+  const src = path.join(templateDir, "node_modules");
+  const dest = path.join(tempDir, "node_modules");
+  // macOS APFS clonefile (`-c`) is a near-instant copy-on-write; elsewhere fall
+  // back to a plain recursive copy. Either way, deletes in the clone (control
+  // mode) don't touch the template.
+  const args =
+    process.platform === "darwin" ? ["-cR", src, dest] : ["-R", src, dest];
+  return new Promise<void>((resolveCp, rejectCp) => {
+    const proc = spawn("cp", args);
+    let stderr = "";
+    proc.stderr.on("data", (b) => {
+      stderr += b.toString();
+    });
+    proc.on("error", rejectCp);
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolveCp();
+      } else {
+        rejectCp(new Error(`cp node_modules exited ${code}\n${stderr}`));
+      }
+    });
+  });
+}
+
+/**
+ * Create a tempdir, copy the fixture's starter files in (PROMPT/EVAL/RUBRIC are
+ * excluded — they belong to the harness, and RUBRIC.md would leak the answer),
+ * provision `node_modules/leadtype`, and (in control mode) strip the bundled
+ * docs the agent would otherwise discover.
  */
 export async function createSandbox(options: {
   fixtureDir: string;
@@ -47,7 +105,9 @@ export async function createSandbox(options: {
       recursive: true,
       filter: (src) => {
         const base = path.basename(src);
-        return base !== "PROMPT.md" && base !== "EVAL.ts";
+        return (
+          base !== "PROMPT.md" && base !== "EVAL.ts" && base !== "RUBRIC.md"
+        );
       },
     });
   } catch (err) {
@@ -58,17 +118,43 @@ export async function createSandbox(options: {
     );
   }
 
-  const tarball = findLeadtypeTarball();
-  await npmInstall(tempDir, tarball);
+  // `bare` baseline: leadtype is never installed, so the agent has nothing to
+  // read and must answer from prior knowledge. The fixture's package.json still
+  // declares the dep (a realistic "depends on leadtype but not consulted"
+  // project); node_modules is simply absent. Skip the install entirely.
+  if (mode !== "bare") {
+    // Clone the prepared install; fall back to a direct install if cloning
+    // fails (e.g. clonefile unsupported on the volume).
+    try {
+      const templateDir = await prepareTemplate();
+      await cloneNodeModules(templateDir, tempDir);
+    } catch {
+      await npmInstall(tempDir, findLeadtypeTarball());
+    }
+  }
 
   if (mode === "control") {
-    await rm(path.join(tempDir, "node_modules", "leadtype", "AGENTS.md"), {
-      force: true,
-    });
-    await rm(path.join(tempDir, "node_modules", "leadtype", "docs"), {
-      force: true,
-      recursive: true,
-    });
+    const pkgRoot = path.join(tempDir, "node_modules", "leadtype");
+    await rm(path.join(pkgRoot, "AGENTS.md"), { force: true });
+    await rm(path.join(pkgRoot, "docs"), { force: true, recursive: true });
+    // Source maps embed the full original TypeScript source and comments — a
+    // back door to the same prose that lives in the bundled docs. A package
+    // that simply doesn't ship agent docs wouldn't hand the agent its
+    // commented source either, so strip them to keep "control" honest. The
+    // compiled JS (with --help strings) and .d.ts types stay: those are real
+    // package contents an agent legitimately has.
+    const maps = await glob("dist/**/*.map", { cwd: pkgRoot, absolute: true });
+    await Promise.all(maps.map((mapFile) => rm(mapFile, { force: true })));
+  }
+
+  if (mode === "pointer") {
+    // leadtype's *recommended* consumer setup: a root AGENTS.md that points
+    // coding agents at the bundled, version-matched docs. The `treatment` arm
+    // tests organic discovery (no pointer); this arm tests the documented happy
+    // path. The pointer names only the entry file — not any behavior — so it
+    // doesn't leak an answer, it just removes the "did the agent think to look
+    // in node_modules" step. (Verbatim from packages/leadtype/README.md.)
+    await writeRootPointer(tempDir);
   }
 
   return {
@@ -77,6 +163,22 @@ export async function createSandbox(options: {
       await rm(tempDir, { recursive: true, force: true });
     },
   };
+}
+
+// The pointer snippet leadtype's README tells consumers to add to their root
+// AGENTS.md. Kept in sync with packages/leadtype/README.md.
+const ROOT_POINTER = `When working with the \`leadtype\` library, read
+\`node_modules/leadtype/AGENTS.md\` first — it points at version-matched
+markdown topic files.
+`;
+
+async function writeRootPointer(tempDir: string): Promise<void> {
+  const target = path.join(tempDir, "AGENTS.md");
+  // Don't clobber a fixture that already ships its own root AGENTS.md.
+  if (existsSync(target)) {
+    return;
+  }
+  await writeFile(target, ROOT_POINTER, "utf-8");
 }
 
 function npmInstall(tempDir: string, tarball: string): Promise<void> {

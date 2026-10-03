@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent’s paragraph names `author`, `created`, and `updated` instead of the required `lastModified` and `lastAuthor`, failing to identify the correct frontmatter fields. It does correctly state that these fields are added to frontmatter and sourced from git metadata, but the invented field names make the answer incorrect per the rubric. Therefore, the required points are not fully satisfied.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 2879,
+  "outputTokens": 73,
+  "durationMs": 15227,
+  "steps": 10,
+  "errors": []
+}

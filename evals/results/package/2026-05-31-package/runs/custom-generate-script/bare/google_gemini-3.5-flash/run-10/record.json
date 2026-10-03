@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent did not write scripts/build-docs.ts; it only produced package.json and scripts/inspect.js, which are unrelated to the task. No leadtype API calls, conversion, or artifact generation were performed, so none of the required rubric points are satisfied.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 59095,
+  "outputTokens": 323,
+  "durationMs": 148188,
+  "steps": 50,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static BM25 index without a database and emphasizes keeping the lexical index alongside any embeddings (complementary). However, it fails to include one of the two required specific conditions for adding embeddings: a very large corpus (≈ tens of thousands of chunks). The list of conditions it gives (semantic gap, multi-lingual, long-form queries) is incomplete; the omission makes the answer incorrect per the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 151458,
+  "outputTokens": 7387,
+  "durationMs": 53334,
+  "steps": 16,
+  "errors": []
+}

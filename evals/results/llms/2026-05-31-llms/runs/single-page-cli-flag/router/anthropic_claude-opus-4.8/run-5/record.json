@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly notes that --json prints a JSON object containing paths and names required fields like llmsTxt, docsLlmsTxt, and llmsFullTxt. However, it invents field names (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', and separate 'sitemapXml'/'sitemapMd' keys) that are not part of the actual result shape described in the ground truth. This violates the rubric's 'incorrect if' clause, making the overall answer incorrect despite having partial correctness.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3794,
+  "outputTokens": 287,
+  "durationMs": 21268,
+  "steps": 6,
+  "errors": []
+}

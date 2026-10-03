@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that `--json` prints a JSON object containing paths for generated artifacts, satisfying the first required point. It explicitly names `llmsFullTxt`, `docsLlmsTxt`, and `llmsTxt`, satisfying the second required point. It does not describe human-readable output or invent wholly unrelated fields. The only minor inaccuracy is using `agentReadabilityJson` instead of the ground truth's `agentReadabilityManifest`, which slightly reduces completeness but does not violate any required rubric point. Overall, the response is correct and fairly comprehensive.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3365,
+  "outputTokens": 299,
+  "durationMs": 18196,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The invocation uses `--docs-dir changelog=/changelog` (the correct mount syntax) and repeats `--docs-dir`. It states the canonical URL as `/changelog/v1.md` (not under `/docs`). It describes the static mirror at `public/changelog/v1.md` and notes the internal copy at `public/docs/changelog/v1.md` for search. All required points are satisfied, and no incorrect flags or omissions are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 206472,
+  "outputTokens": 5091,
+  "durationMs": 64664,
+  "steps": 13,
+  "errors": []
+}

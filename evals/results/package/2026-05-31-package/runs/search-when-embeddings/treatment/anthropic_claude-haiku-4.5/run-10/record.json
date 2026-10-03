@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes leadtype’s default static lexical BM25 index with no database. It also correctly states that the lexical index should be kept for exact matches and that embeddings are complementary. However, the specific conditions for adding embeddings are misrepresented: the rubric says they are warranted when vocabulary mismatch OR a very large corpus occurs, but the response says 'Only add embeddings if both conditions are true.' This error is stated confidently, causing the answer to fail the required point about giving the correct specific conditions.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 9978,
+  "outputTokens": 315,
+  "durationMs": 22594,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response acknowledges llms.txt as a website artifact and AGENTS.md as package-contained, but fails to mention the critical technical details: llms.txt uses absolute URLs (making it wrong inside a tarball because nothing looks for it in node_modules) and AGENTS.md works offline thanks to relative links. It also omits that --bundle skips llms-full.txt, only naming llms.txt and robots.txt. These omissions cause it to fall short of the required rubric points.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 3415,
+  "outputTokens": 182,
+  "durationMs": 21060,
+  "steps": 10,
+  "errors": []
+}

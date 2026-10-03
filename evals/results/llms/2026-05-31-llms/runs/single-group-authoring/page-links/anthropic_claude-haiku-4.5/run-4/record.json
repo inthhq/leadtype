@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "page-links",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains how `group` controls navigation and llms.txt sections, and accurately describes `/llms-full.txt` as a monolithic file not split per group. However, it incorrectly lists `description` as an optional frontmatter field, which is not in the schema. It does name several valid optional fields elsewhere, so the main points are mostly met. The error is stated confidently, making it a confident wrong answer.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3072,
+  "outputTokens": 246,
+  "durationMs": 11003,
+  "steps": 4,
+  "errors": []
+}

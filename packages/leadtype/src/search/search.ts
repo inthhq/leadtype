@@ -1,5 +1,15 @@
 import type { LocalizedDocsMetadata } from "../i18n";
-import { slugifyDocsHeading } from "../internal/docs-heading";
+import {
+  createDocsHeadingSlugger,
+  scanDocsMarkdown,
+} from "../internal/docs-heading";
+import { editDistanceWithin } from "../internal/edit-distance";
+import {
+  type DocsFrontmatter,
+  type DocsSearchChunkInput,
+  type DocsTransformerOptions,
+  runTransformersSync,
+} from "../transformers";
 
 const DEFAULT_MAX_CHUNK_CHARS = 1200;
 const DEFAULT_OVERLAP_CHARS = 160;
@@ -9,7 +19,7 @@ const DEFAULT_ASK_MAX_QUERY_CHARS = 600;
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_MAX_SOURCES = 6;
 const DEFAULT_MAX_CONTEXT_CHARS = 12_000;
-const SEARCH_INDEX_VERSION = 2;
+export const DOCS_SEARCH_INDEX_VERSION = 3;
 const TITLE_WEIGHT = 4;
 const HEADING_WEIGHT = 2;
 const BODY_WEIGHT = 1;
@@ -26,15 +36,16 @@ const PROXIMITY_MATCH_BOOST = 0.8;
 const MAX_PREFIX_EXPANSIONS = 24;
 const MAX_TYPO_EXPANSIONS = 16;
 const PROXIMITY_WINDOW = 8;
-const FRONTMATTER_PATTERN = /^---\s*\n[\s\S]*?\n---\s*\n?/;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
-const FENCE_PATTERN = /^```/;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 const MARKDOWN_INLINE_PATTERN = /[`*_~>#:[\](){}|]/g;
 const WHITESPACE_PATTERN = /\s+/g;
+// Tokenizer behavior is serialized into chunk lengths and postings. Changes
+// to word matching, normalization, stopwords, or token filtering must bump
+// DOCS_SEARCH_INDEX_VERSION so older artifacts fail with a version mismatch.
 const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
 
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
+const SHARED_ROUTE_SEGMENTS = new Set(["shared", "_shared"]);
 const DOCUMENT_ID = 0;
 const DOCUMENT_TITLE = 1;
 const DOCUMENT_DESCRIPTION = 2;
@@ -111,6 +122,7 @@ export type DocsSearchDocument = LocalizedDocsMetadata & {
   urlPath: string;
   absoluteUrl: string;
   relativePath: string;
+  frontmatter?: DocsFrontmatter;
   content: string;
 };
 
@@ -171,9 +183,10 @@ export type DocsSearchPosting = [
 ];
 
 export type DocsSearchContentStore = {
-  version: typeof SEARCH_INDEX_VERSION;
+  version: typeof DOCS_SEARCH_INDEX_VERSION;
   generatedAt: string;
   chunks: string[];
+  codeChunks: string[];
 };
 
 export type DocsContentFile = DocsSearchDocumentRecord & {
@@ -182,7 +195,7 @@ export type DocsContentFile = DocsSearchDocumentRecord & {
 };
 
 export type DocsSearchIndex = {
-  version: typeof SEARCH_INDEX_VERSION;
+  version: typeof DOCS_SEARCH_INDEX_VERSION;
   generatedAt: string;
   documents: DocsSearchDocumentEntry[];
   chunks: DocsSearchChunkEntry[];
@@ -200,6 +213,7 @@ export type CreateDocsSearchIndexOptions = {
   generatedAt?: string;
   maxChunkChars?: number;
   overlapChars?: number;
+  transformers?: DocsTransformerOptions["transformers"];
 };
 
 export type SearchDocsOptions = ContentStoreOptions & {
@@ -247,6 +261,8 @@ export type ValidateDocsQueryOptions = {
 
 export type ReadJsonWithLimitOptions = {
   maxBytes?: number;
+  /** Return `undefined` instead of rejecting an empty or whitespace-only body. */
+  allowEmpty?: boolean;
 };
 
 export type MemoryRateLimiterOptions = {
@@ -293,11 +309,14 @@ type MutableChunk = {
   anchor: string;
   headingPath: string[];
   text: string;
+  codeText: string;
   length: number;
 };
 
 type SectionBlock = {
   headingPath: string[];
+  /** Anchor id of this section's own heading, duplicate-suffixed. */
+  anchor: string;
   text: string;
   codeText: string;
 };
@@ -321,7 +340,7 @@ function withHash(url: string, anchor: string): string {
   return anchor ? `${url}#${anchor}` : url;
 }
 
-function tokenize(input: string): string[] {
+export function tokenizeDocsSearchText(input: string): string[] {
   const tokens: string[] = [];
   for (const match of normalizeText(input).matchAll(WORD_CHARACTER_PATTERN)) {
     const token = match[0];
@@ -330,6 +349,10 @@ function tokenize(input: string): string[] {
     }
   }
   return tokens;
+}
+
+export function countDocsSearchTokens(input: string): number {
+  return tokenizeDocsSearchText(input).length;
 }
 
 function stemToken(token: string): string {
@@ -354,38 +377,6 @@ function stemToken(token: string): string {
   return token;
 }
 
-function editDistanceWithin(
-  left: string,
-  right: string,
-  maxDistance: number
-): boolean {
-  if (Math.abs(left.length - right.length) > maxDistance) {
-    return false;
-  }
-
-  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
-    const current = [leftIndex];
-    let rowMinimum = current[0] ?? leftIndex;
-    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-      const substitutionCost =
-        left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
-      const deletion = (previous[rightIndex] ?? 0) + 1;
-      const insertion = (current[rightIndex - 1] ?? 0) + 1;
-      const substitution = (previous[rightIndex - 1] ?? 0) + substitutionCost;
-      const value = Math.min(deletion, insertion, substitution);
-      current[rightIndex] = value;
-      rowMinimum = Math.min(rowMinimum, value);
-    }
-    if (rowMinimum > maxDistance) {
-      return false;
-    }
-    previous = current;
-  }
-
-  return (previous[right.length] ?? Number.POSITIVE_INFINITY) <= maxDistance;
-}
-
 function addWeightedTerm(
   terms: Map<string, number>,
   term: string,
@@ -401,10 +392,16 @@ function synonymTokensFor(
   token: string,
   synonyms?: Record<string, string[]>
 ): string[] {
-  return [
-    ...(DEFAULT_SYNONYMS[token] ?? []),
-    ...(synonyms?.[token] ?? []),
-  ].flatMap((entry) => tokenize(entry));
+  // hasOwn guards: tokens like "constructor" would otherwise resolve to
+  // Object.prototype members on these plain records.
+  const defaults = Object.hasOwn(DEFAULT_SYNONYMS, token)
+    ? DEFAULT_SYNONYMS[token]
+    : undefined;
+  const custom =
+    synonyms && Object.hasOwn(synonyms, token) ? synonyms[token] : undefined;
+  return [...(defaults ?? []), ...(custom ?? [])].flatMap((entry) =>
+    tokenizeDocsSearchText(entry)
+  );
 }
 
 function collectWeightedSearchTerms(
@@ -470,16 +467,12 @@ function collectWeightedSearchTerms(
   return Array.from(weightedTerms, ([term, weight]) => ({ term, weight }));
 }
 
-function countTerms(input: string): Map<string, number> {
+export function countDocsSearchTerms(input: string): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const token of tokenize(input)) {
+  for (const token of tokenizeDocsSearchText(input)) {
     counts.set(token, (counts.get(token) ?? 0) + 1);
   }
   return counts;
-}
-
-function stripFrontmatter(input: string): string {
-  return input.replace(FRONTMATTER_PATTERN, "");
 }
 
 function hasUnsupportedControlCharacter(input: string): boolean {
@@ -551,8 +544,11 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   const headingPath: string[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
+  // Count every heading, including headings that produce no search chunk, so
+  // search anchors stay aligned with the TOC and rendered page.
+  const slugger = createDocsHeadingSlugger();
   let currentHeadingPath: string[] = [];
-  let inCodeFence = false;
+  let currentAnchor = "";
 
   const flush = () => {
     const text = cleanMarkdown(textLines.join("\n"));
@@ -563,6 +559,7 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     if (text || codeText) {
       blocks.push({
         headingPath: currentHeadingPath,
+        anchor: currentAnchor,
         text,
         codeText,
       });
@@ -571,32 +568,24 @@ function collectSectionBlocks(content: string): SectionBlock[] {
     codeLines.length = 0;
   };
 
-  for (const line of stripFrontmatter(content).split("\n")) {
-    if (FENCE_PATTERN.test(line.trim())) {
-      inCodeFence = !inCodeFence;
-      codeLines.push(line);
+  const consumeHeading = (title: string, level: number): void => {
+    headingPath.length = level - 1;
+    headingPath.push(title);
+    currentHeadingPath = [...headingPath];
+    currentAnchor = slugger.slug(title);
+  };
+
+  for (const token of scanDocsMarkdown(content)) {
+    if (token.kind === "heading") {
+      flush();
+      consumeHeading(token.title, token.level);
       continue;
     }
-
-    if (!inCodeFence) {
-      const headingMatch = HEADING_PATTERN.exec(line.trim());
-      if (headingMatch) {
-        flush();
-        const levelMarker = headingMatch[1];
-        const rawTitle = headingMatch[2];
-        if (levelMarker && rawTitle) {
-          const level = levelMarker.length;
-          headingPath.length = level - 1;
-          headingPath.push(cleanMarkdown(rawTitle));
-          currentHeadingPath = [...headingPath];
-        }
-        continue;
-      }
-      textLines.push(line);
+    if (token.kind === "code") {
+      codeLines.push(token.value);
       continue;
     }
-
-    codeLines.push(line);
+    textLines.push(token.value);
   }
 
   flush();
@@ -639,8 +628,41 @@ function addPosting(
   indexTerms[term] = [posting];
 }
 
+/**
+ * `normalizeText` is not length-preserving — NFKD expands `…` to `...`, `½` to
+ * `1⁄2`, `ﬁ` to `fi`, and the CJK compatibility forms to their parts — so an
+ * offset found in the normalized text does not address the same character in
+ * the original.
+ *
+ * The match string is whole-string `normalizeText(input)` so it agrees with
+ * `tokenizeDocsSearchText` on context-sensitive lowercasing (`ΟΣ` → `ος`, not
+ * `οσ`). Offsets still come from per-code-point NFKD: decomposition is
+ * context-free, the diacritic strip removes the same marks either way, and
+ * `toLowerCase` is length-preserving on whatever survives that strip (`İ`
+ * alone expands, but NFKD has already reduced it to `i`), so the cheap map
+ * is identical to a prefix-length walk even when the two strings differ. A
+ * prefix fallback would be a no-op.
+ */
+function normalizeTextWithOffsets(input: string): {
+  normalized: string;
+  offsets: number[];
+} {
+  const normalized = normalizeText(input);
+  const offsets: number[] = [];
+  let originalIndex = 0;
+  for (const character of input) {
+    const mapped = normalizeText(character);
+    for (let unit = 0; unit < mapped.length; unit += 1) {
+      offsets.push(originalIndex);
+    }
+    originalIndex += character.length;
+  }
+  return { normalized, offsets };
+}
+
 function buildExcerpt(text: string, queryTokens: string[]): string {
-  const normalizedText = normalizeText(text);
+  const { normalized: normalizedText, offsets } =
+    normalizeTextWithOffsets(text);
   let matchIndex = -1;
   for (const token of queryTokens) {
     matchIndex = normalizedText.indexOf(token);
@@ -653,15 +675,16 @@ function buildExcerpt(text: string, queryTokens: string[]): string {
     return text.slice(0, 220).trim();
   }
 
-  const start = Math.max(0, matchIndex - 80);
-  const end = Math.min(text.length, matchIndex + 160);
+  const originalMatchIndex = offsets[matchIndex] ?? matchIndex;
+  const start = Math.max(0, originalMatchIndex - 80);
+  const end = Math.min(text.length, originalMatchIndex + 160);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
 }
 
 function normalizeForPhraseMatch(input: string): string {
-  return tokenize(input).join(" ");
+  return tokenizeDocsSearchText(input).join(" ");
 }
 
 function hasOrderedProximityMatch(
@@ -717,31 +740,45 @@ function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
     return PHRASE_MATCH_BOOST;
   }
 
-  const textTokens = tokenize(text);
+  const textTokens = tokenizeDocsSearchText(text);
   return hasOrderedProximityMatch(textTokens, queryTokens)
     ? PROXIMITY_MATCH_BOOST
     : 0;
-}
-
-function compareResults(
-  left: DocsSearchResult,
-  right: DocsSearchResult
-): number {
-  if (right.score !== left.score) {
-    return right.score - left.score;
-  }
-  return left.absoluteUrl.localeCompare(right.absoluteUrl);
 }
 
 function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
 }
 
+export function isDocsSearchContentStoreCompatible(
+  index: DocsSearchIndex,
+  content: unknown
+): content is DocsSearchContentStore {
+  if (typeof content !== "object" || content === null) {
+    return false;
+  }
+
+  const candidate = content as Partial<DocsSearchContentStore>;
+  return (
+    candidate.version === index.version &&
+    candidate.generatedAt === index.generatedAt &&
+    Array.isArray(candidate.chunks) &&
+    candidate.chunks.length === index.chunks.length &&
+    Array.isArray(candidate.codeChunks) &&
+    candidate.codeChunks.length === index.chunks.length
+  );
+}
+
 function resolveContentStore(
   index: DocsSearchIndex,
   content?: DocsSearchContentStore
 ): DocsSearchContentStore | undefined {
-  return content ?? index.content;
+  if (isDocsSearchContentStoreCompatible(index, content)) {
+    return content;
+  }
+  return isDocsSearchContentStoreCompatible(index, index.content)
+    ? index.content
+    : undefined;
 }
 
 function documentRecordFromEntry(
@@ -789,6 +826,7 @@ function chunkFromEntry(
   const anchor = entry[CHUNK_ANCHOR];
   const contentStore = resolveContentStore(index, content);
   const text = contentStore?.chunks[entry[CHUNK_CONTENT_INDEX]] ?? "";
+  const codeText = contentStore?.codeChunks[entry[CHUNK_CONTENT_INDEX]] ?? "";
 
   return {
     id: entry[CHUNK_ID],
@@ -803,7 +841,7 @@ function chunkFromEntry(
     anchor,
     headingPath: entry[CHUNK_HEADING_PATH],
     text,
-    codeText: "",
+    codeText,
     length: entry[CHUNK_LENGTH],
     ...(documentRecord.locale ? { locale: documentRecord.locale } : {}),
     ...(documentRecord.sourceLocale
@@ -818,8 +856,22 @@ function chunkFromEntry(
   };
 }
 
+// Keyed by the chunks array (stable identity after JSON.parse) so repeated
+// lookups stay O(1) instead of scanning every chunk per scored result.
+const chunkIndexCache = new WeakMap<
+  DocsSearchChunkEntry[],
+  Map<string, number>
+>();
+
 function findChunkIndex(index: DocsSearchIndex, chunkId: string): number {
-  return index.chunks.findIndex((entry) => entry[CHUNK_ID] === chunkId);
+  let lookup = chunkIndexCache.get(index.chunks);
+  if (!lookup) {
+    lookup = new Map(
+      index.chunks.map((entry, chunkIndex) => [entry[CHUNK_ID], chunkIndex])
+    );
+    chunkIndexCache.set(index.chunks, lookup);
+  }
+  return lookup.get(chunkId) ?? -1;
 }
 
 function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
@@ -828,6 +880,32 @@ function findDocumentIndex(index: DocsSearchIndex, pathOrId: string): number {
       entry[DOCUMENT_ID] === pathOrId ||
       entry[DOCUMENT_RELATIVE_PATH] === pathOrId ||
       entry[DOCUMENT_URL_PATH] === pathOrId
+  );
+}
+
+function pathSegments(input: string): string[] {
+  return input.replaceAll("\\", "/").split("/").filter(Boolean);
+}
+
+function isSharedRoutePath(input: string): boolean {
+  const segments = pathSegments(input);
+  return segments.some((segment) => SHARED_ROUTE_SEGMENTS.has(segment));
+}
+
+function frontmatterSearchSetting(
+  frontmatter: DocsFrontmatter | undefined
+): boolean | undefined {
+  const value = frontmatter?.search;
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function shouldIndexSearchDocument(doc: DocsSearchDocument): boolean {
+  const search = frontmatterSearchSetting(doc.frontmatter);
+  if (search !== undefined) {
+    return search;
+  }
+  return !(
+    isSharedRoutePath(doc.relativePath) || isSharedRoutePath(doc.urlPath)
   );
 }
 
@@ -844,7 +922,20 @@ export function createDocsSearchIndex(
   const mutableChunks: MutableChunk[] = [];
   const chunkTermCounts = new Map<number, MutableTermCounts>();
 
-  for (const [documentIndex, doc] of markdownDocs.entries()) {
+  const docs = runTransformersSync(
+    options.transformers,
+    "beforeSearchIndex",
+    markdownDocs,
+    { stage: "search" },
+    (transformer, value, context) =>
+      transformer.beforeSearchIndex?.(value, context) as
+        | DocsSearchDocument[]
+        | undefined
+  );
+
+  for (const [documentIndex, doc] of docs
+    .filter(shouldIndexSearchDocument)
+    .entries()) {
     const documentId = doc.id ?? `doc-${documentIndex}`;
     const description = doc.description ?? "";
     const entry: DocsSearchDocumentEntry = [
@@ -893,29 +984,68 @@ export function createDocsSearchIndex(
           continue;
         }
 
+        const chunkInput: DocsSearchChunkInput = {
+          title: doc.title,
+          description,
+          urlPath: doc.urlPath,
+          absoluteUrl: doc.absoluteUrl,
+          relativePath: doc.relativePath,
+          anchor: block.anchor,
+          headingPath: block.headingPath,
+          text: chunkText,
+          codeText,
+          length: countDocsSearchTokens(chunkText),
+          ...(doc.locale ? { locale: doc.locale } : {}),
+          ...(doc.sourceLocale ? { sourceLocale: doc.sourceLocale } : {}),
+          ...(doc.isFallback === undefined
+            ? {}
+            : { isFallback: doc.isFallback }),
+          ...(doc.logicalPath ? { logicalPath: doc.logicalPath } : {}),
+        };
+        const transformedChunk = runTransformersSync(
+          options.transformers,
+          "beforeSearchChunk",
+          chunkInput,
+          {
+            stage: "search",
+            relativePath: doc.relativePath,
+            urlPath: doc.urlPath,
+            locale: doc.locale,
+          },
+          (transformer, value, context) =>
+            transformer.beforeSearchChunk?.(value, context) as
+              | DocsSearchChunkInput
+              | undefined
+        );
+
         const chunkIndex = mutableChunks.length;
         const chunkId = `chunk-${chunkIndex}`;
-        const length = tokenize(chunkText).length;
-        const anchor = slugifyDocsHeading(block.headingPath.at(-1) ?? "");
+        const length = countDocsSearchTokens(transformedChunk.text);
+        const anchor = transformedChunk.anchor;
         mutableChunks.push({
           id: chunkId,
           documentIndex,
           anchor,
-          headingPath: block.headingPath,
-          text: chunkText,
+          headingPath: transformedChunk.headingPath,
+          text: transformedChunk.text,
+          codeText: transformedChunk.codeText,
           length,
         });
         chunkTermCounts.set(chunkIndex, {
-          title: countTerms(doc.title),
-          heading: countTerms(block.headingPath.join(" ")),
-          body: countTerms([description, text].join(" ")),
-          code: countTerms(codeText),
+          title: countDocsSearchTerms(doc.title),
+          heading: countDocsSearchTerms(transformedChunk.headingPath.join(" ")),
+          body: countDocsSearchTerms(
+            [description, transformedChunk.text].join(" ")
+          ),
+          code: countDocsSearchTerms(transformedChunk.codeText),
         });
       }
     }
   }
 
-  const terms: Record<string, DocsSearchPosting[]> = {};
+  // Null prototype so terms like "constructor" can't collide with
+  // Object.prototype members during posting accumulation.
+  const terms: Record<string, DocsSearchPosting[]> = Object.create(null);
   for (const [chunkIndex, counts] of chunkTermCounts) {
     const uniqueTerms = new Set<string>();
     addCountEntries(uniqueTerms, counts.title);
@@ -947,15 +1077,16 @@ export function createDocsSearchIndex(
   );
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   return {
-    version: SEARCH_INDEX_VERSION,
+    version: DOCS_SEARCH_INDEX_VERSION,
     generatedAt,
     documents,
     chunks,
     terms,
     content: {
-      version: SEARCH_INDEX_VERSION,
+      version: DOCS_SEARCH_INDEX_VERSION,
       generatedAt,
       chunks: mutableChunks.map((chunk) => chunk.text),
+      codeChunks: mutableChunks.map((chunk) => chunk.codeText),
     },
     averageChunkLength:
       mutableChunks.length > 0 ? totalLength / mutableChunks.length : 0,
@@ -967,7 +1098,7 @@ export function searchDocs(
   query: string,
   options: SearchDocsOptions = {}
 ): DocsSearchResult[] {
-  const queryTokens = tokenize(query);
+  const queryTokens = tokenizeDocsSearchText(query);
   if (queryTokens.length === 0 || index.chunks.length === 0) {
     return [];
   }
@@ -984,7 +1115,12 @@ export function searchDocs(
   const scores = new Map<string, number>();
   const averageLength = Math.max(index.averageChunkLength, 1);
   for (const { term, weight } of weightedTerms) {
-    const postings = index.terms[term];
+    // hasOwn guard: a JSON.parse'd index has a normal prototype, so a query
+    // term like "constructor" would otherwise resolve to Object.prototype
+    // members instead of postings.
+    const postings = Object.hasOwn(index.terms, term)
+      ? index.terms[term]
+      : undefined;
     if (!postings || postings.length === 0) {
       continue;
     }
@@ -1020,19 +1156,34 @@ export function searchDocs(
   }
 
   const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
-  const results: DocsSearchResult[] = [];
-  const excerptTokens = Array.from(
-    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
-  );
+  const scoredChunks: Array<{ chunk: DocsSearchChunk; score: number }> = [];
   for (const [chunkId, score] of scores) {
     const chunk = readDocsContentChunk(index, chunkId, options.content);
     if (!chunk) {
       continue;
     }
+    scoredChunks.push({
+      chunk,
+      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
+    });
+  }
+  scoredChunks.sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score;
+    }
+    return left.chunk.absoluteUrl.localeCompare(right.chunk.absoluteUrl);
+  });
+
+  // Excerpts are expensive string scans, so build them only for results
+  // that survive the limit.
+  const excerptTokens = Array.from(
+    new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
+  );
+  return scoredChunks.slice(0, limit).map(({ chunk, score }) => {
     const excerptText =
       chunk.text ||
       [chunk.title, chunk.description, ...chunk.headingPath].join(" ");
-    results.push({
+    return {
       id: chunk.id,
       documentId: chunk.documentId,
       title: chunk.title,
@@ -1045,11 +1196,9 @@ export function searchDocs(
       anchor: chunk.anchor,
       headingPath: chunk.headingPath,
       excerpt: buildExcerpt(excerptText, excerptTokens),
-      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
-    });
-  }
-
-  return results.sort(compareResults).slice(0, limit);
+      score,
+    };
+  });
 }
 
 export function readDocsContentChunk(
@@ -1106,6 +1255,13 @@ export function listDocsContentFiles(
     }
   }
   return files;
+}
+
+/** Document records (id, title, urlPath, …) for every page in the index. */
+export function listDocsSearchDocuments(
+  index: DocsSearchIndex
+): DocsSearchDocumentRecord[] {
+  return index.documents.map(documentRecordFromEntry);
 }
 
 export function attachDocsSearchContent(
@@ -1216,17 +1372,28 @@ export function validateDocsQuery(
   return query;
 }
 
+export function readJsonWithLimit<T = unknown>(
+  request: Request,
+  options?: ReadJsonWithLimitOptions & { allowEmpty?: false }
+): Promise<T>;
+export function readJsonWithLimit<T = unknown>(
+  request: Request,
+  options: ReadJsonWithLimitOptions | undefined
+): Promise<T | undefined>;
 export async function readJsonWithLimit<T = unknown>(
   request: Request,
   options: ReadJsonWithLimitOptions = {}
-): Promise<T> {
+): Promise<T | undefined> {
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BODY_BYTES;
+  if (!request.body) {
+    if (options.allowEmpty) {
+      return;
+    }
+    requestError("Request body is required.", 400);
+  }
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > maxBytes) {
     requestError(`Request body must be ${maxBytes} bytes or fewer.`, 413);
-  }
-  if (!request.body) {
-    requestError("Request body is required.", 400);
   }
 
   const reader = request.body.getReader();
@@ -1247,6 +1414,9 @@ export async function readJsonWithLimit<T = unknown>(
     body += decoder.decode(result.value, { stream: true });
   }
   body += decoder.decode();
+  if (options.allowEmpty && !body.trim()) {
+    return;
+  }
 
   try {
     return JSON.parse(body) as T;

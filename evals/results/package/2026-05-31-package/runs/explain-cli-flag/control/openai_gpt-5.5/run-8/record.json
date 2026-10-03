@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required fields ('lastModified' and 'lastAuthor'), states they are added to frontmatter, and clearly attributes their values to Git history. All rubric-required points are satisfied accurately, with additional correct detail about the underlying Git command. No errors or omissions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 9914,
+  "outputTokens": 45,
+  "durationMs": 16521,
+  "steps": 7,
+  "errors": []
+}

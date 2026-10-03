@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website convention pointing agents at HTTP URLs, making it unsuitable for a package tarball, while AGENTS.md uses relative links and works offline, version-matched inside node_modules. It correctly lists that leadtype generate --bundle skips llms.txt, llms-full.txt, search artifacts, sitemap, robots, and other website-only files. All rubric requirements are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 76275,
+  "outputTokens": 1436,
+  "durationMs": 37704,
+  "steps": 8,
+  "errors": []
+}

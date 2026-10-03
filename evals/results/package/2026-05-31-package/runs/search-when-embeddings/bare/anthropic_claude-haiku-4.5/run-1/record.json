@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies that the default search is lexical and does not require a hosted vector database. However, it fails to mention that the default uses BM25, and critically omits the condition that embeddings become warranted when the corpus grows past tens of thousands of chunks (cold-start memory issue). It does correctly note that lexical search should be kept for exact matches and embeddings are complementary. Because it misses one of the required specific conditions for adding embeddings, it is incomplete. The answer is presented without hedging, so it is 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 4405,
+  "outputTokens": 274,
+  "durationMs": 28050,
+  "steps": 12,
+  "errors": []
+}

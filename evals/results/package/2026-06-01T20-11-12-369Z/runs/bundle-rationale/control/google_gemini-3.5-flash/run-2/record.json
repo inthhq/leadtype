@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains llms.txt is a web/HTTP convention (hosted at a domain root, fetched via HTTP) and that no agent looks for it in node_modules. It correctly identifies AGENTS.md as providing filesystem-relative paths, working offline and version-matched. It lists the skipped artifacts as llms.txt, llms-full.txt, and search artifacts like search-index.json, meeting the minimum requirement. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 263039,
+  "outputTokens": 7665,
+  "durationMs": 71034,
+  "steps": 25,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP convention using absolute URLs and is unsuitable inside an npm package. It covers that AGENTS.md uses relative paths, works offline, and is version-matched. It explicitly states that --bundle skips llms.txt, llms-full.txt, and search artifacts. All required points are satisfied, and no incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 140511,
+  "outputTokens": 1584,
+  "durationMs": 24054,
+  "steps": 10,
+  "errors": []
+}

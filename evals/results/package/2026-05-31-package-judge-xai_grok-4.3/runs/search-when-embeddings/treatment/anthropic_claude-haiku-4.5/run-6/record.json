@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: (1) default described as static/local BM25 lexical index with no DB; (2) specific conditions given (vocabulary mismatch + tens-of-thousands chunks scale); (3) lexical index explicitly kept as complementary for exact matches. No incorrect claims about vector DBs or replacement. ANSWER.md is a verbatim match to the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 8126,
+  "outputTokens": 306,
+  "durationMs": 19493,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes that by default leadtype uses a static, local lexical BM25 index with no database, and no hosted vector DB is needed. It specifies the two conditions for adding embeddings (semantic vocabulary gap and corpus size past tens of thousands of chunks) exactly as required, and states that the lexical index should be kept as a complementary layer, not replaced. All rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 9369,
+  "outputTokens": 265,
+  "durationMs": 25993,
+  "steps": 11,
+  "errors": []
+}

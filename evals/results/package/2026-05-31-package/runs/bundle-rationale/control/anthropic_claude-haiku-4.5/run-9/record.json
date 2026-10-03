@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that `llms.txt` is an HTTP-centric artifact with absolute URLs, making it unsuitable for inside an npm tarball, while `AGENTS.md` provides offline, version-matched access via relative file paths. It correctly lists the website-only artifacts skipped by `--bundle` (`llms.txt`, `llms-full.txt`, `search-index.json`) and justifies why they don't belong. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 30257,
+  "outputTokens": 273,
+  "durationMs": 24517,
+  "steps": 10,
+  "errors": []
+}

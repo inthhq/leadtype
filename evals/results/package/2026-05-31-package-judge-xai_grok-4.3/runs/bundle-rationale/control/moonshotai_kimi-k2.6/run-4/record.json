@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the answer states llms.txt uses absolute URLs / HTTP convention so is wrong in a tarball; states AGENTS.md uses relative links, works offline and version-matched inside node_modules; and explicitly lists that --bundle skips llms.txt + llms-full.txt plus the other website artifacts (search/sitemap/robots/etc.) because they require an HTTP base URL. No incorrect claims appear, and the two paragraphs match the ground-truth explanation without hedging or omission.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 22019,
+  "outputTokens": 238,
+  "durationMs": 37206,
+  "steps": 8,
+  "errors": []
+}

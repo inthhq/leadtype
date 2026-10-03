@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately explains that llms.txt is an HTTP convention with absolute URLs and not looked for in node_modules, making it unsuitable for a tarball. It correctly contrasts AGENTS.md as a filesystem convention using relative links for offline, version-matched use. It precisely lists the website artifacts skipped by 'leadtype generate --bundle', including llms.txt, llms-full.txt, search index, sitemaps, robots.txt, and agent-readability.json. All rubric required points are met with no factual errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 89079,
+  "outputTokens": 3213,
+  "durationMs": 48726,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default BM25 static index and states that embeddings are complementary. However, it omits the required condition that embeddings are also warranted when the corpus is very large (≈ tens of thousands of chunks). It lists only semantic/conceptual mismatch, chat-style queries, and cross-lingual search, but not the scale criterion. While it correctly says to keep the lexical index, the missing condition makes it incomplete against the rubric. The answer confidently presents its list as exhaustive, which is inaccurate.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 354511,
+  "outputTokens": 7550,
+  "durationMs": 63258,
+  "steps": 20,
+  "errors": []
+}

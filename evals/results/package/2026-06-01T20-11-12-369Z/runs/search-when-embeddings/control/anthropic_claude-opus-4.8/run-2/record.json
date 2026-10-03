@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical index with no database, and correctly states that embeddings should be complementary and not replace it. However, the required condition for adding embeddings (a very large corpus, specifically 'tens of thousands of chunks') is not explicitly given; the answer only says the corpus must be 'large and diverse enough.' This missing specificity fails to satisfy the second required rubric point, making the overall answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 138758,
+  "outputTokens": 4899,
+  "durationMs": 80573,
+  "steps": 10,
+  "errors": []
+}

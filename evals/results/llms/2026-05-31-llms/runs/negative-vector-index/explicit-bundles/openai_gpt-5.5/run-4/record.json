@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly says No, describes the default as a static local search index with lexical BM25 ranking and no database, and explains embeddings are added later only when needed (vocabulary mismatch, large corpus). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 2342,
+  "outputTokens": 6,
+  "durationMs": 12753,
+  "steps": 4,
+  "errors": []
+}

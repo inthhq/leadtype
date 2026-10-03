@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The paragraph explicitly names both required frontmatter fields, `lastModified` and `lastAuthor`, states they are added to the frontmatter of generated markdown files, and explains that the values are derived from the git history of each source file. Every REQUIRED rubric point is fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 14320,
+  "outputTokens": 184,
+  "durationMs": 47443,
+  "steps": 16,
+  "errors": []
+}

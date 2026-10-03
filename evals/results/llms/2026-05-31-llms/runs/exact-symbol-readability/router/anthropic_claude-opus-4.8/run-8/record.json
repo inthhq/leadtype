@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the helper as `isAgentReadabilityArtifactPath` and describes that it covers the artifact paths to skip, including `llms.txt`, `llms-full.txt`, sitemap files, `robots.txt`, search JSON, and `agent-readability.json`. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3878,
+  "outputTokens": 209,
+  "durationMs": 20181,
+  "steps": 6,
+  "errors": []
+}

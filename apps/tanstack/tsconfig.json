@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@repo/typescript-config/base.json",
+  "include": [
+    "playwright.config.ts",
+    "scripts/**/*",
+    "server/**/*",
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "vite.config.ts"
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "leadtype": ["../../packages/leadtype/src/index.ts"],
+      "@/*": ["./src/*"],
+      "@docs/*": ["../../docs/*"],
+      "leadtype/markdown": ["../../packages/leadtype/src/markdown/index.ts"],
+      "leadtype/convert": ["../../packages/leadtype/src/convert/index.ts"],
+      "leadtype/llm": ["../../packages/leadtype/src/llm/index.ts"],
+      "leadtype/llm/readability": [
+        "../../packages/leadtype/src/llm/readability.ts"
+      ],
+      "leadtype/search": ["../../packages/leadtype/src/search/index.ts"],
+      "leadtype/search/node": [
+        "../../packages/leadtype/src/search/node-index.ts"
+      ],
+      "leadtype/search/ai": ["../../packages/leadtype/src/search/ai-index.ts"],
+      "leadtype/search/bash": [
+        "../../packages/leadtype/src/search/bash-index.ts"
+      ],
+      "leadtype/search/vercel": [
+        "../../packages/leadtype/src/search/vercel-index.ts"
+      ],
+      "leadtype/search/tanstack": [
+        "../../packages/leadtype/src/search/tanstack-index.ts"
+      ],
+      "leadtype/search/cloudflare": [
+        "../../packages/leadtype/src/search/cloudflare-index.ts"
+      ],
+      "leadtype/lint": ["../../packages/leadtype/src/lint/index.ts"]
+    }
+  }
+}

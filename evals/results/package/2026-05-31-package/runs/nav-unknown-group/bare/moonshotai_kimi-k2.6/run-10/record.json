@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly identifies the config nav as the curated driver of sidebar, AGENTS.md, and llms.txt sections, and describes group as the membership declaration that serves as a fallback when no config is present. It explicitly states that an unknown group slug causes a hard build failure. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 22,
+  "inputTokens": 33377,
+  "outputTokens": 291,
+  "durationMs": 73054,
+  "steps": 23,
+  "errors": []
+}

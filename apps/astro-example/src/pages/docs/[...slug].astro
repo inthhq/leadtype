@@ -1,0 +1,143 @@
+---
+import { createLoadPageData } from "leadtype/astro";
+import {
+  createDocsJsonLd,
+  normalizeAgentReadabilityManifest,
+  stringifyJsonLd,
+} from "leadtype/llm/readability";
+import { createDocsNavigation } from "leadtype/navigation";
+import manifestJson from "../../../public/docs/agent-readability.json";
+import { renderMarkdown } from "../../lib/markdown";
+import { source } from "../../lib/source";
+
+const manifest = normalizeAgentReadabilityManifest(manifestJson);
+const navigation = createDocsNavigation(manifest.navigation);
+
+export const getStaticPaths = async () => {
+  const pages = await source.listPages();
+  return pages
+    .filter(
+      (page) => page.urlPath === "/docs" || page.urlPath.startsWith("/docs/")
+    )
+    .map((page) => ({
+      params: { slug: page.slug.join("/") || undefined },
+    }));
+};
+
+const loadPageData = createLoadPageData({ source });
+const page = await loadPageData(Astro.params.slug);
+
+if (!page) {
+  return Astro.redirect("/docs");
+}
+
+if (!(page.urlPath === "/docs" || page.urlPath.startsWith("/docs/"))) {
+  return Astro.redirect(page.urlPath);
+}
+
+const meta = manifest.pages.find((entry) => entry.urlPath === page.urlPath);
+const jsonLd = createDocsJsonLd({ urlPath: page.urlPath, manifest });
+const jsonLdScript = jsonLd ? stringifyJsonLd(jsonLd) : null;
+const sidebarSections = navigation.getSidebarSections(page.urlPath);
+const markdownHtml = await renderMarkdown(page.markdown);
+const markdownUrl =
+  page.urlPath === "/docs" ? "/docs/index.md" : `${page.urlPath}.md`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{page.title}</title>
+    {meta && <meta name="description" content={meta.description} />}
+    {meta && <link rel="canonical" href={meta.absoluteUrl} />}
+    {meta && <link rel="alternate" type="text/markdown" href={meta.markdownAbsoluteUrl} />}
+    {jsonLdScript && <script is:inline type="application/ld+json" set:html={jsonLdScript} />}
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Leadtype</a>
+      <nav aria-label="Primary">
+        <a href="/docs">Docs</a>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/docs/search-index.json">Search JSON</a>
+      </nav>
+    </header>
+    <main class="docs-layout">
+      <aside class="docs-sidebar">
+        <div class="agent-links" aria-label="Agent outputs">
+          <a href="/llms.txt">llms.txt</a>
+          <a href="/llms-full.txt">llms-full.txt</a>
+          <a href={markdownUrl}>Markdown</a>
+        </div>
+        {
+          sidebarSections.map((section) => (
+            <section class="sidebar-section">
+              <h2>{section.title}</h2>
+              <ul>
+                {section.links.map((link) => (
+                  <li>
+                    <a
+                      aria-current={link.to === page.urlPath ? "page" : undefined}
+                      href={link.to}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </aside>
+      <div class="docs-main">
+        <section class="search">
+          <input id="docs-search" aria-label="Search docs" placeholder="Search docs" />
+          <span id="docs-search-status" role="status" aria-live="polite">idle</span>
+          <ul id="docs-search-results"></ul>
+        </section>
+        <article class="markdown">
+          <header>
+            <h1>{page.title}</h1>
+            {page.description && <p>{page.description}</p>}
+          </header>
+          <div set:html={markdownHtml} />
+        </article>
+      </div>
+    </main>
+    <script>
+      import { createSearchClient } from "leadtype/search/client";
+      import { registerLeadtypeWebMcp } from "../../lib/leadtype-webmcp";
+
+      const input = document.querySelector<HTMLInputElement>("#docs-search");
+      const status = document.querySelector("#docs-search-status");
+      const results = document.querySelector("#docs-search-results");
+      const client = createSearchClient("docs");
+      registerLeadtypeWebMcp();
+
+      if (input && status && results) {
+        input.addEventListener("input", async () => {
+          const query = input.value;
+          status.textContent = query.trim() ? "loading" : "idle";
+          results.replaceChildren();
+          if (!query.trim()) return;
+          try {
+            const matches = await client.search(query);
+            status.textContent = "ready";
+            for (const result of matches) {
+              const item = document.createElement("li");
+              const link = document.createElement("a");
+              link.href = result.urlWithHash;
+              link.textContent = result.title;
+              item.append(link);
+              results.append(item);
+            }
+          } catch {
+            status.textContent = "error";
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

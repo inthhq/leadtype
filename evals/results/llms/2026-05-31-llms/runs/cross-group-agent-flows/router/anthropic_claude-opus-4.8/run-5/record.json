@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the hosted flow starting from /llms.txt, the bundle flow starting from AGENTS.md, and lists the skipped website artifacts including llms.txt and llms-full.txt, meeting all required rubric points. No incorrect statements.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 6,
+  "inputTokens": 4726,
+  "outputTokens": 469,
+  "durationMs": 28357,
+  "steps": 5,
+  "errors": []
+}

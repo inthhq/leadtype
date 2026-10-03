@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth for sidebar/llms.txt/AGENTS.md and group as legacy/optional metadata. However, it incorrectly claims that when no groups taxonomy is configured, unknown group slugs cause no check and are silently ignored. The ground truth states that any unknown group slug not present in the config always causes a build failure; there is no exception. This false statement contradicts the rubric and makes the answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 244606,
+  "outputTokens": 1332,
+  "durationMs": 50644,
+  "steps": 8,
+  "errors": []
+}

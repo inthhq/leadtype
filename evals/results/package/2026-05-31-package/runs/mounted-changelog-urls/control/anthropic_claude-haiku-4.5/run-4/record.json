@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The invocation and description of the internal copy and public mirror are correct. However, the canonical URL is given as `/changelog/v1` (without the `.md` extension), whereas the rubric explicitly requires `/changelog/v1.md`. This detail is a required point, so the answer is not fully correct.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 48408,
+  "outputTokens": 351,
+  "durationMs": 37794,
+  "steps": 16,
+  "errors": []
+}

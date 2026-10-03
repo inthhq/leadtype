@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly directs to the LLM files reference area (via /docs/reference/llm.md, mentioning 'LLM files and agent-readable bundle APIs') and does not route to Search UI/APIs. It describes `/llms-full.txt` as a fallback produced by `generateLLMFullContextFiles`, to be used when more granular bundles are unsuitable, satisfying the requirement that it is a broad fallback for when page-level links are insufficient. All rubric points are met.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3781,
+  "outputTokens": 215,
+  "durationMs": 15853,
+  "steps": 7,
+  "errors": []
+}

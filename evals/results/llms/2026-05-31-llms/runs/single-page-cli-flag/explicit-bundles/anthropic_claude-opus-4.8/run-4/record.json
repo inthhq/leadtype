@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing generated artifacts and names llmsFullTxt, docsLlmsTxt, llmsTxt, satisfying both required rubric points. However, it invents the field 'agentReadabilityJson' (the ground truth field is 'agentReadabilityManifest'), which violates the 'Invents fields' rule, making the answer incorrect. Score 85 reflects near-complete accuracy with one specific error.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3366,
+  "outputTokens": 279,
+  "durationMs": 16963,
+  "steps": 4,
+  "errors": []
+}

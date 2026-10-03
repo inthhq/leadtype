@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly names both required frontmatter fields (lastModified and lastAuthor), states they are added to page frontmatter, and explains that their values come from git commit history. All rubric requirements are satisfied, and no incorrect information is present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 25,
+  "inputTokens": 19274,
+  "outputTokens": 184,
+  "durationMs": 48453,
+  "steps": 18,
+  "errors": []
+}

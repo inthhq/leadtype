@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "variant": "discovery",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that `--json` prints a JSON object with paths of generated artifacts and names several valid fields (llmsTxt, docsLlmsTxt, llmsFullTxt, etc.), satisfying the required rubric points. However, it incorrectly lists `agentReadabilityJson` instead of the ground truth's `agentReadabilityManifest`, inventing a field name that does not match the documented result shape. This triggers the rubric's 'Incorrect if' rule, making the overall answer incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3001,
+  "outputTokens": 13,
+  "durationMs": 22516,
+  "steps": 7,
+  "errors": []
+}

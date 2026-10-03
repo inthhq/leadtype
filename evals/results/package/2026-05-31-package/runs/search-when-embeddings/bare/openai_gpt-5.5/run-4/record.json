@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly states the default is a static, local BM25 lexical index with no database. It gives the specific conditions for when embeddings are warranted: vocabulary mismatch or corpus growing past tens of thousands of chunks. It clearly says the lexical index should be kept for exact matches and that embeddings are complementary, not a replacement. All rubric requirements are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 21,
+  "inputTokens": 8399,
+  "outputTokens": 105,
+  "durationMs": 69780,
+  "steps": 18,
+  "errors": []
+}

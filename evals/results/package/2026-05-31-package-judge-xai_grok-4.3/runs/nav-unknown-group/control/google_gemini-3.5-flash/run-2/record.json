@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied: ANSWER.md explicitly identifies curated `nav` as the driver of sidebar/llms.txt/agent maps (point 1), labels `group` as legacy/optional with fallback + validation roles (point 2), and states that unknown group slugs cause a hard build failure + explicit error rather than a warning or silent drop (point 3). Minor wording differences (e.g., agent-readability.json vs AGENTS.md) do not violate the rubric criteria.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 31,
+  "inputTokens": 63965,
+  "outputTokens": 484,
+  "durationMs": 126905,
+  "steps": 32,
+  "errors": []
+}

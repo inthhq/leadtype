@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly states the default is a static BM25 lexical index with no database, meeting point 1. It specifies that embeddings should be added only when there is a semantic vocabulary gap (vocabulary mismatch), satisfying point 2 with the specific condition. It clearly says BM25 must be kept as the backbone, with embeddings as a complementary hybrid signal, not a replacement, fulfilling point 3. All required points are covered fully and no incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 34273,
+  "outputTokens": 735,
+  "durationMs": 82394,
+  "steps": 11,
+  "errors": []
+}

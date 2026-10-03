@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of navigation and `group` as legacy/optional taxonomy useful for fallback and search facets. However, on the required point about unknown group slugs, it states they are handled gracefully, with no build failure or even a warning, contradicting the rubric's requirement that they cause a build to fail with an 'unknown group' error. This makes the overall answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 383457,
+  "outputTokens": 5564,
+  "durationMs": 127547,
+  "steps": 15,
+  "errors": []
+}

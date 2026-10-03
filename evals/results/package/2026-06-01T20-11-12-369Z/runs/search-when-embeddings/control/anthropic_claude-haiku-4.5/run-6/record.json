@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states the default is a static BM25 lexical index with no database, and it clearly says to keep the lexical index, not replace it. However, the specific conditions for adding embeddings are partially wrong: the rubric requires the second condition to be a very large corpus 'past tens of thousands of chunks' with cold-start memory issues, but the agent instead says 'large (100+ pages) or highly cross-referenced,' which is a less precise threshold. This falls short of the required specificity, so not all required points are met. The answer is confidently asserted without hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 189130,
+  "outputTokens": 2758,
+  "durationMs": 41278,
+  "steps": 17,
+  "errors": []
+}

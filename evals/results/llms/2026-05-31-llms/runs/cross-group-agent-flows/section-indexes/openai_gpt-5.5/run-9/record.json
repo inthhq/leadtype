@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the hosted flow starts from /llms.txt and the bundle flow starts from AGENTS.md. It also clearly lists that bundle mode skips website artifacts including llms.txt and llms-full.txt (along with other artifacts). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 12,
+  "inputTokens": 5631,
+  "outputTokens": 6,
+  "durationMs": 30907,
+  "steps": 8,
+  "errors": []
+}

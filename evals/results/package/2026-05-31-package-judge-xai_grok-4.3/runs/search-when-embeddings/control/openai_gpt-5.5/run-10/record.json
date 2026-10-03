@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default described as static/local BM25 lexical index with generated JSON artifacts, no DB or embeddings; (2) specific triggers listed (paraphrased/vocabulary-mismatch queries, corpus size making artifacts too large) rather than generic 'better search'; (3) explicit instruction to retain the lexical/BM25 path, chunks, citations, and static artifacts as complementary/hybrid even after adding embeddings. No rubric violations present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 27061,
+  "outputTokens": 97,
+  "durationMs": 56808,
+  "steps": 15,
+  "errors": []
+}

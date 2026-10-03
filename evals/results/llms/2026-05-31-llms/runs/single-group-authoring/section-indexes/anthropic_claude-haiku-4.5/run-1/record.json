@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer accurately explains that 'group' organizes navigation, llms.txt sections, and AGENTS.md grouping. It correctly characterizes /llms-full.txt as a monolithic, single-file fallback not split by group. It names 'deprecated' and 'lastModified', two valid optional frontmatter fields from the prescribed list. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5424,
+  "outputTokens": 169,
+  "durationMs": 25415,
+  "steps": 12,
+  "errors": []
+}

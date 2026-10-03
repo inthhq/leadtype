@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required frontmatter fields (`lastModified` and `lastAuthor`), explicitly states they are added to the frontmatter of generated markdown files, and explains their values come from git history (via `git log -1`). Every rubric requirement is satisfied, and no incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 36007,
+  "outputTokens": 184,
+  "durationMs": 32624,
+  "steps": 18,
+  "errors": []
+}

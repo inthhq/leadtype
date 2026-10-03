@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies 'nav' as the curated driver and 'group' as the legacy fallback taxonomy. However, it incorrectly states that an unknown group slug does not cause a build failure, asserting that the build succeeds and pages are merely tracked in an unknown array. The rubric explicitly requires that the build fails with an 'unknown group' error, which contradicts the agent's confident claim. This critical error means the answer does not meet all required points.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 40510,
+  "outputTokens": 344,
+  "durationMs": 40513,
+  "steps": 13,
+  "errors": []
+}

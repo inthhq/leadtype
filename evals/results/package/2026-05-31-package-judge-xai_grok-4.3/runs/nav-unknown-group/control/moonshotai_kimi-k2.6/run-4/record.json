@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED points are met: ANSWER.md explicitly names `nav` (in docs.config.ts) as the curated driver of sidebar + agent indexes (with a supporting quote), names `group` as the legacy fallback (useful for absent-nav cases, metadata, and inference), and states that unknown group slugs produce a hard build error (with the exact error text and mechanism). No rubric violations or incorrect claims about silent ignores/warnings or reversed primacy.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 67937,
+  "outputTokens": 346,
+  "durationMs": 76765,
+  "steps": 15,
+  "errors": []
+}

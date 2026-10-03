@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains group's role in navigation, llms.txt sections, and AGENTS.md grouping, and it accurately describes /llms-full.txt as a monolithic all-docs file not split by group. It also names many valid optional frontmatter fields (icon, deprecated, etc.). However, it wrongly includes 'availableIn' as an optional frontmatter field, which is not listed in the ground truth, thus violating the 'invents fields not in the schema' clause. This single error makes the response incorrect despite high overall quality.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 5211,
+  "outputTokens": 528,
+  "durationMs": 37395,
+  "steps": 7,
+  "errors": []
+}

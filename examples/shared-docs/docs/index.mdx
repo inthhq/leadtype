@@ -1,0 +1,28 @@
+---
+title: "Dogfood docs"
+description: "Shared docs rendered by every Leadtype framework example."
+group: guide
+order: 10
+---
+
+# Dogfood docs
+
+This source tree is intentionally small, but each framework example renders it as human docs and serves the generated agent artifacts from the same build.
+
+<Callout title="What this proves" variant="info">
+  The examples dogfood the framework adapters, the MDX source preset, generated markdown mirrors, `llms.txt`, `llms-full.txt`, and static search JSON.
+</Callout>
+
+## Shared workflow
+
+<Steps>
+  <Step title="Compile MDX">
+    The host framework owns routing and rendering.
+  </Step>
+  <Step title="Generate artifacts">
+    `leadtype generate` writes files into `public/`.
+  </Step>
+  <Step title="Serve both audiences">
+    Humans get HTML pages. Agents can request markdown mirrors or start from `llms.txt`.
+  </Step>
+</Steps>

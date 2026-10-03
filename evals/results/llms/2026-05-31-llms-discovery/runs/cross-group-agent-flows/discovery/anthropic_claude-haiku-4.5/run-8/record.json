@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately states that the hosted website flow starts from /llms.txt (HTTP) and the npm bundle flow starts from AGENTS.md. It explicitly lists that --bundle mode skips website artifacts including llms.txt, llms-full.txt, search index, sitemap, robots, and agent-readability files. All rubric-required points are fully satisfied with no factual errors.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 15,
+  "inputTokens": 4458,
+  "outputTokens": 277,
+  "durationMs": 35049,
+  "steps": 10,
+  "errors": []
+}

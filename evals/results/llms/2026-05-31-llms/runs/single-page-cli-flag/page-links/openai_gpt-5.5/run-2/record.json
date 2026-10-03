@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "variant": "page-links",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object to stdout describing the generation artifacts, satisfying the first required point. It names multiple output fields including llmsTxt, docsLlmsTxt, and llmsFullTxt, satisfying the second required point. It does not describe human-readable output or invent major fictional fields, though it includes a minor inaccuracy ('agentReadabilityJson' instead of 'agentReadabilityManifest'). Overall, the required rubric points are met, and the answer provides substantial bonus detail.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 1503,
+  "outputTokens": 6,
+  "durationMs": 12794,
+  "steps": 5,
+  "errors": []
+}

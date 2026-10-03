@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth driving sidebar, llms.txt, and AGENTS.md, and group as a legacy/optional field still useful for fallback and search facets. It also correctly states that an unknown group slug causes a build failure with an explicit error, not a silent skip. All rubric requirements are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 317736,
+  "outputTokens": 2441,
+  "durationMs": 53660,
+  "steps": 12,
+  "errors": []
+}

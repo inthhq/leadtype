@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object containing paths of generated artifacts, meeting the first required point. It lists llmsFullTxt, docsLlmsTxt, and llmsTxt among the fields, satisfying the second required point. No incorrect claims are made; the response correctly describes structured JSON output and names required fields.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3436,
+  "outputTokens": 340,
+  "durationMs": 23218,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly answers 'No', states that the default is a static local lexical index using BM25 without a database, and explains that embeddings are an opt-in addition for vocabulary mismatch or large corpus. All required rubric points are met, and no incorrect claims are made.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2663,
+  "outputTokens": 254,
+  "durationMs": 19478,
+  "steps": 5,
+  "errors": []
+}

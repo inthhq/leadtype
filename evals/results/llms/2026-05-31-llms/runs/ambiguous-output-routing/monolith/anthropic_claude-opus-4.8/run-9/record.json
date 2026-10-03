@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files reference (docs/reference/llm.md) and the agent-facing output APIs (including generateLLMFullContextFiles). It explicitly contrasts this with the search/query path, which it says not to use, meeting the first required rubric point. It also clearly explains that /llms-full.txt is a fallback used when page-level links (from /llms.txt) are insufficient, and emphasizes it is not the default entry point, satisfying the second required point.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 10,
+  "inputTokens": 4991,
+  "outputTokens": 456,
+  "durationMs": 34090,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly imports product/nav from docs.config.ts and sequences conversion before index/search generation. However, it invents API names (buildLlmsIndex, buildLlmsFull, buildSearchIndex) instead of the required generateLlmsTxt, generateLLMFullContextFiles, and the search-node API (e.g., generateDocsSearchFiles). The rubric explicitly requires those function calls. The agent's comment that the actual export names may differ indicates uncertainty, so the script is incorrect despite the correct ordering.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 6643,
+  "outputTokens": 823,
+  "durationMs": 67432,
+  "steps": 10,
+  "errors": []
+}

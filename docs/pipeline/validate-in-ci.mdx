@@ -1,0 +1,160 @@
+---
+title: "CI for your docs"
+description: "leadtype lint verifies every internal link against your real route graph and typechecks code snippets against your installed packages — docs that can't silently rot."
+---
+
+Docs rot in ways no reviewer catches: a page gets renamed and links to it 404 for months, an anchor stops matching after a heading edit, a code example keeps calling an API that changed two releases ago. `leadtype lint` makes each of those a failing PR check instead of a slow leak — a bare `leadtype lint` in CI verifies your whole docs system, config included, against the same resolution rules `generate` builds with.
+
+Everything below was tuned on leadtype's own docs, where it found real, shipped breakage: anchors broken on the live site, a JSX component in a `ts` fence, and over a hundred type-level issues in "carefully written" examples.
+
+## What it catches
+
+**The link graph** — every internal link verified against your real routes (mounts, collections, and generated pages included):
+
+- Links to routes that don't exist, including relative `./sibling` links (`invalid-link`) — and when redirect tracking is on, a link to a renamed page tells you where it moved.
+- `#anchors` that match no heading on the target page, validated with the exact slugger the site TOC uses (`invalid-anchor`).
+- Dead links the config itself owns — curated `navigation` entries, `llms.sections` links, feed prefixes, stale `redirects.removed` paths (`config-link`). Lint catches at PR time what `generate` would crash on at build time.
+- Cross-framework links and unresolved `{framework}` placeholders (`cross-framework-link`, `unresolved-placeholder`).
+
+**Code snippets** — examples that stay true:
+
+- Every fenced block with a known language must parse — TS/JS, JSON/JSONC, YAML (`snippet:parse`). Common docs idioms (bare signatures, config excerpts, `...` ellipses) parse without any annotation.
+- Opt in to `snippet:types` and module-shaped `ts`/`tsx` examples typecheck against your **installed packages** — when your API changes, every doc example still calling the old one fails CI. See [Lint reference](/docs/reference/lint) for the twoslash directives (`// @filename:`, `// ---cut---`, `// @noErrors`).
+
+**The boring-but-vital layer** — frontmatter schema violations, unknown fields, unparseable frontmatter or `meta.json`, components that would leak raw JSX into agent markdown, invalid JSON-LD, and the structural GEO checks (heading hierarchy, code-fence languages, image alt text).
+
+**External URLs** — checked on a schedule, never in your merge gate (network flakiness doesn't belong in PR CI). Run the `external-link` rule weekly:
+
+```yaml title=".github/workflows/link-check.yml"
+name: External links
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx leadtype lint --external-links --format github
+```
+
+Live URLs are cached between runs (default 7 days), failures never are, rate-limited and bot-gated hosts are skipped rather than failed, and `lint.externalLinks.ignore` mutes known-flaky prefixes.
+
+Lint discovers your docs config the same way `generate` does, so a bare `leadtype lint` lints the configured source tree with mounts, custom schemas, and `lint.rules` severity overrides applied — no flags needed.
+
+See [Lint reference](/docs/reference/lint) for the full rule list and how to extend the schema.
+
+## GitHub Actions
+
+Use `--format github` so violations render as inline annotations on the PR:
+
+```yaml
+name: Lint docs
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "**/*.mdx"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: npx leadtype lint docs --format github --error-unknown --max-warnings 0
+```
+
+`--error-unknown` upgrades unknown-field warnings to errors — strict mode. `--max-warnings 0` makes any remaining warning fail the job.
+
+## Other CI providers
+
+Use `--format json` for any CI that doesn't speak the GitHub annotations format:
+
+```bash
+npx leadtype lint docs --format json --error-unknown > lint-report.json
+```
+
+The JSON output includes per-file violations and summary counts. Pipe it into your provider's reporter, post a PR comment, or upload as an artifact.
+
+### GitLab CI
+
+```yaml title=".gitlab-ci.yml"
+lint-docs:
+  image: oven/bun:latest
+  rules:
+    - changes:
+        - "docs/**/*"
+        - "**/*.mdx"
+  script:
+    - bun install
+    - npx leadtype lint docs --format json --error-unknown --max-warnings 0 > lint-report.json
+  artifacts:
+    when: always
+    paths:
+      - lint-report.json
+```
+
+### CircleCI
+
+```yaml title=".circleci/config.yml"
+version: 2.1
+jobs:
+  lint-docs:
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npx leadtype lint docs --format json --error-unknown --max-warnings 0 | tee lint-report.json
+      - store_artifacts:
+          path: lint-report.json
+```
+
+## Local pre-push hook
+
+Catch issues before they reach CI by running lint in a husky pre-push hook:
+
+```bash
+#!/usr/bin/env sh
+npx leadtype lint docs --max-warnings 0
+```
+
+Keep it under a second by limiting the scan to changed files when you have many pages. The CLI accepts repeated `--ignore` globs to skip stale or generated paths.
+
+## Gate on the resolved project too
+
+`lint` checks your content. [`leadtype doctor`](/docs/reference/doctor) checks the *project* — that the config resolves, that every collection's directory exists, that remote sources are synced to the revision the config asks for, and that no page declares a group nothing declares.
+
+```bash
+npx leadtype doctor --src . --docs-dir docs
+```
+
+It is read-only by construction: it never clones, refreshes, writes, or generates, which is what makes it safe to run first in a job. Exit `1` means a required input is missing or invalid; warnings still print but do not fail the build.
+
+Worth knowing before you gate a multi-repo project on it: a config that pins a **mutable ref** — a branch rather than a commit — has a cache that is stale whenever CI hasn't synced, and doctor reports that. On a pinned commit it is a real signal; on a branch it mostly reports the CI environment. Either run `leadtype sync` first, or gate only on the repo whose docs you own.
+
+## Run before generate
+
+When these run in the same job, order them cheapest-and-most-specific first:
+
+```bash
+npx leadtype doctor --src . --docs-dir docs
+npx leadtype lint docs --error-unknown
+npx leadtype generate --src . --out public --json
+```
+
+Doctor fails on a project that can't resolve at all, before anything reads content. Lint then fails specifically on content schema problems with file/line context. Generate fails noisily on unknown groups or broken includes — much harder to debug than either of the two before it.
+
+## What to fix first
+
+When CI fails on a lot of violations, fix them in this order:
+
+1. `parse-error` — frontmatter is broken; nothing else can validate.
+2. `schema` — missing or wrong-typed required fields.
+3. `unresolved-placeholder` — content bug, not a config bug.
+4. `invalid-link` and `cross-framework-link` — usually a stale link after a docs move.
+5. `unknown-field` — last; either delete the field or extend the schema.

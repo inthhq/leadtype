@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The conversion and LLM artifact generation are correctly ordered and use library APIs. However, the search index is built from the original MDX source directory (`contentDir: docsDir`) instead of the already-converted markdown mirrors, violating the requirement that generators read converted markdown. This undermines the correctness of the static search index.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 34,
+  "inputTokens": 697672,
+  "outputTokens": 13059,
+  "durationMs": 121787,
+  "steps": 27,
+  "errors": []
+}

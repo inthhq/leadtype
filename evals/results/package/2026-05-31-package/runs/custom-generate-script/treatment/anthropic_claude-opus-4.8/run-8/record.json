@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles, satisfying the critical ordering requirement. All required APIs are imported from leadtype library modules (not CLI). Product and nav from docs.config.ts are correctly passed to the generators. No invented API names and no CLI usage. Thus every rubric point is met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 42,
+  "inputTokens": 39683,
+  "outputTokens": 818,
+  "durationMs": 116243,
+  "steps": 11,
+  "errors": []
+}

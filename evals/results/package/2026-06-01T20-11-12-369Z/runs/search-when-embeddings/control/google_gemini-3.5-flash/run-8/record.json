@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default search as a static, local, BM25-powered lexical index with no database, and rightly insists on keeping lexical search for exact matches. However, it fails to include the required condition that a very large corpus (tens of thousands of chunks) may warrant embeddings. The rubric explicitly demands that condition alongside vocabulary mismatch, so the answer is incomplete and thus incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 330595,
+  "outputTokens": 10252,
+  "durationMs": 90392,
+  "steps": 25,
+  "errors": []
+}

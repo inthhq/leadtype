@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly identifies `nav` as the curated driver of sidebar, agent map, and artifact ordering, meeting the first required point. It describes `group` as legacy/optional, still useful for fallback and taxonomy, meeting the second. It explicitly states the build fails with an unknown group error, not a silent skip or warning, meeting the third. All required points are fully satisfied with no contradictions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 67653,
+  "outputTokens": 734,
+  "durationMs": 89440,
+  "steps": 11,
+  "errors": []
+}

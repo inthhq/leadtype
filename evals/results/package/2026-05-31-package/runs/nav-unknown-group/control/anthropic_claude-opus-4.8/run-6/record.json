@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` in `docs.config.ts` as the curated source of truth driving sidebar, agent map, `llms.txt`, and `AGENTS.md`; it describes `group` as legacy/optional, useful for fallback navigation and taxonomy metadata; and it states that an unknown group slug causes a hard build failure with exit code 1, mentioning the `unknown group` error explicitly. All required rubric points are satisfied without any incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 69401,
+  "outputTokens": 691,
+  "durationMs": 91821,
+  "steps": 13,
+  "errors": []
+}

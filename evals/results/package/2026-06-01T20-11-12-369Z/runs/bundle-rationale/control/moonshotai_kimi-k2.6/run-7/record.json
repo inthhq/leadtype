@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains that llms.txt is a website/HTTP convention with URL-based paths that break in a tarball, while AGENTS.md is filesystem-first and works offline. It states that --bundle skips llms.txt, llms-full.txt, and other website-only artifacts. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 135055,
+  "outputTokens": 2295,
+  "durationMs": 36478,
+  "steps": 10,
+  "errors": []
+}

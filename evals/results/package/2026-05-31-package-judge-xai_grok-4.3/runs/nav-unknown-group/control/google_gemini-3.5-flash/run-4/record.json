@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The ANSWER.md correctly identifies nav as the driver for sidebar + AGENTS.md/agent maps and states that unknown group produces a fatal build error. It also labels group as legacy/fallback and notes its taxonomy/filtering value. However it never mentions llms.txt sections (a required identification), mixes in an extraneous 'groups config array' that the rubric does not reference, and therefore fails to satisfy every REQUIRED point exactly.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 37709,
+  "outputTokens": 423,
+  "durationMs": 127577,
+  "steps": 28,
+  "errors": []
+}

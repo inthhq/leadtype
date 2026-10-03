@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM file generation APIs (e.g., generateLLMFullContextFiles) as the agent-facing output area, distinct from search. It explains that the monolithic /llms-full.txt is a fallback used when page-level links are insufficient, not the default. All required rubric points are met.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 8,
+  "inputTokens": 4782,
+  "outputTokens": 457,
+  "durationMs": 32243,
+  "steps": 5,
+  "errors": []
+}

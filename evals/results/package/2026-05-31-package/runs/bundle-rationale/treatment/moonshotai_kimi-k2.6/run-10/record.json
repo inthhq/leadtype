@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required rubric points are satisfied: it explains that llms.txt is a website HTTP convention with absolute URLs, not suitable for a tarball; that AGENTS.md is a filesystem convention with relative links, works offline and is version-matched; and it lists the skipped artifacts including llms.txt, llms-full.txt, search, sitemap, robots, and agent readability files, noting they are URL-anchored and inappropriate for an offline package.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 15003,
+  "outputTokens": 203,
+  "durationMs": 18829,
+  "steps": 7,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "discovery",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states it prints a single JSON result object to stdout and names the required output-path fields (llmsTxt, llmsFullTxt, docsLlmsTxt), satisfying the two required points. However, it incorrectly lists 'agentReadabilityJson' as a field, which is not in the ground truth result shape (the correct field is 'agentReadabilityManifest'). This invented field triggers the 'incorrect if' condition, making the overall answer incorrect. The remainder of the description is accurate and bonus points are partially covered.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 5,
+  "inputTokens": 4133,
+  "outputTokens": 328,
+  "durationMs": 20370,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly distinguishes `llms.txt` as a website/HTTP convention with absolute URLs that coding agents do not look for in `node_modules`, and explains that `AGENTS.md` works inside the package with relative links, no network access, and version matching. It explicitly lists the website artifacts skipped by `--bundle`, including `llms.txt`, `llms-full.txt`, search files, sitemaps, robots.txt, and agent-readability data, meeting all rubric requirements.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 55176,
+  "outputTokens": 821,
+  "durationMs": 26123,
+  "steps": 6,
+  "errors": []
+}

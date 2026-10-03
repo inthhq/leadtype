@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "monolith",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the JSON output and lists many correct fields. However, it invents 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', which violates the rubric's condition for incorrectness. All required points are covered, but the invented field makes it not fully correct.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4459,
+  "outputTokens": 293,
+  "durationMs": 17414,
+  "steps": 4,
+  "errors": []
+}

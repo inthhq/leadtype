@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the answer correctly states the default is a static/local BM25 lexical index with no DB; it gives the specific warranted conditions (semantic/vocabulary mismatch + corpus exceeding ~10k chunks / edge limits); and it explicitly says to keep the lexical/BM25 index for exact matches as a complementary/hybrid layer. The numbers and wording are close enough to the ground-truth thresholds and examples that no required point is missed or contradicted.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 38,
+  "inputTokens": 63490,
+  "outputTokens": 519,
+  "durationMs": 157951,
+  "steps": 24,
+  "errors": []
+}

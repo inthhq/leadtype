@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly directs the user to the LLM files reference area (e.g., 'Reference → LLM files /docs/reference/llm.md', naming APIs like generateLLMFullContextFiles) and explicitly warns against using the Search docs. It also explains that the monolithic /llms-full.txt is a fallback used when page-level links are insufficient, matching the required rubric points exactly. No misdirection or error is present, so the response is fully complete and correct.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3060,
+  "outputTokens": 13,
+  "durationMs": 28047,
+  "steps": 8,
+  "errors": []
+}

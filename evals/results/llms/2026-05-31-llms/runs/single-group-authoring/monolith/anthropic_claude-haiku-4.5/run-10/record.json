@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that `group` organizes navigation, llms.txt sections, and AGENTS.md grouping, and that `/llms-full.txt` is a monolithic all-docs fallback, not sharded by group. It names multiple valid optional frontmatter fields (e.g., `icon`, `deprecated`), satisfying every required rubric point thoroughly.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4053,
+  "outputTokens": 203,
+  "durationMs": 14989,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default BM25 lexical search with no vector DB. It specifies the specific conditions for adding embeddings: vocabulary/intent mismatch and large corpus with measured failures. It clearly states that BM25 should be kept and embeddings are complementary. All required points satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 25442,
+  "outputTokens": 748,
+  "durationMs": 65299,
+  "steps": 7,
+  "errors": []
+}

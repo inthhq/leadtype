@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent's response does not provide the requested information. Instead of naming the specific frontmatter fields (lastModified and lastAuthor) and stating they come from git history, it declines to answer, claiming the leadtype package is not installed. This is a refusal to complete the task, so no required rubric points are met.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 3726,
+  "outputTokens": 305,
+  "durationMs": 42191,
+  "steps": 8,
+  "errors": []
+}

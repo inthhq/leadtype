@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the ANSWER.md paragraph explicitly names both `lastModified` and `lastAuthor`, states they are merged into each doc's frontmatter, and states the values are taken from `git log` (author date and name) on the source file. No invented fields, no non-git sources, and the behavior described matches the ground-truth description of `--enrich-git`. The extra length and heading do not violate any rubric constraint.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 37705,
+  "outputTokens": 460,
+  "durationMs": 28450,
+  "steps": 7,
+  "errors": []
+}

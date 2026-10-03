@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website-oriented artifact designed to be fetched from a hosted root and presumably uses absolute URLs, making it unsuitable for a tarball. It correctly describes AGENTS.md as using relative links that work offline inside node_modules. It lists all required skipped website artifacts—llms.txt, llms-full.txt, search, sitemap, robots—and explains why they are omitted. All REQUIRED rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 29845,
+  "outputTokens": 73,
+  "durationMs": 32829,
+  "steps": 8,
+  "errors": []
+}

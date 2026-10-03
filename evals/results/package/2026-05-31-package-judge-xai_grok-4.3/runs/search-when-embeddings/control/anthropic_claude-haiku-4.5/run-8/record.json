@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly states the default (static/local BM25 lexical index, no DB/embeddings) and that the lexical index must be kept for hybrid use. However it fails the second REQUIRED point: it gives a different, stricter set of conditions (all three of semantic mismatch + >10k searches/mo + complex queries) instead of the rubric's specific criteria (vocabulary/intent mismatch OR corpus past tens of thousands of chunks). This is asserted confidently without hedging, so the answer does not satisfy every required rubric point.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 22425,
+  "outputTokens": 324,
+  "durationMs": 46873,
+  "steps": 17,
+  "errors": []
+}

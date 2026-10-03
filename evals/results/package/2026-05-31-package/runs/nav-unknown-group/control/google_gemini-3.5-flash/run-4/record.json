@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of sidebar and agent map, notes that group is legacy/fallback and still useful for fallback navigation and integration filtering, and states that an unknown group slug causes a build failure. However, it fails to mention that nav explicitly drives llms.txt sections, a REQUIRED rubric point. This omission makes the answer incomplete, and it confidently presents the nav role without covering that aspect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 27,
+  "inputTokens": 37709,
+  "outputTokens": 423,
+  "durationMs": 127577,
+  "steps": 28,
+  "errors": []
+}

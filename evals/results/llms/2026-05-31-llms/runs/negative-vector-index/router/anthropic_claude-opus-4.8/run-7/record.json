@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "negative-vector-index",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly answers 'No' to the hosted database-backed vector index by default, describes the default as a static local lexical index using BM25 without a database, and explains embeddings are not part of the default setup and are only added later under specific conditions (vocabulary mismatch or large corpus). All required rubric points are satisfied clearly.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 3818,
+  "outputTokens": 249,
+  "durationMs": 22533,
+  "steps": 5,
+  "errors": []
+}

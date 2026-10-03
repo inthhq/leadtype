@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected as frontmatter, and correctly attributes their values to git history / git log output. All three REQUIRED rubric points are met with no invented fields or wrong sources. The single-paragraph format and extra implementation detail do not violate any rubric constraints.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 18181,
+  "outputTokens": 182,
+  "durationMs": 26138,
+  "steps": 10,
+  "errors": []
+}

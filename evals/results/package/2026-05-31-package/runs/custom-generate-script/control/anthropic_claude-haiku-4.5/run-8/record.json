@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first to convert MDX to markdown, then calls generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in the correct order. Product and nav from docs.config.ts are passed to the generators. All required calls are present and ordered correctly.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 18105,
+  "outputTokens": 576,
+  "durationMs": 34296,
+  "steps": 14,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names (lastModified and lastAuthor) are stated, they are described as frontmatter fields added to pages, and their source is explicitly git history / commits. No invented fields, no wrong provenance, and the paragraph matches the ground-truth description.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 10294,
+  "outputTokens": 142,
+  "durationMs": 17266,
+  "steps": 10,
+  "errors": []
+}

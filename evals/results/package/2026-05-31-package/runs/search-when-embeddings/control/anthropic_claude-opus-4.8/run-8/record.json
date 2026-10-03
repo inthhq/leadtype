@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly states the default is a static, edge-safe BM25 lexical index with no database, satisfying the first required point. It gives specific conditions for adding embeddings: vocabulary mismatch that stemming/synonyms can't fix and a corpus growing past tens of thousands of chunks, meeting the second requirement. It clearly says to keep BM25 for exact matches and use embeddings complementarily, not as a replacement, fulfilling the third. All required points are addressed without any incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 28872,
+  "outputTokens": 788,
+  "durationMs": 77204,
+  "steps": 11,
+  "errors": []
+}

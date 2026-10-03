@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly identifies nav as the primary/curated driver (when present) and group as legacy/fallback+metadata, satisfying the first two REQUIRED points. However, on the third REQUIRED point it states that unknown groups only produce the hard 'unknown group' error when config.groups is defined, otherwise silently routing to 'ungrouped' with no failure; this directly contradicts the rubric's ground truth that an unknown group slug always causes a build failure (and matches one of the explicit 'Incorrect if' cases).",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 52613,
+  "outputTokens": 665,
+  "durationMs": 69479,
+  "steps": 16,
+  "errors": []
+}

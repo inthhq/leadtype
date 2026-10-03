@@ -1,0 +1,351 @@
+---
+title: "Components"
+description: "MDX components the pipeline knows how to flatten into agent-readable markdown."
+---
+
+Leadtype does not ship UI components. **Your docs app owns runtime rendering, styling, and accessibility** — it only has to honor a small naming contract so the markdown transform pipeline can flatten each component into markdown for agents, search, and `llms-full.txt`.
+
+## Why flatten at all?
+
+Interactive MDX components like `<Tabs>` or `<Callout>` render fine in a browser but do nothing for an agent reading raw text. *[Flattening](/docs/how-it-works#vocabulary)* converts each component into a portable markdown equivalent at conversion time:
+
+- A `<Callout>` becomes a blockquote.
+- A `<Tabs>` becomes a stack of bold headings, one per tab.
+- A `<TypeTable>` becomes a markdown table.
+- A `<Mermaid>` becomes a fenced Mermaid code block — the diagram source survives so other tooling can render it.
+
+This means the same content reaches three audiences (humans, agents, search) without you maintaining two copies.
+
+## The naming contract
+
+The markdown transform pipeline recognizes these names. If your components use the same names, flattening Just Works:
+
+`Accordion`, `AccordionItem`, `ApiAuth`, `ApiCodeSamples`, `ApiEndpoint`, `ApiParameters`, `ApiRequestBody`, `ApiResponses`, `ApiTryIt`, `Audience`, `AutoTypeTable`, `Callout`, `Card`, `Cards`, `CommandTabs`, `Details`, `Example`, `ExtractedTypeTable`, `File`, `FileTree`, `Folder`, `Mermaid`, `Prompt`, `Section`, `Step`, `Steps`, `Tab`, `Tabs`, `TopicSwitcher`, `TypeTable`.
+
+The `Api*` names are emitted by [OpenAPI page generation](/docs/reference/openapi)
+rather than authored by hand — map them in your renderer when you generate an
+API reference.
+
+If your app uses different names — or a component that has no equivalent above — you have two options: rename to match the contract, or define how it flattens with [`defineComponentFlattener`](/docs/reference/markdown#custom-component-flatteners). You declare the component name and a `toMarkdown` function; leadtype handles tree-walking, prop parsing, child flattening, and transform order for you.
+
+A rendered component that's neither in the contract nor has a flattener passes through as **raw JSX** in the generated markdown — agents see noise instead of content. [`leadtype lint`](/docs/reference/lint) catches this: the [`unflattened-component`](/docs/reference/lint#content-link-rules) rule warns on any such component. Components shown inside code fences are examples, not rendered JSX, so they never warn.
+
+Runtime registration, heading IDs, and "On this page" sidebars are docs-app concerns. See [Use the source primitive](/docs/pipeline/use-the-source-primitive) for runtime wiring and [`leadtype/mdx`](/docs/reference/mdx) for the full prop-type contract.
+
+## Reuse shared content
+
+Use include tags when several pages need the same explanation, warning, setup step, or code sample. `leadtype generate` and `leadtype lint` handle includes automatically. Add `includeMarkdown` before the default transform stack in custom conversion scripts:
+
+```ts
+import { defaultMarkdownTransforms, includeMarkdown } from "leadtype/markdown";
+
+markdownTransforms: [includeMarkdown, ...defaultMarkdownTransforms];
+```
+
+Include a whole markdown or MDX partial with `src` or text content:
+
+```mdx
+<include src="./shared/session-flow.mdx" />
+
+<include>./shared/session-flow.mdx</include>
+```
+
+You can also include code files. Leadtype emits them as fenced code blocks:
+
+```mdx
+<include src="../examples/session.ts" />
+
+<include src="../examples/env" lang="bash" />
+```
+
+To reuse only one block from a larger file, append `#section-id` and wrap that block in a lowercase HTML `section`:
+
+```mdx
+<include src="./shared/auth.mdx#session-flow" />
+```
+
+```mdx
+<section id="session-flow">
+  This content can be reused in multiple pages.
+</section>
+```
+
+Section reuse matches lowercase `<section id="...">` only. A capitalized `<Section id="...">` component is flattened later for markdown output, but it is not an include anchor.
+
+Relative paths resolve from the including file first. Nested includes are supported, so a shared partial can include files next to itself. See [Markdown transforms](/docs/reference/markdown#includemarkdown) for base paths and transform details.
+
+## Component reference
+
+Each section below shows the authored MDX and a live render.
+
+<Audience target="human">
+Switch to the agent view (the robot icon in the example app header) to see the flattened markdown side-by-side.
+</Audience>
+
+### Callout
+
+Wraps supporting context, warnings, or tips. Variants change styling but flatten identically into a blockquote.
+
+```tsx
+<Callout title="Heads up" variant="info">
+  Body content goes here.
+</Callout>
+```
+
+<Callout title="Heads up" variant="info">
+  Callouts wrap supporting context, warnings, or tips. The markdown transform pipeline flattens them into blockquotes so agents still see the content.
+</Callout>
+
+<Callout title="Don't do this" variant="warning">
+  Variants like `warning`, `success`, `error`, and `tip` change the styling but flatten identically.
+</Callout>
+
+### Cards
+
+A grid of short, linked entry points. Flattens to a bullet list of links.
+
+```tsx
+<Cards>
+  <Card title="Convert" description="Turn MDX into agent-friendly markdown." href="/docs/reference/convert" />
+</Cards>
+```
+
+<Cards>
+  <Card title="Convert" description="Turn MDX into agent-friendly markdown." href="/docs/reference/convert" />
+  <Card title="Markdown" description="The transform stack that flattens components." href="/docs/reference/markdown" />
+  <Card title="Search" description="Static index plus runtime helpers." href="/docs/reference/search" />
+</Cards>
+
+### Steps
+
+Numbered walkthroughs. Flattens to an ordered list with bold step titles.
+
+```tsx
+<Steps>
+  <Step title="Author docs in MDX">Use the components in this list.</Step>
+  <Step title="Run the conversion">`leadtype generate` writes flattened markdown.</Step>
+</Steps>
+```
+
+<Steps>
+  <Step title="Author docs in MDX">
+    Use the components in this list as authoring affordances.
+  </Step>
+  <Step title="Run the conversion">
+    `leadtype generate` writes flattened markdown to `public/docs/`.
+  </Step>
+  <Step title="Serve both formats">
+    HTML for humans, `.md` for agents — same URL, content negotiated by the `Accept` header.
+  </Step>
+</Steps>
+
+### Tabs
+
+Group equivalent content. Flattens to bold headings followed by content so agents do not need a JSX-aware renderer to read every variant.
+
+```tsx
+<Tabs items={["TanStack Start", "Next.js", "Vite"]}>
+  <Tab value="tanstack-start">…</Tab>
+  <Tab value="next-js">…</Tab>
+  <Tab value="vite">…</Tab>
+</Tabs>
+```
+
+<Tabs items={["TanStack Start", "Next.js", "Vite"]}>
+  <Tab value="tanstack-start">
+    Use a Vite middleware (dev/preview) and a Nitro middleware (prod) to negotiate the `Accept` header.
+  </Tab>
+  <Tab value="next-js">
+    Wire content negotiation in middleware.ts and serve `.md` from a route handler.
+  </Tab>
+  <Tab value="vite">
+    A `configureServer` middleware is enough for static deployments where `.md` files live in `public/`.
+  </Tab>
+</Tabs>
+
+### CommandTabs
+
+Package-manager-aware install or run commands. Flattens to a markdown table with one row per manager.
+
+Use `mode="install"` when `command` is a package name, `mode="run"` when `command` is a CLI name, and `mode="create"` for starter commands. Use the `commands` prop for exact per-manager overrides.
+
+```tsx
+<CommandTabs command="leadtype" mode="install" />
+<CommandTabs command="leadtype lint" mode="run" />
+<CommandTabs
+  commands={{ npm: "npm install leadtype", pnpm: "pnpm add leadtype" }}
+  defaultManager="pnpm"
+/>
+```
+
+<CommandTabs command="leadtype" mode="install" />
+
+<CommandTabs command="leadtype lint" mode="run" />
+
+### Prompt
+
+Displays an agent-ready prompt with a copy action. Flattening preserves the prompt body as a fenced `prompt` block so copied instructions also survive in `.md`, root `llms-full.txt`, and bundled `AGENTS.md` output.
+
+```tsx
+<Prompt title="Copy prompt for your coding agent" description="Use this after generating artifacts.">
+  Inspect `public/docs/agent-readability.json`, then wire markdown responses before the HTML docs route.
+</Prompt>
+```
+
+<Prompt
+  title="Copy prompt for your coding agent"
+  description="Use this after generating artifacts."
+>
+  Inspect `public/docs/agent-readability.json`, then wire markdown responses before the HTML docs route.
+</Prompt>
+
+### Audience
+
+Splits browser-only and agent-only guidance without forking the page. Human content renders in the docs UI and is omitted from markdown output; agent content is hidden in the browser and included in generated markdown.
+
+```tsx
+<Audience target="human">Click the robot icon in the header.</Audience>
+<Audience target="agent">Read generated markdown before editing runtime routes.</Audience>
+```
+
+<Audience target="human">
+  This sentence renders for human readers in the browser.
+</Audience>
+
+<Audience target="agent">
+  This sentence appears only in generated markdown for agents.
+</Audience>
+
+### FileTree
+
+Shows project structure in guides and release instructions. Flattening emits a fenced text tree so agents can read the same hierarchy without JSX.
+
+```tsx
+<FileTree root="public">
+  <File name="llms.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+  </Folder>
+</FileTree>
+```
+
+<FileTree root="public">
+  <File name="llms.txt" />
+  <Folder name="docs">
+    <File name="index.md" />
+  </Folder>
+</FileTree>
+
+### Accordion
+
+Collapsible details for secondary content. Flattening ignores open/closed state and emits every item — accordions are not a place to hide content from agents.
+
+```tsx
+<Accordion>
+  <AccordionItem title="When should I use accordions?">
+    Use them for supporting details and optional reference material.
+  </AccordionItem>
+</Accordion>
+```
+
+<Accordion>
+  <AccordionItem title="When should I use accordions?">
+    Use them for supporting details, troubleshooting notes, and optional reference material. Closed content is still flattened by the markdown transform pipeline.
+  </AccordionItem>
+  <AccordionItem title="Are accordions a good place to hide content from LLMs?">
+    No. Conversion ignores the open/closed state and emits everything inside.
+  </AccordionItem>
+</Accordion>
+
+### TopicSwitcher
+
+Navigation across equivalent docs topics — frameworks, SDKs, runtimes, deployment targets, product areas. Reader-facing only; it does not automatically read LLM topic config.
+
+```tsx
+<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    { value: "react", label: "React", href: "/docs/frameworks/react" },
+    { value: "vue", label: "Vue", href: "/docs/frameworks/vue" },
+  ]}
+/>
+```
+
+<TopicSwitcher
+  label="Framework"
+  activeValue="react"
+  items={[
+    { value: "react", label: "React", href: "/docs/writing/components", description: "React integration" },
+    { value: "vue", label: "Vue", href: "/docs/writing/components", description: "Vue integration" },
+    { value: "svelte", label: "Svelte", href: "/docs/writing/components", description: "Svelte integration" },
+  ]}
+/>
+
+### TypeTable and ExtractedTypeTable
+
+`TypeTable` is for explicit prop or type rows you already know. `ExtractedTypeTable` reads a TypeScript file at conversion time and extracts the table from a named type — keep its `path` stable.
+
+```tsx
+<TypeTable
+  properties={{
+    title: { type: "string", required: true, description: "Heading rendered above the body." },
+    variant: { type: "CalloutVariant", default: "info", description: "Visual treatment." },
+  }}
+/>
+```
+
+<TypeTable
+  properties={{
+    title: { type: "string", required: true, description: "Heading rendered above the callout body." },
+    variant: { type: "CalloutVariant", default: "info", description: "Visual treatment for the callout." },
+    deprecated: { type: "boolean", default: "false", description: "Marks the row as deprecated.", deprecated: true },
+  }}
+/>
+
+### Example
+
+Data-driven preview and source examples. The host component receives code as data; add file loaders or dynamic imports outside leadtype when an example needs app-specific behavior.
+
+```tsx
+<Example
+  title="Render MDX"
+  description="Preview the output and inspect the source."
+  filename="mdx-components.tsx"
+  language="tsx"
+  code={`import { mdxComponents } from "@/components/docs-mdx";`}
+>
+  <Callout title="Runtime components" variant="success">
+    The host app owns styling and runtime components while leadtype owns conversion.
+  </Callout>
+</Example>
+```
+
+### API reference components
+
+`ApiEndpoint`, `ApiAuth`, `ApiParameters`, `ApiRequestBody`, `ApiCodeSamples`, `ApiResponses`, and `ApiTryIt` render generated OpenAPI operation pages — endpoint badges, parameter tables, request/response contracts with JSON Schema, and code samples. You don't author these by hand; [OpenAPI page generation](/docs/reference/openapi) emits them with serialized props, and the flattener turns them into tables, fenced code, and schema blocks for agents. Prop contracts ship from [`leadtype/mdx`](/docs/reference/mdx) (`ApiEndpointProps`, `ApiResponsesProps`, …).
+
+```tsx
+<ApiEndpoint method="get" path="/users/{id}" operationId="readUser" />
+```
+
+### Mermaid
+
+Diagrams authored as plain text. Renders client-side as interactive SVG. Flattening preserves the source as a fenced Mermaid code block so other tools can render the diagram from the markdown copy.
+
+```tsx
+<Mermaid chart={`graph LR
+  MDX -->|flatten| Markdown
+  Markdown -->|llms.txt| Agents`} />
+```
+
+<Mermaid chart={`graph LR
+  MDX -->|flatten| Markdown
+  Markdown -->|search index| API
+  Markdown -->|llms.txt| Agents`} />
+
+## Guidelines
+
+- Keep runtime components in your docs app. Leadtype stays out of UI.
+- Keep component names stable. Renaming `<Callout>` breaks the flattening contract until you remap it with [`defineComponentFlattener`](/docs/reference/markdown#custom-component-flatteners).
+- For agent output quality, read the converted `.md` files first and only edit components or transform order if the markdown actually looks wrong.

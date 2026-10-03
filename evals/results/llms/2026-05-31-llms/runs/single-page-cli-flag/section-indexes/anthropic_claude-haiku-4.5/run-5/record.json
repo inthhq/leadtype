@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object and lists several accurate output-path fields like llmsTxt and docsLlmsTxt, meeting the required points. However, it invents the field 'agentReadabilityJson' (instead of the actual 'agentReadabilityManifest'), which is not part of the result shape. This error is stated confidently, making the response incorrect overall despite largely accurate content.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2568,
+  "outputTokens": 134,
+  "durationMs": 9243,
+  "steps": 5,
+  "errors": []
+}

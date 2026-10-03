@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website convention with absolute URLs and is not looked for in node_modules, while AGENTS.md uses relative links and works offline. It lists the skipped website artifacts (llms.txt, llms-full.txt, etc.) exactly as required. All rubric points are met with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 16927,
+  "outputTokens": 183,
+  "durationMs": 19411,
+  "steps": 5,
+  "errors": []
+}

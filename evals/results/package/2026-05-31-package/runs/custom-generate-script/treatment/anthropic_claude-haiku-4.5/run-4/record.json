@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script uses leadtype's library APIs correctly: conversion via convertMdxFile runs first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles for the routing index, root full-text fallback, and search index respectively. It imports and passes product and nav from docs.config.ts into the llm generators. The execution order ensures the converted markdown is available before the index/search generators run, meeting the critical ordering requirement. All required artifacts are produced under public/.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 18563,
+  "outputTokens": 439,
+  "durationMs": 24949,
+  "steps": 7,
+  "errors": []
+}

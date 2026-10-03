@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly explains that `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping, and accurately characterizes `/llms-full.txt` as a monolithic fallback, not per-group. However, it lists optional frontmatter fields `deprecatedReason` and `availableIn` that are not in the documented schema, violating the rubric's condition against inventing fields. While at least two valid optional fields are named, the presence of incorrect fields makes the response technically incorrect. The core knowledge is solid, so score is 75.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 2,
+  "toolCalls": 7,
+  "inputTokens": 2794,
+  "outputTokens": 6,
+  "durationMs": 19410,
+  "steps": 6,
+  "errors": []
+}

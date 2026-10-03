@@ -1,11 +1,4 @@
 {
-  "answerPatterns": [
-    "llms\\.txt",
-    "AGENTS\\.md",
-    "--bundle",
-    "skips",
-    "llms-full"
-  ],
   "expectedGroups": ["get-started", "package-docs"],
   "expectedPages": ["docs/how-it-works.md", "docs/package-docs/bundle.md"]
 }

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script does not import or call any leadtype library conversion or generator functions (e.g., convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles). It implements its own custom logic, which invents APIs not part of leadtype. All required rubric points about using those APIs are missed. It therefore fails to meet the core requirement of using library APIs.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 11687,
+  "outputTokens": 464,
+  "durationMs": 68128,
+  "steps": 18,
+  "errors": []
+}

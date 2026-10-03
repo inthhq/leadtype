@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: nav is identified as the curated driver (with fallback behavior described), group is correctly labeled legacy/optional (useful for fallback + metadata/search), and the unknown-group case is stated to produce a hard build-failing error rather than a warning or silent drop. The agent's wording is slightly paraphrased (e.g., 'LLM readability manifest' instead of explicit 'llms.txt' / 'AGENTS.md') but factually aligns with the ground truth and contains no contradictions.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 39,
+  "inputTokens": 35168,
+  "outputTokens": 407,
+  "durationMs": 118576,
+  "steps": 40,
+  "errors": [],
+  "failureMode": "none"
+}

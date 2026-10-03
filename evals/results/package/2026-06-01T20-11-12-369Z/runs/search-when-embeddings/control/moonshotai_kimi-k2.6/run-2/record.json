@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly describes the default BM25 static index (no database) and gives specific conditions for embeddings (vocabulary mismatch, large corpus ~10k chunks). However, it fails to state that the lexical index should be kept for exact matches; instead, it recommends swapping the searchDocs call for a vector retriever, effectively replacing the lexical index, which violates the required point that embeddings are complementary and not a replacement. The chunking and answer builder suggestions are secondary but do not salvage this critical error. Thus it is missing a required point and assertively suggests incorrect replacement.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 138434,
+  "outputTokens": 3281,
+  "durationMs": 55302,
+  "steps": 12,
+  "errors": []
+}

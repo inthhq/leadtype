@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` (config) as the curated source for sidebar, `llms.txt` sections, and `AGENTS.md` grouping. It recognizes `group` as a legacy field useful for fallback navigation and taxonomy/search facets. It states that an unknown `group` slug causes the build to fail with an 'unknown group' error, not a silent skip or warning. All required rubric points are thoroughly satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 67948,
+  "outputTokens": 699,
+  "durationMs": 81079,
+  "steps": 10,
+  "errors": []
+}

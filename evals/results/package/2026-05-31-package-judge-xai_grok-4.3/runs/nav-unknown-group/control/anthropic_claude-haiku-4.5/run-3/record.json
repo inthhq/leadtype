@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 15,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The agent response satisfies none of the three REQUIRED rubric points. It correctly notes that `nav` is the preferred/curated driver, but then claims `group` is merely optional metadata rather than explicitly legacy/fallback taxonomy, and (most critically) states that unknown groups are collected in an `unknown[]` array with no build failure—directly contradicting the ground-truth requirement that the build must fail with an \"unknown group\" error. This is asserted confidently from the leadtype sources with no hedging, so failureMode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 42108,
+  "outputTokens": 422,
+  "durationMs": 50236,
+  "steps": 18,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required frontmatter fields 'lastModified' and 'lastAuthor', explicitly states they are injected into page frontmatter, and explains they are retrieved from git history via a git log command. All rubric REQUIRED points are satisfied; no incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 18124,
+  "outputTokens": 259,
+  "durationMs": 35273,
+  "steps": 17,
+  "errors": []
+}

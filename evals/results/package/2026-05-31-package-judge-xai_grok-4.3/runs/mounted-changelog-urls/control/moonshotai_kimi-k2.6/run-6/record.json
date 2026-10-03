@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 90,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The provided ANSWER.md uses the exact required mount syntax `--docs-dir changelog=/changelog` (repeated) in the single `leadtype generate` command. It correctly states that the canonical URL seen by agents is under `/changelog/...`, explicitly describes the internal copy remaining at `public/docs/changelog/v1.md` (for search/indexing) and the static mirror written to `public/changelog/v1.md`. All three REQUIRED rubric points are satisfied; the only minor deviation is the agent's choice of an extension-less canonical path (`/changelog/v1`) versus the ground-truth example that includes `.md`.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 46113,
+  "outputTokens": 542,
+  "durationMs": 73461,
+  "steps": 15,
+  "errors": []
+}

@@ -17,6 +17,7 @@
       "!**/public",
       "!**/public-real",
       "!**/routeTree.gen.ts",
+      "!**/static",
       "!apps/example/src/generated/*.json"
     ]
   },
@@ -48,6 +49,34 @@
           "style": {
             "useConsistentTypeDefinitions": "off",
             "useFilenamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "apps/astro-example/**/*.astro",
+        "apps/nuxt-example/**/*.vue",
+        "apps/sveltekit-example/**/*.svelte"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "useHookAtTopLevel": "off"
+          },
+          "suspicious": {
+            "noEmptySource": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/nuxt-example/**/*.vue"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUndeclaredVariables": "off"
           }
         }
       }

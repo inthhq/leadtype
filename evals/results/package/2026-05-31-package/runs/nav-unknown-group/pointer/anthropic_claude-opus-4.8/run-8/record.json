@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer clearly identifies nav as the curated source driving sidebar, llms.txt, and AGENTS.md grouping; describes group as legacy/optional with fallback and search facet uses; and states that an unknown group slug causes a build failure with 'unknown group' error. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 12354,
+  "outputTokens": 514,
+  "durationMs": 34362,
+  "steps": 5,
+  "errors": []
+}

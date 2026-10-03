@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that `group` organizes navigation (sidebar position) and `llms.txt` sections / `AGENTS.md` grouping, satisfying the first required point. It correctly describes `/llms-full.txt` as a single monolithic all-docs file that is not split by group, satisfying the second point. It names multiple valid optional frontmatter fields (e.g., `icon`, `deprecated`), satisfying the third point. No required points are missed, and no false claims (like per-group sharding) are made.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3949,
+  "outputTokens": 462,
+  "durationMs": 26874,
+  "steps": 4,
+  "errors": []
+}

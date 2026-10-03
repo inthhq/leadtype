@@ -3,12 +3,53 @@
 // pipeline. Specialized surfaces stay on dedicated subpaths:
 //   - `leadtype/mdx` — tag types, source remark preset, include resolver
 //   - `leadtype/fumadocs` — adapter for fumadocs-core's Source interface
-//   - `leadtype/remark` — agent/LLM flattening plugins
+//   - `leadtype/markdown` — agent/LLM flattening plugins
+//   - `leadtype/openapi` — OpenAPI loading and generated API reference pages
 //   - `leadtype/convert` — MDX → markdown helpers
+//   - `leadtype/feed` — RSS/Atom renderers and artifact generation
 //   - `leadtype/llm` — TOC extraction, slug helpers, agent readability
 //   - `leadtype/search` — search index + per-host adapters
 //   - `leadtype/lint` — frontmatter / meta.json validation
+//   - `leadtype/transformers` — frontmatter schemas + lifecycle hook types
 
+export {
+  formatDeprecationWarning,
+  type NormalizeDocsConfigOptions,
+  type NormalizedDocsConfig,
+  normalizeDocsConfig,
+} from "./config/normalize";
+export {
+  type NavigationOrigin,
+  type ProjectDiagnostic,
+  type ResolvedProject,
+  type ResolvedProjectCollection,
+  type ResolveProjectOptions,
+  resolveProject,
+} from "./config/project";
+export {
+  type ConfigDeprecation,
+  type ConfigValueOrigin,
+  type FieldProvenance,
+  type ResolvedDocsCollection,
+  type ResolvedDocsConfig,
+  type ResolvedGitSource,
+  type ResolvedLocalSource,
+  type ResolvedProjectMode,
+  type ResolvedSource,
+  type SerializableResolvedConfig,
+  serializeResolvedConfig,
+} from "./config/types";
+export {
+  type DocsFeedConfig,
+  type FeedEntry,
+  type FeedFormat,
+  type GenerateFeedArtifactsConfig,
+  type GenerateFeedArtifactsResult,
+  generateFeedArtifacts,
+  type RenderFeedConfig,
+  renderAtomFeed,
+  renderRssFeed,
+} from "./feed";
 export {
   type AlternateLocaleLink,
   type DocsI18nConfig,
@@ -30,12 +71,70 @@ export {
   type AgentReadabilityPage,
   type AgentReadabilityResult,
   type CuratedLink,
+  type DocsCollection,
   type DocsConfig,
+  type DocsFrontmatterSchema,
+  type DocsGitConfig,
   type DocsGroup,
+  type DocsLlmsConfig,
+  type DocsNavEntry,
+  type DocsNavIncludeEntry,
+  type DocsNavNode,
+  type DocsNavPageEntry,
+  type DocsNavSortKey,
+  type DocsPathMount,
+  defineCollection,
   defineDocsConfig,
+  defineFrameworkNavigation,
+  defineLeadtypeConfig,
+  type FrameworkNavigationConfig,
+  type FrameworkNavigationTemplate,
+  type FrameworkNavigationVariant,
+  type GitSourceCollection,
+  type GitSourceConfig,
+  type GitSourceSpec,
+  gitSource,
+  type LeadtypeConfig,
+  type LlmsBlock,
+  normalizeAgentReadabilityManifest,
+  type OrganizationInfo,
   type ProductInfo,
+  type ResolvedAgentInputs,
+  resolveAgentInputs,
+  type SourceConfigInheritance,
+  type SourceConfigInheritField,
 } from "./llm";
-
+export type {
+  DocsOpenApiConfig,
+  GeneratedOpenApiIndexPage,
+  GeneratedOpenApiPage,
+  GenerateOpenApiPagesResult,
+  NormalizeOpenApiConfigDefaults,
+  OpenApiCodeSample,
+  OpenApiHttpMethod,
+  OpenApiMediaType,
+  OpenApiOperation,
+  OpenApiParameter,
+  OpenApiRequestBody,
+  OpenApiResponse,
+  OpenApiSchemaProperty,
+  OpenApiSchemaSummary,
+  OpenApiSecurityRequirement,
+  OpenApiSecurityScheme,
+  OpenApiSlugStrategy,
+  OpenApiSourceConfig,
+  OpenApiSourceInput,
+  ResolvedOpenApiSourceConfig,
+  StagedOpenApiDocs,
+  StageOpenApiDocsConfig,
+} from "./openapi";
+export {
+  type CreateDocsProjectConfig,
+  createDocsProject,
+  type DocsProject,
+  type DocsProjectPage,
+  type DocsProjectPageMeta,
+} from "./project";
 export {
   type CreateDocsSourceConfig,
   createDocsSource,

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly names both required frontmatter fields ('lastModified' and 'lastAuthor'), states they are added to the document's frontmatter, and explains that the values are extracted from the file's git history (via 'git log'). It meets all required rubric points and contains no incorrect information.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 38808,
+  "outputTokens": 399,
+  "durationMs": 28704,
+  "steps": 7,
+  "errors": []
+}

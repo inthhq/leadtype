@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer names both required fields (lastModified and lastAuthor), states they are added to frontmatter, and clearly indicates they are sourced from the file's git history. Every required rubric point is met with precision, so the response is fully correct.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 20,
+  "inputTokens": 24853,
+  "outputTokens": 183,
+  "durationMs": 59097,
+  "steps": 19,
+  "errors": []
+}

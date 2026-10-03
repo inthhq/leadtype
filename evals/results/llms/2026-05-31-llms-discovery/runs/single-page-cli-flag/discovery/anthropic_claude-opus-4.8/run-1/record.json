@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that 'leadtype generate --json' prints a JSON object describing generated artifact paths, and it names required fields like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents the field 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', and possibly 'sitemapMd', which are not part of the result shape. This violates the rubric's incorrect condition for inventing fields, making the overall answer incorrect despite meeting the required points.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 7,
+  "inputTokens": 4235,
+  "outputTokens": 469,
+  "durationMs": 25529,
+  "steps": 5,
+  "errors": []
+}

@@ -1,11 +1,13 @@
-import { RootProvider } from "fumadocs-ui/provider";
+import { RootProvider } from "fumadocs-ui/provider/next";
 import type { ReactNode } from "react";
+import { LeadtypeWebMcp } from "./leadtype-webmcp";
 import "./global.css";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
+        <LeadtypeWebMcp />
         <RootProvider>{children}</RootProvider>
       </body>
     </html>
@@ -13,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 }
 
 export const metadata = {
-  title: "c15t — fumadocs + leadtype",
+  title: "Leadtype — fumadocs example",
   description:
-    "c15t consent-management docs rendered through fumadocs-ui with leadtype as the source layer.",
+    "Leadtype docs rendered through fumadocs-ui with leadtype as the source layer.",
 };

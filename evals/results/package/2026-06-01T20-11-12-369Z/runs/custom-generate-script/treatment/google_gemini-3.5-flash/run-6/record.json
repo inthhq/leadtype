@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the required library APIs, converts MDX first, then generates llms.txt, llms-full.txt, and the search index, passing product and nav from the config. All rubric points are fully met with correct ordering.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 42,
+  "inputTokens": 939746,
+  "outputTokens": 15385,
+  "durationMs": 159342,
+  "steps": 43,
+  "errors": []
+}

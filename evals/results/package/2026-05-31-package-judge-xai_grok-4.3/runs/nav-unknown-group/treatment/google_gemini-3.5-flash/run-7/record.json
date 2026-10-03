@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied exactly: nav is identified as the curated driver of sidebar/llms.txt/AGENTS.md; group is identified as legacy/optional (fallback + search facets); and unknown group is stated to cause a hard build failure with the explicit error rather than a warning or silent drop. No rubric violations present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 21646,
+  "outputTokens": 594,
+  "durationMs": 31533,
+  "steps": 11,
+  "errors": []
+}

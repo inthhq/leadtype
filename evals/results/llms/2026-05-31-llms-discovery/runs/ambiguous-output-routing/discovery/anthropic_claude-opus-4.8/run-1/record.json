@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response points to the LLM files / leadtype/llm area and lists the relevant generator functions including generateLLMFullContextFiles. It correctly warns that Search is not the agent output API. It explains that /llms-full.txt is the broad fallback to use when page-level links are insufficient, specifying conditions for using it. No required points are missed.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 8,
+  "inputTokens": 4584,
+  "outputTokens": 451,
+  "durationMs": 32773,
+  "steps": 6,
+  "errors": []
+}

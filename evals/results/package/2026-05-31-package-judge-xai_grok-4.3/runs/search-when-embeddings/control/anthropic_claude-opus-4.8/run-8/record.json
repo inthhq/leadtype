@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default described as static/local BM25 lexical index with no DB or vectors; (2) specific conditions given (measured vocabulary/intent mismatch on conceptual queries + large corpus size, plus sync feasibility) rather than generic advice; (3) lexical index explicitly kept for exact matches with embeddings added only as complementary/hybrid layer. No rubric violations or incorrect claims appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 28872,
+  "outputTokens": 788,
+  "durationMs": 77204,
+  "steps": 11,
+  "errors": []
+}

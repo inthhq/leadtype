@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The ANSWER.md accurately contrasts llms.txt as a website/HTTP convention with absolute URLs that no agent looks for in node_modules, and AGENTS.md as the filesystem convention with relative links that works offline and is version-matched. It correctly lists llms.txt, llms-full.txt, and the search index as the website artifacts skipped by --bundle, and explains why they don't belong in a package (they assume network/hosted infrastructure). Every required rubric point is satisfied with no factual errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 14961,
+  "outputTokens": 171,
+  "durationMs": 15045,
+  "steps": 6,
+  "errors": []
+}

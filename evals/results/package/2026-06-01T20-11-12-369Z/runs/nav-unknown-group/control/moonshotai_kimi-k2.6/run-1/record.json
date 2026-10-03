@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly identifies nav as the curated driver of sidebar, llms.txt, AGENTS.md, etc., and group as legacy fallback useful for taxonomy/fallback nav. It clearly states that unknown group slug causes a build failure with an error, not silent skip. All required points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 583704,
+  "outputTokens": 5978,
+  "durationMs": 104185,
+  "steps": 21,
+  "errors": []
+}

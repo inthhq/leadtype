@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response describes the output as only a JSON object containing paths, not as a single result object describing the generation run (missing mode, product, groups, etc.). It invents fields not in the result shape, such as 'agentReadabilityJson' and 'sitemapMd'. The rubric requires stating it prints a single result object describing the run, and correctly naming genuine output-path fields; while it lists some valid fields, the omissions and inventions make it incorrect.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3489,
+  "outputTokens": 113,
+  "durationMs": 7457,
+  "steps": 4,
+  "errors": []
+}

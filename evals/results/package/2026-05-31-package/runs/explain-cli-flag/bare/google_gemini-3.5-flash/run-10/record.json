@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both required frontmatter fields ('lastModified' and 'lastAuthor'), states they are added to the YAML frontmatter, and explicitly says the values are retrieved from git history (via `git log`). All required rubric points are satisfied, and the answer is complete and accurate.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 34,
+  "inputTokens": 24973,
+  "outputTokens": 282,
+  "durationMs": 88691,
+  "steps": 35,
+  "errors": []
+}

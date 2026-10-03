@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly imports library APIs and calls conversion first, but the subsequent generators (generateLLMFullContextFiles and generateDocsSearchFiles) are not pointed to the converted markdown directory (public/docs/). Instead, they likely read from the original MDX source, which defeats the purpose of the conversion step and violates the rubric's requirement that these generators read from the already-converted markdown. The script would not produce the intended artifacts from the converted mirrors.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 368024,
+  "outputTokens": 5064,
+  "durationMs": 122924,
+  "steps": 16,
+  "errors": []
+}

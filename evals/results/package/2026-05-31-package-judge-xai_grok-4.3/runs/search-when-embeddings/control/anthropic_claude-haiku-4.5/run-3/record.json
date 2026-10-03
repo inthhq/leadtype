@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 85,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the ANSWER.md correctly states the default is a static/local BM25 lexical index with no DB; it gives the specific warranted conditions (vocabulary mismatch + large corpus ~10k+ chunks) rather than a generic claim; and it explicitly says to keep the lexical/BM25 index as primary (embeddings complementary). The extra conditions listed do not violate the rubric. No confident-wrong assertions appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 20817,
+  "outputTokens": 451,
+  "durationMs": 32782,
+  "steps": 12,
+  "errors": []
+}

@@ -1,17 +1,13 @@
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import createMDX from "@next/mdx";
 import { rehypeCode } from "fumadocs-core/mdx-plugins";
 import { createMdxSourcePlugins } from "leadtype/mdx";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 
-const typeTableBasePath = resolve(
-  process.cwd(),
-  "..",
-  "..",
-  ".docs-src",
-  "c15t"
-);
+const appDir = dirname(fileURLToPath(import.meta.url));
+const typeTableBasePath = resolve(appDir, "../..");
 
 const withMDX = createMDX({
   options: {
@@ -30,7 +26,7 @@ const withMDX = createMDX({
 /** @type {import("next").NextConfig} */
 const config = {
   pageExtensions: ["ts", "tsx", "mdx"],
-  // c15t source lives outside the workspace package boundary at .docs-src/.
+  // The root Leadtype docs live outside this app package.
   // Next + Turbopack would otherwise reject imports outside the app root.
   experimental: {
     externalDir: true,

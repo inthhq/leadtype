@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static BM25 lexical index and explains that embeddings are complementary, not a replacement, but it fails to mention that a very large corpus (≈ tens of thousands of chunks) is a specific condition warranting embeddings. The rubric requires both vocabulary/intent mismatch and/or the large-corpus condition; missing the latter makes the answer incomplete and incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 38,
+  "inputTokens": 405929,
+  "outputTokens": 9871,
+  "durationMs": 95752,
+  "steps": 39,
+  "errors": []
+}

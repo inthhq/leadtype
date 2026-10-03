@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly names the helper as isAgentReadabilityArtifactPath. It describes that it prevents rewriting of certain paths as missing markdown pages, covering llms.txt, llms-full.txt, sitemap, robots.txt, search JSON, and agent-readability.json. All required points are met.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 3666,
+  "outputTokens": 259,
+  "durationMs": 21010,
+  "steps": 5,
+  "errors": []
+}

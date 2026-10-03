@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fully satisfies every required point. It explains that llms.txt is a website/HTTP convention with absolute URLs and has no place in node_modules; it explains that AGENTS.md uses relative links for offline, version-matched use; and it lists the website artifacts skipped by --bundle, explicitly naming llms.txt and llms-full.txt. The answer is accurate and complete.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 18496,
+  "outputTokens": 318,
+  "durationMs": 21899,
+  "steps": 8,
+  "errors": []
+}

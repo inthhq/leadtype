@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: ANSWER.md names both `lastModified` and `lastAuthor`, states they are injected into frontmatter, and states the values are taken from git commit history via `git log`. No invented fields or wrong sources are mentioned.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 15078,
+  "outputTokens": 254,
+  "durationMs": 41937,
+  "steps": 19,
+  "errors": []
+}

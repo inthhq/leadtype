@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "variant": "monolith",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object containing generated file paths, and it names required fields like llmsFullTxt, docsLlmsTxt, and llmsTxt, satisfying the two required rubric points. However, it invents fields that are not part of the result shape according to the ground truth (e.g., agentReadabilityJson instead of agentReadabilityManifest, sitemapXml and sitemapMd not mentioned as separate fields). These invented fields make the response incorrect per the rubric's 'Incorrect if' condition. The errors are stated without hedging, so the failure mode is confident_wrong.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3475,
+  "outputTokens": 122,
+  "durationMs": 8059,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains llms.txt is a website convention requiring a base URL, making it unsuitable inside a tarball (required point 1). It describes AGENTS.md as the filesystem entry point with relative links to bundled docs, enabling offline, version-matched access (required point 2). It explicitly lists --bundle as skipping llms.txt, llms-full.txt, and search-index.json, which are website artifacts (required point 3). All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 35172,
+  "outputTokens": 1914,
+  "durationMs": 33130,
+  "steps": 6,
+  "errors": []
+}

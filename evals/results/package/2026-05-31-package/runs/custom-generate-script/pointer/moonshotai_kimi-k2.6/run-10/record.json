@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "pointer",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first and then the other generators, and it passes product/nav. However, generateLlmsTxt is called with `srcDir: '.'` instead of the required `public/docs`, meaning it does not read from the converted markdown as the rubric explicitly demands. This violates the required point that all downstream generators read from the already-converted markdown in public/docs, potentially producing incorrect output. Otherwise the script uses library APIs, runs conversion first, and includes the search index.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 27,
+  "inputTokens": 26213,
+  "outputTokens": 487,
+  "durationMs": 67787,
+  "steps": 14,
+  "errors": []
+}

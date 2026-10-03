@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly notes that nav (when present) is the primary/curated driver and that group is legacy/fallback metadata, satisfying the first two REQUIRED points. However it directly contradicts the third REQUIRED point and the ground-truth statement by claiming that unknown group slugs produce no build error and are merely collected in an 'unknown' array for graceful degradation; the rubric explicitly marks this behavior as incorrect. Because the build-failure rule is violated with confident assertions and no hedging, the answer fails overall.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 31,
+  "inputTokens": 36391,
+  "outputTokens": 424,
+  "durationMs": 63844,
+  "steps": 24,
+  "errors": []
+}

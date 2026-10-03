@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly uses leadtype library APIs, performs MDX conversion first, then generates llms.txt, llms-full.txt, and the search index. It passes product and groups derived from nav from docs.config.ts into the generators, meeting all required rubric points with correct ordering.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 50,
+  "inputTokens": 63057,
+  "outputTokens": 506,
+  "durationMs": 158421,
+  "steps": 50,
+  "errors": []
+}

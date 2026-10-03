@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes leadtype's default search as a static, local lexical index using BM25 with no database, satisfying the first required point. It gives specific conditions for adding embeddings (vocabulary mismatch, large corpus after tuning), not just a generic statement, fulfilling the second point. It clearly states that the lexical index should be kept for exact matches and that embeddings are complementary, not a replacement, meeting the third point. All required criteria are met with no contradictions or missing elements.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 30816,
+  "outputTokens": 660,
+  "durationMs": 72727,
+  "steps": 10,
+  "errors": []
+}

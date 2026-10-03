@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the ANSWER.md states the default is a static/local BM25 lexical index with no DB, lists the two precise triggers (vocabulary mismatch or >tens-of-thousands chunks) rather than a generic claim, and explicitly says the lexical index is retained for exact matches while embeddings are added as a complementary layer. No rubric violations (no claim of a default vector DB, no replacement language, no missing conditions). The produced file is complete and faithful to the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 4,
+  "inputTokens": 8066,
+  "outputTokens": 445,
+  "durationMs": 33402,
+  "steps": 4,
+  "errors": []
+}

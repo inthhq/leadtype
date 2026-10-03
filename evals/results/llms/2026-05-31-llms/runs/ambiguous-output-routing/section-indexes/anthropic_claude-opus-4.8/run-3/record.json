@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer directs the user to the LLM Files reference (leadtype/llm) listing the specific output APIs (generateLLMFullContextFiles, etc.), and explicitly states not to use Search. It explains that /llms-full.txt is a broad fallback to be used only when page-level links are insufficient, framing it as a last-resort option after smaller scoped files. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4119,
+  "outputTokens": 453,
+  "durationMs": 29254,
+  "steps": 5,
+  "errors": []
+}

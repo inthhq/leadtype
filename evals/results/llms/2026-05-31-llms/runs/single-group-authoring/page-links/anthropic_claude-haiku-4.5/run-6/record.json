@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "page-links",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains how `group` controls navigation, sections in `llms.txt`, and AGENTS.md grouping, and correctly describes `/llms-full.txt` as a monolithic all-docs file not split by group. However, it incorrectly names `description` as an optional frontmatter field, inventing a field not in the rubric's allowed list. This violates the rubric's 'Incorrect if' condition for inventing fields, despite also listing many valid fields. The rest of the response is accurate and covers the required points, so a score of 80 reflects the minor error.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3145,
+  "outputTokens": 190,
+  "durationMs": 12463,
+  "steps": 5,
+  "errors": []
+}

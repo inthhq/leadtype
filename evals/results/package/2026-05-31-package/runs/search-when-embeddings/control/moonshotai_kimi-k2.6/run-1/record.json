@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default as a static, local BM25 index with no database. It gives the specific conditions for adding embeddings: semantic mismatch (vocabulary mismatch) and corpus exceeding ~10k chunks/thresholds. It also states that the lexical index should be kept for exact matches, making embeddings complementary. All required points are satisfied, and no incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 38,
+  "inputTokens": 63490,
+  "outputTokens": 519,
+  "durationMs": 157951,
+  "steps": 24,
+  "errors": []
+}

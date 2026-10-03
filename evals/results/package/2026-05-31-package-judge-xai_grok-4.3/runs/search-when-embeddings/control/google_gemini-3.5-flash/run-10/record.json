@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: (1) default described as static/local lexical BM25 index with no DB; (2) specific triggers listed (intent/vocabulary mismatch examples + corpus size of tens of thousands of chunks); (3) lexical/BM25 index explicitly retained in a hybrid setup rather than replaced. The extra multilingual point does not violate the rubric. No factual contradictions with the ground truth.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 21771,
+  "outputTokens": 599,
+  "durationMs": 61232,
+  "steps": 24,
+  "errors": []
+}

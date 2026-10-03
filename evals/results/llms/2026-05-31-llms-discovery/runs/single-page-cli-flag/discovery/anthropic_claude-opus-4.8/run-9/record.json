@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "variant": "discovery",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object to stdout describing the generation run. It names the required output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt) and does not describe it as human-readable log output. The only minor discrepancy is using 'agentReadabilityJson' instead of the rubric's 'agentReadabilityManifest', but this does not affect the required points and does not constitute inventing an entirely foreign field. The answer is otherwise complete and accurate.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3850,
+  "outputTokens": 412,
+  "durationMs": 31880,
+  "steps": 5,
+  "errors": []
+}

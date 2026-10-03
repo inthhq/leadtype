@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response misses required details: it does not mention that nav drives llms.txt sections, and fails to note that group still serves as fallback navigation or search facets. Critically, it wrongly claims that an unknown group only generates warnings and does not fail the build, contradicting the rubric. The answer is confidently wrong on the build outcome.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 4436,
+  "outputTokens": 222,
+  "durationMs": 28273,
+  "steps": 12,
+  "errors": []
+}

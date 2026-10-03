@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "variant": "discovery",
+  "passed": true,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that --json prints a JSON object containing paths to generated artifacts, satisfying the first required point. It specifically names llmsFullTxt, docsLlmsTxt, and llmsTxt, meeting the second required point. It does not describe a human-readable log. It omits other fields like mode, source/output dirs, product, and groups from the description, but those are not required. So it is fully correct for the required rubric items.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3690,
+  "outputTokens": 370,
+  "durationMs": 21826,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default BM25 search with no database (point 1) and correctly advises keeping the lexical index as complementary (point 3). However, it fails to include the specific condition that a large corpus (≈ tens of thousands of chunks) may warrant embeddings; it only mentions vocabulary mismatch, high traffic, and query complexity. This omission means point 2 is not fully satisfied. The assertion that all three conditions must hold is confidently stated but incomplete, making it a confident wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 22425,
+  "outputTokens": 324,
+  "durationMs": 46873,
+  "steps": 17,
+  "errors": []
+}

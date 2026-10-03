@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: ANSWER.md identifies `nav` (in docs.config.ts) as the curated driver of sidebar, llms.txt, and AGENTS.md grouping; identifies `group` as legacy/optional still useful for fallback navigation + search facets/taxonomy; and states that an unknown group slug produces a hard build failure with the \"unknown group\" error. No rubric violations (no claim that group is primary, no claim of silent ignore/warning).",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 15349,
+  "outputTokens": 284,
+  "durationMs": 28263,
+  "steps": 8,
+  "errors": []
+}

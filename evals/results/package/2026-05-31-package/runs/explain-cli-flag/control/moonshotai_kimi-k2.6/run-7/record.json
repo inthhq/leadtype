@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer names both required fields (lastModified and lastAuthor), states they are added to page frontmatter, and attributes their values to the most recent Git commit (git history). All required rubric points are met accurately and completely.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 22937,
+  "outputTokens": 215,
+  "durationMs": 24121,
+  "steps": 8,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static BM25 lexical index with no database. It also correctly states that the lexical index should be kept for exact matches (hybrid, not replaced). However, it does not give the specific condition for adding embeddings related to corpus size: it fails to mention that the corpus must grow past tens of thousands of chunks and that cold-start memory becomes an issue. The answer mentions 'scale where ranking quality degrades' but this is too vague and does not meet the rubric's required numeric threshold.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 17,
+  "inputTokens": 32113,
+  "outputTokens": 736,
+  "durationMs": 83212,
+  "steps": 13,
+  "errors": []
+}

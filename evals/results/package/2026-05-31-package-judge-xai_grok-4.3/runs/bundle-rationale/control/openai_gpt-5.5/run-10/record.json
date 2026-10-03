@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED points are met: the answer explicitly contrasts llms.txt as a hosted-site/HTTP convention using URL links (hence wrong inside a tarball) against AGENTS.md's package-root location with relative paths that work offline and version-matched inside node_modules; it also correctly lists that --bundle skips llms.txt, llms-full.txt plus the search/sitemap/robots/agent-readability artifacts. No rubric violations occur (no endorsement of shipping llms.txt, no claim that AGENTS.md uses absolute URLs, etc.). Minor deduction only for not using the exact phrase 'absolute URLs,' but the substance is fully covered.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 27862,
+  "outputTokens": 42,
+  "durationMs": 48858,
+  "steps": 13,
+  "errors": []
+}

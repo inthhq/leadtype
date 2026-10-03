@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response uses the mount syntax '--docs-dir changelog=/changelog' as a repeated flag, exactly as required. It states the canonical URL as '/changelog/v1.md', not under /docs/changelog/. It details the internal generated copy at 'public/docs/changelog/v1.md' for search, the public mirror at 'public/changelog/v1.md', and the URL in agent artifacts. All rubric points are fully satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 5,
+  "inputTokens": 31838,
+  "outputTokens": 1660,
+  "durationMs": 26050,
+  "steps": 4,
+  "errors": []
+}

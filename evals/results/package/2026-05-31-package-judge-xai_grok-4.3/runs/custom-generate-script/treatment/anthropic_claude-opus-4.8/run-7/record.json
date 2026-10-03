@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced `scripts/build-docs.ts` satisfies every REQUIRED rubric point: it imports `product`/`nav` from `docs.config.ts`, calls `convertAllMdx` (leadtype/convert) first to populate `public/docs/*.md`, then calls `generateLlmsTxt` + `generateLLMFullContextFiles` (leadtype/llm) and `generateDocsSearchFiles` (leadtype/search/node) that read from the already-converted markdown. The ordering is explicitly correct (conversion precedes the other three generators). The script uses only library imports, never the CLI, and the accompanying `docs.config.ts` change is the minimal adjustment needed to expose the named exports the rubric demands.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 30,
+  "inputTokens": 52706,
+  "outputTokens": 975,
+  "durationMs": 83182,
+  "steps": 17,
+  "errors": []
+}

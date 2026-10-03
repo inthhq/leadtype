@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fully satisfies all required rubric points. It identifies `nav` as the curated source of truth for sidebar and agent maps (llms.txt, AGENTS.md). It explains `group` as legacy taxonomy metadata, useful for fallback navigation and search facets. It explicitly states that an unknown `group` slug causes a build failure with an error, not a silent skip. No incorrect claims are made.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 41289,
+  "outputTokens": 70,
+  "durationMs": 65118,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated source of truth driving sidebar, llms.txt, and AGENTS.md. It states group is legacy, still useful for fallback navigation and search facets. It explicitly says an unknown group causes a build failure with 'unknown group' error. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 6,
+  "inputTokens": 11453,
+  "outputTokens": 449,
+  "durationMs": 31253,
+  "steps": 5,
+  "errors": []
+}

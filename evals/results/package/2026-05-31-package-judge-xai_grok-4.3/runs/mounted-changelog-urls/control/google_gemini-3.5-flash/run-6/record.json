@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The provided agent response is a single sentence stating an intent to search inside node_modules, with no leadtype command, no mount syntax, and no description of emitted paths/URLs. It therefore meets none of the three REQUIRED rubric points (correct --docs-dir mount form, canonical /changelog URL, and mention of the public/docs mirror). This qualifies as refused/off-topic rather than an attempt that is merely uncertain or confidently wrong.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 32623,
+  "outputTokens": 153,
+  "durationMs": 117815,
+  "steps": 50,
+  "errors": []
+}

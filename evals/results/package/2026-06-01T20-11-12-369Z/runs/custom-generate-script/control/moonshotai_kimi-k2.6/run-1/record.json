@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly imports and calls the required library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) with appropriate arguments. It first converts MDX to markdown, then generates the routing index, full context file, and search index, satisfying the ordering requirement. It imports and passes product and nav from docs.config.ts into the generators as needed. No CLI usage or fabricated API names.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 496982,
+  "outputTokens": 7184,
+  "durationMs": 105426,
+  "steps": 17,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response incorrectly names the frontmatter fields as `gitAuthor`, `gitDate`, and `gitCommit` instead of the required `lastModified` and `lastAuthor`. While it correctly mentions frontmatter and git history, the field names are entirely wrong, so the required points are not met. The error is stated confidently with no hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 3474,
+  "outputTokens": 83,
+  "durationMs": 22967,
+  "steps": 15,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical index with no database, meeting the first requirement. It provides the specific conditions (vocabulary mismatch and large corpus) for adding embeddings, fulfilling the second. It explicitly states to keep the lexical index for exact matches and that embeddings are complementary, satisfying the third. All required rubric points are addressed without error.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 7843,
+  "outputTokens": 272,
+  "durationMs": 20018,
+  "steps": 7,
+  "errors": []
+}

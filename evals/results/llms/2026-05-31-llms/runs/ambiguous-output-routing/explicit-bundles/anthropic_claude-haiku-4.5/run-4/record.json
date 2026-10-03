@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files reference area and the `generateLLMFullContextFiles` API, and does not point to the Search UI/APIs. However, it mischaracterizes when to use the monolithic `/llms-full.txt` fallback: it lists conditions like 'you need complete context,' 'want simplicity,' and 'context size permits,' which suggest it as a primary option rather than a fallback when page-level links are insufficient. This contradicts the rubric’s requirement that it be explained as a fallback for insufficient page-level links.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3562,
+  "outputTokens": 210,
+  "durationMs": 12655,
+  "steps": 6,
+  "errors": []
+}

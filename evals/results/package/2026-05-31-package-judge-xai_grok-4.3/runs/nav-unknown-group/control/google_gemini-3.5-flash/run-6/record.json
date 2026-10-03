@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: ANSWER.md explicitly names `nav` (in docs.config.ts) as the driver of sidebar, llms.txt, AGENTS.md etc.; correctly positions `group` as the legacy/optional fallback + taxonomy field; and states that an unknown group produces a hard build failure with the exact 'declares unknown group' error. No rubric violations (no claim that group is primary, no assertion that unknown groups are ignored or only warned). Minor deduction only for slight extra wording about adapters that the rubric does not require.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 58066,
+  "outputTokens": 418,
+  "durationMs": 103629,
+  "steps": 29,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names the required output-path fields (llmsFullTxt, docsLlmsTxt, llmsTxt). However, it lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest', inventing a field not in the result shape. Per the rubric, this invention makes the answer incorrect. The overall description is otherwise accurate, earning a moderately high score.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3416,
+  "outputTokens": 281,
+  "durationMs": 25239,
+  "steps": 4,
+  "errors": []
+}

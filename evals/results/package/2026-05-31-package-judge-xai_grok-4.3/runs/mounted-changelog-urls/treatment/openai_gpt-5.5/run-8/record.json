@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: the invocation repeats `--docs-dir` using the `changelog=/changelog` mount syntax, the description states the canonical URL is `/changelog/...` (not under `/docs`), and it explicitly names both the internal `public/docs/changelog/v1.md` copy (for search) and the public mirror at `public/changelog/v1.md`. No rubric violations or invented flags.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 20,
+  "inputTokens": 53680,
+  "outputTokens": 49,
+  "durationMs": 68400,
+  "steps": 19,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly identifies `nav` (in docs.config.ts) as the primary/curated driver of sidebar and agent maps, and `group` as the legacy fallback/metadata field. However, on the second required point it states the exact opposite of the rubric: it claims an unknown group produces only a warning + graceful `unknown[]` collection rather than a hard build failure with an \"unknown group\" error. This is asserted plainly from the leadtype types/CLI with no hedging, matching the 'confident_wrong' definition and violating the rubric's explicit 'Incorrect if' rule about silent/only-warned behavior.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 21126,
+  "outputTokens": 376,
+  "durationMs": 32151,
+  "steps": 12,
+  "errors": []
+}

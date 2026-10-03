@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The paragraph in ANSWER.md explicitly names both frontmatter fields 'lastModified' and 'lastAuthor', states they are added to frontmatter, and explains the values come from git history (the most recent commit). All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 9816,
+  "outputTokens": 253,
+  "durationMs": 12251,
+  "steps": 6,
+  "errors": []
+}

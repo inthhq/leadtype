@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 10,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing the generated artifacts and lists required keys like llmsTxt, docsLlmsTxt, llmsFullTxt. However, it invents a field 'agentReadabilityJson' that is not part of the result shape—the correct field is 'agentReadabilityManifest'. This violates the rubric's injunction against inventing fields, making the answer incorrect. The majority of the answer is accurate, so the score reflects high completeness despite the error.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 2050,
+  "outputTokens": 13,
+  "durationMs": 19287,
+  "steps": 8,
+  "errors": []
+}

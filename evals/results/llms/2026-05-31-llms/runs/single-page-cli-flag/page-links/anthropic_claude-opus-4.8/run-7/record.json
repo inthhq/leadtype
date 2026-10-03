@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "variant": "page-links",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON object to stdout and names required output-path fields like llmsTxt and docsLlmsTxt. However, it invents fields not in the result shape (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', and possibly 'sitemapMd'), which violates the rubric's 'Incorrect if' condition, making the overall answer incorrect. The error is stated plainly with no hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4340,
+  "outputTokens": 470,
+  "durationMs": 28622,
+  "steps": 5,
+  "errors": []
+}

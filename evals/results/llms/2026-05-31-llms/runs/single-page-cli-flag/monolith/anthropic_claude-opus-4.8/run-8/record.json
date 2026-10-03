@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object (single result to stdout) describing the generated artifacts. It names several output-path fields, including llmsFullTxt, docsLlmsTxt, and llmsTxt, satisfying both required rubric points. It correctly describes website-mode fields and notes bundle mode omission without inventing fields. Thus it fully meets the rubric.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 4634,
+  "outputTokens": 289,
+  "durationMs": 19282,
+  "steps": 4,
+  "errors": []
+}

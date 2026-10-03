@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All REQUIRED rubric points are met: both field names (lastModified, lastAuthor) are stated, they are described as added to YAML frontmatter, and their source is explicitly git history of the .mdx file. No invented fields, no wrong provenance, and the single-paragraph ANSWER.md matches the ground-truth description exactly.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 15,
+  "inputTokens": 13229,
+  "outputTokens": 116,
+  "durationMs": 26874,
+  "steps": 14,
+  "errors": []
+}

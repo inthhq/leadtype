@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent did not answer either question. It produced no ANSWER.md and the response only describes running a script, without any explanation of the nav/group relationship or the build behavior. This misses all required rubric points entirely.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 49177,
+  "outputTokens": 57,
+  "durationMs": 170969,
+  "steps": 50,
+  "errors": []
+}

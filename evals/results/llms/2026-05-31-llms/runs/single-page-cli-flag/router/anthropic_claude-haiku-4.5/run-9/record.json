@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `leadtype generate --json` prints a single JSON object (to stdout) describing the generation run. It names the required output-path fields: `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. All required rubric points are satisfied, and no incorrect information is presented.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3163,
+  "outputTokens": 142,
+  "durationMs": 9635,
+  "steps": 6,
+  "errors": []
+}

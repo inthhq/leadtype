@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly names both frontmatter fields ('lastModified' and 'lastAuthor') and states they are added to the generated Markdown frontmatter. It clearly indicates the values are derived from Git history, using `git log` with specific format strings. All required rubric points are satisfied, and no incorrect information is present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 7,
+  "inputTokens": 25206,
+  "outputTokens": 38,
+  "durationMs": 28069,
+  "steps": 8,
+  "errors": []
+}

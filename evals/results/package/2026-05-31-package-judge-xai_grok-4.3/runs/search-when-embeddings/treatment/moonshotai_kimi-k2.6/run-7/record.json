@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied verbatim: the response states the default is a static/local BM25 lexical index with no DB, lists the exact two conditions (vocabulary mismatch or > tens of thousands of chunks) under which embeddings become warranted, and explicitly says to keep the lexical index for exact matches while layering embeddings as a complement. No incorrect claims appear (no vector DB by default, no replacement of lexical search). The produced ANSWER.md matches the ground-truth description point-for-point.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 11293,
+  "outputTokens": 243,
+  "durationMs": 24288,
+  "steps": 8,
+  "errors": []
+}

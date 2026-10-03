@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies llms.txt as a website/HTTP convention with absolute URLs that break offline and are not consumed by coding agents from node_modules. It explains AGENTS.md is the filesystem-native convention with relative links that enables offline, version-matched reading. It states --bundle skips website artifacts including llms.txt, llms-full.txt, search indexes, sitemaps, and robots.txt. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 69673,
+  "outputTokens": 2828,
+  "durationMs": 46766,
+  "steps": 9,
+  "errors": []
+}

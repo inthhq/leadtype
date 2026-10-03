@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 7,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that `--json` makes `leadtype generate` print a JSON object describing the generated artifact paths, satisfying the first required point. It lists `llmsTxt`, `docsLlmsTxt`, `llmsFullTxt` and others, meeting the second required point. No required points are missed and no incorrect statements are made.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 2026,
+  "outputTokens": 13,
+  "durationMs": 18301,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "page-links",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states it prints a JSON object and lists many generated output fields like llmsTxt. However, it invents the field 'agentReadabilityJson', while the correct field is 'agentReadabilityManifest' per ground truth. This violates the rubric's 'Incorrect if Invents fields that aren't part of the result shape.' Thus overall incorrect despite meeting the bulleted required points.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2499,
+  "outputTokens": 100,
+  "durationMs": 8206,
+  "steps": 4,
+  "errors": []
+}

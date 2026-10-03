@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "discovery",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object describing generated artifacts, and names required fields like llmsTxt, docsLlmsTxt, llmsFullTxt. However, it invents the field name 'agentReadabilityJson' which does not match the ground truth 'agentReadabilityManifest', violating the rubric's condition that inventing fields makes the answer incorrect. This error is stated confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 9,
+  "inputTokens": 4725,
+  "outputTokens": 431,
+  "durationMs": 27089,
+  "steps": 6,
+  "errors": []
+}

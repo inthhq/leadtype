@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied: (1) default is explicitly described as the static BM25 lexical index with no DB or embeddings; (2) the conditions listed are the specific ones (vocabulary/paraphrase mismatch and/or large corpus with measured misses) rather than a generic claim; (3) the response repeatedly states that BM25/lexical must be kept and embeddings layered on top as hybrid/complementary. No rubric violations or incorrect claims appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 25442,
+  "outputTokens": 748,
+  "durationMs": 65299,
+  "steps": 7,
+  "errors": []
+}

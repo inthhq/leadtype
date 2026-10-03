@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that an unknown group slug causes a build failure and that the frontmatter group field serves as a fallback for projects without config. However, it fails to identify 'nav' as the curated driver of navigation; instead it claims that 'neither drives the navigation in isolation' and that the intersection is what drives the sidebar and agent map. This directly contradicts the rubric, which requires explicitly recognizing nav as the curated source of truth. The other two required points are partially met, but the first is essential. Hence, the answer is incorrect. Score of 60 reflects that the build behavior is correct and the fallback role is mentioned, but the core relationship is mischaracterized.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 32,
+  "inputTokens": 59603,
+  "outputTokens": 418,
+  "durationMs": 112912,
+  "steps": 33,
+  "errors": []
+}

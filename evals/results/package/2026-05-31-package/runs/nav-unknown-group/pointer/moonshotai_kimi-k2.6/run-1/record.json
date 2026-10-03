@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of sidebar, agent map, llms.txt, and AGENTS.md, while group is legacy/optional with fallback and taxonomy uses. It explicitly states that an unknown group causes a build failure with an error message, not a warning or silent skip. All required rubric points are fully met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 16911,
+  "outputTokens": 197,
+  "durationMs": 20466,
+  "steps": 7,
+  "errors": []
+}

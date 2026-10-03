@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent correctly identifies `nav` as the curated driver and `group` as legacy/fallback for taxonomy, satisfying the first two required points. However, it incorrectly states that an unknown `group` slug does not fail the build (it says the build continues and only records the unknown group). The rubric requires stating that the build fails with an 'unknown group' error, which the agent contradicts. This critical error makes the overall answer incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 240779,
+  "outputTokens": 4871,
+  "durationMs": 110896,
+  "steps": 11,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately explains how 'group' organizes navigation, llms.txt sections, and AGENTS.md grouping, and correctly describes '/llms-full.txt' as a single monolithic file not split by group. However, when naming two optional frontmatter fields, it includes 'description', which is not in the rubric's specified list of valid optional fields (icon, deprecated, experimental, etc.). Although it later mentions several valid fields, the explicit answer fails to name at least two valid fields from the list, missing a required rubric point.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 4045,
+  "outputTokens": 193,
+  "durationMs": 15079,
+  "steps": 7,
+  "errors": []
+}

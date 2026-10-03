@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "discovery",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names several correct fields like llmsTxt, docsLlmsTxt, llmsFullTxt, satisfying the required points. However, it invents the field 'agentReadabilityJson' instead of 'agentReadabilityManifest', which is not part of the result shape per the ground truth. This makes the answer incorrect per the rubric's 'Incorrect if invents fields that are not part of the result shape' clause.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2426,
+  "outputTokens": 139,
+  "durationMs": 8286,
+  "steps": 4,
+  "errors": []
+}

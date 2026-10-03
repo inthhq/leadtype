@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: paragraph 1 correctly contrasts llms.txt (absolute URLs, HTTP/website convention) with AGENTS.md (relative paths, offline, version-matched inside node_modules); paragraph 2 states that --bundle skips llms.txt + llms-full.txt plus the other website artifacts and explains why they are inappropriate for a tarball. No incorrect claims appear (no recommendation to ship llms.txt, no assertion that AGENTS.md uses absolute URLs or that --bundle emits those files).",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 13,
+  "inputTokens": 29769,
+  "outputTokens": 350,
+  "durationMs": 35961,
+  "steps": 14,
+  "errors": []
+}

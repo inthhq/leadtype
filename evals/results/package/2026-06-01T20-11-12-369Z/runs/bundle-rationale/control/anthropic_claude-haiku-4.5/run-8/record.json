@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly contrasts llms.txt as a website convention with absolute URLs unsuitable for a tarball, and explains AGENTS.md uses relative filesystem paths for offline, version-matched access. It explicitly states that leadtype generate --bundle skips llms.txt, llms-full.txt, and search-index.json, which are website‑only artifacts. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 75286,
+  "outputTokens": 1681,
+  "durationMs": 27251,
+  "steps": 12,
+  "errors": []
+}

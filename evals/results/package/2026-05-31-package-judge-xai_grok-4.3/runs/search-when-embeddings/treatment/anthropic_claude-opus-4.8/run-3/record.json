@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: default described as static/local BM25 lexical index with no DB; specific conditions given (vocab mismatch after synonyms fail, or > tens of k chunks); lexical index explicitly kept as complementary layer. No incorrect claims about vector DBs or replacement. Matches ground truth verbatim in substance and detail.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 5,
+  "inputTokens": 8238,
+  "outputTokens": 558,
+  "durationMs": 35124,
+  "steps": 4,
+  "errors": []
+}

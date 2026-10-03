@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website convention with absolute URLs and not discovered inside node_modules, making it wrong for a tarball. It correctly explains that AGENTS.md works because it uses relative links and stays version-matched, offline. It explicitly lists the website artifacts skipped by --bundle, including llms.txt, llms-full.txt, and others. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 31499,
+  "outputTokens": 774,
+  "durationMs": 22196,
+  "steps": 5,
+  "errors": []
+}

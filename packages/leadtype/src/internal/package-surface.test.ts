@@ -9,7 +9,23 @@ const exportedPaths = Object.keys(packageJson.exports);
 
 // Adapter directories are allowed to import from their declared optional peer.
 // Everything else under `src/` must stay framework-neutral.
-const ADAPTER_DIRECTORIES = ["fumadocs/", "next/"] as const;
+const ADAPTER_DIRECTORIES = [
+  "astro/",
+  "fumadocs/",
+  "next/",
+  "nuxt/",
+  "sveltekit/",
+  "tanstack-start/",
+] as const;
+const FRAMEWORK_RUNTIME_DIRECTORIES = [
+  ...ADAPTER_DIRECTORIES,
+  "search/react.ts",
+  "search/vue.ts",
+  "search/svelte.ts",
+  "webmcp/react.ts",
+  "webmcp/vue.ts",
+  "webmcp/svelte.ts",
+] as const;
 
 // Banned framework runtimes. Adapter directories may import their matching
 // peer (e.g. `next/`'s adapter may import from `react`); core code may not.
@@ -64,23 +80,47 @@ describe("package surface", () => {
   it("matches the documented entry-point list", () => {
     const expectedExportedPaths = [
       ".",
+      "./package.json",
       "./mdx",
+      "./mdx/source",
+      "./mdx/openapi",
+      "./feed",
       "./fumadocs",
+      "./astro",
       "./i18n",
+      "./nuxt",
       "./next",
       "./next/client",
-      "./remark",
+      "./markdown",
+      "./openapi",
+      "./transformers",
       "./convert",
       "./llm",
       "./llm/readability",
+      "./navigation",
+      "./redirects",
+      "./redirects/node",
       "./search",
+      "./search/client",
+      "./search/react",
+      "./search/vue",
+      "./search/svelte",
       "./search/node",
       "./search/ai",
       "./search/bash",
       "./search/vercel",
       "./search/tanstack",
       "./search/cloudflare",
+      "./sveltekit",
+      "./tanstack-start",
       "./lint",
+      "./mcp",
+      "./nlweb",
+      "./webmcp",
+      "./webmcp/react",
+      "./webmcp/vue",
+      "./webmcp/svelte",
+      "./score",
     ] as const;
 
     expect(exportedPaths).toHaveLength(expectedExportedPaths.length);
@@ -98,8 +138,8 @@ describe("package surface", () => {
     expect(exportedPaths).not.toContain("./solid");
   });
 
-  it("keeps optional TypeScript loading out of the remark entry import path", () => {
-    const typeTableSource = readSrc("remark/plugins/type-table.remark.ts");
+  it("keeps optional TypeScript loading out of the markdown entry import path", () => {
+    const typeTableSource = readSrc("markdown/plugins/type-table.ts");
 
     expect(typeTableSource).not.toContain('import * as ts from "typescript"');
     expect(typeTableSource).toContain('import type * as ts from "typescript"');
@@ -127,21 +167,40 @@ describe("core/adapter boundary", () => {
   // Lazily resolved so the test files themselves can be skipped from the scan.
   const srcRoot = fileURLToPath(new URL("../", import.meta.url));
 
+  // Files that hold inert scaffold templates: the framework `import` lines in
+  // them are strings we generate into a consumer's app, not imports of the
+  // module. Real logic lives elsewhere and stays under the boundary scan.
+  const TEMPLATE_PAYLOAD_FILES = new Set(["cli/init-templates.ts"]);
+
   async function listSourceFiles(): Promise<string[]> {
     const matches = await glob("**/*.ts", {
       cwd: srcRoot,
       onlyFiles: true,
       absolute: true,
     });
-    return matches.filter((file) => !file.endsWith(".test.ts"));
+    return matches.filter(
+      (file) =>
+        !(
+          file.endsWith(".test.ts") ||
+          TEMPLATE_PAYLOAD_FILES.has(relative(file))
+        )
+    );
   }
 
   function relative(file: string): string {
-    return path.relative(srcRoot, file);
+    return path.relative(srcRoot, file).replaceAll(path.sep, "/");
   }
 
   function isAdapterFile(relativePath: string): boolean {
     return ADAPTER_DIRECTORIES.some((dir) => relativePath.startsWith(dir));
+  }
+
+  function allowsFrameworkRuntimeImports(relativePath: string): boolean {
+    return FRAMEWORK_RUNTIME_DIRECTORIES.some((entry) =>
+      entry.endsWith("/")
+        ? relativePath.startsWith(entry)
+        : relativePath === entry
+    );
   }
 
   it("does not let framework runtimes leak into core modules", async () => {
@@ -150,7 +209,7 @@ describe("core/adapter boundary", () => {
 
     for (const file of files) {
       const relativePath = relative(file);
-      if (isAdapterFile(relativePath)) {
+      if (allowsFrameworkRuntimeImports(relativePath)) {
         continue;
       }
       const source = readFileSync(file, "utf8");

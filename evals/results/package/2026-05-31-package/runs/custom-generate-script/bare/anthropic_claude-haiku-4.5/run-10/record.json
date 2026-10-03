@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script invents API names not part of leadtype (convertMdxToMarkdown, generateLlmsIndex, generateSearchIndex) instead of using the required convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles. It does have correct ordering and passes product/nav, but fails on the critical requirement to use the documented library APIs.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 22,
+  "inputTokens": 7306,
+  "outputTokens": 448,
+  "durationMs": 37770,
+  "steps": 14,
+  "errors": []
+}

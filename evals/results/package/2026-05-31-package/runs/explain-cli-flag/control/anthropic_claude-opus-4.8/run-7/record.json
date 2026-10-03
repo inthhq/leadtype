@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent's ANSWER.md correctly names both required frontmatter fields (lastModified and lastAuthor), states they are added to frontmatter, and describes that the values come from the file's Git history. All REQUIRED rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 4,
+  "inputTokens": 11762,
+  "outputTokens": 258,
+  "durationMs": 18799,
+  "steps": 5,
+  "errors": []
+}

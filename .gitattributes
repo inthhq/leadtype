@@ -1,0 +1,3 @@
+# Biome enforces LF; without this, Windows checkouts with core.autocrlf=true
+# rewrite every file to CRLF and fail lint before a contributor writes a line.
+* text=auto eol=lf

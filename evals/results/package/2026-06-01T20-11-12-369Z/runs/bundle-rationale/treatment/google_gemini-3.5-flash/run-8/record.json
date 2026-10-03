@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that llms.txt is a website convention with absolute URLs, making it unfit for a local npm package, while AGENTS.md uses relative links for offline, version-matched access. It also correctly lists the website artifacts (llms.txt, llms-full.txt, sitemaps, robots, search indexes) that --bundle skips, and explains why they don’t belong in a tarball. All required rubric points are met fully and without error.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 54656,
+  "outputTokens": 2548,
+  "durationMs": 27179,
+  "steps": 8,
+  "errors": []
+}

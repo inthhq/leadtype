@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied: the produced ANSWER.md correctly identifies llms.txt as the HTTP/website convention using absolute URLs (hence unsuitable inside a tarball), states that AGENTS.md uses relative links and works offline/version-matched inside node_modules, and explicitly lists the artifacts --bundle skips (llms.txt, llms-full.txt, plus search-index). No rubric violations (no endorsement of shipping llms.txt, no incorrect claims about URLs or bundle output).",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 9081,
+  "outputTokens": 274,
+  "durationMs": 17645,
+  "steps": 6,
+  "errors": []
+}

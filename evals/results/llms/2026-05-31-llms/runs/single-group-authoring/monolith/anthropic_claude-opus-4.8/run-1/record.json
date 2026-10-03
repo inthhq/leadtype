@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that 'group' organizes navigation (sidebar), llms.txt sections, AGENTS.md grouping, and search metadata, satisfying the first required point. It correctly describes /llms-full.txt as a monolithic single-file fallback that is not split by group, satisfying the second. It names multiple optional fields including icon, deprecated, etc., which are in the rubric list, satisfying the third.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 8,
+  "inputTokens": 5460,
+  "outputTokens": 490,
+  "durationMs": 29778,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names (lastModified and lastAuthor) are stated, they are described as being added to page frontmatter, and their source is explicitly git history (via the git log command shown). No invented fields, no wrong provenance, and the paragraph format matches the task. Extra implementation detail does not violate any rubric constraint.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 13,
+  "inputTokens": 14507,
+  "outputTokens": 558,
+  "durationMs": 29882,
+  "steps": 14,
+  "errors": []
+}

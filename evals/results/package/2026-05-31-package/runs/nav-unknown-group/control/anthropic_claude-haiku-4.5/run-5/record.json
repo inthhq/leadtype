@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies `nav` as the curated driver of sidebar, llms.txt sections, and AGENTS.md grouping, and identifies `group` as a legacy/optional field still useful for taxonomy/metadata. It states that an unknown group slug causes a build failure with an error, not a silent skip. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 24,
+  "inputTokens": 102234,
+  "outputTokens": 423,
+  "durationMs": 49415,
+  "steps": 15,
+  "errors": []
+}

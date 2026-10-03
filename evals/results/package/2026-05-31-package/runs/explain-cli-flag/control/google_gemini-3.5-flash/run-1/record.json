@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both 'lastModified' and 'lastAuthor', correctly states they are added to document frontmatter, and explicitly specifies they come from git history (via git log command). All required rubric points are fully satisfied. The answer is a single paragraph as requested.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 13051,
+  "outputTokens": 308,
+  "durationMs": 30192,
+  "steps": 16,
+  "errors": []
+}

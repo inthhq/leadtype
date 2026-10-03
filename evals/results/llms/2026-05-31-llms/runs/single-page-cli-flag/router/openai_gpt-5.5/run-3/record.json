@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "variant": "router",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that the JSON includes a field 'agentReadabilityJson', which is not a valid field according to the ground truth (the correct field is 'agentReadabilityManifest'). Although it correctly mentions printing a JSON object and lists some valid fields like llmsFullTxt, the inclusion of an invented field makes it incorrect. Additionally, it fails to describe the broader structure of the result object (mode, directories, etc.), capturing only the files map, which is incomplete.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 1817,
+  "outputTokens": 6,
+  "durationMs": 12482,
+  "steps": 6,
+  "errors": []
+}

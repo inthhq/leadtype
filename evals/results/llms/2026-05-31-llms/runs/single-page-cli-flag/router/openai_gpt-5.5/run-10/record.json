@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that a JSON object is printed and lists several output-path fields, including the required ones. However, it invents the field `agentReadabilityJson` instead of the correct `agentReadabilityManifest`, which violates the rubric's instruction to not invent fields. This makes the answer incorrect overall.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 2094,
+  "outputTokens": 6,
+  "durationMs": 16407,
+  "steps": 7,
+  "errors": []
+}

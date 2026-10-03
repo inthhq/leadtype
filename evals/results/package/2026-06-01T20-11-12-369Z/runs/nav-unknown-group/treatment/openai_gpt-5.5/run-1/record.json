@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly states that nav is the curated source of truth driving sidebar, llms.txt, AGENTS.md, etc. It identifies group as legacy/fallback used for taxonomy/search facets. It explicitly says an unknown group slug causes the build to fail with an error. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 292784,
+  "outputTokens": 1062,
+  "durationMs": 47403,
+  "steps": 9,
+  "errors": []
+}

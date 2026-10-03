@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated driver of sidebar and agent artifacts (llms.txt, AGENTS.md), group as legacy with fallback/taxonomy use, and states that an unknown group slug causes a build failure (error). All required points are satisfied; no incorrect claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 324274,
+  "outputTokens": 4614,
+  "durationMs": 90647,
+  "steps": 10,
+  "errors": []
+}

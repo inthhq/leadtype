@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states the default is a static lexical BM25 index with no database, and correctly insists on keeping the lexical index as a complementary layer. However, it incorrectly requires **both** vocabulary/intent mismatch and a large corpus (>5k–10k chunks) to justify embeddings, while the ground truth says **either** condition alone is sufficient. This is a confident, unhedged misstatement, so the response fails the required point about the specific embedding conditions.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 19,
+  "inputTokens": 70036,
+  "outputTokens": 2500,
+  "durationMs": 220079,
+  "steps": 8,
+  "errors": []
+}

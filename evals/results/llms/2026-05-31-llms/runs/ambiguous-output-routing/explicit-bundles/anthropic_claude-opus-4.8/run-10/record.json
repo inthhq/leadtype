@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files reference (naming generateLLMFullContextFiles and other output APIs) and explicitly excludes the search UI/APIs. It describes the monolithic /llms-full.txt as a broad fallback to use when scoped bundles are insufficient, satisfying both required rubric points.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 4,
+  "inputTokens": 4516,
+  "outputTokens": 508,
+  "durationMs": 27221,
+  "steps": 4,
+  "errors": []
+}

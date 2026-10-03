@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 8,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files area (leadtype/llm) as the source for agent-facing output APIs, naming those functions, and explicitly warns against using search docs for this task. It explains that the monolithic /llms-full.txt is a fallback to be used when scoped bundles (page-level links) are insufficient, matching the rubric requirement.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 4812,
+  "outputTokens": 542,
+  "durationMs": 26898,
+  "steps": 5,
+  "errors": []
+}

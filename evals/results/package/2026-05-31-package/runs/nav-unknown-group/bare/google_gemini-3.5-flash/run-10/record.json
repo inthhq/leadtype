@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "bare",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails to identify the 'nav' property by name and, crucially, misrepresents the legacy 'group' field as still essential for assigning pages to the sidebar, contradicting the rubric’s ground truth that 'nav' is the curated driver and 'group' is only a fallback for projects without 'nav' and for search facets/taxonomy. The build-failure behavior is correctly described. The overall answer is confident but wrong on the group role, so it does not satisfy all required rubric points.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 45,
+  "inputTokens": 49933,
+  "outputTokens": 615,
+  "durationMs": 145554,
+  "steps": 46,
+  "errors": []
+}

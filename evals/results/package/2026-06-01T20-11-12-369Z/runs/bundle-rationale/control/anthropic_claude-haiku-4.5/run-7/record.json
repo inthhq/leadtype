@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains llms.txt is for HTTP/hosted docs, making it unsuitable for tarballs, while AGENTS.md is purpose-built for offline, version-matched filesystem access. It correctly lists llms.txt, llms-full.txt, and search-index.json as the website artifacts skipped by --bundle. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 39809,
+  "outputTokens": 1323,
+  "durationMs": 20603,
+  "steps": 7,
+  "errors": []
+}

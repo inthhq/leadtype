@@ -1,0 +1,1622 @@
+{
+  "benchmark": "package",
+  "runId": "2026-05-31-package-judge-xai_grok-4.3",
+  "generatedAt": "2026-06-01T09:43:45.707Z",
+  "judgeModels": [
+    "xai/grok-4.3"
+  ],
+  "models": [
+    "anthropic/claude-haiku-4.5",
+    "anthropic/claude-opus-4.8",
+    "google/gemini-3.5-flash",
+    "moonshotai/kimi-k2.6",
+    "openai/gpt-5.5"
+  ],
+  "fixtures": [
+    "bundle-rationale",
+    "custom-generate-script",
+    "explain-cli-flag",
+    "mounted-changelog-urls",
+    "nav-unknown-group",
+    "search-when-embeddings"
+  ],
+  "arms": [
+    "control",
+    "treatment"
+  ],
+  "totalRuns": 600,
+  "cells": [
+    {
+      "fixture": "bundle-rationale",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 91,
+      "discoveryRate": 0,
+      "avgTokens": 30004.4,
+      "avgToolCalls": 16.2,
+      "avgDurationMs": 29924.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96,
+      "discoveryRate": 1,
+      "avgTokens": 15775,
+      "avgToolCalls": 10.4,
+      "avgDurationMs": 18919.8,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.5,
+      "discoveryRate": 0,
+      "avgTokens": 24666.3,
+      "avgToolCalls": 11,
+      "avgDurationMs": 45081.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96,
+      "discoveryRate": 1,
+      "avgTokens": 11599.5,
+      "avgToolCalls": 6,
+      "avgDurationMs": 25668.9,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "google/gemini-3.5-flash",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95,
+      "discoveryRate": 0,
+      "avgTokens": 19774.3,
+      "avgToolCalls": 21,
+      "avgDurationMs": 52008.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "google/gemini-3.5-flash",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95,
+      "discoveryRate": 1,
+      "avgTokens": 14967.6,
+      "avgToolCalls": 8.1,
+      "avgDurationMs": 21474.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96,
+      "discoveryRate": 0,
+      "avgTokens": 23787.7,
+      "avgToolCalls": 13.5,
+      "avgDurationMs": 39511.9,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99,
+      "discoveryRate": 1,
+      "avgTokens": 16614.5,
+      "avgToolCalls": 11.8,
+      "avgDurationMs": 24915.8,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "openai/gpt-5.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.5,
+      "discoveryRate": 0,
+      "avgTokens": 30002.1,
+      "avgToolCalls": 12.7,
+      "avgDurationMs": 45386.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "openai/gpt-5.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96.5,
+      "discoveryRate": 1,
+      "avgTokens": 19518.6,
+      "avgToolCalls": 9,
+      "avgDurationMs": 20363.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 83,
+      "discoveryRate": 0.1,
+      "avgTokens": 22810.4,
+      "avgToolCalls": 30.5,
+      "avgDurationMs": 78155.3,
+      "confidentWrongRate": 0.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 89.5,
+      "discoveryRate": 0.7,
+      "avgTokens": 25716.1,
+      "avgToolCalls": 27.7,
+      "avgDurationMs": 55405.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96,
+      "discoveryRate": 0,
+      "avgTokens": 41531.7,
+      "avgToolCalls": 23.2,
+      "avgDurationMs": 76083.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98,
+      "discoveryRate": 1,
+      "avgTokens": 44327.3,
+      "avgToolCalls": 27,
+      "avgDurationMs": 76827.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "google/gemini-3.5-flash",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 84,
+      "discoveryRate": 0,
+      "avgTokens": 49091.4,
+      "avgToolCalls": 37.6,
+      "avgDurationMs": 101463.6,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "google/gemini-3.5-flash",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.5,
+      "discoveryRate": 0.7,
+      "avgTokens": 39575.3,
+      "avgToolCalls": 26.7,
+      "avgDurationMs": 87864.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94,
+      "discoveryRate": 0,
+      "avgTokens": 49972.6,
+      "avgToolCalls": 24.6,
+      "avgDurationMs": 100875.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.5,
+      "discoveryRate": 0.9,
+      "avgTokens": 42342.9,
+      "avgToolCalls": 27.1,
+      "avgDurationMs": 117859.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "openai/gpt-5.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.5,
+      "discoveryRate": 0,
+      "avgTokens": 43853.3,
+      "avgToolCalls": 25.7,
+      "avgDurationMs": 103758.8,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "openai/gpt-5.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 95.5,
+      "discoveryRate": 1,
+      "avgTokens": 42030.8,
+      "avgToolCalls": 29.1,
+      "avgDurationMs": 103717,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97,
+      "discoveryRate": 0,
+      "avgTokens": 30570.1,
+      "avgToolCalls": 11.3,
+      "avgDurationMs": 20279.1,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 9008.3,
+      "avgToolCalls": 6.2,
+      "avgDurationMs": 10931.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98.5,
+      "discoveryRate": 0,
+      "avgTokens": 35972.4,
+      "avgToolCalls": 6,
+      "avgDurationMs": 27022.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98,
+      "discoveryRate": 0.5,
+      "avgTokens": 33279.3,
+      "avgToolCalls": 7.2,
+      "avgDurationMs": 30366.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "google/gemini-3.5-flash",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98.5,
+      "discoveryRate": 0,
+      "avgTokens": 15738.5,
+      "avgToolCalls": 13.3,
+      "avgDurationMs": 30093.9,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "google/gemini-3.5-flash",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99,
+      "discoveryRate": 0.6,
+      "avgTokens": 17532.9,
+      "avgToolCalls": 14.2,
+      "avgDurationMs": 31515.1,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97,
+      "discoveryRate": 0,
+      "avgTokens": 23779.1,
+      "avgToolCalls": 10.7,
+      "avgDurationMs": 27100.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.5,
+      "discoveryRate": 1,
+      "avgTokens": 13467.6,
+      "avgToolCalls": 10.7,
+      "avgDurationMs": 19275,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "openai/gpt-5.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98,
+      "discoveryRate": 0,
+      "avgTokens": 24277.1,
+      "avgToolCalls": 7.9,
+      "avgDurationMs": 21696,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "openai/gpt-5.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99,
+      "discoveryRate": 1,
+      "avgTokens": 19390.7,
+      "avgToolCalls": 8.4,
+      "avgDurationMs": 19098.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98,
+      "discoveryRate": 0,
+      "avgTokens": 49554.8,
+      "avgToolCalls": 20.8,
+      "avgDurationMs": 44525.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99.5,
+      "discoveryRate": 1,
+      "avgTokens": 20384.5,
+      "avgToolCalls": 12.8,
+      "avgDurationMs": 26833.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 0,
+      "avgTokens": 39609.7,
+      "avgToolCalls": 13.6,
+      "avgDurationMs": 58626.1,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 14281.8,
+      "avgToolCalls": 5.3,
+      "avgDurationMs": 26103.1,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "google/gemini-3.5-flash",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 89.5,
+      "discoveryRate": 0,
+      "avgTokens": 39181.9,
+      "avgToolCalls": 19.2,
+      "avgDurationMs": 62630.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "google/gemini-3.5-flash",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 14686,
+      "avgToolCalls": 9,
+      "avgDurationMs": 23984.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99,
+      "discoveryRate": 0,
+      "avgTokens": 47229.3,
+      "avgToolCalls": 20.4,
+      "avgDurationMs": 90246.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 20228.7,
+      "avgToolCalls": 11.2,
+      "avgDurationMs": 32081,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "openai/gpt-5.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 87.5,
+      "discoveryRate": 0,
+      "avgTokens": 45375,
+      "avgToolCalls": 14.7,
+      "avgDurationMs": 56374.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "openai/gpt-5.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 96.5,
+      "discoveryRate": 1,
+      "avgTokens": 36488,
+      "avgToolCalls": 14.7,
+      "avgDurationMs": 46124.6,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 1,
+      "rate": 0.1,
+      "ci95": [
+        0.01787574951572113,
+        0.4041563854975721
+      ],
+      "meanScore": 34.5,
+      "discoveryRate": 0,
+      "avgTokens": 45188.6,
+      "avgToolCalls": 21.9,
+      "avgDurationMs": 44850.5,
+      "confidentWrongRate": 0.9,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98,
+      "discoveryRate": 1,
+      "avgTokens": 20757.5,
+      "avgToolCalls": 15.3,
+      "avgDurationMs": 33610.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99,
+      "discoveryRate": 0,
+      "avgTokens": 70567.2,
+      "avgToolCalls": 17,
+      "avgDurationMs": 89582.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99.5,
+      "discoveryRate": 1,
+      "avgTokens": 10262.4,
+      "avgToolCalls": 5.7,
+      "avgDurationMs": 28244.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "google/gemini-3.5-flash",
+      "arm": "control",
+      "n": 10,
+      "passes": 8,
+      "rate": 0.8,
+      "ci95": [
+        0.49015684672072335,
+        0.9433190520193067
+      ],
+      "meanScore": 83.5,
+      "discoveryRate": 0,
+      "avgTokens": 54414.2,
+      "avgToolCalls": 27.3,
+      "avgDurationMs": 102837.2,
+      "confidentWrongRate": 0.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "google/gemini-3.5-flash",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98.5,
+      "discoveryRate": 1,
+      "avgTokens": 23588.1,
+      "avgToolCalls": 9.1,
+      "avgDurationMs": 24625.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "control",
+      "n": 10,
+      "passes": 8,
+      "rate": 0.8,
+      "ci95": [
+        0.49015684672072335,
+        0.9433190520193067
+      ],
+      "meanScore": 81,
+      "discoveryRate": 0,
+      "avgTokens": 56691.6,
+      "avgToolCalls": 17.5,
+      "avgDurationMs": 80526,
+      "confidentWrongRate": 0.2,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 96,
+      "discoveryRate": 1,
+      "avgTokens": 38489.3,
+      "avgToolCalls": 16.7,
+      "avgDurationMs": 55066.9,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "openai/gpt-5.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 88.5,
+      "discoveryRate": 0,
+      "avgTokens": 52805.4,
+      "avgToolCalls": 13.1,
+      "avgDurationMs": 56598.8,
+      "confidentWrongRate": 0.1,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "openai/gpt-5.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 98,
+      "discoveryRate": 1,
+      "avgTokens": 58916.1,
+      "avgToolCalls": 14.7,
+      "avgDurationMs": 43121,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 5,
+      "rate": 0.5,
+      "ci95": [
+        0.23658959361548731,
+        0.7634104063845126
+      ],
+      "meanScore": 73,
+      "discoveryRate": 0,
+      "avgTokens": 25434,
+      "avgToolCalls": 23.1,
+      "avgDurationMs": 46929,
+      "confidentWrongRate": 0.5,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 97.5,
+      "discoveryRate": 1,
+      "avgTokens": 10659.1,
+      "avgToolCalls": 10,
+      "avgDurationMs": 21671.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94.5,
+      "discoveryRate": 0,
+      "avgTokens": 31804.9,
+      "avgToolCalls": 14.8,
+      "avgDurationMs": 77718.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "anthropic/claude-opus-4.8",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 9010.6,
+      "avgToolCalls": 4.4,
+      "avgDurationMs": 34422.2,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "google/gemini-3.5-flash",
+      "arm": "control",
+      "n": 10,
+      "passes": 9,
+      "rate": 0.9,
+      "ci95": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "meanScore": 88.5,
+      "discoveryRate": 0,
+      "avgTokens": 29760.5,
+      "avgToolCalls": 19.4,
+      "avgDurationMs": 61784.3,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "google/gemini-3.5-flash",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 99,
+      "discoveryRate": 1,
+      "avgTokens": 13076.2,
+      "avgToolCalls": 9.1,
+      "avgDurationMs": 24938.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "control",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 94,
+      "discoveryRate": 0,
+      "avgTokens": 47536.5,
+      "avgToolCalls": 32.2,
+      "avgDurationMs": 94489.5,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "moonshotai/kimi-k2.6",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 12775,
+      "avgToolCalls": 12.1,
+      "avgDurationMs": 23689.7,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "openai/gpt-5.5",
+      "arm": "control",
+      "n": 10,
+      "passes": 8,
+      "rate": 0.8,
+      "ci95": [
+        0.49015684672072335,
+        0.9433190520193067
+      ],
+      "meanScore": 85.5,
+      "discoveryRate": 0,
+      "avgTokens": 30346.9,
+      "avgToolCalls": 18,
+      "avgDurationMs": 56572.4,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "openai/gpt-5.5",
+      "arm": "treatment",
+      "n": 10,
+      "passes": 10,
+      "rate": 1,
+      "ci95": [
+        0.7224598312333834,
+        1
+      ],
+      "meanScore": 100,
+      "discoveryRate": 1,
+      "avgTokens": 13466,
+      "avgToolCalls": 10,
+      "avgDurationMs": 25907.6,
+      "confidentWrongRate": 0,
+      "judgeErrors": 0
+    }
+  ],
+  "deltas": [
+    {
+      "fixture": "bundle-rationale",
+      "model": "anthropic/claude-haiku-4.5",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "anthropic/claude-opus-4.8",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "google/gemini-3.5-flash",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "moonshotai/kimi-k2.6",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "bundle-rationale",
+      "model": "openai/gpt-5.5",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "anthropic/claude-haiku-4.5",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "anthropic/claude-opus-4.8",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "google/gemini-3.5-flash",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "moonshotai/kimi-k2.6",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "custom-generate-script",
+      "model": "openai/gpt-5.5",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "anthropic/claude-haiku-4.5",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "anthropic/claude-opus-4.8",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "google/gemini-3.5-flash",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "moonshotai/kimi-k2.6",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "explain-cli-flag",
+      "model": "openai/gpt-5.5",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "anthropic/claude-haiku-4.5",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "anthropic/claude-opus-4.8",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "google/gemini-3.5-flash",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "moonshotai/kimi-k2.6",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "mounted-changelog-urls",
+      "model": "openai/gpt-5.5",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "anthropic/claude-haiku-4.5",
+      "treatmentRate": 1,
+      "controlRate": 0.1,
+      "delta": 0.9,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.01787574951572113,
+        0.4041563854975721
+      ]
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "anthropic/claude-opus-4.8",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "google/gemini-3.5-flash",
+      "treatmentRate": 1,
+      "controlRate": 0.8,
+      "delta": 0.19999999999999996,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.49015684672072335,
+        0.9433190520193067
+      ]
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "moonshotai/kimi-k2.6",
+      "treatmentRate": 0.9,
+      "controlRate": 0.8,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ],
+      "controlCi": [
+        0.49015684672072335,
+        0.9433190520193067
+      ]
+    },
+    {
+      "fixture": "nav-unknown-group",
+      "model": "openai/gpt-5.5",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "anthropic/claude-haiku-4.5",
+      "treatmentRate": 1,
+      "controlRate": 0.5,
+      "delta": 0.5,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.23658959361548731,
+        0.7634104063845126
+      ]
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "anthropic/claude-opus-4.8",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "google/gemini-3.5-flash",
+      "treatmentRate": 1,
+      "controlRate": 0.9,
+      "delta": 0.09999999999999998,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.5958436145024278,
+        0.9821242504842788
+      ]
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "moonshotai/kimi-k2.6",
+      "treatmentRate": 1,
+      "controlRate": 1,
+      "delta": 0,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.7224598312333834,
+        1
+      ]
+    },
+    {
+      "fixture": "search-when-embeddings",
+      "model": "openai/gpt-5.5",
+      "treatmentRate": 1,
+      "controlRate": 0.8,
+      "delta": 0.19999999999999996,
+      "treatmentCi": [
+        0.7224598312333834,
+        1
+      ],
+      "controlCi": [
+        0.49015684672072335,
+        0.9433190520193067
+      ]
+    }
+  ]
+}

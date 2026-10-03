@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains group's role in navigation, llms.txt sections, and AGENTS.md grouping. It characterizes /llms-full.txt as monolithic all-docs not split by group. It names at least two optional fields (deprecated, tags) from the list. All rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5258,
+  "outputTokens": 179,
+  "durationMs": 25766,
+  "steps": 12,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately describes the default static BM25 lexical index and that a hosted vector DB is unnecessary by default. It correctly states that lexical search should be kept for exact matches. However, it fails to specify the precise condition for adding embeddings when the corpus grows past **tens of thousands of chunks** — it only mentions 'grown beyond what is practical for a static JSON index,' lacking the specific quantitative threshold required by the rubric. This omission makes the answer incomplete on a required point, hence not fully correct.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 34440,
+  "outputTokens": 79,
+  "durationMs": 48594,
+  "steps": 11,
+  "errors": []
+}

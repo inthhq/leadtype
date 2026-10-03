@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that leadtype uses a static, edge-safe BM25 lexical index by default, requiring no database. It gives specific conditions for adding embeddings (vocabulary/intent mismatch and large corpus scale of 100K+ chunks) rather than a generic recommendation. It also clearly states the lexical index should be kept as a complement, with embeddings supplementing but not replacing it. All required rubric points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 25,
+  "inputTokens": 26851,
+  "outputTokens": 352,
+  "durationMs": 48477,
+  "steps": 16,
+  "errors": []
+}

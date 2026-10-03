@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The command uses non-existent flags --content and --source instead of the required --docs-dir mount syntax. It does not use --docs-dir changelog=/changelog. The description of internal copy and public mirror does not use the correct public/ structure (public/docs/changelog/ and public/changelog/). Thus no required points are satisfied; the response invents flags and is incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 21,
+  "inputTokens": 5671,
+  "outputTokens": 330,
+  "durationMs": 32839,
+  "steps": 17,
+  "errors": []
+}

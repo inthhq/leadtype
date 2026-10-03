@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default BM25 lexical index and its static, database-free nature, and it states the lexical index should be kept for exact matches with embeddings complementary. However, it fails to specify the approximate corpus size (≈ tens of thousands of chunks) as part of the specific conditions for adding embeddings, which is a required detail per the rubric. The rest is accurate and comprehensive.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 26,
+  "inputTokens": 114077,
+  "outputTokens": 4312,
+  "durationMs": 116267,
+  "steps": 11,
+  "errors": []
+}

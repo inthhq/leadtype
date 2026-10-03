@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "treatment",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the default static BM25 index requiring no database and states to keep the lexical index for exact matches. However, it incorrectly says embeddings are warranted 'only when both' vocabulary mismatch and a very large corpus, while the rubric specifies either condition (or both) is sufficient. The answer thus fails the requirement to give the correct specific conditions.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 9,
+  "inputTokens": 8126,
+  "outputTokens": 306,
+  "durationMs": 19493,
+  "steps": 6,
+  "errors": []
+}

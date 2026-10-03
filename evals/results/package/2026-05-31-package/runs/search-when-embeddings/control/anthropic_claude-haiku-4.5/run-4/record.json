@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default BM25 search and states that the lexical index should be kept. However, the specific conditions for adding embeddings required by the rubric include 'a very large corpus (≈ tens of thousands of chunks)', which is missing. The agent instead imposes conditions about query volume, latency, and cost that are not part of the ground truth. Thus the answer is incomplete and resorts to extra constraints, confidently stating 'only if all three conditions are true' – which is wrong per the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 29,
+  "inputTokens": 34331,
+  "outputTokens": 464,
+  "durationMs": 54376,
+  "steps": 19,
+  "errors": []
+}

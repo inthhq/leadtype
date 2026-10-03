@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response directs to the LLM files reference area (/docs/reference/llm.md) and lists the agent-facing APIs (generateLLMFullContextFiles, etc.), explicitly not routing to Search. It explains /llms-full.txt is a fallback when page-level scoped bundles are insufficient, satisfying both required points.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 5779,
+  "outputTokens": 493,
+  "durationMs": 31735,
+  "steps": 6,
+  "errors": []
+}

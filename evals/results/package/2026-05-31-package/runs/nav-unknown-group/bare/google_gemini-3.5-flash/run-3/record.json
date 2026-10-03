@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent produced no ANSWER.md or any textual response addressing the task. It only generated unrelated helper scripts, leaving the required explanations completely absent. Therefore, none of the rubric's required points are met.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 50,
+  "inputTokens": 63910,
+  "outputTokens": 27,
+  "durationMs": 155116,
+  "steps": 50,
+  "errors": []
+}

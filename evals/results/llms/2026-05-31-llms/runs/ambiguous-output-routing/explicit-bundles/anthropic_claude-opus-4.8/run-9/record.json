@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response points to the LLM files / leadtype/llm output APIs (names generateLLMFullContextFiles and others) and explicitly warns against using the Search docs. It explains that the monolithic /llms-full.txt is a fallback, to be used only when smaller scoped bundles or page-level links are insufficient. All required rubric points are fully satisfied, and no incorrect conditions are present.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 5316,
+  "outputTokens": 490,
+  "durationMs": 29439,
+  "steps": 5,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the required Leadtype library APIs, calls convertAllMdx first to produce the converted markdown, then runs generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in the correct order. It passes product and nav from docs.config.ts into the generators that need them. No CLI usage or invented API names are present. All rubric requirements are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 37364,
+  "outputTokens": 1339,
+  "durationMs": 88282,
+  "steps": 29,
+  "errors": []
+}

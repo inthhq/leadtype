@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "monolith",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON result object to stdout with output paths, and names llmsFullTxt, docsLlmsTxt, and llmsTxt, satisfying the required naming. However, it includes 'agentReadabilityJson' which is not part of the result shape (the correct field is 'agentReadabilityManifest'), thus inventing a field, which the rubric marks as incorrect. The answer is confidently wrong about this invented field.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 3473,
+  "outputTokens": 114,
+  "durationMs": 9866,
+  "steps": 4,
+  "errors": []
+}

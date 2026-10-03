@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": false,
+  "score": 20,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response uses '--mount changelog:/changelog' instead of the required '--docs-dir changelog=/changelog' mount syntax. It invents a non-existent flag and fails to mention the correct internal paths (public/docs/changelog/ for internal copy, public/changelog/ for static mirror). While it states the canonical URL prefix /changelog/, the invocation and output description are fundamentally wrong per the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 4606,
+  "outputTokens": 296,
+  "durationMs": 26701,
+  "steps": 13,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md names both required fields (lastModified and lastAuthor), states they are merged into the output frontmatter, and states they are populated from git log (%aI and %an of the most recent commit). All three rubric REQUIRED points are satisfied exactly; no invented fields or non-git sources appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 7,
+  "inputTokens": 13967,
+  "outputTokens": 45,
+  "durationMs": 16860,
+  "steps": 8,
+  "errors": []
+}

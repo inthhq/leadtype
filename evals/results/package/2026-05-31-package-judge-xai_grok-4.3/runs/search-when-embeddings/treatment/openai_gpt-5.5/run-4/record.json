@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: default described as static/local BM25 lexical index with no DB; specific conditions given (vocabulary mismatch OR corpus > tens of thousands of chunks); lexical index explicitly kept as complementary for exact matches. No incorrect claims present. ANSWER.md matches ground truth verbatim on every required element.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 7683,
+  "outputTokens": 97,
+  "durationMs": 25166,
+  "steps": 9,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script imports the required library APIs (convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, generateDocsSearchFiles) and uses them in the correct order: MDX conversion before any index or full‑context generators. It passes product and nav from docs.config.ts into the generators that need them. No CLI calls, no invented API names. All required artifacts (markdown mirrors, llms.txt, llms-full.txt, search index) are produced under public/. The script meets every REQUIRED rubric point.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 152594,
+  "outputTokens": 2803,
+  "durationMs": 32848,
+  "steps": 13,
+  "errors": []
+}

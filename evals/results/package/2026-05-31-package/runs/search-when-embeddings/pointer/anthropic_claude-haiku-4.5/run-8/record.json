@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "pointer",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default static BM25 lexical index without a database and correctly states that the lexical index must be kept (complementary) when embeddings are added. However, it incorrectly requires both conditions (vocabulary mismatch AND large corpus) for adding embeddings, while the ground truth specifies OR (either condition is sufficient). This critical misstatement of the conditions violates a required rubric point, making the answer incorrect overall.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 14799,
+  "outputTokens": 388,
+  "durationMs": 25788,
+  "steps": 6,
+  "errors": []
+}

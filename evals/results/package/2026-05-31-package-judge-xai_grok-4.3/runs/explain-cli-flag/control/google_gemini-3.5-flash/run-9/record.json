@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "ANSWER.md names both required fields (lastModified and lastAuthor), states they are injected as frontmatter into generated markdown, and correctly attributes the values to git commit history via the described git log command. All three REQUIRED rubric points are satisfied with no factual errors or omissions of required content.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 30351,
+  "outputTokens": 438,
+  "durationMs": 32537,
+  "steps": 15,
+  "errors": []
+}

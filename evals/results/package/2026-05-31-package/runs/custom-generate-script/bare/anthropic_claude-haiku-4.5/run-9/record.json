@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script invents API names (convertMdxToMarkdown, buildRoutingIndex, buildSearchIndex from 'leadtype/lib') that are not part of leadtype. It does not use the required convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, or generateDocsSearchFiles. Therefore, it fails all required points regarding library API usage. It does import product and nav from config, but the core conversion and generation are missing.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 8974,
+  "outputTokens": 497,
+  "durationMs": 50235,
+  "steps": 19,
+  "errors": []
+}

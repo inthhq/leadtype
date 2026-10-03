@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that --json prints a JSON object describing the generated artifacts, satisfying the requirement for a single JSON result object. It lists llmsFullTxt, docsLlmsTxt, and llmsTxt, meeting the required naming of at least one generated output-path field. It does not describe human-readable output or invent incorrect fields. The answer is accurate and complete against the rubric.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3616,
+  "outputTokens": 334,
+  "durationMs": 23574,
+  "steps": 6,
+  "errors": []
+}

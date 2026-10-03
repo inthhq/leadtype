@@ -15,7 +15,7 @@
  *     low-level include-resolution helpers, framework-neutral.
  *
  * For the markdown-flattening pipeline used by the LLM/agent outputs, see
- * `leadtype/remark` instead.
+ * `leadtype/markdown` instead.
  */
 
 // Canonical path / URL primitives so source consumers can derive slugs
@@ -30,14 +30,24 @@ export {
 } from "../internal/docs-url";
 // Include-resolution primitives (re-exports from the remark plugin file)
 export {
+  createIncludeResolutionCache,
   extractMdxSection,
   type IncludeResolution,
+  type IncludeResolutionCache,
+  type IncludeResolutionCacheStats,
   parseIncludeSpecifier,
+  type RemarkIncludeOptions,
   type ResolveIncludeOptions,
   type ResolveIncludePathOptions,
   resolveInclude,
   resolveIncludePath,
 } from "../remark/plugins/include.remark";
+// Pure OpenAPI data helpers for renderer-local table implementations
+export {
+  type ApiSchemaRow,
+  type ApiSchemaRowsInput,
+  flattenApiSchemaRows,
+} from "./openapi-schema-rows";
 // Source preset for bundler consumers
 export {
   createMdxSourcePlugins,
@@ -48,6 +58,15 @@ export {
 export type {
   AccordionItemProps,
   AccordionProps,
+  ApiAuthProps,
+  ApiCodeSamplesProps,
+  ApiEndpointProps,
+  ApiMediaType,
+  ApiParametersProps,
+  ApiRequestBodyProps,
+  ApiResponsesProps,
+  ApiSchemaProperty,
+  ApiTryItProps,
   AudienceProps,
   AudienceTarget,
   CalloutProps,
@@ -56,6 +75,7 @@ export type {
   CardProps,
   CardsProps,
   CardVariant,
+  ChildrenTypeRegistry,
   CommandMode,
   CommandTabsModeProps,
   CommandTabsProps,
@@ -75,6 +95,7 @@ export type {
   StepsProps,
   TabProps,
   TabsProps,
+  TagChildren,
   TopicSwitcherItem,
   TopicSwitcherProps,
   TypeTableProperty,

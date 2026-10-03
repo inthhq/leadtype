@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly explains group's role in navigation/llms.txt/AGENTS.md and search, characterizes /llms-full.txt as monolithic not split, and lists multiple valid optional frontmatter fields including tags and deprecated. All required points are met.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 6,
+  "inputTokens": 4642,
+  "outputTokens": 490,
+  "durationMs": 27521,
+  "steps": 5,
+  "errors": []
+}

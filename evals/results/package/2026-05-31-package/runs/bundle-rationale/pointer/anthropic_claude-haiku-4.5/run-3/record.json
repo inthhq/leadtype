@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that llms.txt is a website/HTTP convention with absolute URLs, making it wrong inside a tarball. It explains AGENTS.md uses relative links, works offline, and is version-matched. It correctly states that --bundle skips llms.txt, llms-full.txt, and the search index. All required points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 11,
+  "inputTokens": 17540,
+  "outputTokens": 290,
+  "durationMs": 17072,
+  "steps": 6,
+  "errors": []
+}

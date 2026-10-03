@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "section-indexes",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the command outputs a JSON object and names required keys like llmsFullTxt and docsLlmsTxt. However, it invents fields that are not part of the actual result shape (e.g., 'agentReadabilityJson' instead of 'agentReadabilityManifest', and possibly 'sitemapXml'/'sitemapMd' not matching the ground truth's simple 'sitemap'/'robots' mention), making the answer inaccurate per the rubric.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 2532,
+  "outputTokens": 86,
+  "durationMs": 9199,
+  "steps": 5,
+  "errors": []
+}

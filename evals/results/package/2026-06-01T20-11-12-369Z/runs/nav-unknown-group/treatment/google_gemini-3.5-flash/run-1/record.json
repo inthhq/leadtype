@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly states that `nav` in docs.config.ts drives the sidebar, top-level tabs, agent maps, llms.txt sections, and AGENTS.md grouping, satisfying the first required point. It identifies `group` as the legacy frontmatter field useful for fallback navigation and search facets/taxonomy, satisfying the second. It clearly states that an unknown group slug causes the build to fail noisily with an error, meeting the third required point. No inaccuracies or omissions.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 277086,
+  "outputTokens": 2657,
+  "durationMs": 29977,
+  "steps": 11,
+  "errors": []
+}

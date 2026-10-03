@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states the default is a static, local lexical index using BM25 with no database. It gives the specific conditions for adding embeddings (semantic gap and corpus size > tens of thousands of chunks). It also explicitly says to keep the lexical index for exact matches and layer embeddings on top, showing complementary use. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 25388,
+  "outputTokens": 1099,
+  "durationMs": 20499,
+  "steps": 6,
+  "errors": []
+}

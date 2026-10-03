@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that llms.txt is an HTTP/website convention unsuitable for a tarball, that AGENTS.md is designed for offline/version‑matched access from node_modules with local pointers, and correctly lists llms.txt, llms‑full.txt, search artifacts, sitemaps, robots, etc. as skipped by --bundle. All rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 6,
+  "inputTokens": 42190,
+  "outputTokens": 1538,
+  "durationMs": 19818,
+  "steps": 4,
+  "errors": []
+}

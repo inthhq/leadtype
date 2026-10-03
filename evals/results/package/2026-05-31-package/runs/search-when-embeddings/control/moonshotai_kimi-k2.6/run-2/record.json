@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default search as a static BM25 lexical index with no database, fulfills the requirement that no vector DB is needed by default. It provides specific conditions for adding embeddings: scale breach (index size >5 MB, total >10 MB, or >10,000 chunks) and relevance failure for semantic/paraphrased queries, which matches vocabulary mismatch and large corpus criteria. It explicitly states to keep the lexical index for exact matches and as a fallback/hybrid, making embeddings complementary. All rubric-required points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 34,
+  "inputTokens": 64840,
+  "outputTokens": 324,
+  "durationMs": 120399,
+  "steps": 23,
+  "errors": []
+}

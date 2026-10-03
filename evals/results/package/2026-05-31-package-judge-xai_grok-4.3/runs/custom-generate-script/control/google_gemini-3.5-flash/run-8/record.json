@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 8,
+  "mode": "control",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced script satisfies every REQUIRED rubric point: it imports product/nav from docs.config.ts, calls convertAllMdx (to public/docs) first, then generateLlmsTxt + generateLLMFullContextFiles (from leadtype/llm) and generateDocsSearchFiles (from leadtype/search/node), and never shells out to the CLI. The explicit sequencing in the code matches the ground-truth ordering requirement that full-context and search generators must read the already-converted markdown.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 39,
+  "inputTokens": 53310,
+  "outputTokens": 1048,
+  "durationMs": 113039,
+  "steps": 40,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are satisfied exactly: default is described as static/local lexical BM25 with no DB; specific conditions (vocabulary mismatch after cheap levers + large corpus) are stated without generic claims; lexical index is kept for hybrid/exact-match use rather than replaced. The produced ANSWER.md matches the ground truth verbatim in substance and avoids every listed incorrect claim.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 11,
+  "inputTokens": 41846,
+  "outputTokens": 767,
+  "durationMs": 69990,
+  "steps": 8,
+  "errors": []
+}

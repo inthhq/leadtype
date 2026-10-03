@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "pointer",
+  "passed": false,
+  "score": 50,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the curated navigation driver and group as legacy fallback/taxonomy, meeting those required points. However, it incorrectly states that an unknown group slug only causes a build failure when nav is not defined, and explicitly says it won't cause a build error if nav is in use. The rubric requires stating that the build always fails for an unknown group, with no such conditional. This contradiction causes the response to fail the rubric.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 17,
+  "inputTokens": 20424,
+  "outputTokens": 341,
+  "durationMs": 33134,
+  "steps": 9,
+  "errors": []
+}

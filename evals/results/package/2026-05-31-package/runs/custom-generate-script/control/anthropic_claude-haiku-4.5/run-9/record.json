@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "mode": "control",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls generateLlmsTxt and generateLLMFullContextFiles, passes product and nav from config, and orders conversion before the full-context and search generators. However, it does not use the required convertAllMdx (or documented conversion API) for MDX → markdown conversion — it uses createDocsSource and manual writes instead. It also does not use the search-node API (e.g., generateDocsSearchFiles from leadtype/search/node) for generating the search index; it uses source.buildSearchIndex() from the core module. Both are required by the rubric and render the solution incomplete.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 32,
+  "inputTokens": 38782,
+  "outputTokens": 610,
+  "durationMs": 149155,
+  "steps": 26,
+  "errors": []
+}

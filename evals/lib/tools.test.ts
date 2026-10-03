@@ -63,6 +63,7 @@ describe("read tool", () => {
     expect(transcript).toHaveLength(1);
     expect(transcript[0]?.tool).toBe("read");
     expect(transcript[0]?.args.path).toBe("hello.txt");
+    expect(transcript[0]?.isError).toBe(false);
   });
 
   it("rejects a path that escapes the tempdir", async () => {
@@ -76,9 +77,10 @@ describe("read tool", () => {
         { toolCallId: "t2", messages: [] }
       )
     ).rejects.toThrow(/path escape rejected/);
-    // Failed call is still recorded with an error summary.
+    // Failed call is still recorded with an error summary and the error flag.
     expect(transcript).toHaveLength(1);
     expect(transcript[0]?.resultSummary).toMatch(/error: path escape/);
+    expect(transcript[0]?.isError).toBe(true);
   });
 });
 

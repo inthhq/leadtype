@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "mode": "bare",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly says nav is source of truth for sidebar and agent map, and that an unknown group fails the build. However, it fails to mention that nav also drives llms.txt sections and AGENTS.md grouping, which are explicitly required by the rubric, and does not explicitly state that group is still useful for fallback navigation. The omission of these required points makes the answer incomplete.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 23,
+  "inputTokens": 30174,
+  "outputTokens": 299,
+  "durationMs": 102007,
+  "steps": 22,
+  "errors": []
+}

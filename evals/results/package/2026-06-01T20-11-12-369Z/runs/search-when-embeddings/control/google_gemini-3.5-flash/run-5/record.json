@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response accurately states leadtype's default search is a static, local BM25 lexical index with no database (hosted vector DB not needed). It gives specific conditions for adding embeddings: vocabulary mismatch (conceptual queries) and large corpus (hundreds of thousands of documents), fulfilling the 'vocabulary mismatch and/or very large corpus' requirement. It explicitly recommends keeping the BM25 index for exact matches and using embeddings as a complementary layer (hybrid search), not a replacement. All required rubric points are met, and none of the incorrect criteria apply.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 287125,
+  "outputTokens": 9981,
+  "durationMs": 73707,
+  "steps": 21,
+  "errors": []
+}

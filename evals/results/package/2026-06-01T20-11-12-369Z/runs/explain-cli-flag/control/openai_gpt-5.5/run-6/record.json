@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names both `lastModified` and `lastAuthor`, states they are added to markdown frontmatter, and explains they come from git history via `git log`. It satisfies all required rubric points and contains no incorrect statements.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 9,
+  "inputTokens": 72558,
+  "outputTokens": 863,
+  "durationMs": 27211,
+  "steps": 7,
+  "errors": []
+}

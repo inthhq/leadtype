@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "router",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that `group` drives navigation, `llms.txt` sections, and `AGENTS.md` grouping, satisfying point 1. It correctly describes `/llms-full.txt` as a monolithic all-docs fallback that is not split by group, satisfying point 2. It lists many optional frontmatter fields, including icon, deprecated, experimental, canary, new, draft, tags, full, lastModified, and lastAuthor—well over the required two, satisfying point 3. No rubric violations are present.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 4656,
+  "outputTokens": 420,
+  "durationMs": 28502,
+  "steps": 6,
+  "errors": []
+}

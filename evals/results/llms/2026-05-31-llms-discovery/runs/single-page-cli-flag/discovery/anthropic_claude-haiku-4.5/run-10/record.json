@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "discovery",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object to stdout describing the generation run, and names required fields like llmsFullTxt, docsLlmsTxt, and llmsTxt. However, it invents inaccurate field names: it says 'agentReadabilityJson' instead of the expected 'agentReadabilityManifest', and splits 'sitemap' and 'robots' into multiple extension‑specific keys (sitemapXml, sitemapMd, robotsTxt) that are not part of the result shape. This makes the answer incorrect per the rubric’s 'Incorrect if invents fields' clause, despite satisfying the required points.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 3,
+  "inputTokens": 2081,
+  "outputTokens": 89,
+  "durationMs": 7702,
+  "steps": 4,
+  "errors": []
+}

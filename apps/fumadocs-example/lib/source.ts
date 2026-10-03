@@ -1,29 +1,32 @@
 import { resolve } from "node:path";
 import { loader } from "fumadocs-core/source";
+import { createDocsProject } from "leadtype";
 import { fumadocsSource } from "leadtype/fumadocs";
 
 // process.cwd() is the app root when Next runs build/dev.
-const contentDir = resolve(
-  process.cwd(),
-  "..",
-  "..",
-  ".docs-src",
-  "c15t",
-  "docs"
-);
+const repoRoot = resolve(process.cwd(), "..", "..");
 
 /**
- * fumadocs source backed by leadtype/fumadocs. Walks `.docs-src/c15t/docs`,
- * picks up both `.mdx` pages and the c15t-authored `meta.json` files, and
- * resolves `<include>` / `<ExtractedTypeTable>` at build time via
- * `createMdxSourcePlugins()` (wired in `next.config.mjs`).
+ * The project resolves the repo-root docs from the config: content root,
+ * curated navigation, mounts, and the OpenAPI overlay all come from
+ * `docs/docs.config.ts` rather than being restated here, so this app and the
+ * generated agent artifacts describe the same docs.
  */
-const fumadocsSourceResult = await fumadocsSource({ contentDir });
+const project = await createDocsProject({
+  cwd: repoRoot,
+  typeTableBasePath: repoRoot,
+});
+
+// The adapter takes the project directly — a project satisfies `DocsSource`.
+const fumadocsSourceResult = await fumadocsSource({
+  source: project,
+  includeMetaJson: false,
+});
 
 export const source = loader({
   baseUrl: "/docs",
   source: fumadocsSourceResult,
 });
 
-/** Underlying leadtype DocsSource — call loadPage/buildSearchIndex/resolveInclude on this. */
+/** Underlying leadtype source — call loadPage/buildSearchIndex/resolveInclude on this. */
 export const leadtypeSource = fumadocsSourceResult.leadtype;

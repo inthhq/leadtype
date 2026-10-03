@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states that nav in docs.config.ts is the curated source of truth for sidebar, llms.txt sections, AGENTS.md grouping, etc. It describes group as legacy/optional, useful for fallback navigation and search facets. It also accurately states that an unknown group slug causes a build failure with an error message, not a silent skip or warning. All required rubric points are covered.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 22381,
+  "outputTokens": 257,
+  "durationMs": 27813,
+  "steps": 8,
+  "errors": []
+}

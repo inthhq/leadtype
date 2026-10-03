@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 8,
+  "mode": "treatment",
+  "passed": true,
+  "score": 95,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are explicitly satisfied: nav is identified as the curated driver for sidebar/llms.txt/AGENTS.md; group is correctly described as legacy/optional with fallback + taxonomy uses; and unknown group is stated to produce a hard build failure (not a warning or silent drop). No incorrect claims appear. Minor deduction only for slight wording differences vs. the exact ground-truth phrasing.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 15,
+  "inputTokens": 75258,
+  "outputTokens": 65,
+  "durationMs": 44672,
+  "steps": 9,
+  "errors": []
+}

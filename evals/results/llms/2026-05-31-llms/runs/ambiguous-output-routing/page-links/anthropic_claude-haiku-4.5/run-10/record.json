@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files reference (including generateLLMFullContextFiles) and does not mention Search APIs. It explains the monolithic /llms-full.txt as a fallback used when page-level links are insufficient (e.g., group-based routing not suitable). Both required points are fully satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 11,
+  "inputTokens": 5237,
+  "outputTokens": 214,
+  "durationMs": 21500,
+  "steps": 8,
+  "errors": []
+}

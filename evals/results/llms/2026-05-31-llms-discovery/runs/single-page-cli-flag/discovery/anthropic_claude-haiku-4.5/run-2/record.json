@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "discovery",
+  "passed": false,
+  "score": 75,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `leadtype generate --json` outputs a JSON object and names several required field keys (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it incorrectly lists 'agentReadabilityJson' as a field; the correct key is 'agentReadabilityManifest'. This invention of a field that is not part of the result shape violates the rubric's 'Incorrect if' condition, so overall correctness is false. The error is presented confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2207,
+  "outputTokens": 134,
+  "durationMs": 8153,
+  "steps": 4,
+  "errors": []
+}

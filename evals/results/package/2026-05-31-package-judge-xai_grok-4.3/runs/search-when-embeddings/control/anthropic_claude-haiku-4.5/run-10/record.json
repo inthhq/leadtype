@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly describes the default (static BM25 lexical index, no DB) and that the lexical index must be kept as primary/complementary. However, it fails the second REQUIRED point: it gives a different set of conditions (must meet all of semantic failure + search volume + budget) instead of the rubric's specific triggers (vocabulary/intent mismatch OR corpus > tens of thousands of chunks), and it does not mention the large-corpus case at all.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 22106,
+  "outputTokens": 326,
+  "durationMs": 34649,
+  "steps": 14,
+  "errors": []
+}

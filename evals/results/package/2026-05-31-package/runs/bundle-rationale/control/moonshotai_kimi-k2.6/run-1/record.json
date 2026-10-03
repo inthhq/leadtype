@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 1,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that `llms.txt` is a website artifact with links requiring a base URL and thus useless in a local tarball, and that `AGENTS.md` is designed for offline, version-matched use with relative links to bundled topic files. It correctly lists the website artifacts skipped by `--bundle` (`llms.txt`, `llms-full.txt`, search index, sitemaps, etc.) and explains why they don't belong in a package. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 21067,
+  "outputTokens": 222,
+  "durationMs": 33807,
+  "steps": 11,
+  "errors": []
+}

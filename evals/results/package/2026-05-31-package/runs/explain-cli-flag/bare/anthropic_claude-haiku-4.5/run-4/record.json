@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 4,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the flag adds frontmatter fields populated from Git history, but it names `git.created`, `git.updated`, and `git.contributors` instead of the required `lastModified` and `lastAuthor`. This violates the rubric's requirement to name both correct fields, and it invents field names, which is explicitly marked as incorrect. The answer is expressed confidently with no hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 27920,
+  "outputTokens": 158,
+  "durationMs": 42108,
+  "steps": 17,
+  "errors": []
+}

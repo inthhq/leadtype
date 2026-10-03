@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies nav as the primary navigation driver and group as legacy, but it fails to mention that nav also drives llms.txt sections and AGENTS.md grouping (required). Critically, it incorrectly states that an unknown group does not cause a build failure, directly contradicting the rubric's ground truth that the build fails with an error. This confident, unhedged wrong claim is the main error.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 16,
+  "inputTokens": 3829,
+  "outputTokens": 282,
+  "durationMs": 27752,
+  "steps": 11,
+  "errors": []
+}

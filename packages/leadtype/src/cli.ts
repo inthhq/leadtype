@@ -10,7 +10,13 @@ import {
   type CliContext as HexbusCliContext,
   parseCliArgs,
 } from "hexbus";
+import { getDoctorUsage, runDoctorCommand } from "./cli/doctor";
 import { getGenerateUsage, runGenerateCommand } from "./cli/generate";
+import { getInitUsage, runInitCommand } from "./cli/init";
+import { getMcpUsage, runMcpCommand } from "./cli/mcp";
+import { getNavUsage, runNavCommand } from "./cli/nav";
+import { getScoreUsage, runScoreCommand } from "./cli/score";
+import { getSyncUsage, runSyncCommand } from "./cli/sync";
 import { logger, setLogStreams } from "./internal/logger";
 import { getLintUsage, runLintCommand } from "./lint/cli";
 
@@ -34,8 +40,14 @@ Usage:
   leadtype <command> [options]
 
 Commands:
+  init       Scaffold an agent-ready docs integration for your framework
+  doctor     Explain the resolved project — config, sources, routes, artifacts
   generate   Convert MDX, generate LLM files, and build search artifacts
+  nav        Print the resolved navigation tree and report drift
+  sync       Clone or refresh remote sources declared by collections
   lint       Validate MDX frontmatter, meta.json, and docs links
+  mcp        Serve the generated docs to an MCP client over stdio
+  score      Score the generated docs' agent readiness (mapped to the ora rubric)
   help       Show help
 
 Run leadtype <command> --help for command-specific options.
@@ -50,18 +62,79 @@ const globalFlags: CliFlag[] = [
   },
 ];
 
-const COMMAND_LOCAL_VERSION_FLAGS = {
-  "--version": "__leadtype_command_long_version_flag__",
-  "-v": "__leadtype_command_short_version_flag__",
-} as const;
-const VERSION_FLAG_SENTINELS = new Map<string, string>(
-  Object.entries(COMMAND_LOCAL_VERSION_FLAGS).map(([flag, sentinel]) => [
-    sentinel,
-    flag,
-  ])
-);
-
 const commands: LeadtypeCliCommand[] = [
+  {
+    async action(context) {
+      context.state.exitCode = await runSyncCommand(
+        context.commandArgs,
+        context.io
+      );
+    },
+    description: "Acquire configured documentation sources.",
+    hint: "Acquire configured documentation sources.",
+    label: "Sync",
+    name: "sync",
+  },
+  {
+    async action(context) {
+      context.state.exitCode = await runScoreCommand(
+        context.commandArgs,
+        context.io
+      );
+    },
+    description: "Score generated docs.",
+    hint: "Score generated docs.",
+    label: "Score",
+    name: "score",
+  },
+  {
+    async action(context) {
+      context.state.exitCode = await runNavCommand(
+        context.commandArgs,
+        context.io
+      );
+    },
+    description: "Print navigation and report drift.",
+    hint: "Print navigation and report drift.",
+    label: "Nav",
+    name: "nav",
+  },
+  {
+    async action(context) {
+      context.state.exitCode = await runMcpCommand(
+        context.commandArgs,
+        context.io
+      );
+    },
+    description: "Serve generated docs over MCP.",
+    hint: "Serve generated docs over MCP.",
+    label: "Mcp",
+    name: "mcp",
+  },
+  {
+    async action(context) {
+      context.state.exitCode = await runInitCommand(
+        context.commandArgs,
+        context.io
+      );
+    },
+    description: "Scaffold a docs integration.",
+    hint: "Scaffold a docs integration.",
+    label: "Init",
+    name: "init",
+  },
+  {
+    async action(context) {
+      context.state.exitCode = await runDoctorCommand(
+        context.commandArgs,
+        context.io
+      );
+    },
+    description: "Explain the resolved project.",
+    hint: "Explain the resolved project.",
+    label: "Doctor",
+    name: "doctor",
+  },
   {
     async action(context) {
       context.state.exitCode = await runGenerateCommand(
@@ -99,11 +172,29 @@ const commands: LeadtypeCliCommand[] = [
 ];
 
 function commandUsage(command: string | undefined): string {
+  if (command === "init") {
+    return getInitUsage();
+  }
+  if (command === "doctor") {
+    return getDoctorUsage();
+  }
+  if (command === "nav") {
+    return getNavUsage();
+  }
   if (command === "generate") {
     return getGenerateUsage();
   }
+  if (command === "sync") {
+    return getSyncUsage();
+  }
   if (command === "lint") {
     return getLintUsage();
+  }
+  if (command === "mcp") {
+    return getMcpUsage();
+  }
+  if (command === "score") {
+    return getScoreUsage();
   }
   return MAIN_USAGE;
 }
@@ -122,15 +213,16 @@ async function readPackageVersion(): Promise<string> {
 }
 
 function createLeadtypeContext(argv: string[], io: CliIo): LeadtypeCliContext {
-  const parserArgv = preserveCommandLocalVersionFlags(argv);
+  // Command parsers own every token after the command name, including flags
+  // such as --config, --version and --force that Hexbus also recognizes.
   const parsed = parseCliArgs(
-    parserArgv,
+    argv.slice(0, 1),
     commands as HexbusCliCommand[],
     globalFlags
   );
   const state: LeadtypeCliContext["state"] = {};
   return {
-    commandArgs: parsed.commandArgs.map(restoreVersionFlag),
+    commandArgs: parsed.commandName ? argv.slice(1) : argv,
     commandName: parsed.commandName,
     config: {
       getPathAliases: () => null,
@@ -193,23 +285,6 @@ function createLeadtypeContext(argv: string[], io: CliIo): LeadtypeCliContext {
   };
 }
 
-function preserveCommandLocalVersionFlags(argv: string[]): string[] {
-  if (!commands.some((command) => command.name === argv[0])) {
-    return argv;
-  }
-  return argv.map((arg, index) =>
-    index > 0 && arg in COMMAND_LOCAL_VERSION_FLAGS
-      ? COMMAND_LOCAL_VERSION_FLAGS[
-          arg as keyof typeof COMMAND_LOCAL_VERSION_FLAGS
-        ]
-      : arg
-  );
-}
-
-function restoreVersionFlag(arg: string): string {
-  return VERSION_FLAG_SENTINELS.get(arg) ?? arg;
-}
-
 export async function runCli(
   argv: string[],
   io: CliIo = { stderr: process.stderr, stdout: process.stdout }
@@ -222,16 +297,7 @@ export async function runCli(
     return 0;
   }
 
-  if (
-    context.flags.help === true &&
-    context.commandName !== "help" &&
-    (context.commandName || context.commandArgs.length === 0)
-  ) {
-    io.stdout.write(commandUsage(context.commandName));
-    return 0;
-  }
-
-  if (!context.commandName && context.commandArgs.length === 0) {
+  if (!argv[0] || argv[0] === "--help" || argv[0] === "-h") {
     io.stdout.write(MAIN_USAGE);
     return 0;
   }

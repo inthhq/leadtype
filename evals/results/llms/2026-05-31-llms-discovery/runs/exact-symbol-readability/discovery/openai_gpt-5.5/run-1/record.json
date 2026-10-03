@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "exact-symbol-readability",
+  "model": "openai/gpt-5.5",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response names the helper exactly as `isAgentReadabilityArtifactPath` and correctly describes that it covers artifact paths like `llms.txt`, `llms-full.txt`, sitemap files, `robots.txt`, search JSON artifacts, and the manifest, preventing them from being rewritten. All required rubric points are satisfied with no errors.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 3,
+  "inputTokens": 1919,
+  "outputTokens": 13,
+  "durationMs": 10136,
+  "steps": 4,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response fully covers the default (static/local BM25 lexical index, no DB) and correctly states that the lexical index must be kept for exact matches in a hybrid setup. However, it fails the second REQUIRED point: it never mentions the corpus-size threshold (tens of thousands of chunks) as a warranting condition and instead substitutes a longer, different list of prerequisites (eval set, measurable improvement, etc.). Because one of the three explicit rubric requirements is missing, the answer is not fully correct.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 20,
+  "inputTokens": 44723,
+  "outputTokens": 76,
+  "durationMs": 72321,
+  "steps": 14,
+  "errors": []
+}

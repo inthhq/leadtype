@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default BM25 static index and emphasizes keeping it for exact matches. However, it omits the required condition that a very large corpus (tens of thousands of chunks) can warrant embeddings; it instead gives a query volume threshold, which does not match the rubric. This makes the list of conditions incomplete and not fully correct.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 32,
+  "inputTokens": 30315,
+  "outputTokens": 438,
+  "durationMs": 75556,
+  "steps": 7,
+  "errors": []
+}

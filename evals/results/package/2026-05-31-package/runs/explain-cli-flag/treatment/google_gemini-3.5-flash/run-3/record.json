@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The paragraph explicitly names both required frontmatter fields (`lastModified` and `lastAuthor`), states they are added to page frontmatter, and explains they come from the local git history via a specific `git log` command. All rubric-required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 16,
+  "inputTokens": 22202,
+  "outputTokens": 405,
+  "durationMs": 38075,
+  "steps": 17,
+  "errors": []
+}

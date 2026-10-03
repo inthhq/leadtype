@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that `group` drives navigation (sidebar, llms.txt sections, AGENTS.md grouping). It correctly characterizes `/llms-full.txt` as a monolithic file not split by group. It names at least two valid optional frontmatter fields: `deprecated` and `tags`. All required rubric points are met.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 9,
+  "inputTokens": 3705,
+  "outputTokens": 235,
+  "durationMs": 24987,
+  "steps": 8,
+  "errors": []
+}

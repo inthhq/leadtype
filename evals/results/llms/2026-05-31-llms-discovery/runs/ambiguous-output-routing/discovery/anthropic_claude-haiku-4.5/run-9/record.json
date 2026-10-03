@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "discovery",
+  "passed": false,
+  "score": 30,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response fails to point to the LLM files area or the specific agent-facing output APIs such as generateLLMFullContextFiles, which is a required rubric point. It instead describes the general leadtype generate command and artifact files. It correctly explains when to use the /llms-full.txt fallback, but the omission of the API names/location means the answer does not satisfy all required criteria.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": true,
+  "toolCalls": 11,
+  "inputTokens": 6060,
+  "outputTokens": 269,
+  "durationMs": 22553,
+  "steps": 5,
+  "errors": []
+}

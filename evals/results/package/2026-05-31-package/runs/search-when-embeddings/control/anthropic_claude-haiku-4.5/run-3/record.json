@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response describes the default as a static BM25-based lexical index with no database (point 1). It specifies conditions for adding embeddings: semantic mismatch (vocabulary/intent gap) and corpus size past tens of thousands of chunks (point 2). It also states the lexical index should be kept as the primary layer, and embeddings should be complementary (point 3). All required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 20817,
+  "outputTokens": 451,
+  "durationMs": 32782,
+  "steps": 12,
+  "errors": []
+}

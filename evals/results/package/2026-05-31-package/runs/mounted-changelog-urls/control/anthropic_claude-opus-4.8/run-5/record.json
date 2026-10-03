@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response provides the correct `leadtype generate` command with `--docs-dir changelog=/changelog`, satisfying the mount syntax requirement. It explicitly states the public URL is under `/changelog/...` (e.g. `/changelog/v1` and mirror at `/changelog/v1.md`), not `/docs/changelog/...`. It also mentions the internal generated copy at `public/docs/changelog/v1.md` and the static mirror at `public/changelog/v1.md`, confirming it is searchable. No rubric points are missed or violated.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 38093,
+  "outputTokens": 675,
+  "durationMs": 57986,
+  "steps": 9,
+  "errors": []
+}

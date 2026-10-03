@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer clearly explains that llms.txt is a website convention with absolute URLs and coding agents don't look for it in node_modules. It explains AGENTS.md uses relative paths and works offline, version-matched. It lists llms.txt, llms-full.txt, and additional website artifacts that --bundle skips, satisfying all required rubric points. No errors.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 21117,
+  "outputTokens": 307,
+  "durationMs": 20064,
+  "steps": 6,
+  "errors": []
+}

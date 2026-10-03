@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 2,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required rubric points are satisfied. The response clearly identifies `nav` as the curated driver of sidebar and agent‑facing navigation (including `llms.txt` and `AGENTS.md`), describes `group` as legacy/optional with fallback and taxonomy uses, and explicitly states that an unknown `group` slug causes a build‑time error, not a silent skip or warning.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 18,
+  "inputTokens": 75997,
+  "outputTokens": 701,
+  "durationMs": 92975,
+  "steps": 12,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 55,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The response correctly names `nav` as the driver when present and `group` as legacy (with fallback/metadata uses), satisfying two required points. However, it fails the third required point by asserting that unknown-group validation is skipped (no error) when `nav` is used without an explicit `groups` list; the rubric states unconditionally that an unknown `group` slug produces a hard \"unknown group\" build failure. This is a confident_wrong assertion about build behavior.",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 43673,
+  "outputTokens": 275,
+  "durationMs": 52690,
+  "steps": 10,
+  "errors": [],
+  "failureMode": "confident_wrong"
+}

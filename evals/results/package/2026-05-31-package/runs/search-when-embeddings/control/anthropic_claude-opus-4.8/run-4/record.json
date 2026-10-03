@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "search-when-embeddings",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes the default BM25 static index and advises keeping lexical search for exact matches. However, the rubric requires stating the specific conditions for adding embeddings: vocabulary/intent mismatch and/or a very large corpus of approximately tens of thousands of chunks. The response mentions vocabulary mismatch and a large corpus but omits the quantitative threshold 'tens of thousands of chunks', making it incomplete on that required point. The answer is expressed confidently with no hedging, hence classified as confident_wrong.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 19,
+  "inputTokens": 27091,
+  "outputTokens": 817,
+  "durationMs": 87425,
+  "steps": 16,
+  "errors": []
+}

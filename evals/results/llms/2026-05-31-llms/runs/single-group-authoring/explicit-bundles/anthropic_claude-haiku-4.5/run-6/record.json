@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "variant": "explicit-bundles",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes how `group` organizes navigation, `llms.txt` sections, and `AGENTS.md` grouping, and accurately characterizes `/llms-full.txt` as a monolithic, non-sharded file. However, it lists `description` as an optional frontmatter field, which is not included in the ground-truth list of valid optional fields (like `icon`, `deprecated`, etc.). This is an invented field, making the response incorrect despite meeting the other required points. The error is stated confidently without hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 5,
+  "inputTokens": 4007,
+  "outputTokens": 283,
+  "durationMs": 16210,
+  "steps": 6,
+  "errors": []
+}

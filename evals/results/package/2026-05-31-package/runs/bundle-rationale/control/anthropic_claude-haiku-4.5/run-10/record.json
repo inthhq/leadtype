@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 10,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly distinguishes llms.txt as a website/HTTP convention with URL references, making it unsuitable for a tarball, and explains that AGENTS.md is an offline, version-matched entry point with local file links. It explicitly states that --bundle skips llms.txt, llms-full.txt, and search indexes, satisfying all required rubric points without any contradictory claims.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 28,
+  "inputTokens": 45484,
+  "outputTokens": 309,
+  "durationMs": 51375,
+  "steps": 13,
+  "errors": []
+}

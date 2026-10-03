@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 8,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explicitly names both frontmatter fields ('lastModified' and 'lastAuthor'), states they are added to frontmatter, and specifies that the values come from git history (the most recent commit timestamp and author). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 7128,
+  "outputTokens": 162,
+  "durationMs": 35088,
+  "steps": 11,
+  "errors": []
+}

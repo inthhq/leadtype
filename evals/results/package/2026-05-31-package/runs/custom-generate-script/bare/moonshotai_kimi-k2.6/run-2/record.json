@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script correctly calls convertAllMdx first to generate markdown mirrors, then calls generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles in that order, satisfying the ordering requirement. It imports product and nav from docs.config.ts, transforms nav into groups, and passes product and groups into the generators, fulfilling all required rubric points. No CLI shelling or invented APIs are used.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": false,
+  "usedBundle": true,
+  "toolCalls": 61,
+  "inputTokens": 71242,
+  "outputTokens": 278,
+  "durationMs": 243198,
+  "steps": 26,
+  "errors": []
+}

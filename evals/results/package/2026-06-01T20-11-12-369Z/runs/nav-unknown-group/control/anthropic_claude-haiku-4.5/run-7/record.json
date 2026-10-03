@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that `nav` drives navigation and `group` is a legacy fallback, partially satisfying the first two required points. However, it flatly contradicts the required third point by stating that an unknown group slug is silently collected and the build does not fail, whereas the rubric requires asserting that the build fails with an error. Because the answer is confidently wrong about this critical behavior, it fails the task.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 14,
+  "inputTokens": 160649,
+  "outputTokens": 2226,
+  "durationMs": 55844,
+  "steps": 9,
+  "errors": []
+}

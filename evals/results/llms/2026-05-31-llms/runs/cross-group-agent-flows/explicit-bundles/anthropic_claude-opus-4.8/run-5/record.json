@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "cross-group-agent-flows",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer correctly states that the hosted flow starts at /llms.txt (HTTP) and the bundle flow starts at AGENTS.md (in the installed package). It explicitly lists that --bundle mode skips llms.txt and llms-full.txt, along with other website artifacts. No required point is missed or misstated, and entry points are not swapped.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 7,
+  "inputTokens": 5310,
+  "outputTokens": 552,
+  "durationMs": 30236,
+  "steps": 5,
+  "errors": []
+}

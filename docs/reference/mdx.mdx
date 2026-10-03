@@ -1,12 +1,9 @@
 ---
 title: "leadtype/mdx"
 description: "Tag type contracts and the build-time source preset for consumers rendering MDX themselves."
-group: reference
 ---
 
-# `leadtype/mdx`
-
-The `leadtype/mdx` subpath is the **consumer-facing MDX surface** — everything you need to compile leadtype-authored MDX in your own renderer (fumadocs, Next App Router, Vite + @mdx-js, Astro content collections).
+The `leadtype/mdx` subpath is the **consumer-facing MDX surface** — everything you need to compile leadtype-authored MDX in your own renderer (Next App Router, TanStack Start, Nuxt, Astro content collections, SvelteKit, or fumadocs).
 
 It exports three things:
 
@@ -14,7 +11,7 @@ It exports three things:
 2. **`createMdxSourcePlugins()` / `mdxSourcePlugins`** — a remark preset that performs build-time resolution only (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s) and leaves every other custom tag as JSX.
 3. **Include-resolution helpers** — `resolveInclude`, `parseIncludeSpecifier`, `extractMdxSection` for direct use.
 
-Pair it with `leadtype/remark` (markdown flattening for the agent/LLM pipeline) — they are sibling surfaces, not alternatives. Most projects use both.
+Pair it with `leadtype/markdown` (markdown flattening for the agent/LLM pipeline) — they are sibling surfaces, not alternatives. Most projects use both.
 
 ## The MDX-source preset
 
@@ -49,28 +46,51 @@ Every other custom tag (`<Callout>`, `<Tabs>`, `<Steps>`, `<Mermaid>`, …) stay
 
 ## Framework-neutral by design
 
-Tag types describe the **author surface** — the attributes that appear on a tag in source MDX. They deliberately do **not** import from any UI framework: `children` is typed as `unknown` so you can intersect with your framework's native child type.
+Tag types describe the **author surface** — the attributes that appear on a tag in source MDX. They deliberately do **not** import from any UI framework: by default `children` is typed as `unknown`.
+
+Register your renderer's child type **once per project** by augmenting `ChildrenTypeRegistry`, and every tag's `children` becomes that type — no casts, no per-component wrappers:
+
+```ts title="types.d.ts"
+declare module "leadtype/mdx" {
+  interface ChildrenTypeRegistry {
+    type: import("react").ReactNode; // or your framework's child type
+  }
+}
+// The export marker makes this file a module, so the declaration *augments*
+// the package instead of replacing its types.
+export {};
+```
 
 The same shape works in React, Vue, Svelte, Solid, Astro, Qwik, or anything else with an MDX compiler that accepts remark plugins.
 
 ### React
 
+With the registry augmentation above in place:
+
 ```tsx
+// @filename: types.d.ts
+declare module "leadtype/mdx" {
+  interface ChildrenTypeRegistry {
+    type: import("react").ReactNode;
+  }
+}
+export {};
+
+// @filename: callout.tsx
+// ---cut---
 import type { CalloutProps } from "leadtype/mdx";
-import type { HTMLAttributes, ReactNode } from "react";
 
-type ReactCalloutProps = Omit<CalloutProps, "children"> &
-  HTMLAttributes<HTMLElement> & { children?: ReactNode };
-
-export function Callout({ variant, title, children, ...rest }: ReactCalloutProps) {
+export function Callout({ variant, title, children }: CalloutProps) {
   return (
-    <aside data-variant={variant ?? "info"} {...rest}>
+    <aside data-variant={variant ?? "info"}>
       {title ? <strong>{title}</strong> : null}
       <div>{children}</div>
     </aside>
   );
 }
 ```
+
+To add framework-native attributes (`className`, event handlers), intersect as before: `CalloutProps & HTMLAttributes<HTMLElement>`.
 
 ### Vue
 
@@ -203,7 +223,7 @@ Every prop name is part of the 1.0 contract — bumping a shape is a breaking ch
 
 `<ExtractedTypeTable name="X" path="..." />` is an authoring convenience. The source preset replaces it at build time with `<TypeTable properties={…extracted} />`, so consumers only implement the runtime `<TypeTable>` component:
 
-```ts
+```tsx
 import type { TypeTableProps } from "leadtype/mdx";
 
 export function TypeTable({ properties, title, description }: TypeTableProps) {

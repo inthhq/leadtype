@@ -1,0 +1,8 @@
+{
+  "name": "custom-generate-script-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build-docs": "bun run scripts/build-docs.ts"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that 'group' organizes sidebar navigation, llms.txt sections, search metadata, and AGENTS.md grouping. It correctly characterizes '/llms-full.txt' as the monolithic all-docs file that is not split per group. It also lists multiple valid optional frontmatter fields (e.g., icon, deprecated, experimental, tags, lastModified). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 5926,
+  "outputTokens": 290,
+  "durationMs": 24545,
+  "steps": 10,
+  "errors": []
+}

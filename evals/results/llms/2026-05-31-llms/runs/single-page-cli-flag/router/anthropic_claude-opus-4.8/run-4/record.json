@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "router",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a JSON object and names required fields like llmsTxt. However, it incorrectly lists 'agentReadabilityJson' (should be 'agentReadabilityManifest') and possibly misrepresents sitemap/robots keys. This invents a field that is not part of the result shape, making it incorrect per the rubric.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3478,
+  "outputTokens": 278,
+  "durationMs": 19987,
+  "steps": 5,
+  "errors": []
+}

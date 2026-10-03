@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 3,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required rubric points are met: convertAllMdx runs first, generating markdown mirrors; then generateLlmsTxt and generateLLMFullContextFiles produce the llms.txt and root fallback; generateDocsSearchFiles builds the search index from the already-converted markdown. product and nav are passed appropriately. No CLI usage or invented APIs; ordering is correct.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 33,
+  "inputTokens": 41045,
+  "outputTokens": 1062,
+  "durationMs": 135895,
+  "steps": 23,
+  "errors": []
+}

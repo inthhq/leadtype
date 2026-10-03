@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 6,
+  "mode": "bare",
+  "passed": false,
+  "score": 25,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The rubric requires calls to convertAllMdx, generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles (or the documented equivalents). The script uses transformMarkdown, formatRoutingIndex, and buildSearchIndex instead, and writes llms-full.txt manually. None of the required generator functions are invoked, and the script invents API names not specified in the rubric. Even though artifacts are produced, the critical required points are not satisfied, so it is incorrect. The script expresses confidence with no hedging.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 30,
+  "inputTokens": 16166,
+  "outputTokens": 493,
+  "durationMs": 82560,
+  "steps": 23,
+  "errors": []
+}

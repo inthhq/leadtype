@@ -15,13 +15,15 @@
  * `listPages()`. Page bodies are loaded on demand.
  */
 
-import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { existsSync, rmSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Root } from "mdast";
 import { glob as fg } from "tinyglobby";
 import type { PluggableList } from "unified";
-import { convertMdxFile } from "../convert";
+import { inferNavigationFromContent } from "../config/infer";
+import { convertMdxFile, resolveMdxFrontmatter } from "../convert/convert";
 import {
   type DocsI18nConfig,
   type LocaleCode,
@@ -31,6 +33,7 @@ import {
   toLocalizedDocsUrlPath,
 } from "../i18n";
 import {
+  baseUrlPrefixForMounts,
   type DocsPathMount,
   normalizeBaseUrl,
   normalizeDocsPath,
@@ -38,15 +41,20 @@ import {
   toAbsoluteUrl,
   toDocsUrlPath,
 } from "../internal/docs-url";
-import { parseFrontmatter } from "../internal/frontmatter";
 import type {
   DocsGroup,
+  DocsNavEntry,
   DocsTableOfContentsItem,
   DocsTableOfContentsOptions,
 } from "../llm";
 import { extractDocsTableOfContents, resolveDocsNavigation } from "../llm";
 import type { DocsNavigation } from "../llm/readability";
 import { createMdxSourcePlugins } from "../mdx/source-preset";
+import {
+  type DocsOpenApiConfig,
+  normalizeOpenApiConfig,
+  writeOpenApiPages,
+} from "../openapi";
 import {
   type IncludeResolution,
   type ResolveIncludeOptions,
@@ -59,10 +67,35 @@ import {
   type DocsSearchDocument,
   type DocsSearchIndex,
 } from "../search/search";
+import type { DocsFrontmatter, DocsTransformerOptions } from "../transformers";
 
 const DOC_EXTENSIONS = [".md", ".mdx"] as const;
+const pendingOpenApiOverlayDirs = new Set<string>();
+let openApiOverlayCleanupRegistered = false;
 
-export type DocsPageMeta = {
+function cleanupPendingOpenApiOverlayDirs(): void {
+  for (const dir of pendingOpenApiOverlayDirs) {
+    try {
+      rmSync(dir, { force: true, recursive: true });
+    } catch {
+      // Best-effort process shutdown cleanup.
+    }
+  }
+  pendingOpenApiOverlayDirs.clear();
+}
+
+function registerOpenApiOverlayDir(dir: string): void {
+  pendingOpenApiOverlayDirs.add(dir);
+  if (openApiOverlayCleanupRegistered) {
+    return;
+  }
+  process.on("exit", cleanupPendingOpenApiOverlayDirs);
+  openApiOverlayCleanupRegistered = true;
+}
+
+export type DocsPageMeta<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
   /** Slug segments derived from the relative path (no extension, no `index`). */
   slug: string[];
   /** Canonical site URL path (e.g. `/docs/quickstart`). */
@@ -79,24 +112,29 @@ export type DocsPageMeta = {
   description: string;
   /** Group slugs declared in frontmatter. */
   groups: string[];
+  /** Parsed and transformed frontmatter for this page. */
+  frontmatter: TFrontmatter;
   locale?: LocaleCode;
   sourceLocale?: LocaleCode;
   isFallback?: boolean;
   logicalPath?: string;
 };
 
-export type DocsPage = DocsPageMeta & {
-  /** Parsed frontmatter as a plain object. */
-  frontmatter: Record<string, unknown>;
-  /** Serialized markdown after the configured remark plugins ran. */
-  markdown: string;
-  /** mdast Root after the configured plugins ran — render this for live MDX. */
-  ast: Root;
-  /** Table of contents derived from the document's headings. */
-  toc: DocsTableOfContentsItem[];
-};
+export type DocsPage<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
+  DocsPageMeta<TFrontmatter> & {
+    /** Parsed frontmatter as a plain object. */
+    frontmatter: TFrontmatter;
+    /** Serialized markdown after the configured remark plugins ran. */
+    markdown: string;
+    /** mdast Root after the configured plugins ran — render this for live MDX. */
+    ast: Root;
+    /** Table of contents derived from the document's headings. */
+    toc: DocsTableOfContentsItem[];
+  };
 
-export type CreateDocsSourceConfig = {
+export type CreateDocsSourceConfig<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+> = {
   /** Directory containing source `.md` / `.mdx` files (e.g. `"./content/docs"`). */
   contentDir: string;
   /**
@@ -104,10 +142,31 @@ export type CreateDocsSourceConfig = {
    * computed but `groups` will be empty (all pages appear under `ungrouped`).
    */
   groups?: DocsGroup[];
+  /** Curated navigation tree. Preferred over `groups`. */
+  nav?: DocsNavEntry[];
   /** Base URL for absolute links (search index, TOC anchors). */
   baseUrl?: string;
   /** Multi-mount configuration; matches `resolveDocsNavigation`. */
   mounts?: DocsPathMount[];
+  /**
+   * Glob patterns relative to `contentDir` that select which files are pages.
+   * Defaults to every `.md`/`.mdx` file.
+   */
+  include?: string[];
+  /**
+   * Glob patterns relative to `contentDir` that are dropped after `include`.
+   *
+   * This is a page-existence filter, not a display filter: an excluded file is
+   * not listed, not loadable, not indexed, and absent from the resolved
+   * navigation. Authors use it to keep drafts and internal notes off the site,
+   * so honouring it at build time but not at runtime would publish exactly the
+   * content it was meant to withhold.
+   *
+   * Generated pages are exempt: `openapi` output lands in an overlay outside
+   * `contentDir`, and `generate` writes it into the staged mirror *after*
+   * these globs run, so `exclude` cannot withhold it on either side.
+   */
+  exclude?: string[];
   /**
    * Remark plugins to apply when loading pages. Defaults to Leadtype's source
    * preset (expand includes, resolve `<ExtractedTypeTable>`, strip authoring `import`s).
@@ -126,35 +185,62 @@ export type CreateDocsSourceConfig = {
   toc?: DocsTableOfContentsOptions | false;
   /** Search-index tuning. */
   searchIndex?: CreateDocsSearchIndexOptions;
+  /** Optional custom frontmatter schema for page metadata and loaded pages. */
+  frontmatterSchema?: DocsTransformerOptions<TFrontmatter>["frontmatterSchema"];
+  /** Build-time lifecycle hooks for source, conversion, and search data. */
+  transformers?: DocsTransformerOptions<TFrontmatter>["transformers"];
   /** Optional locale configuration. When present, `locale` selects the active docs language. */
   i18n?: DocsI18nConfig;
   locale?: LocaleCode;
+  /**
+   * OpenAPI specs to generate API reference pages from. Pages are written into
+   * a temp overlay (the source directory is never modified) and their
+   * navigation nodes are appended to `nav`.
+   */
+  openapi?: DocsOpenApiConfig;
+  /**
+   * Base directory for relative `openapi` input paths — typically the
+   * directory containing your docs config. Defaults to `contentDir`.
+   */
+  openapiCwd?: string;
 };
 
-export type DocsSource = {
-  /** Absolute path to the resolved docs directory. */
-  contentDir: string;
-  /** Compute the docs navigation from configured groups + filesystem state. */
-  getNavigation(): Promise<DocsNavigation>;
-  /** Enumerate every doc page found under `contentDir`. */
-  listPages(): Promise<DocsPageMeta[]>;
-  /**
-   * Load a single page by slug. Accepts either an already-split slug array or
-   * a slash-joined string. Returns `null` if no matching file exists.
-   */
-  loadPage(slug: string | string[]): Promise<DocsPage | null>;
-  /** Build a search index from every page's resolved markdown. */
-  buildSearchIndex(): Promise<DocsSearchBundle>;
-  /**
-   * Resolve an `<include>` reference outside of a remark pass (e.g. when
-   * loading a partial for direct rendering). `fromPath` defaults to
-   * `contentDir`.
-   */
-  resolveInclude(
-    specifier: string,
-    options?: Partial<ResolveIncludeOptions>
-  ): Promise<IncludeResolution>;
-};
+export type DocsSource<TFrontmatter extends DocsFrontmatter = DocsFrontmatter> =
+  {
+    /** Absolute path to the resolved docs directory. */
+    contentDir: string;
+    /**
+     * URL prefix this source's unprefixed files resolve under — the catch-all
+     * mount's `urlPrefix`, `"/docs"` when no mount claims the root. Framework
+     * adapters use it as the default route base when deriving static params
+     * from `urlPath`. Optional so hand-rolled sources keep satisfying the
+     * contract. Param helpers keep using collection-local slugs when it is
+     * absent; Nuxt prerendering emits each page's absolute `urlPath` instead.
+     */
+    routePrefix?: string;
+    /** Compute the docs navigation from configured groups + filesystem state. */
+    getNavigation(): Promise<DocsNavigation>;
+    /** Enumerate every doc page found under `contentDir`. */
+    listPages(): Promise<DocsPageMeta<TFrontmatter>[]>;
+    /**
+     * Load a single page by slug. Accepts either an already-split slug array or
+     * a slash-joined string. Returns `null` if no matching file exists.
+     */
+    loadPage(slug: string | string[]): Promise<DocsPage<TFrontmatter> | null>;
+    /** Build a search index from every page's resolved markdown. */
+    buildSearchIndex(): Promise<DocsSearchBundle>;
+    /**
+     * Resolve an `<include>` reference outside of a remark pass (e.g. when
+     * loading a partial for direct rendering). `fromPath` defaults to
+     * `contentDir`.
+     */
+    resolveInclude(
+      specifier: string,
+      options?: Partial<ResolveIncludeOptions>
+    ): Promise<IncludeResolution>;
+    /** Remove generated temp overlay files. Safe to call more than once. */
+    cleanup(): Promise<void>;
+  };
 
 function isDocFile(filePath: string): boolean {
   return DOC_EXTENSIONS.some((ext) => filePath.endsWith(ext));
@@ -196,22 +282,35 @@ function normalizeGroupValue(value: unknown): string[] {
   return [];
 }
 
-async function readPageMeta(
+async function readPageMeta<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
   selected: SelectedSourceFile,
   mounts?: DocsPathMount[],
-  i18n?: DocsI18nConfig
-): Promise<DocsPageMeta> {
+  i18n?: DocsI18nConfig,
+  transformOptions: DocsTransformerOptions<TFrontmatter> = {}
+): Promise<DocsPageMeta<TFrontmatter>> {
   const { contentDir, filePath } = selected;
   const relativePath = normalizeDocsPath(path.relative(contentDir, filePath));
-  const raw = await readFile(filePath, "utf8");
-  const parsed = parseFrontmatter(raw);
+  const resolved = await resolveMdxFrontmatter(filePath, [], false, {
+    frontmatterSchema: transformOptions.frontmatterSchema,
+    transformers: transformOptions.transformers,
+    transformContext: {
+      stage: "source",
+      filePath,
+      relativePath: selected.outputRelativePath,
+      locale: selected.locale,
+      ...transformOptions.transformContext,
+    },
+  });
+  const frontmatter = resolved.data;
   const title =
-    String(parsed.data.title ?? "").trim() ||
+    String(frontmatter.title ?? "").trim() ||
     titleFromRelativePath(
       `${selected.logicalPath}${path.extname(relativePath)}`
     );
-  const description = String(parsed.data.description ?? "").trim();
-  const groups = normalizeGroupValue(parsed.data.group);
+  const description = String(frontmatter.description ?? "").trim();
+  const groups = normalizeGroupValue(frontmatter.group);
   const extension = filePath.endsWith(".mdx") ? ".mdx" : ".md";
   const slug = deriveSlug(`${selected.outputRelativePath}${extension}`);
   const urlPath =
@@ -232,6 +331,7 @@ async function readPageMeta(
     title,
     description,
     groups,
+    frontmatter,
     ...(selected.locale ? { locale: selected.locale } : {}),
     ...(selected.sourceLocale ? { sourceLocale: selected.sourceLocale } : {}),
     ...(selected.isFallback === undefined
@@ -347,20 +447,55 @@ function selectSourceFiles(
   );
 }
 
-export async function createDocsSource(
-  config: CreateDocsSourceConfig
-): Promise<DocsSource> {
-  const contentDir = path.resolve(config.contentDir);
-  if (!existsSync(contentDir)) {
+export async function createDocsSource<
+  TFrontmatter extends DocsFrontmatter = DocsFrontmatter,
+>(
+  config: CreateDocsSourceConfig<TFrontmatter>
+): Promise<DocsSource<TFrontmatter>> {
+  const sourceContentDir = path.resolve(config.contentDir);
+  if (!existsSync(sourceContentDir)) {
     throw new Error(
-      `createDocsSource: contentDir does not exist at "${contentDir}"`
+      `createDocsSource: contentDir does not exist at "${sourceContentDir}"`
     );
   }
 
+  // OpenAPI generation writes into a temp overlay so generated pages exist on
+  // disk without polluting or freezing the authored docs tree.
+  const contentDir = sourceContentDir;
+  const contentRoots = [sourceContentDir];
+  let nav = config.nav;
+  let openApiOverlayDir: string | undefined;
+  if (config.openapi !== undefined) {
+    openApiOverlayDir = await mkdtemp(path.join(tmpdir(), "leadtype-openapi-"));
+    let generated: Awaited<ReturnType<typeof writeOpenApiPages>>;
+    try {
+      generated = await writeOpenApiPages({
+        configs: normalizeOpenApiConfig(
+          config.openapi,
+          config.openapiCwd ?? sourceContentDir,
+          {
+            ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+          }
+        ),
+        docsDir: openApiOverlayDir,
+      });
+    } catch (error) {
+      await rm(openApiOverlayDir, { force: true, recursive: true });
+      openApiOverlayDir = undefined;
+      throw error;
+    }
+    contentRoots.push(openApiOverlayDir);
+    nav = [...(config.nav ?? []), ...generated.nav];
+    registerOpenApiOverlayDir(openApiOverlayDir);
+  }
+
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const contentParentDir = path.dirname(contentDir);
+  // Type-table and include resolution stay anchored to the *original* source
+  // tree so relative references outside the docs dir keep working when the
+  // content is staged.
+  const contentParentDir = path.dirname(sourceContentDir);
   const defaultTypeTableBasePath =
-    contentParentDir === contentDir ? contentDir : contentParentDir;
+    contentParentDir === sourceContentDir ? sourceContentDir : contentParentDir;
   const typeTableBasePath = path.resolve(
     config.typeTableBasePath ?? defaultTypeTableBasePath
   );
@@ -373,40 +508,120 @@ export async function createDocsSource(
   const tocOptions: DocsTableOfContentsOptions | false =
     config.toc === false ? false : (config.toc ?? {});
 
+  let cachedFilesByRoot: Array<{
+    contentDir: string;
+    files: string[];
+  }> | null = null;
   let cachedFiles: string[] | null = null;
-  let cachedMetas: DocsPageMeta[] | null = null;
+  let cachedMetas: DocsPageMeta<TFrontmatter>[] | null = null;
   // Slug → meta lookup populated alongside cachedMetas so loadPage runs in O(1).
-  let cachedMetaBySlug: Map<string, DocsPageMeta> | null = null;
+  let cachedMetaBySlug: Map<string, DocsPageMeta<TFrontmatter>> | null = null;
+
+  async function listFilesByRoot(): Promise<
+    Array<{
+      contentDir: string;
+      files: string[];
+    }>
+  > {
+    if (cachedFilesByRoot) {
+      return cachedFilesByRoot;
+    }
+    cachedFilesByRoot = await Promise.all(
+      contentRoots.map(async (root) => {
+        // Include/exclude patterns are authored against the content tree, so
+        // they only apply to `sourceContentDir`. Generated overlay roots (the
+        // OpenAPI temp dir) stay unfiltered — `generate` writes their pages
+        // into the mirror *after* `copySourceFiles` applies collection
+        // filters, so no filtered build ever drops them. Filtering them here
+        // selected zero overlay files (`include: ["guides/**"]` matches
+        // nothing under the overlay), which hid generated pages from
+        // `listPages` and made the generated nav node's string page refs
+        // throw in navigation resolution.
+        const applyPathFilters = root === sourceContentDir;
+        const matches = await fg(
+          applyPathFilters && config.include && config.include.length > 0
+            ? config.include
+            : ["**/*.{md,mdx}"],
+          {
+            absolute: true,
+            cwd: root,
+            // Match the staging glob semantics (`copySourceFiles`) exactly:
+            // dotfiles are pages there, and bare-directory include entries
+            // stay literal instead of fanning out to `dir/**`. Anything looser
+            // here lists pages at runtime the build never staged — or hides
+            // ones it did.
+            dot: true,
+            expandDirectories: false,
+            ignore: applyPathFilters ? (config.exclude ?? []) : [],
+            onlyFiles: true,
+          }
+        );
+        const files = matches
+          .filter(isDocFile)
+          .sort((left, right) => left.localeCompare(right));
+        return { contentDir: root, files };
+      })
+    );
+    return cachedFilesByRoot;
+  }
+
+  const hasPathFilters =
+    (config.include?.length ?? 0) > 0 || (config.exclude?.length ?? 0) > 0;
+
+  /**
+   * Membership test over the include/exclude selection, for the surfaces that
+   * walk directories themselves (`resolveDocsNavigation`). Undefined when no
+   * filters are configured, so the unfiltered path is untouched.
+   */
+  async function selectedFileFilter(): Promise<
+    ((absoluteFilePath: string) => boolean) | undefined
+  > {
+    if (!hasPathFilters) {
+      return;
+    }
+    const filesByRoot = await listFilesByRoot();
+    const allowed = new Set(
+      filesByRoot.flatMap((entry) =>
+        entry.files.map((file) => path.resolve(file))
+      )
+    );
+    return (absoluteFilePath) => allowed.has(path.resolve(absoluteFilePath));
+  }
 
   async function listFiles(): Promise<string[]> {
-    if (cachedFiles) {
-      return cachedFiles;
+    if (!cachedFiles) {
+      const filesByRoot = await listFilesByRoot();
+      cachedFiles = filesByRoot
+        .flatMap((entry) => entry.files)
+        .sort((left, right) => left.localeCompare(right));
     }
-    const matches = await fg("**/*.{md,mdx}", {
-      absolute: true,
-      cwd: contentDir,
-      onlyFiles: true,
-    });
-    cachedFiles = matches
-      .filter(isDocFile)
-      .sort((left, right) => left.localeCompare(right));
     return cachedFiles;
   }
 
-  async function listMetas(): Promise<DocsPageMeta[]> {
+  async function listMetas(): Promise<DocsPageMeta<TFrontmatter>[]> {
     if (cachedMetas) {
       return cachedMetas;
     }
-    const files = await listFiles();
-    const selectedFiles = selectSourceFiles(
-      files,
-      contentDir,
-      config.i18n,
-      config.locale
-    );
+    await listFiles();
+    const filesByRoot = await listFilesByRoot();
+    const selectedFiles = filesByRoot
+      .flatMap((entry) =>
+        selectSourceFiles(
+          entry.files,
+          entry.contentDir,
+          config.i18n,
+          config.locale
+        )
+      )
+      .sort((left, right) =>
+        left.outputRelativePath.localeCompare(right.outputRelativePath)
+      );
     const metas = await Promise.all(
       selectedFiles.map((file) =>
-        readPageMeta(file, config.mounts, config.i18n)
+        readPageMeta(file, config.mounts, config.i18n, {
+          frontmatterSchema: config.frontmatterSchema,
+          transformers: config.transformers,
+        })
       )
     );
     // Reject duplicate slugs / urlPaths. Without this guard, two files that
@@ -415,8 +630,8 @@ export async function createDocsSource(
     // the slug Map below, leaving consumers with an indeterminate page.
     // `resolveDocsNavigation` already errors on this; keep the source
     // primitive consistent.
-    const slugIndex = new Map<string, DocsPageMeta>();
-    const urlPathIndex = new Map<string, DocsPageMeta>();
+    const slugIndex = new Map<string, DocsPageMeta<TFrontmatter>>();
+    const urlPathIndex = new Map<string, DocsPageMeta<TFrontmatter>>();
     for (const meta of metas) {
       const slugKey = meta.slug.join("/");
       const existingSlug = slugIndex.get(slugKey);
@@ -440,33 +655,105 @@ export async function createDocsSource(
     return cachedMetas;
   }
 
-  async function findMetaForSlug(slug: string[]): Promise<DocsPageMeta | null> {
+  async function findMetaForSlug(
+    slug: string[]
+  ): Promise<DocsPageMeta<TFrontmatter> | null> {
     // Ensure the slug index is populated. `listMetas()` is cached after the
     // first call so subsequent loadPage() invocations are O(1).
     await listMetas();
     return cachedMetaBySlug?.get(slug.join("/")) ?? null;
   }
 
+  // Derived navigation is computed on first use, not at construction — the
+  // primitive's contract is no I/O until you ask it something.
+  let derivedNavPromise: Promise<DocsNavEntry[]> | null = null;
+
+  /**
+   * When nothing structural was configured, derive the same tree
+   * `leadtype generate` derives. Without this the rendered sidebar would stay
+   * flat while the generated `llms.txt` and sitemap gained sections — one
+   * content graph is the whole point, so both sides infer or neither does.
+   */
+  async function resolveNav(): Promise<DocsNavEntry[] | undefined> {
+    // Test the *authored* nav, not `nav`: `nav` is reassigned above to include
+    // generated OpenAPI nodes whenever `openapi` is set, so checking it meant
+    // any openapi-configured source skipped derivation entirely while
+    // `generate` derived on the same config — sidebar-versus-artifacts drift,
+    // inside the code meant to prevent it.
+    if (config.nav && config.nav.length > 0) {
+      return nav;
+    }
+    if (config.groups && config.groups.length > 0) {
+      return nav;
+    }
+    // The same opt-out `generate` applies before deriving. i18n: derivation
+    // keys sections off the first path segment, which for `docs/en/…` is the
+    // locale — while navigation resolves per locale over locale-stripped
+    // paths, so no derived section could ever match. Include/exclude filters
+    // are no reason to refuse: `generate` stages a filtered mirror and then
+    // derives from it (its own gate only tests the --include/--exclude CLI
+    // flags), so the runtime derives over the same filtered file set the
+    // staging globs select.
+    if (config.i18n !== undefined) {
+      return nav;
+    }
+    derivedNavPromise ??= (async () => {
+      let filter: ((relativePath: string) => boolean) | undefined;
+      if (hasPathFilters) {
+        const filesByRoot = await listFilesByRoot();
+        const allowed = new Set(
+          filesByRoot
+            .filter((entry) => entry.contentDir === sourceContentDir)
+            .flatMap((entry) => entry.files)
+            .map((file) =>
+              normalizeDocsPath(path.relative(sourceContentDir, file))
+            )
+        );
+        filter = (relativePath) => allowed.has(relativePath);
+      }
+      const result = await inferNavigationFromContent(
+        sourceContentDir,
+        filter ? { filter } : {}
+      );
+      return result.navigation;
+    })();
+    const derived = await derivedNavPromise;
+    if (derived.length === 0) {
+      return nav;
+    }
+    // OpenAPI pages are generated into an overlay outside `contentDir`, so
+    // their nav nodes are appended rather than derived.
+    return [...derived, ...(nav ?? [])];
+  }
+
   async function getNavigation(): Promise<DocsNavigation> {
+    // Navigation walks the directories itself rather than reading the file
+    // cache, so it gets the include/exclude selection as a filter — otherwise
+    // excluded pages would land in the nav, linking to URLs `loadPage`
+    // refuses to serve.
+    const filterFile = await selectedFileFilter();
     return await resolveDocsNavigation({
       srcDir: path.dirname(contentDir),
       docsDirName: path.basename(contentDir),
       baseUrl: config.baseUrl,
       groups: config.groups ?? [],
+      nav: await resolveNav(),
+      extraDocsDirs: openApiOverlayDir ? [openApiOverlayDir] : undefined,
       mounts: config.mounts,
       i18n: config.i18n,
       locale: config.locale,
       toc: tocOptions === false ? false : tocOptions,
+      ...(filterFile ? { filterFile } : {}),
     });
   }
 
-  async function listPages(): Promise<DocsPageMeta[]> {
+  async function listPages(): Promise<DocsPageMeta<TFrontmatter>[]> {
     return await listMetas();
   }
 
   async function loadPage(
     slugInput: string | string[]
-  ): Promise<DocsPage | null> {
+  ): Promise<DocsPage<TFrontmatter> | null> {
     const slug = Array.isArray(slugInput)
       ? slugInput
       : slugInput.split("/").filter(Boolean);
@@ -491,7 +778,16 @@ export async function createDocsSource(
       return null;
     }
 
-    const result = await convertMdxFile(meta.filePath, remarkPlugins);
+    const result = await convertMdxFile(meta.filePath, remarkPlugins, false, {
+      frontmatterSchema: config.frontmatterSchema,
+      transformers: config.transformers,
+      transformContext: {
+        filePath: meta.filePath,
+        relativePath: meta.relativePath,
+        urlPath: meta.urlPath,
+        locale: meta.locale,
+      },
+    });
     const toc =
       tocOptions === false
         ? []
@@ -519,7 +815,21 @@ export async function createDocsSource(
       metas
         .filter((meta) => !meta.isFallback)
         .map(async (meta) => {
-          const result = await convertMdxFile(meta.filePath, remarkPlugins);
+          const result = await convertMdxFile(
+            meta.filePath,
+            remarkPlugins,
+            false,
+            {
+              frontmatterSchema: config.frontmatterSchema,
+              transformers: config.transformers,
+              transformContext: {
+                filePath: meta.filePath,
+                relativePath: meta.relativePath,
+                urlPath: meta.urlPath,
+                locale: meta.locale,
+              },
+            }
+          );
           return {
             id: meta.urlPath,
             title: meta.title,
@@ -533,20 +843,23 @@ export async function createDocsSource(
               ? {}
               : { isFallback: meta.isFallback }),
             ...(meta.logicalPath ? { logicalPath: meta.logicalPath } : {}),
+            frontmatter: result.data,
             content: result.markdown,
           };
         })
     );
-    const index: DocsSearchIndex = createDocsSearchIndex(
-      documents,
-      config.searchIndex
-    );
+    const index: DocsSearchIndex = createDocsSearchIndex(documents, {
+      ...config.searchIndex,
+      transformers:
+        config.transformers as DocsTransformerOptions["transformers"],
+    });
     return {
       index,
       content: index.content ?? {
         version: index.version,
         generatedAt: index.generatedAt,
         chunks: [],
+        codeChunks: [],
       },
     };
   }
@@ -564,12 +877,33 @@ export async function createDocsSource(
     });
   }
 
+  async function cleanup(): Promise<void> {
+    const dir = openApiOverlayDir;
+    if (!dir) {
+      return;
+    }
+    const previousNav = nav;
+    openApiOverlayDir = undefined;
+    nav = config.nav;
+    pendingOpenApiOverlayDirs.delete(dir);
+    try {
+      await rm(dir, { force: true, recursive: true });
+    } catch (error) {
+      openApiOverlayDir = dir;
+      nav = previousNav;
+      pendingOpenApiOverlayDirs.add(dir);
+      throw error;
+    }
+  }
+
   return {
     contentDir,
+    routePrefix: baseUrlPrefixForMounts(config.mounts),
     getNavigation,
     listPages,
     loadPage,
     buildSearchIndex,
     resolveInclude: resolveIncludeBound,
+    cleanup,
   };
 }

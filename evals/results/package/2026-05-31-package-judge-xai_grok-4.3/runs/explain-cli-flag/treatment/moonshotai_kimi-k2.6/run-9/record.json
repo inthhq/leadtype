@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met: the paragraph explicitly names both `lastModified` and `lastAuthor`, states they are injected into each page's frontmatter, and states the values are obtained from git history (via the explicit `git log` invocation on each source file). No invented fields, no attribution to non-git sources, and the description matches the ground-truth behavior of the flag.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 8,
+  "inputTokens": 12709,
+  "outputTokens": 182,
+  "durationMs": 14089,
+  "steps": 6,
+  "errors": []
+}

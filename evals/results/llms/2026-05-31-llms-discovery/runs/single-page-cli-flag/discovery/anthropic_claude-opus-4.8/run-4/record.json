@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 4,
+  "variant": "discovery",
+  "passed": false,
+  "score": 85,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly describes a JSON result object and lists many valid output-path fields, but it incorrectly names `agentReadabilityJson` instead of the correct `agentReadabilityManifest` as per ground truth. This invents a field not in the result shape, which the rubric flags as incorrect. The required points are otherwise met, so the score reflects a strong but imperfect answer.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 6,
+  "inputTokens": 3920,
+  "outputTokens": 409,
+  "durationMs": 24830,
+  "steps": 5,
+  "errors": []
+}

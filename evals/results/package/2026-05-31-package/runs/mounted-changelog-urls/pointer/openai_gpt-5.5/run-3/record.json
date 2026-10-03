@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "openai/gpt-5.5",
+  "runIndex": 3,
+  "mode": "pointer",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The answer gives the correct invocation with '--docs-dir changelog=/changelog' and '--docs-dir docs', explicitly maps the public URL to /changelog/..., and describes both the internal copy (public/docs/changelog/v1.md) for search and the public mirror (public/changelog/v1.md). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 14,
+  "inputTokens": 50545,
+  "outputTokens": 34,
+  "durationMs": 43002,
+  "steps": 10,
+  "errors": []
+}

@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 10,
+  "mode": "treatment",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md paragraph names both required fields (lastModified and lastAuthor), explicitly states they are injected into the page’s YAML frontmatter, and states that the values are taken from git log output (i.e., the page’s git history). All three REQUIRED rubric points are therefore satisfied and no incorrect claims are present.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 10,
+  "inputTokens": 13533,
+  "outputTokens": 231,
+  "durationMs": 20170,
+  "steps": 10,
+  "errors": []
+}

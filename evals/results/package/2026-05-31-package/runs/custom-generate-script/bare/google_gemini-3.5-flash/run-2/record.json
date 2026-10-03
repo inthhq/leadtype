@@ -1,0 +1,23 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script calls convertAllMdx first, then generateLlmsTxt, generateLLMFullContextFiles, and generateDocsSearchFiles. All required artifacts (llms.txt, llms-full.txt, search index) are produced, and product/nav from docs.config.ts are passed to the generators. The ordering is correct.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 138,
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "durationMs": 660709,
+  "steps": 0,
+  "errors": [
+    "Invalid error response format: Gateway request failed: The operation timed out."
+  ]
+}

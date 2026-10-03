@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 9,
+  "variant": "discovery",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that `group` controls navigation, `llms.txt` sections, and `AGENTS.md` grouping. It correctly describes `/llms-full.txt` as a single monolithic file not sharded by group. It lists multiple optional frontmatter fields including `icon` and `deprecated` from the rubric's required list. No required points are missed and no incorrect claims are made.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 7,
+  "inputTokens": 2681,
+  "outputTokens": 6,
+  "durationMs": 18201,
+  "steps": 7,
+  "errors": []
+}

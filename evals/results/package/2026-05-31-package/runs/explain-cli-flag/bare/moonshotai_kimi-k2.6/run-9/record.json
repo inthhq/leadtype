@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 9,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The paragraph explicitly names both required fields (`lastModified` and `lastAuthor`), states they are added to each page's frontmatter, and explains that the values come from the Git history of the source MDX file. All rubric REQUIRED points are met.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 18,
+  "inputTokens": 15674,
+  "outputTokens": 86,
+  "durationMs": 47173,
+  "steps": 14,
+  "errors": []
+}

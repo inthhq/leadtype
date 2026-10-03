@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "openai/gpt-5.5",
+  "runIndex": 4,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "All three REQUIRED rubric points are met exactly: both field names (lastModified and lastAuthor) are stated, they are described as being added to the generated Markdown frontmatter, and their values are explicitly sourced from git log / commit metadata on the source file. No invented fields or non-git sources appear.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 8,
+  "inputTokens": 25793,
+  "outputTokens": 36,
+  "durationMs": 16810,
+  "steps": 6,
+  "errors": []
+}

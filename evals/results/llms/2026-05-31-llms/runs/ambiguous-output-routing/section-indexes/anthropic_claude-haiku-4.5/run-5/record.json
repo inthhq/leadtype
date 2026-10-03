@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 5,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files area (including generateLLMFullContextFiles) for agent-facing output APIs, explicitly excludes the Search UI. It explains the monolithic /llms-full.txt as a fallback used when page-level links are insufficient, without describing it as the default path. All rubric requirements are met.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 4048,
+  "outputTokens": 173,
+  "durationMs": 19998,
+  "steps": 10,
+  "errors": []
+}

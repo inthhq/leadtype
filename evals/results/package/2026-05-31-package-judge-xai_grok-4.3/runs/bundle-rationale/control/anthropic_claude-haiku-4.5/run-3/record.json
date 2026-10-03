@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 3,
+  "mode": "control",
+  "passed": false,
+  "score": 65,
+  "judgeModel": "xai/grok-4.3",
+  "judgeReasoning": "The produced ANSWER.md correctly contrasts AGENTS.md (offline, node_modules discovery, version-matched) with llms.txt (HTTP/website artifact) and states that --bundle skips llms.txt/llms-full.txt/search-index.json because they are web infrastructure. However, it omits the required point that llms.txt uses absolute URLs (vs. AGENTS.md's relative links) and never states that no agent looks for node_modules/.../llms.txt; therefore the first two rubric bullets are only partially met.",
+  "failureMode": "uncertain",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 12,
+  "inputTokens": 28512,
+  "outputTokens": 222,
+  "durationMs": 21638,
+  "steps": 10,
+  "errors": []
+}

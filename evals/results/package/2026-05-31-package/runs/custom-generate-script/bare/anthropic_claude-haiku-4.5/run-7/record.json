@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "custom-generate-script",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 7,
+  "mode": "bare",
+  "passed": false,
+  "score": 10,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The script fails to use leadtype's conversion API (e.g., `convertAllMdx`) and instead implements a custom MDX-to-Markdown converter. It also invents API names (`buildIndex`, `buildSearchIndex`) from a non-existent `leadtype/api` module, rather than using the required `generateLlmsTxt`, `generateLLMFullContextFiles`, and `generateDocsSearchFiles`. While it imports `product` and `nav` from config and orders conversion before index generation, the fundamental failure to use the correct library APIs makes the solution incorrect.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 23,
+  "inputTokens": 14166,
+  "outputTokens": 420,
+  "durationMs": 68989,
+  "steps": 21,
+  "errors": []
+}

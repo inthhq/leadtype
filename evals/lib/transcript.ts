@@ -1,16 +1,34 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { LlmsVariant } from "./llms-variants";
 
 export type ToolCall = {
   tool: "read" | "write" | "list" | "glob" | "grep" | "npm";
   args: Record<string, unknown>;
   resultSummary?: string;
+  /**
+   * True when the tool threw (e.g. a `read` of a path that doesn't exist).
+   * Metrics that count "the agent read our docs" must ignore failed calls —
+   * in control mode the bundle is deleted, so the agent's attempt to read it
+   * throws ENOENT and must NOT count as bundle usage.
+   */
+  isError?: boolean;
   durationMs: number;
 };
 
-export type Mode = "treatment" | "control";
-export type Provider = "anthropic" | "openai";
+/**
+ * Package-benchmark arms, in order of increasing information given to the agent:
+ * - `bare` — leadtype is NOT installed at all. Pure training-data recall (the
+ *   project's package.json still names the dep, but there's nothing to read).
+ *   The floor; `control` minus this is the value of the installed compiled code.
+ * - `control` — the package is installed but its bundled docs are stripped; the
+ *   agent falls back to compiled code, types, README, and prior knowledge.
+ * - `treatment` — the bundle ships in node_modules; the agent must *discover*
+ *   it by exploring (no pointer). The conservative "does it help if found" test.
+ * - `pointer` — treatment PLUS leadtype's *recommended* setup: a root AGENTS.md
+ *   that tells the agent to read node_modules/leadtype/AGENTS.md first. Measures
+ *   the documented happy path rather than organic discovery.
+ */
+export type Mode = "bare" | "treatment" | "control" | "pointer";
+export type Provider = "anthropic" | "openai" | "google";
 export type Benchmark = "package" | "llms";
 
 export type Transcript = {
@@ -27,34 +45,3 @@ export type Transcript = {
   errors: string[];
   tokens: { input: number; output: number };
 };
-
-const TRANSCRIPT_FILENAME = "transcript.json";
-
-export function transcriptPathFor(tempDir: string): string {
-  return path.join(tempDir, "__transcript__", TRANSCRIPT_FILENAME);
-}
-
-export async function writeTranscript(
-  tempDir: string,
-  transcript: Transcript
-): Promise<string> {
-  const target = transcriptPathFor(tempDir);
-  await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(transcript, null, 2)}\n`, "utf-8");
-  return target;
-}
-
-/**
- * Read the transcript from the path advertised by the harness.
- * EVAL.ts files use this; they receive TRANSCRIPT_PATH as an env var.
- */
-export async function readTranscript(): Promise<Transcript> {
-  const fromEnv = process.env.TRANSCRIPT_PATH;
-  if (!fromEnv) {
-    throw new Error(
-      "TRANSCRIPT_PATH env var is not set. EVAL.ts must be run via the harness, which sets it."
-    );
-  }
-  const raw = await readFile(fromEnv, "utf-8");
-  return JSON.parse(raw) as Transcript;
-}

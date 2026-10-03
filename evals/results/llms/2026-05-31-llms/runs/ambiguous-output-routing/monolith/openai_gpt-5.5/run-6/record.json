@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "openai/gpt-5.5",
+  "runIndex": 6,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly identifies the LLM files area (/docs/reference/llm.md) and lists the relevant agent-facing output APIs (generateLLMFullContextFiles, etc.). It does not route to Search. It clearly describes /llms-full.txt as a fallback to be used when page-level links are insufficient, which satisfies the rubric requirements.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 7,
+  "inputTokens": 3090,
+  "outputTokens": 6,
+  "durationMs": 20014,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "page-links",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "All required points are satisfied: the response explains that frontmatter `group` organizes navigation, `llms.txt` sections, `AGENTS.md` grouping, and search metadata; it correctly describes `/llms-full.txt` as a monolithic, all-docs flattened fallback that is not split per group; and it lists several valid optional frontmatter fields (icon, deprecated, experimental, etc.), well exceeding the minimum of two. No factual errors are present.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3179,
+  "outputTokens": 243,
+  "durationMs": 72972,
+  "steps": 4,
+  "errors": []
+}

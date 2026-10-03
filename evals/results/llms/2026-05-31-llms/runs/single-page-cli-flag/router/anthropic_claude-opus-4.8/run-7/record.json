@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 7,
+  "variant": "router",
+  "passed": false,
+  "score": 80,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that --json prints a single JSON result object to stdout and names several correct fields (llmsFullTxt, docsLlmsTxt, llmsTxt, etc.). However, it lists 'agentReadabilityJson' instead of the correct 'agentReadabilityManifest' as specified in the ground truth, inventing a field that is not part of the result shape. This violates the 'Incorrect if' condition about inventing fields, making the answer technically incorrect despite mostly meeting the required points.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 4,
+  "inputTokens": 3506,
+  "outputTokens": 309,
+  "durationMs": 19749,
+  "steps": 5,
+  "errors": []
+}

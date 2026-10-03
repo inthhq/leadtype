@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 9,
+  "variant": "explicit-bundles",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly points to the LLM files / leadtype/llm output APIs (naming generateLLMFullContextFiles and others) and does not route to the Search UI. It explains that /llms-full.txt is a fallback used when the primary /llms.txt navigation map is insufficient, meeting the rubric exactly.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 1,
+  "toolCalls": 9,
+  "inputTokens": 4535,
+  "outputTokens": 231,
+  "durationMs": 24383,
+  "steps": 10,
+  "errors": []
+}

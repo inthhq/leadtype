@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 5,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that `llms.txt` is a website convention with absolute URLs and that nothing looks for it in `node_modules`, making it unsuitable for a tarball. It correctly describes `AGENTS.md` as using relative links and being version-matched, thus working offline. It explicitly lists `llms.txt`, `llms-full.txt`, and other website artifacts as skipped by `--bundle`. All required points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 15,
+  "inputTokens": 18773,
+  "outputTokens": 484,
+  "durationMs": 64905,
+  "steps": 13,
+  "errors": []
+}

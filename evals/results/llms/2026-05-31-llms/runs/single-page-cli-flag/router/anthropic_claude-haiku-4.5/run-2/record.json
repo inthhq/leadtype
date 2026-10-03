@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 2,
+  "variant": "router",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response states that `--json` prints a JSON object with paths for all generated artifacts, and lists required fields like `llmsTxt`, `docsLlmsTxt`, and `llmsFullTxt`. However, it invents the field `agentReadabilityJson` instead of the correct `agentReadabilityManifest`, which violates the rubric's 'incorrect if' clause. It also omits details about the full result object structure (mode, product, etc.), but that is not required for a passing score. Overall, it covers the core points but includes a factual error.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 5,
+  "inputTokens": 3168,
+  "outputTokens": 137,
+  "durationMs": 12116,
+  "steps": 6,
+  "errors": []
+}

@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-group-authoring",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "variant": "section-indexes",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response explains that frontmatter group organizes sidebar navigation, llms.txt sections, AGENTS.md grouping, and search metadata. It correctly describes /llms-full.txt as a single monolithic file containing all docs and states that group does not split that file. It lists more than two valid optional frontmatter fields (e.g., icon, deprecated, experimental). All required rubric points are satisfied.",
+  "failureMode": "none",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 9,
+  "inputTokens": 3843,
+  "outputTokens": 13,
+  "durationMs": 26876,
+  "steps": 10,
+  "errors": []
+}

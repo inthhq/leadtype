@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "google/gemini-3.5-flash",
+  "runIndex": 7,
+  "mode": "control",
+  "passed": false,
+  "score": 40,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The agent correctly identifies nav as the curated driver of sidebar/agent maps and group as legacy fallback, but fails to mention llms.txt sections (a required point). It also incorrectly claims that when config.groups is omitted, unknown group slugs do not cause a build failure, directly contradicting the rubric's requirement that the build always fails for unknown groups.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 15,
+  "inputTokens": 52613,
+  "outputTokens": 665,
+  "durationMs": 69479,
+  "steps": 16,
+  "errors": []
+}

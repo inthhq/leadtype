@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "mounted-changelog-urls",
+  "model": "moonshotai/kimi-k2.6",
+  "runIndex": 4,
+  "mode": "treatment",
+  "passed": false,
+  "score": 90,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The invocation uses the required mount syntax `--docs-dir changelog=/changelog` and correctly repeats `--docs-dir docs`. The internal copy location (`public/docs/changelog/v1.md`) and static mirror (`public/changelog/v1.md`) are accurately described. However, the canonical URL agents see is stated as `https://example.com/changelog/v1`, while the rubric specifies the canonical URL is `/changelog/v1.md` (including the .md extension) in `llms.txt`, sitemap, and metadata. This error makes the response not fully correct, costing some points.",
+  "failureMode": "confident_wrong",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 12,
+  "inputTokens": 17075,
+  "outputTokens": 387,
+  "durationMs": 34194,
+  "steps": 8,
+  "errors": []
+}

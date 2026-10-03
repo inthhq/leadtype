@@ -1,0 +1,21 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 8,
+  "variant": "discovery",
+  "passed": false,
+  "score": 60,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response meets the two REQUIRED rubric points: it states that the flag prints a single JSON object describing the generation run, and it names several valid file‑path keys (llmsTxt, docsLlmsTxt, llmsFullTxt). However, it invents the field \"agentReadabilityJson\" which is not part of the result shape—the ground truth specifies \"agentReadabilityManifest\". This makes the response overall incorrect per the rubric’s ‘Incorrect if’ condition, even though the required assertions are present. The answer is delivered confidently without hedging, so the failure mode is 'confident_wrong'.",
+  "failureMode": "confident_wrong",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "discoveredLlmsTxt": false,
+  "toolCalls": 4,
+  "inputTokens": 2196,
+  "outputTokens": 88,
+  "durationMs": 7560,
+  "steps": 4,
+  "errors": []
+}

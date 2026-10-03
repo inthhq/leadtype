@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "bundle-rationale",
+  "model": "openai/gpt-5.5",
+  "runIndex": 5,
+  "mode": "control",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response clearly explains that AGENTS.md uses relative links for offline, version-matched docs inside node_modules, while llms.txt is a website convention with absolute URLs, making it unsuitable for a tarball. It also correctly lists the website-only artifacts (llms.txt, llms-full.txt, search index, sitemap, robots, etc.) that --bundle skips. All required rubric points are fully satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 86934,
+  "outputTokens": 1652,
+  "durationMs": 49697,
+  "steps": 9,
+  "errors": []
+}

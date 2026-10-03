@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "ambiguous-output-routing",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 10,
+  "variant": "monolith",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "Response correctly identifies LLM files reference as the right area (naming generateLLMFullContextFiles and others) and explicitly steers away from search docs. It explains /llms-full.txt as a fallback for when page-level links are insufficient, advising to prefer structured routing. All required rubric points satisfied.",
+  "failureMode": "none",
+  "contextMatched": false,
+  "wrongGroupReads": 0,
+  "toolCalls": 13,
+  "inputTokens": 5021,
+  "outputTokens": 465,
+  "durationMs": 39139,
+  "steps": 8,
+  "errors": []
+}

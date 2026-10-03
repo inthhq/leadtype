@@ -1,0 +1,20 @@
+{
+  "benchmark": "llms",
+  "fixture": "single-page-cli-flag",
+  "model": "anthropic/claude-haiku-4.5",
+  "runIndex": 1,
+  "variant": "page-links",
+  "passed": false,
+  "score": 70,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response correctly states that the command prints a JSON object and names required fields like `llmsFullTxt`, `docsLlmsTxt`, and `llmsTxt`. However, it includes `agentReadabilityJson` which is not part of the result shape (the ground truth specifies `agentReadabilityManifest`), thus inventing a field and violating the rubric's incorrect-if condition. The error is stated plainly with no hedging.",
+  "failureMode": "confident_wrong",
+  "contextMatched": true,
+  "wrongGroupReads": 0,
+  "toolCalls": 3,
+  "inputTokens": 2474,
+  "outputTokens": 71,
+  "durationMs": 8913,
+  "steps": 4,
+  "errors": []
+}

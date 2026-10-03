@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   type DocsI18nConfig,
@@ -9,6 +9,7 @@ import {
   outputRelativePathForLocale,
   toLocalizedDocsUrlPath,
 } from "../i18n";
+import { writeFileAtomic } from "../internal/atomic-fs";
 import {
   type DocsPathMount,
   GENERIC_DOC_TITLES,
@@ -21,6 +22,7 @@ import {
 } from "../internal/docs-url";
 import { parseFrontmatter } from "../internal/frontmatter";
 import { logger } from "../internal/logger";
+import type { DocsTransformerOptions } from "../transformers";
 import {
   type CreateDocsSearchIndexOptions,
   createDocsSearchIndex,
@@ -46,6 +48,7 @@ export type GenerateDocsSearchFilesConfig = {
   contentOutputFile?: string;
   embedContent?: boolean;
   indexOptions?: CreateDocsSearchIndexOptions;
+  transformers?: DocsTransformerOptions["transformers"];
 };
 
 export type GenerateDocsSearchFilesResult = {
@@ -135,6 +138,7 @@ async function readMarkdownDocs(
       urlPath,
       absoluteUrl: toAbsoluteUrl(urlPath, baseUrl),
       relativePath: file.outputRelativePath,
+      frontmatter: parsed.data,
       ...(file.locale ? { locale: file.locale } : {}),
       ...(file.sourceLocale ? { sourceLocale: file.sourceLocale } : {}),
       ...(file.logicalPath ? { logicalPath: file.logicalPath } : {}),
@@ -304,7 +308,10 @@ export async function generateDocsSearchFiles(
     );
   }
 
-  const indexWithContent = createDocsSearchIndex(docs, config.indexOptions);
+  const indexWithContent = createDocsSearchIndex(docs, {
+    ...config.indexOptions,
+    transformers: config.transformers,
+  });
   const { content, ...indexWithoutContent } = indexWithContent;
   if (!content) {
     throw new Error("createDocsSearchIndex did not return a content store.");
@@ -326,10 +333,10 @@ export async function generateDocsSearchFiles(
   const serializedContent = `${JSON.stringify(content)}\n`;
 
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, serialized);
+  await writeFileAtomic(outputPath, serialized);
   if (contentOutputPath) {
     await mkdir(path.dirname(contentOutputPath), { recursive: true });
-    await writeFile(contentOutputPath, serializedContent);
+    await writeFileAtomic(contentOutputPath, serializedContent);
   }
 
   const indexBytes = Buffer.byteLength(serialized, "utf-8");

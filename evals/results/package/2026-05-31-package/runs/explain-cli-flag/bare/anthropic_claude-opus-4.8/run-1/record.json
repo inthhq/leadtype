@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "explain-cli-flag",
+  "model": "anthropic/claude-opus-4.8",
+  "runIndex": 1,
+  "mode": "bare",
+  "passed": false,
+  "score": 0,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "The response does not name any frontmatter fields, does not state they are added to frontmatter, and does not state that values come from git history. It explicitly declines to answer due to missing package, which constitutes a refusal to complete the required task. All required rubric points are missed.",
+  "failureMode": "refused",
+  "discoveredAgentsMd": false,
+  "readBundledDocs": false,
+  "usedBundle": false,
+  "toolCalls": 10,
+  "inputTokens": 3480,
+  "outputTokens": 428,
+  "durationMs": 45163,
+  "steps": 11,
+  "errors": []
+}

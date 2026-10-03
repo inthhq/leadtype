@@ -1,0 +1,21 @@
+{
+  "benchmark": "package",
+  "fixture": "nav-unknown-group",
+  "model": "openai/gpt-5.5",
+  "runIndex": 2,
+  "mode": "bare",
+  "passed": true,
+  "score": 100,
+  "judgeModel": "deepseek/deepseek-v4-pro",
+  "judgeReasoning": "ANSWER.md clearly explains that nav drives sidebar and agent map, group is legacy for fallback/search, and unknown group fails the build. All required rubric points are satisfied.",
+  "failureMode": "none",
+  "discoveredAgentsMd": true,
+  "readBundledDocs": true,
+  "usedBundle": true,
+  "toolCalls": 25,
+  "inputTokens": 41366,
+  "outputTokens": 52,
+  "durationMs": 112161,
+  "steps": 22,
+  "errors": []
+}
