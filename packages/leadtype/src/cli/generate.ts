@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, rm, rmdir } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -56,6 +56,7 @@ import {
   setLogStreams,
   setVerbose,
 } from "../internal/logger";
+import { copyMountedMarkdownMirrors } from "../internal/mounted-markdown";
 import type {
   DocsCollection,
   DocsConfig,
@@ -1051,118 +1052,6 @@ async function copyFilteredSourceFiles(
   }
 }
 
-function expectedDocsUrlPrefix(mountPath: string): string {
-  return mountPath ? `/docs/${mountPath}` : "/docs";
-}
-
-function outputDirForUrlPrefix(outDir: string, urlPrefix: string): string {
-  const relativePath = normalizeDocsPath(urlPrefix).replace(/^\/+/, "");
-  return path.join(outDir, relativePath);
-}
-
-async function copyMountedMarkdownMirrors(
-  outDir: string,
-  mounts: DocsPathMount[]
-): Promise<void> {
-  await Promise.all(
-    mounts.map(async (mount) => {
-      const pathPrefix = normalizeDocsPath(mount.pathPrefix);
-      const urlPrefix = normalizeUrlPrefix(mount.urlPrefix);
-      if (urlPrefix === expectedDocsUrlPrefix(pathPrefix)) {
-        return;
-      }
-
-      const sourceDir = path.join(outDir, DEFAULT_DOCS_DIR, pathPrefix);
-      if (!existsSync(sourceDir)) {
-        return;
-      }
-      const targetDir = outputDirForUrlPrefix(outDir, urlPrefix);
-      const relativeToOut = path.relative(outDir, targetDir);
-      if (
-        !relativeToOut ||
-        relativeToOut.startsWith("..") ||
-        path.isAbsolute(relativeToOut)
-      ) {
-        throw new Error(
-          `Mounted URL prefix "${urlPrefix}" must resolve inside the output directory.`
-        );
-      }
-      // A mount whose urlPrefix resolves inside its own source subtree (e.g.
-      // pathPrefix "guides" with urlPrefix "/docs/guides/public") nests
-      // targetDir under sourceDir. Exclude the mirror from the source glob so
-      // a previous run's mirror output is never re-mirrored into itself.
-      const targetRelativeToSource = path.relative(sourceDir, targetDir);
-      const targetInsideSource =
-        targetRelativeToSource.length > 0 &&
-        !targetRelativeToSource.startsWith("..") &&
-        !path.isAbsolute(targetRelativeToSource);
-      const files = await fg("**/*.md", {
-        absolute: false,
-        cwd: sourceDir,
-        ignore: targetInsideSource
-          ? [`${normalizeDocsPath(targetRelativeToSource)}/**`]
-          : [],
-        onlyFiles: true,
-      });
-      await Promise.all(
-        files.map(async (file) => {
-          const sourcePath = path.join(sourceDir, file);
-          const targetPath = path.join(targetDir, file);
-          await mkdir(path.dirname(targetPath), { recursive: true });
-          await copyFileAtomic(sourcePath, targetPath);
-        })
-      );
-      // Prune mirror files whose source pages no longer exist. Pruning after
-      // the copy (instead of rm -rf on the whole mirror before it) keeps the
-      // mirror readable throughout — a concurrent reader never sees the
-      // directory disappear mid-generation.
-      const currentFiles = new Set(files);
-      const mirroredFiles = await fg("**/*.md", {
-        absolute: false,
-        cwd: targetDir,
-        onlyFiles: true,
-      });
-      const staleFiles = mirroredFiles.filter(
-        (file) => !currentFiles.has(file)
-      );
-      await Promise.all(
-        staleFiles.map((file) =>
-          rm(path.join(targetDir, file), { force: true })
-        )
-      );
-      await removeEmptyMirrorDirs(targetDir, staleFiles);
-    })
-  );
-}
-
-/**
- * Remove directories left empty after pruning stale mirror files, walking
- * each pruned file's parent chain up to (but never including) the mirror
- * root. A non-empty directory stops the walk — everything above it is
- * non-empty too.
- */
-async function removeEmptyMirrorDirs(
-  targetDir: string,
-  prunedFiles: string[]
-): Promise<void> {
-  const parents = new Set(
-    prunedFiles.map((file) => path.dirname(path.join(targetDir, file)))
-  );
-  for (const parent of [...parents].sort(
-    (left, right) => right.length - left.length
-  )) {
-    let current = parent;
-    while (current.startsWith(`${targetDir}${path.sep}`)) {
-      try {
-        await rmdir(current);
-      } catch {
-        break;
-      }
-      current = path.dirname(current);
-    }
-  }
-}
-
 async function hasMarkdownFiles(dir: string): Promise<boolean> {
   if (!existsSync(dir)) {
     return false;
@@ -2097,7 +1986,21 @@ async function executeGenerate(
       if (i18n) {
         await copyDefaultLocaleMarkdownAliases(outDir, i18n.defaultLocale);
       }
-      await copyMountedMarkdownMirrors(outDir, effectiveMounts);
+      const sourceFiles = await fg("**/*.mdx", {
+        cwd: sourceMirror.docsDir,
+        onlyFiles: true,
+      });
+      const defaultLocalePrefix = i18n ? `${i18n.defaultLocale}/` : undefined;
+      const markdownFiles = sourceFiles.map((file) => {
+        const markdownPath = normalizeDocsPath(file).slice(0, -1);
+        return defaultLocalePrefix &&
+          markdownPath.startsWith(defaultLocalePrefix)
+          ? markdownPath.slice(defaultLocalePrefix.length)
+          : markdownPath;
+      });
+      await copyMountedMarkdownMirrors(outDir, effectiveMounts, markdownFiles, {
+        prune: !hasExplicitPathFilters,
+      });
       const i18nManifestPath = await writeI18nManifest(outDir, i18nManifest);
       const mcpConfig = metadata.agents?.mcp;
       const mcpEnabled = mcpConfig?.enabled === true;

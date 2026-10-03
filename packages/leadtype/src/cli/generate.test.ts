@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -180,7 +180,7 @@ describe("generate resolves through the shared project pipeline", () => {
       capture.io
     );
 
-    expect(code).toBe(0);
+    expect(code, capture.stderr()).toBe(0);
     const result = JSON.parse(capture.stdout()) as {
       sources?: unknown;
     };
@@ -188,5 +188,32 @@ describe("generate resolves through the shared project pipeline", () => {
     // The `--json` graph is the same object graph resolveProject hands every
     // other consumer — authored source names included.
     expect(result.sources).toEqual(project.sources);
+  });
+
+  it("supports mounting a source directory at the root urlPrefix", async () => {
+    const dir = await fixture({
+      "docs/index.mdx": page("Home"),
+      "docs/quickstart.mdx": page("Quickstart"),
+      "leadtype.config.ts": `import { defineDocsConfig } from ${JSON.stringify(LEADTYPE_ENTRY)};
+export default defineDocsConfig({
+  ${IDENTITY},
+  mounts: [{ pathPrefix: "", urlPrefix: "/" }],
+});`,
+    });
+    const outDir = path.join(dir, "out");
+    const capture = createCapture();
+
+    const code = await runGenerateCommand(
+      ["--src", dir, "--out", outDir],
+      capture.io
+    );
+
+    expect(code, capture.stderr()).toBe(0);
+    expect(await readFile(path.join(outDir, "index.md"), "utf8")).toContain(
+      "Home"
+    );
+    expect(
+      await readFile(path.join(outDir, "docs/index.md"), "utf8")
+    ).toContain("Home");
   });
 });
