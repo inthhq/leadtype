@@ -30,7 +30,7 @@ Both build the `leadtype` package, then run `pipeline:build`, then start/build v
 
 `pipeline:source-manifest` runs both steps too, so it refreshes artifacts when called directly after adding or removing pages. Rendered navigation and page TOCs come from `createDocsProject()`; artifact navigation supplies the parity check.
 
-Both steps use the same deployment URL from `scripts/docs-project.ts`. Existing `pipeline:convert`, `pipeline:llm`, and `pipeline:search` commands remain aliases for generation so they cannot produce inconsistent partial output.
+Both steps use the same deployment URL from `scripts/docs-project.ts`. Existing `pipeline:convert`, `pipeline:llm`, and `pipeline:search` commands remain aliases for the full pipeline so they cannot produce inconsistent partial output.
 
 ## Relationship to `leadtype init`
 
