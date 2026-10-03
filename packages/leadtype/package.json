@@ -1,6 +1,6 @@
 {
   "name": "leadtype",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "Framework-neutral docs pipeline tooling for MDX, LLM bundles, and search",
   "type": "module",
   "license": "MIT",
