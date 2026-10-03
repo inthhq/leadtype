@@ -1,9 +1,8 @@
 #!/usr/bin/env bun
 
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type { AgentReadabilityManifest } from "leadtype/llm/readability";
 import {
   appRoot,
@@ -14,7 +13,7 @@ import {
   repoRoot,
 } from "./docs-project";
 
-const { stdout, stderr } = await promisify(execFile)(
+const child = spawn(
   process.execPath,
   [
     join(packageRoot, "dist", "cli.js"),
@@ -26,10 +25,18 @@ const { stdout, stderr } = await promisify(execFile)(
     "--base-url",
     baseUrl,
   ],
-  { cwd: appRoot }
+  { cwd: appRoot, stdio: "inherit" }
 );
-process.stdout.write(stdout);
-process.stderr.write(stderr);
+await new Promise<void>((resolve, reject) => {
+  child.once("error", reject);
+  child.once("close", (code, signal) => {
+    if (code === 0) {
+      resolve();
+    } else {
+      reject(new Error(`Docs generation failed: ${signal ?? code}`));
+    }
+  });
+});
 
 await mkdir(generatedDir, { recursive: true });
 const manifest: AgentReadabilityManifest = JSON.parse(

@@ -32,4 +32,4 @@ Both steps use the same deployment URL from `scripts/docs-project.ts`. Existing 
 
 ## Relationship to `leadtype init`
 
-`leadtype init` does **not** scaffold this app — its generated page manifest, and per-provider AI routes are app-specific setup beyond the canonical integration. Follow the docs recipes instead: `use-the-source-primitive` under `/docs/pipeline` and `integrate-with-fumadocs` under `/docs/integrations`.
+The generated page manifest and per-provider AI routes are specific to this app. `leadtype init` scaffolds the canonical integration. Follow the docs recipes at `/docs/pipeline/use-the-source-primitive` and `/docs/integrations/integrate-with-fumadocs` to build on it.
