@@ -23,13 +23,15 @@ Both build the `leadtype` package, then run `pipeline:build`, then start/build v
 
 ## What the build does
 
-`pipeline:build` chains four scripts under `scripts/`:
+`pipeline:build` runs two steps:
 
-1. `pipeline:convert` (`mdx-convert.ts`) — converts `/docs` MDX to markdown in `public/docs/` via `convertAllMdx` + markdown transforms (`leadtype/convert`, `leadtype/markdown`).
-2. `pipeline:llm` (`llm-generate.ts`) — writes `public/llms.txt`, `public/llms-full.txt`, agent-readability artifacts, and `src/generated/docs-nav.json` via `leadtype/llm`.
-3. `pipeline:search` (`search-generate.ts`) — writes the static search index/content via `generateDocsSearchFiles` from `leadtype/search/node`.
-4. `pipeline:source-manifest` (`docs-source-manifest.ts`) — dogfoods `createDocsSource()` to write `src/generated/docs-pages.json`, the manifest the catch-all route binds slugs to MDX modules with.
+1. `pipeline:generate` runs `leadtype generate` against the repo's docs config. It generates Markdown mirrors, search data, feeds, redirects, and agent artifacts, then copies the data the app imports into `src/generated/`.
+2. The manifest step loads the same config with `createDocsProject()` and writes the rendered-page manifest. It copies generated OpenAPI MDX into a stable directory for Vite and checks that runtime routes and navigation match the generated artifacts.
+
+`pipeline:source-manifest` runs both steps too, so it refreshes artifacts when called directly after adding or removing pages. Rendered navigation and page TOCs come from `createDocsProject()`; artifact navigation supplies the parity check.
+
+Both steps use the same deployment URL from `scripts/docs-project.ts`. Existing `pipeline:convert`, `pipeline:llm`, and `pipeline:search` commands remain aliases for the full pipeline so they cannot produce inconsistent partial output.
 
 ## Relationship to `leadtype init`
 
-`leadtype init` does **not** scaffold this app — its multi-script pipeline, generated page manifest, and per-provider AI routes are app-specific setup beyond the canonical integration. Follow the docs recipes instead: `use-the-source-primitive` under `/docs/pipeline` and `integrate-with-fumadocs` under `/docs/integrations`.
+The generated page manifest and per-provider AI routes are specific to this app. `leadtype init` scaffolds the canonical integration. Follow the docs recipes at `/docs/pipeline/use-the-source-primitive` and `/docs/integrations/integrate-with-fumadocs` to build on it.

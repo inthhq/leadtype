@@ -41,7 +41,7 @@ const authoredMdxModules = import.meta.glob<{ default: ComponentType }>(
 /**
  * Generated OpenAPI reference pages live in the app-local generated dir
  * (written by `pipeline:source-manifest`) because Vite globs are static —
- * they can't reach into the temp staging dir `createDocsSource({ openapi })`
+ * they can't reach into the temp staging dir `createDocsProject()`
  * uses. Manifest `globKey`s point into whichever map owns the page.
  */
 const openapiMdxModules = import.meta.glob<{ default: ComponentType }>(
@@ -66,7 +66,7 @@ function MissingMdxModule({ urlPath }: { urlPath: string }) {
   return (
     <div data-leadtype-mdx-error>
       MDX module not found for <code>{urlPath}</code>. Re-run{" "}
-      <code>bun run pipeline:source-manifest</code> after adding docs files.
+      <code>bun run pipeline:build</code> after adding docs files.
     </div>
   );
 }

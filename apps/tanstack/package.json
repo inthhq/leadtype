@@ -17,11 +17,11 @@
     "test:real": "bun run pipeline:test-real",
     "test:engine-parity": "bun run pipeline:test-engine-parity",
     "bench": "bun run pipeline:bench",
-    "pipeline:convert": "bun run scripts/mdx-convert.ts",
-    "pipeline:llm": "bun run scripts/llm-generate.ts",
-    "pipeline:search": "bun run scripts/search-generate.ts",
-    "pipeline:source-manifest": "bun run scripts/docs-source-manifest.ts",
-    "pipeline:build": "bun run pipeline:convert && bun run pipeline:llm && bun run pipeline:search && bun run pipeline:source-manifest",
+    "pipeline:convert": "bun run pipeline:build",
+    "pipeline:llm": "bun run pipeline:build",
+    "pipeline:search": "bun run pipeline:build",
+    "pipeline:source-manifest": "bun run pipeline:generate && bun run scripts/docs-source-manifest.ts",
+    "pipeline:build": "bun run pipeline:source-manifest",
     "pipeline:test": "bun run scripts/test-pipeline.ts",
     "pipeline:setup-real": "bun run scripts/setup-real-content.ts",
     "pipeline:test-real": "bun run pipeline:setup-real && bun run scripts/test-real.ts",
@@ -29,7 +29,8 @@
     "pipeline:bench": "bun run pipeline:setup-real && bun run scripts/bench.ts",
     "pipeline:search-bench": "bun run pipeline:setup-real && bun run scripts/search-bench.ts",
     "pipeline:convert-real": "bun run scripts/convert-real.ts",
-    "pipeline:llm-real": "bun run scripts/llm-generate-real.ts"
+    "pipeline:llm-real": "bun run scripts/llm-generate-real.ts",
+    "pipeline:generate": "bun run scripts/generate.ts"
   },
   "dependencies": {
     "@cloudflare/tanstack-ai": "^0.1.7",
