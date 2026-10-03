@@ -359,6 +359,57 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(result?.headingPath).toEqual(["Quickstart", "CommandTabs"]);
   });
 
+  it("preserves dense heading paths when heading levels are skipped or start above h1", () => {
+    const skippedDocs = [
+      {
+        id: "skipped",
+        urlPath: "/docs/skipped",
+        absoluteUrl: "https://leadtype.dev/docs/skipped",
+        relativePath: "skipped",
+        title: "Skipped",
+        description: "Test for skipped headings",
+        content: [
+          "## Starting at H2",
+          "",
+          "Some initial content under H2.",
+          "",
+          "#### Skipping to H4",
+          "",
+          "Deep nested content without H3.",
+          "",
+          "### Popping back to H3",
+          "",
+          "Back to H3 level content.",
+        ].join("\n"),
+      },
+    ];
+
+    const index = createDocsSearchIndex(skippedDocs, {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const h2Result = searchDocs(index, "initial")[0];
+    expect(h2Result?.headingPath).toEqual(["Starting at H2"]);
+
+    const h4Result = searchDocs(index, "Deep")[0];
+    expect(h4Result?.headingPath).toEqual(["Starting at H2", "Skipping to H4"]);
+
+    const h3Result = searchDocs(index, "Back")[0];
+    expect(h3Result?.headingPath).toEqual([
+      "Starting at H2",
+      "Popping back to H3",
+    ]);
+
+    const serialized = JSON.stringify(index);
+    const parsed = JSON.parse(serialized);
+    for (const chunk of parsed.chunks) {
+      for (const h of chunk[3]) {
+        expect(h).not.toBeNull();
+        expect(typeof h).toBe("string");
+      }
+    }
+  });
+
   it("adds hash URLs for the matched heading", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",

@@ -541,7 +541,7 @@ function splitWithOverlap(
 
 function collectSectionBlocks(content: string): SectionBlock[] {
   const blocks: SectionBlock[] = [];
-  const headingPath: string[] = [];
+  const headingStack: { level: number; title: string }[] = [];
   const textLines: string[] = [];
   const codeLines: string[] = [];
   // Count every heading, including headings that produce no search chunk, so
@@ -569,9 +569,11 @@ function collectSectionBlocks(content: string): SectionBlock[] {
   };
 
   const consumeHeading = (title: string, level: number): void => {
-    headingPath.length = level - 1;
-    headingPath.push(title);
-    currentHeadingPath = [...headingPath];
+    while ((headingStack.at(-1)?.level ?? 0) >= level) {
+      headingStack.pop();
+    }
+    headingStack.push({ level, title });
+    currentHeadingPath = headingStack.map((entry) => entry.title);
     currentAnchor = slugger.slug(title);
   };
 
