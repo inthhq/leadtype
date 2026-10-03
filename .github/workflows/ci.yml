@@ -99,6 +99,9 @@ jobs:
       - name: Build Astro example
         run: bun run --filter astro-example build
 
+      - name: Validate TanStack docs project parity
+        run: bun run --filter tanstack pipeline:build
+
       - name: Build SvelteKit example
         run: bun run --filter sveltekit-example build
 
