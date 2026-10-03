@@ -203,10 +203,11 @@
     "check-types": "tsgo --noEmit",
     "docs:generate": "bun run ./scripts/generate-docs.ts",
     "lint": "ultracite check src",
-    "test": "vitest run"
+    "test": "bun run build && vitest run"
   },
   "dependencies": {
     "@types/mdast": "4.0.4",
+    "hexbus": "^0.6.0",
     "json5": "2.2.3",
     "mdast-util-to-string": "4.0.0",
     "satteri": "^0.9.3",

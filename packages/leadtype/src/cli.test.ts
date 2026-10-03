@@ -13,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { glob as fg } from "tinyglobby";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { isDirectRun, runCli } from "./cli";
 
 const execFileAsync = promisify(execFile);
@@ -217,6 +217,104 @@ describe("leadtype CLI", () => {
     expect(capture.stdout).toContain("leadtype <command>");
     expect(capture.stdout).toContain("generate");
     expect(capture.stdout).toContain("lint");
+  });
+
+  it.each([
+    "init",
+    "doctor",
+    "generate",
+    "nav",
+    "sync",
+    "lint",
+    "mcp",
+    "score",
+  ])("preserves help for the %s command", async (command) => {
+    const capture = createCapture();
+    expect(await runCli([command, "--help"], capture.io)).toBe(0);
+    expect(capture.stdout).toContain(`leadtype ${command}`);
+    expect(capture.stderr).toBe("");
+  });
+
+  it("prints the package version at the top level", async () => {
+    const capture = createCapture();
+    const pkg = JSON.parse(
+      await readFile(
+        path.join(repoRoot, "packages/leadtype/package.json"),
+        "utf8"
+      )
+    );
+    expect(await runCli(["--version"], capture.io)).toBe(0);
+    expect(capture.stdout).toBe(`leadtype v${pkg.version}\n`);
+    expect(capture.stderr).toBe("");
+  });
+
+  it.each([
+    "--logger",
+    "--config",
+  ])("reports unsupported top-level %s through the supplied error stream", async (flag) => {
+    const capture = createCapture();
+    const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    try {
+      expect(await runCli([flag, "value"], capture.io)).toBe(2);
+      expect(capture.stderr).toContain(`unknown command: ${flag}`);
+      expect(capture.stdout).toBe("");
+      expect(stdout).not.toHaveBeenCalled();
+    } finally {
+      stdout.mockRestore();
+    }
+  });
+
+  it("passes --force through to init when replacing an existing config", async () => {
+    const dir = await createTempDir();
+    await mkdir(path.join(dir, "docs"));
+    await writeFile(path.join(dir, "docs/docs.config.ts"), "old config");
+    const capture = createCapture();
+    expect(
+      await runCli(
+        ["init", "--framework", "next", "--dir", dir, "--force"],
+        capture.io
+      )
+    ).toBe(0);
+    expect(
+      await readFile(path.join(dir, "docs/docs.config.ts"), "utf8")
+    ).not.toBe("old config");
+  });
+
+  it("loads a consumer TypeScript config through the built Node CLI", async () => {
+    const dir = await createTempDir();
+    await writeMdxPage(
+      dir,
+      "index.mdx",
+      "title: Consumer\ndescription: Consumer docs."
+    );
+    await mkdir(path.join(dir, "node_modules"));
+    await symlink(
+      path.join(repoRoot, "packages/leadtype"),
+      path.join(dir, "node_modules/leadtype"),
+      process.platform === "win32" ? "junction" : "dir"
+    );
+    await writeFile(
+      path.join(dir, "docs/docs.config.ts"),
+      'import { defineDocsConfig } from "leadtype";\nexport default defineDocsConfig({product:{name:"Consumer",tagline:"Consumer docs."}});\n'
+    );
+    const { stderr } = await execFileAsync(
+      "node",
+      [
+        path.join(repoRoot, "packages/leadtype/dist/cli.js"),
+        "generate",
+        "--src",
+        dir,
+        "--out",
+        path.join(dir, "out"),
+        "--base-url",
+        "https://example.com",
+      ],
+      { cwd: dir }
+    );
+    expect(stderr).toContain("Generated docs pipeline output");
+    expect(
+      await readFile(path.join(dir, "out/docs/index.md"), "utf8")
+    ).toContain("Consumer");
   });
 
   it("runs lint against this repo's docs", async () => {
