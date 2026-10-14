@@ -371,22 +371,27 @@ function pushSearchToken(tokens: string[], raw: string): void {
 /**
  * Tokens for one word, its camel-case parts, and the joined form of short
  * dotted or hyphenated compounds. `ConsentBanner` yields `consentbanner`,
- * `consent`, `banner`; `Next.js` yields `next`, `js`, `nextjs`. Parts come
- * before the joined form so phrase matching sees `next js nextjs app`.
+ * `consent`, `banner`; `Next.js` yields `next`, `js`, `nextjs`. Without
+ * `derived`, only the words as written: `consentbanner`; `next`, `js`.
  */
-function pushCompoundTokens(tokens: string[], compound: string): void {
+function pushCompoundTokens(
+  tokens: string[],
+  compound: string,
+  derived = true
+): void {
   const parts = COMPOUND_SEPARATOR_PATTERN.test(compound)
     ? compound.split(COMPOUND_SEPARATOR_PATTERN)
     : [compound];
   for (const part of parts) {
     pushSearchToken(tokens, part);
-    if (HAS_CAMEL_CASE_BOUNDARY_PATTERN.test(part)) {
+    if (derived && HAS_CAMEL_CASE_BOUNDARY_PATTERN.test(part)) {
       for (const word of part.split(CAMEL_CASE_BOUNDARY_PATTERN)) {
         pushSearchToken(tokens, word);
       }
     }
   }
   if (
+    derived &&
     parts.length > 1 &&
     parts.length <= MAX_JOINED_COMPOUND_PARTS &&
     !parts.every((part) => DIGITS_ONLY_PATTERN.test(part))
@@ -395,15 +400,51 @@ function pushCompoundTokens(tokens: string[], compound: string): void {
   }
 }
 
+// Case survives until each token is pushed so camel-case boundaries are
+// still visible.
+function foldForTokenizing(input: string): string {
+  return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "");
+}
+
 export function tokenizeDocsSearchText(input: string): string[] {
   const tokens: string[] = [];
-  // Case survives until each token is pushed so camel-case boundaries are
-  // still visible.
-  const folded = input.normalize("NFKD").replace(DIACRITIC_PATTERN, "");
-  for (const match of folded.matchAll(COMPOUND_WORD_PATTERN)) {
+  for (const match of foldForTokenizing(input).matchAll(
+    COMPOUND_WORD_PATTERN
+  )) {
     pushCompoundTokens(tokens, match[0]);
   }
   return tokens;
+}
+
+/**
+ * Tokens for the words as written, without camel-case parts or joined
+ * compounds. Phrase matching also compares these, because the joined
+ * `nextjs` in `next js nextjs app` would otherwise break the phrase
+ * `next js app`.
+ */
+function tokenizeWrittenWords(input: string): string[] {
+  const tokens: string[] = [];
+  for (const match of foldForTokenizing(input).matchAll(
+    COMPOUND_WORD_PATTERN
+  )) {
+    pushCompoundTokens(tokens, match[0], false);
+  }
+  return tokens;
+}
+
+/** Tokens grouped by the word they came from; stopword-only words are dropped. */
+function tokenizeWordGroups(input: string): string[][] {
+  const words: string[][] = [];
+  for (const match of foldForTokenizing(input).matchAll(
+    COMPOUND_WORD_PATTERN
+  )) {
+    const tokens: string[] = [];
+    pushCompoundTokens(tokens, match[0]);
+    if (tokens.length > 0) {
+      words.push(tokens);
+    }
+  }
+  return words;
 }
 
 export function countDocsSearchTokens(input: string): number {
@@ -564,28 +605,39 @@ function queryCoverage(
   return covered / expansions.size;
 }
 
+function isQueryMatch(
+  expansions: Map<string, Map<string, number>>,
+  fieldToken: string
+): boolean {
+  for (const [token, terms] of expansions) {
+    if (token === fieldToken || terms.has(fieldToken)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
- * Share of a field's tokens the query accounts for, from 0 to 1. Separates a
+ * Share of a field's words the query accounts for, from 0 to 1. Separates a
  * page titled "Translations" from a release titled "Translations Package,
- * SSR Consent, CLI Telemetry, and Next.js Restructure".
+ * SSR Consent, CLI Telemetry, and Next.js Restructure". A word counts once
+ * however many tokens it yields, so `TypeScript` is fully matched by
+ * `typescript` alone.
  */
 function fieldPrecision(
   expansions: Map<string, Map<string, number>>,
-  fieldTokens: Set<string>
+  fieldWords: string[][]
 ): number {
-  if (fieldTokens.size === 0) {
+  if (fieldWords.length === 0) {
     return 0;
   }
   let matched = 0;
-  for (const fieldToken of fieldTokens) {
-    for (const [token, terms] of expansions) {
-      if (token === fieldToken || terms.has(fieldToken)) {
-        matched += 1;
-        break;
-      }
+  for (const word of fieldWords) {
+    if (word.some((token) => isQueryMatch(expansions, token))) {
+      matched += 1;
     }
   }
-  return matched / fieldTokens.size;
+  return matched / fieldWords.length;
 }
 
 export function countDocsSearchTerms(input: string): Map<string, number> {
@@ -852,14 +904,24 @@ function hasOrderedProximityMatch(
   return false;
 }
 
-function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
+type QueryPhrase = {
+  tokens: string[];
+  writtenWords: string;
+};
+
+function scoreContentMatchBoost(text: string, query: QueryPhrase): number {
+  const queryTokens = query.tokens;
   if (queryTokens.length < 2) {
     return 0;
   }
 
   const normalizedQuery = queryTokens.join(" ");
   const normalizedText = normalizeForPhraseMatch(text);
-  if (normalizedText.includes(normalizedQuery)) {
+  if (
+    normalizedText.includes(normalizedQuery) ||
+    (query.writtenWords.includes(" ") &&
+      tokenizeWrittenWords(text).join(" ").includes(query.writtenWords))
+  ) {
     return PHRASE_MATCH_BOOST;
   }
 
@@ -871,6 +933,7 @@ function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
 
 type PageMatchTokens = {
   title: Set<string>;
+  titleWords: string[][];
   titleAndPath: Set<string>;
 };
 
@@ -888,9 +951,11 @@ function pageMatchMultiplier(
 ): number {
   let page = cache.get(chunk.documentId);
   if (!page) {
-    const title = new Set(tokenizeDocsSearchText(chunk.title));
+    const titleWords = tokenizeWordGroups(chunk.title);
+    const title = new Set(titleWords.flat());
     page = {
       title,
+      titleWords,
       titleAndPath: new Set([
         ...title,
         ...tokenizeDocsSearchText(chunk.urlPath),
@@ -905,7 +970,8 @@ function pageMatchMultiplier(
     1 +
     TITLE_MATCH_BOOST *
       queryCoverage(expansions, page.title) *
-      (1 + TITLE_PRECISION_WEIGHT * fieldPrecision(expansions, page.title)) +
+      (1 +
+        TITLE_PRECISION_WEIGHT * fieldPrecision(expansions, page.titleWords)) +
     PATH_MATCH_BOOST * queryCoverage(expansions, page.titleAndPath) +
     HEADING_MATCH_BOOST * queryCoverage(expansions, heading)
   );
@@ -923,7 +989,7 @@ const MAX_PAGE_MATCH_MULTIPLIER =
   TITLE_MATCH_BOOST * (1 + TITLE_PRECISION_WEIGHT) +
   PATH_MATCH_BOOST +
   HEADING_MATCH_BOOST;
-const CONTENT_BOOST_BATCH_SIZE = 32;
+const FIRST_CONTENT_BOOST_CHECKPOINT = 32;
 
 function compareScoredChunks(left: ScoredChunk, right: ScoredChunk): number {
   if (right.score !== left.score) {
@@ -958,29 +1024,32 @@ function selectTopChunks(
  * chunk text, the costliest step of a query, so chunks are boosted in score
  * order and the rest are skipped once even the largest boost could not lift
  * them into the results. Adding chunks never lowers the score of the last
- * selected result, so a chunk below that bound cannot be selected.
+ * selected result, so a chunk below that bound cannot be selected. The bound
+ * is refreshed at doubling checkpoints, so refreshing costs O(n log n) even
+ * when it never prunes.
  */
 function applyContentMatchBoosts(
   scoredChunks: ScoredChunk[],
-  queryTokens: string[],
+  query: QueryPhrase,
   limit: number,
   maxResultsPerPage: number
 ): void {
-  if (queryTokens.length < 2) {
+  if (query.tokens.length < 2) {
     return;
   }
   scoredChunks.sort(compareScoredChunks);
   const maxBoost = PHRASE_MATCH_BOOST * MAX_PAGE_MATCH_MULTIPLIER;
   let lastSelectedScore = Number.NEGATIVE_INFINITY;
+  let checkpoint = FIRST_CONTENT_BOOST_CHECKPOINT;
   for (const [position, scored] of scoredChunks.entries()) {
     if (scored.score + maxBoost < lastSelectedScore) {
       return;
     }
     scored.score =
-      (scored.termScore +
-        scoreContentMatchBoost(scored.chunk.text, queryTokens)) *
+      (scored.termScore + scoreContentMatchBoost(scored.chunk.text, query)) *
       scored.multiplier;
-    if ((position + 1) % CONTENT_BOOST_BATCH_SIZE === 0) {
+    if (position + 1 === checkpoint) {
+      checkpoint *= 2;
       const boosted = scoredChunks
         .slice(0, position + 1)
         .sort(compareScoredChunks);
@@ -1419,7 +1488,15 @@ export function searchDocs(
       score: score * multiplier,
     });
   }
-  applyContentMatchBoosts(scoredChunks, queryTokens, limit, maxResultsPerPage);
+  applyContentMatchBoosts(
+    scoredChunks,
+    {
+      tokens: queryTokens,
+      writtenWords: tokenizeWrittenWords(query).join(" "),
+    },
+    limit,
+    maxResultsPerPage
+  );
   scoredChunks.sort(compareScoredChunks);
 
   // Excerpts are expensive string scans, so build them only for results

@@ -688,7 +688,6 @@ function toNlwebResult(
   };
 }
 
-/** Search hits are heading-level; keep the best hit per page. */
 function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }

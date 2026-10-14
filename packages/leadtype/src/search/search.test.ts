@@ -94,6 +94,22 @@ const cafe = "café";
   },
 ];
 
+/** Unrelated pages, so query terms have realistic document frequencies */
+const fillerDocs: DocsSearchDocument[] = [
+  "Scripts",
+  "Callbacks",
+  "Hooks",
+  "Theming",
+  "Iframes",
+].map((title) => ({
+  id: title,
+  title,
+  urlPath: `/docs/${title}`,
+  absoluteUrl: `https://leadtype.dev/docs/${title}`,
+  relativePath: title,
+  content: `## About ${title}\n\n${title} control what loads before a visitor chooses.`,
+}));
+
 describe("createDocsSearchIndex and searchDocs", () => {
   it("stores compact metadata separately from answer content", () => {
     const index = createDocsSearchIndex(docs, {
@@ -322,16 +338,6 @@ describe("createDocsSearchIndex and searchDocs", () => {
   });
 
   it("ranks the page titled for the query above a release that repeats it", () => {
-    const filler = ["Scripts", "Callbacks", "Hooks", "Theming", "Iframes"].map(
-      (title): DocsSearchDocument => ({
-        id: title,
-        title,
-        urlPath: `/docs/${title}`,
-        absoluteUrl: `https://leadtype.dev/docs/${title}`,
-        relativePath: title,
-        content: `## About ${title}\n\n${title} control what loads before a visitor chooses.`,
-      })
-    );
     const index = createDocsSearchIndex(
       [
         {
@@ -358,7 +364,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
           content:
             "## Change the copy\n\nOverride any string the banner and dialog show, then add a language your visitors read. Strings fall back to English when a key is missing.",
         },
-        ...filler,
+        ...fillerDocs,
       ],
       { generatedAt: "2026-01-01T00:00:00.000Z" }
     );
@@ -366,6 +372,63 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "translations")[0]?.documentId).toBe(
       "translations"
     );
+  });
+
+  it("counts a camel-case title word once when matching the title", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "typescript",
+          title: "TypeScript",
+          urlPath: "/docs/typescript",
+          absoluteUrl: "https://leadtype.dev/docs/typescript",
+          relativePath: "typescript",
+          content: "## Types\n\nThe package ships its own types.",
+        },
+        {
+          id: "typescript-setup",
+          title: "Typescript setup",
+          urlPath: "/docs/typescript-setup",
+          absoluteUrl: "https://leadtype.dev/docs/typescript-setup",
+          relativePath: "typescript-setup",
+          content:
+            "## Configure\n\nSet strict in tsconfig for typescript projects.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "typescript")[0]?.documentId).toBe("typescript");
+  });
+
+  it("matches a phrase written as separate words across a dotted name", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "phrase",
+          title: "Routing",
+          urlPath: "/docs/routing",
+          absoluteUrl: "https://leadtype.dev/docs/routing",
+          relativePath: "routing",
+          content:
+            "## Routers\n\nThe Next.js app router renders on the server.",
+        },
+        {
+          id: "scattered",
+          title: "Routing guide",
+          urlPath: "/docs/routing-guide",
+          absoluteUrl: "https://leadtype.dev/docs/routing-guide",
+          relativePath: "routing-guide",
+          content:
+            "## Routers\n\nNext js routes the app. Next js renders the app.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "next js app")[0]?.documentId).toBe("phrase");
   });
 
   it("matches words that only appear in the page URL", () => {
