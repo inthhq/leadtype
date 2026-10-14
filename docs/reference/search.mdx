@@ -20,7 +20,7 @@ and [Agent search tools](/docs/search/agent-tools).
 - **Index** (`search-index.json`) — compact term postings + document/chunk refs. Loaded on every search.
 - **Content store** (`search-content.json`) — chunk text, separate from the index so search stays cheap and content loads lazily.
 - **BM25** — the ranking function. Weights: title 4×, headings 2×, body 1×, code 0.35×.
-- **Page match** — a multiplier on each chunk's BM25 score for how much of the query its page title, URL path and own heading cover. A short title that matches the query beats a long title that only contains it. The path brings in context titles often leave out, such as the framework in `/docs/frameworks/react/quickstart`.
+- **Page match** — a multiplier on each chunk's BM25 score for how much of the query its page title, URL path and own heading cover. A short title that matches the query beats a long title that only contains it. The path brings in context titles often leave out, such as the framework in `/docs/frameworks/react/quickstart`. URL path words a chunk doesn't already contain are indexed once as body text, so a page that matches only through its URL is still found.
 - **Tokens** — words split on letters and digits, lowercased, accents and stopwords removed. Camel-case names also index their parts (`ConsentBanner` → `consentbanner`, `consent`, `banner`), and short dotted or hyphenated names also index their joined form (`Next.js` → `next`, `js`, `nextjs`).
 
 ## Build time — `leadtype/search/node`

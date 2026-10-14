@@ -317,13 +317,6 @@ export class DocsSearchRequestError extends Error {
   }
 }
 
-type MutableTermCounts = {
-  title: Map<string, number>;
-  heading: Map<string, number>;
-  body: Map<string, number>;
-  code: Map<string, number>;
-};
-
 type MutableChunk = {
   id: string;
   documentIndex: number;
@@ -644,6 +637,49 @@ export function countDocsSearchTerms(input: string): Map<string, number> {
   const counts = new Map<string, number>();
   for (const token of tokenizeDocsSearchText(input)) {
     counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export type DocsSearchChunkTermCounts = {
+  title: Map<string, number>;
+  heading: Map<string, number>;
+  body: Map<string, number>;
+  code: Map<string, number>;
+};
+
+/**
+ * Term counts a chunk's postings store. A URL path word the chunk does not
+ * already contain counts once as body text, so a page found only through its
+ * path, such as `vue` in `/docs/frameworks/vue/quickstart`, still becomes a
+ * candidate, without adding weight to words the page already uses.
+ */
+export function countDocsSearchChunkTerms(chunk: {
+  title: string;
+  headingPath: string[];
+  text: string;
+  codeText: string;
+  urlPath: string;
+}): DocsSearchChunkTermCounts {
+  const counts = {
+    title: countDocsSearchTerms(chunk.title),
+    heading: countDocsSearchTerms(chunk.headingPath.join(" ")),
+    body: countDocsSearchTerms(chunk.text),
+    code: countDocsSearchTerms(chunk.codeText),
+  };
+  // Written words only: a joined `typescriptsetup` from `typescript-setup`
+  // would become a prefix match for every `typescript` query.
+  for (const token of tokenizeWrittenWords(chunk.urlPath)) {
+    if (
+      !(
+        counts.title.has(token) ||
+        counts.heading.has(token) ||
+        counts.body.has(token) ||
+        counts.code.has(token)
+      )
+    ) {
+      counts.body.set(token, 1);
+    }
   }
   return counts;
 }
@@ -1247,7 +1283,7 @@ export function createDocsSearchIndex(
   );
   const documents: DocsSearchIndex["documents"] = [];
   const mutableChunks: MutableChunk[] = [];
-  const chunkTermCounts = new Map<number, MutableTermCounts>();
+  const chunkTermCounts = new Map<number, DocsSearchChunkTermCounts>();
 
   const docs = runTransformersSync(
     options.transformers,
@@ -1363,12 +1399,16 @@ export function createDocsSearchIndex(
           codeText: transformedChunk.codeText,
           length,
         });
-        chunkTermCounts.set(chunkIndex, {
-          title: countDocsSearchTerms(doc.title),
-          heading: countDocsSearchTerms(transformedChunk.headingPath.join(" ")),
-          body: countDocsSearchTerms(transformedChunk.text),
-          code: countDocsSearchTerms(transformedChunk.codeText),
-        });
+        chunkTermCounts.set(
+          chunkIndex,
+          countDocsSearchChunkTerms({
+            title: doc.title,
+            headingPath: transformedChunk.headingPath,
+            text: transformedChunk.text,
+            codeText: transformedChunk.codeText,
+            urlPath: doc.urlPath,
+          })
+        );
       }
     }
   }

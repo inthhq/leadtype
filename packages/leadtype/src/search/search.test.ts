@@ -486,6 +486,35 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "vue quickstart")[0]?.documentId).toBe("vue");
   });
 
+  it("finds a page whose only match is its URL", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "vue-quickstart",
+          title: "Quickstart",
+          urlPath: "/docs/frameworks/vue/quickstart",
+          absoluteUrl: "https://leadtype.dev/docs/frameworks/vue/quickstart",
+          relativePath: "frameworks/vue/quickstart",
+          content: "## Install the package\n\nAdd the plugin to your app.",
+        },
+        {
+          id: "comparison",
+          title: "Framework support",
+          urlPath: "/docs/frameworks",
+          absoluteUrl: "https://leadtype.dev/docs/frameworks",
+          relativePath: "frameworks",
+          content: "## Supported\n\nThe library works with Vue and React.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(
+      searchDocs(index, "vue").map((result) => result.documentId)
+    ).toContain("vue-quickstart");
+  });
+
   it("caps how many sections one page contributes before the limit", () => {
     const sections = Array.from(
       { length: 6 },

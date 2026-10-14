@@ -9,7 +9,7 @@ import {
   searchDocs,
 } from "../search/index.js";
 import {
-  countDocsSearchTerms,
+  countDocsSearchChunkTerms,
   DOCS_SEARCH_INDEX_VERSION,
   tokenizeDocsSearchText,
 } from "../search/search.js";
@@ -593,13 +593,20 @@ function assertNlwebArtifacts(artifacts: DocsArtifacts): void {
           ) {
             return false;
           }
+          const counts = countDocsSearchChunkTerms({
+            title: document[1],
+            headingPath: chunk[3],
+            text: contentText,
+            codeText,
+            urlPath: document[3],
+          });
           addExpectedVisiblePostings(
             expectedVisiblePostings,
             chunkIndex,
-            countDocsSearchTerms(document[1]),
-            countDocsSearchTerms(chunk[3].join(" ")),
-            countDocsSearchTerms(contentText),
-            countDocsSearchTerms(codeText)
+            counts.title,
+            counts.heading,
+            counts.body,
+            counts.code
           );
           chunkIds.add(chunkId);
           totalChunkLength += chunk[4];
