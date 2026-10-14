@@ -17,6 +17,7 @@ import {
   slugifyDocsHeading,
   validateDocsQuery,
 } from "./index";
+import { DOCS_SEARCH_INDEX_VERSION, tokenizeDocsSearchText } from "./search";
 
 const CHUNK_ANCHOR_INDEX = 2;
 
@@ -99,7 +100,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(index.version).toBe(3);
+    expect(index.version).toBe(DOCS_SEARCH_INDEX_VERSION);
     expect(index.documents[0]).toEqual([
       "quickstart",
       "Quickstart",
@@ -110,7 +111,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
     ]);
     expect(index.chunks[0]).toHaveLength(6);
     expect(index.chunks[0]).not.toHaveProperty("text");
-    expect(index.content?.version).toBe(3);
+    expect(index.content?.version).toBe(DOCS_SEARCH_INDEX_VERSION);
     expect(index.content?.chunks[0]).toContain("Install the package");
     expect(index.content?.codeChunks).toHaveLength(index.chunks.length);
     expect(
@@ -307,6 +308,117 @@ describe("createDocsSearchIndex and searchDocs", () => {
 
     expect(index.documents).toEqual([]);
     expect(searchDocs(index, "unreleased")).toEqual([]);
+  });
+
+  it("splits camel-case and dotted names into searchable words", () => {
+    expect(tokenizeDocsSearchText("ConsentBanner in Next.js")).toEqual([
+      "consentbanner",
+      "consent",
+      "banner",
+      "next",
+      "js",
+      "nextjs",
+    ]);
+  });
+
+  it("ranks the page titled for the query above a release that repeats it", () => {
+    const filler = ["Scripts", "Callbacks", "Hooks", "Theming", "Iframes"].map(
+      (title): DocsSearchDocument => ({
+        id: title,
+        title,
+        urlPath: `/docs/${title}`,
+        absoluteUrl: `https://leadtype.dev/docs/${title}`,
+        relativePath: title,
+        content: `## About ${title}\n\n${title} control what loads before a visitor chooses.`,
+      })
+    );
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "release",
+          title: "v1.3.0: Translations package, SSR consent, CLI telemetry",
+          description:
+            "Adds the translations package, backend translations and translations for the CLI.",
+          urlPath: "/changelog/1.3.0",
+          absoluteUrl: "https://leadtype.dev/changelog/1.3.0",
+          relativePath: "changelog/1.3.0",
+          content: [
+            "## New translations package\n\nTranslations ship as their own package.",
+            "## Backend\n\nThe backend serves translations.",
+            "## CLI\n\nThe CLI writes translations.",
+          ].join("\n\n"),
+        },
+        {
+          id: "translations",
+          title: "Translations",
+          description: "Change the copy and add languages.",
+          urlPath: "/docs/customization/translations",
+          absoluteUrl: "https://leadtype.dev/docs/customization/translations",
+          relativePath: "customization/translations",
+          content:
+            "## Change the copy\n\nOverride any string the banner and dialog show, then add a language your visitors read. Strings fall back to English when a key is missing.",
+        },
+        ...filler,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "translations")[0]?.documentId).toBe(
+      "translations"
+    );
+  });
+
+  it("matches words that only appear in the page URL", () => {
+    const quickstart = (framework: string): DocsSearchDocument => ({
+      id: framework,
+      title: "Quickstart",
+      urlPath: `/docs/frameworks/${framework}/quickstart`,
+      absoluteUrl: `https://leadtype.dev/docs/frameworks/${framework}/quickstart`,
+      relativePath: `frameworks/${framework}/quickstart`,
+      content: "## Install the package\n\nAdd the provider to your app.",
+    });
+    const index = createDocsSearchIndex(
+      [quickstart("react"), quickstart("vue")],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "vue quickstart")[0]?.documentId).toBe("vue");
+  });
+
+  it("caps how many sections one page contributes before the limit", () => {
+    const sections = Array.from(
+      { length: 6 },
+      (_, section) =>
+        `## Analytics setup ${section}\n\nConfigure analytics step ${section}.`
+    ).join("\n\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "long",
+          title: "Analytics",
+          urlPath: "/docs/analytics",
+          absoluteUrl: "https://leadtype.dev/docs/analytics",
+          relativePath: "analytics",
+          content: sections,
+        },
+        {
+          id: "other",
+          title: "Tag managers",
+          urlPath: "/docs/tag-managers",
+          absoluteUrl: "https://leadtype.dev/docs/tag-managers",
+          relativePath: "tag-managers",
+          content: "## Load analytics\n\nA tag manager can load analytics.",
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    const pages = (maxResultsPerPage?: number) =>
+      searchDocs(index, "analytics", { limit: 3, maxResultsPerPage }).map(
+        (result) => result.documentId
+      );
+    expect(pages()).toEqual(["long", "long", "other"]);
+    expect(pages(1)).toEqual(["long", "other"]);
   });
 
   it("falls back to prefix and typo-tolerant matches", () => {

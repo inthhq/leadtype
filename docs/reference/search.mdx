@@ -20,6 +20,8 @@ and [Agent search tools](/docs/search/agent-tools).
 - **Index** (`search-index.json`) — compact term postings + document/chunk refs. Loaded on every search.
 - **Content store** (`search-content.json`) — chunk text, separate from the index so search stays cheap and content loads lazily.
 - **BM25** — the ranking function. Weights: title 4×, headings 2×, body 1×, code 0.35×.
+- **Page match** — a multiplier on each chunk's BM25 score for how much of the query its page title, URL path and own heading cover. A short title that matches the query beats a long title that only contains it. The path brings in context titles often leave out, such as the framework in `/docs/frameworks/react/quickstart`.
+- **Tokens** — words split on letters and digits, lowercased, accents and stopwords removed. Camel-case names also index their parts (`ConsentBanner` → `consentbanner`, `consent`, `banner`), and short dotted or hyphenated names also index their joined form (`Next.js` → `next`, `js`, `nextjs`).
 
 ## Build time — `leadtype/search/node`
 
@@ -46,8 +48,13 @@ searchDocs(index: DocsSearchIndex, query: string, options?: {
   content?: DocsSearchContentStore;  // enables excerpts
   synonyms?: Record<string, string[]>;
   limit?: number;                    // default 8
+  maxResultsPerPage?: number;        // default 2, applied before limit
 }): DocsSearchResult[]
 ```
+
+`maxResultsPerPage` keeps one long page from filling every result. Set it to `1`
+for a list of pages. Filter or merge results after the call only with a larger
+`limit`, or the list can come back shorter than you asked for.
 
 `DocsSearchResult` carries `title`, `urlPath`, `urlWithHash`, `headingPath`,
 `score`, and (with `content`) `excerpt`. The runtime is edge-safe — no Node APIs.
@@ -134,6 +141,7 @@ Objects) in production. Defaults live in `docsSearchDefaults`:
 | `maxContextChars` | 12000 |
 | `maxSources` | 6 |
 | `searchLimit` | 8 |
+| `maxResultsPerPage` | 2 |
 | `maxBodyBytes` | 16 KB |
 
 ## When to add embeddings

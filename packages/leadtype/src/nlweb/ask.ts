@@ -598,7 +598,7 @@ function assertNlwebArtifacts(artifacts: DocsArtifacts): void {
             chunkIndex,
             countDocsSearchTerms(document[1]),
             countDocsSearchTerms(chunk[3].join(" ")),
-            countDocsSearchTerms([document[2], contentText].join(" ")),
+            countDocsSearchTerms(contentText),
             countDocsSearchTerms(codeText)
           );
           chunkIds.add(chunkId);
@@ -689,19 +689,6 @@ function toNlwebResult(
 }
 
 /** Search hits are heading-level; keep the best hit per page. */
-function dedupeByPage(results: DocsSearchResult[]): DocsSearchResult[] {
-  const seen = new Set<string>();
-  const deduped: DocsSearchResult[] = [];
-  for (const result of results) {
-    if (seen.has(result.urlPath)) {
-      continue;
-    }
-    seen.add(result.urlPath);
-    deduped.push(result);
-  }
-  return deduped;
-}
-
 function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
@@ -838,12 +825,11 @@ export function createAskHandler(
 
       const site = resolveSite(config, artifacts);
       const productName = artifacts.manifest.product.name;
-      const hits = dedupeByPage(
-        searchDocs(artifacts.index, parsed.query, {
-          limit,
-          content: artifacts.content,
-        })
-      );
+      const hits = searchDocs(artifacts.index, parsed.query, {
+        limit,
+        maxResultsPerPage: 1,
+        content: artifacts.content,
+      });
       const results = hits.map((hit) => toNlwebResult(hit, site, productName));
       failureCode = NLWEB_ERROR_CODES.internalError;
 
