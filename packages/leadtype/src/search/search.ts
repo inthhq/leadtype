@@ -1060,6 +1060,23 @@ function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
 }
 
+/**
+ * Error for an index this leadtype cannot search, or `undefined` when it can.
+ * A version bump means the tokenizer changed, so an older index would load
+ * and quietly miss matches the current rules expect.
+ */
+export function docsSearchIndexVersionError(
+  index: { version?: unknown },
+  source: string
+): Error | undefined {
+  if (index.version === DOCS_SEARCH_INDEX_VERSION) {
+    return;
+  }
+  return new Error(
+    `leadtype: ${source} uses an unsupported version (${String(index.version)}); this leadtype reads search index version ${DOCS_SEARCH_INDEX_VERSION}. Run \`leadtype generate\` with this leadtype version and deploy the complete docs output.`
+  );
+}
+
 export function isDocsSearchContentStoreCompatible(
   index: DocsSearchIndex,
   content: unknown

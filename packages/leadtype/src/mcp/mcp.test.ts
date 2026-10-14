@@ -307,6 +307,35 @@ describe("loadDocsArtifacts (from disk)", () => {
     expect(textOf(result)).toBe(QUICKSTART_MARKDOWN);
   });
 
+  it("rejects a search index from an older leadtype", async () => {
+    const staleDir = await mkdtemp(join(tmpdir(), "leadtype-mcp-stale-"));
+    try {
+      const docsDir = join(staleDir, "docs");
+      await mkdir(docsDir, { recursive: true });
+      const index = createDocsSearchIndex(docs);
+      await Promise.all([
+        writeFile(
+          join(docsDir, "search-index.json"),
+          JSON.stringify({
+            ...index,
+            version: 3,
+            content: index.content && { ...index.content, version: 3 },
+          })
+        ),
+        writeFile(
+          join(docsDir, "agent-readability.json"),
+          JSON.stringify(buildManifest())
+        ),
+      ]);
+
+      await expect(loadDocsArtifacts({ artifacts: staleDir })).rejects.toThrow(
+        "uses an unsupported version (3)"
+      );
+    } finally {
+      await rm(staleDir, { recursive: true, force: true });
+    }
+  });
+
   it("ignores legacy split content and keeps index-only search available", async () => {
     const legacyDir = await mkdtemp(join(tmpdir(), "leadtype-mcp-legacy-"));
     try {

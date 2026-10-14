@@ -5,6 +5,7 @@ import type {
   DocsSearchResult,
 } from "./search";
 import {
+  docsSearchIndexVersionError,
   isDocsSearchContentStoreCompatible,
   listDocsSearchDocuments,
   searchDocs,
@@ -100,6 +101,10 @@ async function loadArtifacts(
         () => undefined
       ),
     ]);
+    const versionError = docsSearchIndexVersionError(index, indexUrl);
+    if (versionError) {
+      throw versionError;
+    }
     const compatibleContent = isDocsSearchContentStoreCompatible(
       index,
       content

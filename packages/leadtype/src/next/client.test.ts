@@ -105,6 +105,30 @@ describe("createSearchClient", () => {
     expect(results[0]?.title).toBe("Install");
   });
 
+  it("rejects a search index from an older leadtype", async () => {
+    const bundle = buildSearchBundle();
+    const staleIndex = { ...bundle.index, version: 3 };
+    const staleContent = { ...bundle.content, version: 3 };
+    const scope = nextScope();
+    const fetchImpl = ((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith(scope.indexUrl)) {
+        return Promise.resolve(Response.json(staleIndex));
+      }
+      return Promise.resolve(Response.json(staleContent));
+    }) as typeof fetch;
+
+    const client = createSearchClient("docs", {
+      indexUrl: scope.indexUrl,
+      contentUrl: scope.contentUrl,
+      fetch: fetchImpl,
+    });
+
+    await expect(client.search("install")).rejects.toThrow(
+      "uses an unsupported version (3)"
+    );
+  });
+
   it("treats a missing content file as a soft failure", async () => {
     const bundle = buildSearchBundle();
     const scope = nextScope();
