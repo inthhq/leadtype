@@ -58,6 +58,7 @@ const CAMEL_CASE_BOUNDARY_PATTERN =
 // the plain words that make up most text.
 const HAS_CAMEL_CASE_BOUNDARY_PATTERN = /\p{Ll}\p{Lu}|\p{Lu}\p{Lu}\p{Ll}/u;
 const DIGITS_ONLY_PATTERN = /^\p{N}+$/u;
+const WORD_CHARACTER_PATTERN = /^[\p{L}\p{N}]$/u;
 const MAX_JOINED_COMPOUND_PARTS = 3;
 
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
@@ -871,22 +872,54 @@ function normalizeTextWithOffsets(input: string): {
   return { normalized, offsets };
 }
 
-function buildExcerpt(text: string, queryTokens: string[]): string {
-  const { normalized: normalizedText, offsets } =
-    normalizeTextWithOffsets(text);
-  let matchIndex = -1;
-  for (const token of queryTokens) {
-    matchIndex = normalizedText.indexOf(token);
-    if (matchIndex >= 0) {
-      break;
+/**
+ * The normalized text without `.`, `-` or `_` between two word characters,
+ * so a joined token such as `nextjs` can be found in `next.js`. Offsets keep
+ * pointing into the original text.
+ */
+function joinCompoundsWithOffsets(
+  normalized: string,
+  offsets: number[]
+): { joined: string; offsets: number[] } {
+  let joined = "";
+  const joinedOffsets: number[] = [];
+  for (let index = 0; index < normalized.length; index += 1) {
+    const character = normalized.charAt(index);
+    const isJoin =
+      COMPOUND_SEPARATOR_PATTERN.test(character) &&
+      WORD_CHARACTER_PATTERN.test(normalized.charAt(index - 1)) &&
+      WORD_CHARACTER_PATTERN.test(normalized.charAt(index + 1));
+    if (!isJoin) {
+      joined += character;
+      joinedOffsets.push(offsets[index] ?? index);
     }
   }
+  return { joined, offsets: joinedOffsets };
+}
 
-  if (matchIndex < 0) {
+function findOriginalMatchIndex(text: string, queryTokens: string[]): number {
+  const { normalized, offsets } = normalizeTextWithOffsets(text);
+  let compounds: { joined: string; offsets: number[] } | undefined;
+  for (const token of queryTokens) {
+    const matchIndex = normalized.indexOf(token);
+    if (matchIndex >= 0) {
+      return offsets[matchIndex] ?? matchIndex;
+    }
+    compounds ??= joinCompoundsWithOffsets(normalized, offsets);
+    const joinedIndex = compounds.joined.indexOf(token);
+    if (joinedIndex >= 0) {
+      return compounds.offsets[joinedIndex] ?? joinedIndex;
+    }
+  }
+  return -1;
+}
+
+function buildExcerpt(text: string, queryTokens: string[]): string {
+  const originalMatchIndex = findOriginalMatchIndex(text, queryTokens);
+  if (originalMatchIndex < 0) {
     return text.slice(0, 220).trim();
   }
 
-  const originalMatchIndex = offsets[matchIndex] ?? matchIndex;
   const start = Math.max(0, originalMatchIndex - 80);
   const end = Math.min(text.length, originalMatchIndex + 160);
   const prefix = start > 0 ? "..." : "";

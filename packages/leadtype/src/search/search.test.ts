@@ -486,6 +486,29 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "vue quickstart")[0]?.documentId).toBe("vue");
   });
 
+  it("centers the excerpt on a dotted name matched through its joined form", () => {
+    const intro =
+      "The consent runtime keeps a record of every choice a visitor makes. ".repeat(
+        5
+      );
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "frameworks",
+          title: "Frameworks",
+          urlPath: "/docs/frameworks",
+          absoluteUrl: "https://leadtype.dev/docs/frameworks",
+          relativePath: "frameworks",
+          content: `## Support\n\n${intro}Next.js renders the banner on the server.`,
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "nextjs")[0]?.excerpt).toContain("Next.js");
+  });
+
   it("finds a page whose only match is its URL", () => {
     const index = createDocsSearchIndex(
       [
