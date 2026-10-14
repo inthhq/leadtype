@@ -431,6 +431,44 @@ describe("createDocsSearchIndex and searchDocs", () => {
     expect(searchDocs(index, "next js app")[0]?.documentId).toBe("phrase");
   });
 
+  it("keeps a phrase match that only the phrase boost lifts into the results", () => {
+    // 60 pages that mention both words apart rank above the phrase match on
+    // term scores alone, enough for the content boost to set its bound.
+    const scattered = Array.from(
+      { length: 60 },
+      (_, page): DocsSearchDocument => ({
+        id: `guide-${page}`,
+        title: `Guide ${page}`,
+        urlPath: `/docs/guide-${page}`,
+        absoluteUrl: `https://leadtype.dev/docs/guide-${page}`,
+        relativePath: `guide-${page}`,
+        content: `## Setup\n\nThe banner ${page} opens first, then a visitor reads the consent text.`,
+      })
+    );
+    const index = createDocsSearchIndex(
+      [
+        ...scattered,
+        {
+          id: "phrase",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference",
+          content:
+            "## Setup\n\nShow the consent banner once and the dialog lists every choice for each visitor who returns.",
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const top = (limit: number) =>
+      searchDocs(index, "consent banner", { limit }).map(
+        (result) => result.documentId
+      );
+
+    expect(top(5)[0]).toBe("phrase");
+    expect(top(5)).toEqual(top(1000).slice(0, 5));
+  });
+
   it("matches words that only appear in the page URL", () => {
     const quickstart = (framework: string): DocsSearchDocument => ({
       id: framework,

@@ -858,10 +858,6 @@ function buildExcerpt(text: string, queryTokens: string[]): string {
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
 }
 
-function normalizeForPhraseMatch(input: string): string {
-  return tokenizeDocsSearchText(input).join(" ");
-}
-
 function hasOrderedProximityMatch(
   textTokens: string[],
   queryTokens: string[]
@@ -916,16 +912,15 @@ function scoreContentMatchBoost(text: string, query: QueryPhrase): number {
   }
 
   const normalizedQuery = queryTokens.join(" ");
-  const normalizedText = normalizeForPhraseMatch(text);
+  const textTokens = tokenizeDocsSearchText(text);
   if (
-    normalizedText.includes(normalizedQuery) ||
+    textTokens.join(" ").includes(normalizedQuery) ||
     (query.writtenWords.includes(" ") &&
       tokenizeWrittenWords(text).join(" ").includes(query.writtenWords))
   ) {
     return PHRASE_MATCH_BOOST;
   }
 
-  const textTokens = tokenizeDocsSearchText(text);
   return hasOrderedProximityMatch(textTokens, queryTokens)
     ? PROXIMITY_MATCH_BOOST
     : 0;
