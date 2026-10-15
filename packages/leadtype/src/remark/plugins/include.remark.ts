@@ -862,12 +862,18 @@ export function remarkInclude(
   const pluginCache = Array.isArray(options) ? undefined : options.cache;
 
   return async (tree, file) => {
-    const workingDir = file.path ? dirname(file.path) : process.cwd();
-    const fileData = (file as unknown as { data?: unknown })?.data;
-    const fileCache = (
-      fileData as { _leadtypeIncludeCache?: IncludeResolutionCache } | undefined
-    )?._leadtypeIncludeCache;
-    const includeCache = pluginCache ?? fileCache;
+    const fileData = (file as unknown as { data?: unknown })?.data as
+      | {
+          _leadtypeIncludeCache?: IncludeResolutionCache;
+          _leadtypeSourcePath?: string;
+        }
+      | undefined;
+    // A staged copy (e.g. `generate`'s filtered temp mirror) may not carry
+    // the files its includes point at, so resolve relative includes next to
+    // the original source file when the host provides it.
+    const sourcePath = fileData?._leadtypeSourcePath ?? file.path;
+    const workingDir = sourcePath ? dirname(sourcePath) : process.cwd();
+    const includeCache = pluginCache ?? fileData?._leadtypeIncludeCache;
 
     // Support nested includes by repeatedly scanning the tree until no more
     // include/import nodes are found. This is safe because:
@@ -902,7 +908,7 @@ export function remarkInclude(
             basePaths,
             includeCache,
             fileData,
-            file.path
+            sourcePath
           );
           return candidate;
         })

@@ -2277,6 +2277,54 @@ paths:
     expect(capture.stderr).toContain("generate.openapi_skipped");
   });
 
+  it("resolves includes that point outside the include globs", async () => {
+    const srcDir = await createTempDir();
+    const outDir = await createTempDir();
+    const capture = createCapture();
+
+    await writeMdxPage(
+      srcDir,
+      "page.mdx",
+      'title: "Page"\ndescription: "A page."',
+      'Before.\n\n<include src="./shared/part.mdx" />\n\nAfter.'
+    );
+    await mkdir(path.join(srcDir, "docs", "shared"), { recursive: true });
+    await writeFile(
+      path.join(srcDir, "docs", "shared", "part.mdx"),
+      "Partial content.\n"
+    );
+
+    const code = await runCli(
+      [
+        "generate",
+        "--bundle",
+        "--src",
+        srcDir,
+        "--out",
+        outDir,
+        "--name",
+        "Repro",
+        "--summary",
+        "Repro docs.",
+        "--include",
+        "page.mdx",
+      ],
+      capture.io
+    );
+
+    expect(code).toBe(0);
+    const markdown = await readFile(
+      path.join(outDir, "docs", "page.md"),
+      "utf8"
+    );
+    expect(markdown).toContain("Partial content.");
+    expect(markdown).not.toContain("Could not include file");
+    expect(capture.stderr).not.toContain("failed to include");
+    expect(existsSync(path.join(outDir, "docs", "shared", "part.md"))).toBe(
+      false
+    );
+  });
+
   it("applies exclude path globs after includes", async () => {
     const outDir = await createTempDir();
     const capture = createCapture();
