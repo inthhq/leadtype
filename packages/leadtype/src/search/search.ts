@@ -14,12 +14,13 @@ import {
 const DEFAULT_MAX_CHUNK_CHARS = 1200;
 const DEFAULT_OVERLAP_CHARS = 160;
 const DEFAULT_SEARCH_LIMIT = 8;
+const DEFAULT_MAX_RESULTS_PER_PAGE = 2;
 const DEFAULT_MAX_QUERY_CHARS = 400;
 const DEFAULT_ASK_MAX_QUERY_CHARS = 600;
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_MAX_SOURCES = 6;
 const DEFAULT_MAX_CONTEXT_CHARS = 12_000;
-export const DOCS_SEARCH_INDEX_VERSION = 3;
+export const DOCS_SEARCH_INDEX_VERSION = 4;
 const TITLE_WEIGHT = 4;
 const HEADING_WEIGHT = 2;
 const BODY_WEIGHT = 1;
@@ -33,6 +34,10 @@ const PREFIX_TERM_WEIGHT = 0.55;
 const TYPO_TERM_WEIGHT = 0.45;
 const PHRASE_MATCH_BOOST = 1.4;
 const PROXIMITY_MATCH_BOOST = 0.8;
+const TITLE_MATCH_BOOST = 1;
+const TITLE_PRECISION_WEIGHT = 2;
+const PATH_MATCH_BOOST = 0.5;
+const HEADING_MATCH_BOOST = 0.5;
 const MAX_PREFIX_EXPANSIONS = 24;
 const MAX_TYPO_EXPANSIONS = 16;
 const PROXIMITY_WINDOW = 8;
@@ -42,7 +47,19 @@ const WHITESPACE_PATTERN = /\s+/g;
 // Tokenizer behavior is serialized into chunk lengths and postings. Changes
 // to word matching, normalization, stopwords, or token filtering must bump
 // DOCS_SEARCH_INDEX_VERSION so older artifacts fail with a version mismatch.
-const WORD_CHARACTER_PATTERN = /[\p{L}\p{N}]+/gu;
+// A word plus any `.`, `-` or `_` joined continuation, so `Next.js`,
+// `tanstack-start` and `snake_case` reach the tokenizer as one compound.
+const COMPOUND_WORD_PATTERN = /[\p{L}\p{N}]+(?:[._-][\p{L}\p{N}]+)*/gu;
+const COMPOUND_SEPARATOR_PATTERN = /[._-]/;
+// `ConsentBanner` → `Consent|Banner`, `IABConsent` → `IAB|Consent`.
+const CAMEL_CASE_BOUNDARY_PATTERN =
+  /(?<=\p{Ll})(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})/u;
+// Same boundaries without lookbehind: a cheap test that skips the split for
+// the plain words that make up most text.
+const HAS_CAMEL_CASE_BOUNDARY_PATTERN = /\p{Ll}\p{Lu}|\p{Lu}\p{Lu}\p{Ll}/u;
+const DIGITS_ONLY_PATTERN = /^\p{N}+$/u;
+const WORD_CHARACTER_PATTERN = /^[\p{L}\p{N}]$/u;
+const MAX_JOINED_COMPOUND_PARTS = 3;
 
 const DIACRITIC_PATTERN = /[\u0300-\u036f]/g;
 const SHARED_ROUTE_SEGMENTS = new Set(["shared", "_shared"]);
@@ -218,6 +235,11 @@ export type CreateDocsSearchIndexOptions = {
 
 export type SearchDocsOptions = ContentStoreOptions & {
   limit?: number;
+  /**
+   * Most sections returned from one page, applied before `limit`. Defaults
+   * to 2 so a long page whose title matches cannot fill every result.
+   */
+  maxResultsPerPage?: number;
   synonyms?: Record<string, string[]>;
 };
 
@@ -296,13 +318,6 @@ export class DocsSearchRequestError extends Error {
   }
 }
 
-type MutableTermCounts = {
-  title: Map<string, number>;
-  heading: Map<string, number>;
-  body: Map<string, number>;
-  code: Map<string, number>;
-};
-
 type MutableChunk = {
   id: string;
   documentIndex: number;
@@ -340,15 +355,90 @@ function withHash(url: string, anchor: string): string {
   return anchor ? `${url}#${anchor}` : url;
 }
 
-export function tokenizeDocsSearchText(input: string): string[] {
-  const tokens: string[] = [];
-  for (const match of normalizeText(input).matchAll(WORD_CHARACTER_PATTERN)) {
-    const token = match[0];
-    if (token.length > 1 && !STOPWORDS.has(token)) {
-      tokens.push(token);
+function pushSearchToken(tokens: string[], raw: string): void {
+  const token = raw.toLowerCase();
+  if (token.length > 1 && !STOPWORDS.has(token)) {
+    tokens.push(token);
+  }
+}
+
+/**
+ * Tokens for one word, its camel-case parts, and the joined form of short
+ * dotted or hyphenated compounds. `ConsentBanner` yields `consentbanner`,
+ * `consent`, `banner`; `Next.js` yields `next`, `js`, `nextjs`. Without
+ * `derived`, only the words as written: `consentbanner`; `next`, `js`.
+ */
+function pushCompoundTokens(
+  tokens: string[],
+  compound: string,
+  derived = true
+): void {
+  const parts = COMPOUND_SEPARATOR_PATTERN.test(compound)
+    ? compound.split(COMPOUND_SEPARATOR_PATTERN)
+    : [compound];
+  for (const part of parts) {
+    pushSearchToken(tokens, part);
+    if (derived && HAS_CAMEL_CASE_BOUNDARY_PATTERN.test(part)) {
+      for (const word of part.split(CAMEL_CASE_BOUNDARY_PATTERN)) {
+        pushSearchToken(tokens, word);
+      }
     }
   }
+  if (
+    derived &&
+    parts.length > 1 &&
+    parts.length <= MAX_JOINED_COMPOUND_PARTS &&
+    !parts.every((part) => DIGITS_ONLY_PATTERN.test(part))
+  ) {
+    pushSearchToken(tokens, parts.join(""));
+  }
+}
+
+// Case survives until each token is pushed so camel-case boundaries are
+// still visible.
+function foldForTokenizing(input: string): string {
+  return input.normalize("NFKD").replace(DIACRITIC_PATTERN, "");
+}
+
+export function tokenizeDocsSearchText(input: string): string[] {
+  const tokens: string[] = [];
+  for (const match of foldForTokenizing(input).matchAll(
+    COMPOUND_WORD_PATTERN
+  )) {
+    pushCompoundTokens(tokens, match[0]);
+  }
   return tokens;
+}
+
+/**
+ * Tokens for the words as written, without camel-case parts or joined
+ * compounds. Phrase matching also compares these, because the joined
+ * `nextjs` in `next js nextjs app` would otherwise break the phrase
+ * `next js app`.
+ */
+function tokenizeWrittenWords(input: string): string[] {
+  const tokens: string[] = [];
+  for (const match of foldForTokenizing(input).matchAll(
+    COMPOUND_WORD_PATTERN
+  )) {
+    pushCompoundTokens(tokens, match[0], false);
+  }
+  return tokens;
+}
+
+/** Tokens grouped by the word they came from; stopword-only words are dropped. */
+function tokenizeWordGroups(input: string): string[][] {
+  const words: string[][] = [];
+  for (const match of foldForTokenizing(input).matchAll(
+    COMPOUND_WORD_PATTERN
+  )) {
+    const tokens: string[] = [];
+    pushCompoundTokens(tokens, match[0]);
+    if (tokens.length > 0) {
+      words.push(tokens);
+    }
+  }
+  return words;
 }
 
 export function countDocsSearchTokens(input: string): number {
@@ -404,16 +494,22 @@ function synonymTokensFor(
   );
 }
 
-function collectWeightedSearchTerms(
+/**
+ * Index terms each distinct query token expands to, with the weight of the
+ * strongest way it matched (exact, stem, synonym, prefix, typo).
+ */
+function expandQueryTokens(
   index: DocsSearchIndex,
   queryTokens: string[],
   synonyms?: Record<string, string[]>
-): WeightedSearchTerm[] {
-  const weightedTerms = new Map<string, number>();
+): Map<string, Map<string, number>> {
+  const expansions = new Map<string, Map<string, number>>();
   const indexTerms = Object.keys(index.terms);
   const indexTermSet = new Set(indexTerms);
 
-  for (const token of queryTokens) {
+  for (const token of new Set(queryTokens)) {
+    const weightedTerms = new Map<string, number>();
+    expansions.set(token, weightedTerms);
     if (indexTermSet.has(token)) {
       addWeightedTerm(weightedTerms, token, EXACT_TERM_WEIGHT);
     }
@@ -464,13 +560,127 @@ function collectWeightedSearchTerms(
     }
   }
 
+  return expansions;
+}
+
+function mergeQueryExpansions(
+  expansions: Map<string, Map<string, number>>
+): WeightedSearchTerm[] {
+  const weightedTerms = new Map<string, number>();
+  for (const terms of expansions.values()) {
+    for (const [term, weight] of terms) {
+      addWeightedTerm(weightedTerms, term, weight);
+    }
+  }
   return Array.from(weightedTerms, ([term, weight]) => ({ term, weight }));
+}
+
+/**
+ * Share of the query a short field answers, from 0 to 1: each query token
+ * contributes the weight of its best expansion that appears in the field.
+ */
+function queryCoverage(
+  expansions: Map<string, Map<string, number>>,
+  fieldTokens: Set<string>
+): number {
+  if (expansions.size === 0 || fieldTokens.size === 0) {
+    return 0;
+  }
+  let covered = 0;
+  for (const [token, terms] of expansions) {
+    let best = fieldTokens.has(token) ? EXACT_TERM_WEIGHT : 0;
+    for (const [term, weight] of terms) {
+      if (weight > best && fieldTokens.has(term)) {
+        best = weight;
+      }
+    }
+    covered += best;
+  }
+  return covered / expansions.size;
+}
+
+function isQueryMatch(
+  expansions: Map<string, Map<string, number>>,
+  fieldToken: string
+): boolean {
+  for (const [token, terms] of expansions) {
+    if (token === fieldToken || terms.has(fieldToken)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Share of a field's words the query accounts for, from 0 to 1. Separates a
+ * page titled "Translations" from a release titled "Translations Package,
+ * SSR Consent, CLI Telemetry, and Next.js Restructure". A word counts once
+ * however many tokens it yields, so `TypeScript` is fully matched by
+ * `typescript` alone.
+ */
+function fieldPrecision(
+  expansions: Map<string, Map<string, number>>,
+  fieldWords: string[][]
+): number {
+  if (fieldWords.length === 0) {
+    return 0;
+  }
+  let matched = 0;
+  for (const word of fieldWords) {
+    if (word.some((token) => isQueryMatch(expansions, token))) {
+      matched += 1;
+    }
+  }
+  return matched / fieldWords.length;
 }
 
 export function countDocsSearchTerms(input: string): Map<string, number> {
   const counts = new Map<string, number>();
   for (const token of tokenizeDocsSearchText(input)) {
     counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export type DocsSearchChunkTermCounts = {
+  title: Map<string, number>;
+  heading: Map<string, number>;
+  body: Map<string, number>;
+  code: Map<string, number>;
+};
+
+/**
+ * Term counts a chunk's postings store. A URL path word the chunk does not
+ * already contain counts once as body text, so a page found only through its
+ * path, such as `vue` in `/docs/frameworks/vue/quickstart`, still becomes a
+ * candidate, without adding weight to words the page already uses.
+ */
+export function countDocsSearchChunkTerms(chunk: {
+  title: string;
+  headingPath: string[];
+  text: string;
+  codeText: string;
+  urlPath: string;
+}): DocsSearchChunkTermCounts {
+  const counts = {
+    title: countDocsSearchTerms(chunk.title),
+    heading: countDocsSearchTerms(chunk.headingPath.join(" ")),
+    body: countDocsSearchTerms(chunk.text),
+    code: countDocsSearchTerms(chunk.codeText),
+  };
+  // Written words only: a joined `typescriptsetup` from `typescript-setup`
+  // would become a prefix match for every `typescript` query.
+  for (const token of tokenizeWrittenWords(chunk.urlPath)) {
+    if (
+      !(
+        counts.title.has(token) ||
+        counts.heading.has(token) ||
+        counts.body.has(token) ||
+        counts.code.has(token)
+      )
+    ) {
+      counts.body.set(token, 1);
+    }
   }
   return counts;
 }
@@ -662,31 +872,59 @@ function normalizeTextWithOffsets(input: string): {
   return { normalized, offsets };
 }
 
-function buildExcerpt(text: string, queryTokens: string[]): string {
-  const { normalized: normalizedText, offsets } =
-    normalizeTextWithOffsets(text);
-  let matchIndex = -1;
-  for (const token of queryTokens) {
-    matchIndex = normalizedText.indexOf(token);
-    if (matchIndex >= 0) {
-      break;
+/**
+ * The normalized text without `.`, `-` or `_` between two word characters,
+ * so a joined token such as `nextjs` can be found in `next.js`. Offsets keep
+ * pointing into the original text.
+ */
+function joinCompoundsWithOffsets(
+  normalized: string,
+  offsets: number[]
+): { joined: string; offsets: number[] } {
+  let joined = "";
+  const joinedOffsets: number[] = [];
+  for (let index = 0; index < normalized.length; index += 1) {
+    const character = normalized.charAt(index);
+    const isJoin =
+      COMPOUND_SEPARATOR_PATTERN.test(character) &&
+      WORD_CHARACTER_PATTERN.test(normalized.charAt(index - 1)) &&
+      WORD_CHARACTER_PATTERN.test(normalized.charAt(index + 1));
+    if (!isJoin) {
+      joined += character;
+      joinedOffsets.push(offsets[index] ?? index);
     }
   }
+  return { joined, offsets: joinedOffsets };
+}
 
-  if (matchIndex < 0) {
+function findOriginalMatchIndex(text: string, queryTokens: string[]): number {
+  const { normalized, offsets } = normalizeTextWithOffsets(text);
+  let compounds: { joined: string; offsets: number[] } | undefined;
+  for (const token of queryTokens) {
+    const matchIndex = normalized.indexOf(token);
+    if (matchIndex >= 0) {
+      return offsets[matchIndex] ?? matchIndex;
+    }
+    compounds ??= joinCompoundsWithOffsets(normalized, offsets);
+    const joinedIndex = compounds.joined.indexOf(token);
+    if (joinedIndex >= 0) {
+      return compounds.offsets[joinedIndex] ?? joinedIndex;
+    }
+  }
+  return -1;
+}
+
+function buildExcerpt(text: string, queryTokens: string[]): string {
+  const originalMatchIndex = findOriginalMatchIndex(text, queryTokens);
+  if (originalMatchIndex < 0) {
     return text.slice(0, 220).trim();
   }
 
-  const originalMatchIndex = offsets[matchIndex] ?? matchIndex;
   const start = Math.max(0, originalMatchIndex - 80);
   const end = Math.min(text.length, originalMatchIndex + 160);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
-}
-
-function normalizeForPhraseMatch(input: string): string {
-  return tokenizeDocsSearchText(input).join(" ");
 }
 
 function hasOrderedProximityMatch(
@@ -731,25 +969,181 @@ function hasOrderedProximityMatch(
   return false;
 }
 
-function scoreContentMatchBoost(text: string, queryTokens: string[]): number {
+type QueryPhrase = {
+  tokens: string[];
+  writtenWords: string;
+};
+
+function scoreContentMatchBoost(text: string, query: QueryPhrase): number {
+  const queryTokens = query.tokens;
   if (queryTokens.length < 2) {
     return 0;
   }
 
   const normalizedQuery = queryTokens.join(" ");
-  const normalizedText = normalizeForPhraseMatch(text);
-  if (normalizedText.includes(normalizedQuery)) {
+  const textTokens = tokenizeDocsSearchText(text);
+  if (
+    textTokens.join(" ").includes(normalizedQuery) ||
+    (query.writtenWords.includes(" ") &&
+      tokenizeWrittenWords(text).join(" ").includes(query.writtenWords))
+  ) {
     return PHRASE_MATCH_BOOST;
   }
 
-  const textTokens = tokenizeDocsSearchText(text);
   return hasOrderedProximityMatch(textTokens, queryTokens)
     ? PROXIMITY_MATCH_BOOST
     : 0;
 }
 
+type PageMatchTokens = {
+  title: Set<string>;
+  titleWords: string[][];
+  titleAndPath: Set<string>;
+};
+
+/**
+ * Score multiplier for chunks whose page title, URL path or own heading
+ * answers the query. BM25 alone saturates a title match into one more term
+ * occurrence, so a page titled "Consent categories" loses to a changelog
+ * that repeats both words. The path carries context titles often leave out,
+ * such as the framework in `/docs/frameworks/react/quickstart`.
+ */
+function pageMatchMultiplier(
+  chunk: DocsSearchChunk,
+  expansions: Map<string, Map<string, number>>,
+  cache: Map<string, PageMatchTokens>
+): number {
+  let page = cache.get(chunk.documentId);
+  if (!page) {
+    const titleWords = tokenizeWordGroups(chunk.title);
+    const title = new Set(titleWords.flat());
+    page = {
+      title,
+      titleWords,
+      titleAndPath: new Set([
+        ...title,
+        ...tokenizeDocsSearchText(chunk.urlPath),
+      ]),
+    };
+    cache.set(chunk.documentId, page);
+  }
+  const heading = new Set(
+    tokenizeDocsSearchText(chunk.headingPath.at(-1) ?? "")
+  );
+  return (
+    1 +
+    TITLE_MATCH_BOOST *
+      queryCoverage(expansions, page.title) *
+      (1 +
+        TITLE_PRECISION_WEIGHT * fieldPrecision(expansions, page.titleWords)) +
+    PATH_MATCH_BOOST * queryCoverage(expansions, page.titleAndPath) +
+    HEADING_MATCH_BOOST * queryCoverage(expansions, heading)
+  );
+}
+
+type ScoredChunk = {
+  chunk: DocsSearchChunk;
+  termScore: number;
+  multiplier: number;
+  score: number;
+};
+
+const MAX_PAGE_MATCH_MULTIPLIER =
+  1 +
+  TITLE_MATCH_BOOST * (1 + TITLE_PRECISION_WEIGHT) +
+  PATH_MATCH_BOOST +
+  HEADING_MATCH_BOOST;
+const FIRST_CONTENT_BOOST_CHECKPOINT = 32;
+
+function compareScoredChunks(left: ScoredChunk, right: ScoredChunk): number {
+  if (right.score !== left.score) {
+    return right.score - left.score;
+  }
+  return left.chunk.absoluteUrl.localeCompare(right.chunk.absoluteUrl);
+}
+
+/** Best chunks in score order, at most `maxResultsPerPage` from each page. */
+function selectTopChunks(
+  sorted: ScoredChunk[],
+  limit: number,
+  maxResultsPerPage: number
+): ScoredChunk[] {
+  const resultsPerPage = new Map<string, number>();
+  const selected: ScoredChunk[] = [];
+  for (const scored of sorted) {
+    if (selected.length >= limit) {
+      break;
+    }
+    const pageCount = resultsPerPage.get(scored.chunk.documentId) ?? 0;
+    if (pageCount < maxResultsPerPage) {
+      resultsPerPage.set(scored.chunk.documentId, pageCount + 1);
+      selected.push(scored);
+    }
+  }
+  return selected;
+}
+
+/**
+ * Adds the phrase and proximity boost in place. Matching tokenizes the whole
+ * chunk text, the costliest step of a query, so chunks are boosted in score
+ * order and the rest are skipped once even the largest boost could not lift
+ * them into the results. Adding chunks never lowers the score of the last
+ * selected result, so a chunk below that bound cannot be selected. The bound
+ * is refreshed at doubling checkpoints, so refreshing costs O(n log n) even
+ * when it never prunes.
+ */
+function applyContentMatchBoosts(
+  scoredChunks: ScoredChunk[],
+  query: QueryPhrase,
+  limit: number,
+  maxResultsPerPage: number
+): void {
+  if (query.tokens.length < 2) {
+    return;
+  }
+  scoredChunks.sort(compareScoredChunks);
+  const maxBoost = PHRASE_MATCH_BOOST * MAX_PAGE_MATCH_MULTIPLIER;
+  let lastSelectedScore = Number.NEGATIVE_INFINITY;
+  let checkpoint = FIRST_CONTENT_BOOST_CHECKPOINT;
+  for (const [position, scored] of scoredChunks.entries()) {
+    if (scored.score + maxBoost < lastSelectedScore) {
+      return;
+    }
+    scored.score =
+      (scored.termScore + scoreContentMatchBoost(scored.chunk.text, query)) *
+      scored.multiplier;
+    if (position + 1 === checkpoint) {
+      checkpoint *= 2;
+      const boosted = scoredChunks
+        .slice(0, position + 1)
+        .sort(compareScoredChunks);
+      const selected = selectTopChunks(boosted, limit, maxResultsPerPage);
+      if (selected.length >= limit) {
+        lastSelectedScore = selected.at(-1)?.score ?? lastSelectedScore;
+      }
+    }
+  }
+}
+
 function requestError(message: string, status: number): never {
   throw new DocsSearchRequestError(message, status);
+}
+
+/**
+ * Error for an index this leadtype cannot search, or `undefined` when it can.
+ * A version bump means the tokenizer changed, so an older index would load
+ * and quietly miss matches the current rules expect.
+ */
+export function docsSearchIndexVersionError(
+  index: { version?: unknown },
+  source: string
+): Error | undefined {
+  if (index.version === DOCS_SEARCH_INDEX_VERSION) {
+    return;
+  }
+  return new Error(
+    `leadtype: ${source} uses an unsupported version (${String(index.version)}); this leadtype reads search index version ${DOCS_SEARCH_INDEX_VERSION}. Run \`leadtype generate\` with this leadtype version and deploy the complete docs output.`
+  );
 }
 
 export function isDocsSearchContentStoreCompatible(
@@ -922,7 +1316,7 @@ export function createDocsSearchIndex(
   );
   const documents: DocsSearchIndex["documents"] = [];
   const mutableChunks: MutableChunk[] = [];
-  const chunkTermCounts = new Map<number, MutableTermCounts>();
+  const chunkTermCounts = new Map<number, DocsSearchChunkTermCounts>();
 
   const docs = runTransformersSync(
     options.transformers,
@@ -961,6 +1355,10 @@ export function createDocsSearchIndex(
     }
     documents.push(entry);
 
+    // Only the page's first chunk carries its description. Repeating it in
+    // every chunk let a long description outrank the sections that answer
+    // the query.
+    let chunkDescription = description;
     for (const block of collectSectionBlocks(doc.content)) {
       const bodyParts = splitWithOverlap(
         block.text,
@@ -978,7 +1376,7 @@ export function createDocsSearchIndex(
         const codeText = codeParts[partIndex] ?? "";
         const chunkText = createChunkText(
           doc.title,
-          description,
+          chunkDescription,
           block.headingPath,
           [text, codeText].filter(Boolean).join("\n\n")
         );
@@ -1020,6 +1418,7 @@ export function createDocsSearchIndex(
               | undefined
         );
 
+        chunkDescription = "";
         const chunkIndex = mutableChunks.length;
         const chunkId = `chunk-${chunkIndex}`;
         const length = countDocsSearchTokens(transformedChunk.text);
@@ -1033,14 +1432,16 @@ export function createDocsSearchIndex(
           codeText: transformedChunk.codeText,
           length,
         });
-        chunkTermCounts.set(chunkIndex, {
-          title: countDocsSearchTerms(doc.title),
-          heading: countDocsSearchTerms(transformedChunk.headingPath.join(" ")),
-          body: countDocsSearchTerms(
-            [description, transformedChunk.text].join(" ")
-          ),
-          code: countDocsSearchTerms(transformedChunk.codeText),
-        });
+        chunkTermCounts.set(
+          chunkIndex,
+          countDocsSearchChunkTerms({
+            title: doc.title,
+            headingPath: transformedChunk.headingPath,
+            text: transformedChunk.text,
+            codeText: transformedChunk.codeText,
+            urlPath: doc.urlPath,
+          })
+        );
       }
     }
   }
@@ -1105,11 +1506,8 @@ export function searchDocs(
     return [];
   }
 
-  const weightedTerms = collectWeightedSearchTerms(
-    index,
-    queryTokens,
-    options.synonyms
-  );
+  const expansions = expandQueryTokens(index, queryTokens, options.synonyms);
+  const weightedTerms = mergeQueryExpansions(expansions);
   if (weightedTerms.length === 0) {
     return [];
   }
@@ -1158,30 +1556,41 @@ export function searchDocs(
   }
 
   const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
-  const scoredChunks: Array<{ chunk: DocsSearchChunk; score: number }> = [];
+  const maxResultsPerPage =
+    options.maxResultsPerPage ?? DEFAULT_MAX_RESULTS_PER_PAGE;
+  const scoredChunks: ScoredChunk[] = [];
+  const pageTokens = new Map<string, PageMatchTokens>();
   for (const [chunkId, score] of scores) {
     const chunk = readDocsContentChunk(index, chunkId, options.content);
     if (!chunk) {
       continue;
     }
+    const multiplier = pageMatchMultiplier(chunk, expansions, pageTokens);
     scoredChunks.push({
       chunk,
-      score: score + scoreContentMatchBoost(chunk.text, queryTokens),
+      termScore: score,
+      multiplier,
+      score: score * multiplier,
     });
   }
-  scoredChunks.sort((left, right) => {
-    if (right.score !== left.score) {
-      return right.score - left.score;
-    }
-    return left.chunk.absoluteUrl.localeCompare(right.chunk.absoluteUrl);
-  });
+  applyContentMatchBoosts(
+    scoredChunks,
+    {
+      tokens: queryTokens,
+      writtenWords: tokenizeWrittenWords(query).join(" "),
+    },
+    limit,
+    maxResultsPerPage
+  );
+  scoredChunks.sort(compareScoredChunks);
 
   // Excerpts are expensive string scans, so build them only for results
   // that survive the limit.
   const excerptTokens = Array.from(
     new Set([...queryTokens, ...weightedTerms.map(({ term }) => term)])
   );
-  return scoredChunks.slice(0, limit).map(({ chunk, score }) => {
+  const topChunks = selectTopChunks(scoredChunks, limit, maxResultsPerPage);
+  return topChunks.map(({ chunk, score }) => {
     const excerptText =
       chunk.text ||
       [chunk.title, chunk.description, ...chunk.headingPath].join(" ");
@@ -1489,6 +1898,7 @@ export const docsSearchDefaults = {
   maxChunkChars: DEFAULT_MAX_CHUNK_CHARS,
   maxContextChars: DEFAULT_MAX_CONTEXT_CHARS,
   maxQueryChars: DEFAULT_MAX_QUERY_CHARS,
+  maxResultsPerPage: DEFAULT_MAX_RESULTS_PER_PAGE,
   maxSources: DEFAULT_MAX_SOURCES,
   overlapChars: DEFAULT_OVERLAP_CHARS,
   searchLimit: DEFAULT_SEARCH_LIMIT,

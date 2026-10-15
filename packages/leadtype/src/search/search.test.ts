@@ -17,6 +17,7 @@ import {
   slugifyDocsHeading,
   validateDocsQuery,
 } from "./index";
+import { DOCS_SEARCH_INDEX_VERSION, tokenizeDocsSearchText } from "./search";
 
 const CHUNK_ANCHOR_INDEX = 2;
 
@@ -93,13 +94,29 @@ const cafe = "café";
   },
 ];
 
+/** Unrelated pages, so query terms have realistic document frequencies */
+const fillerDocs: DocsSearchDocument[] = [
+  "Scripts",
+  "Callbacks",
+  "Hooks",
+  "Theming",
+  "Iframes",
+].map((title) => ({
+  id: title,
+  title,
+  urlPath: `/docs/${title}`,
+  absoluteUrl: `https://leadtype.dev/docs/${title}`,
+  relativePath: title,
+  content: `## About ${title}\n\n${title} control what loads before a visitor chooses.`,
+}));
+
 describe("createDocsSearchIndex and searchDocs", () => {
   it("stores compact metadata separately from answer content", () => {
     const index = createDocsSearchIndex(docs, {
       generatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(index.version).toBe(3);
+    expect(index.version).toBe(DOCS_SEARCH_INDEX_VERSION);
     expect(index.documents[0]).toEqual([
       "quickstart",
       "Quickstart",
@@ -110,7 +127,7 @@ describe("createDocsSearchIndex and searchDocs", () => {
     ]);
     expect(index.chunks[0]).toHaveLength(6);
     expect(index.chunks[0]).not.toHaveProperty("text");
-    expect(index.content?.version).toBe(3);
+    expect(index.content?.version).toBe(DOCS_SEARCH_INDEX_VERSION);
     expect(index.content?.chunks[0]).toContain("Install the package");
     expect(index.content?.codeChunks).toHaveLength(index.chunks.length);
     expect(
@@ -307,6 +324,254 @@ describe("createDocsSearchIndex and searchDocs", () => {
 
     expect(index.documents).toEqual([]);
     expect(searchDocs(index, "unreleased")).toEqual([]);
+  });
+
+  it("splits camel-case and dotted names into searchable words", () => {
+    expect(tokenizeDocsSearchText("ConsentBanner in Next.js")).toEqual([
+      "consentbanner",
+      "consent",
+      "banner",
+      "next",
+      "js",
+      "nextjs",
+    ]);
+  });
+
+  it("ranks the page titled for the query above a release that repeats it", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "release",
+          title: "v1.3.0: Translations package, SSR consent, CLI telemetry",
+          description:
+            "Adds the translations package, backend translations and translations for the CLI.",
+          urlPath: "/changelog/1.3.0",
+          absoluteUrl: "https://leadtype.dev/changelog/1.3.0",
+          relativePath: "changelog/1.3.0",
+          content: [
+            "## New translations package\n\nTranslations ship as their own package.",
+            "## Backend\n\nThe backend serves translations.",
+            "## CLI\n\nThe CLI writes translations.",
+          ].join("\n\n"),
+        },
+        {
+          id: "translations",
+          title: "Translations",
+          description: "Change the copy and add languages.",
+          urlPath: "/docs/customization/translations",
+          absoluteUrl: "https://leadtype.dev/docs/customization/translations",
+          relativePath: "customization/translations",
+          content:
+            "## Change the copy\n\nOverride any string the banner and dialog show, then add a language your visitors read. Strings fall back to English when a key is missing.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "translations")[0]?.documentId).toBe(
+      "translations"
+    );
+  });
+
+  it("counts a camel-case title word once when matching the title", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "typescript",
+          title: "TypeScript",
+          urlPath: "/docs/typescript",
+          absoluteUrl: "https://leadtype.dev/docs/typescript",
+          relativePath: "typescript",
+          content: "## Types\n\nThe package ships its own types.",
+        },
+        {
+          id: "typescript-setup",
+          title: "Typescript setup",
+          urlPath: "/docs/typescript-setup",
+          absoluteUrl: "https://leadtype.dev/docs/typescript-setup",
+          relativePath: "typescript-setup",
+          content:
+            "## Configure\n\nSet strict in tsconfig for typescript projects.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "typescript")[0]?.documentId).toBe("typescript");
+  });
+
+  it("matches a phrase written as separate words across a dotted name", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "phrase",
+          title: "Routing",
+          urlPath: "/docs/routing",
+          absoluteUrl: "https://leadtype.dev/docs/routing",
+          relativePath: "routing",
+          content:
+            "## Routers\n\nThe Next.js app router renders on the server.",
+        },
+        {
+          id: "scattered",
+          title: "Routing guide",
+          urlPath: "/docs/routing-guide",
+          absoluteUrl: "https://leadtype.dev/docs/routing-guide",
+          relativePath: "routing-guide",
+          content:
+            "## Routers\n\nNext js routes the app. Next js renders the app.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "next js app")[0]?.documentId).toBe("phrase");
+  });
+
+  it("keeps a phrase match that only the phrase boost lifts into the results", () => {
+    // 60 pages that mention both words apart rank above the phrase match on
+    // term scores alone, enough for the content boost to set its bound.
+    const scattered = Array.from(
+      { length: 60 },
+      (_, page): DocsSearchDocument => ({
+        id: `guide-${page}`,
+        title: `Guide ${page}`,
+        urlPath: `/docs/guide-${page}`,
+        absoluteUrl: `https://leadtype.dev/docs/guide-${page}`,
+        relativePath: `guide-${page}`,
+        content: `## Setup\n\nThe banner ${page} opens first, then a visitor reads the consent text.`,
+      })
+    );
+    const index = createDocsSearchIndex(
+      [
+        ...scattered,
+        {
+          id: "phrase",
+          title: "Reference",
+          urlPath: "/docs/reference",
+          absoluteUrl: "https://leadtype.dev/docs/reference",
+          relativePath: "reference",
+          content:
+            "## Setup\n\nShow the consent banner once and the dialog lists every choice for each visitor who returns.",
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+    const top = (limit: number) =>
+      searchDocs(index, "consent banner", { limit }).map(
+        (result) => result.documentId
+      );
+
+    expect(top(5)[0]).toBe("phrase");
+    expect(top(5)).toEqual(top(1000).slice(0, 5));
+  });
+
+  it("matches words that only appear in the page URL", () => {
+    const quickstart = (framework: string): DocsSearchDocument => ({
+      id: framework,
+      title: "Quickstart",
+      urlPath: `/docs/frameworks/${framework}/quickstart`,
+      absoluteUrl: `https://leadtype.dev/docs/frameworks/${framework}/quickstart`,
+      relativePath: `frameworks/${framework}/quickstart`,
+      content: "## Install the package\n\nAdd the provider to your app.",
+    });
+    const index = createDocsSearchIndex(
+      [quickstart("react"), quickstart("vue")],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "vue quickstart")[0]?.documentId).toBe("vue");
+  });
+
+  it("centers the excerpt on a dotted name matched through its joined form", () => {
+    const intro =
+      "The consent runtime keeps a record of every choice a visitor makes. ".repeat(
+        5
+      );
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "frameworks",
+          title: "Frameworks",
+          urlPath: "/docs/frameworks",
+          absoluteUrl: "https://leadtype.dev/docs/frameworks",
+          relativePath: "frameworks",
+          content: `## Support\n\n${intro}Next.js renders the banner on the server.`,
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(searchDocs(index, "nextjs")[0]?.excerpt).toContain("Next.js");
+  });
+
+  it("finds a page whose only match is its URL", () => {
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "vue-quickstart",
+          title: "Quickstart",
+          urlPath: "/docs/frameworks/vue/quickstart",
+          absoluteUrl: "https://leadtype.dev/docs/frameworks/vue/quickstart",
+          relativePath: "frameworks/vue/quickstart",
+          content: "## Install the package\n\nAdd the plugin to your app.",
+        },
+        {
+          id: "comparison",
+          title: "Framework support",
+          urlPath: "/docs/frameworks",
+          absoluteUrl: "https://leadtype.dev/docs/frameworks",
+          relativePath: "frameworks",
+          content: "## Supported\n\nThe library works with Vue and React.",
+        },
+        ...fillerDocs,
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    expect(
+      searchDocs(index, "vue").map((result) => result.documentId)
+    ).toContain("vue-quickstart");
+  });
+
+  it("caps how many sections one page contributes before the limit", () => {
+    const sections = Array.from(
+      { length: 6 },
+      (_, section) =>
+        `## Analytics setup ${section}\n\nConfigure analytics step ${section}.`
+    ).join("\n\n");
+    const index = createDocsSearchIndex(
+      [
+        {
+          id: "long",
+          title: "Analytics",
+          urlPath: "/docs/analytics",
+          absoluteUrl: "https://leadtype.dev/docs/analytics",
+          relativePath: "analytics",
+          content: sections,
+        },
+        {
+          id: "other",
+          title: "Tag managers",
+          urlPath: "/docs/tag-managers",
+          absoluteUrl: "https://leadtype.dev/docs/tag-managers",
+          relativePath: "tag-managers",
+          content: "## Load analytics\n\nA tag manager can load analytics.",
+        },
+      ],
+      { generatedAt: "2026-01-01T00:00:00.000Z" }
+    );
+
+    const pages = (maxResultsPerPage?: number) =>
+      searchDocs(index, "analytics", { limit: 3, maxResultsPerPage }).map(
+        (result) => result.documentId
+      );
+    expect(pages()).toEqual(["long", "long", "other"]);
+    expect(pages(1)).toEqual(["long", "other"]);
   });
 
   it("falls back to prefix and typo-tolerant matches", () => {

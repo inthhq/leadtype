@@ -9,7 +9,7 @@ import {
   searchDocs,
 } from "../search/index.js";
 import {
-  countDocsSearchTerms,
+  countDocsSearchChunkTerms,
   DOCS_SEARCH_INDEX_VERSION,
   tokenizeDocsSearchText,
 } from "../search/search.js";
@@ -593,13 +593,20 @@ function assertNlwebArtifacts(artifacts: DocsArtifacts): void {
           ) {
             return false;
           }
+          const counts = countDocsSearchChunkTerms({
+            title: document[1],
+            headingPath: chunk[3],
+            text: contentText,
+            codeText,
+            urlPath: document[3],
+          });
           addExpectedVisiblePostings(
             expectedVisiblePostings,
             chunkIndex,
-            countDocsSearchTerms(document[1]),
-            countDocsSearchTerms(chunk[3].join(" ")),
-            countDocsSearchTerms([document[2], contentText].join(" ")),
-            countDocsSearchTerms(codeText)
+            counts.title,
+            counts.heading,
+            counts.body,
+            counts.code
           );
           chunkIds.add(chunkId);
           totalChunkLength += chunk[4];
@@ -686,20 +693,6 @@ function toNlwebResult(
       },
     },
   };
-}
-
-/** Search hits are heading-level; keep the best hit per page. */
-function dedupeByPage(results: DocsSearchResult[]): DocsSearchResult[] {
-  const seen = new Set<string>();
-  const deduped: DocsSearchResult[] = [];
-  for (const result of results) {
-    if (seen.has(result.urlPath)) {
-      continue;
-    }
-    seen.add(result.urlPath);
-    deduped.push(result);
-  }
-  return deduped;
 }
 
 function sseEvent(event: string, data: unknown): string {
@@ -838,12 +831,11 @@ export function createAskHandler(
 
       const site = resolveSite(config, artifacts);
       const productName = artifacts.manifest.product.name;
-      const hits = dedupeByPage(
-        searchDocs(artifacts.index, parsed.query, {
-          limit,
-          content: artifacts.content,
-        })
-      );
+      const hits = searchDocs(artifacts.index, parsed.query, {
+        limit,
+        maxResultsPerPage: 1,
+        content: artifacts.content,
+      });
       const results = hits.map((hit) => toNlwebResult(hit, site, productName));
       failureCode = NLWEB_ERROR_CODES.internalError;
 

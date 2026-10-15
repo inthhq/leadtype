@@ -15,7 +15,10 @@ import type {
   DocsSearchContentStore,
   DocsSearchIndex,
 } from "../search/index.js";
-import { isDocsSearchContentStoreCompatible } from "../search/search.js";
+import {
+  docsSearchIndexVersionError,
+  isDocsSearchContentStoreCompatible,
+} from "../search/search.js";
 
 /**
  * Subdirectory (under the artifacts base) that `generate` writes docs artifacts
@@ -88,6 +91,13 @@ export async function loadDocsArtifacts(
   );
   if (!index) {
     throw missingArtifactError(baseDir, SEARCH_INDEX_FILE);
+  }
+  const versionError = docsSearchIndexVersionError(
+    index,
+    path.join(docsDir, SEARCH_INDEX_FILE)
+  );
+  if (versionError) {
+    throw versionError;
   }
 
   const rawManifest = await readOptionalJson<unknown>(
