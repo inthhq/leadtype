@@ -326,7 +326,8 @@ export type MdxToMarkdownOptions = {
   ignoredGitAuthors?: string[];
   /**
    * Optional resolver for staged conversion inputs. When set, git enrichment
-   * runs against the original source file instead of the staged mirror path.
+   * and relative `<include>` paths resolve against the original source file
+   * instead of the staged mirror path.
    */
   gitSourcePath?: (filePath: string) => string | undefined;
   /**
@@ -865,14 +866,20 @@ async function prepareMdxConversion<
     content = frontmatterMatch[2] ?? "";
   }
 
+  const originalSourcePath = options.gitSourcePath?.(sourcePath);
+  const stagedFromSource =
+    originalSourcePath !== undefined && originalSourcePath !== sourcePath;
   const fileData =
-    options.includeResolutionCache || options.onDependency
+    options.includeResolutionCache || options.onDependency || stagedFromSource
       ? {
           ...(options.includeResolutionCache
             ? { _leadtypeIncludeCache: options.includeResolutionCache }
             : {}),
           ...(options.onDependency
             ? { _compiler: { addDependency: options.onDependency } }
+            : {}),
+          ...(stagedFromSource
+            ? { _leadtypeSourcePath: originalSourcePath }
             : {}),
         }
       : undefined;
@@ -892,7 +899,7 @@ async function prepareMdxConversion<
       : synthesizeFrontmatter(sourcePath, serializeTransformedAst(ast));
 
   if (enrichFromGitFlag) {
-    const gitSourcePath = options.gitSourcePath?.(sourcePath) ?? sourcePath;
+    const gitSourcePath = originalSourcePath ?? sourcePath;
     const enrichment =
       options.gitEnrichment ??
       (await enrichFromGit(gitSourcePath, options.ignoredGitAuthors));
