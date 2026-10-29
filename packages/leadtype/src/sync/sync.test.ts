@@ -611,7 +611,9 @@ describe("syncSources", () => {
         }),
         runner,
       })
-    ).rejects.toThrow(/git clone --branch main failed.*Could not resolve host/);
+    ).rejects.toThrow(
+      /git clone --branch main failed.*in-place refresh failed: git fetch main failed/
+    );
 
     expect(await readFile(path.join(cacheDir, "docs/index.mdx"), "utf8")).toBe(
       "cached\n"
@@ -914,7 +916,11 @@ describe("syncSources against a real git remote", () => {
         sources,
       });
 
-      expect(result.sources[0]).toMatchObject({ status: "fresh", commit });
+      expect(result.sources[0]).toMatchObject({
+        status: "fresh",
+        commit,
+        refreshError: expect.stringMatching(/^git (checkout|fetch) /),
+      });
       expect(
         await readFile(path.join(cacheDir, "docs/index.mdx"), "utf8")
       ).toBe("# Docs\n");

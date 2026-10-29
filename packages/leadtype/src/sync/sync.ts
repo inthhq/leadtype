@@ -507,6 +507,8 @@ export type SyncSourceResult = {
   source: SyncSource;
   status: SyncStatus;
   commit: string;
+  /** Why an in-place refresh failed and the source was cloned instead. */
+  refreshError?: string;
 };
 
 export type SyncResult = {
@@ -587,11 +589,24 @@ async function syncOne(
   // restore or an interrupted sync can leave a checkout git can no longer
   // fetch into or check out, and a fetch won't reliably repair it, so fall
   // back to a fresh clone when the in-place update fails.
+  let refreshError: Error | undefined;
   const refreshed =
     mode === "refresh" && hasCheckout && manifestMatches
-      ? await fastForwardExisting(source, runner).catch(() => null)
+      ? await fastForwardExisting(source, runner).catch((err: Error) => {
+          refreshError = err;
+          return null;
+        })
       : null;
-  const commit = refreshed ?? (await cloneRemote(source, runner));
+  const commit =
+    refreshed ??
+    (await cloneRemote(source, runner).catch((err: Error) => {
+      throw refreshError
+        ? new Error(
+            `${err.message} (cloned because the in-place refresh failed: ${refreshError.message})`,
+            { cause: refreshError }
+          )
+        : err;
+    }));
 
   await writeSyncManifest(source.cacheDir, {
     version: 1,
@@ -609,5 +624,10 @@ async function syncOne(
   // reported as "fresh" so callers can distinguish in-place updates from full
   // re-acquisition.
   const status: SyncStatus = refreshed === null ? "fresh" : "refreshed";
-  return { source, status, commit };
+  return {
+    source,
+    status,
+    commit,
+    ...(refreshError ? { refreshError: refreshError.message } : {}),
+  };
 }

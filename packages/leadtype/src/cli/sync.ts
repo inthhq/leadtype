@@ -149,6 +149,11 @@ export async function runSyncCommand(
         `${label}  ${entry.source.id}  ${entry.source.repository}@${entry.source.ref}  ${entry.commit.slice(0, 7)}  → ${entry.source.cacheDir}\n` +
           `          collections: ${entry.source.collectionKeys.join(", ")}\n`
       );
+      if (entry.refreshError) {
+        io.stderr.write(
+          `Warning: in-place refresh of ${entry.source.id} failed, so it was cloned instead: ${entry.refreshError}\n`
+        );
+      }
       if (entry.source.refKind === "mutable") {
         mutable.push(`${entry.source.id} (${entry.source.ref})`);
       }
