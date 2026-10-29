@@ -424,7 +424,8 @@ async function cloneRemote(
   // and a repository can't commit one, so a configured cache is never
   // mistaken for a backup, whatever its name. Cleanup is best-effort: the
   // clone already succeeded, and the next one sweeps again.
-  for (const entry of await readdir(parent)) {
+  const entries = await readdir(parent).catch(() => [] as string[]);
+  for (const entry of entries) {
     const candidate = path.join(parent, entry);
     if (
       entry.startsWith(backupPrefix) &&

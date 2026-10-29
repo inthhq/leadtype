@@ -746,6 +746,47 @@ describe("syncSources", () => {
     }
   });
 
+  it("keeps a finished clone when the cache's parent can't be listed", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, {});
+    // Writable and searchable but not readable: listing it fails on POSIX.
+    const parent = path.dirname(cacheDir);
+    await chmod(parent, 0o300);
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+        return ok();
+      }
+      return args[0] === "rev-parse" ? ok("newsha\n") : ok();
+    };
+
+    try {
+      const result = await syncSources({
+        mode: "auto",
+        configDir,
+        sources: sourcesFor({
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+          },
+        }),
+        runner,
+      });
+
+      expect(result.sources[0]).toMatchObject({
+        status: "fresh",
+        commit: "newsha",
+      });
+    } finally {
+      await chmod(parent, 0o755);
+    }
+  });
+
   it("offline errors when cache is missing", async () => {
     await expect(
       syncSources({
