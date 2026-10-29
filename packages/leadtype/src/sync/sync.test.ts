@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -571,6 +572,54 @@ describe("syncSources", () => {
     });
 
     expect(result.sources[0].status).toBe("fresh");
+  });
+
+  it("keeps the cache when refresh can't reach the remote", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, { "docs/index.mdx": "cached\n" });
+    const manifest = `${JSON.stringify({
+      version: 1,
+      repository: "https://github.com/example/repo",
+      ref: "main",
+      commit: "oldsha1",
+      syncedAt: "2026-05-14T00:00:00.000Z",
+    })}\n`;
+    await writeFile(path.join(cacheDir, SYNC_MANIFEST_FILE), manifest);
+
+    // The in-place fetch fails, so sync falls back to a clone, which fails
+    // the same way. The clone target exists by then, as a real git leaves it.
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+      }
+      return fail("fatal: unable to access: Could not resolve host");
+    };
+
+    await expect(
+      syncSources({
+        mode: "refresh",
+        configDir,
+        sources: sourcesFor({
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+          },
+        }),
+        runner,
+      })
+    ).rejects.toThrow(/git clone --branch main failed.*Could not resolve host/);
+
+    expect(await readFile(path.join(cacheDir, "docs/index.mdx"), "utf8")).toBe(
+      "cached\n"
+    );
+    expect(
+      await readFile(path.join(cacheDir, SYNC_MANIFEST_FILE), "utf8")
+    ).toBe(manifest);
+    expect(existsSync(`${cacheDir}.previous`)).toBe(false);
   });
 
   it("offline errors when cache is missing", async () => {

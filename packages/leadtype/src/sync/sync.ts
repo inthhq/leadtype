@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import type { ResolvedGitSource, ResolvedSource } from "../config/types";
 import { writeFileAtomic } from "../internal/atomic-fs";
@@ -375,15 +375,39 @@ async function applySparsePaths(
   }
 }
 
+/**
+ * Replace the cache with a fresh clone. The old checkout is moved aside rather
+ * than deleted, so a clone that fails (offline, auth, git missing) puts it
+ * back instead of leaving nothing to build from.
+ */
 async function cloneRemote(
   source: ResolvedRemoteSource,
   runner: GitRunner
 ): Promise<string> {
   await mkdir(path.dirname(source.cacheDir), { recursive: true });
-  if (existsSync(source.cacheDir)) {
-    await rm(source.cacheDir, { recursive: true, force: true });
+  const previous = `${source.cacheDir}.previous`;
+  await rm(previous, { recursive: true, force: true });
+  const hadPrevious = existsSync(source.cacheDir);
+  if (hadPrevious) {
+    await rename(source.cacheDir, previous);
   }
+  try {
+    const commit = await cloneInto(source, runner);
+    await rm(previous, { recursive: true, force: true });
+    return commit;
+  } catch (err) {
+    if (hadPrevious) {
+      await rm(source.cacheDir, { recursive: true, force: true });
+      await rename(previous, source.cacheDir);
+    }
+    throw err;
+  }
+}
 
+async function cloneInto(
+  source: ResolvedRemoteSource,
+  runner: GitRunner
+): Promise<string> {
   // A sparse clone is blobless and checks out nothing up front: the paths are
   // selected after cloning, so git only ever fetches the blobs behind them.
   // That is the difference between pulling one docs directory and pulling an
