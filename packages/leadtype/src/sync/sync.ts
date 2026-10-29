@@ -7,6 +7,7 @@ import {
   readFile,
   rename,
   rm,
+  writeFile,
 } from "node:fs/promises";
 import path from "node:path";
 import type { ResolvedGitSource, ResolvedSource } from "../config/types";
@@ -47,8 +48,8 @@ export const SYNC_MANIFEST_FILE = ".leadtype-sync.json";
 // Git allows abbreviating a commit SHA to 7+ hex characters; full SHAs are 40.
 const MIN_SHA_LENGTH = 7;
 const MAX_SHA_LENGTH = 40;
-// mkdtemp appends six random characters to its prefix.
-const MKDTEMP_SUFFIX_LENGTH = 6;
+/** Marks a directory as a cache backup that sync created and may delete. */
+const SYNC_BACKUP_MARKER_FILE = ".leadtype-sync-backup";
 const SHA_PATTERN = new RegExp(
   `^[0-9a-f]{${MIN_SHA_LENGTH},${MAX_SHA_LENGTH}}$`,
   "i"
@@ -395,15 +396,17 @@ async function cloneRemote(
 ): Promise<string> {
   const parent = path.dirname(source.cacheDir);
   await mkdir(parent, { recursive: true });
-  // A sync killed mid-clone leaves its backup behind. Sweep those first,
-  // matching only the exact names mkdtemp gives this source's backups.
+  // A sync killed mid-clone leaves its backup behind. Sweep those first. Only
+  // directories holding the marker sync wrote are removed, so a configured
+  // cache is never mistaken for a backup, whatever its name.
   const backupPrefix = `.${path.basename(source.cacheDir)}-previous-`;
   for (const entry of await readdir(parent)) {
+    const candidate = path.join(parent, entry);
     if (
       entry.startsWith(backupPrefix) &&
-      entry.length === backupPrefix.length + MKDTEMP_SUFFIX_LENGTH
+      existsSync(path.join(candidate, SYNC_BACKUP_MARKER_FILE))
     ) {
-      await rm(path.join(parent, entry), { recursive: true, force: true });
+      await rm(candidate, { recursive: true, force: true });
     }
   }
   // mkdtemp creates a new directory, so the backup can't land on another
@@ -412,7 +415,8 @@ async function cloneRemote(
     ? await mkdtemp(path.join(parent, backupPrefix))
     : null;
   const previous = backupDir ? path.join(backupDir, "checkout") : null;
-  if (previous) {
+  if (backupDir && previous) {
+    await writeFile(path.join(backupDir, SYNC_BACKUP_MARKER_FILE), "");
     await rename(source.cacheDir, previous);
   }
   let commit: string;

@@ -632,21 +632,24 @@ describe("syncSources", () => {
     ]);
   });
 
-  it("sweeps its own old backups but not a sibling cache when it re-clones", async () => {
-    // Ref `main.previous` caches next to ref `main`, at the path a fixed
-    // backup name like `<cacheDir>.previous` would use.
+  it("sweeps its own old backups but no other cache when it re-clones", async () => {
     const cacheDir = path.resolve(
       configDir,
       ".leadtype/sources/example-repo@main"
     );
+    const parent = path.dirname(cacheDir);
+    const name = path.basename(cacheDir);
     await seedFakeCheckout(cacheDir, { "docs/index.mdx": "old\n" });
+    // Ref `main.previous` caches next to ref `main`, at the path a fixed
+    // backup name like `<cacheDir>.previous` would use.
     await seedFakeCheckout(`${cacheDir}.previous`, { "keep.mdx": "keep\n" });
+    // A configured cacheDir can also look like a backup name.
+    const lookalike = path.join(parent, `.${name}-previous-Zz99Yy`);
+    await seedFakeCheckout(lookalike, { "keep.mdx": "keep\n" });
     // A backup orphaned by an earlier sync killed mid-clone.
-    const orphan = path.join(
-      path.dirname(cacheDir),
-      `.${path.basename(cacheDir)}-previous-Ab12Cd`
-    );
+    const orphan = path.join(parent, `.${name}-previous-Ab12Cd`);
     await seedFakeCheckout(path.join(orphan, "checkout"), {});
+    await writeFile(path.join(orphan, ".leadtype-sync-backup"), "");
 
     const runner: GitRunner = async (args) => {
       if (args[0] === "clone") {
@@ -672,10 +675,12 @@ describe("syncSources", () => {
     expect(
       await readFile(path.join(`${cacheDir}.previous`, "keep.mdx"), "utf8")
     ).toBe("keep\n");
-    expect((await readdir(path.dirname(cacheDir))).sort()).toEqual([
-      path.basename(cacheDir),
-      `${path.basename(cacheDir)}.previous`,
-    ]);
+    expect(await readFile(path.join(lookalike, "keep.mdx"), "utf8")).toBe(
+      "keep\n"
+    );
+    expect((await readdir(parent)).sort()).toEqual(
+      [path.basename(lookalike), name, `${name}.previous`].sort()
+    );
   });
 
   it("offline errors when cache is missing", async () => {
