@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import type { ResolvedGitSource, ResolvedSource } from "../config/types";
 import { writeFileAtomic } from "../internal/atomic-fs";
@@ -384,24 +384,34 @@ async function cloneRemote(
   source: ResolvedRemoteSource,
   runner: GitRunner
 ): Promise<string> {
-  await mkdir(path.dirname(source.cacheDir), { recursive: true });
-  const previous = `${source.cacheDir}.previous`;
-  await rm(previous, { recursive: true, force: true });
-  const hadPrevious = existsSync(source.cacheDir);
-  if (hadPrevious) {
+  const parent = path.dirname(source.cacheDir);
+  await mkdir(parent, { recursive: true });
+  // mkdtemp creates a new directory, so the backup can't land on another
+  // source's cache.
+  const backupDir = existsSync(source.cacheDir)
+    ? await mkdtemp(
+        path.join(parent, `.${path.basename(source.cacheDir)}-previous-`)
+      )
+    : null;
+  const previous = backupDir ? path.join(backupDir, "checkout") : null;
+  if (previous) {
     await rename(source.cacheDir, previous);
   }
+  let commit: string;
   try {
-    const commit = await cloneInto(source, runner);
-    await rm(previous, { recursive: true, force: true });
-    return commit;
+    commit = await cloneInto(source, runner);
   } catch (err) {
-    if (hadPrevious) {
+    if (backupDir && previous) {
       await rm(source.cacheDir, { recursive: true, force: true });
       await rename(previous, source.cacheDir);
+      await rm(backupDir, { recursive: true, force: true });
     }
     throw err;
   }
+  if (backupDir) {
+    await rm(backupDir, { recursive: true, force: true });
+  }
+  return commit;
 }
 
 async function cloneInto(

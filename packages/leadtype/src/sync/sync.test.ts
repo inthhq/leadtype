@@ -1,6 +1,12 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -621,7 +627,49 @@ describe("syncSources", () => {
     expect(
       await readFile(path.join(cacheDir, SYNC_MANIFEST_FILE), "utf8")
     ).toBe(manifest);
-    expect(existsSync(`${cacheDir}.previous`)).toBe(false);
+    expect(await readdir(path.dirname(cacheDir))).toEqual([
+      path.basename(cacheDir),
+    ]);
+  });
+
+  it("leaves a sibling cache alone when it re-clones", async () => {
+    // Ref `main.previous` caches next to ref `main`, at the path a fixed
+    // backup name like `<cacheDir>.previous` would use.
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, { "docs/index.mdx": "old\n" });
+    await seedFakeCheckout(`${cacheDir}.previous`, { "keep.mdx": "keep\n" });
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+        return ok();
+      }
+      return args[0] === "rev-parse" ? ok("newsha\n") : ok();
+    };
+
+    await syncSources({
+      mode: "auto",
+      configDir,
+      sources: sourcesFor({
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+        },
+      }),
+      runner,
+    });
+
+    expect(
+      await readFile(path.join(`${cacheDir}.previous`, "keep.mdx"), "utf8")
+    ).toBe("keep\n");
+    expect((await readdir(path.dirname(cacheDir))).sort()).toEqual([
+      path.basename(cacheDir),
+      `${path.basename(cacheDir)}.previous`,
+    ]);
   });
 
   it("offline errors when cache is missing", async () => {
