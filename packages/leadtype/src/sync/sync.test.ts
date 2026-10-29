@@ -632,7 +632,7 @@ describe("syncSources", () => {
     ]);
   });
 
-  it("leaves a sibling cache alone when it re-clones", async () => {
+  it("sweeps its own old backups but not a sibling cache when it re-clones", async () => {
     // Ref `main.previous` caches next to ref `main`, at the path a fixed
     // backup name like `<cacheDir>.previous` would use.
     const cacheDir = path.resolve(
@@ -641,6 +641,12 @@ describe("syncSources", () => {
     );
     await seedFakeCheckout(cacheDir, { "docs/index.mdx": "old\n" });
     await seedFakeCheckout(`${cacheDir}.previous`, { "keep.mdx": "keep\n" });
+    // A backup orphaned by an earlier sync killed mid-clone.
+    const orphan = path.join(
+      path.dirname(cacheDir),
+      `.${path.basename(cacheDir)}-previous-Ab12Cd`
+    );
+    await seedFakeCheckout(path.join(orphan, "checkout"), {});
 
     const runner: GitRunner = async (args) => {
       if (args[0] === "clone") {
