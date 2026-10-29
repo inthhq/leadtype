@@ -559,10 +559,15 @@ async function syncOne(
     return { source, status: "cached", commit: manifest.commit };
   }
 
-  const refreshInPlace = mode === "refresh" && hasCheckout && manifestMatches;
-  const commit = refreshInPlace
-    ? await fastForwardExisting(source, runner)
-    : await cloneRemote(source, runner);
+  // A matching manifest says nothing about the object store. A partial cache
+  // restore or an interrupted sync can leave a checkout git can no longer
+  // fetch into or check out, and a fetch won't reliably repair it, so fall
+  // back to a fresh clone when the in-place update fails.
+  const refreshed =
+    mode === "refresh" && hasCheckout && manifestMatches
+      ? await fastForwardExisting(source, runner).catch(() => null)
+      : null;
+  const commit = refreshed ?? (await cloneRemote(source, runner));
 
   await writeSyncManifest(source.cacheDir, {
     version: 1,
@@ -576,8 +581,9 @@ async function syncOne(
   });
 
   // "refreshed" means we fast-forwarded an existing checkout. A destructive
-  // re-clone (no prior checkout, or stale ref) is reported as "fresh" so
-  // callers can distinguish in-place updates from full re-acquisition.
-  const status: SyncStatus = refreshInPlace ? "refreshed" : "fresh";
+  // re-clone (no prior checkout, stale ref, or a failed in-place update) is
+  // reported as "fresh" so callers can distinguish in-place updates from full
+  // re-acquisition.
+  const status: SyncStatus = refreshed === null ? "fresh" : "refreshed";
   return { source, status, commit };
 }

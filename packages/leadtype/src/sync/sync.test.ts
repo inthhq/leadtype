@@ -1,6 +1,8 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { normalizeDocsConfig } from "../config/normalize";
 import { type DocsCollection, type DocsConfig, gitSource } from "../llm/llm";
@@ -19,6 +21,20 @@ import {
 } from "./sync";
 
 type RecordedCall = { args: string[]; cwd?: string };
+
+const execFileAsync = promisify(execFile);
+
+/** Run real git for fixtures, ignoring any repository a git hook points at. */
+async function gitFixture(args: string[], cwd: string): Promise<string> {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("GIT_")) {
+      delete env[key];
+    }
+  }
+  const { stdout } = await execFileAsync("git", args, { cwd, env });
+  return stdout.trim();
+}
 
 const product = { name: "Example", tagline: "Example docs." };
 
@@ -782,6 +798,80 @@ describe("syncSources", () => {
       })
     ).rejects.toThrow(/something else broke/);
   });
+});
+
+describe("syncSources against a real git remote", () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "leadtype-sync-git-"));
+  });
+
+  afterEach(async () => {
+    await rm(root, { force: true, recursive: true });
+  });
+
+  for (const refKind of ["commit", "branch"] as const) {
+    it(`refresh re-clones a ${refKind} cache whose objects are missing`, async () => {
+      const work = path.join(root, "work");
+      await mkdir(path.join(work, "docs"), { recursive: true });
+      await writeFile(path.join(work, "docs/index.mdx"), "# Docs\n");
+      await gitFixture(["init", "-b", "main"], work);
+      await gitFixture(["add", "."], work);
+      await gitFixture(
+        [
+          "-c",
+          "user.name=Leadtype Test",
+          "-c",
+          "user.email=test@example.com",
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "-m",
+          "Add docs",
+        ],
+        work
+      );
+      const commit = await gitFixture(["rev-parse", "HEAD"], work);
+      const tree = await gitFixture(["rev-parse", "HEAD^{tree}"], work);
+      const remote = path.join(root, "remote.git");
+      await gitFixture(["clone", "--bare", "--", work, remote], root);
+
+      const sources = sourcesFor({
+        docs: {
+          repository: remote,
+          ref: refKind === "commit" ? commit : "main",
+          dir: "docs",
+        },
+      });
+      const first = await syncSources({
+        mode: "auto",
+        configDir: root,
+        sources,
+      });
+      const { cacheDir } = first.sources[0].source;
+
+      // A local clone hardlinks loose objects, so the commit's root tree is a
+      // file we can delete. That leaves a cache whose manifest still matches
+      // but whose object store can't check the commit out, as a partial cache
+      // restore or an interrupted sync can.
+      await rm(
+        path.join(cacheDir, ".git/objects", tree.slice(0, 2), tree.slice(2))
+      );
+
+      const result = await syncSources({
+        mode: "refresh",
+        configDir: root,
+        sources,
+      });
+
+      expect(result.sources[0]).toMatchObject({ status: "fresh", commit });
+      expect(
+        await readFile(path.join(cacheDir, "docs/index.mdx"), "utf8")
+      ).toBe("# Docs\n");
+      await gitFixture(["cat-file", "-e", `${commit}^{tree}`], cacheDir);
+    });
+  }
 });
 
 /**
