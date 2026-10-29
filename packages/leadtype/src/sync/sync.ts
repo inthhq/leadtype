@@ -422,7 +422,8 @@ async function cloneRemote(
   // any left by a sync killed mid-clone. A backup holds sync's marker and no
   // `.git` of its own; every cache sync checks out has a `.git` at its root,
   // and a repository can't commit one, so a configured cache is never
-  // mistaken for a backup, whatever its name.
+  // mistaken for a backup, whatever its name. Cleanup is best-effort: the
+  // clone already succeeded, and the next one sweeps again.
   for (const entry of await readdir(parent)) {
     const candidate = path.join(parent, entry);
     if (
@@ -430,7 +431,9 @@ async function cloneRemote(
       existsSync(path.join(candidate, SYNC_BACKUP_MARKER_FILE)) &&
       !existsSync(path.join(candidate, ".git"))
     ) {
-      await rm(candidate, { recursive: true, force: true });
+      await rm(candidate, { recursive: true, force: true }).catch(
+        () => undefined
+      );
     }
   }
   return commit;

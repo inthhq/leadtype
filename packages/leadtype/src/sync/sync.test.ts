@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readdir,
@@ -693,6 +694,56 @@ describe("syncSources", () => {
     expect((await readdir(parent)).sort()).toEqual(
       [path.basename(lookalike), name, `${name}.previous`].sort()
     );
+  });
+
+  it("keeps a finished clone when an old backup can't be removed", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, {});
+    // A read-only orphaned backup: removing what's inside it fails on POSIX.
+    const orphan = path.join(
+      path.dirname(cacheDir),
+      `.${path.basename(cacheDir)}-previous-Ab12Cd`
+    );
+    await seedFakeCheckout(path.join(orphan, "checkout"), {});
+    await writeFile(path.join(orphan, ".leadtype-sync-backup"), "");
+    await chmod(orphan, 0o555);
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+        return ok();
+      }
+      return args[0] === "rev-parse" ? ok("newsha\n") : ok();
+    };
+
+    try {
+      const result = await syncSources({
+        mode: "auto",
+        configDir,
+        sources: sourcesFor({
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+          },
+        }),
+        runner,
+      });
+
+      expect(result.sources[0]).toMatchObject({
+        status: "fresh",
+        commit: "newsha",
+      });
+      const manifest = JSON.parse(
+        await readFile(path.join(cacheDir, SYNC_MANIFEST_FILE), "utf8")
+      );
+      expect(manifest.commit).toBe("newsha");
+    } finally {
+      await chmod(orphan, 0o755).catch(() => undefined);
+    }
   });
 
   it("offline errors when cache is missing", async () => {
