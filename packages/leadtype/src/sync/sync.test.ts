@@ -594,6 +594,14 @@ describe("syncSources", () => {
       syncedAt: "2026-05-14T00:00:00.000Z",
     })}\n`;
     await writeFile(path.join(cacheDir, SYNC_MANIFEST_FILE), manifest);
+    // A backup left by an earlier sync killed mid-clone may hold the last
+    // good checkout, so a failed clone must not delete it.
+    const orphan = path.join(
+      path.dirname(cacheDir),
+      `.${path.basename(cacheDir)}-previous-Ab12Cd`
+    );
+    await seedFakeCheckout(path.join(orphan, "checkout"), {});
+    await writeFile(path.join(orphan, ".leadtype-sync-backup"), "");
 
     // The in-place fetch fails, so sync falls back to a clone, which fails
     // the same way. The clone target exists by then, as a real git leaves it.
@@ -627,9 +635,9 @@ describe("syncSources", () => {
     expect(
       await readFile(path.join(cacheDir, SYNC_MANIFEST_FILE), "utf8")
     ).toBe(manifest);
-    expect(await readdir(path.dirname(cacheDir))).toEqual([
-      path.basename(cacheDir),
-    ]);
+    expect((await readdir(path.dirname(cacheDir))).sort()).toEqual(
+      [path.basename(cacheDir), path.basename(orphan)].sort()
+    );
   });
 
   it("sweeps its own old backups but no other cache when it re-clones", async () => {
