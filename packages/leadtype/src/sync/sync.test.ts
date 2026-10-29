@@ -643,9 +643,13 @@ describe("syncSources", () => {
     // Ref `main.previous` caches next to ref `main`, at the path a fixed
     // backup name like `<cacheDir>.previous` would use.
     await seedFakeCheckout(`${cacheDir}.previous`, { "keep.mdx": "keep\n" });
-    // A configured cacheDir can also look like a backup name.
+    // A configured cacheDir can also look like a backup, down to a committed
+    // marker file.
     const lookalike = path.join(parent, `.${name}-previous-Zz99Yy`);
-    await seedFakeCheckout(lookalike, { "keep.mdx": "keep\n" });
+    await seedFakeCheckout(lookalike, {
+      ".leadtype-sync-backup": "",
+      "keep.mdx": "keep\n",
+    });
     // A backup orphaned by an earlier sync killed mid-clone.
     const orphan = path.join(parent, `.${name}-previous-Ab12Cd`);
     await seedFakeCheckout(path.join(orphan, "checkout"), {});

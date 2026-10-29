@@ -396,15 +396,17 @@ async function cloneRemote(
 ): Promise<string> {
   const parent = path.dirname(source.cacheDir);
   await mkdir(parent, { recursive: true });
-  // A sync killed mid-clone leaves its backup behind. Sweep those first. Only
-  // directories holding the marker sync wrote are removed, so a configured
-  // cache is never mistaken for a backup, whatever its name.
+  // A sync killed mid-clone leaves its backup behind. Sweep those first. A
+  // backup holds sync's marker and no `.git` of its own; every cache sync
+  // checks out has a `.git` at its root, and a repository can't commit one, so
+  // a configured cache is never mistaken for a backup, whatever its name.
   const backupPrefix = `.${path.basename(source.cacheDir)}-previous-`;
   for (const entry of await readdir(parent)) {
     const candidate = path.join(parent, entry);
     if (
       entry.startsWith(backupPrefix) &&
-      existsSync(path.join(candidate, SYNC_BACKUP_MARKER_FILE))
+      existsSync(path.join(candidate, SYNC_BACKUP_MARKER_FILE)) &&
+      !existsSync(path.join(candidate, ".git"))
     ) {
       await rm(candidate, { recursive: true, force: true });
     }
