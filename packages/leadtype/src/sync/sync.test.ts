@@ -921,6 +921,8 @@ describe("syncSources against a real git remote", () => {
       const work = path.join(root, "work");
       await mkdir(path.join(work, "docs"), { recursive: true });
       await writeFile(path.join(work, "docs/index.mdx"), "# Docs\n");
+      // Windows runners set core.autocrlf, which would rewrite line endings.
+      await writeFile(path.join(work, ".gitattributes"), "* -text\n");
       await gitFixture(["init", "-b", "main"], work);
       await gitFixture(["add", "."], work);
       await gitFixture(
