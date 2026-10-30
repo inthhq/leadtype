@@ -1,6 +1,16 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { normalizeDocsConfig } from "../config/normalize";
 import { type DocsCollection, type DocsConfig, gitSource } from "../llm/llm";
@@ -19,6 +29,20 @@ import {
 } from "./sync";
 
 type RecordedCall = { args: string[]; cwd?: string };
+
+const execFileAsync = promisify(execFile);
+
+/** Run real git for fixtures, ignoring any repository a git hook points at. */
+async function gitFixture(args: string[], cwd: string): Promise<string> {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("GIT_")) {
+      delete env[key];
+    }
+  }
+  const { stdout } = await execFileAsync("git", args, { cwd, env });
+  return stdout.trim();
+}
 
 const product = { name: "Example", tagline: "Example docs." };
 
@@ -557,6 +581,212 @@ describe("syncSources", () => {
     expect(result.sources[0].status).toBe("fresh");
   });
 
+  it("keeps the cache when refresh can't reach the remote", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, { "docs/index.mdx": "cached\n" });
+    const manifest = `${JSON.stringify({
+      version: 1,
+      repository: "https://github.com/example/repo",
+      ref: "main",
+      commit: "oldsha1",
+      syncedAt: "2026-05-14T00:00:00.000Z",
+    })}\n`;
+    await writeFile(path.join(cacheDir, SYNC_MANIFEST_FILE), manifest);
+    // A backup left by an earlier sync killed mid-clone may hold the last
+    // good checkout, so a failed clone must not delete it.
+    const orphan = path.join(
+      path.dirname(cacheDir),
+      `.${path.basename(cacheDir)}-previous-Ab12Cd`
+    );
+    await seedFakeCheckout(path.join(orphan, "checkout"), {});
+    await writeFile(path.join(orphan, ".leadtype-sync-backup"), "");
+
+    // The in-place fetch fails, so sync falls back to a clone, which fails
+    // the same way. The clone target exists by then, as a real git leaves it.
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+      }
+      return fail("fatal: unable to access: Could not resolve host");
+    };
+
+    await expect(
+      syncSources({
+        mode: "refresh",
+        configDir,
+        sources: sourcesFor({
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+          },
+        }),
+        runner,
+      })
+    ).rejects.toThrow(
+      /git clone --branch main failed.*in-place refresh failed: git fetch main failed/
+    );
+
+    expect(await readFile(path.join(cacheDir, "docs/index.mdx"), "utf8")).toBe(
+      "cached\n"
+    );
+    expect(
+      await readFile(path.join(cacheDir, SYNC_MANIFEST_FILE), "utf8")
+    ).toBe(manifest);
+    expect((await readdir(path.dirname(cacheDir))).sort()).toEqual(
+      [path.basename(cacheDir), path.basename(orphan)].sort()
+    );
+  });
+
+  it("sweeps its own old backups but no other cache when it re-clones", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    const parent = path.dirname(cacheDir);
+    const name = path.basename(cacheDir);
+    await seedFakeCheckout(cacheDir, { "docs/index.mdx": "old\n" });
+    // Ref `main.previous` caches next to ref `main`, at the path a fixed
+    // backup name like `<cacheDir>.previous` would use.
+    await seedFakeCheckout(`${cacheDir}.previous`, { "keep.mdx": "keep\n" });
+    // A configured cacheDir can also look like a backup, down to a committed
+    // marker file.
+    const lookalike = path.join(parent, `.${name}-previous-Zz99Yy`);
+    await seedFakeCheckout(lookalike, {
+      ".leadtype-sync-backup": "",
+      "keep.mdx": "keep\n",
+    });
+    // A backup orphaned by an earlier sync killed mid-clone.
+    const orphan = path.join(parent, `.${name}-previous-Ab12Cd`);
+    await seedFakeCheckout(path.join(orphan, "checkout"), {});
+    await writeFile(path.join(orphan, ".leadtype-sync-backup"), "");
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+        return ok();
+      }
+      return args[0] === "rev-parse" ? ok("newsha\n") : ok();
+    };
+
+    await syncSources({
+      mode: "auto",
+      configDir,
+      sources: sourcesFor({
+        docs: {
+          repository: "https://github.com/example/repo",
+          ref: "main",
+          dir: "docs",
+        },
+      }),
+      runner,
+    });
+
+    expect(
+      await readFile(path.join(`${cacheDir}.previous`, "keep.mdx"), "utf8")
+    ).toBe("keep\n");
+    expect(await readFile(path.join(lookalike, "keep.mdx"), "utf8")).toBe(
+      "keep\n"
+    );
+    expect((await readdir(parent)).sort()).toEqual(
+      [path.basename(lookalike), name, `${name}.previous`].sort()
+    );
+  });
+
+  it("keeps a finished clone when an old backup can't be removed", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, {});
+    // A read-only orphaned backup: removing what's inside it fails on POSIX.
+    const orphan = path.join(
+      path.dirname(cacheDir),
+      `.${path.basename(cacheDir)}-previous-Ab12Cd`
+    );
+    await seedFakeCheckout(path.join(orphan, "checkout"), {});
+    await writeFile(path.join(orphan, ".leadtype-sync-backup"), "");
+    await chmod(orphan, 0o555);
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+        return ok();
+      }
+      return args[0] === "rev-parse" ? ok("newsha\n") : ok();
+    };
+
+    try {
+      const result = await syncSources({
+        mode: "auto",
+        configDir,
+        sources: sourcesFor({
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+          },
+        }),
+        runner,
+      });
+
+      expect(result.sources[0]).toMatchObject({
+        status: "fresh",
+        commit: "newsha",
+      });
+      const manifest = JSON.parse(
+        await readFile(path.join(cacheDir, SYNC_MANIFEST_FILE), "utf8")
+      );
+      expect(manifest.commit).toBe("newsha");
+    } finally {
+      await chmod(orphan, 0o755).catch(() => undefined);
+    }
+  });
+
+  it("keeps a finished clone when the cache's parent can't be listed", async () => {
+    const cacheDir = path.resolve(
+      configDir,
+      ".leadtype/sources/example-repo@main"
+    );
+    await seedFakeCheckout(cacheDir, {});
+    // Writable and searchable but not readable: listing it fails on POSIX.
+    const parent = path.dirname(cacheDir);
+    await chmod(parent, 0o300);
+
+    const runner: GitRunner = async (args) => {
+      if (args[0] === "clone") {
+        await seedFakeCheckout(args.at(-1) as string, {});
+        return ok();
+      }
+      return args[0] === "rev-parse" ? ok("newsha\n") : ok();
+    };
+
+    try {
+      const result = await syncSources({
+        mode: "auto",
+        configDir,
+        sources: sourcesFor({
+          docs: {
+            repository: "https://github.com/example/repo",
+            ref: "main",
+            dir: "docs",
+          },
+        }),
+        runner,
+      });
+
+      expect(result.sources[0]).toMatchObject({
+        status: "fresh",
+        commit: "newsha",
+      });
+    } finally {
+      await chmod(parent, 0o755);
+    }
+  });
+
   it("offline errors when cache is missing", async () => {
     await expect(
       syncSources({
@@ -782,6 +1012,86 @@ describe("syncSources", () => {
       })
     ).rejects.toThrow(/something else broke/);
   });
+});
+
+describe("syncSources against a real git remote", () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "leadtype-sync-git-"));
+  });
+
+  afterEach(async () => {
+    await rm(root, { force: true, recursive: true });
+  });
+
+  for (const refKind of ["commit", "branch"] as const) {
+    it(`refresh re-clones a ${refKind} cache whose objects are missing`, async () => {
+      const work = path.join(root, "work");
+      await mkdir(path.join(work, "docs"), { recursive: true });
+      await writeFile(path.join(work, "docs/index.mdx"), "# Docs\n");
+      // Windows runners set core.autocrlf, which would rewrite line endings.
+      await writeFile(path.join(work, ".gitattributes"), "* -text\n");
+      await gitFixture(["init", "-b", "main"], work);
+      await gitFixture(["add", "."], work);
+      await gitFixture(
+        [
+          "-c",
+          "user.name=Leadtype Test",
+          "-c",
+          "user.email=test@example.com",
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "-m",
+          "Add docs",
+        ],
+        work
+      );
+      const commit = await gitFixture(["rev-parse", "HEAD"], work);
+      const tree = await gitFixture(["rev-parse", "HEAD^{tree}"], work);
+      const remote = path.join(root, "remote.git");
+      await gitFixture(["clone", "--bare", "--", work, remote], root);
+
+      const sources = sourcesFor({
+        docs: {
+          repository: remote,
+          ref: refKind === "commit" ? commit : "main",
+          dir: "docs",
+        },
+      });
+      const first = await syncSources({
+        mode: "auto",
+        configDir: root,
+        sources,
+      });
+      const { cacheDir } = first.sources[0].source;
+
+      // A local clone hardlinks loose objects, so the commit's root tree is a
+      // file we can delete. That leaves a cache whose manifest still matches
+      // but whose object store can't check the commit out, as a partial cache
+      // restore or an interrupted sync can.
+      await rm(
+        path.join(cacheDir, ".git/objects", tree.slice(0, 2), tree.slice(2))
+      );
+
+      const result = await syncSources({
+        mode: "refresh",
+        configDir: root,
+        sources,
+      });
+
+      expect(result.sources[0]).toMatchObject({
+        status: "fresh",
+        commit,
+        refreshError: expect.stringMatching(/^git (checkout|fetch) /),
+      });
+      expect(
+        await readFile(path.join(cacheDir, "docs/index.mdx"), "utf8")
+      ).toBe("# Docs\n");
+      await gitFixture(["cat-file", "-e", `${commit}^{tree}`], cacheDir);
+    });
+  }
 });
 
 /**

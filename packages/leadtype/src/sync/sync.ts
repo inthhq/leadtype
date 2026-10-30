@@ -1,6 +1,14 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import type { ResolvedGitSource, ResolvedSource } from "../config/types";
 import { writeFileAtomic } from "../internal/atomic-fs";
@@ -40,6 +48,8 @@ export const SYNC_MANIFEST_FILE = ".leadtype-sync.json";
 // Git allows abbreviating a commit SHA to 7+ hex characters; full SHAs are 40.
 const MIN_SHA_LENGTH = 7;
 const MAX_SHA_LENGTH = 40;
+/** Marks a directory as a cache backup that sync created and may delete. */
+const SYNC_BACKUP_MARKER_FILE = ".leadtype-sync-backup";
 const SHA_PATTERN = new RegExp(
   `^[0-9a-f]{${MIN_SHA_LENGTH},${MAX_SHA_LENGTH}}$`,
   "i"
@@ -375,15 +385,65 @@ async function applySparsePaths(
   }
 }
 
+/**
+ * Replace the cache with a fresh clone. The old checkout is moved aside rather
+ * than deleted, so a clone that fails (offline, auth, git missing) puts it
+ * back instead of leaving nothing to build from.
+ */
 async function cloneRemote(
   source: ResolvedRemoteSource,
   runner: GitRunner
 ): Promise<string> {
-  await mkdir(path.dirname(source.cacheDir), { recursive: true });
-  if (existsSync(source.cacheDir)) {
-    await rm(source.cacheDir, { recursive: true, force: true });
+  const parent = path.dirname(source.cacheDir);
+  await mkdir(parent, { recursive: true });
+  const backupPrefix = `.${path.basename(source.cacheDir)}-previous-`;
+  // mkdtemp creates a new directory, so the backup can't land on another
+  // source's cache.
+  const backupDir = existsSync(source.cacheDir)
+    ? await mkdtemp(path.join(parent, backupPrefix))
+    : null;
+  const previous = backupDir ? path.join(backupDir, "checkout") : null;
+  if (backupDir && previous) {
+    await writeFile(path.join(backupDir, SYNC_BACKUP_MARKER_FILE), "");
+    await rename(source.cacheDir, previous);
   }
+  let commit: string;
+  try {
+    commit = await cloneInto(source, runner);
+  } catch (err) {
+    if (backupDir && previous) {
+      await rm(source.cacheDir, { recursive: true, force: true });
+      await rename(previous, source.cacheDir);
+      await rm(backupDir, { recursive: true, force: true });
+    }
+    throw err;
+  }
+  // With a new checkout in place, every backup is disposable: this run's and
+  // any left by a sync killed mid-clone. A backup holds sync's marker and no
+  // `.git` of its own; every cache sync checks out has a `.git` at its root,
+  // and a repository can't commit one, so a configured cache is never
+  // mistaken for a backup, whatever its name. Cleanup is best-effort: the
+  // clone already succeeded, and the next one sweeps again.
+  const entries = await readdir(parent).catch(() => [] as string[]);
+  for (const entry of entries) {
+    const candidate = path.join(parent, entry);
+    if (
+      entry.startsWith(backupPrefix) &&
+      existsSync(path.join(candidate, SYNC_BACKUP_MARKER_FILE)) &&
+      !existsSync(path.join(candidate, ".git"))
+    ) {
+      await rm(candidate, { recursive: true, force: true }).catch(
+        () => undefined
+      );
+    }
+  }
+  return commit;
+}
 
+async function cloneInto(
+  source: ResolvedRemoteSource,
+  runner: GitRunner
+): Promise<string> {
   // A sparse clone is blobless and checks out nothing up front: the paths are
   // selected after cloning, so git only ever fetches the blobs behind them.
   // That is the difference between pulling one docs directory and pulling an
@@ -483,6 +543,8 @@ export type SyncSourceResult = {
   source: SyncSource;
   status: SyncStatus;
   commit: string;
+  /** Why an in-place refresh failed and the source was cloned instead. */
+  refreshError?: string;
 };
 
 export type SyncResult = {
@@ -559,10 +621,28 @@ async function syncOne(
     return { source, status: "cached", commit: manifest.commit };
   }
 
-  const refreshInPlace = mode === "refresh" && hasCheckout && manifestMatches;
-  const commit = refreshInPlace
-    ? await fastForwardExisting(source, runner)
-    : await cloneRemote(source, runner);
+  // A matching manifest says nothing about the object store. A partial cache
+  // restore or an interrupted sync can leave a checkout git can no longer
+  // fetch into or check out, and a fetch won't reliably repair it, so fall
+  // back to a fresh clone when the in-place update fails.
+  let refreshError: Error | undefined;
+  const refreshed =
+    mode === "refresh" && hasCheckout && manifestMatches
+      ? await fastForwardExisting(source, runner).catch((err: Error) => {
+          refreshError = err;
+          return null;
+        })
+      : null;
+  const commit =
+    refreshed ??
+    (await cloneRemote(source, runner).catch((err: Error) => {
+      throw refreshError
+        ? new Error(
+            `${err.message} (cloned because the in-place refresh failed: ${refreshError.message})`,
+            { cause: refreshError }
+          )
+        : err;
+    }));
 
   await writeSyncManifest(source.cacheDir, {
     version: 1,
@@ -576,8 +656,14 @@ async function syncOne(
   });
 
   // "refreshed" means we fast-forwarded an existing checkout. A destructive
-  // re-clone (no prior checkout, or stale ref) is reported as "fresh" so
-  // callers can distinguish in-place updates from full re-acquisition.
-  const status: SyncStatus = refreshInPlace ? "refreshed" : "fresh";
-  return { source, status, commit };
+  // re-clone (no prior checkout, stale ref, or a failed in-place update) is
+  // reported as "fresh" so callers can distinguish in-place updates from full
+  // re-acquisition.
+  const status: SyncStatus = refreshed === null ? "fresh" : "refreshed";
+  return {
+    source,
+    status,
+    commit,
+    ...(refreshError ? { refreshError: refreshError.message } : {}),
+  };
 }
