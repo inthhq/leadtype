@@ -54,8 +54,9 @@ const SHA_PATTERN = new RegExp(
   `^[0-9a-f]{${MIN_SHA_LENGTH},${MAX_SHA_LENGTH}}$`,
   "i"
 );
-const HTTPS_GIT_URL = /^https?:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/i;
-const SCP_LIKE_GIT_URL = /^(?:[\w.-]+@)?([^:]+):(.+?)(?:\.git)?$/;
+const PROTOCOL_GIT_URL =
+  /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/(?:[^/]+@)?(?:[^/:]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/i;
+const SCP_LIKE_GIT_URL = /^(?:[\w.-]+@)?([^/:]+):(?!\/\/)(.+?)(?:\.git)?$/;
 const SAFE_SLUG = /[^a-zA-Z0-9_.-]/g;
 const GIT_REPOSITORY_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
@@ -75,9 +76,9 @@ export function isShaRef(ref: string): boolean {
 /** Derive a filesystem-safe slug from a repository URL. */
 export function repositorySlug(repository: string): string {
   let pathPart: string | undefined;
-  const httpsMatch = HTTPS_GIT_URL.exec(repository);
-  if (httpsMatch) {
-    pathPart = httpsMatch[2];
+  const protocolMatch = PROTOCOL_GIT_URL.exec(repository);
+  if (protocolMatch) {
+    pathPart = protocolMatch[1];
   } else {
     const scpMatch = SCP_LIKE_GIT_URL.exec(repository);
     if (scpMatch) {
