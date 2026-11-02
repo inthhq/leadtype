@@ -48,8 +48,12 @@ describe("docs URL helpers", () => {
     expect(normalizeDocsUrl("/docs/quickstart/?q=install#top")).toBe(
       "/docs/quickstart"
     );
+    expect(toMarkdownUrlPath("/")).toBe("/index.md");
+    expect(toMarkdownUrlPath("")).toBe("/index.md");
     expect(toMarkdownUrlPath("/docs")).toBe("/docs/index.md");
+    expect(toMarkdownUrlPath("/docs/")).toBe("/docs/index.md");
     expect(toMarkdownUrlPath("/docs/quickstart")).toBe("/docs/quickstart.md");
+    expect(toMarkdownUrlPath("/docs/quickstart/")).toBe("/docs/quickstart.md");
     expect(stripDocsExtension("guides/quickstart.mdx")).toBe(
       "guides/quickstart"
     );

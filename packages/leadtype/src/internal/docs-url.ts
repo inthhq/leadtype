@@ -154,7 +154,18 @@ export function toDocsUrlPath(
 }
 
 export function toMarkdownUrlPath(urlPath: string): string {
-  return urlPath === "/docs" ? "/docs/index.md" : `${urlPath}.md`;
+  const [withoutHashOrQuery] = urlPath.split(QUERY_OR_HASH_PATTERN, 1);
+  const trimmed = (withoutHashOrQuery ?? "").trim();
+  const normalized = stripTrailingSlashes(trimmed);
+  if (normalized === "" || normalized === "/") {
+    return "/index.md";
+  }
+  const withLeadingSlash = normalized.startsWith("/")
+    ? normalized
+    : `/${normalized}`;
+  return withLeadingSlash === "/docs"
+    ? "/docs/index.md"
+    : `${withLeadingSlash}.md`;
 }
 
 export function toMountedMarkdownUrlPath(
