@@ -86,6 +86,19 @@ describe("repositorySlug", () => {
     expect(repositorySlug("git@github.com:c15t/c15t.git")).toBe("c15t-c15t");
   });
 
+  it("derives a slug from ssh and git protocol URLs", () => {
+    expect(repositorySlug("ssh://git@github.com/c15t/c15t.git")).toBe(
+      "c15t-c15t"
+    );
+    expect(repositorySlug("ssh://git@github.com:22/c15t/c15t.git")).toBe(
+      "c15t-c15t"
+    );
+    expect(repositorySlug("git://github.com/c15t/c15t.git")).toBe("c15t-c15t");
+    expect(repositorySlug("https://user:token@github.com/c15t/c15t.git")).toBe(
+      "c15t-c15t"
+    );
+  });
+
   it("replaces unsafe characters with dashes", () => {
     expect(repositorySlug("https://gitlab.com/group/sub/repo")).toBe(
       "group-sub-repo"
