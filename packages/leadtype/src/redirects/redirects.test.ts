@@ -292,6 +292,39 @@ describe("resolveRedirect", () => {
       "/index.md"
     );
   });
+
+  it("resolves index routes and index markdown mirrors to canonical route redirects", () => {
+    const indexRedirects = [
+      { from: "/", to: "/docs/home", status: REDIRECT_STATUS_MOVED },
+      { from: "/docs", to: "/docs/overview", status: REDIRECT_STATUS_MOVED },
+      {
+        from: "/docs/guides",
+        to: "/docs/tutorials",
+        status: REDIRECT_STATUS_MOVED,
+      },
+      { from: "/docs/dead-section", status: REDIRECT_STATUS_GONE },
+    ];
+
+    expect(resolveRedirect("/index", indexRedirects)?.to).toBe("/docs/home");
+    expect(resolveRedirect("/index.md", indexRedirects)?.to).toBe(
+      "/docs/home.md"
+    );
+    expect(resolveRedirect("/docs/index", indexRedirects)?.to).toBe(
+      "/docs/overview"
+    );
+    expect(resolveRedirect("/docs/index.md", indexRedirects)?.to).toBe(
+      "/docs/overview.md"
+    );
+    expect(resolveRedirect("/docs/guides/index", indexRedirects)?.to).toBe(
+      "/docs/tutorials"
+    );
+    expect(resolveRedirect("/docs/guides/index.md", indexRedirects)?.to).toBe(
+      "/docs/tutorials.md"
+    );
+    expect(
+      resolveRedirect("/docs/dead-section/index.md", indexRedirects)?.status
+    ).toBe(REDIRECT_STATUS_GONE);
+  });
 });
 
 describe("updateDocsRedirects", () => {

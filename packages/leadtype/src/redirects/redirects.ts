@@ -260,6 +260,22 @@ function toMarkdownMirrorPath(urlPath: string): string {
   return urlPath === "/" ? "/index.md" : `${urlPath}.md`;
 }
 
+function findRedirectEntry(
+  path: string,
+  redirects: DocsRedirect[]
+): DocsRedirect | undefined {
+  const direct = redirects.find((entry) => entry.from === path);
+  if (direct) {
+    return direct;
+  }
+  if (path === "/index" || path.endsWith("/index")) {
+    const canonicalRoute =
+      path === "/index" ? "/" : path.slice(0, -"/index".length);
+    return redirects.find((entry) => entry.from === canonicalRoute);
+  }
+  return;
+}
+
 /**
  * Look up the redirect for a request path. Handles the `.md` mirror surface:
  * `/docs/old.md` follows `/docs/old` → `/docs/new` and lands on
@@ -270,7 +286,7 @@ export function resolveRedirect(
   redirects: DocsRedirect[]
 ): DocsRedirect | undefined {
   const normalized = normalizeRedirectPath(requestPath);
-  const direct = redirects.find((entry) => entry.from === normalized);
+  const direct = findRedirectEntry(normalized, redirects);
   if (direct) {
     return direct;
   }
@@ -278,7 +294,7 @@ export function resolveRedirect(
     return;
   }
   const base = normalized.replace(MARKDOWN_EXTENSION_PATTERN, "");
-  const viaBase = redirects.find((entry) => entry.from === base);
+  const viaBase = findRedirectEntry(base, redirects);
   if (!viaBase) {
     return;
   }
